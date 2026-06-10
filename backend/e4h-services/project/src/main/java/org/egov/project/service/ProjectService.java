@@ -92,168 +92,176 @@ public class ProjectService {
     }
 
     public List<String> validateProjectIds(List<String> productIds) {
-        return projectRepository.validateIds(productIds, "id");
+        log.trace("Entering validateProjectIds with {} project IDs", productIds != null ? productIds.size() : 0);
+        List<String> result = projectRepository.validateIds(productIds, "id");
+        log.debug("Validated {} project IDs", result != null ? result.size() : 0);
+        log.trace("Exiting validateProjectIds");
+        return result;
     }
 
     public List<Project> findByIds(List<String> projectIds) {
-        return projectRepository.findById(projectIds);
+        log.trace("Entering findByIds with {} project IDs", projectIds != null ? projectIds.size() : 0);
+        List<Project> result = projectRepository.findById(projectIds);
+        log.debug("Found {} projects", result != null ? result.size() : 0);
+        log.trace("Exiting findByIds");
+        return result;
     }
 
     public ProjectRequest createProject(ProjectRequest projectRequest) {
+        log.trace("Entering createProject");
+        log.info("Starting project creation for {} projects", projectRequest.getProjects() != null ? projectRequest.getProjects().size() : 0);
         projectValidator.validateCreateProjectRequest(projectRequest);
         RequestInfo requestInfo = projectRequest.getRequestInfo();
-        // Check for empty names and generate names with duplicate check
-        // Use a Set to track generated names within this batch to prevent collisions
-        Set<String> generatedNamesInBatch = new HashSet<>();
+
+        //Get parent projects if "parent" is present (For enrichment of projectHierarchy)
+        log.debug("Fetching parent projects for enrichment");
+        List<Project> parentProjects = getParentProjects(projectRequest);
+        log.debug("Found {} parent projects", parentProjects != null ? parentProjects.size() : 0);
+        //Validate Parent in request against projects fetched form database
+        if (parentProjects != null) {
+            log.debug("Validating parent projects against database");
+            projectValidator.validateParentAgainstDB(projectRequest.getProjects(), parentProjects);
+        }
+        log.info("Enriching projects with project number, IDs and audit details");
+        projectEnrichment.enrichProjectOnCreate(projectRequest, parentProjects);
+        log.info("Enriched with Project Number, Ids and AuditDetails");
 
         for (Project project : projectRequest.getProjects()) {
             if (project.getName() == null || project.getName().trim().isEmpty()) {
-                try {
-                    ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, requestInfo);
-
-                    // Null-safety check
-                    if (nameResult == null) {
-                        log.error("ProjectNameResult is null for project: {}", project.getId());
-                        throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId());
-                    }
-
-                    String generatedName = nameResult.getName();
-                    if (generatedName != null && !generatedName.trim().isEmpty()) {
-                        // Check for batch-level duplicates (same name generated within this request)
-                        boolean hasBatchDuplicateName = false;
-                        if (generatedNamesInBatch.contains(generatedName)) {
-                            log.warn("Duplicate name generated within batch for project: {}. Generated name: {}",
-                                    project.getId(), generatedName);
-                            // Generate a unique name by appending a batch suffix
-                            generatedName = generateUniqueBatchName(generatedName, project.getTenantId(), generatedNamesInBatch);
-                            hasBatchDuplicateName = true; // Mark that this project had a batch-level collision
-                        }
-
-                        project.setName(generatedName);
-                        generatedNamesInBatch.add(generatedName);
-
-                        // Add individual isDuplicate flag to project's additionalDetails
-                        // isDuplicate = true if either database duplicate OR batch-level duplicate
-                        boolean isDuplicateName = Boolean.TRUE.equals(nameResult.getIsDuplicateName()) || hasBatchDuplicateName;
-                        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                            project.getAdditionalDetails(),
-                            "isDuplicateName",
-                            isDuplicateName
-                        );
-                        project.setAdditionalDetails(enrichedAdditionalDetails);
-
-                        if (isDuplicateName) {
-                            log.info("Project {} has duplicate name", project.getId());
-                        } else {
-                            log.info("Project {} has unique name", project.getId());
-                        }
-                    } else if (generatedName == null && project.getProjectType() != null &&
-                               (PROJECT_TYPE_FIELDPLAN.equals(project.getProjectType()) || PROJECT_TYPE_FACILITY.equals(project.getProjectType()))) {
-                        // This is expected for FieldPlan and Facility project types - skip name generation
-                        log.info("Skipping name generation for project type: {} for project: {}",
-                                project.getProjectType(), project.getId());
-                        // Mark as not duplicate since no name generation was needed
-                        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                            project.getAdditionalDetails(),
-                            "isDuplicateName",
-                            false
-                        );
-                        project.setAdditionalDetails(enrichedAdditionalDetails);
-                        // Don't add to batch tracking since no name was generated
-                    } else {
-                        log.warn("Generated name is null or empty for project: {} with project type: {}",
-                                project.getId(), project.getProjectType());
-                        // For non-skipped project types, this indicates an error
-                        throw new CustomException("PROJECT_NAME_NULL_OR_EMPTY", "Generated project name is null or empty for project: " + project.getId());
-                    }
-                } catch (Exception e) {
-                    log.error("Error generating name for project: {}", project.getId(), e);
-                    throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId());
-                }
-            } else {
-                // If name is already set, add it to the batch tracking to prevent conflicts
-                String existingName = project.getName().trim();
-                if (generatedNamesInBatch.contains(existingName)) {
-                    log.warn("Duplicate name found within batch for project: {}. Name: {}",
-                            project.getId(), existingName);
-                    throw new CustomException("PROJECT_NAME_DUPLICATE_IN_BATCH", "Duplicate project name found within batch: " + existingName);
-                }
-                generatedNamesInBatch.add(existingName);
-
-                // For projects with pre-existing names, mark as not duplicate
-                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                    project.getAdditionalDetails(),
-                    "isDuplicateName",
-                    false
-                );
-                project.setAdditionalDetails(enrichedAdditionalDetails);
-                log.info("Project {} has pre-existing name, marked isDuplicate=false", project.getId());
+                applyGeneratedProjectName(project, requestInfo, true);
             }
         }
-
-        //Get parent projects if "parent" is present (For enrichment of projectHierarchy)
-        List<Project> parentProjects = getParentProjects(projectRequest);
-        //Validate Parent in request against projects fetched form database
-        if (parentProjects != null)
-            projectValidator.validateParentAgainstDB(projectRequest.getProjects(), parentProjects);
-        projectEnrichment.enrichProjectOnCreate(projectRequest, parentProjects);
-        log.info("Enriched with Project Number, Ids and AuditDetails");
+        log.debug("Pushing project request to Kafka topics");
         producer.push(projectConfiguration.getSaveProjectTopic(), projectRequest);
         producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
         log.info("Pushed to kafka");
-
+        log.info("Successfully completed project creation for {} projects", projectRequest.getProjects().size());
+        log.trace("Exiting createProject");
         return projectRequest;
     }
 
     /**
-     * Generates a unique name within the current batch by appending a numeric suffix
-     * Derives the base root, looks up the highest suffix in DB, then chooses the next unused number
-     * considering both database and batch names for consistency with global scheme
-     * @param baseName The base name to make unique
-     * @param tenantId The tenant ID for database lookup
-     * @param existingNamesInBatch Set of names already used in this batch
-     * @return A unique name that doesn't conflict with existing names in the batch or database
+     * Regenerates project name when facilities change on a scheduled (non-draft) project.
      */
-    private String generateUniqueBatchName(String baseName, String tenantId, Set<String> existingNamesInBatch) {
-        // Normalize to root: strip a trailing -digits if present
-        String baseRoot = baseName.replaceFirst("-\\d+$", "");
-        int next = 0;
+    public void refreshProjectNameAfterFacilityChange(String projectId, String tenantId, RequestInfo requestInfo) {
+        refreshProjectNameAfterFacilityChange(projectId, tenantId, requestInfo, null);
+    }
 
+    public int countLinkedFacilities(String projectId, String tenantId) {
+        return projectRepository.countProjectFacilitiesByProjectId(projectId, tenantId);
+    }
+
+    /**
+     * @param facilityCountOverride when non-null, used as the exact HF count (computed before persister flush)
+     */
+    public void refreshProjectNameAfterFacilityChange(String projectId, String tenantId, RequestInfo requestInfo,
+                                                      Integer facilityCountOverride) {
+        log.trace("Entering refreshProjectNameAfterFacilityChange for project: {}", projectId);
         try {
-            String highestExisting = projectRepository.findHighestExistingProjectName(baseRoot, tenantId);
-            if (highestExisting != null) {
-                if (highestExisting.equals(baseRoot)) {
-                    next = 1;
-                } else if (highestExisting.startsWith(baseRoot + "-")) {
-                    String suffix = highestExisting.substring((baseRoot + "-").length());
-                    try {
-                        next = Integer.parseInt(suffix) + 1;
-                    } catch (NumberFormatException ignored) {
-                        next = 1;
-                    }
-                }
-            } else {
-                next = 1;
+            Project projectFromDB = fetchProjectWithDetails(projectId, tenantId, requestInfo);
+            if (projectFromDB == null) {
+                log.warn("Project not found for name refresh: {}", projectId);
+                return;
             }
+            String projectStatus = getProjectStatus(projectFromDB);
+            if (isDraftProject(projectStatus)) {
+                log.info("Skipping name refresh for draft project {} (status={})", projectId, projectStatus);
+                return;
+            }
+            int dbFacilityCount = projectRepository.countProjectFacilitiesByProjectId(projectId, tenantId);
+            int effectiveFacilityCount = facilityCountOverride != null
+                    ? Math.max(0, facilityCountOverride)
+                    : dbFacilityCount;
+            log.info("Refreshing project name for {} status={} facilityCount db={} override={} effective={}",
+                    projectId, projectStatus, dbFacilityCount, facilityCountOverride, effectiveFacilityCount);
+            ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(
+                    projectFromDB, requestInfo, false, effectiveFacilityCount);
+            int hfInCurrentName = projectNameGenerationService.parseHealthFacilityCountFromName(projectFromDB.getName());
+            if (nameResult.getName() == null) {
+                log.warn("Project name generation returned null for project {} after facility change", projectId);
+                return;
+            }
+            if (nameResult.getName().equals(projectFromDB.getName()) && hfInCurrentName == effectiveFacilityCount) {
+                log.debug("Project name unchanged after facility refresh for {}: {}", projectId, projectFromDB.getName());
+                return;
+            }
+            Project updatePayload = buildProjectNameUpdatePayload(projectFromDB, nameResult.getName());
+            ProjectRequest updateRequest = ProjectRequest.builder()
+                    .requestInfo(requestInfo)
+                    .projects(List.of(updatePayload))
+                    .build();
+            projectEnrichment.enrichProjectRequestOnUpdate(updatePayload, projectFromDB, requestInfo);
+            producer.push(projectConfiguration.getUpdateProjectTopic(), updateRequest);
+            producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), updateRequest);
+            log.info("Refreshed project name to {} after facility change for project: {}", nameResult.getName(), projectId);
         } catch (Exception e) {
-            log.warn("Falling back to batch-only uniquing for base '{}': {}", baseRoot, e.getMessage());
-            next = 1;
+            log.error("Failed to refresh project name after facility change for project: {}", projectId, e);
         }
+    }
 
-        String candidate = (next <= 0) ? baseRoot + "-1" : baseRoot + "-" + next;
-        int guard = 0;
-
-        while (existingNamesInBatch.contains(candidate)) {
-            next++;
-            candidate = baseRoot + "-" + next;
-            if (++guard > 1000) {
-                throw new CustomException("PROJECT_NAME_GENERATION_FAILED",
-                        "Unable to generate unique batch name after 1000 attempts for: " + baseRoot);
-            }
+    private Project fetchProjectWithDetails(String projectId, String tenantId, RequestInfo requestInfo) throws Exception {
+        ProjectSearch searchCriteria = ProjectSearch.builder().id(List.of(projectId)).build();
+        ProjectSearchRequest searchRequest = ProjectSearchRequest.builder()
+                .project(searchCriteria)
+                .requestInfo(requestInfo)
+                .build();
+        ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                .limit(1)
+                .offset(0)
+                .tenantId(tenantId)
+                .includeAncestors(false)
+                .includeDescendants(false)
+                .build();
+        List<Project> projects = searchProject(searchRequest, urlParams, null, null);
+        if (projects == null || projects.isEmpty()) {
+            return null;
         }
+        return projects.get(0);
+    }
 
-        log.info("Generated unique batch name: {} from base: {}", candidate, baseRoot);
-        return candidate;
+    private Project buildProjectNameUpdatePayload(Project projectFromDB, String newName) {
+        String projectSubType = StringUtils.isNotBlank(projectFromDB.getProjectSubType())
+                ? projectFromDB.getProjectSubType() : PROJECT_SUB_TYPE;
+        Object additionalDetails = mergeIntoAdditionalDetails(
+                projectFromDB.getAdditionalDetails(), "isDuplicateName", false);
+        return Project.builder()
+                .id(projectFromDB.getId())
+                .tenantId(projectFromDB.getTenantId())
+                .projectNumber(projectFromDB.getProjectNumber())
+                .name(newName)
+                .projectType(projectFromDB.getProjectType())
+                .projectTypeId(projectFromDB.getProjectTypeId())
+                .projectSubType(projectSubType)
+                .department(projectFromDB.getDepartment())
+                .description(projectFromDB.getDescription())
+                .referenceID(projectFromDB.getReferenceID())
+                .startDate(projectFromDB.getStartDate())
+                .endDate(projectFromDB.getEndDate())
+                .isTaskEnabled(projectFromDB.getIsTaskEnabled())
+                .natureOfWork(projectFromDB.getNatureOfWork())
+                .parent(projectFromDB.getParent())
+                .projectHierarchy(projectFromDB.getProjectHierarchy())
+                .address(projectFromDB.getAddress())
+                .additionalDetails(additionalDetails)
+                .isDeleted(projectFromDB.getIsDeleted())
+                .rowVersion(projectFromDB.getRowVersion())
+                .build();
+    }
+
+    private void applyGeneratedProjectName(Project project, RequestInfo requestInfo, boolean draft) {
+        ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(project, requestInfo, draft);
+        if (nameResult == null || StringUtils.isBlank(nameResult.getName())) {
+            throw new CustomException("PROJECT_NAME_NULL_OR_EMPTY",
+                    "Generated project name is null or empty for project: " + project.getId());
+        }
+        project.setName(nameResult.getName());
+        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                project.getAdditionalDetails(),
+                "isDuplicateName",
+                false
+        );
+        project.setAdditionalDetails(enrichedAdditionalDetails);
+        log.info("Set project name to {} for project: {} (draft={})", nameResult.getName(), project.getId(), draft);
     }
 
     /**
@@ -275,7 +283,10 @@ public class ProjectService {
             Long createdTo,
             boolean isAncestorProjectId
     ) {
+        log.trace("Entering searchProject with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
+        log.info("Searching projects with criteria");
         projectValidator.validateSearchProjectRequest(project, limit, offset, tenantId, createdFrom, createdTo);
+        log.debug("Search criteria validated, fetching projects from repository");
         List<Project> projects = projectRepository.getProjects(
                 project,
                 limit,
@@ -289,35 +300,55 @@ public class ProjectService {
                 createdTo,
                 isAncestorProjectId
         );
+        log.debug("Found {} projects matching search criteria", projects != null ? projects.size() : 0);
+        log.info("Project search completed successfully");
+        log.trace("Exiting searchProject");
         return projects;
     }
 
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
+        log.trace("Entering searchProject (v2)");
+        log.info("Starting project search with v2 API");
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
+        log.debug("Search request validated, fetching projects");
         List<Project> projects = projectRepository.getProjects(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
+        log.debug("Retrieved {} projects from repository", projects != null ? projects.size() : 0);
+        
         // Get count of project type = Facility for each project type FieldPlan
         if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
-                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FIELDPLAN))
+                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FIELDPLAN)) {
+            log.debug("Enriching FieldPlan projects with facility counts");
             projects = getCountProjectTypeFacilities(projects, projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
+        }
 
         // Get facility of project type = Facility for each project type Facility
         if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
-                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FACILITY))
+                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FACILITY)) {
+            log.debug("Enriching Facility projects with facility details");
             getFacilityProject(projects, projectSearchRequest.getRequestInfo());
+        }
 
         // Enrich all projects with HLS (Health Center) count
         if (projectSearchRequest.getProject() != null
                 && projectSearchRequest.getProject().getSubProjectTypeId() != null
                 && PROJECT_SUB_TYPE.equalsIgnoreCase(projectSearchRequest.getProject().getSubProjectTypeId())) {
+            log.debug("Enriching projects with HLS count");
             projects = enrichProjectsWithHlsCount(projects, projectSearchRequest.getRequestInfo());
         }
 
+        log.info("Project search v2 completed successfully with {} projects", projects != null ? projects.size() : 0);
+        log.trace("Exiting searchProject (v2)");
         return projects;
     }
 
     public List<Project> getFacilityProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+        log.trace("Entering getFacilityProject for {} projects", listProjects != null ? listProjects.size() : 0);
+        log.info("Enriching {} projects with facility details", listProjects != null ? listProjects.size() : 0);
+        log.debug("Fetching boundary data");
         Map<String, BoundaryV2> listBlock = boundaryV2Util.getBoundaryByCode();
+        log.debug("Found {} boundary entries", listBlock != null ? listBlock.size() : 0);
         for (Project project : listProjects) {
+            log.debug("Processing facility enrichment for project: {}", project.getId());
             List<String> listProjectId = new ArrayList<>();
             listProjectId.add(project.getId());
             ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder().projectId(listProjectId).facilityId(null).build();
@@ -331,13 +362,17 @@ public class ProjectService {
                     false);
 
             if (searchResponse != null && searchResponse.getResponse() != null && !searchResponse.getResponse().isEmpty()) {
+                log.debug("Found facility for project: {}, enriching with systemCode", project.getId());
                 ProjectFacility projectFacility = searchResponse.getResponse().get(0);
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "systemCode", "AC_OFF_GRID");
                 project.setAdditionalDetails(enrichedAdditionalDetails);
+            } else {
+                log.debug("No facility found for project: {}", project.getId());
             }
 
             // Get district and state for project type facility
             if(listBlock != null){
+                log.debug("Enriching project: {} with district and state from boundary", project.getId());
                 Object additionalDetails = project.getAdditionalDetails();
                 Address address = project.getAddress();
                 if(address !=null){
@@ -355,12 +390,16 @@ public class ProjectService {
                 }
             }
         }
-
+        log.info("Successfully enriched {} projects with facility details", listProjects.size());
+        log.trace("Exiting getFacilityProject");
         return listProjects;
     }
 
     public List<Project> getCountProjectTypeFacilities(List<Project> listProjects, ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
+        log.trace("Entering getCountProjectTypeFacilities for {} projects", listProjects != null ? listProjects.size() : 0);
+        log.info("Enriching {} projects with facility counts", listProjects != null ? listProjects.size() : 0);
         for (Project project : listProjects) {
+            log.debug("Processing facility count enrichment for project: {}", project.getId());
             ProjectSearch copyProject = ProjectSearch.builder()
                     .parent(projectSearchRequest.getProject().getParent())
                     .projectTypeId("Facility")
@@ -369,14 +408,19 @@ public class ProjectService {
             ProjectSearchRequest projectSearchRequest1 = ProjectSearchRequest.builder().project(copyProject).requestInfo(projectSearchRequest.getRequestInfo()).build();
             projectSearchRequest1.getProject().setProjectTypeId("Facility");
             projectSearchRequest1.getProject().setParent(project.getId());
+            log.debug("Counting facilities for project: {}", project.getId());
             Integer count = countAllProjects(projectSearchRequest1, urlParams, workflowStatuses);
+            log.debug("Found {} facilities for project: {}", count, project.getId());
             Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countProjectFacilities", count);
             project.setAdditionalDetails(enrichedAdditionalDetails);
+            log.debug("Fetching status aggregations for project: {}", project.getId());
             List<ProjectStatusAgregation> statusAgregations = getStatusProjectsAgregation(project.getId());
+            log.debug("Found {} status aggregations for project: {}", statusAgregations != null ? statusAgregations.size() : 0, project.getId());
             enrichedAdditionalDetails = mergeListIntoAdditionalDetails(project.getAdditionalDetails(), "statusAgregation", statusAgregations);
             project.setAdditionalDetails(enrichedAdditionalDetails);
         }
-
+        log.info("Successfully enriched {} projects with facility counts", listProjects.size());
+        log.trace("Exiting getCountProjectTypeFacilities");
         return listProjects;
     }
 
@@ -456,6 +500,8 @@ public class ProjectService {
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {
+        log.trace("Entering updateProject");
+        log.info("Starting project update for {} projects", request.getProjects() != null ? request.getProjects().size() : 0);
         /*
          * Validate the update project request
          */
@@ -465,78 +511,105 @@ public class ProjectService {
         /*
          * Search for projects based on project IDs provided in the request
          */
+        log.debug("Fetching existing projects from database for update");
         List<Project> projectsFromDB = searchProject(
                 getSearchProjectRequest(request.getProjects(), request.getRequestInfo(), false),
                 projectConfiguration.getMaxLimit(), projectConfiguration.getDefaultOffset(),
                 request.getProjects().get(0).getTenantId(), null, false, false, false, null, null, false
         );
         log.info("Fetched projects for update request");
+        log.debug("Found {} existing projects in database", projectsFromDB != null ? projectsFromDB.size() : 0);
 
         /*
          * Validate the update project request against the projects fetched from the database
          */
+        log.debug("Validating update request against database state");
         projectValidator.validateUpdateAgainstDB(request.getProjects(), projectsFromDB);
 
         /*
          * Process each project in the update request
          */
+        log.info("Processing {} projects for update", request.getProjects().size());
         for (Project project : request.getProjects()) {
             processProjectUpdate(request, project, projectsFromDB);
         }
 
+        log.info("Successfully completed project update for {} projects", request.getProjects().size());
+        log.trace("Exiting updateProject");
         return request;
     }
 
     private void processProjectUpdate(ProjectRequest request, Project project, List<Project> projectsFromDB) {
+        log.trace("Entering processProjectUpdate for project: {}", project.getId());
         /*
          * Convert project ID to string for comparison
          */
         String projectId = String.valueOf(project.getId());
+        log.debug("Processing update for project ID: {}", projectId);
 
         /*
          * Find the project from the database that matches the current project ID
          */
         Project projectFromDB = findProjectById(projectId, projectsFromDB);
         boolean isCascadingProjectDateUpdate = request.isCascadingProjectDateUpdate();
+        log.debug("Cascading project date update flag: {}", isCascadingProjectDateUpdate);
 
         if (projectFromDB != null) {
+            log.debug("Found existing project in database, proceeding with update");
+            /*
+             * Check if geography details (boundary codes) have changed and unlink facilities if needed
+             */
+            handleFacilityUnlinkingOnGeographyChange(request, project, projectFromDB);
+
             /*
              * Merge additional details of the project from the request and project from DB
              */
+            log.debug("Merging additional details from request and database");
             projectServiceUtil.mergeAdditionalDetails(project, projectFromDB);
 
             /*
              * Handle cases where cascading project date update is true
              */
             if (isCascadingProjectDateUpdate) {
+                log.info("Handling cascading project date update");
                 handleUpdateProjectDates(request, project, projectFromDB);
             }
             /*
              * Handle cases for normal update flow
              */
             else {
+                log.info("Handling normal project update");
                 handleNormalUpdate(request, project, projectFromDB);
             }
+        } else {
+            log.warn("Project not found in database for ID: {}", projectId);
         }
+        log.trace("Exiting processProjectUpdate for project: {}", projectId);
     }
 
     private Project findProjectById(String projectId, List<Project> projectsFromDB) {
+        log.trace("Entering findProjectById for project ID: {}", projectId);
         /*
          * Find and return the project with the matching ID from the list of projects fetched from the database
          */
-        return projectsFromDB.stream()
+        Project result = projectsFromDB.stream()
                 .filter(p -> projectId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
+        log.debug("Project lookup result: {}", result != null ? "found" : "not found");
+        log.trace("Exiting findProjectById");
+        return result;
     }
 
 
     private void handleNormalUpdate(ProjectRequest request, Project project, Project projectFromDB) {
+        log.trace("Entering handleNormalUpdate for project: {}", project.getId());
         /*
          * Ensure that start and end dates are not being updated when flag is false
          */
         if (!project.getStartDate().equals(projectFromDB.getStartDate()) ||
                 !project.getEndDate().equals(projectFromDB.getEndDate())) {
+            log.error("Attempted to update date range without cascading flag for project: {}", project.getId());
             throw new CustomException("PROJECT_CASCADE_UPDATE_DATE_ERROR",
                     "Can't Update Date Range if Cascade Project Date Update  false");
         }
@@ -544,18 +617,24 @@ public class ProjectService {
         /*
          * Handle project name regeneration if needed
          */
+        log.debug("Checking if project name update is needed");
         handleProjectNameUpdate(request, project, projectFromDB);
 
         /*
          * Enrich the project with values other than the start, end dates, and AdditionalDetails,
          * and push the update to the message broker
          */
+        log.info("Enriching project for update");
         projectEnrichment.enrichProjectOnUpdate(request, project, projectFromDB);
+        log.debug("Pushing project update to Kafka topics");
         producer.push(projectConfiguration.getUpdateProjectTopic(), request);
         producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
+        log.info("Successfully completed normal update for project: {}", project.getId());
+        log.trace("Exiting handleNormalUpdate");
     }
 
     private void handleUpdateProjectDates(ProjectRequest request, Project project, Project projectFromDB) {
+        log.trace("Entering handleUpdateProjectDates for project: {}", project.getId());
         /*
          * Save original values of start date, end date, and additional details
          */
@@ -563,6 +642,7 @@ public class ProjectService {
         Long originalEndDate = projectFromDB.getEndDate();
         Object originalAdditionalDetails = projectFromDB.getAdditionalDetails();
         AuditDetails originalAuditDetails = projectFromDB.getAuditDetails();
+        log.debug("Saved original project dates - start: {}, end: {}", originalStartDate, originalEndDate);
 
 
         /*
@@ -605,105 +685,145 @@ public class ProjectService {
         /*
          * Check and enrich cascading project dates and push the update to the message broker
          */
+        log.debug("Checking and enriching cascading project dates");
         checkAndEnrichCascadingProjectDates(request, project);
+        log.debug("Pushing cascading date update to Kafka topics");
         producer.push(projectConfiguration.getUpdateProjectDateTopic(), request);
         producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
+        log.info("Successfully completed cascading date update for project: {}", project.getId());
+        log.trace("Exiting handleUpdateProjectDates");
     }
 
 
     /**
-     * Handles project name regeneration during updates
-     * Only regenerates name if the underlying data that affects the name has changed
+     * Handles revised project ID regeneration during updates.
      */
     private void handleProjectNameUpdate(ProjectRequest request, Project project, Project projectFromDB) {
         try {
-            // Skip name generation for FieldPlan and Facility project types
-            String projectType = project.getProjectType();
-            if (PROJECT_TYPE_FIELDPLAN.equals(projectType) || PROJECT_TYPE_FACILITY.equals(projectType)) {
-                log.info("Skipping name regeneration for project type: {} during update", projectType);
+            if (project.getStartDate() == null) {
+                project.setStartDate(projectFromDB.getStartDate());
+            }
+            if (project.getEndDate() == null) {
+                project.setEndDate(projectFromDB.getEndDate());
+            }
+            if (project.getAddress() == null) {
+                project.setAddress(projectFromDB.getAddress());
+            }
+            if (projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails()) == null
+                    && projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()) != null) {
+                Object enriched = mergeIntoAdditionalDetails(
+                        project.getAdditionalDetails(),
+                        "justificationCode",
+                        projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()));
+                project.setAdditionalDetails(enriched);
+            }
+
+            if (!projectNameGenerationService.isRevisedProjectIdFormat(projectFromDB.getName())) {
+                ensureJustificationCodeForNameGeneration(project, projectFromDB);
+                String statusFromDb = getProjectStatus(projectFromDB);
+                boolean draft = isDraftProject(statusFromDb);
+                applyGeneratedProjectName(project, request.getRequestInfo(), draft);
                 return;
             }
 
-            // Check if name-affecting data has changed
-            if (!hasNameAffectingDataChanged(project, projectFromDB)) {
-                log.info("No name-affecting data changed for project: {}, keeping existing name: {}", 
-                        project.getId(), projectFromDB.getName());
+            String statusFromDb = getProjectStatus(projectFromDB);
+            String statusInRequest = getProjectStatus(project);
+            boolean wasDraft = isDraftProject(statusFromDb);
+
+            if (wasDraft && ProjectNameGenerationService.getScheduledStatus().equals(statusInRequest)) {
+                applyGeneratedProjectName(project, request.getRequestInfo(), false);
                 return;
             }
 
-            // Generate new base name based on current project data (exclude current project from duplicate check)
-            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo(), project.getId());
-            
-            if (nameResult == null || nameResult.getName() == null) {
-                log.warn("Could not generate new name for project: {} during update", project.getId());
+            boolean draft = isDraftProject(statusFromDb) && !ProjectNameGenerationService.getScheduledStatus().equals(statusInRequest);
+            if (!draft && !hasNameAffectingDataChanged(project, projectFromDB, false)) {
+                log.info("No name-affecting data changed for scheduled project: {}", project.getId());
+                return;
+            }
+            if (draft && !hasNameAffectingDataChanged(project, projectFromDB, true)) {
+                log.info("No name-affecting data changed for draft project: {}", project.getId());
                 return;
             }
 
-            String newBaseName = nameResult.getName();
-            String existingName = projectFromDB.getName();
+            applyGeneratedProjectName(project, request.getRequestInfo(), draft);
 
-            // Extract base name from existing name (remove any suffix like -1, -2, etc.)
-            String existingBaseName = extractBaseNameFromExistingName(existingName);
-
-            // Compare base names (ignore suffixes)
-            if (!newBaseName.equals(existingBaseName)) {
-                log.info("Project name needs update. Existing: {}, New: {}", existingName, newBaseName);
-                
-                // Use the generated name (already checked for duplicates with exclusion)
-                project.setName(nameResult.getName());
-                log.info("Updated project name to: {}", nameResult.getName());
-                
-                // Update isDuplicateName flag in additionalDetails
-                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                    project.getAdditionalDetails(),
-                    "isDuplicateName",
-                    nameResult.getIsDuplicateName()
-                );
-                project.setAdditionalDetails(enrichedAdditionalDetails);
-                
-            } else {
-                log.info("Project name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
-            }
-            
+        } catch (CustomException e) {
+            log.error("Project name update failed for project {}: {}", project.getId(), e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Error handling project name update for project: {}", project.getId(), e);
-            // Don't throw exception - continue with update even if name generation fails
+            throw new CustomException("PROJECT_NAME_UPDATE_FAILED",
+                    "Failed to update project name for project " + project.getId() + ": " + e.getMessage());
         }
     }
 
+    private void ensureJustificationCodeForNameGeneration(Project project, Project projectFromDB) {
+        if (projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails()) != null) {
+            return;
+        }
+        String justificationFromDb = projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails());
+        if (justificationFromDb == null) {
+            throw new CustomException("JUSTIFICATION_CODE_REQUIRED",
+                    ProjectNameGenerationService.JUSTIFICATION_CODE_MESSAGE);
+        }
+        project.setAdditionalDetails(mergeIntoAdditionalDetails(
+                project.getAdditionalDetails(), "justificationCode", justificationFromDb));
+    }
+
     /**
-     * Checks if any data that affects project name generation has changed
-     * Name is affected by: startDate, endDate, projectType, address.boundary (state)
+     * Checks if data affecting revised project ID has changed.
      */
-    private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB) {
-        // Check if start date changed
-        if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
-            log.info("Start date changed for project: {} - name regeneration needed", project.getId());
-            return true;
+    private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB, boolean draft) {
+        if (draft) {
+            if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
+                return true;
+            }
+            if (!Objects.equals(project.getEndDate(), projectFromDB.getEndDate())) {
+                return true;
+            }
+            if (!Objects.equals(projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails()),
+                    projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()))) {
+                return true;
+            }
+            String currentState = project.getAddress() != null ? project.getAddress().getBoundary() : null;
+            String existingState = projectFromDB.getAddress() != null ? projectFromDB.getAddress().getBoundary() : null;
+            if (!Objects.equals(currentState, existingState)) {
+                return true;
+            }
+            return !Objects.equals(
+                    stringifyGeographyDetails(project.getAdditionalDetails()),
+                    stringifyGeographyDetails(projectFromDB.getAdditionalDetails()));
         }
-        
-        // Check if end date changed
+
         if (!Objects.equals(project.getEndDate(), projectFromDB.getEndDate())) {
-            log.info("End date changed for project: {} - name regeneration needed", project.getId());
             return true;
         }
-        
-        // Check if project type changed
-        if (!Objects.equals(project.getProjectType(), projectFromDB.getProjectType())) {
-            log.info("Project type changed for project: {} - name regeneration needed", project.getId());
+        if (!Objects.equals(
+                stringifyGeographyDetails(project.getAdditionalDetails()),
+                stringifyGeographyDetails(projectFromDB.getAdditionalDetails()))) {
             return true;
         }
-        
-        // Check if address boundary (state) changed
-        String currentBoundary = project.getAddress() != null ? project.getAddress().getBoundary() : null;
-        String existingBoundary = projectFromDB.getAddress() != null ? projectFromDB.getAddress().getBoundary() : null;
-        if (!Objects.equals(currentBoundary, existingBoundary)) {
-            log.info("Address boundary changed for project: {} - name regeneration needed", project.getId());
-            return true;
+        if (!projectNameGenerationService.isRevisedProjectIdFormat(projectFromDB.getName())) {
+            return false;
         }
-        
-        log.info("No name-affecting data changed for project: {}", project.getId());
-        return false;
+        int existingHf = projectNameGenerationService.parseHealthFacilityCountFromName(projectFromDB.getName());
+        int currentHf = projectRepository.countProjectFacilitiesByProjectId(project.getId(), project.getTenantId());
+        return existingHf != currentHf;
+    }
+
+    private String stringifyGeographyDetails(Object additionalDetails) {
+        if (additionalDetails == null) {
+            return null;
+        }
+        try {
+            JsonNode node = mapper.valueToTree(additionalDetails);
+            if (node != null && node.has("geographyDetails")) {
+                return node.get("geographyDetails").toString();
+            }
+        } catch (Exception e) {
+            log.error("Error reading geographyDetails", e);
+        }
+        return null;
     }
 
     /**
@@ -773,16 +893,310 @@ public class ProjectService {
     }
 
     /**
-     * Extracts base name from existing name by removing numeric suffixes
-     * Example: "E4H-TS-2023-25-5" -> "E4H-TS-2023-25"
+     * Handles facility unlinking when geography details (boundary codes) are changed
+     * Only processes unlinking when geographyDetails is explicitly present in the request
+     * Only allows unlinking for Draft projects (status = null)
      */
-    private String extractBaseNameFromExistingName(String existingName) {
-        if (existingName == null || existingName.trim().isEmpty()) {
-            return existingName;
+    private void handleFacilityUnlinkingOnGeographyChange(ProjectRequest request, Project project, Project projectFromDB) {
+        try {
+            // Guard: Only process unlinking if geographyDetails is explicitly present in the request
+            if (!hasGeographyDetailsInRequest(project.getAdditionalDetails())) {
+                log.debug("No geographyDetails in request for project: {} - skipping facility unlinking", project.getId());
+                return;
+            }
+
+            // STATUS CHECK: Only allow facility unlinking for Draft projects (status = null or missing)
+            String projectStatus = getProjectStatus(project);
+            if (!isDraftProject(projectStatus)) {
+                log.info("Project {} has status '{}' - facility unlinking not allowed. Only Draft projects (status=null or missing) can unlink facilities.",
+                        project.getId(), projectStatus);
+                return;
+            }
+
+            // Extract boundary codes from old and new geography details
+            Set<String> oldBoundaryCodes = extractBoundaryCodesFromGeographyDetails(projectFromDB.getAdditionalDetails());
+            Set<String> newBoundaryCodes = extractBoundaryCodesFromGeographyDetails(project.getAdditionalDetails());
+
+            // Check if boundary codes have changed
+            if (!oldBoundaryCodes.equals(newBoundaryCodes)) {
+                log.info("Geography details changed for project: {}. Old boundaries: {}, New boundaries: {}",
+                        project.getId(), oldBoundaryCodes, newBoundaryCodes);
+
+                // Unlink facilities that are no longer associated with the new boundary codes
+                unlinkProjectFacilities(project.getId(), project.getTenantId(), request.getRequestInfo(), newBoundaryCodes);
+            } else {
+                log.debug("Geography details unchanged for project: {} - no facility unlinking needed", project.getId());
+            }
+        } catch (Exception e) {
+            log.error("Error handling facility unlinking for project: {}", project.getId(), e);
+            // Don't throw exception - continue with update even if facility unlinking fails
         }
-        
-        // Remove trailing numeric suffix pattern: -digits
-        return existingName.replaceFirst("-\\d+$", "");
+    }
+
+    /**
+     * Checks if geographyDetails is explicitly present in the request
+     * This prevents unlinking facilities when geography wasn't actually modified
+     */
+    private boolean hasGeographyDetailsInRequest(Object additionalDetails) {
+        if (additionalDetails == null) {
+            return false;
+        }
+
+        try {
+            JsonNode additionalDetailsNode = mapper.valueToTree(additionalDetails);
+            // Return true if the key is explicitly present in payload (even if null)
+            return additionalDetailsNode != null && !additionalDetailsNode.isNull()
+                    && additionalDetailsNode.has("geographyDetails");
+        } catch (Exception e) {
+            log.error("Error checking for geographyDetails in request", e);
+            return false;
+        }
+    }
+
+    /**
+     * Gets the project status from additionalDetails
+     * Returns null if status is not present, null, or if additionalDetails is empty
+     */
+    private String getProjectStatus(Project project) {
+        try {
+            Object additionalDetails = project.getAdditionalDetails();
+            if (additionalDetails == null) {
+                return null;
+            }
+            JsonNode additionalDetailsNode = mapper.valueToTree(additionalDetails);
+            if (additionalDetailsNode != null && additionalDetailsNode.isTextual()) {
+                additionalDetailsNode = mapper.readTree(additionalDetailsNode.asText());
+            }
+            if (additionalDetailsNode == null || additionalDetailsNode.isNull() || !additionalDetailsNode.isObject()
+                    || !additionalDetailsNode.has("status")) {
+                return null;
+            }
+            JsonNode statusNode = additionalDetailsNode.get("status");
+            if (statusNode == null || statusNode.isNull()) {
+                return null;
+            }
+            String status = statusNode.asText();
+            return StringUtils.isBlank(status) ? null : status.trim();
+        } catch (Exception e) {
+            log.error("Error getting project status for project: {}", project.getId(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Checks if the project is in Draft status
+     * Draft status is indicated by status = null
+     */
+    private boolean isDraftProject(String projectStatus) {
+        return projectStatus == null;
+    }
+
+    /**
+     * Extracts boundary codes from geography details in additional details
+     */
+    private Set<String> extractBoundaryCodesFromGeographyDetails(Object additionalDetails) {
+        Set<String> boundaryCodes = new HashSet<>();
+
+        if (additionalDetails == null) {
+            return boundaryCodes;
+        }
+
+        try {
+            JsonNode additionalDetailsNode = mapper.valueToTree(additionalDetails);
+            JsonNode geographyDetails = additionalDetailsNode.get("geographyDetails");
+
+            if (geographyDetails != null) {
+                // Extract boundary codes from blocks
+                JsonNode blocks = geographyDetails.get("blocks");
+                if (blocks != null && blocks.isArray()) {
+                    for (JsonNode block : blocks) {
+                        JsonNode code = block.get("code");
+                        if (code != null && !code.isNull()) {
+                            boundaryCodes.add(code.asText());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error extracting boundary codes from geography details", e);
+        }
+
+        return boundaryCodes;
+    }
+
+    /**
+     * Unlinks facilities that are no longer associated with the project's new boundary codes
+     */
+    private void unlinkProjectFacilities(String projectId, String tenantId, RequestInfo requestInfo, Set<String> newBoundaryCodes) {
+        try {
+            log.info("Starting selective facility unlinking for project: {} with new boundary codes: {}", projectId, newBoundaryCodes);
+            
+            // Step 1: Get all facilities currently linked to the project
+            List<ProjectFacility> linkedProjectFacilities = getFacilitiesLinkedToProject(projectId, tenantId, requestInfo);
+            
+            if (linkedProjectFacilities.isEmpty()) {
+                log.info("No facilities currently linked to project: {}", projectId);
+                return;
+            }
+            
+            // Step 2: Get all facilities associated with the new boundary codes
+            Set<String> facilitiesInNewBoundaries = getFacilitiesByBoundaryCodes(newBoundaryCodes, tenantId, requestInfo);
+
+            // Defensive guard: if boundaries are non-empty but lookup yielded zero, skip unlink to avoid data loss
+            if (!newBoundaryCodes.isEmpty() && facilitiesInNewBoundaries.isEmpty()) {
+                log.warn("Facility lookup returned 0 results for non-empty boundaries {}. Skipping unlink to avoid accidental data loss for project: {}",
+                        newBoundaryCodes, projectId);
+                return;
+            }
+
+            // Step 3: Find facilities to unlink (linked to project but not in new boundary codes)
+            List<ProjectFacility> facilitiesToUnlink = linkedProjectFacilities.stream()
+                    .filter(projectFacility -> !facilitiesInNewBoundaries.contains(projectFacility.getFacilityId()))
+                    .collect(Collectors.toList());
+            
+            if (facilitiesToUnlink.isEmpty()) {
+                log.info("No facilities need to be unlinked for project: {}", projectId);
+                return;
+            }
+            
+            log.info("Found {} facilities to unlink out of {} linked facilities for project: {}", 
+                    facilitiesToUnlink.size(), linkedProjectFacilities.size(), projectId);
+            
+            // Step 4: Set isDeleted = true for the identified facilities using update API
+            List<ProjectFacility> facilitiesToUpdate = facilitiesToUnlink.stream()
+                    .map(projectFacility -> {
+                        // Create a copy with isDeleted = true
+                        return ProjectFacility.builder()
+                                .id(projectFacility.getId())
+                                .projectId(projectFacility.getProjectId())
+                                .facilityId(projectFacility.getFacilityId())
+                                .tenantId(projectFacility.getTenantId())
+                                .isDeleted(true) // Set isDeleted = true
+                                .rowVersion(projectFacility.getRowVersion())
+                                .auditDetails(projectFacility.getAuditDetails())
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+            
+            // Use update API to set isDeleted = true
+            ProjectFacilityBulkRequest updateRequest = ProjectFacilityBulkRequest.builder()
+                    .requestInfo(requestInfo)
+                    .projectFacilities(facilitiesToUpdate)
+                    .build();
+            
+            projectFacilityService.update(updateRequest, true);
+            
+            log.info("Successfully unlinked {} facilities for project: {} by setting isDeleted=true", facilitiesToUpdate.size(), projectId);
+            
+        } catch (Exception e) {
+            log.error("Error unlinking facilities for project: {}", projectId, e);
+            throw new CustomException("FACILITY_UNLINKING_FAILED", 
+                    "Failed to unlink facilities for project: " + projectId + ". Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Gets all facilities currently linked to a project
+     */
+    private List<ProjectFacility> getFacilitiesLinkedToProject(String projectId, String tenantId, RequestInfo requestInfo) {
+        try {
+            List<String> projectIds = new ArrayList<>();
+            projectIds.add(projectId);
+
+            ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
+                    .projectId(projectIds)
+                    .facilityId(null)
+                    .build();
+
+            ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder()
+                    .projectFacility(projectFacilitySearch)
+                    .requestInfo(requestInfo)
+                    .build();
+
+            SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
+                    projectFacilitySearchRequest,
+                    1000, // Large limit to get all facilities
+                    0,
+                    tenantId,
+                    null,
+                    false
+            );
+
+            return (searchResponse != null && searchResponse.getResponse() != null)
+                    ? searchResponse.getResponse()
+                    : new ArrayList<>();
+
+        } catch (Exception e) {
+            log.error("Error getting facilities linked to project: {}", projectId, e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Gets all facility IDs associated with the given boundary codes
+     */
+    private Set<String> getFacilitiesByBoundaryCodes(Set<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
+        Set<String> facilityIds = new HashSet<>();
+
+        if (boundaryCodes.isEmpty()) {
+            return facilityIds;
+        }
+
+        try {
+            // Search facilities by boundary codes
+            for (String boundaryCode : boundaryCodes) {
+                Set<String> facilitiesForBoundary = searchFacilitiesByBoundaryCode(boundaryCode, tenantId, requestInfo);
+                facilityIds.addAll(facilitiesForBoundary);
+            }
+
+            log.info("Found {} unique facilities across {} boundary codes", facilityIds.size(), boundaryCodes.size());
+
+        } catch (Exception e) {
+            log.error("Error getting facilities by boundary codes: {}", boundaryCodes, e);
+        }
+
+        return facilityIds;
+    }
+
+    /**
+     * Searches facilities by a specific boundary code
+     */
+    private Set<String> searchFacilitiesByBoundaryCode(String boundaryCode, String tenantId, RequestInfo requestInfo) {
+        Set<String> facilityIds = new HashSet<>();
+
+        try {
+            // Build facility search URL with boundary code filter
+            StringBuilder facilitySearchUrl = new StringBuilder();
+            facilitySearchUrl.append(projectConfiguration.getFacilityServiceHost())
+                    .append(projectConfiguration.getFacilityServiceSearchUrlV2())
+                    .append("?tenantId=")
+                    .append(tenantId)
+                    .append("&boundaryCode=")
+                    .append(boundaryCode);
+
+            log.debug("Searching facilities for boundary code: {} with URL: {}", boundaryCode, facilitySearchUrl);
+
+            // Call facility service
+            Object response = serviceRequestRepository.fetchResult(facilitySearchUrl);
+
+            if (response != null) {
+                FacilitySearchResponse facilitySearchResponse = mapper.convertValue(response, FacilitySearchResponse.class);
+
+                if (facilitySearchResponse != null && facilitySearchResponse.getFacilities() != null) {
+                    facilityIds = facilitySearchResponse.getFacilities().stream()
+                            .map(Facility::getFacilityId)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toSet());
+
+                    log.debug("Found {} facilities for boundary code: {}", facilityIds.size(), boundaryCode);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error searching facilities for boundary code: {}", boundaryCode, e);
+        }
+
+        return facilityIds;
     }
 
     /**
@@ -861,22 +1275,40 @@ public class ProjectService {
      * @return Count of List of matching projects
      */
     public Integer countAllProjects(ProjectRequest project, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo, boolean isAncestorProjectId) {
-        return projectRepository.getProjectCount(project, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo, isAncestorProjectId);
+        log.trace("Entering countAllProjects (v1) for tenantId: {}", tenantId);
+        log.debug("Counting projects with criteria");
+        Integer count = projectRepository.getProjectCount(project, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo, isAncestorProjectId);
+        log.debug("Found {} projects matching criteria", count);
+        log.trace("Exiting countAllProjects (v1)");
+        return count;
     }
 
 
     public Integer countAllProjects(ProjectSearchRequest request,
                                     ProjectSearchURLParams urlParams,
                                     List<String> workflowStatuses) {
-        return projectRepository.getProjectCount(request, urlParams, workflowStatuses);
+        log.trace("Entering countAllProjects (v2)");
+        log.debug("Counting projects with search request criteria");
+        Integer count = projectRepository.getProjectCount(request, urlParams, workflowStatuses);
+        log.debug("Found {} projects matching search criteria", count);
+        log.trace("Exiting countAllProjects (v2)");
+        return count;
     }
 
     public List<ProjectStatusAgregation> getStatusProjectsAgregation(String parentId) {
-        return projectRepository.getStatusProjectsAgregation(parentId);
+        log.trace("Entering getStatusProjectsAgregation for parentId: {}", parentId);
+        log.debug("Fetching status aggregations from repository");
+        List<ProjectStatusAgregation> result = projectRepository.getStatusProjectsAgregation(parentId);
+        log.debug("Found {} status aggregations", result != null ? result.size() : 0);
+        log.trace("Exiting getStatusProjectsAgregation");
+        return result;
     }
 
     public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {
+        log.trace("Entering updateProjectWorkflow for project: {}", request.getProjectId());
+        log.info("Starting workflow update for project: {}", request.getProjectId());
         // 1. Fetch the existing project
+        log.debug("Fetching existing project from database");
         ProjectSearch searchCriteria = ProjectSearch.builder()
                 .id(List.of(request.getProjectId()))
                 .build();
@@ -900,14 +1332,17 @@ public class ProjectService {
         List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses, sortCriteria);
 
         if (projects == null || projects.isEmpty()) {
+            log.error("Project not found for workflow update: {}", request.getProjectId());
             throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + request.getProjectId());
         }
 
         Project existingProject = projects.get(0);
+        log.debug("Found existing project, proceeding with workflow transition");
 
         // 2. Call workflow transition
         ProcessInstance updatedWorkflow;
         try {
+            log.info("Transitioning workflow with action: {}", request.getWorkflow().getAction());
             updatedWorkflow = workflowService.transitionWorkflow(
                     existingProject,
                     request.getWorkflow().getAction(),
@@ -915,7 +1350,9 @@ public class ProjectService {
                     request.getRequestInfo(),
                     request.getWorkflow().getComments()
             );
+            log.debug("Workflow transition completed successfully");
         } catch (Exception e) {
+            log.error("Workflow transition failed for project: {}", request.getProjectId(), e);
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for project: " + request.getProjectId());
         }
@@ -930,6 +1367,16 @@ public class ProjectService {
                 "status",
                 updatedWorkflow.getState().getState()
         );
+
+        existingProject.setAdditionalDetails(enrichedAdditionalDetails);
+        Object bom = request.getWorkflow().getAdditionalDetails();
+        if(bom != null) {
+            enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                    existingProject.getAdditionalDetails(),
+                    "bom",
+                    bom
+            );
+        }
 
         // 4. Create a new Project instance with enriched additionalDetails
         Project updatedProject = Project.builder()
@@ -966,7 +1413,9 @@ public class ProjectService {
 
         // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
         if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            log.info("Workflow action is APPROVE, processing asset updates for facilities");
             // fetch facility for associated projectId -> facility search api to get associtaed facility
+            log.debug("Searching for facilities associated with project: {}", existingProject.getId());
             ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
                     .projectId(new ArrayList<>(Arrays.asList(existingProject.getId())))
                     .facilityId(null)
@@ -986,7 +1435,9 @@ public class ProjectService {
                         null,
                         false
                 );
+                log.debug("Found {} facilities for project", facilitySearchResponse != null && facilitySearchResponse.getResponse() != null ? facilitySearchResponse.getResponse().size() : 0);
             } catch (Exception e) {
+                log.error("Failed to fetch facilities for project: {}", existingProject.getId(), e);
                 throw new CustomException("FACILITY_FETCH_FAILED",
                         "Failed to fetch facilities for project: " + existingProject.getId());
             }
@@ -997,10 +1448,15 @@ public class ProjectService {
                 facility = facilitySearchResponse.getResponse().get(0);
             }
             if (facility != null) {
+                log.info("Updating assets for facility: {}", facility.getFacilityId());
                 updateAssetsForFacility(existingProject, request.getRequestInfo(), facility.getFacilityId());
+            } else {
+                log.warn("No facility found for project: {}, skipping asset update", existingProject.getId());
             }
         }
 
+        log.info("Successfully completed workflow update for project: {}", request.getProjectId());
+        log.trace("Exiting updateProjectWorkflow");
         return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null, null);
     }
 
@@ -1164,12 +1620,15 @@ public class ProjectService {
     }
 
     public Map<String, Object> updateBulkProjectWorkflow(ProjectBulkApproveRequest projectBulkApproveRequest) throws Exception {
+        log.trace("Entering updateBulkProjectWorkflow");
+        log.info("Starting bulk workflow update");
 
         List<String> projectIds = new ArrayList<>();
         int totalProjects = 0;
         int finalProjects = 0;
         
         if (projectBulkApproveRequest.getIsAllSelected()) {
+            log.debug("Processing all selected projects based on filters");
             // Case 1: Search all projects using filters
             ExtendedProjectSearchRequest projectSearchRequest = getProjectSearchRequest(projectBulkApproveRequest);
 
@@ -1187,22 +1646,27 @@ public class ProjectService {
             totalProjects = countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
 
             // only those projects whose status is SUBMITTED_BY_SUPERVISOR
+            log.debug("Filtering projects with SUBMITTED_BY_SUPERVISOR status");
             List<Project> projects = allProjects.stream().filter(this::hasSubmittedBySupervisorStatus).toList();
 
             finalProjects = projects.size();
             projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
+            log.debug("Found {} projects with SUBMITTED_BY_SUPERVISOR status out of {} total", finalProjects, totalProjects);
         } else {
             // Case 2: Use provided project IDs
             if (projectBulkApproveRequest.getProjectIDs() != null && !projectBulkApproveRequest.getProjectIDs().isEmpty()) {
                 projectIds = projectBulkApproveRequest.getProjectIDs();
                 totalProjects = projectIds.size();
+                log.debug("Using {} provided project IDs", totalProjects);
             } else {
+                log.error("Project IDs are required when isAllSelected is false");
                 throw new CustomException("INVALID_REQUEST", "Project IDs are required when isAllSelected is false");
             }
         }
         Map<String, Object> result = new HashMap<>();
         // Validate that we have projects to process
         if (projectIds.isEmpty()) {
+            log.warn("No projects to process for bulk workflow update");
             result.put("failedProjectIDs", new ArrayList<>());
             result.put("succeededProjectIDs", new ArrayList<>());
             result.put("totalProjects", 0);
@@ -1237,6 +1701,8 @@ public class ProjectService {
         } else {
             result.put("totalProjects", totalProjects);
         }
+        log.info("Bulk workflow update completed - succeeded: {}, failed: {}", succeededProjectIDs.size(), failedProjectIDs.size());
+        log.trace("Exiting updateBulkProjectWorkflow");
         return result;
     }
 
