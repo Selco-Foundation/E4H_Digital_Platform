@@ -46,7 +46,10 @@ const useProject = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, sor
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["PROJECT"])
+    revalidate: async () => {
+      await queryClient.invalidateQueries(["PROJECT"]);
+      return queryClient.getQueryData(["PROJECT", filter, limit, offset, sortBy, sortDir]);
+    }
   }
 
 }
