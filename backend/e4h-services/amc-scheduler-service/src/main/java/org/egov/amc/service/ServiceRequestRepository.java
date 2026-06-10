@@ -11,6 +11,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.Objects;
 
 @Repository
 @Slf4j
@@ -77,5 +78,19 @@ public class ServiceRequestRepository {
         return response;
     }
 
+    public Object fetchEncServiceResult(StringBuilder uri, Object request) {
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        try {
+            Object response = restTemplate.postForObject(uri.toString(), request, Object.class);
+            return Objects.requireNonNull(response,
+                    () -> "External service returned empty response for URI: " + uri);
+        } catch (HttpClientErrorException e) {
+            log.error("External Service threw an Exception: ", e);
+            throw new ServiceCallException(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException();
+        }
+    }
 
 }

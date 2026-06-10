@@ -15,6 +15,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.time.Instant;
 import java.util.*;
 
+import static org.apache.commons.lang3.StringUtils.firstNonBlank;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -163,19 +165,15 @@ public class HRMSService {
             }
             employeeCode = pocUsername.trim();
         } else {
-            if (facilityDetails == null || facilityDetails.getPocContact() == null
+            if (facilityDetails == null || facilityDetails.getHfrId() == null
+                    || facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null
                     || facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null
                     || facilityDetails.getPocName().isBlank()) {
-                log.warn("Cannot create POC employee for facility {}: missing POC contact or name",
+                log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name",
                         sanitizeForLog(facility.getFacilityId()));
                 return false;
             }
-            employeeCode = resolveFacilityEmployeeCode(facility);
-            if (employeeCode == null || employeeCode.isBlank()) {
-                log.warn("Cannot create POC employee for facility {}: missing HFR or NIN ID",
-                        sanitizeForLog(facility.getFacilityId()));
-                return false;
-            }
+            employeeCode = facilityDetails.getHfrId().trim();
         }
 
         log.info("Creating POC employee for facility {} with employee code {}",
@@ -186,6 +184,7 @@ public class HRMSService {
             user.put("userName", employeeCode);
             user.put("name", facilityDetails.getPocName());
             user.put("mobileNumber", facilityDetails.getPocContact());
+            user.put("emailId", facility.getFacilityPocEmail());
             user.put("tenantId", facility.getTenantId());
             user.put("type", "EMPLOYEE");
             user.put("active", true);

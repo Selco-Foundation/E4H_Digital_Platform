@@ -26,6 +26,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -132,6 +134,7 @@ public class ProjectFacilityService {
                 log.info("Processing {} valid entities", validEntities.size());
                 log.debug("Enriching facilities before save");
                 enrichmentService.create(validEntities, request);
+                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(validEntities);
                 log.debug("Saving facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getCreateProjectFacilityTopic());
                 log.debug("Fetching associated project and facility details");
@@ -144,6 +147,7 @@ public class ProjectFacilityService {
                 log.debug("Pushing project update to Kafka");
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
+                refreshProjectNamesAfterFacilityCreate(validEntities, request.getRequestInfo(), facilityCountBeforeSave);
                 log.info("Successfully created {} project facilities", validEntities.size());
             } else {
                 log.warn("No valid facilities to create after validation");
@@ -183,10 +187,20 @@ public class ProjectFacilityService {
         try {
             if (!validEntities.isEmpty()) {
                 log.info("Processing {} valid entities", validEntities.size());
+                List<ProjectFacility> deactivatedFacilities = validEntities.stream()
+                        .filter(pf -> Boolean.TRUE.equals(pf.getIsDeleted()))
+                        .collect(Collectors.toList());
+                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(
+                        deactivatedFacilities.isEmpty() ? validEntities : deactivatedFacilities);
                 log.debug("Enriching facilities before update");
                 enrichmentService.update(validEntities, request);
                 log.debug("Saving updated facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getUpdateProjectFacilityTopic());
+                if (!deactivatedFacilities.isEmpty()) {
+                    log.info("Refreshing project name after soft-deleting {} facilities", deactivatedFacilities.size());
+                    refreshProjectNamesAfterFacilityDelete(deactivatedFacilities, request.getRequestInfo(),
+                            facilityCountBeforeSave);
+                }
                 log.info("Successfully updated {} project facilities", validEntities.size());
             } else {
                 log.warn("No valid facilities to update after validation");
@@ -225,10 +239,12 @@ public class ProjectFacilityService {
         try {
             if (!validEntities.isEmpty()) {
                 log.info("Processing {} valid entities", validEntities.size());
+                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(validEntities);
                 log.debug("Enriching facilities before delete");
                 enrichmentService.delete(validEntities, request);
                 log.debug("Saving deleted facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getDeleteProjectFacilityTopic());
+                refreshProjectNamesAfterFacilityDelete(validEntities, request.getRequestInfo(), facilityCountBeforeSave);
                 log.info("Successfully deleted {} project facilities", validEntities.size());
             } else {
                 log.warn("No valid facilities to delete after validation");
@@ -331,6 +347,50 @@ public class ProjectFacilityService {
             return facilityList.getFacilities().get(0);
         }
         return null;
+    }
+
+    private Map<String, Integer> captureFacilityCountBaselines(List<ProjectFacility> facilities) {
+        Map<String, Integer> baselines = new HashMap<>();
+        for (ProjectFacility facility : facilities) {
+            if (StringUtils.isBlank(facility.getProjectId())) {
+                continue;
+            }
+            baselines.computeIfAbsent(facility.getProjectId(), projectId ->
+                    projectService.countLinkedFacilities(projectId, facility.getTenantId()));
+        }
+        return baselines;
+    }
+
+    private void refreshProjectNamesAfterFacilityCreate(List<ProjectFacility> facilities, RequestInfo requestInfo,
+                                                        Map<String, Integer> facilityCountBeforeSave) {
+        facilities.stream()
+                .filter(pf -> StringUtils.isNotBlank(pf.getProjectId()))
+                .collect(Collectors.groupingBy(ProjectFacility::getProjectId))
+                .forEach((projectId, projectFacilities) -> {
+                    int baseline = facilityCountBeforeSave.getOrDefault(projectId, 0);
+                    int expectedCount = baseline + projectFacilities.size();
+                    projectService.refreshProjectNameAfterFacilityChange(
+                            projectId,
+                            projectFacilities.get(0).getTenantId(),
+                            requestInfo,
+                            expectedCount);
+                });
+    }
+
+    private void refreshProjectNamesAfterFacilityDelete(List<ProjectFacility> facilities, RequestInfo requestInfo,
+                                                        Map<String, Integer> facilityCountBeforeSave) {
+        facilities.stream()
+                .filter(pf -> StringUtils.isNotBlank(pf.getProjectId()))
+                .collect(Collectors.groupingBy(ProjectFacility::getProjectId))
+                .forEach((projectId, projectFacilities) -> {
+                    int baseline = facilityCountBeforeSave.getOrDefault(projectId, 0);
+                    int expectedCount = Math.max(0, baseline - projectFacilities.size());
+                    projectService.refreshProjectNameAfterFacilityChange(
+                            projectId,
+                            projectFacilities.get(0).getTenantId(),
+                            requestInfo,
+                            expectedCount);
+                });
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {

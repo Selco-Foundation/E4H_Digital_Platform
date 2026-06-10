@@ -10,8 +10,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -104,6 +103,54 @@ public class HRMSUtils {
             employee.setJurisdictions(buildJurisdictions(user.getJurisdiction()));
         }
         return employee;
+    }
+
+    public Jurisdiction buildFacilityJurisdiction(String boundaryCode, String tenantId) {
+        return Jurisdiction.builder()
+                .hierarchy("ADMIN")
+                .boundary(boundaryCode)
+                .boundaryType("Facility")
+                .tenantId(tenantId)
+                .isActive(true)
+                .build();
+    }
+
+    /**
+     * Adds or re-activates a facility boundary in the employee jurisdiction list (vendor user mapping).
+     */
+    public List<Jurisdiction> mergeFacilityJurisdiction(List<Jurisdiction> existing, Jurisdiction facilityJurisdiction) {
+        List<Jurisdiction> merged = new ArrayList<>();
+        if (existing != null) {
+            merged.addAll(existing);
+        }
+        if (facilityJurisdiction == null || facilityJurisdiction.getBoundary() == null) {
+            return merged;
+        }
+
+        int idx = indexOfJurisdictionByBoundary(merged, facilityJurisdiction.getBoundary());
+        if (idx >= 0) {
+            Jurisdiction target = merged.get(idx);
+            target.setHierarchy(facilityJurisdiction.getHierarchy());
+            target.setBoundaryType(facilityJurisdiction.getBoundaryType());
+            target.setTenantId(facilityJurisdiction.getTenantId());
+            target.setIsActive(true);
+        } else {
+            merged.add(facilityJurisdiction);
+        }
+        return merged;
+    }
+
+    private int indexOfJurisdictionByBoundary(List<Jurisdiction> jurisdictions, String boundary) {
+        if (jurisdictions == null || boundary == null) {
+            return -1;
+        }
+        for (int i = 0; i < jurisdictions.size(); i++) {
+            Jurisdiction j = jurisdictions.get(i);
+            if (j != null && boundary.equalsIgnoreCase(Objects.toString(j.getBoundary(), ""))) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public List<Jurisdiction> buildJurisdictions(List<String> boundaryCodes) {

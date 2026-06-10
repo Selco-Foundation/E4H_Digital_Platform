@@ -105,6 +105,10 @@ public class IMService {
         // System reinstallation process
         Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(request);
         if(facilityDetails !=null && !facilityDetails.isEmpty()){
+            String facilityCategory = (String) facilityDetails.get("facility_category");
+            if (facilityCategory !=null){
+                request.getIncident().setFacilityCategory(facilityCategory);
+            }
             String facilityStatus = (String) facilityDetails.get("facility_status");
             if (facilityStatus !=null){
                 if (facilityStatus.trim().equalsIgnoreCase(UNINSTALLED) && !request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
@@ -272,7 +276,18 @@ public class IMService {
         log.trace("Validating update request");
         validator.validateUpdate(request, mdmsData);
 
-        // Warranty status handling: default to WITHIN_WARRANTY, flip permanently on OUT_OF_WARRANTY action
+        String boundaryCode = request.getIncident().getBoundaryCode();
+        if (boundaryCode != null && !boundaryCode.isEmpty()) {
+            Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(request);
+            if (facilityDetails != null && !facilityDetails.isEmpty()) {
+                String facilityCategory = (String) facilityDetails.get("facility_category");
+                if (facilityCategory != null) {
+                    request.getIncident().setFacilityCategory(facilityCategory);
+                }
+            }
+        }
+
+        log.trace("Enriching update request");
         if (request.getIncident().getWarrantyStatus() == null) {
             request.getIncident().setWarrantyStatus(WarrantyStatus.WITHIN_WARRANTY);
         }
@@ -299,7 +314,6 @@ public class IMService {
                 && updatedProcessInstance.getState() != null && updatedProcessInstance.getState().getApplicationStatus()!=null
                 && updatedProcessInstance.getState().getApplicationStatus().equals("PENDINGRESOLUTION")){
 
-            String boundaryCode = request.getIncident().getBoundaryCode();
             String facilityId = imUtils.extractFacilityCode(boundaryCode);
             request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
             Map<String, Object> facility = new HashMap<>();

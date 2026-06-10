@@ -1,5 +1,6 @@
 import os
-from typing import List, Dict, Set, Tuple
+import string
+from typing import List, Dict, Set, Tuple, Optional
 import re
 import pandas as pd
 
@@ -45,6 +46,8 @@ class BoundaryDataProcessor:
 
         # Track which boundaries already exist in the system
         self.existing_boundaries: Set[str] = set()
+        # casefold(code) -> canonical code from boundary service
+        self.existing_boundaries_casefold: Dict[str, str] = {}
 
         # Track failed operations
         self.failed_boundaries: Dict[str, str] = {}  # {full_code: error_message}
@@ -175,11 +178,19 @@ class BoundaryDataProcessor:
 
                 if response_data and "Boundary" in response_data:
                     for boundary in response_data["Boundary"]:
-                        self.existing_boundaries.add(boundary["code"])
+                        code = boundary["code"]
+                        self.existing_boundaries.add(code)
+                        self.existing_boundaries_casefold[code.casefold()] = code
             except Exception as e:
                 logger.error(f"Error checking existing boundaries: {e}")
 
         logger.info(f"Found {len(self.existing_boundaries)} existing boundaries in the system")
+
+    def _boundary_exists(self, full_code: str) -> bool:
+        return full_code.casefold() in self.existing_boundaries_casefold
+
+    def _mark_boundary_failure(self, full_code: str, error_message: str) -> None:
+        self.failed_boundaries[full_code] = error_message
 
     def _create_new_boundaries(self):
         """Create new boundaries that don't already exist"""
@@ -189,12 +200,15 @@ class BoundaryDataProcessor:
         for level in self.hierarchy_levels:
             for code, data in self.boundary_data[level].items():
                 full_code = data["full_code"]
-                if full_code not in self.existing_boundaries and full_code not in self.failed_boundaries:
-                    boundaries_to_create.append({
-                        "tenantId": "in",
-                        "code": full_code,
-                        "geometry": None
-                    })
+                if full_code in self.failed_boundaries:
+                    continue
+                if self._boundary_exists(full_code):
+                    continue
+                boundaries_to_create.append({
+                    "tenantId": "in",
+                    "code": full_code,
+                    "geometry": None
+                })
 
         if not boundaries_to_create:
             logger.info("No new boundaries to create")
@@ -206,23 +220,55 @@ class BoundaryDataProcessor:
             chunk = boundaries_to_create[i:i + chunk_size]
 
             try:
-                response_data = self.boundary_service_client.create_boundaries(
+                response_data, error_message = self.boundary_service_client.create_boundaries(
                     request_info=self.request_info,
                     boundary_data=chunk
                 )
 
-                if response_data and "Boundary" in response_data:
-                    logger.info(f"Successfully created {len(chunk)} boundaries")
-                else:
-                    logger.warning("Failed to create boundaries")
+                if error_message:
                     for boundary in chunk:
-                        self.failed_boundaries[boundary["code"]] = "Failed to create boundary"
+                        self._mark_boundary_failure(boundary["code"], error_message)
+                    continue
+
+                created_boundaries = (response_data or {}).get("Boundary") or []
+                if not created_boundaries:
+                    for boundary in chunk:
+                        self._mark_boundary_failure(
+                            boundary["code"],
+                            "Failed to create boundary (empty response from boundary service)",
+                        )
+                    continue
+
+                created_codes = {b["code"] for b in created_boundaries if b.get("code")}
+                for boundary in chunk:
+                    if boundary["code"] not in created_codes:
+                        self._mark_boundary_failure(
+                            boundary["code"],
+                            "Failed to create boundary (not returned by boundary service)",
+                        )
+                logger.info(f"Successfully created {len(created_boundaries)} boundaries")
             except Exception as e:
                 for boundary in chunk:
-                    self.failed_boundaries[boundary["code"]] = str(e)
+                    self._mark_boundary_failure(boundary["code"], str(e))
 
         logger.info(f"Attempted to create {len(boundaries_to_create)} boundaries. "
                     f"Failed: {len(self.failed_boundaries)}")
+
+    def _deepest_full_code_for_row(self, row) -> Optional[str]:
+        country = self.to_camel_case(str(row.get('Country', '')).strip())
+        state = self.to_camel_case(str(row.get('State', '')).strip())
+        district = self.to_camel_case(str(row.get('District', '')).strip())
+        block = self.to_camel_case(str(row.get('Block', '')).strip())
+
+        if block and district and state and country:
+            return f"{country}_{state}_{district}_{block}"
+        if district and state and country:
+            return f"{country}_{state}_{district}"
+        if state and country:
+            return f"{country}_{state}"
+        if country:
+            return country
+        return None
 
     def _create_boundary_relationships(self):
         """Create boundary relationships in hierarchical order"""
@@ -290,8 +336,9 @@ class BoundaryDataProcessor:
                 full_code = data["full_code"]
                 if full_code in self.failed_boundaries:
                     continue
-                # message = display name (e.g. "Karnataka", "Bangalore Urban"), not full code
-                display_name = data.get("name") or code
+                # Human-readable label for localization (spaces preserved; leading/trailing stripped)
+                raw_display_name = data.get("localization_label") or data.get("name") or code
+                display_name = re.sub(r"\s+", " ", raw_display_name).strip()
                 messages.append({
                     "code": f"Boundary_{full_code}",
                     "message": display_name,
@@ -316,59 +363,68 @@ class BoundaryDataProcessor:
     def _update_dataframe_with_results(self, boundary_df):
         """Update the DataFrame with boundary creation results"""
         for index, row in boundary_df.iterrows():
-            if pd.isna(row["status"]):  # Only check rows that weren't failed in initial validation
-                row_failed = False
-                row_errors = []
+            status = row["status"]
+            if not pd.isna(status) and str(status).strip().lower() not in ("", "none"):
+                continue  # Keep validation failures and skipped rows as-is
 
-                country = str(row.get('Country', '')).strip()
-                state = str(row.get('State', '')).strip()
-                district = str(row.get('District', '')).strip()
-                block = str(row.get('Block', '')).strip()
+            row_failed = False
+            row_errors = []
 
-                # Check each level that exists in this row
-                if country:
-                    full_code = country
-                    if full_code in self.failed_boundaries:
-                        row_failed = True
-                        row_errors.append(f"Failed to create Country '{country}': {self.failed_boundaries[full_code]}")
+            deepest_code = self._deepest_full_code_for_row(row)
+            if deepest_code and self._boundary_exists(deepest_code) and deepest_code not in self.failed_boundaries:
+                existing_code = self.existing_boundaries_casefold[deepest_code.casefold()]
+                row_failed = True
+                row_errors.append(f"Boundary already exists: {existing_code}")
 
-                if state and country:
-                    full_code = f"{country}_{state}"
-                    if full_code in self.failed_boundaries:
-                        row_failed = True
-                        row_errors.append(f"Failed to create State '{state}': {self.failed_boundaries[full_code]}")
-                    elif (full_code, "State") in self.failed_relationships:
-                        row_failed = True
-                        row_errors.append(
-                            f"Failed relationship for State '{state}': {self.failed_relationships[(full_code, 'State')]}")
+            country = self.to_camel_case(str(row.get('Country', '')).strip())
+            state = self.to_camel_case(str(row.get('State', '')).strip())
+            district = self.to_camel_case(str(row.get('District', '')).strip())
+            block = self.to_camel_case(str(row.get('Block', '')).strip())
 
-                if district and state and country:
-                    full_code = f"{country}_{state}_{district}"
-                    if full_code in self.failed_boundaries:
-                        row_failed = True
-                        row_errors.append(
-                            f"Failed to create District '{district}': {self.failed_boundaries[full_code]}")
-                    elif (full_code, "District") in self.failed_relationships:
-                        row_failed = True
-                        row_errors.append(
-                            f"Failed relationship for District '{district}': {self.failed_relationships[(full_code, 'District')]}")
+            # Check each level that exists in this row
+            if country:
+                full_code = country
+                if full_code in self.failed_boundaries:
+                    row_failed = True
+                    row_errors.append(f"Failed to create Country '{country}': {self.failed_boundaries[full_code]}")
 
-                if block and district and state and country:
-                    full_code = f"{country}_{state}_{district}_{block}"
-                    if full_code in self.failed_boundaries:
-                        row_failed = True
-                        row_errors.append(f"Failed to create Block '{block}': {self.failed_boundaries[full_code]}")
-                    elif (full_code, "Block") in self.failed_relationships:
-                        row_failed = True
-                        row_errors.append(
-                            f"Failed relationship for Block '{block}': {self.failed_relationships[(full_code, 'Block')]}")
+            if state and country:
+                full_code = f"{country}_{state}"
+                if full_code in self.failed_boundaries:
+                    row_failed = True
+                    row_errors.append(f"Failed to create State '{state}': {self.failed_boundaries[full_code]}")
+                elif (full_code, "State") in self.failed_relationships:
+                    row_failed = True
+                    row_errors.append(
+                        f"Failed relationship for State '{state}': {self.failed_relationships[(full_code, 'State')]}")
 
-                if row_failed:
-                    boundary_df.loc[index, "status"] = "fail"
-                    boundary_df.loc[index, "error"] = ", ".join(row_errors)
-                else:
-                    boundary_df.loc[index, "status"] = "success"
-                    boundary_df.loc[index, "error"] = ""
+            if district and state and country:
+                full_code = f"{country}_{state}_{district}"
+                if full_code in self.failed_boundaries:
+                    row_failed = True
+                    row_errors.append(
+                        f"Failed to create District '{district}': {self.failed_boundaries[full_code]}")
+                elif (full_code, "District") in self.failed_relationships:
+                    row_failed = True
+                    row_errors.append(
+                        f"Failed relationship for District '{district}': {self.failed_relationships[(full_code, 'District')]}")
+
+            if block and district and state and country:
+                full_code = f"{country}_{state}_{district}_{block}"
+                if full_code in self.failed_boundaries:
+                    row_failed = True
+                    row_errors.append(f"Failed to create Block '{block}': {self.failed_boundaries[full_code]}")
+                elif (full_code, "Block") in self.failed_relationships:
+                    row_failed = True
+                    row_errors.append(
+                        f"Failed relationship for Block '{block}': {self.failed_relationships[(full_code, 'Block')]}")
+
+            if row_failed:
+                boundary_df.loc[index, "status"] = "fail"
+                boundary_df.loc[index, "error"] = ", ".join(row_errors)
+            else:
+                boundary_df.loc[index, "status"] = "success"
+                boundary_df.loc[index, "error"] = ""
 
         return boundary_df
 
