@@ -1,416 +1,327 @@
 package org.egov.project.service;
 
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.common.models.project.Project;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectRequest;
-import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectRepository;
-import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.MDMSUtils;
 import org.egov.project.web.models.ProjectNameResult;
 import org.egov.tracer.model.CustomException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+/**
+ * Revised project ID (name) format: [STATE]-[FYTY]-[HF]-[JUST]
+ * Example: KA-2627-190-00120-1
+ */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class ProjectNameGenerationService {
 
+    private static final Pattern REVISED_PROJECT_ID_PATTERN =
+            Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]+(-[0-9]+)*)$");
+    private static final Pattern JUSTIFICATION_CODE_PATTERN =
+            Pattern.compile("^JUS-[0-9]+(-[0-9]+)*$", Pattern.CASE_INSENSITIVE);
+    private static final String JUS_PREFIX = "JUS-";
+    private static final String SCHEDULED_STATUS = "SCHEDULED";
+    public static final String JUSTIFICATION_CODE_MESSAGE =
+            "Justification code is required and must follow the format JUS-{numbers} (e.g., JUS-393, JUS-8080-89).";
+    public static String duplicateJustificationCodeMessage(String justificationCode) {
+        return String.format(
+                "Justification code %s is already assigned to another project. Please use a different justification code.",
+                justificationCode);
+    }
+
+    public static String duplicateJustificationCodeInRequestMessage(String justificationCode) {
+        return String.format(
+                "Justification code %s appears more than once in this request. Each project must have a unique justification code.",
+                justificationCode);
+    }
+
     private final ProjectRepository projectRepository;
-    private final BoundaryV2Util boundaryV2Util;
-    private final ProjectConfiguration projectConfiguration;
     private final MDMSUtils mdmsUtils;
+    private final ObjectMapper objectMapper;
 
+    public ProjectNameGenerationService(
+            ProjectRepository projectRepository,
+            MDMSUtils mdmsUtils,
+            @Qualifier("objectMapper") ObjectMapper objectMapper) {
+        this.projectRepository = projectRepository;
+        this.mdmsUtils = mdmsUtils;
+        this.objectMapper = objectMapper;
+    }
 
-    /**
-     * Checks if name generation should be skipped based on project type
-     */
-    private boolean shouldSkipNameGeneration(Project project) {
-        String projectType = project.getProjectType();
-        return "FieldPlan".equals(projectType) || "Facility".equals(projectType);
+    public static String getScheduledStatus() {
+        return SCHEDULED_STATUS;
     }
 
     /**
-     * Gets the project code from project details or uses default
+     * Resolves 2-letter state code from address / MDMS (e.g. KA).
      */
-    private String getProjectCode(Project project, RequestInfo requestInfo) {
+    public String resolveStateCode(Project project, RequestInfo requestInfo) {
+        log.trace("Entering resolveStateCode for project: {}", project.getId());
         try {
-            // Try to get project code from MDMS based on project type
-            if (project.getProjectType() != null && requestInfo != null) {
-                String projectTypeName = project.getProjectType();
-                String tenantId = project.getTenantId() != null ? project.getTenantId() : "in";
-                
-                log.info("Fetching project type code for project type: {} from tenant: {}", projectTypeName, tenantId);
-                
-                String projectCode = getCodeFromMDMS(project, requestInfo, tenantId, "ProjectType", projectTypeName);
-                if (projectCode != null) {
-                    log.info("Found project type code: {} for project type: {}", projectCode, projectTypeName);
-                    return projectCode;
+            if (project.getAddress() != null && StringUtils.isNotBlank(project.getAddress().getBoundary())) {
+                String boundary = project.getAddress().getBoundary();
+                String stateName = extractStateNameFromBoundary(boundary);
+                if (stateName != null) {
+                    String stateCode = getCodeFromMDMS(project, requestInfo, project.getTenantId(), "State", stateName);
+                    if (stateCode != null) {
+                        return stateCode.toUpperCase();
+                    }
                 }
-                
-                log.warn("Project type code not found in MDMS for: {}, using default: {}", 
-                        projectTypeName, projectConfiguration.getProjectNameDefaultCode());
+                if (boundary.length() == 2) {
+                    return boundary.toUpperCase();
+                }
             }
-            
-            // Fallback to configured default
-            log.info("Using default project code: {}", projectConfiguration.getProjectNameDefaultCode());
-            return projectConfiguration.getProjectNameDefaultCode();
-            
+
+            String tenantId = project.getTenantId();
+            if (tenantId != null && tenantId.contains(".")) {
+                String state = tenantId.split("\\.")[1];
+                if (StringUtils.isNotBlank(state) && state.length() >= 2) {
+                    String stateCode = getCodeFromMDMS(project, requestInfo, tenantId, "State", state);
+                    if (stateCode != null) {
+                        return stateCode.toUpperCase();
+                    }
+                    return state.toUpperCase().substring(0, Math.min(2, state.length()));
+                }
+            }
         } catch (Exception e) {
-            log.error("Error getting project code for project: {}, using default", project.getId(), e);
-            return projectConfiguration.getProjectNameDefaultCode();
+            log.error("Error resolving state code for project: {}", project.getId(), e);
+        }
+        log.warn("Using fallback state code XX for project: {}", project.getId());
+        return "XX";
+    }
+
+    /**
+     * Builds revised project ID. Draft uses HF=0; scheduled uses live facility count.
+     */
+    public ProjectNameResult generateProjectName(Project project, RequestInfo requestInfo, boolean draft) {
+        return generateProjectName(project, requestInfo, draft, null);
+    }
+
+    /**
+     * @param facilityCountOverride when non-null, used instead of DB count (e.g. before persister flush)
+     */
+    public ProjectNameResult generateProjectName(Project project, RequestInfo requestInfo, boolean draft,
+                                               Integer facilityCountOverride) {
+        log.info("Generating project ID for project: {}, draft: {}", project.getId(), draft);
+        try {
+            int healthFacilityCount = draft ? 0
+                    : (facilityCountOverride != null
+                    ? facilityCountOverride
+                    : countLinkedHealthFacilities(project.getId(), project.getTenantId()));
+            String name = buildProjectName(project, requestInfo, healthFacilityCount);
+            log.info("Generated project ID: {}", name);
+            return ProjectNameResult.builder()
+                    .name(name)
+                    .isDuplicateName(false)
+                    .build();
+        } catch (CustomException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error generating project ID for project: {}", project.getId(), e);
+            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project ID: " + e.getMessage());
         }
     }
 
-    /**
-     * Helper method to extract state name from boundary string
-     * Handles both formats: "India_<StateName>" and direct "<StateName>"
-     */
-    private String extractStateNameFromBoundary(String boundary) {
-        if (boundary == null || boundary.trim().isEmpty()) {
+    public String buildProjectName(Project project, RequestInfo requestInfo, int healthFacilityCount) {
+        String stateCode = resolveStateCode(project, requestInfo);
+        String fyty = getFyty(project);
+        String justNumeric = getJustificationNumeric(project);
+        return String.format("%s-%s-%d-%s", stateCode, fyty, healthFacilityCount, justNumeric);
+    }
+
+    public int parseHealthFacilityCountFromName(String name) {
+        if (StringUtils.isBlank(name)) {
+            return -1;
+        }
+        Matcher matcher = REVISED_PROJECT_ID_PATTERN.matcher(name.trim().toUpperCase());
+        if (matcher.matches()) {
+            return Integer.parseInt(matcher.group(3));
+        }
+        return -1;
+    }
+
+    public boolean isRevisedProjectIdFormat(String name) {
+        return StringUtils.isNotBlank(name) && REVISED_PROJECT_ID_PATTERN.matcher(name.trim().toUpperCase()).matches();
+    }
+
+    public boolean isValidJustificationCodeFormat(String justificationCode) {
+        return StringUtils.isNotBlank(justificationCode)
+                && JUSTIFICATION_CODE_PATTERN.matcher(justificationCode.trim()).matches();
+    }
+
+    public String normalizeJustificationCode(String justificationCode) {
+        if (StringUtils.isBlank(justificationCode)) {
             return null;
         }
-        
+        return justificationCode.trim().toUpperCase(Locale.ROOT);
+    }
+
+    public void validateJustificationCodeFormat(String justificationCode) {
+        if (!isValidJustificationCodeFormat(justificationCode)) {
+            throw new CustomException("INVALID_JUSTIFICATION_CODE", JUSTIFICATION_CODE_MESSAGE);
+        }
+    }
+
+    private String getJustificationNumeric(Project project) {
+        String justificationCode = extractJustificationCode(project.getAdditionalDetails());
+        if (StringUtils.isBlank(justificationCode)) {
+            throw new CustomException("JUSTIFICATION_CODE_REQUIRED", JUSTIFICATION_CODE_MESSAGE);
+        }
+        validateJustificationCodeFormat(justificationCode);
+        String trimmed = justificationCode.trim().toUpperCase().substring(JUS_PREFIX.length());
+        if (trimmed.startsWith("-")) {
+            trimmed = trimmed.substring(1);
+        }
+        return trimmed;
+    }
+
+    public String extractJustificationCode(Object additionalDetails) {
+        if (additionalDetails == null) {
+            return null;
+        }
+        try {
+            JsonNode node = additionalDetails instanceof JsonNode
+                    ? (JsonNode) additionalDetails
+                    : objectMapper.valueToTree(additionalDetails);
+            node = normalizeAdditionalDetailsNode(node);
+            if (node != null && node.isObject()
+                    && node.has("justificationCode") && !node.get("justificationCode").isNull()) {
+                String value = node.get("justificationCode").asText();
+                return value == null || value.isBlank() ? null : value.trim();
+            }
+        } catch (Exception e) {
+            log.error("Error reading justificationCode from additionalDetails", e);
+        }
+        return null;
+    }
+
+    private JsonNode normalizeAdditionalDetailsNode(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isTextual()) {
+            String text = node.asText();
+            if (StringUtils.isBlank(text)) {
+                return null;
+            }
+            try {
+                JsonNode parsed = objectMapper.readTree(text);
+                return parsed.isObject() ? parsed : null;
+            } catch (Exception e) {
+                log.debug("additionalDetails is a scalar string, not JSON object: {}", text);
+                return null;
+            }
+        }
+        return node;
+    }
+
+    /**
+     * FYTY: last two digits of start and end years (e.g. 2026-2027 -> 2627).
+     */
+    private String getFyty(Project project) {
+        if (project.getStartDate() == null || project.getEndDate() == null) {
+            throw new CustomException("INVALID_PROJECT_DATES", "Start date and end date are required for project ID generation");
+        }
+
+        LocalDateTime startDate = LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(project.getStartDate()), ZoneId.systemDefault());
+        LocalDateTime endDate = LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(project.getEndDate()), ZoneId.systemDefault());
+
+        if (startDate.isAfter(endDate)) {
+            throw new CustomException("INVALID_PROJECT_DATES", "Start date cannot be greater than end date");
+        }
+        if (startDate.toLocalDate().equals(endDate.toLocalDate())) {
+            throw new CustomException("INVALID_PROJECT_DURATION", "Project must have a duration of at least 1 day");
+        }
+
+        int startYy = startDate.getYear() % 100;
+        int endYy = endDate.getYear() % 100;
+        return String.format("%02d%02d", startYy, endYy);
+    }
+
+    private int countLinkedHealthFacilities(String projectId, String tenantId) {
+        return projectRepository.countProjectFacilitiesByProjectId(projectId, tenantId);
+    }
+
+    private String extractStateNameFromBoundary(String boundary) {
+        if (StringUtils.isBlank(boundary)) {
+            return null;
+        }
         String[] boundaryParts = boundary.split("_");
         String stateName = null;
-        
         if (boundaryParts.length >= 2 && "India".equalsIgnoreCase(boundaryParts[0])) {
             stateName = boundaryParts[1];
         } else if (boundaryParts.length >= 1) {
             stateName = boundaryParts[0];
         }
-        
-        // Validate state name is not placeholder/invalid
-        if (stateName != null && !stateName.equalsIgnoreCase("nan") && 
-            !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
+        if (stateName != null && !stateName.equalsIgnoreCase("nan")
+                && !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
             return stateName.trim();
         }
-        
-        log.warn("Invalid state name found in boundary: {}, returning null", stateName);
         return null;
     }
 
-    /**
-     * Gets the state code from project boundary or MDMS
-     */
-    private String getStateCode(Project project, RequestInfo requestInfo) {
-        try {
-            // First try to get state code from MDMS based on boundary
-            if (project.getAddress() != null && project.getAddress().getBoundary() != null) {
-                String boundary = project.getAddress().getBoundary();
-                String stateName = extractStateNameFromBoundary(boundary);
-                
-                if (stateName != null) {
-                    String stateCode = getCodeFromMDMS(project, requestInfo, project.getTenantId(), "State", stateName);
-                    if (stateCode != null) {
-                        log.info("Found state code from MDMS: {} for state: {}", stateCode, stateName);
-                        return stateCode;
-                    }
-                }
-            }
-            
-            // Fallback to tenant ID based mapping
-            String tenantId = project.getTenantId();
-            if (tenantId != null && tenantId.contains(".")) {
-                String state = tenantId.split("\\.")[0];
-                String stateCode = getCodeFromMDMS(project, requestInfo, tenantId, "State", state);
-                if (stateCode != null) {
-                    log.info("Found state code from MDMS using tenant: {} for state: {}", stateCode, state);
-                    return stateCode;
-                }
-            }
-            
-            log.warn("State code not found in MDMS, using fallback mapping");
-            return getStateCodeFromFallback(project);
-            
-        } catch (Exception e) {
-            log.error("Error getting state code for project: {}, using fallback", project.getId(), e);
-            return getStateCodeFromFallback(project);
-        }
-    }
-
-    /**
-     * Generic method to get code from MDMS
-     */
     private String getCodeFromMDMS(Project project, RequestInfo requestInfo, String tenantId, String masterType, String searchName) {
         try {
             String rootTenantId = tenantId.split("\\.")[0];
-            
-            // Create a dummy project for MDMS call
-            Project dummyProject = Project.builder()
-                    .tenantId(tenantId)
-                    .build();
-            
+            Project dummyProject = Project.builder().tenantId(tenantId).build();
             ProjectRequest projectRequest = ProjectRequest.builder()
                     .requestInfo(requestInfo)
                     .projects(List.of(dummyProject))
                     .build();
-            
-            // Call MDMS to get data
             Object mdmsResponse = mdmsUtils.mDMSCall(projectRequest, rootTenantId);
-            
             return extractCodeFromMDMSResponse(mdmsResponse, masterType, searchName);
-            
         } catch (Exception e) {
             log.error("Error getting {} code from MDMS for {}: {}", masterType, searchName, e.getMessage());
             return null;
         }
     }
 
-    /**
-     * Extract code from MDMS response
-     */
     private String extractCodeFromMDMSResponse(Object mdmsResponse, String masterType, String searchName) {
-        if (mdmsResponse instanceof LinkedHashMap) {
-            LinkedHashMap<String, Object> responseMap = (LinkedHashMap<String, Object>) mdmsResponse;
-            LinkedHashMap<String, Object> mdmsRes = (LinkedHashMap<String, Object>) responseMap.get("MdmsRes");
-            
-            if (mdmsRes != null) {
-                LinkedHashMap<String, Object> commonMasters = (LinkedHashMap<String, Object>) mdmsRes.get("common-masters");
-                
-                if (commonMasters != null) {
-                    // Handle different master types with their specific schema codes
-                    String schemaKey = getSchemaKeyForMasterType(masterType);
-                    List<LinkedHashMap<String, Object>> masterList = (List<LinkedHashMap<String, Object>>) commonMasters.get(schemaKey);
-                    
-                    if (masterList != null) {
-                        // Find matching item by name
-                        for (LinkedHashMap<String, Object> item : masterList) {
-                            String name = (String) item.get("name");
-                            Boolean active = (Boolean) item.get("active");
-                            
-                            if (searchName.equalsIgnoreCase(name) && Boolean.TRUE.equals(active)) {
-                                String code = (String) item.get("code");
-                                if (code != null && !code.trim().isEmpty()) {
-                                    return code;
-                                }
-                            }
-                        }
-                    }
+        if (!(mdmsResponse instanceof LinkedHashMap)) {
+            return null;
+        }
+        LinkedHashMap<String, Object> responseMap = (LinkedHashMap<String, Object>) mdmsResponse;
+        LinkedHashMap<String, Object> mdmsRes = (LinkedHashMap<String, Object>) responseMap.get("MdmsRes");
+        if (mdmsRes == null) {
+            return null;
+        }
+        LinkedHashMap<String, Object> commonMasters = (LinkedHashMap<String, Object>) mdmsRes.get("common-masters");
+        if (commonMasters == null) {
+            return null;
+        }
+        String schemaKey = "State".equals(masterType) ? "StateInfo" : masterType;
+        List<LinkedHashMap<String, Object>> masterList = (List<LinkedHashMap<String, Object>>) commonMasters.get(schemaKey);
+        if (masterList == null) {
+            return null;
+        }
+        for (LinkedHashMap<String, Object> item : masterList) {
+            String name = (String) item.get("name");
+            Boolean active = (Boolean) item.get("active");
+            if (searchName.equalsIgnoreCase(name) && Boolean.TRUE.equals(active)) {
+                String code = (String) item.get("code");
+                if (StringUtils.isNotBlank(code)) {
+                    return code;
                 }
             }
         }
-        
         return null;
-    }
-
-    /**
-     * Get the correct schema key for different master types
-     */
-    private String getSchemaKeyForMasterType(String masterType) {
-        switch (masterType) {
-            case "State":
-                return "StateInfo";
-            case "ProjectType":
-                return "ProjectType";
-            // Add more mappings as needed
-            default:
-                return masterType;
-        }
-    }
-
-    /**
-     * Fallback method using simple mapping
-     */
-    private String getStateCodeFromFallback(Project project) {
-        if (project.getAddress() != null && project.getAddress().getBoundary() != null) {
-            String boundary = project.getAddress().getBoundary();
-            String stateName = extractStateNameFromBoundary(boundary);
-            
-            if (stateName != null) {
-                // Simple fallback: take first 2 characters of state name
-                return stateName.toUpperCase().substring(0, Math.min(2, stateName.length()));
-            }
-        }
-        
-        // Fallback to tenant ID based mapping
-        String tenantId = project.getTenantId();
-        if (tenantId != null && tenantId.contains(".")) {
-            String state = tenantId.split("\\.")[0];
-            // Simple fallback: take first 2 characters of state name
-            return state.toUpperCase().substring(0, Math.min(2, state.length()));
-        }
-        
-        return "XX"; // Default fallback
-    }
-
-    /**
-     * Gets the duration string from start and end dates
-     * Format: YYYY-YY (e.g., 2023-25)
-     */
-    private String getDuration(Project project) {
-        if (project.getStartDate() == null || project.getEndDate() == null) {
-            throw new CustomException("INVALID_PROJECT_DATES", "Start date and end date are required for project name generation");
-        }
-
-        LocalDateTime startDate = LocalDateTime.ofInstant(
-            Instant.ofEpochMilli(project.getStartDate()), 
-            ZoneId.systemDefault()
-        );
-        
-        LocalDateTime endDate = LocalDateTime.ofInstant(
-            Instant.ofEpochMilli(project.getEndDate()), 
-            ZoneId.systemDefault()
-        );
-
-        // Validate that start date is not greater than end date
-        if (startDate.isAfter(endDate)) {
-            throw new CustomException("INVALID_PROJECT_DATES", "Start date cannot be greater than end date. Start: " + startDate + ", End: " + endDate);
-        }
-
-        // Validate minimum project duration (at least 1 day)
-        if (startDate.toLocalDate().equals(endDate.toLocalDate())) {
-            throw new CustomException("INVALID_PROJECT_DURATION", "Project must have a duration of at least 1 day. Start and end dates cannot be the same");
-        }
-
-        int startYear = startDate.getYear();
-        int endYear = endDate.getYear();
-        
-        // Format as YYYY-YY
-        return String.format("%d-%02d", startYear, endYear % 100);
-    }
-
-    /**
-     * Generates a unique name by checking for duplicates and appending suffixes
-     */
-    private String generateUniqueName(String baseName, String tenantId) {
-        // First check if base name exists
-        if (!isProjectNameExists(baseName, tenantId)) {
-            return baseName;
-        }
-        
-        // If base name exists, find the highest suffix and increment
-        String highestExistingName = findHighestExistingName(baseName, tenantId);
-        int nextSuffix = extractAndIncrementSuffix(highestExistingName, baseName);
-        
-        // Validate that the next suffix is reasonable (prevent infinite loops)
-        if (nextSuffix > 1000) {
-            log.error("Generated suffix {} is too high for base name: {}. This might indicate a problem.", nextSuffix, baseName);
-            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Cannot generate unique project name. Too many duplicates exist for base: " + baseName);
-        }
-        
-        String uniqueName = baseName + "-" + nextSuffix;
-        log.info("Generated unique project name: {} (base: {}, suffix: {})", uniqueName, baseName, nextSuffix);
-        
-        return uniqueName;
-    }
-
-    /**
-     * Finds the highest existing name with the given base name pattern
-     */
-    private String findHighestExistingName(String baseName, String tenantId) {
-        return projectRepository.findHighestExistingProjectName(baseName, tenantId);
-    }
-
-    /**
-     * Extracts the suffix from existing name and increments it
-     */
-    private int extractAndIncrementSuffix(String existingName, String baseName) {
-        if (existingName == null || !existingName.startsWith(baseName)) {
-            return 1;
-        }
-        
-        // If it's exactly the base name (no suffix), return 1
-        if (existingName.equals(baseName)) {
-            return 1;
-        }
-        
-        try {
-            // Extract the part after base name
-            String suffixPart = existingName.substring(baseName.length());
-            
-            // Remove leading dash if present
-            if (suffixPart.startsWith("-")) {
-                suffixPart = suffixPart.substring(1);
-            }
-            
-            // Parse the suffix number
-            int currentSuffix = Integer.parseInt(suffixPart);
-            return currentSuffix + 1;
-            
-        } catch (NumberFormatException e) {
-            log.warn("Could not parse suffix from existing name: {}", existingName);
-            return 1;
-        }
-    }
-
-    /**
-     * Checks if a project name already exists in the system
-     */
-    private boolean isProjectNameExists(String projectName, String tenantId) {
-        return projectRepository.isProjectNameExists(projectName, tenantId);
-    }
-
-    /**
-     * Generates project name and checks for duplicates (for creation)
-     * Returns a result object with the generated name and duplicate status
-     */
-    public ProjectNameResult generateNameAndCheckDuplicate(Project project, RequestInfo requestInfo) {
-        return generateNameAndCheckDuplicate(project, requestInfo, null);
-    }
-
-    /**
-     * Generates project name and checks for duplicates
-     * Returns a result object with the generated name and duplicate status
-     * @param project The project to generate name for
-     * @param requestInfo Request information
-     * @param excludeProjectId Project ID to exclude from duplicate check (for updates)
-     */
-    public ProjectNameResult generateNameAndCheckDuplicate(Project project, RequestInfo requestInfo, String excludeProjectId) {
-        try {
-            // Check if project type is FieldPlan or Facility - skip name generation
-            if (shouldSkipNameGeneration(project)) {
-                log.info("Skipping project name generation for project type: {}", project.getProjectType());
-                return ProjectNameResult.builder()
-                    .name(null)
-                    .isDuplicateName(false)
-                    .build();
-            }
-            
-            // Generate the base name
-            String projectCode = getProjectCode(project, requestInfo);
-            String stateCode = getStateCode(project, requestInfo);
-            String duration = getDuration(project);
-            String baseName = String.format("%s-%s-%s", projectCode, stateCode, duration);
-            
-            // Check if base name exists (with optional exclusion for updates)
-            boolean isDuplicate;
-            if (excludeProjectId != null) {
-                // For updates: exclude current project from duplicate check
-                isDuplicate = projectRepository.isProjectNameExistsExcludingProject(baseName, project.getTenantId(), excludeProjectId);
-            } else {
-                // For creation: check all projects
-                isDuplicate = isProjectNameExists(baseName, project.getTenantId());
-            }
-            
-            if (isDuplicate) {
-                // Generate unique name with suffix
-                String uniqueName = generateUniqueName(baseName, project.getTenantId());
-                return ProjectNameResult.builder()
-                    .name(uniqueName)
-                    .isDuplicateName(true)
-                    .build();
-            } else {
-                // Use base name as it's unique
-                return ProjectNameResult.builder()
-                    .name(baseName)
-                    .isDuplicateName(false)
-                    .build();
-            }
-            
-        } catch (Exception e) {
-            log.error("Error generating project name for project: {}", project.getId(), e);
-            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name: " + e);
-        }
     }
 }

@@ -889,14 +889,15 @@ const CreateFieldPlan = () => {
             apiOperation: "UPDATE"
           };
           await FieldPlanService.upsertFieldPlan(fieldPlanUpdateData);
-          await invalidateFieldPlanData();
         }
 
+        const upsertedFieldPlanData = await invalidateFieldPlanData();
+        const upsertedFieldPlan = upsertedFieldPlanData?.fieldPlans?.[0];
         dispatch(
           populateResponsePage({
             response: {},
             message: schedulingFieldPlan ? t("PM_COMMON_FIELD_PLAN_CREATED") : t("PM_COMMON_FIELD_PLAN_UPDATED"),
-            createdId: createdFieldPlan?.name,
+            createdId: upsertedFieldPlan?.name,
             info: t("PM_COMMON_FIELD_PLAN_NAME"),
             secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
             onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
