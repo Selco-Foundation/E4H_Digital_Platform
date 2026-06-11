@@ -162,7 +162,7 @@ class ScheduledVisitRepository {
     final criteria = ScheduledVisitSearchCriteria(
       tenantId: envConfig.variables.tenantId,
       facilityName: facilityName,
-      assignedUsers: assignedUserUuid == null ? null : [assignedUserUuid],
+      // assignedUsers: assignedUserUuid == null ? null : [assignedUserUuid],
       statuses: statuses,
       sortDirection: sortDirection,
     );

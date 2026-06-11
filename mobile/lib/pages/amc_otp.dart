@@ -145,14 +145,46 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                               color: theme.colorTheme.primary.primary2),
                         ),
                       ),
-                      Text(
-                        "${context.translate(i18.amcOtp.amcOtpReceiverInstruction1)} "
-                        "${scheduledVisit?.facility?.facility_poc_name ?? '___'} "
-                        "${context.translate(i18.amcOtp.amcOtpReceiverInstruction2)} "
-                        "${context.translate(i18.amcOtp.amcOtpMaskedPhone)}"
-                        "${lastPhoneDigits(scheduledVisit?.facility?.facility_poc_phone ?? '****', count: 4)}",
-                        style: textTheme.bodyL.copyWith(
-                          color: theme.colorTheme.text.primary,
+                      Text.rich(
+                        TextSpan(
+                          style: textTheme.bodyL.copyWith(
+                            color: theme.colorTheme.text.primary,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: "${context.translate(i18.amcOtp.amcOtpReceiverInstruction1)} ",
+                            ),
+                            TextSpan(
+                              text: "${scheduledVisit?.facility?.facility_poc_name ?? '___'} ",
+                              style: textTheme.bodyL.copyWith(
+                                color: theme.colorTheme.text.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+
+                            TextSpan(
+                              text: "${context.translate(i18.amcOtp.amcOtpReceiverInstruction2)} ",
+                            ),
+
+                            TextSpan(
+                              text: context.translate(i18.amcOtp.amcOtpMaskedPhone),
+                              style: textTheme.bodyL.copyWith(
+                                color: theme.colorTheme.text.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+
+                            TextSpan(
+                              text: lastPhoneDigits(
+                                scheduledVisit?.facility?.facility_poc_phone ?? '****',
+                                count: 4,
+                              ),
+                              style: textTheme.bodyL.copyWith(
+                                color: theme.colorTheme.text.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         textAlign: TextAlign.center,
                       ),
