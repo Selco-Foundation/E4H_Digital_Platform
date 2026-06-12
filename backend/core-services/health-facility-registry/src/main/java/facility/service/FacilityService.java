@@ -741,7 +741,7 @@ public class FacilityService {
 
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
-        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendor(facility);
+        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendorUpdateInPayload(update);
         // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
             log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
@@ -813,8 +813,8 @@ public class FacilityService {
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
-                    .mappedVendorName(facility.getMappedVendorName() != null ? facility.getMappedVendorName() : existingFacility.getMappedVendorName())
-                    .mappedVendorUserName(facility.getMappedVendorUserName() != null ? facility.getMappedVendorUserName() : existingFacility.getMappedVendorUserName())
+                    .mappedVendorName(facility.getMappedVendorName())
+                    .mappedVendorUserName(facility.getMappedVendorUserName())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true) // Set from update request
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
@@ -832,6 +832,13 @@ public class FacilityService {
                     facilityForKibanaUpdate, request.getRequestInfo());
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
+        } else if (Boolean.FALSE.equals(update.getIsOnmReady())) {
+            // Facility marked as non ONM-ready: deactivate the HRMS POC user (if any) and
+            // remove the facility document from the Kibana/Elasticsearch index (if present).
+            log.info("Facility {} marked as non ONM-ready, deactivating POC user and removing Kibana index",
+                    sanitizeForLog(update.getFacilityId()));
+            deactivateFacilityPOCUser(request, existingFacility);
+            facilityKibanaMapper.deleteKibanaIndexByFacilityId(update.getFacilityId(), update.getTenantId());
         } else if (mappedVendorUpdated) {
             Facility facilityForKibanaUpdate = Facility.builder()
                     .facilityId(facility.getFacilityId())
@@ -1283,6 +1290,113 @@ public class FacilityService {
     }
 
     /**
+     * Operator reindex: rebuilds full Kibana/Elasticsearch payloads (including boundary hierarchy)
+     * for existing facilities and pushes them to the indexer topic.
+     */
+    public FacilityKibanaReindexResponse reindexFacilitiesInKibana(FacilityKibanaReindexRequest request) {
+        if (!configs.isFacilityKibanaReindexEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility Kibana reindex is disabled. Set facility.kibana.reindex.enabled=true to run."
+            );
+        }
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+
+        boolean onmReadyOnly = request.getOnmReadyOnly() == null || Boolean.TRUE.equals(request.getOnmReadyOnly());
+        List<Facility> facilities = loadFacilitiesForKibanaReindex(
+                request.getTenantId(),
+                request.getFacilityIds(),
+                onmReadyOnly
+        );
+
+        log.info("Kibana reindex: tenantId={}, facilityIds={}, onmReadyOnly={}, scanned={}",
+                request.getTenantId(),
+                request.getFacilityIds() != null ? request.getFacilityIds().size() : 0,
+                onmReadyOnly,
+                facilities.size());
+
+        FacilityKibanaReindexResponse response = FacilityKibanaReindexResponse.builder()
+                .scanned(facilities.size())
+                .errors(new ArrayList<>())
+                .build();
+
+        for (Facility facility : facilities) {
+            if (facility.getBoundaryCode() == null || facility.getBoundaryCode().isBlank()) {
+                response.setSkipped(response.getSkipped() + 1);
+                log.warn("Skipping Kibana reindex for facility {}: boundary_code is blank", facility.getFacilityId());
+                continue;
+            }
+            try {
+                FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
+                if (kibanaIndex == null) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+                facilityRepository.pushToKibana(kibanaIndex);
+                response.setReindexed(response.getReindexed() + 1);
+                log.debug("Queued Kibana reindex for facilityId {}", sanitizeForLog(facility.getFacilityId()));
+            } catch (Exception e) {
+                response.setFailed(response.getFailed() + 1);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("Kibana reindex failed for facilityId {} tenantId {}: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facility.getTenantId()),
+                        message,
+                        e);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(facility.getFacilityId())
+                        .tenantId(facility.getTenantId())
+                        .boundaryCode(facility.getBoundaryCode())
+                        .message(message)
+                        .build());
+            }
+        }
+
+        log.info("Kibana reindex complete: scanned={}, reindexed={}, skipped={}, failed={}",
+                response.getScanned(), response.getReindexed(), response.getSkipped(), response.getFailed());
+        return response;
+    }
+
+    private List<Facility> loadFacilitiesForKibanaReindex(
+            String tenantId,
+            List<String> facilityIds,
+            boolean onmReadyOnly
+    ) {
+        StringBuilder query = new StringBuilder(
+                "SELECT fac.*, "
+                        + "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                        + "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                        + "FROM facility fac WHERE 1=1"
+        );
+        List<Object> params = new ArrayList<>();
+
+        if (onmReadyOnly) {
+            query.append(" AND fac.is_onm_ready = true");
+        }
+        if (tenantId != null && !tenantId.isBlank()) {
+            query.append(" AND fac.tenant_id = ?");
+            params.add(tenantId.trim());
+        }
+        if (facilityIds != null && !facilityIds.isEmpty()) {
+            List<String> distinctIds = facilityIds.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(id -> !id.isEmpty())
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!distinctIds.isEmpty()) {
+                query.append(" AND fac.id IN (")
+                        .append(distinctIds.stream().map(id -> "?").collect(Collectors.joining(", ")))
+                        .append(")");
+                params.addAll(distinctIds);
+            }
+        }
+
+        return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.rowMapper);
+    }
+
+    /**
      * When HFR is missing: prefer {@code nin_id}, else {@code facility_poc_username}.
      */
     private String resolveIndexerCodeForHfrMissingMigration(Facility facility) {
@@ -1462,6 +1576,72 @@ public class FacilityService {
                     log.info("User with userId {} updated successfully", existingFacilityDetails.getUserId());
                 }
             }
+        }
+    }
+
+    /**
+     * Deactivates the HRMS POC user associated with a facility when the facility is marked as
+     * non ONM-ready. The username is resolved the same way it is created (POC username for ANGANWADI,
+     * otherwise HFR ID falling back to NIN ID). If no HRMS user exists, this is a no-op.
+     */
+    public void deactivateFacilityPOCUser(FacilityUpdateRequest request, Facility existingFacilityDetails) {
+        String normalizedCategory = existingFacilityDetails.getFacilityCategory() == null
+                ? ""
+                : existingFacilityDetails.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+        String username;
+        if (isAnganwadi) {
+            username = existingFacilityDetails.getFacilityPocUsername() != null && !existingFacilityDetails.getFacilityPocUsername().trim().isBlank()
+                    ? existingFacilityDetails.getFacilityPocUsername().trim() : "";
+        } else {
+            username = existingFacilityDetails.getHfrId() != null && !existingFacilityDetails.getHfrId().trim().isBlank()
+                    ? existingFacilityDetails.getHfrId().trim()
+                    : existingFacilityDetails.getNinId();
+        }
+
+        if (username == null || username.isBlank()) {
+            log.info("Skipping POC user deactivation for facility {}: no resolvable HRMS username",
+                    existingFacilityDetails.getFacilityId());
+            return;
+        }
+
+        try {
+            Employee employee = hrmsUtils.getUserByUsername(request, username);
+            if (employee == null || employee.getUser() == null) {
+                log.info("No HRMS POC user found for username {}, nothing to deactivate", username);
+                return;
+            }
+
+            boolean employeeInactive = Boolean.FALSE.equals(employee.getIsActive());
+            boolean userInactive = employee.getUser().getActive() == null || !employee.getUser().getActive();
+            if (employeeInactive && userInactive) {
+                log.info("HRMS POC user {} is already inactive for facility {}, skipping deactivation",
+                        username, existingFacilityDetails.getFacilityId());
+                return;
+            }
+
+            employee.getUser().setActive(false);
+            employee.setIsActive(false);
+            employee.setEmployeeStatus("INACTIVE");
+            employee.setReActivateEmployee(false);
+
+            EmployeeRequest employeeRequest = EmployeeRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .employees(List.of(employee))
+                    .build();
+            List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+            if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
+                log.info("Deactivated HRMS POC user {} for facility {}", username, existingFacilityDetails.getFacilityId());
+            } else {
+                log.warn("Failed to deactivate HRMS POC user {} for facility {}", username, existingFacilityDetails.getFacilityId());
+            }
+        } catch (CustomException e) {
+            // getUserByUsername raises EMPLOYEE_NOT_FOUND when no matching user exists
+            log.info("No HRMS POC user to deactivate for username {} (facility {}): {}",
+                    username, existingFacilityDetails.getFacilityId(), e.getMessage());
+        } catch (Exception e) {
+            log.error("Error deactivating HRMS POC user {} for facility {}: {}",
+                    username, existingFacilityDetails.getFacilityId(), e.getMessage(), e);
         }
     }
 

@@ -10,6 +10,8 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.*;
 import org.egov.project.config.ProjectConfiguration;
+import org.egov.project.repository.ProjectRepository;
+import org.egov.project.service.ProjectNameGenerationService;
 import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.MDMSUtils;
 import org.egov.project.web.models.ProjectSortCriteria;
@@ -35,8 +37,16 @@ public class ProjectValidator {
     public static final String IS_NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     public static final String TENANT_ID_IS_MANDATORY_IN_PROJECT_REQUEST_BODY = "Tenant ID is mandatory in Project request body";
     public static final String DOES_NOT_EXISTS_FOR_THE_PROJECT = " that you are trying to update does not exists for the project ";
+    public static final String INVALID_JUSTIFICATION_CODE_MESSAGE =
+            ProjectNameGenerationService.JUSTIFICATION_CODE_MESSAGE;
     @Autowired
     MDMSUtils mdmsUtils;
+
+    @Autowired
+    ProjectRepository projectRepository;
+
+    @Autowired
+    ProjectNameGenerationService projectNameGenerationService;
 
     @Autowired
     BoundaryV2Util boundaryV2Util;
@@ -50,53 +60,85 @@ public class ProjectValidator {
 
     /* Validates create Project request body */
     public void validateCreateProjectRequest(ProjectRequest request) {
+        log.trace("Entering validateCreateProjectRequest");
+        log.info("Validating create project request");
+        log.debug("Validating {} projects", request.getProjects() != null ? request.getProjects().size() : 0);
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
         //Verify if RequestInfo and UserInfo is present
+        log.debug("Validating RequestInfo and UserInfo");
         validateRequestInfo(requestInfo);
         //Verify if project request and mandatory fields are present
+        log.debug("Validating project request and mandatory fields");
         validateProjectRequest(request.getProjects());
         //Verify if project request have multiple tenant Ids
+        log.debug("Validating multiple tenant IDs");
         validateMultipleTenantIds(request);
 
         String tenantId = request.getProjects().get(0).getTenantId();
+        log.debug("Tenant ID: {}", tenantId);
         //Verify MDMS Data
         // TODO: Uncomment and fix as per HCM once we get clarity
         // validateRequestMDMSData(request, tenantId, errorMap);
-        if (config.getIsAttendanceFeatureEnabled()) validateAttendanceSessionAgainstMDMS(request, errorMap, tenantId);
+        if (config.getIsAttendanceFeatureEnabled()) {
+            log.debug("Validating attendance session against MDMS");
+            validateAttendanceSessionAgainstMDMS(request, errorMap, tenantId);
+        }
 
         //Get boundaries in list from all Projects in request body for validation
+        log.debug("Extracting boundaries for validation");
         Map<String, List<String>> boundariesForValidation = getBoundaryForValidation(request.getProjects());
+        log.debug("Validating {} boundary types", boundariesForValidation != null ? boundariesForValidation.size() : 0);
         validateBoundary(boundariesForValidation, tenantId, requestInfo, errorMap);
         log.info("Boundaries in request validated with Location Service");
 
         // Verify provided documentIds are valid.
+        log.debug("Validating document IDs");
         validateDocumentIds(request);
 
-        if (!errorMap.isEmpty())
+        validateJustificationCodeUniquenessOnCreate(request.getProjects(), errorMap);
+
+        if (!errorMap.isEmpty()) {
+            log.error("Validation failed with {} errors", errorMap.size());
+            log.trace("Exiting validateCreateProjectRequest with errors");
             throw new CustomException(errorMap);
+        }
+        log.info("Create project request validation completed successfully");
+        log.trace("Exiting validateCreateProjectRequest");
     }
 
     /* Validates search Project request body and parameters*/
     public void validateSearchProjectRequest(ProjectRequest project, Integer limit, Integer offset, String tenantId, Long createdFrom, Long createdTo) {
+        log.trace("Entering validateSearchProjectRequest");
+        log.info("Validating search project request");
+        log.debug("Search parameters - limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = project.getRequestInfo();
 
         //Verify if RequestInfo and UserInfo is present
+        log.debug("Validating RequestInfo and UserInfo");
         validateRequestInfo(requestInfo);
         //Verify if search project request parameters are valid
+        log.debug("Validating search request parameters");
         validateSearchProjectRequestParams(limit, offset, tenantId, createdFrom, createdTo);
         //Verify if search project request is valid
+        log.debug("Validating search project request");
         validateSearchProjectRequest(project.getProjects(), tenantId, createdFrom);
         //Verify if project request have multiple tenant Ids
+        log.debug("Validating multiple tenant IDs");
         validateMultipleTenantIds(project);
         //Verify MDMS Data
         // TODO: Uncomment and fix as per HCM once we get clarity
         // validateRequestMDMSData(project, tenantId, errorMap);
 
-        if (!errorMap.isEmpty())
+        if (!errorMap.isEmpty()) {
+            log.error("Validation failed with {} errors", errorMap.size());
+            log.trace("Exiting validateSearchProjectRequest with errors");
             throw new CustomException(errorMap);
+        }
+        log.info("Search project request validation completed successfully");
+        log.trace("Exiting validateSearchProjectRequest");
     }
 
     /* Validates Project search request body */
@@ -251,10 +293,64 @@ public class ProjectValidator {
                 log.error("Boundary Type is mandatory if boundary is present  in Project request body");
                 errorMap.put("BOUNDARY", "Boundary Type is mandatory if boundary is present in Project request body");
             }
+            validateJustificationCodeIfPresent(project, errorMap);
         }
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    private void validateJustificationCodeIfPresent(Project project, Map<String, String> errorMap) {
+        String justificationCode = projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails());
+        if (justificationCode == null) {
+            return;
+        }
+        if (!projectNameGenerationService.isValidJustificationCodeFormat(justificationCode)) {
+            log.error("Invalid justification code for project: {}", justificationCode);
+            errorMap.put("INVALID_JUSTIFICATION_CODE", INVALID_JUSTIFICATION_CODE_MESSAGE);
+        }
+    }
+
+    private void validateJustificationCodeUniquenessOnCreate(List<Project> projects, Map<String, String> errorMap) {
+        Set<String> seenInRequest = new HashSet<>();
+        for (Project project : projects) {
+            String justificationCode = projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails());
+            if (justificationCode == null
+                    || !projectNameGenerationService.isValidJustificationCodeFormat(justificationCode)) {
+                continue;
+            }
+            String normalizedCode = projectNameGenerationService.normalizeJustificationCode(justificationCode);
+            if (!seenInRequest.add(normalizedCode)) {
+                log.error("Duplicate justification code in create request: {}", normalizedCode);
+                errorMap.put("DUPLICATE_JUSTIFICATION_CODE",
+                        ProjectNameGenerationService.duplicateJustificationCodeInRequestMessage(normalizedCode));
+                continue;
+            }
+            if (projectRepository.isJustificationCodeUsed(normalizedCode, project.getTenantId())) {
+                log.error("Justification code already used in tenant {}: {}", project.getTenantId(), normalizedCode);
+                errorMap.put("DUPLICATE_JUSTIFICATION_CODE",
+                        ProjectNameGenerationService.duplicateJustificationCodeMessage(normalizedCode));
+            }
+        }
+    }
+
+    private void validateJustificationCodeUniquenessOnUpdate(Project project, Project projectFromDB) {
+        String justificationCode = projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails());
+        if (justificationCode == null
+                || !projectNameGenerationService.isValidJustificationCodeFormat(justificationCode)) {
+            return;
+        }
+        String normalizedCode = projectNameGenerationService.normalizeJustificationCode(justificationCode);
+        String existingCode = projectNameGenerationService.normalizeJustificationCode(
+                projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()));
+        if (normalizedCode.equals(existingCode)) {
+            return;
+        }
+        if (projectRepository.isJustificationCodeUsed(normalizedCode, project.getTenantId(), project.getId())) {
+            log.error("Justification code already used in tenant {} on update: {}", project.getTenantId(), normalizedCode);
+            throw new CustomException("DUPLICATE_JUSTIFICATION_CODE",
+                    ProjectNameGenerationService.duplicateJustificationCodeMessage(normalizedCode));
+        }
     }
 
     private static void checkProjectIfEmpty(List<Project> projects) {
@@ -495,6 +591,8 @@ public class ProjectValidator {
             validateUpdateDocumentAgainstDB(project, projectFromDB);
 
             validateUpdateAddressAgainstDB(project, projectFromDB);
+
+            validateJustificationCodeUniquenessOnUpdate(project, projectFromDB);
         }
     }
 

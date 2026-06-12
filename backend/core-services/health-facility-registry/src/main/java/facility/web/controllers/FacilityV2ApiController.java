@@ -279,4 +279,22 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Operator reindex: rebuilds full Kibana documents (including boundary hierarchy) for existing facilities
+     * and pushes them to the indexer topic. Requires {@code facility.kibana.reindex.enabled=true}.
+     */
+    @PostMapping("/_reindex-kibana")
+    public ResponseEntity<FacilityKibanaReindexResponse> reindexFacilitiesInKibana(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Reindex request (optional tenantId / facilityIds filters; onmReadyOnly defaults to true)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityKibanaReindexRequest request) {
+        log.info("Received facility Kibana reindex request");
+        FacilityKibanaReindexResponse result = facilityService.reindexFacilitiesInKibana(request);
+        log.info("Kibana reindex finished: scanned={}, reindexed={}, skipped={}, failed={}",
+                result.getScanned(), result.getReindexed(), result.getSkipped(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
+
 }

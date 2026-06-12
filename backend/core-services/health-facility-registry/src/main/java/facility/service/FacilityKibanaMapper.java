@@ -199,14 +199,10 @@ public class FacilityKibanaMapper {
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
         }
-        if (StringUtils.isNotBlank(facility.getMappedVendorName())) {
-            existingDoc.setMappedVendorName(facility.getMappedVendorName());
-            log.info("Updated Kibana field mappedVendorName for facilityId={}", facility.getFacilityId());
-        }
-        if (StringUtils.isNotBlank(facility.getMappedVendorUserName())) {
-            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
-            log.info("Updated Kibana field mappedVendorUserName for facilityId={}", facility.getFacilityId());
-        }
+        existingDoc.setMappedVendorName(facility.getMappedVendorName());
+        existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+        log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
+                facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
                 facility.getFacilityId(), facility.getTenantId());
@@ -471,7 +467,9 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * Fetches boundary hierarchy from boundary service and extracts codes by boundary type
+     * Fetches boundary hierarchy from boundary service and extracts codes by boundary type.
+     * When the Facility relationship is not yet persisted (async Kafka create), falls back to the
+     * parent block code which is already present in boundary_relationship.
      */
     private BoundaryCodes fetchBoundaryHierarchy(Facility facility, RequestInfo requestInfo) {
         if (facility.getBoundaryCode() == null || facility.getTenantId() == null) {
@@ -480,31 +478,98 @@ public class FacilityKibanaMapper {
         }
 
         try {
-            // Boundary service expects a standard RequestInfo wrapper as body
-            Map<String, Object> requestBody =
-                    requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+            BoundaryCodes codes = fetchBoundaryHierarchyForCode(
+                    facility.getTenantId(),
+                    facility.getBoundaryCode(),
+                    "Facility",
+                    requestInfo
+            );
 
-            // Build URI with query parameters
-            String uri = UriComponentsBuilder.fromUriString(boundaryHost)
-                    .path(boundaryRelationshipSearchPath)
-                    .queryParam("tenantId", facility.getTenantId())
-                    .queryParam("includeParents", true)
-                    .queryParam("includeChildren", false)
-                    .queryParam("codes", facility.getBoundaryCode())
-                    .toUriString();
+            if (!hasParentHierarchy(codes)) {
+                String blockBoundaryCode = deriveBlockBoundaryCode(
+                        facility.getBoundaryCode(), facility.getFacilityId());
+                if (blockBoundaryCode != null) {
+                    log.info(
+                            "Parent hierarchy missing for facility {}; resolving via block boundary {}",
+                            facility.getFacilityId(), blockBoundaryCode
+                    );
+                    BoundaryCodes blockHierarchy = fetchBoundaryHierarchyForCode(
+                            facility.getTenantId(),
+                            blockBoundaryCode,
+                            "Block",
+                            requestInfo
+                    );
+                    codes = mergeBoundaryCodes(blockHierarchy, codes, facility);
+                }
+            } else if (codes.getFacilityCode() == null) {
+                codes.setFacilityCode(facility.getBoundaryCode());
+            }
 
-            // Call boundary service
-            Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
-            Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
-
-            // Parse response and extract codes
-            return parseBoundaryHierarchy(response);
-
+            return codes;
         } catch (Exception e) {
-            log.error("Error fetching boundary hierarchy for facility {}: {}", 
-                     facility.getFacilityId(), e.getMessage(), e);
+            log.error("Error fetching boundary hierarchy for facility {}: {}",
+                    facility.getFacilityId(), e.getMessage(), e);
             return null;
         }
+    }
+
+    private BoundaryCodes fetchBoundaryHierarchyForCode(
+            String tenantId,
+            String boundaryCode,
+            String boundaryType,
+            RequestInfo requestInfo
+    ) {
+        Map<String, Object> requestBody =
+                requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+
+        String uri = UriComponentsBuilder.fromUriString(boundaryHost)
+                .path(boundaryRelationshipSearchPath)
+                .queryParam("tenantId", tenantId)
+                .queryParam("hierarchyType", configs.getBoundaryHierarchyType())
+                .queryParam("boundaryType", boundaryType)
+                .queryParam("includeParents", true)
+                .queryParam("includeChildren", false)
+                .queryParam("codes", boundaryCode)
+                .toUriString();
+
+        Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
+        Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
+        return parseBoundaryHierarchy(response);
+    }
+
+    private static boolean hasParentHierarchy(BoundaryCodes codes) {
+        return codes != null && codes.getBlockCode() != null && !codes.getBlockCode().isBlank();
+    }
+
+    private static String deriveBlockBoundaryCode(String facilityBoundaryCode, String facilityId) {
+        if (facilityBoundaryCode == null || facilityId == null) {
+            return null;
+        }
+        String suffix = "_" + facilityId;
+        if (!facilityBoundaryCode.endsWith(suffix)) {
+            return null;
+        }
+        return facilityBoundaryCode.substring(0, facilityBoundaryCode.length() - suffix.length());
+    }
+
+    private static BoundaryCodes mergeBoundaryCodes(
+            BoundaryCodes fromBlock,
+            BoundaryCodes fromFacility,
+            Facility facility
+    ) {
+        BoundaryCodes merged = new BoundaryCodes();
+        if (fromBlock != null) {
+            merged.setCountryCode(fromBlock.getCountryCode());
+            merged.setStateCode(fromBlock.getStateCode());
+            merged.setDistrictCode(fromBlock.getDistrictCode());
+            merged.setBlockCode(fromBlock.getBlockCode());
+        }
+        if (fromFacility != null && fromFacility.getFacilityCode() != null) {
+            merged.setFacilityCode(fromFacility.getFacilityCode());
+        } else if (facility.getBoundaryCode() != null) {
+            merged.setFacilityCode(facility.getBoundaryCode());
+        }
+        return merged;
     }
 
     /**
@@ -847,6 +912,49 @@ public class FacilityKibanaMapper {
             log.warn("Unable to fetch existing Kibana document for facility {} and tenant {}: {}",
                     facilityId, tenantId, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Deletes the Elasticsearch document(s) for a facility, matched by {@code Data.facilityId.keyword}
+     * (optionally scoped by tenant). Uses {@code _delete_by_query} so a missing document is a no-op.
+     *
+     * @return number of documents deleted, or {@code -1} when the delete call failed
+     */
+    @SuppressWarnings("unchecked")
+    public int deleteKibanaIndexByFacilityId(String facilityId, String tenantId) {
+        if (facilityId == null || facilityId.isBlank()) {
+            log.warn("Skipping Kibana delete: facilityId is null or blank");
+            return -1;
+        }
+
+        log.info("Deleting Kibana document(s) for facilityId={} tenantId={}", facilityId, tenantId);
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            Map<String, Object> deleteQuery = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses))
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_delete_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(deleteQuery, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> body = response != null ? response.getBody() : null;
+            int deleted = 0;
+            if (body != null && body.get("deleted") instanceof Number) {
+                deleted = ((Number) body.get("deleted")).intValue();
+            }
+            log.info("Deleted {} Kibana document(s) for facilityId={} tenantId={}", deleted, facilityId, tenantId);
+            return deleted;
+        } catch (Exception e) {
+            log.error("Unable to delete Kibana document for facility {} and tenant {}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
         }
     }
 }
