@@ -15,8 +15,12 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 @Slf4j
@@ -62,5 +66,24 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
         log.info("Total ActivityAssignments count is : " + count);
         return count;
+    }
+
+    public Map<String, String> getFirstPocNumbersByFieldPlanIds(List<String> fieldPlanIds) {
+        if (fieldPlanIds == null || fieldPlanIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        String placeholders = fieldPlanIds.stream().map(id -> "?").collect(Collectors.joining(", "));
+        String query = "SELECT DISTINCT ON (field_plan_id) field_plan_id, poc_number "
+                + "FROM activity_assignments "
+                + "WHERE field_plan_id IN (" + placeholders + ") AND COALESCE(isdeleted, false) = false "
+                + "ORDER BY field_plan_id, created_time ASC NULLS LAST";
+
+        Map<String, String> pocNumbersByFieldPlanId = new HashMap<>();
+        jdbcTemplate.query(query, rs -> {
+            pocNumbersByFieldPlanId.put(rs.getString("field_plan_id"), rs.getString("poc_number"));
+        }, fieldPlanIds.toArray());
+
+        return pocNumbersByFieldPlanId;
     }
 }
