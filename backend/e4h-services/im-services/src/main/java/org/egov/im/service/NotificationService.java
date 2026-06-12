@@ -49,6 +49,8 @@ public class NotificationService {
     private ObjectMapper mapper;
     private MultiStateInstanceUtil centralInstanceUtil;
 
+    private WorkflowSmsNotificationService workflowSmsNotificationService;
+
     @Autowired
     public NotificationService(IMConfiguration config,
                                NotificationUtil notificationUtil,
@@ -57,7 +59,8 @@ public class NotificationService {
                                HRMSUtil hrmsUtils,
                                ObjectMapper mapper,
                                MultiStateInstanceUtil centralInstanceUtil,
-                               @Lazy WorkflowService workflowService) {
+                               @Lazy WorkflowService workflowService,
+                               @Lazy WorkflowSmsNotificationService workflowSmsNotificationService) {
         this.config = config;
         this.notificationUtil = notificationUtil;
         this.serviceRequestRepository = serviceRequestRepository;
@@ -66,20 +69,21 @@ public class NotificationService {
         this.mapper = mapper;
         this.centralInstanceUtil = centralInstanceUtil;
         this.workflowService = workflowService;
+        this.workflowSmsNotificationService = workflowSmsNotificationService;
     }
 
     public void process(IncidentRequest request, String topic) {
         log.trace("NotificationService::process method invoked");
         try {
-            log.info("Processing notification request for incidentId={}, tenantId={}, topic={}", 
-                    request.getIncident().getIncidentId(), request.getIncident().getTenantId(), topic);
+            log.info("request for notification :" + request);
+            workflowSmsNotificationService.process(request);
             String tenantId = request.getIncident().getTenantId();
             IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(request.getIncident()).workflow(request.getWorkflow()).build();
             String applicationStatus = request.getIncident().getApplicationStatus();
             String action = request.getWorkflow().getAction();
 
             if (!(NOTIFICATION_ENABLE_FOR_STATUS.contains(action + "_" + applicationStatus))) {
-                log.debug("Notification disabled for state: {}, action: {}", applicationStatus, action);
+                log.info("Notification Disabled For State :" + applicationStatus);
                 return;
             }
 
@@ -90,7 +94,7 @@ public class NotificationService {
             String crmMobileNumber = null;
             Boolean crmUser = false;
 
-            if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(APPLY)) {
+            if (isTicketCreationNotification(applicationStatus, action)) {
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
                 employeeMobileNumber = reassigneeDetails.get("employeeMobile");
             } else if (applicationStatus.equalsIgnoreCase(PENDINGATVENDOR) && action.equalsIgnoreCase(ASSIGN)) {
@@ -210,9 +214,9 @@ public class NotificationService {
 
         String localisedStatus = notificationUtil.getCustomizedMsgForPlaceholder(localizationMessage, "CS_COMMON_" + incidentWrapper.getIncident().getApplicationStatus());
         /**
-         * Confirmation SMS to citizens, when they will raise any complaint
+         * Confirmation SMS when a complaint is raised (standard, RMS, or theft).
          */
-        if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDINGFORASSIGNMENT) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(APPLY)) {
+        if (isTicketCreationNotification(applicationStatus, incidentWrapper.getWorkflow().getAction())) {
             List<Role> roles = request.getRequestInfo().getUserInfo().getRoles();
             for (Role role : roles) {
                 if (role.getTenantId().equalsIgnoreCase("pg")) {
@@ -354,7 +358,7 @@ public class NotificationService {
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(REJECTED) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(REJECT)) {
             messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.warn("No message found for employee on topic: {}", topic);
+                log.info("No message Found For Employee On Topic : " + topic);
                 return null;
             }
 //
@@ -377,13 +381,13 @@ public class NotificationService {
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDINGFORASSIGNMENT) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(IM_WF_REOPEN)) {
             messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
             if (messageForCitizen == null) {
-                log.warn("No message found for citizen on topic: {}", topic);
+                log.info("No message Found For Citizen On Topic : " + topic);
                 return null;
             }
 
             messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.warn("No message found for employee on topic: {}", topic);
+                log.info("No message Found For Employee On Topic : " + topic);
                 return null;
             }
 
@@ -621,7 +625,7 @@ public class NotificationService {
         if (messageForCRM != null)
             message.put(CRM, Arrays.asList(messageForCRM));
 
-        log.debug("Notification messages prepared - employee: {}, citizen: {}, crm: {}", 
+        log.debug("Notification messages prepared - employee: {}, citizen: {}, crm: {}",
                 messageForEmployee != null ? "present" : "null",
                 messageForCitizen != null ? "present" : "null",
                 messageForCRM != null ? "present" : "null");
@@ -846,6 +850,8 @@ public class NotificationService {
         String tenantId = request.getIncident().getTenantId();
 
         StringBuilder url = hrmsUtils.getHRMSURI(uuids, tenantId, role, request.getIncident().getBoundaryCode());
+        url.append("&searchOnlyInBoundary=");
+        url.append(true);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder()
                 .requestInfo(request.getRequestInfo())
                 .build();
@@ -977,6 +983,17 @@ public class NotificationService {
         String uiAppHost = config.getUiAppHostMap().get(stateLevelTenantId);
         log.debug("Retrieved UI app host for tenantId: {}, stateLevelTenantId: {}", tenantId, stateLevelTenantId);
         return uiAppHost;
+    }
+
+    private boolean isTicketCreationNotification(String applicationStatus, String action) {
+        if (action == null || applicationStatus == null) {
+            return false;
+        }
+        return (PENDINGFORASSIGNMENT.equalsIgnoreCase(applicationStatus) && APPLY.equalsIgnoreCase(action))
+                || (PENDINGFORASSIGNMENT_RMS_DEVICE.equalsIgnoreCase(applicationStatus)
+                && APPLY_RMS_DEVICE.equalsIgnoreCase(action))
+                || (PENDINGFORASSIGNMENT_THEFT.equalsIgnoreCase(applicationStatus)
+                && APPLY_THEFT.equalsIgnoreCase(action));
     }
 
 }

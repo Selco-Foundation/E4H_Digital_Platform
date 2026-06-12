@@ -51,6 +51,10 @@ public class Workflow   {
         @JsonProperty("sendBackReason")
         private SendBackReason sendBackReason;
 
+        @SafeHtml
+        @JsonProperty("outOfScopeReason")
+        private String outOfScopeReason = null;
+
         public Workflow addAssignesItem(String assignesItem) {
             if (this.assignes == null) {
             this.assignes = new ArrayList<>();
