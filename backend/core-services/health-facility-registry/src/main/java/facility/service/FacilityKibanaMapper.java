@@ -909,5 +909,48 @@ public class FacilityKibanaMapper {
             return null;
         }
     }
+
+    /**
+     * Deletes the Elasticsearch document(s) for a facility, matched by {@code Data.facilityId.keyword}
+     * (optionally scoped by tenant). Uses {@code _delete_by_query} so a missing document is a no-op.
+     *
+     * @return number of documents deleted, or {@code -1} when the delete call failed
+     */
+    @SuppressWarnings("unchecked")
+    public int deleteKibanaIndexByFacilityId(String facilityId, String tenantId) {
+        if (facilityId == null || facilityId.isBlank()) {
+            log.warn("Skipping Kibana delete: facilityId is null or blank");
+            return -1;
+        }
+
+        log.info("Deleting Kibana document(s) for facilityId={} tenantId={}", facilityId, tenantId);
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            Map<String, Object> deleteQuery = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses))
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_delete_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(deleteQuery, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> body = response != null ? response.getBody() : null;
+            int deleted = 0;
+            if (body != null && body.get("deleted") instanceof Number) {
+                deleted = ((Number) body.get("deleted")).intValue();
+            }
+            log.info("Deleted {} Kibana document(s) for facilityId={} tenantId={}", deleted, facilityId, tenantId);
+            return deleted;
+        } catch (Exception e) {
+            log.error("Unable to delete Kibana document for facility {} and tenant {}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
+        }
+    }
 }
 
