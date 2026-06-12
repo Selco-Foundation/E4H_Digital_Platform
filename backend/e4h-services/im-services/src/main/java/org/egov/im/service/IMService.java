@@ -391,27 +391,27 @@ public class IMService {
         return request;
     }
 
-    public MigrationV2Request migrationV2Update(MigrationV2Request request){
-        String tenantId = request.getTenantId();
-        RequestSearchCriteria criteria = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDINGFORASSIGNMENT")).incidentType(Set.of("RMS Device")).build();
-        List<IncidentWrapper> response = search(request.getRequestInfo(), criteria);
-        if(response !=null && !response.isEmpty()){
-            for (IncidentWrapper wrapper: response){
-                wrapper.getIncident().setApplicationStatus("PENDINGFORASSIGNMENT_RMS_DEVICE");
-                producer.push(tenantId,config.getUpdateMigrationTopic(),wrapper);
-            }
-        }
-
-//        RequestSearchCriteria criteriaSparePart = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDING_ASSIGNMENT_SPARE_PART_NEEDED")).build();
-//        List<IncidentWrapper> responseSparePart = search(request.getRequestInfo(), criteriaSparePart);
-//        if(responseSparePart !=null && !responseSparePart.isEmpty()){
-//            for (IncidentWrapper wrapper: responseSparePart){
-//                wrapper.getIncident().setApplicationStatus("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+//    public MigrationV2Request migrationV2Update(MigrationV2Request request){
+//        String tenantId = request.getTenantId();
+//        RequestSearchCriteria criteria = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDINGFORASSIGNMENT")).incidentType(Set.of("RMS Device")).build();
+//        List<IncidentWrapper> response = search(request.getRequestInfo(), criteria);
+//        if(response !=null && !response.isEmpty()){
+//            for (IncidentWrapper wrapper: response){
+//                wrapper.getIncident().setApplicationStatus("PENDINGFORASSIGNMENT_RMS_DEVICE");
 //                producer.push(tenantId,config.getUpdateMigrationTopic(),wrapper);
 //            }
 //        }
-        return request;
-    }
+//
+////        RequestSearchCriteria criteriaSparePart = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDING_ASSIGNMENT_SPARE_PART_NEEDED")).build();
+////        List<IncidentWrapper> responseSparePart = search(request.getRequestInfo(), criteriaSparePart);
+////        if(responseSparePart !=null && !responseSparePart.isEmpty()){
+////            for (IncidentWrapper wrapper: responseSparePart){
+////                wrapper.getIncident().setApplicationStatus("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+////                producer.push(tenantId,config.getUpdateMigrationTopic(),wrapper);
+////            }
+////        }
+//        return request;
+//    }
 
     /**
      * Returns the total number of comaplaints matching the given criteria
