@@ -14,6 +14,7 @@ import '../pages/amc_rejection_reasons.dart';
 import '../pages/amc_report_home.dart';
 import '../pages/amc_select_facility.dart';
 import '../pages/asset_count.dart';
+import '../pages/asset_handover_document.dart';
 import '../pages/asset_summary.dart';
 import '../pages/asset_type_detail.dart';
 import '../pages/authenticated.dart';
@@ -133,7 +134,10 @@ class AppRouter extends _$AppRouter {
           AutoRoute(page: RoleSelectionRoute.page, path: Routes.roleSelection),
           AutoRoute(
               page: InstallationCompletionCertificateRoute.page,
-              path: Routes.installationCompletionCertificate)
+              path: Routes.installationCompletionCertificate),
+          AutoRoute(
+              page: AssetHandoverDocumentRoute.page,
+              path: Routes.assetHandoverDocument)
         ])
       ];
 }

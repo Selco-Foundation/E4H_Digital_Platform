@@ -175,7 +175,7 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
             label: '${m.actionWord} ${m.label}',
             onPressed: () async {
               final userType = _resolveUserType();
-              final result = await context.router.push(
+              await context.router.push(
                 DynamicFormsRoute(
                   pageName: m.pageName,
                   schemaName: m.schemaName,
@@ -194,9 +194,10 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
         ],
         if (visible.isNotEmpty)
           DigitButton(
-            label: "Installation Images",
+            label: context
+                .translate(i18.bomButtons.installationCompletionCertificate),
             onPressed: () => context.router.push(
-              InstallationImagesRoute(
+              InstallationCompletionCertificateRoute(
                 origin: widget.origin,
                 activityFacilityId: widget.projectId,
               ),
@@ -209,10 +210,24 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
         const SizedBox(height: spacer4),
         if (visible.isNotEmpty)
           DigitButton(
-            label: context
-                .translate(i18.bomButtons.installationCompletionCertificate),
+            label: context.translate(i18.bomButtons.assetHandoverDocument),
             onPressed: () => context.router.push(
-              InstallationCompletionCertificateRoute(
+              AssetHandoverDocumentRoute(
+                origin: widget.origin,
+                activityFacilityId: widget.projectId,
+              ),
+            ),
+            capitalizeLetters: false,
+            mainAxisSize: MainAxisSize.max,
+            type: DigitButtonType.secondary,
+            size: DigitButtonSize.large,
+          ),
+        const SizedBox(height: spacer4),
+        if (visible.isNotEmpty)
+          DigitButton(
+            label: "Installation Images",
+            onPressed: () => context.router.push(
+              InstallationImagesRoute(
                 origin: widget.origin,
                 activityFacilityId: widget.projectId,
               ),

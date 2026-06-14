@@ -34,6 +34,7 @@ import 'blocs/cache_add_new_asset/cache_add_new_asset.dart';
 import 'blocs/cache_asset/cache_asset.dart';
 import 'blocs/cache_asset_count/cache_asset_count.dart';
 import 'blocs/cache_asset_detail/cache_asset_detail.dart';
+import 'blocs/cache_asset_handover_document/cache_asset_handover_document.dart';
 import 'blocs/cache_completion_report/cache_completion_report.dart';
 import 'blocs/cache_installation_completion_certificate/cache_installation_completion_certificate.dart';
 import 'blocs/cache_media_upload/cache_media_upload.dart';
@@ -150,6 +151,9 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) =>
                     CacheInstallationCompletionCertificateBloc(widget.isar)),
+            BlocProvider(
+                create: (context) =>
+                    CacheAssetHandoverDocumentBloc(widget.isar)),
             BlocProvider(
                 create: (context) => InstallationImagesBloc(widget.isar)),
             BlocProvider(create: (context) => AmcOtpBloc(widget.isar)),

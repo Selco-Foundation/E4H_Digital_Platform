@@ -721,6 +721,7 @@ String inferFileTypeFromName(String name) {
 
 const String installationCompletionCertificateDocumentUidPrefix =
     'INSTALLATION-COMPLETION-CERTIFICATE-';
+const String assetHandoverDocumentUidPrefix = 'ASSET-HANDOVER-DOCUMENT-';
 
 String extensionOfFileName(String value) {
   final idx = value.lastIndexOf('.');
@@ -737,12 +738,16 @@ String normalizeCertificateFileType(String value) {
   return 'unknown';
 }
 
-String certificateFileTypeFromDocument(Document doc) {
+String normalizeHandoverDocumentFileType(String value) =>
+    normalizeCertificateFileType(value);
+
+String fileTypeFromDocumentUid(
+  Document doc, {
+  required String documentUidPrefix,
+}) {
   final uid = doc.documentUid ?? '';
-  if (uid.startsWith(installationCompletionCertificateDocumentUidPrefix)) {
-    final suffix = uid.substring(
-      installationCompletionCertificateDocumentUidPrefix.length,
-    );
+  if (uid.startsWith(documentUidPrefix)) {
+    final suffix = uid.substring(documentUidPrefix.length);
     final type = suffix.split('-').first;
     final normalized = normalizeCertificateFileType(type);
     if (normalized != 'unknown') return normalized;
@@ -757,6 +762,20 @@ String certificateFileTypeFromDocument(Document doc) {
   if (fromUid != 'unknown') return fromUid;
 
   return 'unknown';
+}
+
+String certificateFileTypeFromDocument(Document doc) {
+  return fileTypeFromDocumentUid(
+    doc,
+    documentUidPrefix: installationCompletionCertificateDocumentUidPrefix,
+  );
+}
+
+String assetHandoverDocumentFileTypeFromDocument(Document doc) {
+  return fileTypeFromDocumentUid(
+    doc,
+    documentUidPrefix: assetHandoverDocumentUidPrefix,
+  );
 }
 
 String getExtensionFromMime(String mimeType) {

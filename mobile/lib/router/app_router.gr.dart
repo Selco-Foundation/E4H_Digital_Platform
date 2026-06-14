@@ -89,6 +89,17 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AssetCountPage(),
       );
     },
+    AssetHandoverDocumentRoute.name: (routeData) {
+      final args = routeData.argsAs<AssetHandoverDocumentRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AssetHandoverDocumentPage(
+          key: args.key,
+          origin: args.origin,
+          activityFacilityId: args.activityFacilityId,
+        ),
+      );
+    },
     AssetSummaryRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -536,6 +547,50 @@ class AssetCountRoute extends PageRouteInfo<void> {
   static const String name = 'AssetCountRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssetHandoverDocumentPage]
+class AssetHandoverDocumentRoute
+    extends PageRouteInfo<AssetHandoverDocumentRouteArgs> {
+  AssetHandoverDocumentRoute({
+    Key? key,
+    required FormOrigin origin,
+    required String activityFacilityId,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AssetHandoverDocumentRoute.name,
+          args: AssetHandoverDocumentRouteArgs(
+            key: key,
+            origin: origin,
+            activityFacilityId: activityFacilityId,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'AssetHandoverDocumentRoute';
+
+  static const PageInfo<AssetHandoverDocumentRouteArgs> page =
+      PageInfo<AssetHandoverDocumentRouteArgs>(name);
+}
+
+class AssetHandoverDocumentRouteArgs {
+  const AssetHandoverDocumentRouteArgs({
+    this.key,
+    required this.origin,
+    required this.activityFacilityId,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  final String activityFacilityId;
+
+  @override
+  String toString() {
+    return 'AssetHandoverDocumentRouteArgs{key: $key, origin: $origin, activityFacilityId: $activityFacilityId}';
+  }
 }
 
 /// generated route for

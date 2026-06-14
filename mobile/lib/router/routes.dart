@@ -40,4 +40,5 @@ class Routes {
   static const roleSelection = 'role-selection';
   static const installationCompletionCertificate =
       'installation-completion-certificate';
+  static const assetHandoverDocument = 'asset-handover-document';
 }

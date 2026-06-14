@@ -28,6 +28,7 @@ const home = Home();
 const bomButtons = BomButtons();
 const installationImages = InstallationImages();
 const installationCompletionCertificate = InstallationCompletionCertificate();
+const assetHandoverDocument = AssetHandoverDocument();
 const overallAssetSummary = OverallAssetSummary();
 const submitForApproval = SubmitForApproval();
 const pdfViewer = PdfViewer();
@@ -370,6 +371,7 @@ class BomButtons {
   const BomButtons();
   String get installationCompletionCertificate =>
       'BOM_BUTTON_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get assetHandoverDocument => 'BOM_BUTTON_ASSET_HANDOVER_DOCUMENT';
 }
 
 class InstallationImages {
@@ -401,6 +403,20 @@ class InstallationCompletionCertificate {
   String get maxFileSize => 'INSTALLATION_COMPLETION_CERTIFICATE_MAX_FILE_SIZE';
 }
 
+class AssetHandoverDocument {
+  const AssetHandoverDocument();
+  String get title => 'ASSET_HANDOVER_DOCUMENT_TITLE';
+  String get uploadPrompt => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_PROMPT';
+  String get uploadPdf => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_PDF';
+  String get uploadRequired => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_REQUIRED';
+  String get maxFilesAllowed => 'ASSET_HANDOVER_DOCUMENT_MAX_FILES_ALLOWED';
+  String get filePathUnavailable =>
+      'ASSET_HANDOVER_DOCUMENT_FILE_PATH_UNAVAILABLE';
+  String get onlyPdfAllowed => 'ASSET_HANDOVER_DOCUMENT_ONLY_PDF_ALLOWED';
+  String get acceptedFormats => 'ASSET_HANDOVER_DOCUMENT_ACCEPTED_FORMATS';
+  String get maxFileSize => 'ASSET_HANDOVER_DOCUMENT_MAX_FILE_SIZE';
+}
+
 class OverallAssetSummary {
   const OverallAssetSummary();
   String get allAssetsSubmittedSuccessfully =>
@@ -412,6 +428,10 @@ class OverallAssetSummary {
       'OVERALL_ASSET_SUMMARY_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
   String get uploadRequiredInstallationCompletionCertificate =>
       'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get requiredAssetHandoverDocument =>
+      'OVERALL_ASSET_SUMMARY_REQUIRED_ASSET_HANDOVER_DOCUMENT';
+  String get uploadRequiredAssetHandoverDocument =>
+      'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_ASSET_HANDOVER_DOCUMENT';
 }
 
 class SubmitForApproval {
@@ -425,6 +445,10 @@ class SubmitForApproval {
       'SUBMIT_FOR_APPROVAL_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
   String get uploadRequiredInstallationCompletionCertificate =>
       'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get requiredAssetHandoverDocument =>
+      'SUBMIT_FOR_APPROVAL_REQUIRED_ASSET_HANDOVER_DOCUMENT';
+  String get uploadRequiredAssetHandoverDocument =>
+      'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_ASSET_HANDOVER_DOCUMENT';
   String get summary => 'SUBMIT_FOR_APPROVAL_SUMMARY';
   String get installationCompletionReport =>
       'SUBMIT_FOR_APPROVAL_INSTALLATION_COMPLETION_REPORT';
