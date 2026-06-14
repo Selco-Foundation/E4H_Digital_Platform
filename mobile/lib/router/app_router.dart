@@ -26,6 +26,7 @@ import '../pages/home.dart';
 import '../pages/image_viewer.dart';
 import '../pages/inbox.dart';
 import '../pages/inbox_asset_summary.dart';
+import '../pages/installation_completion_certificate.dart';
 import '../pages/installation_images.dart';
 import '../pages/installation_report_home.dart';
 import '../pages/login.dart';
@@ -130,6 +131,9 @@ class AppRouter extends _$AppRouter {
               page: InstallationImagesRoute.page,
               path: Routes.installationCompletionImages),
           AutoRoute(page: RoleSelectionRoute.page, path: Routes.roleSelection),
+          AutoRoute(
+              page: InstallationCompletionCertificateRoute.page,
+              path: Routes.installationCompletionCertificate)
         ])
       ];
 }

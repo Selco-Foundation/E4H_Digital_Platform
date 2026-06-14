@@ -26,6 +26,7 @@ import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
+import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -244,6 +245,17 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     );
   }
 
+  Future<bool> _hasInstallationCompletionCertificate() async {
+    if (_currentProjectId == null) return false;
+
+    final repo = InstallationCompletionCertificateRepository(
+      context.read<CacheAssetBloc>().isar,
+    );
+    return repo.hasCachedFiles(
+      activityFacilityId: _currentProjectId!,
+    );
+  }
+
   void _showInstallationImagesRequiredPopup() {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
@@ -260,6 +272,38 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         additionalWidgets: [
           Text(
             "Enter required installation images",
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showInstallationCompletionCertificateRequiredPopup() {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: context.translate(
+          i18.overallAssetSummary.requiredInstallationCompletionCertificate,
+        ),
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            context.translate(
+              i18.overallAssetSummary
+                  .uploadRequiredInstallationCompletionCertificate,
+            ),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -469,6 +513,13 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                         .SUPERVISOR.name &&
                                                 !await _hasInstallationImages()) {
                                               _showInstallationImagesRequiredPopup();
+                                              return;
+                                            }
+                                            if (resolvedUserType ==
+                                                    USER_TYPES
+                                                        .SUPERVISOR.name &&
+                                                !await _hasInstallationCompletionCertificate()) {
+                                              _showInstallationCompletionCertificateRequiredPopup();
                                               return;
                                             }
                                             await _ensureLocationLoaded();

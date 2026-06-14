@@ -719,6 +719,46 @@ String inferFileTypeFromName(String name) {
   return 'image';
 }
 
+const String installationCompletionCertificateDocumentUidPrefix =
+    'INSTALLATION-COMPLETION-CERTIFICATE-';
+
+String extensionOfFileName(String value) {
+  final idx = value.lastIndexOf('.');
+  if (idx == -1 || idx == value.length - 1) return '';
+  return value.substring(idx + 1).toLowerCase();
+}
+
+String normalizeCertificateFileType(String value) {
+  final normalized = value.toLowerCase().trim();
+  if (normalized == 'pdf' || normalized == 'image') return normalized;
+  if (normalized == 'jpg' || normalized == 'jpeg' || normalized == 'png') {
+    return 'image';
+  }
+  return 'unknown';
+}
+
+String certificateFileTypeFromDocument(Document doc) {
+  final uid = doc.documentUid ?? '';
+  if (uid.startsWith(installationCompletionCertificateDocumentUidPrefix)) {
+    final suffix = uid.substring(
+      installationCompletionCertificateDocumentUidPrefix.length,
+    );
+    final type = suffix.split('-').first;
+    final normalized = normalizeCertificateFileType(type);
+    if (normalized != 'unknown') return normalized;
+  }
+
+  final fromStore = normalizeCertificateFileType(
+    extensionOfFileName(doc.fileStore ?? ''),
+  );
+  if (fromStore != 'unknown') return fromStore;
+
+  final fromUid = normalizeCertificateFileType(extensionOfFileName(uid));
+  if (fromUid != 'unknown') return fromUid;
+
+  return 'unknown';
+}
+
 String getExtensionFromMime(String mimeType) {
   const map = {
     'image/jpeg': 'jpg',

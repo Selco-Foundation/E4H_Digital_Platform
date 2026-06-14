@@ -25,7 +25,9 @@ const amcReportHome = AmcReportHome();
 const amcMediaUpload = AmcMediaUpload();
 const amcSelectFacility = AmcSelectFacility();
 const home = Home();
+const bomButtons = BomButtons();
 const installationImages = InstallationImages();
+const installationCompletionCertificate = InstallationCompletionCertificate();
 const overallAssetSummary = OverallAssetSummary();
 const submitForApproval = SubmitForApproval();
 const pdfViewer = PdfViewer();
@@ -364,6 +366,12 @@ class Home {
   String get dataSync => 'HOME_DATA_SYNC';
 }
 
+class BomButtons {
+  const BomButtons();
+  String get installationCompletionCertificate =>
+      'BOM_BUTTON_INSTALLATION_COMPLETION_CERTIFICATE';
+}
+
 class InstallationImages {
   const InstallationImages();
   String get couldNotFetchLocation =>
@@ -374,6 +382,25 @@ class InstallationImages {
   String get back => 'INSTALLATION_IMAGES_BACK';
 }
 
+class InstallationCompletionCertificate {
+  const InstallationCompletionCertificate();
+  String get title => 'INSTALLATION_COMPLETION_CERTIFICATE_TITLE';
+  String get uploadPrompt =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_UPLOAD_PROMPT';
+  String get uploadPdf => 'INSTALLATION_COMPLETION_CERTIFICATE_UPLOAD_PDF';
+  String get uploadRequired =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_UPLOAD_REQUIRED';
+  String get maxFilesAllowed =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_MAX_FILES_ALLOWED';
+  String get filePathUnavailable =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_FILE_PATH_UNAVAILABLE';
+  String get onlyPdfAllowed =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_ONLY_PDF_ALLOWED';
+  String get acceptedFormats =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_ACCEPTED_FORMATS';
+  String get maxFileSize => 'INSTALLATION_COMPLETION_CERTIFICATE_MAX_FILE_SIZE';
+}
+
 class OverallAssetSummary {
   const OverallAssetSummary();
   String get allAssetsSubmittedSuccessfully =>
@@ -381,6 +408,10 @@ class OverallAssetSummary {
   String get addMoreAssets => 'OVERALL_ASSET_SUMMARY_ADD_MORE_ASSETS';
   String get errorLoadingCounts => 'OVERALL_ASSET_SUMMARY_ERROR_LOADING_COUNTS';
   String get upload => 'OVERALL_ASSET_SUMMARY_UPLOAD';
+  String get requiredInstallationCompletionCertificate =>
+      'OVERALL_ASSET_SUMMARY_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get uploadRequiredInstallationCompletionCertificate =>
+      'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
 }
 
 class SubmitForApproval {
@@ -390,6 +421,10 @@ class SubmitForApproval {
       'SUBMIT_FOR_APPROVAL_REQUIRED_INSTALLATION_IMAGES';
   String get enterRequiredInstallationImages =>
       'SUBMIT_FOR_APPROVAL_ENTER_REQUIRED_INSTALLATION_IMAGES';
+  String get requiredInstallationCompletionCertificate =>
+      'SUBMIT_FOR_APPROVAL_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get uploadRequiredInstallationCompletionCertificate =>
+      'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
   String get summary => 'SUBMIT_FOR_APPROVAL_SUMMARY';
   String get installationCompletionReport =>
       'SUBMIT_FOR_APPROVAL_INSTALLATION_COMPLETION_REPORT';

@@ -152,31 +152,33 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                           ),
                           children: [
                             TextSpan(
-                              text: "${context.translate(i18.amcOtp.amcOtpReceiverInstruction1)} ",
+                              text:
+                                  "${context.translate(i18.amcOtp.amcOtpReceiverInstruction1)} ",
                             ),
                             TextSpan(
-                              text: "${scheduledVisit?.facility?.facility_poc_name ?? '___'} ",
+                              text:
+                                  "${scheduledVisit?.facility?.facility_poc_name ?? '___'} ",
                               style: textTheme.bodyL.copyWith(
                                 color: theme.colorTheme.text.primary,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-
                             TextSpan(
-                              text: "${context.translate(i18.amcOtp.amcOtpReceiverInstruction2)} ",
+                              text:
+                                  "${context.translate(i18.amcOtp.amcOtpReceiverInstruction2)} ",
                             ),
-
                             TextSpan(
-                              text: context.translate(i18.amcOtp.amcOtpMaskedPhone),
+                              text: context
+                                  .translate(i18.amcOtp.amcOtpMaskedPhone),
                               style: textTheme.bodyL.copyWith(
                                 color: theme.colorTheme.text.primary,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-
                             TextSpan(
                               text: lastPhoneDigits(
-                                scheduledVisit?.facility?.facility_poc_phone ?? '****',
+                                scheduledVisit?.facility?.facility_poc_phone ??
+                                    '****',
                                 count: 4,
                               ),
                               style: textTheme.bodyL.copyWith(
@@ -238,7 +240,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                     ],
                   ),
                   Padding(
-                    padding: EdgeInsets.all(spacer2),
+                    padding: const EdgeInsets.all(spacer2),
                     child: InfoCard(
                       title: "",
                       type: InfoType.warning,

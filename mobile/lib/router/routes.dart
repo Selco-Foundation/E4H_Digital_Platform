@@ -38,4 +38,6 @@ class Routes {
   static const amcRejectionReasons = 'amc-rejection-reasons';
   static const installationCompletionImages = 'installationCompletionImages';
   static const roleSelection = 'role-selection';
+  static const installationCompletionCertificate =
+      'installation-completion-certificate';
 }

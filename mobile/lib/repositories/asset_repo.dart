@@ -8,6 +8,7 @@ import 'package:mime/mime.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../data/nosql/cache_installation_completion_certificate.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
@@ -351,7 +352,17 @@ class AssetRepository {
         for (var document in oldInstallationImages) {
           await isar.cacheInstallationImages.delete(document.id);
         }
+        final oldInstallationCompletionCertificates = await isar
+            .cacheInstallationCompletionCertificates
+            .where()
+            .activityFacilityIdEqualTo(activityFacilityId)
+            .findAll();
+        for (var document in oldInstallationCompletionCertificates) {
+          await isar.cacheInstallationCompletionCertificates
+              .delete(document.id);
+        }
 
+        var installationCompletionCertificateIndex = 0;
         for (var doc in activityFacility.workflow?.documents ?? []) {
           final docType = doc.documentType ?? '';
           if (docType.contains('INSTALLATION_IMAGE')) {
@@ -367,6 +378,23 @@ class AssetRepository {
               latitude: doc.geoLocation?.latitude?.toString() ?? '',
               longitude: doc.geoLocation?.longitude?.toString() ?? '',
             ));
+          } else if (docType == 'INSTALLATION_COMPLETION_CERTIFICATE') {
+            final fileStore = doc.fileStore ?? '';
+            if (fileStore.isEmpty) continue;
+            final fileType = certificateFileTypeFromDocument(doc);
+            await isar.cacheInstallationCompletionCertificates.put(
+              CacheInstallationCompletionCertificate(
+                activityFacilityId: activityFacilityId,
+                userType: userType,
+                entryId: '$activityFacilityId::$fileStore',
+                filePath: fileStore,
+                fileName: fileStore,
+                fileType: fileType,
+                latitude: doc.geoLocation?.latitude?.toString() ?? '',
+                longitude: doc.geoLocation?.longitude?.toString() ?? '',
+                index: installationCompletionCertificateIndex++,
+              ),
+            );
           } else if (docType != 'ASSET' &&
               !docType.contains('INSTALLATION_REPORT')) {
             final parts = docType.split('-');

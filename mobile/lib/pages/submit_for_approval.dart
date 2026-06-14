@@ -28,6 +28,7 @@ import '../model/comment/comment.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
+import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -279,6 +280,17 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     );
   }
 
+  Future<bool> _hasInstallationCompletionCertificate() async {
+    if (activityFacilityId.isEmpty) return false;
+
+    final repo = InstallationCompletionCertificateRepository(
+      context.read<CacheAssetBloc>().isar,
+    );
+    return repo.hasCachedFiles(
+      activityFacilityId: activityFacilityId,
+    );
+  }
+
   void _showInstallationImagesRequiredPopup() {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
@@ -297,6 +309,38 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
           Text(
             context.translate(
                 i18.submitForApproval.enterRequiredInstallationImages),
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showInstallationCompletionCertificateRequiredPopup() {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: context.translate(
+          i18.submitForApproval.requiredInstallationCompletionCertificate,
+        ),
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            context.translate(
+              i18.submitForApproval
+                  .uploadRequiredInstallationCompletionCertificate,
+            ),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -435,6 +479,11 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                             if (isSupervisor &&
                                 !await _hasInstallationImages()) {
                               _showInstallationImagesRequiredPopup();
+                              return;
+                            }
+                            if (isSupervisor &&
+                                !await _hasInstallationCompletionCertificate()) {
+                              _showInstallationCompletionCertificateRequiredPopup();
                               return;
                             }
                             await _ensureLocationLoaded();

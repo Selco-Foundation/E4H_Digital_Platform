@@ -10,6 +10,8 @@ import '../../blocs/activity_facility/activity_facility.dart';
 import '../../blocs/user_type/user_type.dart';
 import '../../repositories/dynamic_form_repo.dart';
 import '../../router/app_router.dart';
+import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 import '../../utils/utils.dart';
 import '../summary/summary.dart';
 
@@ -195,6 +197,22 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
             label: "Installation Images",
             onPressed: () => context.router.push(
               InstallationImagesRoute(
+                origin: widget.origin,
+                activityFacilityId: widget.projectId,
+              ),
+            ),
+            capitalizeLetters: false,
+            mainAxisSize: MainAxisSize.max,
+            type: DigitButtonType.secondary,
+            size: DigitButtonSize.large,
+          ),
+        const SizedBox(height: spacer4),
+        if (visible.isNotEmpty)
+          DigitButton(
+            label: context
+                .translate(i18.bomButtons.installationCompletionCertificate),
+            onPressed: () => context.router.push(
+              InstallationCompletionCertificateRoute(
                 origin: widget.origin,
                 activityFacilityId: widget.projectId,
               ),

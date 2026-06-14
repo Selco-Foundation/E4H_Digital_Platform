@@ -197,6 +197,18 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const InboxPage(),
       );
     },
+    InstallationCompletionCertificateRoute.name: (routeData) {
+      final args =
+          routeData.argsAs<InstallationCompletionCertificateRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: InstallationCompletionCertificatePage(
+          key: args.key,
+          origin: args.origin,
+          activityFacilityId: args.activityFacilityId,
+        ),
+      );
+    },
     InstallationImagesRoute.name: (routeData) {
       final args = routeData.argsAs<InstallationImagesRouteArgs>();
       return AutoRoutePage<dynamic>(
@@ -863,6 +875,50 @@ class InboxRoute extends PageRouteInfo<void> {
   static const String name = 'InboxRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [InstallationCompletionCertificatePage]
+class InstallationCompletionCertificateRoute
+    extends PageRouteInfo<InstallationCompletionCertificateRouteArgs> {
+  InstallationCompletionCertificateRoute({
+    Key? key,
+    required FormOrigin origin,
+    required String activityFacilityId,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InstallationCompletionCertificateRoute.name,
+          args: InstallationCompletionCertificateRouteArgs(
+            key: key,
+            origin: origin,
+            activityFacilityId: activityFacilityId,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InstallationCompletionCertificateRoute';
+
+  static const PageInfo<InstallationCompletionCertificateRouteArgs> page =
+      PageInfo<InstallationCompletionCertificateRouteArgs>(name);
+}
+
+class InstallationCompletionCertificateRouteArgs {
+  const InstallationCompletionCertificateRouteArgs({
+    this.key,
+    required this.origin,
+    required this.activityFacilityId,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  final String activityFacilityId;
+
+  @override
+  String toString() {
+    return 'InstallationCompletionCertificateRouteArgs{key: $key, origin: $origin, activityFacilityId: $activityFacilityId}';
+  }
 }
 
 /// generated route for

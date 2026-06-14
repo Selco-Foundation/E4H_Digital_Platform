@@ -14,6 +14,7 @@ import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_installation_completion_certificate.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_operation_checkpoint.dart';
@@ -31,6 +32,7 @@ import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
+import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../repositories/operation_progress_repo.dart';
 import '../repositories/scheduled_visit_repo.dart';
@@ -1117,17 +1119,26 @@ Future<void> _performSubmissionForActivityFacility({
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
         .findAll();
+    final completionCertificates = await isar
+        .cacheInstallationCompletionCertificates
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .findAll();
 
     final workflowMediaItems =
         workflowMedia.where((item) => item.filePath.isNotEmpty).toList();
     final installationImageItems =
         installationImages.where((item) => item.photoPath.isNotEmpty).toList();
+    final completionCertificateItems = completionCertificates
+        .where((item) => item.filePath.isNotEmpty)
+        .toList();
     final assetPhotoItems = assetsByType.values
         .expand((items) => items)
         .where((a) => a.photoPath.isNotEmpty)
         .toList();
     final totalAssetMediaUploads = workflowMediaItems.length +
         installationImageItems.length +
+        completionCertificateItems.length +
         assetPhotoItems.length;
 
     await _runUploadStage<CacheMediaUpload>(
@@ -1238,6 +1249,44 @@ Future<void> _performSubmissionForActivityFacility({
       },
     );
 
+    await _runUploadStage<CacheInstallationCompletionCertificate>(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      stageKey: 'uploading_asset_media',
+      completedSteps: 4,
+      items: completionCertificateItems,
+      totalItems: totalAssetMediaUploads,
+      service: service,
+      initialStageProgressCurrent: workflowMediaItems.length +
+          assetPhotoItems.length +
+          installationImageItems.length,
+      concurrency: 3,
+      run: (entry) async {
+        final itemKey = entry.id.toString();
+        final checkpoint = await _getCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'installation_completion_certificate_upload',
+          itemKey: itemKey,
+        );
+        if (checkpoint?.status == OperationCheckpointStatuses.success &&
+            (checkpoint?.remoteId?.isNotEmpty ?? false)) {
+          return;
+        }
+        final remoteId = await getFilestoreUrl(entry.filePath);
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'installation_completion_certificate_upload',
+          itemKey: itemKey,
+          status: OperationCheckpointStatuses.success,
+          remoteId: remoteId,
+        );
+      },
+    );
+
     final workflowDocuments = <Document>[];
     for (final media
         in workflowMedia.where((item) => item.filePath.isNotEmpty)) {
@@ -1279,6 +1328,31 @@ Future<void> _performSubmissionForActivityFacility({
           documentType: 'INSTALLATION_IMAGE-${entry.code}',
           fileStore: remoteId,
           documentUid: 'INSTALLATION-IMAGE-${entry.code}-${entry.id}',
+          geoLocation: GeoLocation(
+            latitude: entry.latitude,
+            longitude: entry.longitude,
+          ),
+        ),
+      );
+    }
+
+    final completionCertificateDocuments = <Document>[];
+    for (final entry in completionCertificateItems) {
+      final checkpoint = await _getCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'installation_completion_certificate_upload',
+        itemKey: entry.id.toString(),
+      );
+      final remoteId = checkpoint?.remoteId;
+      if (remoteId == null || remoteId.isEmpty) continue;
+      completionCertificateDocuments.add(
+        Document(
+          documentType: 'INSTALLATION_COMPLETION_CERTIFICATE',
+          fileStore: remoteId,
+          documentUid:
+              'INSTALLATION-COMPLETION-CERTIFICATE-${entry.fileType}-${entry.id}',
           geoLocation: GeoLocation(
             latitude: entry.latitude,
             longitude: entry.longitude,
@@ -1609,6 +1683,7 @@ Future<void> _performSubmissionForActivityFacility({
         documents: [
           ...workflowDocuments,
           ...installationImageDocuments,
+          ...completionCertificateDocuments,
           ...completionDocuments,
         ],
       );
@@ -1653,6 +1728,9 @@ Future<void> _performSubmissionForActivityFacility({
       await BomRepository()
           .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
       await InstallationImagesRepository(isar).deleteAllCachedImages(
+        activityFacilityId: activityFacilityId,
+      );
+      await InstallationCompletionCertificateRepository(isar).clearProject(
         activityFacilityId: activityFacilityId,
       );
       await workflowRepo.deleteWorkflowMediaDocs(
@@ -1793,6 +1871,9 @@ Future<void> _performRejectionForActivityFacility({
       await BomRepository()
           .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
       await InstallationImagesRepository(isar).deleteAllCachedImages(
+        activityFacilityId: activityFacilityId,
+      );
+      await InstallationCompletionCertificateRepository(isar).clearProject(
         activityFacilityId: activityFacilityId,
       );
       await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
