@@ -21,6 +21,7 @@ from app.utils.excel_utils import (
 from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
+    field_plan_facility_validation,
     collect_hfr_nin_errors_for_row,
     collect_anganwadi_poc_username_errors_for_row,
 )
@@ -38,7 +39,7 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
-    resolve_mapped_vendor_for_facility_row, \
+    resolve_mapped_vendor_for_facility_row, build_field_plan_facility_bulk_entry, \
     get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
     get_user_creation_payload_supervisors, \
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
@@ -2213,7 +2214,7 @@ async def validate_facilities_excel_sheet(
             df['error'] = ''
 
         # ----------------- Run Validation ----------------- #
-        validation_errors = project_facility_validation(
+        validation_errors = field_plan_facility_validation(
             df,
             mdms_client,
             request_info_obj,
@@ -2621,6 +2622,9 @@ async def create_fielplan_facilities(
         include_col = find_col("Included in Field Plan")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
+        system_type_col = find_col("System Type")
+        solution_design_type_col = find_col("Solution Design Type")
+        total_system_capacity_col = find_col("Total System Capacity")
 
         # add result columns if missing
         if 'Field Plan Linking Status' not in df.columns:
@@ -2706,7 +2710,18 @@ async def create_fielplan_facilities(
                                         df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
                                 if should_link:
-                                    pending_bulk_fieldplan_links.append((index, facility_id))
+                                    pending_bulk_fieldplan_links.append(
+                                        (
+                                            index,
+                                            build_field_plan_facility_bulk_entry(
+                                                row,
+                                                facility_id,
+                                                system_type_column=system_type_col,
+                                                total_system_capacity_column=total_system_capacity_col,
+                                                solution_design_type_column=solution_design_type_col,
+                                            ),
+                                        )
+                                    )
                                 else:
                                     df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
 
@@ -2722,16 +2737,17 @@ async def create_fielplan_facilities(
                     chunk_size = BULK_INGEST_CHUNK_SIZE
                     for i in range(0, len(pending_bulk_fieldplan_links), chunk_size):
                         chunk = pending_bulk_fieldplan_links[i:i + chunk_size]
-                        facility_ids_chunk = [facility_id for _, facility_id in chunk]
+                        facilities_chunk = [entry for _, entry in chunk]
                         try:
                             fieldplan_resp = fieldplan_client.create_fieldPlan_facility_bulk(
                                 request_info=request_info,
                                 fieldPlan_id=fieldplan_id,
-                                facility_ids=facility_ids_chunk
+                                facilities=facilities_chunk,
                             )
 
                             if fieldplan_resp.status_code in (200, 201, 202):
-                                for row_idx, facility_id in chunk:
+                                for row_idx, entry in chunk:
+                                    facility_id = entry["facilityId"]
                                     df.at[row_idx, 'Field Plan Linking Status'] = "Linked"
                                     fieldplan_linked_facility_ids.add(facility_id)
 

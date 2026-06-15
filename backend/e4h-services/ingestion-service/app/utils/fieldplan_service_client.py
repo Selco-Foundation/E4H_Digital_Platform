@@ -1,6 +1,7 @@
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
+import pandas as pd
 import requests
 
 from app.core.logging import AppLogger
@@ -49,27 +50,46 @@ class FieldPlanServiceClient:
             logger.error(f"Request error creating field plan facility: {req_err}", exc_info=True)
             raise req_err
 
-    def create_fieldPlan_facility_bulk(self, request_info: RequestInfo, fieldPlan_id: str, facility_ids: list[str]):
+    def create_fieldPlan_facility_bulk(
+        self,
+        request_info: RequestInfo,
+        fieldPlan_id: str,
+        facilities: List[Dict[str, Any]],
+    ):
+        """
+        Bulk-link facilities to a field plan.
+
+        Each item in ``facilities`` must contain ``facilityId`` and may include
+        ``additionalFields`` (schema/version/fields).
+        """
         url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/bulk/_create"
         headers = {
             "Content-Type": "application/json"
         }
+
+        field_plan_facilities = []
+        for facility in facilities:
+            entry: Dict[str, Any] = {
+                "facilityId": facility["facilityId"],
+                "fieldPlanId": fieldPlan_id,
+                "isdeleted": False,
+                "tenantId": "in",
+            }
+            additional_fields = facility.get("additionalFields")
+            if additional_fields:
+                entry["additionalFields"] = additional_fields
+            field_plan_facilities.append(entry)
+
         payload = {
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "FieldPlanFacilities": [
-                {
-                    "facilityId": facility_id,
-                    "fieldPlanId": fieldPlan_id,
-                    "isdeleted": False,
-                    "tenantId": "in"
-                }
-                for facility_id in facility_ids
-            ]
+            "FieldPlanFacilities": field_plan_facilities,
         }
-        logger.trace(f"Bulk creating field plan facilities: fieldplan_id={fieldPlan_id}, count={len(facility_ids)}")
+        logger.trace(
+            f"Bulk creating field plan facilities: fieldplan_id={fieldPlan_id}, count={len(facilities)}"
+        )
         try:
             response = requests.post(url, headers=headers, json=payload)
-            logger.info(f"Field plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facility_ids)}")
+            logger.info(f"Field plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facilities)}")
             logger.debug(f"Bulk create response status: {response.status_code}")
             return response
         except requests.exceptions.HTTPError as http_err:
