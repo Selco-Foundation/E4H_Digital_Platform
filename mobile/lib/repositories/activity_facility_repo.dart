@@ -133,13 +133,18 @@ class ActivityFacilityRemoteRepository {
     };
 
     try {
-      final resp = await dio.post(url,
-          data: body, options: Options(contentType: Headers.jsonContentType));
+      final resp = await dio.post(
+        url,
+        data: body,
+        options: Options(
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.bytes,
+        ),
+      );
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
           resp.statusCode != 204) {
-        throw Exception(
-            'Workflow update failed (${resp.statusCode}): ${resp.data}');
+        throw Exception('Workflow update failed (${resp.statusCode})');
       }
     } on DioError catch (dioErr) {
       throw DioErrorParser.parse(dioErr);

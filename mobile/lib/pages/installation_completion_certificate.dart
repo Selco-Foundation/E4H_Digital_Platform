@@ -501,6 +501,29 @@ class _InstallationCompletionCertificatePageState
             ),
           ),
         if (!_isViewOnly) ...[
+          Text(
+            context.translate(i18.common.iccAndHandoverUploadInstructions),
+            style:
+                textTheme.bodyL.copyWith(color: theme.colorTheme.text.primary),
+          ),
+          Text(
+            context.translate(
+                i18.installationCompletionCertificate.acceptedFormats),
+            style: textTheme.bodyS
+                .copyWith(color: theme.colorTheme.text.secondary),
+          ),
+          Text(
+            context
+                .translate(i18.installationCompletionCertificate.maxFileSize),
+            style: textTheme.bodyS
+                .copyWith(color: theme.colorTheme.text.secondary),
+          ),
+          Text(
+              context.translate(
+                  i18.installationCompletionCertificate.maxFilesAllowed),
+              style: textTheme.bodyS
+                  .copyWith(color: theme.colorTheme.text.secondary)),
+          const SizedBox(height: spacer1),
           ImageUploader(
             label: context.translate(i18.common.uploadImages),
             allowMultiples: true,
@@ -629,31 +652,6 @@ class _InstallationCompletionCertificatePageState
                     ),
                     const SizedBox(height: spacer4),
                     _buildUploadControls(theme, textTheme),
-                    const SizedBox(height: spacer4),
-                    InfoCard(
-                      title: "",
-                      type: InfoType.warning,
-                      capitalizedLetter: false,
-                      description: context.translate(
-                        i18.installationCompletionCertificate.acceptedFormats,
-                      ),
-                      additionalWidgets: [
-                        Text(
-                          context.translate(
-                            i18.installationCompletionCertificate.maxFileSize,
-                          ),
-                          style: textTheme.bodyS
-                              .copyWith(color: theme.colorTheme.text.secondary),
-                        ),
-                        const SizedBox(height: spacer1),
-                        Text(
-                            context.translate(i18
-                                .installationCompletionCertificate
-                                .maxFilesAllowed),
-                            style: textTheme.bodyS.copyWith(
-                                color: theme.colorTheme.text.secondary))
-                      ],
-                    )
                   ],
                 ),
               ),

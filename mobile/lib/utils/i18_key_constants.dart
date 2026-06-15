@@ -95,6 +95,8 @@ class Common {
   String get belowMinimum => 'CORE_COMMON_BELOW_MINIMUM';
   String get aboveMaximum => 'CORE_COMMON_ABOVE_MAXIMUM';
   String get pleaseCorrect => 'CORE_COMMON_PLEASE_CORRECT';
+  String get iccAndHandoverUploadInstructions =>
+      'ICC_AND_HANDOVER_UPLOAD_INSTRUCTIONS';
 }
 
 class Welcome {

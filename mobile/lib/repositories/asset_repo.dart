@@ -468,16 +468,20 @@ class AssetRepository {
     };
 
     try {
-      final resp = await _dio.post('/activity/v1/activities/workflow/update',
-          data: payload,
-          options: Options(contentType: Headers.jsonContentType));
+      final resp = await _dio.post(
+        '/activity/v1/activities/workflow/update',
+        data: payload,
+        options: Options(
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.bytes,
+        ),
+      );
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
           resp.statusCode != 204) {
         throw Exception('Rejection Failed with ${resp.statusCode}');
       }
     } on DioError catch (dioErr) {
-      final msg = dioErr.response?.data?.toString() ?? dioErr.message;
       throw DioErrorParser.parse(dioErr);
     }
   }
