@@ -8,10 +8,10 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:isar/isar.dart';
 
+import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
-import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_asset_handover_document.dart';
 import '../data/nosql/cache_completion_report.dart';
@@ -23,10 +23,10 @@ import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/nosql/cache_submission_job.dart';
 import '../data/secure_storage/secureStore.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset/asset.dart';
 import '../model/audit_details/audit_details.dart';
 import '../model/document/document.dart';
-import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/transaction/transaction.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
@@ -1040,16 +1040,6 @@ bool _isInstallBomPdfNameOrPath(String value) {
 
   final s = v.toLowerCase();
   return s.contains('installation') && s.contains('bom');
-}
-
-Future<void> _deleteLocalFileIfExists(String path) async {
-  if (path.trim().isEmpty) return;
-  try {
-    final f = File(path);
-    if (await f.exists()) {
-      await f.delete();
-    }
-  } catch (_) {}
 }
 
 Future<void> _performSubmissionForActivityFacility({

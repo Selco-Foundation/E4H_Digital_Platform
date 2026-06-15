@@ -6,7 +6,9 @@ import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_activity_facility_bom_values.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';
+import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_amc_doc.dart';
+import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
@@ -17,6 +19,20 @@ import '../utils/utils.dart';
 import 'activity_facility_repo.dart';
 
 final envConfigs = env.EnvironmentConfiguration.instance;
+
+class _AssetTypeBomSummary {
+  final String? make;
+  final String? capacity;
+  final String? quantity;
+  final String? batteryType;
+
+  const _AssetTypeBomSummary({
+    this.make,
+    this.capacity,
+    this.quantity,
+    this.batteryType,
+  });
+}
 
 class BomRepository {
   final Dio _dio = DioClient().dio;
@@ -69,10 +85,88 @@ class BomRepository {
         enriched['project_block'] = projectBlock.trim();
       }
 
+      final panelSummary = await _getAssetTypeBomSummary(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        assetType: ASSET_TYPES.PANEL.name.toLowerCase(),
+        capacitySelector: (asset) => asset.panelCapacity,
+      );
+      final batterySummary = await _getAssetTypeBomSummary(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        assetType: ASSET_TYPES.BATTERY.name.toLowerCase(),
+        capacitySelector: (asset) => asset.batteryCapacity,
+        includeBatteryType: true,
+      );
+
+      _putIfNotBlank(enriched, 'solar_module_make', panelSummary.make);
+      _putIfNotBlank(enriched, 'solar_module_capacity', panelSummary.capacity);
+      _putIfNotBlank(enriched, 'solar_module_qty', panelSummary.quantity);
+      _putIfNotBlank(enriched, 'solar_battery_make', batterySummary.make);
+      _putIfNotBlank(
+          enriched, 'solar_battery_capacity', batterySummary.capacity);
+      _putIfNotBlank(enriched, 'solar_battery_qty', batterySummary.quantity);
+      _putIfNotBlank(enriched, 'disp_battery_type', batterySummary.batteryType);
+
       return enriched;
     } catch (_) {
       return bomData;
     }
+  }
+
+  Future<_AssetTypeBomSummary> _getAssetTypeBomSummary({
+    required Isar isar,
+    required String activityFacilityId,
+    required String assetType,
+    required String? Function(CacheAddNewAsset asset) capacitySelector,
+    bool includeBatteryType = false,
+  }) async {
+    final assets = await isar.cacheAddNewAssets
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .filter()
+        .assetTypeEqualTo(assetType)
+        .findAll();
+
+    if (assets.isEmpty) return const _AssetTypeBomSummary();
+
+    final detail = await isar.cacheAssetDetails
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .filter()
+        .assetTypeEqualTo(assetType)
+        .findFirst();
+
+    return _AssetTypeBomSummary(
+      make: _blankToNull(detail?.brand),
+      capacity: _firstNonBlank(assets.map(capacitySelector)),
+      quantity: assets.length.toString(),
+      batteryType: includeBatteryType
+          ? _firstNonBlank(assets.map((asset) => asset.batteryType))
+          : null,
+    );
+  }
+
+  void _putIfNotBlank(
+    Map<String, dynamic> values,
+    String key,
+    String? value,
+  ) {
+    final cleaned = _blankToNull(value);
+    if (cleaned != null) values[key] = cleaned;
+  }
+
+  static String? _firstNonBlank(Iterable<String?> values) {
+    for (final value in values) {
+      final cleaned = _blankToNull(value);
+      if (cleaned != null) return cleaned;
+    }
+    return null;
+  }
+
+  static String? _blankToNull(String? value) {
+    final cleaned = value?.trim();
+    return cleaned == null || cleaned.isEmpty ? null : cleaned;
   }
 
   String? _formatProjectDate(dynamic af) {
