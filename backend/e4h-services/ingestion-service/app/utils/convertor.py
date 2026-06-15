@@ -507,6 +507,84 @@ def safe_get(row, key, default=None):
     return default if pd.isna(val) else val
 
 
+def _cell_str(val: Any) -> str:
+    if pd.isna(val):
+        return ""
+    return str(val).strip()
+
+
+def build_field_plan_facility_additional_details(
+    row: Series,
+    system_type_column: Optional[str] = None,
+    total_system_capacity_column: Optional[str] = None,
+    solution_design_type_column: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Extract solar configuration values from an Excel row."""
+    details: Dict[str, Any] = {}
+    if system_type_column:
+        system_type = _cell_str(row.get(system_type_column, ""))
+        if system_type:
+            details["systemType"] = system_type
+    if solution_design_type_column:
+        solution_design_type = _cell_str(row.get(solution_design_type_column, ""))
+        if solution_design_type:
+            details["solarSolutionDesignType"] = solution_design_type
+    if total_system_capacity_column:
+        capacity = _cell_str(row.get(total_system_capacity_column, ""))
+        if capacity:
+            details["totalSystemCapacity"] = capacity
+    return details or None
+
+
+def build_field_plan_facility_additional_fields(
+    additional_details: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Map flat additionalDetails to additionalFields (persisted in additional_details column)."""
+    if not additional_details:
+        return None
+    fields = []
+    if additional_details.get("systemType"):
+        fields.append({"key": "systemType", "value": str(additional_details["systemType"])})
+    if additional_details.get("solarSolutionDesignType"):
+        fields.append(
+            {
+                "key": "solarSolutionDesignType",
+                "value": str(additional_details["solarSolutionDesignType"]),
+            }
+        )
+    if additional_details.get("totalSystemCapacity"):
+        fields.append(
+            {"key": "totalSystemCapacity", "value": str(additional_details["totalSystemCapacity"])}
+        )
+    if not fields:
+        return None
+    return {
+        "schema": "FieldPlanFacility",
+        "version": 1,
+        "fields": fields,
+    }
+
+
+def build_field_plan_facility_bulk_entry(
+    row: Series,
+    facility_id: str,
+    system_type_column: Optional[str] = None,
+    total_system_capacity_column: Optional[str] = None,
+    solution_design_type_column: Optional[str] = None,
+) -> Dict[str, Any]:
+    additional_details = build_field_plan_facility_additional_details(
+        row,
+        system_type_column=system_type_column,
+        total_system_capacity_column=total_system_capacity_column,
+        solution_design_type_column=solution_design_type_column,
+    )
+    entry: Dict[str, Any] = {"facilityId": facility_id}
+    additional_fields = build_field_plan_facility_additional_fields(additional_details)
+    if additional_fields:
+        entry["additionalFields"] = additional_fields
+    return entry
+
+
 def create_facility_payload(
         request_info: RequestInfo,
         row: Series,

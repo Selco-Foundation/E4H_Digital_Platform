@@ -125,6 +125,18 @@ class MDMSClient:
         result["column_list"] = column_list
         return result
 
+    def fetch_mdms_records(self, request_info: RequestInfo, schema_code: str) -> List[Dict[str, Any]]:
+        """Return active MDMS data rows for a schema (e.g. facility.FacilitySolarConfigurationRule)."""
+        response = self.fetch_schema_column_definitions(request_info, schema_code)
+        if not response.mdms:
+            return []
+        records: List[Dict[str, Any]] = []
+        for mdms in response.mdms:
+            if not self._is_active_mdms_entry(mdms) or not mdms.data:
+                continue
+            records.append(mdms.data.model_dump())
+        return records
+
     def get_tenant_mapping(self, request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
         all_tenant_data = {}
 
