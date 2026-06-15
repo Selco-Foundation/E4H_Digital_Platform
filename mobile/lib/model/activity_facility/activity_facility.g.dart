@@ -6408,84 +6408,491 @@ extension FacilityDetailsQueryObject
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
 
+const FacilityAdditionalDetailsSchema = Schema(
+  name: r'FacilityAdditionalDetails',
+  id: -69533196354627102,
+  properties: {
+    r'mappedVendorName': PropertySchema(
+      id: 0,
+      name: r'mappedVendorName',
+      type: IsarType.string,
+    ),
+    r'mappedVendorUserName': PropertySchema(
+      id: 1,
+      name: r'mappedVendorUserName',
+      type: IsarType.string,
+    )
+  },
+  estimateSize: _facilityAdditionalDetailsEstimateSize,
+  serialize: _facilityAdditionalDetailsSerialize,
+  deserialize: _facilityAdditionalDetailsDeserialize,
+  deserializeProp: _facilityAdditionalDetailsDeserializeProp,
+);
+
+int _facilityAdditionalDetailsEstimateSize(
+  FacilityAdditionalDetails object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  {
+    final value = object.mappedVendorName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.mappedVendorUserName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  return bytesCount;
+}
+
+void _facilityAdditionalDetailsSerialize(
+  FacilityAdditionalDetails object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeString(offsets[0], object.mappedVendorName);
+  writer.writeString(offsets[1], object.mappedVendorUserName);
+}
+
+FacilityAdditionalDetails _facilityAdditionalDetailsDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = FacilityAdditionalDetails();
+  object.mappedVendorName = reader.readStringOrNull(offsets[0]);
+  object.mappedVendorUserName = reader.readStringOrNull(offsets[1]);
+  return object;
+}
+
+P _facilityAdditionalDetailsDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readStringOrNull(offset)) as P;
+    case 1:
+      return (reader.readStringOrNull(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+extension FacilityAdditionalDetailsQueryFilter on QueryBuilder<
+    FacilityAdditionalDetails, FacilityAdditionalDetails, QFilterCondition> {
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'mappedVendorName',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'mappedVendorName',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'mappedVendorName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'mappedVendorName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'mappedVendorName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'mappedVendorName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'mappedVendorName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'mappedVendorName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+          QAfterFilterCondition>
+      mappedVendorNameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'mappedVendorName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+          QAfterFilterCondition>
+      mappedVendorNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'mappedVendorName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'mappedVendorName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'mappedVendorName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'mappedVendorUserName',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'mappedVendorUserName',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'mappedVendorUserName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'mappedVendorUserName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'mappedVendorUserName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'mappedVendorUserName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'mappedVendorUserName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'mappedVendorUserName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+          QAfterFilterCondition>
+      mappedVendorUserNameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'mappedVendorUserName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+          QAfterFilterCondition>
+      mappedVendorUserNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'mappedVendorUserName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'mappedVendorUserName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityAdditionalDetails, FacilityAdditionalDetails,
+      QAfterFilterCondition> mappedVendorUserNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'mappedVendorUserName',
+        value: '',
+      ));
+    });
+  }
+}
+
+extension FacilityAdditionalDetailsQueryObject on QueryBuilder<
+    FacilityAdditionalDetails, FacilityAdditionalDetails, QFilterCondition> {}
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
 const FacilitySchema = Schema(
   name: r'Facility',
   id: -1716346399248053847,
   properties: {
-    r'address': PropertySchema(
+    r'additionalDetails': PropertySchema(
       id: 0,
+      name: r'additionalDetails',
+      type: IsarType.object,
+      target: r'FacilityAdditionalDetails',
+    ),
+    r'address': PropertySchema(
+      id: 1,
       name: r'address',
       type: IsarType.object,
       target: r'FacilityAddress',
     ),
     r'boundaryCode': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'boundaryCode',
       type: IsarType.string,
     ),
     r'facilityDetails': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'facilityDetails',
       type: IsarType.object,
       target: r'FacilityDetails',
     ),
     r'facilityId': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'facilityId',
       type: IsarType.string,
     ),
     r'facilityName': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'facilityName',
       type: IsarType.string,
     ),
     r'facilityRegion': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'facilityRegion',
       type: IsarType.string,
     ),
     r'facilityType': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'facilityType',
       type: IsarType.string,
     ),
     r'facility_category': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'facility_category',
       type: IsarType.string,
     ),
     r'facility_ownership': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'facility_ownership',
       type: IsarType.string,
     ),
     r'facility_poc_name': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'facility_poc_name',
       type: IsarType.string,
     ),
     r'facility_poc_phone': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'facility_poc_phone',
       type: IsarType.string,
     ),
     r'facility_subtype': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'facility_subtype',
       type: IsarType.string,
     ),
     r'isActive': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'isActive',
       type: IsarType.bool,
     ),
     r'tenantId': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'tenantId',
       type: IsarType.string,
     ),
     r'wfStatus': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'wfStatus',
       type: IsarType.string,
     )
@@ -6502,6 +6909,14 @@ int _facilityEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.additionalDetails;
+    if (value != null) {
+      bytesCount += 3 +
+          FacilityAdditionalDetailsSchema.estimateSize(
+              value, allOffsets[FacilityAdditionalDetails]!, allOffsets);
+    }
+  }
   {
     final value = object.address;
     if (value != null) {
@@ -6599,31 +7014,37 @@ void _facilitySerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeObject<FacilityAddress>(
+  writer.writeObject<FacilityAdditionalDetails>(
     offsets[0],
+    allOffsets,
+    FacilityAdditionalDetailsSchema.serialize,
+    object.additionalDetails,
+  );
+  writer.writeObject<FacilityAddress>(
+    offsets[1],
     allOffsets,
     FacilityAddressSchema.serialize,
     object.address,
   );
-  writer.writeString(offsets[1], object.boundaryCode);
+  writer.writeString(offsets[2], object.boundaryCode);
   writer.writeObject<FacilityDetails>(
-    offsets[2],
+    offsets[3],
     allOffsets,
     FacilityDetailsSchema.serialize,
     object.facilityDetails,
   );
-  writer.writeString(offsets[3], object.facilityId);
-  writer.writeString(offsets[4], object.facilityName);
-  writer.writeString(offsets[5], object.facilityRegion);
-  writer.writeString(offsets[6], object.facilityType);
-  writer.writeString(offsets[7], object.facility_category);
-  writer.writeString(offsets[8], object.facility_ownership);
-  writer.writeString(offsets[9], object.facility_poc_name);
-  writer.writeString(offsets[10], object.facility_poc_phone);
-  writer.writeString(offsets[11], object.facility_subtype);
-  writer.writeBool(offsets[12], object.isActive);
-  writer.writeString(offsets[13], object.tenantId);
-  writer.writeString(offsets[14], object.wfStatus);
+  writer.writeString(offsets[4], object.facilityId);
+  writer.writeString(offsets[5], object.facilityName);
+  writer.writeString(offsets[6], object.facilityRegion);
+  writer.writeString(offsets[7], object.facilityType);
+  writer.writeString(offsets[8], object.facility_category);
+  writer.writeString(offsets[9], object.facility_ownership);
+  writer.writeString(offsets[10], object.facility_poc_name);
+  writer.writeString(offsets[11], object.facility_poc_phone);
+  writer.writeString(offsets[12], object.facility_subtype);
+  writer.writeBool(offsets[13], object.isActive);
+  writer.writeString(offsets[14], object.tenantId);
+  writer.writeString(offsets[15], object.wfStatus);
 }
 
 Facility _facilityDeserialize(
@@ -6633,29 +7054,34 @@ Facility _facilityDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Facility();
-  object.address = reader.readObjectOrNull<FacilityAddress>(
+  object.additionalDetails = reader.readObjectOrNull<FacilityAdditionalDetails>(
     offsets[0],
+    FacilityAdditionalDetailsSchema.deserialize,
+    allOffsets,
+  );
+  object.address = reader.readObjectOrNull<FacilityAddress>(
+    offsets[1],
     FacilityAddressSchema.deserialize,
     allOffsets,
   );
-  object.boundaryCode = reader.readStringOrNull(offsets[1]);
+  object.boundaryCode = reader.readStringOrNull(offsets[2]);
   object.facilityDetails = reader.readObjectOrNull<FacilityDetails>(
-    offsets[2],
+    offsets[3],
     FacilityDetailsSchema.deserialize,
     allOffsets,
   );
-  object.facilityId = reader.readStringOrNull(offsets[3]);
-  object.facilityName = reader.readStringOrNull(offsets[4]);
-  object.facilityRegion = reader.readStringOrNull(offsets[5]);
-  object.facilityType = reader.readStringOrNull(offsets[6]);
-  object.facility_category = reader.readStringOrNull(offsets[7]);
-  object.facility_ownership = reader.readStringOrNull(offsets[8]);
-  object.facility_poc_name = reader.readStringOrNull(offsets[9]);
-  object.facility_poc_phone = reader.readStringOrNull(offsets[10]);
-  object.facility_subtype = reader.readStringOrNull(offsets[11]);
-  object.isActive = reader.readBoolOrNull(offsets[12]);
-  object.tenantId = reader.readStringOrNull(offsets[13]);
-  object.wfStatus = reader.readStringOrNull(offsets[14]);
+  object.facilityId = reader.readStringOrNull(offsets[4]);
+  object.facilityName = reader.readStringOrNull(offsets[5]);
+  object.facilityRegion = reader.readStringOrNull(offsets[6]);
+  object.facilityType = reader.readStringOrNull(offsets[7]);
+  object.facility_category = reader.readStringOrNull(offsets[8]);
+  object.facility_ownership = reader.readStringOrNull(offsets[9]);
+  object.facility_poc_name = reader.readStringOrNull(offsets[10]);
+  object.facility_poc_phone = reader.readStringOrNull(offsets[11]);
+  object.facility_subtype = reader.readStringOrNull(offsets[12]);
+  object.isActive = reader.readBoolOrNull(offsets[13]);
+  object.tenantId = reader.readStringOrNull(offsets[14]);
+  object.wfStatus = reader.readStringOrNull(offsets[15]);
   return object;
 }
 
@@ -6667,21 +7093,25 @@ P _facilityDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
+      return (reader.readObjectOrNull<FacilityAdditionalDetails>(
+        offset,
+        FacilityAdditionalDetailsSchema.deserialize,
+        allOffsets,
+      )) as P;
+    case 1:
       return (reader.readObjectOrNull<FacilityAddress>(
         offset,
         FacilityAddressSchema.deserialize,
         allOffsets,
       )) as P;
-    case 1:
-      return (reader.readStringOrNull(offset)) as P;
     case 2:
+      return (reader.readStringOrNull(offset)) as P;
+    case 3:
       return (reader.readObjectOrNull<FacilityDetails>(
         offset,
         FacilityDetailsSchema.deserialize,
         allOffsets,
       )) as P;
-    case 3:
-      return (reader.readStringOrNull(offset)) as P;
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
@@ -6699,10 +7129,12 @@ P _facilityDeserializeProp<P>(
     case 11:
       return (reader.readStringOrNull(offset)) as P;
     case 12:
-      return (reader.readBoolOrNull(offset)) as P;
-    case 13:
       return (reader.readStringOrNull(offset)) as P;
+    case 13:
+      return (reader.readBoolOrNull(offset)) as P;
     case 14:
+      return (reader.readStringOrNull(offset)) as P;
+    case 15:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -6711,6 +7143,24 @@ P _facilityDeserializeProp<P>(
 
 extension FacilityQueryFilter
     on QueryBuilder<Facility, Facility, QFilterCondition> {
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      additionalDetailsIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'additionalDetails',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      additionalDetailsIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'additionalDetails',
+      ));
+    });
+  }
+
   QueryBuilder<Facility, Facility, QAfterFilterCondition> addressIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -8590,6 +9040,13 @@ extension FacilityQueryFilter
 
 extension FacilityQueryObject
     on QueryBuilder<Facility, Facility, QFilterCondition> {
+  QueryBuilder<Facility, Facility, QAfterFilterCondition> additionalDetails(
+      FilterQuery<FacilityAdditionalDetails> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'additionalDetails');
+    });
+  }
+
   QueryBuilder<Facility, Facility, QAfterFilterCondition> address(
       FilterQuery<FacilityAddress> q) {
     return QueryBuilder.apply(this, (query) {
@@ -8637,29 +9094,34 @@ const FieldPlanSchema = Schema(
       name: r'name',
       type: IsarType.string,
     ),
-    r'project': PropertySchema(
+    r'poWoNumber': PropertySchema(
       id: 5,
+      name: r'poWoNumber',
+      type: IsarType.string,
+    ),
+    r'project': PropertySchema(
+      id: 6,
       name: r'project',
       type: IsarType.object,
       target: r'Project',
     ),
     r'startDate': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'startDate',
       type: IsarType.long,
     ),
     r'startDateTime': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'startDateTime',
       type: IsarType.dateTime,
     ),
     r'status': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'status',
       type: IsarType.string,
     ),
     r'tenantId': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'tenantId',
       type: IsarType.string,
     )
@@ -8684,6 +9146,12 @@ int _fieldPlanEstimateSize(
   }
   {
     final value = object.name;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.poWoNumber;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -8721,16 +9189,17 @@ void _fieldPlanSerialize(
   writer.writeLong(offsets[2], object.healthFacilityNumber);
   writer.writeString(offsets[3], object.id);
   writer.writeString(offsets[4], object.name);
+  writer.writeString(offsets[5], object.poWoNumber);
   writer.writeObject<Project>(
-    offsets[5],
+    offsets[6],
     allOffsets,
     ProjectSchema.serialize,
     object.project,
   );
-  writer.writeLong(offsets[6], object.startDate);
-  writer.writeDateTime(offsets[7], object.startDateTime);
-  writer.writeString(offsets[8], object.status);
-  writer.writeString(offsets[9], object.tenantId);
+  writer.writeLong(offsets[7], object.startDate);
+  writer.writeDateTime(offsets[8], object.startDateTime);
+  writer.writeString(offsets[9], object.status);
+  writer.writeString(offsets[10], object.tenantId);
 }
 
 FieldPlan _fieldPlanDeserialize(
@@ -8744,14 +9213,15 @@ FieldPlan _fieldPlanDeserialize(
   object.healthFacilityNumber = reader.readLongOrNull(offsets[2]);
   object.id = reader.readStringOrNull(offsets[3]);
   object.name = reader.readStringOrNull(offsets[4]);
+  object.poWoNumber = reader.readStringOrNull(offsets[5]);
   object.project = reader.readObjectOrNull<Project>(
-    offsets[5],
+    offsets[6],
     ProjectSchema.deserialize,
     allOffsets,
   );
-  object.startDateTime = reader.readDateTimeOrNull(offsets[7]);
-  object.status = reader.readStringOrNull(offsets[8]);
-  object.tenantId = reader.readStringOrNull(offsets[9]);
+  object.startDateTime = reader.readDateTimeOrNull(offsets[8]);
+  object.status = reader.readStringOrNull(offsets[9]);
+  object.tenantId = reader.readStringOrNull(offsets[10]);
   return object;
 }
 
@@ -8773,18 +9243,20 @@ P _fieldPlanDeserializeProp<P>(
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
+      return (reader.readStringOrNull(offset)) as P;
+    case 6:
       return (reader.readObjectOrNull<Project>(
         offset,
         ProjectSchema.deserialize,
         allOffsets,
       )) as P;
-    case 6:
-      return (reader.readLongOrNull(offset)) as P;
     case 7:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 8:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 9:
+      return (reader.readStringOrNull(offset)) as P;
+    case 10:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -9295,6 +9767,157 @@ extension FieldPlanQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'name',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition> poWoNumberIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'poWoNumber',
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition>
+      poWoNumberIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'poWoNumber',
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition> poWoNumberEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'poWoNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition>
+      poWoNumberGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'poWoNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition> poWoNumberLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'poWoNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition> poWoNumberBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'poWoNumber',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition>
+      poWoNumberStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'poWoNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition> poWoNumberEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'poWoNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition> poWoNumberContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'poWoNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition> poWoNumberMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'poWoNumber',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition>
+      poWoNumberIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'poWoNumber',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FieldPlan, FieldPlan, QAfterFilterCondition>
+      poWoNumberIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'poWoNumber',
         value: '',
       ));
     });

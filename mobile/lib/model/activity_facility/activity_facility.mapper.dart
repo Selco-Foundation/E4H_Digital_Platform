@@ -687,6 +687,9 @@ class FieldPlanMapper extends ClassMapperBase<FieldPlan> {
   static const Field<FieldPlan, int> _f$healthFacilityNumber = Field(
       'healthFacilityNumber', _$healthFacilityNumber,
       mode: FieldMode.member);
+  static String? _$poWoNumber(FieldPlan v) => v.poWoNumber;
+  static const Field<FieldPlan, String> _f$poWoNumber =
+      Field('poWoNumber', _$poWoNumber, key: 'poc_number');
   static DateTime? _$startDateTime(FieldPlan v) => v.startDateTime;
   static const Field<FieldPlan, DateTime> _f$startDateTime =
       Field('startDateTime', _$startDateTime, mode: FieldMode.member);
@@ -704,6 +707,7 @@ class FieldPlanMapper extends ClassMapperBase<FieldPlan> {
     #name: _f$name,
     #status: _f$status,
     #healthFacilityNumber: _f$healthFacilityNumber,
+    #poWoNumber: _f$poWoNumber,
     #startDateTime: _f$startDateTime,
     #endDateTime: _f$endDateTime,
     #project: _f$project,
@@ -829,6 +833,10 @@ class FacilityMapper extends ClassMapperBase<Facility> {
   static String? _$facilityRegion(Facility v) => v.facilityRegion;
   static const Field<Facility, String> _f$facilityRegion =
       Field('facilityRegion', _$facilityRegion, key: 'facility_region');
+  static FacilityAdditionalDetails? _$additionalDetails(Facility v) =>
+      v.additionalDetails;
+  static const Field<Facility, FacilityAdditionalDetails> _f$additionalDetails =
+      Field('additionalDetails', _$additionalDetails, mode: FieldMode.member);
   static FacilityDetails? _$facilityDetails(Facility v) => v.facilityDetails;
   static const Field<Facility, FacilityDetails> _f$facilityDetails =
       Field('facilityDetails', _$facilityDetails, key: 'facility_details');
@@ -859,6 +867,7 @@ class FacilityMapper extends ClassMapperBase<Facility> {
     #facilityName: _f$facilityName,
     #facilityType: _f$facilityType,
     #facilityRegion: _f$facilityRegion,
+    #additionalDetails: _f$additionalDetails,
     #facilityDetails: _f$facilityDetails,
     #facility_subtype: _f$facility_subtype,
     #facility_category: _f$facility_category,
@@ -1386,6 +1395,130 @@ class _FacilityDetailsCopyWithImpl<$R, $Out>
   FacilityDetailsCopyWith<$R2, FacilityDetails, $Out2> $chain<$R2, $Out2>(
           Then<$Out2, $R2> t) =>
       _FacilityDetailsCopyWithImpl($value, $cast, t);
+}
+
+class FacilityAdditionalDetailsMapper
+    extends ClassMapperBase<FacilityAdditionalDetails> {
+  FacilityAdditionalDetailsMapper._();
+
+  static FacilityAdditionalDetailsMapper? _instance;
+  static FacilityAdditionalDetailsMapper ensureInitialized() {
+    if (_instance == null) {
+      MapperContainer.globals
+          .use(_instance = FacilityAdditionalDetailsMapper._());
+    }
+    return _instance!;
+  }
+
+  @override
+  final String id = 'FacilityAdditionalDetails';
+
+  static String? _$mappedVendorName(FacilityAdditionalDetails v) =>
+      v.mappedVendorName;
+  static const Field<FacilityAdditionalDetails, String> _f$mappedVendorName =
+      Field('mappedVendorName', _$mappedVendorName, mode: FieldMode.member);
+  static String? _$mappedVendorUserName(FacilityAdditionalDetails v) =>
+      v.mappedVendorUserName;
+  static const Field<FacilityAdditionalDetails, String>
+      _f$mappedVendorUserName = Field(
+          'mappedVendorUserName', _$mappedVendorUserName,
+          mode: FieldMode.member);
+
+  @override
+  final MappableFields<FacilityAdditionalDetails> fields = const {
+    #mappedVendorName: _f$mappedVendorName,
+    #mappedVendorUserName: _f$mappedVendorUserName,
+  };
+  @override
+  final bool ignoreNull = true;
+
+  static FacilityAdditionalDetails _instantiate(DecodingData data) {
+    return FacilityAdditionalDetails();
+  }
+
+  @override
+  final Function instantiate = _instantiate;
+
+  static FacilityAdditionalDetails fromMap(Map<String, dynamic> map) {
+    return ensureInitialized().decodeMap<FacilityAdditionalDetails>(map);
+  }
+
+  static FacilityAdditionalDetails fromJson(String json) {
+    return ensureInitialized().decodeJson<FacilityAdditionalDetails>(json);
+  }
+}
+
+mixin FacilityAdditionalDetailsMappable {
+  String toJson() {
+    return FacilityAdditionalDetailsMapper.ensureInitialized()
+        .encodeJson<FacilityAdditionalDetails>(
+            this as FacilityAdditionalDetails);
+  }
+
+  Map<String, dynamic> toMap() {
+    return FacilityAdditionalDetailsMapper.ensureInitialized()
+        .encodeMap<FacilityAdditionalDetails>(
+            this as FacilityAdditionalDetails);
+  }
+
+  FacilityAdditionalDetailsCopyWith<FacilityAdditionalDetails,
+          FacilityAdditionalDetails, FacilityAdditionalDetails>
+      get copyWith => _FacilityAdditionalDetailsCopyWithImpl(
+          this as FacilityAdditionalDetails, $identity, $identity);
+  @override
+  String toString() {
+    return FacilityAdditionalDetailsMapper.ensureInitialized()
+        .stringifyValue(this as FacilityAdditionalDetails);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return FacilityAdditionalDetailsMapper.ensureInitialized()
+        .equalsValue(this as FacilityAdditionalDetails, other);
+  }
+
+  @override
+  int get hashCode {
+    return FacilityAdditionalDetailsMapper.ensureInitialized()
+        .hashValue(this as FacilityAdditionalDetails);
+  }
+}
+
+extension FacilityAdditionalDetailsValueCopy<$R, $Out>
+    on ObjectCopyWith<$R, FacilityAdditionalDetails, $Out> {
+  FacilityAdditionalDetailsCopyWith<$R, FacilityAdditionalDetails, $Out>
+      get $asFacilityAdditionalDetails => $base
+          .as((v, t, t2) => _FacilityAdditionalDetailsCopyWithImpl(v, t, t2));
+}
+
+abstract class FacilityAdditionalDetailsCopyWith<
+    $R,
+    $In extends FacilityAdditionalDetails,
+    $Out> implements ClassCopyWith<$R, $In, $Out> {
+  $R call();
+  FacilityAdditionalDetailsCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
+      Then<$Out2, $R2> t);
+}
+
+class _FacilityAdditionalDetailsCopyWithImpl<$R, $Out>
+    extends ClassCopyWithBase<$R, FacilityAdditionalDetails, $Out>
+    implements
+        FacilityAdditionalDetailsCopyWith<$R, FacilityAdditionalDetails, $Out> {
+  _FacilityAdditionalDetailsCopyWithImpl(super.value, super.then, super.then2);
+
+  @override
+  late final ClassMapperBase<FacilityAdditionalDetails> $mapper =
+      FacilityAdditionalDetailsMapper.ensureInitialized();
+  @override
+  $R call() => $apply(FieldCopyWithData({}));
+  @override
+  FacilityAdditionalDetails $make(CopyWithData data) =>
+      FacilityAdditionalDetails();
+
+  @override
+  FacilityAdditionalDetailsCopyWith<$R2, FacilityAdditionalDetails, $Out2>
+      $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
+          _FacilityAdditionalDetailsCopyWithImpl($value, $cast, t);
 }
 
 class ProjectMapper extends ClassMapperBase<Project> {

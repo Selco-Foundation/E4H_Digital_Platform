@@ -91,6 +91,7 @@ const CacheUnsubmittedActivityFacilitySchema = CollectionSchema(
     r'ProjectAdditionalDetails': ProjectAdditionalDetailsSchema,
     r'Facility': FacilitySchema,
     r'FacilityAddress': FacilityAddressSchema,
+    r'FacilityAdditionalDetails': FacilityAdditionalDetailsSchema,
     r'FacilityDetails': FacilityDetailsSchema,
     r'GeographyDetails': GeographyDetailsSchema,
     r'StateRef': StateRefSchema,

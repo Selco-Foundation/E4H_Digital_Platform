@@ -57,6 +57,8 @@ class BomRepository {
       final facilityName = af.facility?.facilityName?.toString();
       final address = _formatFacilityAddress(af);
       final projectNumber = af.fieldPlan?.project?.projectNumber?.toString();
+      final vendorName = af.facility?.vendorName;
+      final poWoNumber = af.fieldPlan?.poWoNumber;
 
       final projectDate = _formatProjectDate(af);
       final locality =
@@ -75,6 +77,8 @@ class BomRepository {
       if (projectNumber != null && projectNumber.trim().isNotEmpty) {
         enriched['project_number'] = projectNumber.trim();
       }
+      _putIfNotBlank(enriched, 'vendor_name', vendorName);
+      _putIfNotBlank(enriched, 'po_wo_number', poWoNumber);
       if (projectDate != null && projectDate.trim().isNotEmpty) {
         enriched['project_date'] = projectDate.trim();
       }
