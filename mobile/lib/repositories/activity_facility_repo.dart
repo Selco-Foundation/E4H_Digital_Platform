@@ -206,7 +206,7 @@ class ActivityFacilityRepository {
     final col = _isar.cacheUnsubmittedActivityFacilitys;
     final excluded = <String>{};
     for (final t in userTypes) {
-      final matches = await col.where().filter().userTypeEqualTo(t).findAll();
+      final matches = await col.where().userTypeEqualTo(t).findAll();
 
       excluded.addAll(matches.map((e) => e.activityFacilityId));
     }
@@ -434,7 +434,7 @@ class UnsubmittedActivityFacilityRepository {
     }
     final col = _isar.cacheUnsubmittedActivityFacilitys;
     final localEntries =
-        await col.where().filter().userTypeEqualTo(userType).findAll();
+        await col.where().userTypeEqualTo(userType).findAll();
     final localWorkflows = localEntries
         .map((e) => ActivityFacilityWorkflow(
             activityFacility: e.activityFacility, status: e.status))
