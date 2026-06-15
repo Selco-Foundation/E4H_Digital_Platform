@@ -62,6 +62,8 @@ const getAssetAggregation = async (workflow) => {
     images: {},
     videos: {},
     installationReportDocuments: [],
+    installationCompletionCertificate: [],
+    assetHandoverDocument: [],
   };
   const installationImages = [];
   const workflowDocuments = [];
@@ -115,7 +117,7 @@ const getAssetAggregation = async (workflow) => {
             size: fileDetails.size
           }];
         }
-      } else if (workflow[0].action !== "SUBMIT_REPORT_A" && documentType.toUpperCase() === "INSTALLATION_REPORT") {
+      } else if (documentType.toUpperCase() === "INSTALLATION_REPORT") {
         documentRequired = true;
         documentAggregation.installationReportDocuments = [
           ...documentAggregation.installationReportDocuments,
@@ -124,12 +126,30 @@ const getAssetAggregation = async (workflow) => {
             ...fileDetails
           }
         ];
-      } else if (workflow[0].action !== "SUBMIT_REPORT_A" && documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
+      } else if (documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
         documentRequired = true;
         documentAggregation.bomCompletionReport = {
           fileUrl,
           ...fileDetails
         };
+      } else if (documentType.toUpperCase() === "INSTALLATION_COMPLETION_CERTIFICATE") {
+        documentRequired = true;
+        documentAggregation.installationCompletionCertificate = [
+          ...documentAggregation.installationCompletionCertificate,
+          {
+            fileUrl,
+            ...fileDetails,
+          }
+        ];
+      } else if (documentType.toUpperCase() === "ASSET_HANDOVER_DOCUMENT") {
+        documentRequired = true;
+        documentAggregation.assetHandoverDocument = [
+          ...documentAggregation.assetHandoverDocument,
+          {
+            fileUrl,
+            ...fileDetails,
+          }
+        ];
       }
 
       if (documentRequired) workflowDocuments.push(document);
