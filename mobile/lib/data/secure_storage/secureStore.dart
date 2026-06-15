@@ -10,6 +10,7 @@ import '../../model/installation_images/installation_images.dart';
 import '../../model/localization/localizationModel.dart';
 import '../../model/mdms/mdms.dart';
 import '../../model/rejection_reason/rejection_reason.dart';
+import '../../model/required_bom_form_keys/required_bom_form_keys.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
 import '../../model/solution_design_type/solution_design_type.dart';
@@ -30,6 +31,7 @@ class _SecureStorageKeys {
   static const String amcFormConfigsRaw = 'amcFormConfigsRaw';
   static const String installationImages = 'installationImages';
   static const String rejectionReasons = 'rejectionReasons';
+  static const String requiredBomFormKeys = 'requiredBomFormKeys';
   static const String formSchemas = 'forms_schemas';
   static const String accessToken = 'accessToken';
   static const String accessInfo = 'accessInfo';
@@ -213,6 +215,20 @@ class SecureStore {
 
   Future<String?> getRejectionReasons() async {
     return await storage.read(key: _SecureStorageKeys.rejectionReasons);
+  }
+
+  Future<void> setRequiredBomFormKeys(
+      List<Mdms<RequiredBomFormKeysData>> list) async {
+    final List<Map<String, dynamic>> jsonList =
+        list.map((mdms) => mdms.toJson((data) => data.toJson())).toList();
+    await storage.write(
+      key: _SecureStorageKeys.requiredBomFormKeys,
+      value: json.encode(jsonList),
+    );
+  }
+
+  Future<String?> getRequiredBomFormKeys() async {
+    return await storage.read(key: _SecureStorageKeys.requiredBomFormKeys);
   }
 
   Future<void> setFormSchemas(Map<String, dynamic> schemas) async {

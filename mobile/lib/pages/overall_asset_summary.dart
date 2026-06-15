@@ -33,6 +33,7 @@ import '../router/app_router.dart';
 import '../utils/document_upload_validation.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/required_bom_form_key_validation.dart';
 import '../utils/sync_popup_guard.dart';
 import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
@@ -347,6 +348,48 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     );
   }
 
+  void _showRequiredBomFormKeysPopup(
+    MissingRequiredBomFormKeysMessage message,
+  ) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: message.title,
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            message.message,
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: spacer4),
+          ...message.missingMessages.map(
+            (missingMessage) => Padding(
+              padding: const EdgeInsets.only(bottom: spacer2),
+              child: Text(
+                missingMessage,
+                textAlign: TextAlign.center,
+                style: textTheme.bodyL.copyWith(
+                  color: theme.colorTheme.text.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handleAddDetailPress(String assetTypeCode) {
     context
         .read<AssetTypeBloc>()
@@ -540,6 +583,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                         ? () {}
                                         : () async {
                                             if (isDisabled) return;
+                                            final isar = context
+                                                .read<ActivityFacilityBloc>()
+                                                .isar;
                                             if (resolvedUserType ==
                                                     USER_TYPES
                                                         .SUPERVISOR.name &&
@@ -556,6 +602,22 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   null) {
                                                 _showRequiredDocumentPopup(
                                                   missingDocumentMessage,
+                                                );
+                                                return;
+                                              }
+                                              final missingBomFormKeysMessage =
+                                                  await missingRequiredBomFormKeysMessage(
+                                                isar: isar,
+                                                activityFacilityId:
+                                                    _currentProjectId!,
+                                                userType: resolvedUserType,
+                                                systemCode: _system,
+                                              );
+                                              if (!mounted) return;
+                                              if (missingBomFormKeysMessage !=
+                                                  null) {
+                                                _showRequiredBomFormKeysPopup(
+                                                  missingBomFormKeysMessage,
                                                 );
                                                 return;
                                               }

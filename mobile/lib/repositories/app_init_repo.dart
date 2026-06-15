@@ -12,6 +12,7 @@ import '../model/brand/brand.dart';
 import '../model/installation_images/installation_images.dart';
 import '../model/mdms/mdms.dart';
 import '../model/rejection_reason/rejection_reason.dart';
+import '../model/required_bom_form_keys/required_bom_form_keys.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../model/system/system.dart';
@@ -205,6 +206,21 @@ class AppInitRepo {
       readCache: storage.getRejectionReasons,
       writeCache: (list) => storage.setRejectionReasons(list),
       dataFromJson: RejectionReasonData.fromJson,
+      useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
+    );
+  }
+
+  Future<List<Mdms<RequiredBomFormKeysData>>> searchRequiredBomFormKeys(
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
+    final storage = SecureStore();
+    return _searchCachedMdms<RequiredBomFormKeysData>(
+      request: mdmsRequestBody,
+      readCache: storage.getRequiredBomFormKeys,
+      writeCache: (list) => storage.setRequiredBomFormKeys(list),
+      dataFromJson: RequiredBomFormKeysData.fromJson,
       useCacheRead: useCacheRead,
       cacheOnly: cacheOnly,
     );

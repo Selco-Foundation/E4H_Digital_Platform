@@ -198,6 +198,11 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         tenantId: tenantId,
         cacheOnly: cacheOnly,
       ),
+      _fetchRequiredBomFormKeysForCache(
+        appInitRepo,
+        tenantId: tenantId,
+        cacheOnly: cacheOnly,
+      ),
     ]);
   }
 
@@ -223,6 +228,32 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       }
 
       AppLogger.instance.info('Failed to load rejection reasons: $e');
+      return <dynamic>[];
+    }
+  }
+
+  Future<List<dynamic>> _fetchRequiredBomFormKeysForCache(
+    AppInitRepo appInitRepo, {
+    required String tenantId,
+    required bool cacheOnly,
+  }) async {
+    try {
+      return await appInitRepo.searchRequiredBomFormKeys(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "common-masters.RequiredBomFormKeys",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      );
+    } catch (e) {
+      if (isSessionExpiredMessage(e.toString())) {
+        rethrow;
+      }
+
+      AppLogger.instance.info('Failed to load required BOM form keys: $e');
       return <dynamic>[];
     }
   }
