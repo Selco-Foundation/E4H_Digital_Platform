@@ -437,6 +437,10 @@ class OverallAssetSummary {
       'OVERALL_ASSET_SUMMARY_REQUIRED_ASSET_HANDOVER_DOCUMENT';
   String get uploadRequiredAssetHandoverDocument =>
       'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_ASSET_HANDOVER_DOCUMENT';
+  String get requiredInstallationDocuments =>
+      'OVERALL_ASSET_SUMMARY_REQUIRED_INSTALLATION_DOCUMENTS';
+  String get uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument =>
+      'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE_AND_ASSET_HANDOVER_DOCUMENT';
 }
 
 class SubmitForApproval {
@@ -454,6 +458,10 @@ class SubmitForApproval {
       'SUBMIT_FOR_APPROVAL_REQUIRED_ASSET_HANDOVER_DOCUMENT';
   String get uploadRequiredAssetHandoverDocument =>
       'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_ASSET_HANDOVER_DOCUMENT';
+  String get requiredInstallationDocuments =>
+      'SUBMIT_FOR_APPROVAL_REQUIRED_INSTALLATION_DOCUMENTS';
+  String get uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument =>
+      'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE_AND_ASSET_HANDOVER_DOCUMENT';
   String get summary => 'SUBMIT_FOR_APPROVAL_SUMMARY';
   String get installationCompletionReport =>
       'SUBMIT_FOR_APPROVAL_INSTALLATION_COMPLETION_REPORT';

@@ -30,6 +30,7 @@ import '../repositories/asset_handover_document_repo.dart';
 import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
+import '../utils/document_upload_validation.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/sync_popup_guard.dart';
@@ -295,39 +296,31 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     );
   }
 
-  void _showInstallationCompletionCertificateRequiredPopup() {
-    final theme = Theme.of(context);
-    final textTheme = theme.digitTextTheme(context);
-
-    showCustomPopup(
-      context: context,
-      builder: (ctx) => Popup(
-        type: PopUpType.alert,
-        onCrossTap: () => Navigator.of(ctx).pop(),
-        onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: context.translate(
-          i18.overallAssetSummary.requiredInstallationCompletionCertificate,
-        ),
-        actionAlignment: MainAxisAlignment.center,
-        actions: const [],
-        additionalWidgets: [
-          Text(
-            context.translate(
-              i18.overallAssetSummary
-                  .uploadRequiredInstallationCompletionCertificate,
-            ),
-            textAlign: TextAlign.center,
-            style: textTheme.bodyL.copyWith(
-              color: theme.colorTheme.text.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+  Future<MissingRequiredDocumentMessage?>
+      _missingRequiredDocumentMessage() async {
+    return missingRequiredDocumentMessage(
+      hasInstallationCompletionCertificate:
+          await _hasInstallationCompletionCertificate(),
+      hasAssetHandoverDocument: await _hasAssetHandoverDocument(),
+      localizationKeys: RequiredDocumentLocalizationKeys(
+        requiredInstallationCompletionCertificateTitle:
+            i18.overallAssetSummary.requiredInstallationCompletionCertificate,
+        uploadRequiredInstallationCompletionCertificateMessage: i18
+            .overallAssetSummary
+            .uploadRequiredInstallationCompletionCertificate,
+        requiredAssetHandoverDocumentTitle:
+            i18.overallAssetSummary.requiredAssetHandoverDocument,
+        uploadRequiredAssetHandoverDocumentMessage:
+            i18.overallAssetSummary.uploadRequiredAssetHandoverDocument,
+        requiredBothDocumentsTitle:
+            i18.overallAssetSummary.requiredInstallationDocuments,
+        uploadRequiredBothDocumentsMessage: i18.overallAssetSummary
+            .uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument,
       ),
     );
   }
 
-  void _showAssetHandoverDocumentRequiredPopup() {
+  void _showRequiredDocumentPopup(MissingRequiredDocumentMessage message) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
@@ -337,16 +330,12 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         type: PopUpType.alert,
         onCrossTap: () => Navigator.of(ctx).pop(),
         onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: context.translate(
-          i18.overallAssetSummary.requiredAssetHandoverDocument,
-        ),
+        title: context.translate(message.titleKey),
         actionAlignment: MainAxisAlignment.center,
         actions: const [],
         additionalWidgets: [
           Text(
-            context.translate(
-              i18.overallAssetSummary.uploadRequiredAssetHandoverDocument,
-            ),
+            context.translate(message.messageKey),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -559,28 +548,30 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               return;
                                             }
                                             if (resolvedUserType ==
-                                                    USER_TYPES
-                                                        .SUPERVISOR.name &&
-                                                !await _hasInstallationCompletionCertificate()) {
-                                              _showInstallationCompletionCertificateRequiredPopup();
-                                              return;
-                                            }
-                                            if (resolvedUserType ==
-                                                    USER_TYPES
-                                                        .SUPERVISOR.name &&
-                                                !await _hasAssetHandoverDocument()) {
-                                              _showAssetHandoverDocumentRequiredPopup();
-                                              return;
+                                                USER_TYPES.SUPERVISOR.name) {
+                                              final missingDocumentMessage =
+                                                  await _missingRequiredDocumentMessage();
+                                              if (!mounted) return;
+                                              if (missingDocumentMessage !=
+                                                  null) {
+                                                _showRequiredDocumentPopup(
+                                                  missingDocumentMessage,
+                                                );
+                                                return;
+                                              }
                                             }
                                             await _ensureLocationLoaded();
+                                            if (!mounted) return;
 
-                                            final selState = context
+                                            final selState = this
+                                                .context
                                                 .read<
                                                     SelectedActivityFacilityBloc>()
                                                 .state;
                                             selState.whenOrNull(
                                                 selected: (project) {
-                                              context
+                                              this
+                                                  .context
                                                   .read<ActivityFacilityBloc>()
                                                   .add(
                                                     ActivityFacilityEvent

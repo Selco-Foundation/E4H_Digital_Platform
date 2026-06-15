@@ -32,6 +32,7 @@ import '../repositories/asset_handover_document_repo.dart';
 import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
+import '../utils/document_upload_validation.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
@@ -332,39 +333,30 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     );
   }
 
-  void _showInstallationCompletionCertificateRequiredPopup() {
-    final theme = Theme.of(context);
-    final textTheme = theme.digitTextTheme(context);
-
-    showCustomPopup(
-      context: context,
-      builder: (ctx) => Popup(
-        type: PopUpType.alert,
-        onCrossTap: () => Navigator.of(ctx).pop(),
-        onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: context.translate(
-          i18.submitForApproval.requiredInstallationCompletionCertificate,
-        ),
-        actionAlignment: MainAxisAlignment.center,
-        actions: const [],
-        additionalWidgets: [
-          Text(
-            context.translate(
-              i18.submitForApproval
-                  .uploadRequiredInstallationCompletionCertificate,
-            ),
-            textAlign: TextAlign.center,
-            style: textTheme.bodyL.copyWith(
-              color: theme.colorTheme.text.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+  Future<MissingRequiredDocumentMessage?>
+      _missingRequiredDocumentMessage() async {
+    return missingRequiredDocumentMessage(
+      hasInstallationCompletionCertificate:
+          await _hasInstallationCompletionCertificate(),
+      hasAssetHandoverDocument: await _hasAssetHandoverDocument(),
+      localizationKeys: RequiredDocumentLocalizationKeys(
+        requiredInstallationCompletionCertificateTitle:
+            i18.submitForApproval.requiredInstallationCompletionCertificate,
+        uploadRequiredInstallationCompletionCertificateMessage: i18
+            .submitForApproval.uploadRequiredInstallationCompletionCertificate,
+        requiredAssetHandoverDocumentTitle:
+            i18.submitForApproval.requiredAssetHandoverDocument,
+        uploadRequiredAssetHandoverDocumentMessage:
+            i18.submitForApproval.uploadRequiredAssetHandoverDocument,
+        requiredBothDocumentsTitle:
+            i18.submitForApproval.requiredInstallationDocuments,
+        uploadRequiredBothDocumentsMessage: i18.submitForApproval
+            .uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument,
       ),
     );
   }
 
-  void _showAssetHandoverDocumentRequiredPopup() {
+  void _showRequiredDocumentPopup(MissingRequiredDocumentMessage message) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
@@ -374,16 +366,12 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
         type: PopUpType.alert,
         onCrossTap: () => Navigator.of(ctx).pop(),
         onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: context.translate(
-          i18.submitForApproval.requiredAssetHandoverDocument,
-        ),
+        title: context.translate(message.titleKey),
         actionAlignment: MainAxisAlignment.center,
         actions: const [],
         additionalWidgets: [
           Text(
-            context.translate(
-              i18.submitForApproval.uploadRequiredAssetHandoverDocument,
-            ),
+            context.translate(message.messageKey),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -524,17 +512,19 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                               _showInstallationImagesRequiredPopup();
                               return;
                             }
-                            if (isSupervisor &&
-                                !await _hasInstallationCompletionCertificate()) {
-                              _showInstallationCompletionCertificateRequiredPopup();
-                              return;
-                            }
-                            if (isSupervisor &&
-                                !await _hasAssetHandoverDocument()) {
-                              _showAssetHandoverDocumentRequiredPopup();
-                              return;
+                            if (isSupervisor) {
+                              final missingDocumentMessage =
+                                  await _missingRequiredDocumentMessage();
+                              if (!mounted) return;
+                              if (missingDocumentMessage != null) {
+                                _showRequiredDocumentPopup(
+                                  missingDocumentMessage,
+                                );
+                                return;
+                              }
                             }
                             await _ensureLocationLoaded();
+                            if (!mounted) return;
 
                             final lat = _latitude?.toString() ?? '';
                             final lng = _longitude?.toString() ?? '';
@@ -564,12 +554,13 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                               ));
                             }
 
-                            final selState = context
+                            final selState = this
+                                .context
                                 .read<SelectedActivityFacilityBloc>()
                                 .state;
 
                             selState.whenOrNull(selected: (project) {
-                              context.read<ActivityFacilityBloc>().add(
+                              this.context.read<ActivityFacilityBloc>().add(
                                     ActivityFacilityEvent.addUnSubmitted(
                                         project, userType),
                                   );
