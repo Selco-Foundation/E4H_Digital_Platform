@@ -16,6 +16,8 @@ import '../data/nosql/cache_asset_handover_document.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../repositories/asset_handover_document_repo.dart';
 import '../router/app_router.dart';
+import '../utils/constants.dart';
+import '../utils/document_upload_validation.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
@@ -279,6 +281,14 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
     });
   }
 
+  void _showSuccessSnackBarAfterNavigation(String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    });
+  }
+
   String? _validationMessage() {
     if (_errorMessage != null) return _errorMessage;
     if (!_hasAttemptedValidation) return null;
@@ -289,6 +299,10 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
       return context.translate(i18.assetHandoverDocument.maxFilesAllowed);
     }
     return null;
+  }
+
+  String _fileSizeErrorMessage() {
+    return context.translate(i18.assetHandoverDocument.maxFileSize);
   }
 
   Map<PlatformFile, String?> _handlePdfFilesSelected(
@@ -309,6 +323,8 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
         errors[file] = context.translate(
           i18.assetHandoverDocument.onlyPdfAllowed,
         );
+      } else if (file.size > documentUploadMaxFileSizeBytes) {
+        errors[file] = _fileSizeErrorMessage();
       } else if (_existingHandoverDocumentFiles.length +
               _selectedImages.length +
               i +
@@ -345,6 +361,13 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
     });
   }
 
+  Future<bool> _hasOversizedSelectedFiles() {
+    return hasOversizedDocumentUploadFiles(
+      images: _selectedImages,
+      pdfs: _selectedPdfFiles,
+    );
+  }
+
   Future<void> _validateAndContinue() async {
     if (_isViewOnly) {
       context.router.maybePop();
@@ -362,6 +385,13 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
     });
 
     if (!_hasValidSelection) return;
+    if (await _hasOversizedSelectedFiles()) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = _fileSizeErrorMessage();
+      });
+      return;
+    }
     await _submitSelections();
   }
 
@@ -524,6 +554,8 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
             maxImages: _remainingImageSlots,
             isDisabled: _remainingImageSlots == 0,
             initialImages: _selectedImages,
+            validators:
+                documentUploadMaxSizeValidators(_fileSizeErrorMessage()),
             onImagesSelected: _handleImagesSelected,
           ),
           const SizedBox(height: spacer1),
@@ -535,6 +567,8 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
               showPreview: true,
               initialFiles: _selectedPdfFiles,
               errorMessage: message,
+              validators:
+                  documentUploadMaxSizeValidators(_fileSizeErrorMessage()),
               onFilesSelected: _handlePdfFilesSelected,
               onFileTap: (file) {
                 final path = file.path;
@@ -580,7 +614,10 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
             setState(() {
               _isSaving = false;
             });
+            final successMessage =
+                this.context.translate(i18.assetHandoverDocument.uploadSuccess);
             _popUntilThenRefreshOrigin(this.context, widget.origin);
+            _showSuccessSnackBarAfterNavigation(successMessage);
           },
           notFound: () async {
             if (!mounted) return;

@@ -403,6 +403,8 @@ class InstallationCompletionCertificate {
   String get acceptedFormats =>
       'INSTALLATION_COMPLETION_CERTIFICATE_ACCEPTED_FORMATS';
   String get maxFileSize => 'INSTALLATION_COMPLETION_CERTIFICATE_MAX_FILE_SIZE';
+  String get uploadSuccess =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_UPLOAD_SUCCESS';
 }
 
 class AssetHandoverDocument {
@@ -417,6 +419,7 @@ class AssetHandoverDocument {
   String get onlyPdfAllowed => 'ASSET_HANDOVER_DOCUMENT_ONLY_PDF_ALLOWED';
   String get acceptedFormats => 'ASSET_HANDOVER_DOCUMENT_ACCEPTED_FORMATS';
   String get maxFileSize => 'ASSET_HANDOVER_DOCUMENT_MAX_FILE_SIZE';
+  String get uploadSuccess => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_SUCCESS';
 }
 
 class OverallAssetSummary {
