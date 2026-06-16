@@ -164,6 +164,8 @@ const FacilityDetails = ({t}) => {
             name: `${facilityDetails.facilityName}.pdf`
           }}
           supportingDocuments={aggregatedDocuments.installationReportDocuments}
+          installationCompletionCertificate={aggregatedDocuments.installationCompletionCertificate}
+          assetHandoverDocument={aggregatedDocuments.assetHandoverDocument}
           installationImages={installationImages}
           isReport={true}
         />
