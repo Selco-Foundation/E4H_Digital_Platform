@@ -287,10 +287,12 @@ public class FacilityService {
                 }
 
                 // Mapped the first vendor user with this new facility created
-                String vendorCode = extractVendorCode(facility);
-                if (vendorCode != null && !vendorCode.isBlank()) {
-                    vendorOrganisationService.assignFacilityJurisdictionToFirstOrgUser(
-                            vendorCode, facility, tenantId, request.getRequestInfo());
+                if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
+                    String vendorCode = extractVendorCode(facility);
+                    if (vendorCode != null && !vendorCode.isBlank()) {
+                        vendorOrganisationService.assignFacilityJurisdictionToFirstOrgUser(
+                                vendorCode, facility, tenantId, request.getRequestInfo());
+                    }
                 }
 
                 validatedFacilities.add(facility);
