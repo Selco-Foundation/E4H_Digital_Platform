@@ -539,6 +539,9 @@ public class ScheduledVisitService {
             // Check if visit needs to be scheduled based on notice period
             checkAndScheduleVisitIfNeeded(visit, request.getRequestInfo());
 
+            // Check if visit has expired based on scheduled date and notice period
+            checkAndExpireVisitIfNeeded(visit, request.getRequestInfo());
+
             handleUpdateScheduledVisit(request, visit, scheduledVisit);
         }
     }
@@ -665,6 +668,72 @@ public class ScheduledVisitService {
             }
         } catch (Exception e) {
             log.error("Error checking if visit needs scheduling: {}", visit.getId(), e);
+        }
+    }
+
+    /**
+     * Check if visit has passed its scheduled date plus notice period and apply EXPIRE action if needed.
+     * This checks MDMS for notice period (amc.AMCThresholds.amc_visit_notice_period_in_days)
+     * and applies workflow action if current_date > scheduled_date + notice_period
+     */
+    private void checkAndExpireVisitIfNeeded(ScheduledVisit visit, RequestInfo requestInfo) {
+        // Only process SCHEDULED visits
+        if (visit.getStatus() == null || !visit.getStatus().equals("SCHEDULED")) {
+            return;
+        }
+
+        try {
+            AmcConfigurationRequest mdmsRequest = AmcConfigurationRequest.builder()
+                    .requestInfo(requestInfo)
+                    .amcConfigurations(new ArrayList<>())
+                    .build();
+            Object mdmsData = mdmsUtils.mDMSCall(mdmsRequest, visit.getTenantId());
+            Integer noticePeriod = parseNoticePeriodFromMDMS(mdmsData, visit.getTenantId());
+
+            if (noticePeriod == null) {
+                log.warn("Could not fetch notice period from MDMS for tenant: {}. Skipping auto-expire check.", visit.getTenantId());
+                return;
+            }
+
+            if (visit.getScheduledDate() == null) {
+                log.warn("Scheduled date is null for visit: {}. Skipping auto-expire check.", visit.getId());
+                return;
+            }
+
+            LocalDate scheduledDate = Instant.ofEpochMilli(visit.getScheduledDate())
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+            LocalDate expiryDate = scheduledDate.plusDays(noticePeriod);
+            LocalDate currentDate = Instant.ofEpochMilli(System.currentTimeMillis())
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+
+            if (currentDate.isAfter(expiryDate)) {
+                log.info("Visit {} has expired (scheduled: {}, expiry: {}, current: {}). Applying EXPIRE action.",
+                        visit.getId(), scheduledDate, expiryDate, currentDate);
+
+                try {
+                    ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
+                            visit,
+                            "EXPIRE",
+                            null,
+                            requestInfo,
+                            "Automatically expired by daily cron job - visit passed scheduled date and notice period"
+                    );
+
+                    if (updatedWorkflow != null && updatedWorkflow.getState() != null) {
+                        visit.setStatus(updatedWorkflow.getState().getState());
+                        log.info("Successfully applied EXPIRE action on visit: {}. New status: {}",
+                                visit.getId(), visit.getStatus());
+                    } else {
+                        log.warn("Workflow transition succeeded but returned null state for visit: {}", visit.getId());
+                    }
+                } catch (Exception e) {
+                    log.error("Error applying EXPIRE workflow action on visit: {}", visit.getId(), e);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error checking if visit needs expiration: {}", visit.getId(), e);
         }
     }
 
