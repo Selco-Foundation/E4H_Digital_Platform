@@ -141,6 +141,67 @@ class OrganizationServiceClient:
             logger.warning("Organisation search failed for vendor code %s: %s", vendor_code, e)
             return None
 
+    def find_first_org_user_hrms_uuid(
+            self,
+            vendor_code: str,
+            request_info: RequestInfo,
+            tenant_id: str = DEFAULT_TENANT_ID,
+    ) -> Optional[str]:
+        """Resolve the HRMS uuid of the first active user for a vendor organisation code."""
+        normalized = self.normalize_facility_vendor_code(vendor_code)
+        if not normalized or not self.org_service_url:
+            return None
+
+        organisation = self._find_organisation_by_code(normalized, request_info, tenant_id)
+        if not organisation:
+            return None
+
+        organisation_id = self._string_value(organisation.get("id"))
+        if not organisation_id:
+            return None
+        return self._find_first_org_user_hrms_uuid(organisation_id, request_info, tenant_id)
+
+    def _find_first_org_user_hrms_uuid(
+            self,
+            organisation_id: str,
+            request_info: RequestInfo,
+            tenant_id: str,
+    ) -> Optional[str]:
+        url = (
+            f"{self.org_service_url}/vendor/organisation/v1/user/_search"
+            f"?limit=10&offset=0&tenantId={tenant_id}"
+        )
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "OrgUser": {
+                "tenantId": tenant_id,
+                "organizationIds": [organisation_id],
+            },
+        }
+        try:
+            response = requests.post(
+                url,
+                headers={"Content-Type": "application/json"},
+                json=payload,
+                timeout=60,
+            )
+            response.raise_for_status()
+            org_users = response.json().get("OrgUsers") or []
+            for org_user in org_users:
+                if org_user.get("isDeleted"):
+                    continue
+                user_id = self._string_value(org_user.get("userId"))
+                if user_id:
+                    return user_id
+            return None
+        except Exception as e:
+            logger.warning(
+                "Organisation user HRMS lookup failed for organisation %s: %s",
+                organisation_id,
+                e,
+            )
+            return None
+
     def _find_first_org_user_name(
             self,
             organisation_id: str,
