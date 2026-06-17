@@ -17,11 +17,14 @@ class FacilityServiceClient:
         url = f"{self.facility_service_url}/facility-service/v2/facility/create"
         headers = {"Content-Type": "application/json"}
         payload = facility_payload
+        facility_count = len(payload.get("facilities") or [])
+        timeout = 120 if facility_count > 1 else 30
         facility_id = facility_payload.get("facility", {}).get("facility_id") or "unknown"
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout)
             logger.info(f"Facility created successfully: facility_id={facility_id}")
             logger.debug(f"Create response status: {response.status_code}")
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout)
             return response
 
         except requests.exceptions.HTTPError as http_err:
