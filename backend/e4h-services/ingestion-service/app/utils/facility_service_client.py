@@ -14,8 +14,10 @@ class FacilityServiceClient:
         url = f"{self.facility_service_url}/facility-service/v2/facility/create"
         headers = {"Content-Type": "application/json"}
         payload = facility_payload
+        facility_count = len(payload.get("facilities") or [])
+        timeout = 120 if facility_count > 1 else 30
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout)
             return response
 
         except requests.exceptions.HTTPError as http_err:
