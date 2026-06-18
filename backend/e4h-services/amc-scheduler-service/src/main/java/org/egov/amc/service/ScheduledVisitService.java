@@ -624,28 +624,30 @@ public class ScheduledVisitService {
         return visitFromDB.getScheduledDate();
     }
 
+    private static final int SCHEDULE_MAX_MONTHS_AHEAD = 1;
+
     private void validateVisitCanBeScheduled(ScheduledVisit visit) {
         validateVisitCanBeScheduled(visit.getScheduledDate(), visit.getId());
     }
 
     private void validateVisitCanBeScheduled(Long scheduledDate, String visitId) {
-        if (!isScheduledDateOnOrBeforeToday(scheduledDate)) {
+        if (!isScheduledDateWithinSchedulingWindow(scheduledDate)) {
             throw new CustomException(
-                    "SCHEDULE_DATE_NOT_REACHED",
-                    "Visit cannot be scheduled before its scheduled date: " + visitId
+                    "SCHEDULE_DATE_TOO_FAR",
+                    "Visit cannot be scheduled more than one month ahead of today: " + visitId
             );
         }
     }
 
-    private boolean isScheduledDateOnOrBeforeToday(Long scheduledDate) {
+    private boolean isScheduledDateWithinSchedulingWindow(Long scheduledDate) {
         if (scheduledDate == null || scheduledDate == 0) {
             return false;
         }
         LocalDate scheduledLocalDate = Instant.ofEpochMilli(scheduledDate)
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate();
-        LocalDate today = LocalDate.now(ZoneId.systemDefault());
-        return !scheduledLocalDate.isAfter(today);
+        LocalDate maxSchedulableDate = LocalDate.now(ZoneId.systemDefault()).plusMonths(SCHEDULE_MAX_MONTHS_AHEAD);
+        return !scheduledLocalDate.isAfter(maxSchedulableDate);
     }
 
     /**
@@ -745,8 +747,8 @@ public class ScheduledVisitService {
         }
 
         try {
-            if (!isScheduledDateOnOrBeforeToday(visit.getScheduledDate())) {
-                log.info("Visit {} has scheduled date after today (scheduledDate={}). Skipping auto-schedule.",
+            if (!isScheduledDateWithinSchedulingWindow(visit.getScheduledDate())) {
+                log.info("Visit {} has scheduled date more than one month from today (scheduledDate={}). Skipping auto-schedule.",
                         visit.getId(), visit.getScheduledDate());
                 return;
             }
