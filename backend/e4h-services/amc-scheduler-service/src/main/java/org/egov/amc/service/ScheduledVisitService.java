@@ -331,6 +331,12 @@ public class ScheduledVisitService {
             }
         }
 
+        if (SCHEDULE_ACTION.equalsIgnoreCase(request.getWorkflow().getAction())
+                && DRAFT_STATUS.equalsIgnoreCase(existingVisit.getStatus())) {
+            validateVisitCanBeScheduled(existingVisit);
+            expirePreviousDraftOrScheduledVisits(existingVisit, request.getRequestInfo());
+        }
+
         // 3. Call workflow transition
         ProcessInstance updatedWorkflow;
         try {
@@ -536,8 +542,13 @@ public class ScheduledVisitService {
              */
             amcConfigurationServiceUtil.mergeScheduledVisitAdditionalDetails(visit, scheduledVisit);
 
+            if (isDraftToScheduledTransition(scheduledVisit, visit)) {
+                validateVisitCanBeScheduled(resolveScheduledDate(visit, scheduledVisit), visit.getId());
+                expirePreviousDraftOrScheduledVisits(visit, request.getRequestInfo());
+            }
+
             // Check if visit needs to be scheduled based on notice period
-            checkAndScheduleVisitIfNeeded(visit, request.getRequestInfo());
+            checkAndScheduleVisitIfNeeded(visit, scheduledVisit, request.getRequestInfo());
 
             handleUpdateScheduledVisit(request, visit, scheduledVisit);
         }
@@ -601,18 +612,145 @@ public class ScheduledVisitService {
                 .orElse(null);
     }
 
+    private boolean isDraftToScheduledTransition(ScheduledVisit visitFromDB, ScheduledVisit visitFromRequest) {
+        return DRAFT_STATUS.equalsIgnoreCase(visitFromDB.getStatus())
+                && SCHEDULED_STATUS.equalsIgnoreCase(visitFromRequest.getStatus());
+    }
+
+    private Long resolveScheduledDate(ScheduledVisit visitFromRequest, ScheduledVisit visitFromDB) {
+        if (visitFromRequest.getScheduledDate() != null && visitFromRequest.getScheduledDate() != 0) {
+            return visitFromRequest.getScheduledDate();
+        }
+        return visitFromDB.getScheduledDate();
+    }
+
+    private void validateVisitCanBeScheduled(ScheduledVisit visit) {
+        validateVisitCanBeScheduled(visit.getScheduledDate(), visit.getId());
+    }
+
+    private void validateVisitCanBeScheduled(Long scheduledDate, String visitId) {
+        if (!isScheduledDateOnOrBeforeToday(scheduledDate)) {
+            throw new CustomException(
+                    "SCHEDULE_DATE_NOT_REACHED",
+                    "Visit cannot be scheduled before its scheduled date: " + visitId
+            );
+        }
+    }
+
+    private boolean isScheduledDateOnOrBeforeToday(Long scheduledDate) {
+        if (scheduledDate == null || scheduledDate == 0) {
+            return false;
+        }
+        LocalDate scheduledLocalDate = Instant.ofEpochMilli(scheduledDate)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        return !scheduledLocalDate.isAfter(today);
+    }
+
+    /**
+     * When scheduling a visit, expire any earlier visits for the same facility and AMC configuration
+     * that are still in DRAFT or SCHEDULED status.
+     */
+    private void expirePreviousDraftOrScheduledVisits(ScheduledVisit visit, RequestInfo requestInfo) {
+        if (visit.getFacilityId() == null || visit.getAmcConfigurationId() == null || visit.getVisitNumber() == null) {
+            log.warn("Skipping expire of previous visits for visit {} - facilityId, amcConfigurationId or visitNumber is missing",
+                    visit.getId());
+            return;
+        }
+
+        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder()
+                .tenantId(visit.getTenantId())
+                .amcConfigurationIds(List.of(visit.getAmcConfigurationId()))
+                .facilityIds(List.of(visit.getFacilityId()))
+                .statuses(List.of(DRAFT_STATUS, SCHEDULED_STATUS))
+                .build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                .RequestInfo(requestInfo)
+                .searchCriteria(criteria)
+                .build();
+
+        List<ScheduledVisit> matchingVisits = searchScheduledVisit(
+                searchRequest,
+                amcServiceConfiguration.getMaxLimit(),
+                amcServiceConfiguration.getDefaultOffset(),
+                visit.getTenantId(),
+                false,
+                null
+        );
+
+        List<ScheduledVisit> previousVisits = matchingVisits.stream()
+                .filter(candidate -> !visit.getId().equals(candidate.getId()))
+                .filter(candidate -> candidate.getVisitNumber() != null && candidate.getVisitNumber() < visit.getVisitNumber())
+                .toList();
+
+        for (ScheduledVisit previousVisit : previousVisits) {
+            expireVisit(previousVisit, requestInfo);
+        }
+    }
+
+    private void expireVisit(ScheduledVisit visit, RequestInfo requestInfo) {
+        log.info("Expiring previous visit {} (visitNumber={}) for facility {} and configuration {}",
+                visit.getId(), visit.getVisitNumber(), visit.getFacilityId(), visit.getAmcConfigurationId());
+
+        String expiredStatus = EXPIRED_STATUS;
+        try {
+            ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
+                    visit,
+                    EXPIRE_ACTION,
+                    null,
+                    requestInfo,
+                    "Expired because a newer visit was scheduled for the same facility"
+            );
+            if (updatedWorkflow != null && updatedWorkflow.getState() != null) {
+                expiredStatus = updatedWorkflow.getState().getState();
+            }
+        } catch (Exception e) {
+            log.error("Workflow EXPIRE action failed for visit {}. Falling back to direct status update.", visit.getId(), e);
+        }
+
+        ScheduledVisit expiredVisit = ScheduledVisit.builder()
+                .id(visit.getId())
+                .tenantId(visit.getTenantId())
+                .amcConfigurationId(visit.getAmcConfigurationId())
+                .facilityId(visit.getFacilityId())
+                .facilityName(visit.getFacilityName())
+                .visitNumber(visit.getVisitNumber())
+                .status(expiredStatus)
+                .scheduledDate(visit.getScheduledDate())
+                .actualVisitDate(visit.getActualVisitDate())
+                .visitReport(visit.getVisitReport())
+                .additionalDetails(visit.getAdditionalDetails())
+                .assignments(visit.getAssignments())
+                .build();
+
+        scheduledVisitsEnrichment.enrichScheduledVisitRequestOnUpdate(expiredVisit, visit, requestInfo);
+
+        ScheduledVisitRequest expireRequest = ScheduledVisitRequest.builder()
+                .requestInfo(requestInfo)
+                .scheduledVisits(List.of(expiredVisit))
+                .build();
+        producer.push(amcServiceConfiguration.getUpdateScheduledVisitTopic(), expireRequest);
+    }
+
     /**
      * Check if visit is nearing scheduled date and apply SCHEDULE action if needed
      * This checks MDMS for notice period (amc.AMCThresholds.amc_visit_notice_period_in_days)
      * and applies workflow action if scheduled_date < current_date + notice_period
      */
-    private void checkAndScheduleVisitIfNeeded(ScheduledVisit visit, RequestInfo requestInfo) {
+    private void checkAndScheduleVisitIfNeeded(ScheduledVisit visit, ScheduledVisit visitFromDB, RequestInfo requestInfo) {
         // Only process DRAFT visits
-        if (visit.getStatus() == null || !visit.getStatus().equals("DRAFT")) {
+        if (visitFromDB.getStatus() == null || !DRAFT_STATUS.equalsIgnoreCase(visitFromDB.getStatus())) {
             return;
         }
 
         try {
+            if (!isScheduledDateOnOrBeforeToday(visit.getScheduledDate())) {
+                log.info("Visit {} has scheduled date after today (scheduledDate={}). Skipping auto-schedule.",
+                        visit.getId(), visit.getScheduledDate());
+                return;
+            }
+
             // Fetch notice period from MDMS
             AmcConfigurationRequest mdmsRequest = AmcConfigurationRequest.builder()
                     .requestInfo(requestInfo)
@@ -640,12 +778,14 @@ public class ScheduledVisitService {
             if (visit.getScheduledDate() != null && visit.getScheduledDate() < thresholdDateMillis) {
                 log.info("Visit {} is nearing scheduled date (scheduled: {}, threshold: {}). Applying SCHEDULE action.", 
                         visit.getId(), visit.getScheduledDate(), thresholdDateMillis);
-                
+
+                expirePreviousDraftOrScheduledVisits(visit, requestInfo);
+
                 try {
                     // This updates the workflow state and returns the new ProcessInstance
                     ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
                             visit,
-                            "SCHEDULE",
+                            SCHEDULE_ACTION,
                             null,
                             requestInfo,
                             "Automatically scheduled by daily cron job - visit nearing scheduled date"
