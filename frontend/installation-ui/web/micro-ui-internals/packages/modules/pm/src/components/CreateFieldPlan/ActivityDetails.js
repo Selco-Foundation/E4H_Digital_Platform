@@ -135,7 +135,7 @@ const ActivityDetails = ({
           ...userEntry,
           poNumber: {
             ...userEntry.poNumber,
-            error: t('PO_NUMBER_FORMAT_ERROR'),
+            error: t("PO_NUMBER_FORMAT_ERROR"),
           },
         };
       }),

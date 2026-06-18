@@ -350,7 +350,7 @@ const CreateFieldPlan = () => {
     let faultyData = false;
     let emptyData = true;
 
-    let validatedData = activityData.map((dataEntry) => ({
+    const validatedData = activityData.map((dataEntry) => ({
       ...dataEntry, 
       users: dataEntry.users.map((userEntry) => {
         const newUserEntry = {}
