@@ -18,7 +18,6 @@ import useActivityAssignment from "../../hooks/useActivityAssignment";
 import CommonUtils from "../../utilities/CommonUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
-const PO_NUMBER_FORMAT_ERROR = "PO Number must be in format PUR-ORD-YYYY-YYYY-12345";
 const PO_NUMBER_REGEX = /^PUR-ORD-\d{4}-\d{4}-\d{5}$/;
 
 const isValidPoNumber = (poNumber) => {
@@ -388,7 +387,7 @@ const CreateFieldPlan = () => {
             faultyData = true;
             newUserEntry[key] = {
               ...userEntry[key],
-              error: PO_NUMBER_FORMAT_ERROR,
+              error: t("PO_NUMBER_FORMAT_ERROR"),
             };
           } else {
             newUserEntry[key] =  {

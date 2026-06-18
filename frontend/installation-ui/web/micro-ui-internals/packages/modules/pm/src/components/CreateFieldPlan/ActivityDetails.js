@@ -6,7 +6,6 @@ import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "../OrganizationUserDropdown";
 import CustomDropdown from "../Custom/CustomDropdown";
 
-const PO_NUMBER_FORMAT_ERROR = "PO Number must be in format PUR-ORD-YYYY-YYYY-12345";
 const PO_NUMBER_REGEX = /^PUR-ORD-\d{4}-\d{4}-\d{5}$/;
 
 const isValidPoNumber = (poNumber) => {
@@ -136,7 +135,7 @@ const ActivityDetails = ({
           ...userEntry,
           poNumber: {
             ...userEntry.poNumber,
-            error: PO_NUMBER_FORMAT_ERROR,
+            error: t('PO_NUMBER_FORMAT_ERROR'),
           },
         };
       }),
