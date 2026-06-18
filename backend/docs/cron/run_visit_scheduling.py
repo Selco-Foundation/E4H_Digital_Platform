@@ -95,10 +95,13 @@ print(f"Found {len(visits)} DRAFT visits")
 if len(visits) == 0:
     print(f"No DRAFT visits found for tenant {tenant_id}")
 else:
-    # Step 2: Filter visits that are within one month of the scheduled date
-    print("Filtering visits that are within one month of their scheduled date...")
+    # Step 2: Keep only visits whose scheduled date is before one month from today.
+    # This includes overdue (past) visits; the service expires the older ones when
+    # the latest visit is scheduled.
+    print("Filtering visits whose scheduled date is before one month from today...")
     now_ms = int(time.time() * 1000)
     one_month_ms = 30 * 24 * 60 * 60 * 1000
+    schedule_window_end_ms = now_ms + one_month_ms
 
     eligible_visits = []
     for visit in visits:
@@ -106,22 +109,35 @@ else:
         if scheduled_date is None:
             continue
 
-        # Only consider visits whose scheduled date is in the future (or today)
-        # and within the next one month window.
-        if 0 <= (scheduled_date - now_ms) <= one_month_ms:
+        if scheduled_date <= schedule_window_end_ms:
             eligible_visits.append(visit)
 
-    print(f"{len(eligible_visits)} visits are within one month of their scheduled date")
+    print(f"{len(eligible_visits)} visits have a scheduled date before one month from today")
 
-    if len(eligible_visits) == 0:
+    # Step 3: For each (facilityId, amcConfigurationId), keep only the highest visit
+    # number. Scheduling that single visit lets the service expire all lower-numbered
+    # DRAFT/SCHEDULED visits for the same AMC, and avoids the race where multiple
+    # visits of the same AMC are scheduled concurrently and overwrite each other.
+    highest_visit_by_amc = {}
+    for visit in eligible_visits:
+        key = (visit.get("facilityId"), visit.get("amcConfigurationId"))
+        visit_number = visit.get("visitNumber") or 0
+        current = highest_visit_by_amc.get(key)
+        if current is None or visit_number > (current.get("visitNumber") or 0):
+            highest_visit_by_amc[key] = visit
+
+    visits_to_schedule = list(highest_visit_by_amc.values())
+    print(f"{len(visits_to_schedule)} visits selected for scheduling (highest visit number per facility + AMC configuration)")
+
+    if len(visits_to_schedule) == 0:
         print("No visits are due for scheduling within the next month.")
     else:
-        # Step 3: Call /_update for each eligible visit
-        print("Updating eligible visits (service will mark them as SCHEDULED)...")
+        # Step 4: Call /_update for each selected visit
+        print("Updating selected visits (service will mark them as SCHEDULED)...")
         update_url = f'{SERVICE_HOST}/asset-amc/v1/visit/_update'
         success_count = 0
 
-        for visit in eligible_visits:
+        for visit in visits_to_schedule:
             visit_id = visit.get("id")
             visit_to_update = {
                 "id": visit.get("id"),
@@ -153,6 +169,6 @@ else:
             except Exception as e:
                 print(f"Error updating visit {visit_id}: {e}")
 
-        print(f"Completed processing tenant {tenant_id}: {success_count}/{len(eligible_visits)} eligible visits processed")
+        print(f"Completed processing tenant {tenant_id}: {success_count}/{len(visits_to_schedule)} selected visits processed")
 
 print("Visit scheduling cron job completed")
