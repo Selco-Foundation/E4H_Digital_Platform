@@ -24,7 +24,6 @@ class FacilityServiceClient:
             response = requests.post(url, headers=headers, json=payload, timeout=timeout)
             logger.info(f"Facility created successfully: facility_id={facility_id}")
             logger.debug(f"Create response status: {response.status_code}")
-            response = requests.post(url, headers=headers, json=payload, timeout=timeout)
             return response
 
         except requests.exceptions.HTTPError as http_err:

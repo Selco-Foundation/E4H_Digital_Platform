@@ -39,7 +39,6 @@ class HRMSServiceClient:
             "tenantId": DEFAULT_TENANT_ID,
             "phone": user_payload["Employees"][0]["user"]["mobileNumber"],
         }
-        logger.trace(f"Searching user in HRMS: {url}")
         try:
             response = requests.post(url, headers=headers, params=params, json=user_payload, timeout=60)
             return response
