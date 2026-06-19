@@ -8,7 +8,7 @@ import os
 tenant_id = "in"
 
 # Service host - will be overridden by environment variable or default
-SERVICE_HOST = "http://amc-service.core-dev:8080"
+SERVICE_HOST = "http://localhost:8075"
 if os.getenv("AMC_SCHEDULER_SERVICE_HOST"):
     SERVICE_HOST = os.getenv("AMC_SCHEDULER_SERVICE_HOST")
 
@@ -64,31 +64,55 @@ request_info["RequestInfo"]["userInfo"]["roles"] = [
     {**role, "tenantId": tenant_id} for role in role_templates
 ]
 
-# Step 1: Search for all DRAFT visits
+# Step 1: Search for all DRAFT visits.
+# Note: the service caps the page size at its configured max limit
+# (project.search.max.limit, currently 200), so the number of rows returned per
+# page may be smaller than the requested PAGE_LIMIT. We therefore advance the
+# offset by the number of rows actually returned and stop based on TotalCount
+# (or an empty page) instead of assuming the server honored PAGE_LIMIT.
 print("Searching for DRAFT visits...")
-search_url = f'{SERVICE_HOST}/asset-amc/v1/visit/_search?tenantId={tenant_id}&limit=1000&offset=0'
-search_request = {
-    "RequestInfo": request_info["RequestInfo"],
-    "searchCriteria": {
-        "tenantId": tenant_id,
-        "statuses": ["DRAFT"]
-    }
-}
+PAGE_LIMIT = 1000
+visits = []
+offset = 0
+total_count = None
 
-try:
-    response = requests.post(search_url, headers=headers, json=search_request, timeout=60)
-    if response.status_code == 200:
-        data = response.json()
-        visits = data.get("ScheduledVisits", [])
-        total_count = data.get("TotalCount", 0)
-        if total_count > 0 and len(visits) == 0:
-            print(f"Warning: TotalCount={total_count} but no visits found in response. Response keys: {list(data.keys())}")
-    else:
-        print(f"Search returned status {response.status_code}: {response.text[:200]}")
-        visits = []
-except Exception as e:
-    print(f"Error searching visits: {e}")
-    visits = []
+while True:
+    search_url = f'{SERVICE_HOST}/asset-amc/v1/visit/_search?tenantId={tenant_id}&limit={PAGE_LIMIT}&offset={offset}'
+    search_request = {
+        "RequestInfo": request_info["RequestInfo"],
+        "searchCriteria": {
+            "tenantId": tenant_id,
+            "statuses": ["DRAFT"]
+        }
+    }
+
+    try:
+        response = requests.post(search_url, headers=headers, json=search_request, timeout=60)
+        if response.status_code == 200:
+            data = response.json()
+            page_visits = data.get("ScheduledVisits", [])
+            total_count = data.get("TotalCount", 0)
+            if total_count > 0 and len(page_visits) == 0 and offset == 0:
+                print(f"Warning: TotalCount={total_count} but no visits found in response. Response keys: {list(data.keys())}")
+        else:
+            print(f"Search returned status {response.status_code}: {response.text[:200]}")
+            page_visits = []
+    except Exception as e:
+        print(f"Error searching visits at offset {offset}: {e}")
+        page_visits = []
+
+    if len(page_visits) == 0:
+        break
+
+    visits.extend(page_visits)
+    print(f"Fetched {len(page_visits)} visits (offset {offset}), total so far: {len(visits)} (TotalCount={total_count})")
+
+    # Advance by the rows actually returned (server may cap below PAGE_LIMIT).
+    offset += len(page_visits)
+
+    # Stop once we've fetched everything the server reports.
+    if total_count is not None and len(visits) >= total_count:
+        break
 
 print(f"Found {len(visits)} DRAFT visits")
 
