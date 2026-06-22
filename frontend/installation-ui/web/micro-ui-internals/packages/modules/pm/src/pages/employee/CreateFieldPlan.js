@@ -507,7 +507,7 @@ const CreateFieldPlan = () => {
         console.error("Error assigning users for field plan activities", error);
         setToast({
           key: "error",
-          label: t("PM_TOAST_ACTIVITY_DETAILS_SAVE_ERROR"),
+          label: CommonUtils.getApiErrorMessage(error) || t("PM_TOAST_ACTIVITY_DETAILS_SAVE_ERROR"),
         })
 
       } finally {
