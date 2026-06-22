@@ -225,12 +225,21 @@ public class ActivityService {
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
         log.debug("Fetching activity facilities from repository");
         List<ActivityFacility> activityFacilities = activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
-        log.debug("Retrieved {} activity facilities from repository", activityFacilities != null ? activityFacilities.size() : 0);
+        List<String> fieldPlanIds = activityFacilities.stream()
+                .map(ActivityFacility::getFieldPlanId)
+                .filter(Objects::nonNull)
+                .filter(id -> !id.isEmpty())
+                .distinct()
+                .toList();
+        Map<String, String> pocNumbersByFieldPlanId = activityAssignmentRepository.getFirstPocNumbersByFieldPlanIds(fieldPlanIds);
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         log.debug("Loaded {} boundaries for enrichment", listBlock.size());
         for (ActivityFacility activityFacility : activityFacilities) {
             log.trace("Enriching activity facility with id: {}", activityFacility.getId());
             activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
+            if (activityFacility.getFieldPlan() != null && activityFacility.getFieldPlanId() != null) {
+                activityFacility.getFieldPlan().setPocNumber(pocNumbersByFieldPlanId.get(activityFacility.getFieldPlanId()));
+            }
 
             if(activityFacility.getFacility() == null)
                 continue;

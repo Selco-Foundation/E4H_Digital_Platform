@@ -116,6 +116,104 @@ DB_CONFIG = {
 
 FACILITY_VENDOR_CODE_COLUMN = "Vendor Code (Mandatory)"
 
+
+def _bulk_create_facilities_for_ingestion(
+        df: pd.DataFrame,
+        facility_client: FacilityServiceClient,
+        org_client: Optional[OrganizationServiceClient],
+        request_info: RequestInfo,
+        facility_schema: List[Dict],
+        are_facilities_onm_ready: bool,
+        vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]],
+        hfr_nin_db_cache: Dict[str, bool],
+) -> None:
+    """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service)."""
+    pending_creates: List[tuple] = []
+
+    for index, row in df[df['status'] != 'success'].iterrows():
+        hfr_nin_errs = collect_hfr_nin_errors_for_row(
+            row, index, df, facility_client, hfr_nin_db_cache,
+        )
+        anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
+            row, index, df, facility_schema,
+        )
+        pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
+        if pre_errs:
+            df.at[index, 'status'] = 'failed'
+            df.at[index, 'error'] = '; '.join(pre_errs)
+            continue
+
+        pending_creates.append((index, row.copy()))
+
+    if not pending_creates:
+        return
+
+    logger.info("Processing %s facilities using bulk create API", len(pending_creates))
+    request_info_payload = request_info.model_dump(by_alias=True, exclude_none=True)
+
+    for chunk_start in range(0, len(pending_creates), BULK_INGEST_CHUNK_SIZE):
+        chunk = pending_creates[chunk_start:chunk_start + BULK_INGEST_CHUNK_SIZE]
+        bulk_payload = {
+            "RequestInfo": request_info_payload,
+            "facilities": [],
+        }
+        creation_meta: List[int] = []
+
+        for index, row_data in chunk:
+            vendor_mapping = resolve_mapped_vendor_for_facility_row(
+                org_client,
+                request_info,
+                row_data,
+                FACILITY_VENDOR_CODE_COLUMN,
+                vendor_mapping_cache,
+            )
+            single_payload = create_facility_payload(
+                request_info,
+                row_data,
+                are_facilities_onm_ready,
+                facility_schema,
+                mapped_vendor_name=vendor_mapping.get("mappedVendorName"),
+                mapped_vendor_user_name=vendor_mapping.get("mappedVendorUserName"),
+            )
+            facilities = single_payload.get("facilities", [])
+            if facilities:
+                bulk_payload["facilities"].append(facilities[0])
+                creation_meta.append(index)
+            else:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = 'Invalid facility payload'
+
+        if not bulk_payload["facilities"]:
+            continue
+
+        create_resp = None
+        try:
+            create_resp = facility_client.create_facility(bulk_payload)
+        except Exception as exc:
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = f'Exception during bulk create: {str(exc)}'
+            continue
+
+        if create_resp.status_code in (200, 201):
+            for row_idx in creation_meta:
+                df.at[row_idx, 'status'] = 'success'
+                df.at[row_idx, 'error'] = ''
+        elif create_resp.status_code == 400:
+            try:
+                error_data = create_resp.json()
+                error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
+            except Exception:
+                error_message = create_resp.text
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = error_message
+        else:
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = f'{create_resp.status_code}: {create_resp.text}'
+
+
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
              response_description="Returns processed Excel file with validation results")
@@ -526,49 +624,17 @@ async def upload_facilities_excel_sheet(
             org_client = OrganizationServiceClient(org_service_url) if org_service_url else None
             vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]] = {}
             hfr_nin_db_cache: Dict[str, bool] = {}
-            for index, row in df[df['status'] != 'success'].iterrows():
-                hfr_nin_errs = collect_hfr_nin_errors_for_row(
-                    row, index, df, facility_client, hfr_nin_db_cache,
-                )
-                anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
-                    row, index, df, facility_schema,
-                )
-                pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
-                if pre_errs:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = '; '.join(pre_errs)
-                    continue
-                try:
-                    vendor_mapping = resolve_mapped_vendor_for_facility_row(
-                        org_client,
-                        request_info,
-                        row,
-                        FACILITY_VENDOR_CODE_COLUMN,
-                        vendor_mapping_cache,
-                    )
-                    facility_data_payload = create_facility_payload(
-                        request_info,
-                        row,
-                        are_facilities_onm_ready,
-                        facility_schema,
-                        mapped_vendor_name=vendor_mapping.get("mappedVendorName"),
-                        mapped_vendor_user_name=vendor_mapping.get("mappedVendorUserName"),
-                    )
-                    response = facility_client.create_facility(facility_data_payload)
-                    if response.status_code in (200, 201):
-                        df.at[index, 'status'] = 'success'
-                        df.at[index, 'error'] = ''
-                    elif response.status_code == 400:
-                        error_data = response.json()
-                        error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
-                        df.at[index, 'status'] = 'failed'
-                        df.at[index, 'error'] = error_message
-                    else:
-                        df.at[index, 'status'] = 'failed'
-                        df.at[index, 'error'] = f'{response.status_code}: {response.text}'
-                except Exception as e:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'Exception: {str(e)}'
+
+            _bulk_create_facilities_for_ingestion(
+                df=df,
+                facility_client=facility_client,
+                org_client=org_client,
+                request_info=request_info,
+                facility_schema=facility_schema,
+                are_facilities_onm_ready=are_facilities_onm_ready,
+                vendor_mapping_cache=vendor_mapping_cache,
+                hfr_nin_db_cache=hfr_nin_db_cache,
+            )
 
         writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)
         writer.write_data(df)

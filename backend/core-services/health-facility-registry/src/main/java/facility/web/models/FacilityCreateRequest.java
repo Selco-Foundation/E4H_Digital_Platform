@@ -35,5 +35,11 @@ public class FacilityCreateRequest {
     @Valid
     private List<FacilityCreate> facilities = null;
 
+    /**
+     * When true, vendor-user HRMS jurisdiction mapping is skipped during create.
+     * Callers (e.g. ingestion) may assign jurisdictions in bulk grouped by vendor code.
+     */
+    @JsonProperty("skipVendorJurisdictionAssignment")
+    private Boolean skipVendorJurisdictionAssignment = false;
 
 }
