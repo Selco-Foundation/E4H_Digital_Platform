@@ -170,6 +170,9 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
 
   const facility = activityFacilityData?.activityFacility?.facility || {};
   const assigneeDetails = activityFacilityData?.activityFacility?.assignedEmployeeUser || {};
+  const assignedVendorName =
+    facility?.additionalDetails?.mappedVendorName ||
+    activityFacilityData?.facility?.additionalDetails?.mappedVendorName;
   const auditTrail = generateAuditTrail(activityFacilityData.workflow, activityFacilityData.transactions);
   const { documentAggregation, installationImages, workflowDocuments } = await getAssetAggregation(activityFacilityData.workflow);
 
@@ -182,7 +185,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       status: activityFacilityData?.activityFacility?.status,
       block: activityFacilityData?.activityFacility?.facility?.boundary?.block,
       district: activityFacilityData?.activityFacility?.facility?.boundary?.district,
-      assigned: assigneeDetails.name,
+      assigned: assignedVendorName || assigneeDetails.name,
     },
     auditTrail,
     documentAggregation,

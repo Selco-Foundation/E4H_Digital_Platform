@@ -9,7 +9,10 @@ const formatFacilities = (facilities) => {
       status: row?.activityFacility?.status,
       block: row?.activityFacility?.facility?.boundary?.block,
       district: row?.activityFacility?.facility?.boundary?.district,
-      assigned: row?.activityFacility?.assignedEmployeeUser?.name,
+      assigned:
+        row?.activityFacility?.facility?.additionalDetails?.mappedVendorName ||
+        row?.facility?.additionalDetails?.mappedVendorName ||
+        row?.activityFacility?.assignedEmployeeUser?.name,
   }));
 }
 
