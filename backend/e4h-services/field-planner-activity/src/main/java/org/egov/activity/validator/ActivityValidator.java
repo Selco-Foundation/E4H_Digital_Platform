@@ -179,7 +179,7 @@ public class ActivityValidator {
                 .allMatch(assignment -> Objects.equals(firstPocNumber, assignment.getPocNumber()));
         if (!allSame) {
             log.error("All ActivityAssignment pocNumber values must be identical in the request");
-            throw new CustomException("POC_NUMBER", "All ActivityAssignment pocNumber values must be identical");
+            throw new CustomException("POC_NUMBER", "All PO number values must be identical");
         }
     }
 
