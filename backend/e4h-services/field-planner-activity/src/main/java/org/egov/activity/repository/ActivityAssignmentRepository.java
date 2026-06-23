@@ -86,4 +86,28 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
 
         return pocNumbersByFieldPlanId;
     }
+
+    public Map<String, String> getAssignedToByFieldPlanIdsAndRole(List<String> fieldPlanIds, String role) {
+        if (fieldPlanIds == null || fieldPlanIds.isEmpty() || role == null || role.isBlank()) {
+            return Collections.emptyMap();
+        }
+
+        String placeholders = fieldPlanIds.stream().map(id -> "?").collect(Collectors.joining(", "));
+        String query = "SELECT DISTINCT ON (field_plan_id) field_plan_id, assigned_to "
+                + "FROM activity_assignments "
+                + "WHERE field_plan_id IN (" + placeholders + ") "
+                + "AND role ->> 'code' = ? "
+                + "AND COALESCE(isdeleted, false) = false "
+                + "ORDER BY field_plan_id, created_time ASC NULLS LAST";
+
+        List<Object> params = new ArrayList<>(fieldPlanIds);
+        params.add(role);
+
+        Map<String, String> assignedToByFieldPlanId = new HashMap<>();
+        jdbcTemplate.query(query, rs -> {
+            assignedToByFieldPlanId.put(rs.getString("field_plan_id"), rs.getString("assigned_to"));
+        }, params.toArray());
+
+        return assignedToByFieldPlanId;
+    }
 }

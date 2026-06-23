@@ -34,6 +34,7 @@ public class ActivityConstants {
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
     public static final String FACILITY_ADMIN = "FACILITY_ADMIN";
     public static final String INSTALLATION_REPORT_APPROVER_QC_TEAM = "INSTALLATION_REPORT_APPROVER_QC_TEAM";
+    public static final String INSTALLATION_REPORT_PART_B_EDITOR = "INSTALLATION_REPORT_PART_B_EDITOR";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
 
