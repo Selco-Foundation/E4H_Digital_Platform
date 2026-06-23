@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import FormattedDateInput from "../Custom/FormattedDateInput";
 import { SubmitBar, Table } from "@egovernments/digit-ui-react-components";
-import { MobileNumber } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "../OrganizationUserDropdown";
 import CustomDropdown from "../Custom/CustomDropdown";
+
+const PO_NUMBER_REGEX = /^PUR-ORD-\d{4}-\d{4}-\d{5}$/;
+
+const isValidPoNumber = (poNumber) => {
+  return PO_NUMBER_REGEX.test(poNumber || "");
+};
 
 const ActivityDetails = ({
   data = {},
@@ -113,6 +118,35 @@ const ActivityDetails = ({
         }),
       };
     }));
+  }
+
+  const handleActivityDataSave = () => {
+    let faultyData = false;
+
+    const validatedData = activityAssignmentData.map((dataEntry) => ({
+      ...dataEntry,
+      users: dataEntry.users.map((userEntry) => {
+        if (userEntry.deleteAssignment || !userEntry.poNumber?.value || isValidPoNumber(userEntry.poNumber.value)) {
+          return userEntry;
+        }
+
+        faultyData = true;
+        return {
+          ...userEntry,
+          poNumber: {
+            ...userEntry.poNumber,
+            error: t("PO_NUMBER_FORMAT_ERROR"),
+          },
+        };
+      }),
+    }));
+
+    if (faultyData) {
+      setActivityAssignmentData(validatedData);
+      return;
+    }
+
+    onActivityDataSave(validatedData);
   }
 
   const GetHead = (value) => (
@@ -232,12 +266,13 @@ const ActivityDetails = ({
         borderBottom: isLast ? "none" : "1px solid #EEEEEE",
       }}
     >
-      <MobileNumber
+      <input
+        className={"employee-card-input"}
         value={fieldValue.value}
-        onChange={(value) => handleUserDataChange(activity, index, fieldName, value)}
-        hideSpan={true}
+        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.toUpperCase())}
+        maxLength={23}
         style={{
-          minWidth: "170px",
+          minWidth: "230px",
         }}
       />
       <span
@@ -502,7 +537,7 @@ const ActivityDetails = ({
             width: "220px",
             maxWidth: "50%",
           }}
-          onSubmit={() => onActivityDataSave(activityAssignmentData)}
+          onSubmit={handleActivityDataSave}
         />
       </div>
     </div>
