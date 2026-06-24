@@ -7,9 +7,9 @@ const formatVisits = (visits) => {
       facilityName: row?.facility?.facility_name,
       facilityId: row?.facility?.id,
       status: row?.status,
-      block: "",
-      district: "",
-      assigned: row?.processInstances?.[0]?.assignes?.[0]?.name,
+      block: row?.facility?.additionalDetails?.boundary?.block,
+      district: row?.facility?.additionalDetails?.boundary?.district,
+      assigned: row?.assignments?.[0]?.user?.name,
   }));
 }
 
