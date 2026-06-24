@@ -9,6 +9,9 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
   const [defaultValues, setDefaultValues] = useState({});
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [selectedFacilityCategory, setSelectedFacilityCategory] = useState({});
+  const [selectedIsOperational, setSelectedIsOperational] = useState({});
+  const yesChoice = { code: "YES", name: t("TL_COMMON_YES") };
+  const noChoice = { code: "NO", name: t("TL_COMMON_NO") };
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -19,9 +22,11 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
 
   useEffect(() => {
     if (createdFacility?.id) {
-      setDefaultValues({ ...createdFacility });
+      setDefaultValues(createdFacility?.isOperational?.code === "NO" ? { ...createdFacility, isOnmReady: noChoice } : { ...createdFacility });
+      setSelectedIsOperational(createdFacility?.isOperational);
     } else {
-      setDefaultValues({ ...createdFacility, isOperational: { code: "YES", name: t("TL_COMMON_YES") } });
+      setDefaultValues({ ...createdFacility, isOperational: yesChoice });
+      setSelectedIsOperational(yesChoice);
     }
   }, []);
 
@@ -48,8 +53,8 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
   );
 
   const booleanChoiceMenu = [
-    { code: "YES", name: t("TL_COMMON_YES") },
-    { code: "NO", name: t("TL_COMMON_NO") },
+    yesChoice,
+    noChoice,
   ];
 
   const sortMenu = (options, field = "name") => {
@@ -272,7 +277,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             inline: true,
             label: "FACILITY_IS_ONM_READY",
             isMandatory: false,
-            disable: false,
+            disable: selectedIsOperational?.code === "NO",
             key: "isOnmReady",
             type: "dropdown",
             populators: {
@@ -322,14 +327,15 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         ],
       },
     ],
-    [t, mdmsResponse, createdFacility, boundaryData, selectedFacilityCategory]
+    [t, mdmsResponse, createdFacility, boundaryData, selectedFacilityCategory, selectedIsOperational]
   );
 
   const handleFormSubmit = (formData) => {
-    const hasHfrId = formData?.hfrId && `${formData.hfrId}`.trim().length > 0;
-    const hasNinId = formData?.ninId && `${formData.ninId}`.trim().length > 0;
-    if (formData?.facilityCategory?.code !== "HEALTH" || hasHfrId || hasNinId) {
-      onFormSubmit(formData);
+    const updatedFormData = formData?.isOperational?.code === "NO" ? { ...formData, isOnmReady: noChoice } : formData;
+    const hasHfrId = updatedFormData?.hfrId && `${updatedFormData.hfrId}`.trim().length > 0;
+    const hasNinId = updatedFormData?.ninId && `${updatedFormData.ninId}`.trim().length > 0;
+    if (updatedFormData?.facilityCategory?.code !== "HEALTH" || hasHfrId || hasNinId) {
+      onFormSubmit(updatedFormData);
     } else {
       setFormToast({
         key: "error",
@@ -338,7 +344,18 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
     }
   };
 
-  const handleFormChange = (_, formData) => {
+  const handleFormChange = (setValue, formData) => {
+    if (formData?.isOperational?.code === "NO" && formData?.isOnmReady?.code !== "NO") {
+      setValue("isOnmReady", noChoice);
+      setDefaultValues({
+        ...formData,
+        isOnmReady: noChoice,
+      });
+      setSelectedIsOperational(formData?.isOperational);
+    } else if (CommonUtils.isNotEqual(formData?.isOperational, selectedIsOperational)) {
+      setSelectedIsOperational(formData?.isOperational);
+    }
+
     if (CommonUtils.isNotEqual(formData?.facilityCategory, selectedFacilityCategory)) {
       setSelectedFacilityCategory(formData?.facilityCategory);
       if (formData?.facilityType?.facilityCategory !== formData?.facilityCategory?.code) {
