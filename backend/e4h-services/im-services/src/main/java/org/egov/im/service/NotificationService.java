@@ -754,6 +754,10 @@ public class NotificationService {
     }
 
     public Map<String, String> getHRMSEmployee(IncidentRequest request, String role) {
+        return getHRMSEmployee(request, role, request.getIncident().getBoundaryCode());
+    }
+
+    public Map<String, String> getHRMSEmployee(IncidentRequest request, String role, String boundaryCode) {
         Map<String, String> reassigneeDetails = new HashMap<>();
 
         List<String> employeeName = null;
@@ -766,9 +770,9 @@ public class NotificationService {
             tenantId = tenantId.split("\\.")[0];
         }
         if (request.getWorkflow().getAssignes() != null)
-            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, request.getIncident().getBoundaryCode());
+            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, boundaryCode);
         else
-            url = hrmsUtils.getHRMSURI(null, tenantId, role, request.getIncident().getBoundaryCode());
+            url = hrmsUtils.getHRMSURI(null, tenantId, role, boundaryCode);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
         Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
 
