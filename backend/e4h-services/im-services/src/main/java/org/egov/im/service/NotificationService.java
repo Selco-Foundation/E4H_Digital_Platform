@@ -97,11 +97,10 @@ public class NotificationService {
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
                 employeeMobileNumber = reassigneeDetails.get("employeeMobile");
             } else if (isAssignToVendorNotification(applicationStatus, action)) {
+                citizenMobileNumber = resolveVendorMobileForAssign(request, incidentWrapper);
                 request.getWorkflow().setAssignes(null);
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                employeeMobileNumber = reassigneeDetails.get("employeeMobile");
-                ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), ASSIGN);
-                citizenMobileNumber = processInstance.getAssignes().get(0).getMobileNumber();
+                employeeMobileNumber = reassigneeDetails != null ? reassigneeDetails.get("employeeMobile") : null;
             } else if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(SENDBACK)) {
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
                 employeeMobileNumber = reassigneeDetails.get("employeeMobile");
@@ -110,13 +109,14 @@ public class NotificationService {
                 employeeMobileNumber = reassigneeDetails.get("employeeMobile");
             } else if (applicationStatus.equalsIgnoreCase(RESOLVED) && action.equalsIgnoreCase(IM_WF_RESOLVE)) {
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                employeeMobileNumber = reassigneeDetails.get("employeeMobile");
+                employeeMobileNumber = reassigneeDetails != null ? reassigneeDetails.get("employeeMobile") : null;
 
                 ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
-                citizenMobileNumber = processInstance.getAssigner().getMobileNumber();
+                if (processInstance.getAssigner() != null) {
+                    citizenMobileNumber = processInstance.getAssigner().getMobileNumber();
+                }
 
-                processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), ASSIGN);
-                crmMobileNumber = processInstance.getAssigner().getMobileNumber();
+                crmMobileNumber = resolveCrmMobileForResolve(request, incidentWrapper);
             } else if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(IM_WF_REOPEN)) {
                 ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
                 if (processInstance == null || processInstance.getAssigner() == null)
@@ -636,32 +636,101 @@ public class NotificationService {
 
     public ProcessInstance getEmployeeName(String tenantId, String IncidentId, RequestInfo requestInfo, String action) {
         ProcessInstance processInstanceToReturn = new ProcessInstance();
+        List<ProcessInstance> processInstances = fetchProcessInstanceHistory(tenantId, IncidentId, requestInfo);
+        for (ProcessInstance processInstance : processInstances) {
+            if (processInstance.getAction() != null && processInstance.getAction().equalsIgnoreCase(action)) {
+                processInstanceToReturn = processInstance;
+            }
+        }
+        return processInstanceToReturn;
+    }
+
+    private ProcessInstance getProcessInstanceByActionAndTargetStatus(String tenantId, String incidentId,
+                                                                      RequestInfo requestInfo, String action,
+                                                                      String targetApplicationStatus) {
+        List<ProcessInstance> processInstances = fetchProcessInstanceHistory(tenantId, incidentId, requestInfo);
+        for (ProcessInstance processInstance : processInstances) {
+            if (processInstance.getAction() != null
+                    && processInstance.getAction().equalsIgnoreCase(action)
+                    && processInstance.getState() != null
+                    && targetApplicationStatus.equalsIgnoreCase(processInstance.getState().getApplicationStatus())) {
+                return processInstance;
+            }
+        }
+        return new ProcessInstance();
+    }
+
+    private List<ProcessInstance> fetchProcessInstanceHistory(String tenantId, String incidentId, RequestInfo requestInfo) {
         User userInfoCopy = requestInfo.getUserInfo();
-
         User userInfo = getInternalMicroserviceUser(tenantId);
-
         requestInfo.setUserInfo(userInfo);
 
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
-        StringBuilder URL = workflowService.getprocessInstanceSearchURL(tenantId, IncidentId);
-        URL.append("&").append("history=true");
+        StringBuilder url = workflowService.getprocessInstanceSearchURL(tenantId, incidentId);
+        url.append("&").append("history=true");
 
-        Object result = serviceRequestRepository.fetchResult(URL, requestInfoWrapper);
-        ProcessInstanceResponse processInstanceResponse = null;
+        Object result = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
+        ProcessInstanceResponse processInstanceResponse;
         try {
             processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
         } catch (IllegalArgumentException e) {
             throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
         }
-        if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances()))
+        if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
             throw new CustomException("WORKFLOW_NOT_FOUND", "The workflow object is not found");
-
-        for (ProcessInstance processInstance : processInstanceResponse.getProcessInstances()) {
-            if (processInstance.getAction().equalsIgnoreCase(action))
-                processInstanceToReturn = processInstance;
         }
+
         requestInfo.setUserInfo(userInfoCopy);
-        return processInstanceToReturn;
+        return processInstanceResponse.getProcessInstances();
+    }
+
+    private String resolveVendorMobileForAssign(IncidentRequest request, IncidentWrapper incidentWrapper) {
+        if (request.getWorkflow().getAssignes() != null && !request.getWorkflow().getAssignes().isEmpty()) {
+            User vendor = fetchUserByUUID(
+                    request.getWorkflow().getAssignes().get(0),
+                    request.getRequestInfo(),
+                    request.getIncident().getTenantId());
+            if (vendor != null && StringUtils.hasText(vendor.getMobileNumber())) {
+                return vendor.getMobileNumber();
+            }
+        }
+
+        ProcessInstance assignInstance = getEmployeeName(
+                incidentWrapper.getIncident().getTenantId(),
+                incidentWrapper.getIncident().getIncidentId(),
+                request.getRequestInfo(),
+                ASSIGN);
+        if (assignInstance.getAssignes() != null && !assignInstance.getAssignes().isEmpty()) {
+            User assignee = assignInstance.getAssignes().get(0);
+            if (assignee != null && StringUtils.hasText(assignee.getMobileNumber())) {
+                return assignee.getMobileNumber();
+            }
+        }
+
+        Map<String, String> vendorDetails = getHRMSEmployee(request, ROLE_COMPLAINT_RESOLVER);
+        return vendorDetails != null ? vendorDetails.get("employeeMobile") : null;
+    }
+
+    private String resolveCrmMobileForResolve(IncidentRequest request, IncidentWrapper incidentWrapper) {
+        String tenantId = incidentWrapper.getIncident().getTenantId();
+        String incidentId = incidentWrapper.getIncident().getIncidentId();
+        RequestInfo requestInfo = request.getRequestInfo();
+
+        if (isRmsIncident(request)) {
+            ProcessInstance crmAssign = getProcessInstanceByActionAndTargetStatus(
+                    tenantId, incidentId, requestInfo, ASSIGN, RMS_DEVICE_PENDING_TECH_POC);
+            if (crmAssign.getAssigner() != null && StringUtils.hasText(crmAssign.getAssigner().getMobileNumber())) {
+                return crmAssign.getAssigner().getMobileNumber();
+            }
+            Map<String, String> crmDetails = getHRMSEmployee(request, ROLE_COMPLAINT_ASSESSOR);
+            return crmDetails != null ? crmDetails.get("employeeMobile") : null;
+        }
+
+        ProcessInstance assignInstance = getEmployeeName(tenantId, incidentId, requestInfo, ASSIGN);
+        if (assignInstance.getAssigner() != null) {
+            return assignInstance.getAssigner().getMobileNumber();
+        }
+        return null;
     }
 
     public String getDepartment(IncidentRequest request) {
@@ -899,6 +968,11 @@ public class NotificationService {
         return ASSIGN.equalsIgnoreCase(action)
                 && (PENDINGATVENDOR.equalsIgnoreCase(applicationStatus)
                 || RMS_DEVICE_PENDINGRESOLUTION.equalsIgnoreCase(applicationStatus));
+    }
+
+    private boolean isRmsIncident(IncidentRequest request) {
+        return request.getIncident() != null
+                && TICKET_TYPE_RMS.equalsIgnoreCase(request.getIncident().getIncidentType());
     }
 
 }
