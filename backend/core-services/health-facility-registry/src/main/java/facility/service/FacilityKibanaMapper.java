@@ -41,6 +41,7 @@ public class FacilityKibanaMapper {
     private final RestTemplate restTemplate;
     private final ObjectMapper mapper;
     private final Configuration configs;
+    private final IncidentStatusDao incidentStatusDao;
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
     private static final String LOCALIZATION_LOCALE = "en_IN";
@@ -108,8 +109,10 @@ public class FacilityKibanaMapper {
             builder.geoPoint(geoPoint);
         }
 
-        // Keep index behavior deterministic: default to FUNCTIONAL unless explicitly provided.
-        String solarPanelStatus = "FUNCTIONAL";
+        // Derive solar panel status the same way the im-services-analytics Kafka listener does:
+        // NON_FUNCTIONAL when any open incident for this boundary code is non-functional, else FUNCTIONAL.
+        // An explicit value in additionalDetails still takes precedence.
+        String solarPanelStatus = incidentStatusDao.resolveSolarPanelStatus(facility.getBoundaryCode());
         if (facility.getAdditionalDetails() != null) {
             Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
             if (solarStatus != null && !solarStatus.toString().isBlank()) {
