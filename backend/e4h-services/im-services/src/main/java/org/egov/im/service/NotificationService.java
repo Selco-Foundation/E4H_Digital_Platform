@@ -96,7 +96,7 @@ public class NotificationService {
             if (isTicketCreationNotification(applicationStatus, action)) {
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
                 employeeMobileNumber = reassigneeDetails.get("employeeMobile");
-            } else if (applicationStatus.equalsIgnoreCase(PENDINGATVENDOR) && action.equalsIgnoreCase(ASSIGN)) {
+            } else if (isAssignToVendorNotification(applicationStatus, action)) {
                 request.getWorkflow().setAssignes(null);
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
                 employeeMobileNumber = reassigneeDetails.get("employeeMobile");
@@ -234,37 +234,25 @@ public class NotificationService {
 
         }
         /**
-         * SMS to citizens and employee both, when a complaint is assigned to an employee
+         * SMS to vendor and health staff when a complaint is assigned for resolution (standard or RMS).
          */
-        if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDINGATVENDOR) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(ASSIGN)) {
-            messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
+        if (isAssignToVendorNotification(applicationStatus, incidentWrapper.getWorkflow().getAction())) {
+            messageForCitizen = notificationUtil.getCustomizedMsg(ASSIGN, PENDINGATVENDOR, CITIZEN, localizationMessage);
             if (messageForCitizen == null) {
                 log.info("No message Found For Citizen On Topic : " + topic);
                 return null;
             }
 
-            messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
+            messageForEmployee = notificationUtil.getCustomizedMsg(ASSIGN, PENDINGATVENDOR, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
                 log.info("No message Found For Employee On Topic : " + topic);
                 return null;
             }
 
-//            defaultMessage = notificationUtil.getDefaultMsg(CITIZEN, localizationMessage);
-//            if (defaultMessage == null) {
-//                log.info("No default message Found For Topic : " + topic);
-//                return null;
-//            }
-//
-//            if(defaultMessage.contains("{status}"))
-//                defaultMessage = defaultMessage.replace("{status}", localisedStatus);
-
-
             Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINT_RESOLVER");
 
             if (messageForEmployee.contains("{ulb}")) {
                 String localisationMessageForPlaceholder = notificationUtil.getLocalizationMessages(request.getIncident().getTenantId(), request.getRequestInfo(), COMMON_MODULE);
-                // String localisedULB = notificationUtil.getCustomizedMsgForPlaceholder(localisationMessageForPlaceholder,incidentWrapper.getIncident().getAddress().getDistrict());
-                // messageForEmployee = messageForEmployee.replace("{ulb}",localisedULB);
             }
 
             if (messageForEmployee.contains("{emp_name}"))
@@ -272,7 +260,6 @@ public class NotificationService {
 
             if (messageForCitizen.contains("{emp_name}"))
                 messageForCitizen = messageForCitizen.replace("{emp_name}", reassigneeDetails.get("employeeName"));
-            //messageForEmployee = messageForEmployee.replace("{emp_name}",fetchUserByUUID(request.getWorkflow().getAssignes().get(0), request.getRequestInfo(), request.getIncident().getTenantId()).getName());
 
             if (messageForEmployee.contains("{ao_designation}")) {
                 String localisationMessageForPlaceholder = notificationUtil.getLocalizationMessages(request.getIncident().getTenantId(), request.getRequestInfo(), COMMON_MODULE);
@@ -288,67 +275,6 @@ public class NotificationService {
                 }
             }
         }
-
-        /**
-         * SMS to citizens and employee, when the complaint is re-assigned to an employee
-         */
-//        if(incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDING_FOR_REASSIGNMENT) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(REASSIGN)){
-//            messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
-//            if (messageForCitizen == null) {
-//                log.info("No message Found For Citizen On Topic : " + topic);
-//                return null;
-//            }
-//
-//            messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
-//            if (messageForEmployee == null) {
-//                log.info("No message Found For Employee On Topic : " + topic);
-//                return null;
-//            }
-//
-//            defaultMessage = notificationUtil.getDefaultMsg(CITIZEN, localizationMessage);
-//            if (defaultMessage == null) {
-//                log.info("No default message Found For Topic : " + topic);
-//                return null;
-//            }
-//
-//            if(defaultMessage.contains("{status}"))
-//                defaultMessage = defaultMessage.replace("{status}", localisedStatus);
-//
-//
-//            Map<String, String> reassigneeDetails  = getHRMSEmployee(request);
-//            if (messageForCitizen.contains("{emp_department}"))
-//                messageForCitizen = messageForCitizen.replace("{emp_department}",reassigneeDetails.get(DEPARTMENT));
-//
-//            if (messageForCitizen.contains("{emp_designation}"))
-//                messageForCitizen = messageForCitizen.replace("{emp_designation}",reassigneeDetails.get(DESIGNATION));
-//
-//
-//            if (messageForCitizen.contains("{emp_name}"))
-//                messageForCitizen = messageForCitizen.replace("{emp_name}", fetchUserByUUID(request.getWorkflow().getAssignes().get(0), request.getRequestInfo(), request.getIncident().getTenantId()).getName());
-//
-//            if(messageForEmployee.contains("{ulb}")) {
-//                String localisationMessageForPlaceholder =  notificationUtil.getLocalizationMessages(request.getIncident().getTenantId(), request.getRequestInfo(),COMMON_MODULE);
-//                String localisedULB = notificationUtil.getCustomizedMsgForPlaceholder(localisationMessageForPlaceholder,incidentWrapper.getIncident().getDistrict());
-//                messageForEmployee = messageForEmployee.replace("{ulb}",localisedULB);
-//            }
-//
-//            if (messageForEmployee.contains("{emp_name}"))
-//                messageForEmployee = messageForEmployee.replace("{emp_name}", fetchUserByUUID(request.getRequestInfo().getUserInfo().getUuid(), request.getRequestInfo(), request.getIncident().getTenantId()).getName());
-//
-//            if(messageForEmployee.contains("{ao_designation}")){
-//                String localisationMessageForPlaceholder =  notificationUtil.getLocalizationMessages(request.getIncident().getTenantId(), request.getRequestInfo(),COMMON_MODULE);
-//                String path = "$..messages[?(@.code==\"COMMON_MASTERS_DESIGNATION_AO\")].message";
-//
-//                try {
-//                    ArrayList<String> messageObj = JsonPath.parse(localisationMessageForPlaceholder).read(path);
-//                    if(messageObj != null && messageObj.size() > 0) {
-//                        messageForEmployee = messageForEmployee.replace("{ao_designation}", messageObj.get(0));
-//                    }
-//                } catch (Exception e) {
-//                    log.warn("Fetching from localization failed", e);
-//                }
-//            }
-//        }
 
         /**
          * SMS to citizens, when complaint got rejected with reason
@@ -964,6 +890,15 @@ public class NotificationService {
                 && APPLY_RMS_DEVICE.equalsIgnoreCase(action))
                 || (PENDINGFORASSIGNMENT_THEFT.equalsIgnoreCase(applicationStatus)
                 && APPLY_THEFT.equalsIgnoreCase(action));
+    }
+
+    private boolean isAssignToVendorNotification(String applicationStatus, String action) {
+        if (action == null || applicationStatus == null) {
+            return false;
+        }
+        return ASSIGN.equalsIgnoreCase(action)
+                && (PENDINGATVENDOR.equalsIgnoreCase(applicationStatus)
+                || RMS_DEVICE_PENDINGRESOLUTION.equalsIgnoreCase(applicationStatus));
     }
 
 }
