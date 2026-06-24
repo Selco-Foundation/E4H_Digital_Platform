@@ -17,8 +17,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Links newly created facilities to vendor organisations: resolves org by vendor code,
@@ -39,7 +42,56 @@ public class VendorOrganisationService {
      */
     public void assignFacilityJurisdictionToFirstOrgUser(
             String vendorCode, Facility facility, String tenantId, RequestInfo requestInfo) {
+        if (facility == null || facility.getBoundaryCode() == null || facility.getBoundaryCode().isBlank()) {
+            if (facility != null) {
+                log.warn("Facility {} has no boundary code; cannot assign vendor jurisdiction", facility.getFacilityId());
+            }
+            return;
+        }
+        assignFacilityJurisdictionsToFirstOrgUser(
+                vendorCode, List.of(facility.getBoundaryCode()), tenantId, requestInfo);
+    }
+
+    /**
+     * Groups facilities by vendor code and performs one HRMS jurisdiction update per vendor
+     * (all facility boundaries merged in a single read-modify-write).
+     */
+    public void assignFacilityJurisdictionsBulk(
+            List<Facility> facilities, String tenantId, RequestInfo requestInfo) {
+        if (facilities == null || facilities.isEmpty()) {
+            return;
+        }
+
+        Map<String, Set<String>> boundariesByVendor = new LinkedHashMap<>();
+        for (Facility facility : facilities) {
+            if (facility == null) {
+                continue;
+            }
+            String vendorCode = extractVendorCode(facility);
+            String boundaryCode = facility.getBoundaryCode();
+            if (vendorCode == null || vendorCode.isBlank() || boundaryCode == null || boundaryCode.isBlank()) {
+                continue;
+            }
+            boundariesByVendor
+                    .computeIfAbsent(vendorCode.trim(), ignored -> new LinkedHashSet<>())
+                    .add(boundaryCode.trim());
+        }
+
+        for (Map.Entry<String, Set<String>> entry : boundariesByVendor.entrySet()) {
+            assignFacilityJurisdictionsToFirstOrgUser(
+                    entry.getKey(), new ArrayList<>(entry.getValue()), tenantId, requestInfo);
+        }
+    }
+
+    /**
+     * Merges multiple facility boundaries into the first org user's HRMS jurisdictions with a single update.
+     */
+    public void assignFacilityJurisdictionsToFirstOrgUser(
+            String vendorCode, List<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
         if (vendorCode == null || vendorCode.isBlank()) {
+            return;
+        }
+        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
             return;
         }
         if (configs.getVendorHost() == null || configs.getVendorHost().isBlank()) {
@@ -47,14 +99,19 @@ public class VendorOrganisationService {
                     vendorCode);
             return;
         }
-        if (facility.getBoundaryCode() == null || facility.getBoundaryCode().isBlank()) {
-            log.warn("Facility {} has no boundary code; cannot assign vendor jurisdiction", facility.getFacilityId());
+
+        String normalizedVendorCode = vendorCode.trim();
+        List<String> normalizedBoundaries = boundaryCodes.stream()
+                .filter(code -> code != null && !code.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+        if (normalizedBoundaries.isEmpty()) {
             return;
         }
 
-        String normalizedVendorCode = vendorCode.trim();
-        log.info("Assigning facility {} boundary to first user of vendor organisation with code {}",
-                facility.getFacilityId(), normalizedVendorCode);
+        log.info("Assigning {} facility boundaries to first user of vendor organisation with code {}",
+                normalizedBoundaries.size(), normalizedVendorCode);
 
         try {
             String organisationId = findOrganisationIdByCode(normalizedVendorCode, tenantId, requestInfo);
@@ -69,10 +126,11 @@ public class VendorOrganisationService {
                 return;
             }
 
-            updateEmployeeJurisdictionWithFacility(orgUserHrmsUuid, facility, tenantId, requestInfo);
+            updateEmployeeJurisdictionsWithFacilityBoundaries(
+                    orgUserHrmsUuid, normalizedBoundaries, tenantId, requestInfo);
         } catch (Exception e) {
-            log.error("Failed to assign facility {} to vendor {} (non-blocking): {}",
-                    facility.getFacilityId(), normalizedVendorCode, e.getMessage(), e);
+            log.error("Failed to assign {} boundaries to vendor {} (non-blocking): {}",
+                    normalizedBoundaries.size(), normalizedVendorCode, e.getMessage(), e);
         }
     }
 
@@ -134,8 +192,8 @@ public class VendorOrganisationService {
         return null;
     }
 
-    private void updateEmployeeJurisdictionWithFacility(
-            String hrmsUserUuid, Facility facility, String tenantId, RequestInfo requestInfo) {
+    private void updateEmployeeJurisdictionsWithFacilityBoundaries(
+            String hrmsUserUuid, List<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
         Map<String, Object> searchWrapper = Map.of("RequestInfo", requestInfo);
         Employee employee = hrmsUtils.getUserById(searchWrapper, hrmsUserUuid);
         if (employee == null) {
@@ -143,8 +201,11 @@ public class VendorOrganisationService {
             return;
         }
 
-        Jurisdiction facilityJurisdiction = hrmsUtils.buildFacilityJurisdiction(facility.getBoundaryCode(), tenantId);
-        List<Jurisdiction> merged = hrmsUtils.mergeFacilityJurisdiction(employee.getJurisdictions(), facilityJurisdiction);
+        List<Jurisdiction> merged = employee.getJurisdictions();
+        for (String boundaryCode : boundaryCodes) {
+            Jurisdiction facilityJurisdiction = hrmsUtils.buildFacilityJurisdiction(boundaryCode, tenantId);
+            merged = hrmsUtils.mergeFacilityJurisdiction(merged, facilityJurisdiction);
+        }
         employee.setJurisdictions(merged);
 
         EmployeeRequest employeeRequest = EmployeeRequest.builder()
@@ -153,11 +214,19 @@ public class VendorOrganisationService {
                 .build();
         List<Employee> updated = hrmsUtils.updateHRMSUser(employeeRequest);
         if (updated != null && !updated.isEmpty()) {
-            log.info("Updated HRMS jurisdictions for vendor user {} with facility boundary {}",
-                    hrmsUserUuid, facility.getBoundaryCode());
+            log.info("Updated HRMS jurisdictions for vendor user {} with {} facility boundaries",
+                    hrmsUserUuid, boundaryCodes.size());
         } else {
             log.warn("HRMS update returned no employees for vendor user {}", hrmsUserUuid);
         }
+    }
+
+    private String extractVendorCode(Facility facility) {
+        if (facility.getFacilityDetails() == null) {
+            return null;
+        }
+        String vendorCode = facility.getFacilityDetails().getVendorCode();
+        return vendorCode != null ? vendorCode.trim() : null;
     }
 
     @SuppressWarnings("unchecked")

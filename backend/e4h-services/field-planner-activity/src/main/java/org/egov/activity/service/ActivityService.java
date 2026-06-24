@@ -28,6 +28,7 @@ import java.sql.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.egov.activity.util.ActivityConstants.INSTALLATION_REPORT_PART_B_EDITOR;
 import static org.egov.activity.util.ActivityConstants.SUBMITTED_BY_SUPERVISOR;
 import static org.egov.common.utils.CommonUtils.populateErrorDetails;
 
@@ -209,11 +210,36 @@ public class ActivityService {
     public List<ActivityFacility> searchActivityFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
         List<ActivityFacility> activityFacilities = activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        List<String> fieldPlanIds = activityFacilities.stream()
+                .map(ActivityFacility::getFieldPlanId)
+                .filter(Objects::nonNull)
+                .filter(id -> !id.isEmpty())
+                .distinct()
+                .toList();
+        Map<String, String> pocNumbersByFieldPlanId = activityAssignmentRepository.getFirstPocNumbersByFieldPlanIds(fieldPlanIds);
+        Map<String, String> assignedToByFieldPlanId = activityAssignmentRepository.getAssignedToByFieldPlanIdsAndRole(
+                fieldPlanIds, INSTALLATION_REPORT_PART_B_EDITOR);
+        List<String> partBEditorUserIds = assignedToByFieldPlanId.values().stream()
+                .filter(Objects::nonNull)
+                .filter(id -> !id.isEmpty())
+                .distinct()
+                .toList();
+        Map<String, String> vendorNameByUserId = fetchVendorNamesByUserIds(partBEditorUserIds, tenantId, request.getRequestInfo());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         log.debug("🌍 Loaded {} boundaries for enrichment", listBlock.size());
         for (ActivityFacility activityFacility : activityFacilities) {
             log.info("processing get activity code", activityFacility);
             activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
+            if (activityFacility.getFieldPlan() != null && activityFacility.getFieldPlanId() != null) {
+                activityFacility.getFieldPlan().setPocNumber(pocNumbersByFieldPlanId.get(activityFacility.getFieldPlanId()));
+            }
+
+            if (activityFacility.getFieldPlanId() != null) {
+                String partBEditorUserId = assignedToByFieldPlanId.get(activityFacility.getFieldPlanId());
+                if (partBEditorUserId != null) {
+                    activityFacility.setStaffVendorName(vendorNameByUserId.get(partBEditorUserId));
+                }
+            }
 
             if(activityFacility.getFacility() == null)
                 continue;
@@ -1166,6 +1192,121 @@ public class ActivityService {
         }
 
         return (List<?>) orgUsersObj;
+    }
+
+    /**
+     * Resolves vendor organisation names for users assigned as INSTALLATION_REPORT_PART_B_EDITOR
+     * on the same field plan (via activity assignment search criteria).
+     */
+    private Map<String, String> fetchVendorNamesByUserIds(List<String> userIds, String tenantId, RequestInfo requestInfo) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            OrgUserSearchCriteria criteria = OrgUserSearchCriteria.builder()
+                    .userId(userIds)
+                    .tenantId(tenantId)
+                    .build();
+            OrgUserSearchRequest searchRequest = OrgUserSearchRequest.builder()
+                    .requestInfo(requestInfo)
+                    .criteria(criteria)
+                    .build();
+
+            List<?> orgUsers = searchOrgUsers(searchRequest, tenantId, 0, Math.max(userIds.size(), 10));
+            if (orgUsers.isEmpty()) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, String> organisationIdByUserId = new HashMap<>();
+            for (Object obj : orgUsers) {
+                if (!(obj instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> orgUser = (Map<String, Object>) obj;
+                Object userIdObj = orgUser.get("userId");
+                Object organisationIdObj = orgUser.get("organizationId");
+                if (userIdObj == null || organisationIdObj == null) {
+                    continue;
+                }
+                organisationIdByUserId.putIfAbsent(userIdObj.toString(), organisationIdObj.toString());
+            }
+
+            if (organisationIdByUserId.isEmpty()) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, String> organisationNameById = fetchOrganisationNamesByIds(
+                    organisationIdByUserId.values().stream().distinct().toList(),
+                    tenantId,
+                    requestInfo
+            );
+
+            Map<String, String> vendorNameByUserId = new HashMap<>();
+            organisationIdByUserId.forEach((userId, organisationId) -> {
+                String organisationName = organisationNameById.get(organisationId);
+                if (organisationName != null) {
+                    vendorNameByUserId.put(userId, organisationName);
+                }
+            });
+            return vendorNameByUserId;
+        } catch (Exception e) {
+            log.error("Error while fetching vendor names for userIds {}", userIds, e);
+            return Collections.emptyMap();
+        }
+    }
+
+    private Map<String, String> fetchOrganisationNamesByIds(List<String> organisationIds, String tenantId, RequestInfo requestInfo) {
+        if (organisationIds == null || organisationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            Map<String, Object> searchCriteria = new HashMap<>();
+            searchCriteria.put("ids", organisationIds);
+            searchCriteria.put("tenantId", tenantId);
+
+            Map<String, Object> searchRequest = new HashMap<>();
+            searchRequest.put("RequestInfo", requestInfo);
+            searchRequest.put("SearchCriteria", searchCriteria);
+
+            StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
+                    .append(activityConfiguration.getOrganisationSearchUrl())
+                    .append("?tenantId=").append(tenantId)
+                    .append("&limit=").append(organisationIds.size());
+
+            Map<String, Object> response = serviceRequest.fetchResult(
+                    url,
+                    searchRequest,
+                    new TypeReference<Map<String, Object>>() {
+                    });
+
+            if (response == null) {
+                return Collections.emptyMap();
+            }
+
+            Object organisationsObj = response.get("organisations");
+            if (!(organisationsObj instanceof List)) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, String> organisationNameById = new HashMap<>();
+            for (Object obj : (List<?>) organisationsObj) {
+                if (!(obj instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> organisation = (Map<String, Object>) obj;
+                Object idObj = organisation.get("id");
+                Object nameObj = organisation.get("name");
+                if (idObj != null && nameObj != null) {
+                    organisationNameById.put(idObj.toString(), nameObj.toString());
+                }
+            }
+            return organisationNameById;
+        } catch (Exception e) {
+            log.error("Error while fetching organisation names for organisationIds {}", organisationIds, e);
+            return Collections.emptyMap();
+        }
     }
 
     private void updateComplaintResolverJurisdictionsWithFacility(Map<String, Object> orgUser,

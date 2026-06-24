@@ -119,6 +119,8 @@ public class ActivityValidator {
             throw new CustomException("FIELDPLAN", "Field Plans are mandatory");
         }
 
+        validateConsistentPocNumbers(request.getActivityAssignments());
+
         for (ActivityAssignment activityAssignment : request.getActivityAssignments()) {
             if (activityAssignment.getFieldPlanId() == null) {
                 log.error("FieldPlan ID is mandatory in FieldPlans");
@@ -168,6 +170,19 @@ public class ActivityValidator {
             throw new CustomException(errorMap);
     }
 
+    private void validateConsistentPocNumbers(List<ActivityAssignment> activityAssignments) {
+        if (CollectionUtils.isEmpty(activityAssignments) || activityAssignments.size() <= 1) {
+            return;
+        }
+        String firstPocNumber = activityAssignments.get(0).getPocNumber();
+        boolean allSame = activityAssignments.stream()
+                .allMatch(assignment -> Objects.equals(firstPocNumber, assignment.getPocNumber()));
+        if (!allSame) {
+            log.error("All ActivityAssignment pocNumber values must be identical in the request");
+            throw new CustomException("POC_NUMBER", "All PO number values must be identical");
+        }
+    }
+
     private void validateUpdateActivityAssignmentRequest(ActivityAssignmentBulkRequest request) {
         Map<String, String> errorMap = new HashMap<>();
 
@@ -175,6 +190,8 @@ public class ActivityValidator {
             log.error("Field Plans list is empty. Field Plans is mandatory");
             throw new CustomException("FIELDPLAN", "Field Plans are mandatory");
         }
+
+        validateConsistentPocNumbers(request.getActivityAssignments());
 
         for (ActivityAssignment activityAssignment : request.getActivityAssignments()) {
             if (activityAssignment.getFieldPlanId() == null) {

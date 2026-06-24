@@ -62,6 +62,8 @@ const getAssetAggregation = async (workflow) => {
     images: {},
     videos: {},
     installationReportDocuments: [],
+    installationCompletionCertificate: [],
+    assetHandoverDocument: [],
   };
   const installationImages = [];
   const workflowDocuments = [];
@@ -115,7 +117,7 @@ const getAssetAggregation = async (workflow) => {
             size: fileDetails.size
           }];
         }
-      } else if (workflow[0].action !== "SUBMIT_REPORT_A" && documentType.toUpperCase() === "INSTALLATION_REPORT") {
+      } else if (documentType.toUpperCase() === "INSTALLATION_REPORT") {
         documentRequired = true;
         documentAggregation.installationReportDocuments = [
           ...documentAggregation.installationReportDocuments,
@@ -124,12 +126,30 @@ const getAssetAggregation = async (workflow) => {
             ...fileDetails
           }
         ];
-      } else if (workflow[0].action !== "SUBMIT_REPORT_A" && documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
+      } else if (documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
         documentRequired = true;
         documentAggregation.bomCompletionReport = {
           fileUrl,
           ...fileDetails
         };
+      } else if (documentType.toUpperCase() === "INSTALLATION_COMPLETION_CERTIFICATE") {
+        documentRequired = true;
+        documentAggregation.installationCompletionCertificate = [
+          ...documentAggregation.installationCompletionCertificate,
+          {
+            fileUrl,
+            ...fileDetails,
+          }
+        ];
+      } else if (documentType.toUpperCase() === "ASSET_HANDOVER_DOCUMENT") {
+        documentRequired = true;
+        documentAggregation.assetHandoverDocument = [
+          ...documentAggregation.assetHandoverDocument,
+          {
+            fileUrl,
+            ...fileDetails,
+          }
+        ];
       }
 
       if (documentRequired) workflowDocuments.push(document);
@@ -150,6 +170,9 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
 
   const facility = activityFacilityData?.activityFacility?.facility || {};
   const assigneeDetails = activityFacilityData?.activityFacility?.assignedEmployeeUser || {};
+  const assignedVendorName =
+    facility?.additionalDetails?.mappedVendorName ||
+    activityFacilityData?.facility?.additionalDetails?.mappedVendorName;
   const auditTrail = generateAuditTrail(activityFacilityData.workflow, activityFacilityData.transactions);
   const { documentAggregation, installationImages, workflowDocuments } = await getAssetAggregation(activityFacilityData.workflow);
 
@@ -162,7 +185,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       status: activityFacilityData?.activityFacility?.status,
       block: activityFacilityData?.activityFacility?.facility?.boundary?.block,
       district: activityFacilityData?.activityFacility?.facility?.boundary?.district,
-      assigned: assigneeDetails.name,
+      assigned: assignedVendorName || assigneeDetails.name,
     },
     auditTrail,
     documentAggregation,

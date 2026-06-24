@@ -286,14 +286,12 @@ public class FacilityService {
                     facilityRepository.pushToKibana(kibanaIndex);
                 }
 
-                // Mapped the first vendor user with this new facility created
-                String vendorCode = extractVendorCode(facility);
-                if (vendorCode != null && !vendorCode.isBlank()) {
-                    vendorOrganisationService.assignFacilityJurisdictionToFirstOrgUser(
-                            vendorCode, facility, tenantId, request.getRequestInfo());
-                }
-
                 validatedFacilities.add(facility);
+            }
+
+            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
+                vendorOrganisationService.assignFacilityJurisdictionsBulk(
+                        tenantFacilities, tenantId, request.getRequestInfo());
             }
         }
 
@@ -560,14 +558,10 @@ public class FacilityService {
         } else {
             username = resolveFacilityIdentifier(facility, facilityDetails);
         }
-        // Check if employee already exists by mobile number
-        boolean employeeExists = hrmsService.employeeExistsByUsername(
-                username,
-                tenantId,
-                requestInfo
-        );
+        // Look up an existing POC user (active or inactive) by HFR/NIN/POC username
+        Employee existingPocUser = fetchPocUserByUsername(username, requestInfo);
 
-        if (!employeeExists) {
+        if (existingPocUser == null || existingPocUser.getUser() == null) {
             // Create POC user as HRMS employee with COMPLAINANT and EMPLOYEE roles
             boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
             if (created) {
@@ -577,8 +571,73 @@ public class FacilityService {
                 log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
             }
         } else {
-            log.info("POC user with identifier {} already exists for facility {}, skipping creation",
+            // POC user already exists: ensure it is active and reset it to the default password
+            log.info("POC user with identifier {} already exists for facility {}, ensuring active and resetting default password",
                     sanitizeForLog(username), sanitizeForLog(facility.getFacilityId()));
+            activatePocUserAndResetPassword(existingPocUser, username, facility.getFacilityId(), requestInfo);
+        }
+    }
+
+    /**
+     * Fetches an existing HRMS POC user by username (HFR/NIN/POC username) regardless of active
+     * status. Returns null when no matching user exists.
+     */
+    private Employee fetchPocUserByUsername(String username, RequestInfo requestInfo) {
+        if (username == null || username.isBlank()) {
+            return null;
+        }
+        try {
+            return hrmsUtils.getUserByUsername(Map.of("RequestInfo", requestInfo), username.trim());
+        } catch (CustomException e) {
+            // getUserByUsername raises EMPLOYEE_NOT_FOUND when no matching user exists
+            log.info("No existing HRMS POC user found for username {}: {}", sanitizeForLog(username), e.getMessage());
+            return null;
+        } catch (Exception e) {
+            log.warn("Error looking up HRMS POC user for username {}: {}", sanitizeForLog(username), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Ensures an existing POC user is active (re-activating it in HRMS when needed) and resets its
+     * credentials to the configured default password. Invoked when a facility is marked ONM ready
+     * and a POC user with the resolved HFR/NIN already exists.
+     */
+    private void activatePocUserAndResetPassword(Employee employee, String username, String facilityId,
+                                                 RequestInfo requestInfo) {
+        try {
+            boolean employeeInactive = Boolean.FALSE.equals(employee.getIsActive());
+            boolean userInactive = employee.getUser().getActive() == null || !employee.getUser().getActive();
+            boolean statusInactive = "INACTIVE".equalsIgnoreCase(employee.getEmployeeStatus());
+
+            if (employeeInactive || userInactive || statusInactive) {
+                employee.getUser().setActive(true);
+                employee.setIsActive(true);
+                employee.setEmployeeStatus("EMPLOYED");
+                employee.setReActivateEmployee(true);
+
+                EmployeeRequest employeeRequest = EmployeeRequest.builder()
+                        .requestInfo(requestInfo)
+                        .employees(List.of(employee))
+                        .build();
+                List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+                if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
+                    log.info("Activated existing HRMS POC user {} for facility {}",
+                            sanitizeForLog(username), sanitizeForLog(facilityId));
+                } else {
+                    log.warn("Failed to activate existing HRMS POC user {} for facility {}",
+                            sanitizeForLog(username), sanitizeForLog(facilityId));
+                }
+            } else {
+                log.info("Existing HRMS POC user {} is already active for facility {}",
+                        sanitizeForLog(username), sanitizeForLog(facilityId));
+            }
+
+            // Always reset to the default password so the POC lands on known credentials once ONM ready
+            hrmsService.resetUserPasswordToDefault(employee.getUser(), requestInfo);
+        } catch (Exception e) {
+            log.error("Error activating/resetting password for HRMS POC user {} for facility {}: {}",
+                    sanitizeForLog(username), sanitizeForLog(facilityId), e.getMessage(), e);
         }
     }
 
@@ -721,6 +780,19 @@ public class FacilityService {
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(existingFacility.getIsActive());
+        // Keep the persisted payload in sync with the resolved is_active so an update
+        // without isActive does not overwrite the existing value with null.
+        update.setIsActive(facility.getIsActive());
+
+        // If the facility is being deactivated (is_active=false), it can no longer be ONM ready.
+        // Force is_onm_ready=false so it is persisted, and so the update flows through the
+        // non ONM-ready branch (POC/complainant deactivation + Kibana index deletion).
+        if (Boolean.FALSE.equals(facility.getIsActive())) {
+            log.info("Facility {} is being deactivated (is_active=false); forcing is_onm_ready=false",
+                    sanitizeForLog(update.getFacilityId()));
+            facility.setIsOnmReady(false);
+            update.setIsOnmReady(false);
+        }
 
         // If POC details are updated AND facility is isOnmReady=true
         boolean isPocDetailsUpdated = checkPOCDetailsUpdated(existingFacility, facility);
@@ -832,6 +904,13 @@ public class FacilityService {
                     facilityForKibanaUpdate, request.getRequestInfo());
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
+        } else if (Boolean.FALSE.equals(update.getIsOnmReady())) {
+            // Facility marked as non ONM-ready: deactivate the HRMS POC user (if any) and
+            // remove the facility document from the Kibana/Elasticsearch index (if present).
+            log.info("Facility {} marked as non ONM-ready, deactivating POC user and removing Kibana index",
+                    sanitizeForLog(update.getFacilityId()));
+            deactivateFacilityPOCUser(request, existingFacility);
+            facilityKibanaMapper.deleteKibanaIndexByFacilityId(update.getFacilityId(), update.getTenantId());
         } else if (mappedVendorUpdated) {
             Facility facilityForKibanaUpdate = Facility.builder()
                     .facilityId(facility.getFacilityId())
@@ -1569,6 +1648,72 @@ public class FacilityService {
                     log.info("User with userId {} updated successfully", existingFacilityDetails.getUserId());
                 }
             }
+        }
+    }
+
+    /**
+     * Deactivates the HRMS POC user associated with a facility when the facility is marked as
+     * non ONM-ready. The username is resolved the same way it is created (POC username for ANGANWADI,
+     * otherwise HFR ID falling back to NIN ID). If no HRMS user exists, this is a no-op.
+     */
+    public void deactivateFacilityPOCUser(FacilityUpdateRequest request, Facility existingFacilityDetails) {
+        String normalizedCategory = existingFacilityDetails.getFacilityCategory() == null
+                ? ""
+                : existingFacilityDetails.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+        String username;
+        if (isAnganwadi) {
+            username = existingFacilityDetails.getFacilityPocUsername() != null && !existingFacilityDetails.getFacilityPocUsername().trim().isBlank()
+                    ? existingFacilityDetails.getFacilityPocUsername().trim() : "";
+        } else {
+            username = existingFacilityDetails.getHfrId() != null && !existingFacilityDetails.getHfrId().trim().isBlank()
+                    ? existingFacilityDetails.getHfrId().trim()
+                    : existingFacilityDetails.getNinId();
+        }
+
+        if (username == null || username.isBlank()) {
+            log.info("Skipping POC user deactivation for facility {}: no resolvable HRMS username",
+                    existingFacilityDetails.getFacilityId());
+            return;
+        }
+
+        try {
+            Employee employee = hrmsUtils.getUserByUsername(request, username);
+            if (employee == null || employee.getUser() == null) {
+                log.info("No HRMS POC user found for username {}, nothing to deactivate", username);
+                return;
+            }
+
+            boolean employeeInactive = Boolean.FALSE.equals(employee.getIsActive());
+            boolean userInactive = employee.getUser().getActive() == null || !employee.getUser().getActive();
+            if (employeeInactive && userInactive) {
+                log.info("HRMS POC user {} is already inactive for facility {}, skipping deactivation",
+                        username, existingFacilityDetails.getFacilityId());
+                return;
+            }
+
+            employee.getUser().setActive(false);
+            employee.setIsActive(false);
+            employee.setEmployeeStatus("INACTIVE");
+            employee.setReActivateEmployee(false);
+
+            EmployeeRequest employeeRequest = EmployeeRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .employees(List.of(employee))
+                    .build();
+            List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+            if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
+                log.info("Deactivated HRMS POC user {} for facility {}", username, existingFacilityDetails.getFacilityId());
+            } else {
+                log.warn("Failed to deactivate HRMS POC user {} for facility {}", username, existingFacilityDetails.getFacilityId());
+            }
+        } catch (CustomException e) {
+            // getUserByUsername raises EMPLOYEE_NOT_FOUND when no matching user exists
+            log.info("No HRMS POC user to deactivate for username {} (facility {}): {}",
+                    username, existingFacilityDetails.getFacilityId(), e.getMessage());
+        } catch (Exception e) {
+            log.error("Error deactivating HRMS POC user {} for facility {}: {}",
+                    username, existingFacilityDetails.getFacilityId(), e.getMessage(), e);
         }
     }
 
