@@ -780,6 +780,19 @@ public class FacilityService {
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(existingFacility.getIsActive());
+        // Keep the persisted payload in sync with the resolved is_active so an update
+        // without isActive does not overwrite the existing value with null.
+        update.setIsActive(facility.getIsActive());
+
+        // If the facility is being deactivated (is_active=false), it can no longer be ONM ready.
+        // Force is_onm_ready=false so it is persisted, and so the update flows through the
+        // non ONM-ready branch (POC/complainant deactivation + Kibana index deletion).
+        if (Boolean.FALSE.equals(facility.getIsActive())) {
+            log.info("Facility {} is being deactivated (is_active=false); forcing is_onm_ready=false",
+                    sanitizeForLog(update.getFacilityId()));
+            facility.setIsOnmReady(false);
+            update.setIsOnmReady(false);
+        }
 
         // If POC details are updated AND facility is isOnmReady=true
         boolean isPocDetailsUpdated = checkPOCDetailsUpdated(existingFacility, facility);
