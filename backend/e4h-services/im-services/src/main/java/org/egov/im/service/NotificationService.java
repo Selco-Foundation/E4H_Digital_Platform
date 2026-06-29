@@ -790,6 +790,12 @@ public class NotificationService {
         if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
             tenantId = tenantId.split("\\.")[0];
         }
+        // State-level roles (CRM, Tech POC, State SPOC) are registered against the state jurisdiction,
+        // not the facility boundary. Restricting the HRMS search to the facility boundary returns no result,
+        // so we search across the whole tenant instead.
+        if (STATE_LEVEL_ROLES.contains(role)) {
+            boundaryCode = null;
+        }
         if (request.getWorkflow() != null && request.getWorkflow().getAssignes() != null)
             url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, boundaryCode);
         else
@@ -797,9 +803,15 @@ public class NotificationService {
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
         Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
 
-        employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
-        employeeMobile = JsonPath.read(response, HRMS_EMP_MOBILE_JSONPATH);
-        employeeUUID = JsonPath.read(response, HRMS_EMP_UUID_JSONPATH);
+        try {
+            employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
+            employeeMobile = JsonPath.read(response, HRMS_EMP_MOBILE_JSONPATH);
+            employeeUUID = JsonPath.read(response, HRMS_EMP_UUID_JSONPATH);
+        } catch (Exception e) {
+            log.error("Failed to parse HRMS response for role {} on incident {}", role,
+                    request.getIncident().getIncidentId(), e);
+            return reassigneeDetails;
+        }
 
         if (employeeName != null && !employeeName.isEmpty()) {
             reassigneeDetails.put("employeeName", employeeName.get(0));
