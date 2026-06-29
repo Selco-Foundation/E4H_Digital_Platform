@@ -141,7 +141,8 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             key: "orgPocEmail",
             type: "text",
             populators: {
-              name: "orgPocEmail"
+              name: "orgPocEmail",
+              validation: { pattern: { value: Digit.Utils.getPattern("Email"), message: t("CS_PROFILE_EMAIL_ERRORMSG") } },
             }
           },
           {
