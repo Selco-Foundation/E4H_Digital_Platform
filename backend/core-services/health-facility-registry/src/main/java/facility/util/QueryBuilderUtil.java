@@ -104,6 +104,10 @@ public class QueryBuilderUtil {
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
+        whereClause.append(" AND fac.is_active = ?");
+        params.add(true);
+        log.debug("Added is_active filter (true) to bulk WHERE clause");
+
         if (!CollectionUtils.isEmpty(criteria.getTenantIds())) {
             whereClause.append(" AND fac.tenant_id in ( ").append(createQuery(criteria.getTenantIds().size())).append(" )");
             params.addAll(criteria.getTenantIds());
