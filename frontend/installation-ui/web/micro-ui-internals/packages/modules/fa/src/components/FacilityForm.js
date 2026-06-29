@@ -225,6 +225,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             populators: {
               name: "facilityPocEmail",
               error: t("CORE_COMMON_REQUIRED"),
+              validation: { pattern: { value: Digit.Utils.getPattern("Email"), message: t("CS_PROFILE_EMAIL_ERRORMSG") } },
             },
           },
           ...(selectedFacilityCategory?.code && selectedFacilityCategory?.code === "HEALTH" ? [
