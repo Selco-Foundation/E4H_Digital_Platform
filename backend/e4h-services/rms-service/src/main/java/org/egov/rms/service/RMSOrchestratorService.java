@@ -333,7 +333,7 @@ public class RMSOrchestratorService {
         
         User user = User.builder()
                 .id(14301L)
-                .uuid("fb022833-743d-43cb-adfa-312fbd13f438")
+                .uuid("dee83ed3-8fc3-4cef-a5d3-8464bf1b1155")
                 .userName("rms_user")
                 .name("RMS_USER")
                 .mobileNumber("9901224634")
