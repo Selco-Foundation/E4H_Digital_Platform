@@ -187,6 +187,9 @@ public class ProjectNameGenerationService {
         }
         validateJustificationCodeFormat(justificationCode);
         Matcher matcher = JUSTIFICATION_CODE_PATTERN.matcher(justificationCode.trim());
+        if (!matcher.matches()) {
+            throw new CustomException("INVALID_JUSTIFICATION_CODE", JUSTIFICATION_CODE_MESSAGE);
+        }
         return matcher.group(1);
     }
 
