@@ -220,7 +220,16 @@ public class AlertRepository {
                 "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
                 "PENDING_RESOLUTION_SPARE_PART_NEEDED",
                 "PENDING_RESOLUTION_OUT_OF_WARRANTY",
-                "PENDINGRESOLUTION"
+                "PENDINGRESOLUTION",
+                "RMS_DEVICE_PENDING_TECH_POC",
+                "PENDINGFORASSIGNMENT_THEFT",
+                "RMS_DEVICE_PENDINGRESOLUTION",
+                "OUT_OF_SCOPE",
+                "OUT_OF_WARRANTY_PENDING_TECH_POC",
+                "PENDINGFORASSIGNMENT_RMS_DEVICE",
+                "PENDING_REVISION",
+                "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2",
+                "PENDING_RESOLUTION_OUT_OF_SCOPE"
             };
             
             // Query eg_incident_v2 directly for open tickets matching:
@@ -237,28 +246,34 @@ public class AlertRepository {
                 checkStatusSql = "SELECT applicationstatus FROM eg_incident_v2 " +
                         "WHERE incidenttype = ? " +
                         "AND incidentsubtype = ? " +
-                        "AND applicationstatus IN (?, ?, ?, ?, ?, ?) " +
+                        "AND applicationstatus IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                         "AND (additionaldetails->>'rmsFacilityId' = ? OR boundarycode = ?) " +
                         "LIMIT 1";
                 
                 statuses = jdbcTemplate.queryForList(checkStatusSql, String.class,
                         incidentType, incidentSubType,
-                        openStatuses[0], openStatuses[1], openStatuses[2], 
+                        openStatuses[0], openStatuses[1], openStatuses[2],
                         openStatuses[3], openStatuses[4], openStatuses[5],
+                        openStatuses[6], openStatuses[7], openStatuses[8],
+                        openStatuses[9], openStatuses[10], openStatuses[11],
+                        openStatuses[12], openStatuses[13], openStatuses[14],
                         facilityId, boundaryCode);
             } else {
                 // Check only by rmsFacilityId in additionalDetails
                 checkStatusSql = "SELECT applicationstatus FROM eg_incident_v2 " +
                         "WHERE incidenttype = ? " +
                         "AND incidentsubtype = ? " +
-                        "AND applicationstatus IN (?, ?, ?, ?, ?, ?) " +
+                        "AND applicationstatus IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                         "AND additionaldetails->>'rmsFacilityId' = ? " +
                         "LIMIT 1";
                 
                 statuses = jdbcTemplate.queryForList(checkStatusSql, String.class,
                         incidentType, incidentSubType,
-                        openStatuses[0], openStatuses[1], openStatuses[2], 
+                        openStatuses[0], openStatuses[1], openStatuses[2],
                         openStatuses[3], openStatuses[4], openStatuses[5],
+                        openStatuses[6], openStatuses[7], openStatuses[8],
+                        openStatuses[9], openStatuses[10], openStatuses[11],
+                        openStatuses[12], openStatuses[13], openStatuses[14],
                         facilityId);
             }
             
@@ -298,18 +313,30 @@ public class AlertRepository {
                     "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
                     "PENDING_RESOLUTION_SPARE_PART_NEEDED",
                     "PENDING_RESOLUTION_OUT_OF_WARRANTY",
-                    "PENDINGRESOLUTION"
+                    "PENDINGRESOLUTION",
+                    "RMS_DEVICE_PENDING_TECH_POC",
+                    "PENDINGFORASSIGNMENT_THEFT",
+                    "RMS_DEVICE_PENDINGRESOLUTION",
+                    "OUT_OF_SCOPE",
+                    "OUT_OF_WARRANTY_PENDING_TECH_POC",
+                    "PENDINGFORASSIGNMENT_RMS_DEVICE",
+                    "PENDING_REVISION",
+                    "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2",
+                    "PENDING_RESOLUTION_OUT_OF_SCOPE"
             };
             String sql = "SELECT applicationstatus FROM eg_incident_v2 " +
                     "WHERE incidenttype = ? " +
                     "AND incidentsubtype = ? " +
-                    "AND applicationstatus IN (?, ?, ?, ?, ?, ?) " +
+                    "AND applicationstatus IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                     "AND additionaldetails->>'rmsFacilityId' = ? " +
                     "LIMIT 1";
             List<String> statuses = jdbcTemplate.queryForList(sql, String.class,
                     incidentType, incidentSubType,
                     openStatuses[0], openStatuses[1], openStatuses[2],
                     openStatuses[3], openStatuses[4], openStatuses[5],
+                    openStatuses[6], openStatuses[7], openStatuses[8],
+                    openStatuses[9], openStatuses[10], openStatuses[11],
+                    openStatuses[12], openStatuses[13], openStatuses[14],
                     facilityId);
             return statuses != null && !statuses.isEmpty();
         } catch (Exception e) {
