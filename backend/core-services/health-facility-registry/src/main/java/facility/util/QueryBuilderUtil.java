@@ -85,8 +85,9 @@ public class QueryBuilderUtil {
         }
 
         if (request.getBoundaryCode() != null && !request.getBoundaryCode().isBlank()) {
-            whereClause.append(" AND boundary_code ILIKE ?");
-            params.add(request.getBoundaryCode()+ "%");
+            whereClause.append(" AND (boundary_code = ? OR boundary_code ILIKE ? ESCAPE '\\')");
+            params.add(request.getBoundaryCode());
+            params.add(request.getBoundaryCode() + "\\_%");
         }
 
         if (request.getIsOnmReady() != null) {
