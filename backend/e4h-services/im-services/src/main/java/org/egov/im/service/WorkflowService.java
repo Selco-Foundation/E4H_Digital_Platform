@@ -350,8 +350,7 @@ public class WorkflowService {
         else if (request.getIncident() != null && request.getIncident().getApplicationStatus() != null
                 && OUT_OF_WARRANTY_PENDING_TECH_POC.equals(request.getIncident().getApplicationStatus().trim())
                 && action.equalsIgnoreCase(APPROVE_ACTION)) {
-            String stateBoundaryCode = extractStateBoundaryCode(request.getIncident().getBoundaryCode());
-            reassignWorkflow(workflow, request, ROLE_COMPLAINT_FACILITATOR_1, stateBoundaryCode);
+            reassignWorkflow(workflow, request, ROLE_COMPLAINT_FACILITATOR_1);
         }
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(incident.getIncidentId());
@@ -395,21 +394,6 @@ public class WorkflowService {
         List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
         workflow.setAssignes(assignee);
         log.debug("Workflow reassigned to employee with UUID: {}", reassigneeDetails.get("employeeUUID"));
-    }
-
-    /**
-     * Extracts state-level boundary code from a facility boundary code.
-     * e.g. India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329 -> India_Karnataka
-     */
-    private String extractStateBoundaryCode(String boundaryCode) {
-        if (StringUtils.isBlank(boundaryCode)) {
-            return boundaryCode;
-        }
-        String[] parts = boundaryCode.replace('.', '_').split("_");
-        if (parts.length < 2) {
-            return boundaryCode;
-        }
-        return parts[0] + "_" + parts[1];
     }
 
     /**
