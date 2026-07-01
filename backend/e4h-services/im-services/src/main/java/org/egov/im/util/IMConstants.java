@@ -226,7 +226,7 @@ public class IMConstants {
     // Roles registered at the state level (jurisdiction "India_<State>"), not at the facility boundary.
     // HRMS searches for these roles must not be restricted to the facility boundary, otherwise no employee is found.
     public static final List<String> STATE_LEVEL_ROLES = Arrays.asList(
-            ROLE_COMPLAINT_ASSESSOR, ROLE_COMPLAINT_FACILITATOR_1, ROLE_COMPLAINT_FACILITATOR_2);
+            ROLE_COMPLAINT_ASSESSOR, ROLE_COMPLAINT_FACILITATOR_2);
 
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
 

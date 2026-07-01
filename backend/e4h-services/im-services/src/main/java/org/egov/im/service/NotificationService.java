@@ -790,7 +790,7 @@ public class NotificationService {
         if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
             tenantId = tenantId.split("\\.")[0];
         }
-        // State-level roles (CRM, Tech POC, State SPOC) are registered against the state jurisdiction,
+        // State-level roles (CRM, Tech POC) are registered against the state jurisdiction,
         // not the facility boundary. Restricting the HRMS search to the facility boundary returns no result,
         // so we search across the whole tenant instead.
         if (STATE_LEVEL_ROLES.contains(role)) {
