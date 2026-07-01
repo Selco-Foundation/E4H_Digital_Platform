@@ -24,7 +24,7 @@ CUSTOM_CAPACITY_CODE = "CUSTOM"
 
 COLUMN_CODE_FACILITY_TYPE = "facility_type"
 COLUMN_CODE_SYSTEM_TYPE = "system_type"
-COLUMN_CODE_SOLUTION_DESIGN = "solution_design_type"
+COLUMN_CODE_SOLUTION_DESIGN = "facility_details.solar_solution_design_type"
 COLUMN_CODE_TOTAL_CAPACITY = "total_system_capacity"
 
 CAPACITY_TOLERANCE = 0.001
