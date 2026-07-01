@@ -56,20 +56,19 @@ public class ProjectEnrichment {
         String rootTenantId = projects.get(0).getTenantId().split("\\.")[0];
         log.debug("Root tenant ID: {}", rootTenantId);
 
-        //Get Project Ids from Idgen Service for Number of projects present in Projects
         log.debug("Generating project numbers from IdGen service");
-        List<String> projectNumbers = getIdList(requestInfo, rootTenantId
-                , config.getIdgenProjectNumberName(), "", projects.size());
+        List<String> projectNumbers = getIdList(requestInfo, rootTenantId,
+                config.getIdgenProjectNumberName(), "", projects.size());
         log.debug("Generated {} project numbers", projectNumbers != null ? projectNumbers.size() : 0);
 
         for (int i = 0; i < projects.size(); i++) {
-
             if (projectNumbers != null && !projectNumbers.isEmpty()) {
                 projects.get(i).setProjectNumber(projectNumbers.get(i));
                 log.debug("Set project number: {} for project index: {}", projectNumbers.get(i), i);
             } else {
                 log.error("Error occurred while generating project numbers from IdGen service");
-                throw new CustomException("PROJECT_NUMBER_NOT_GENERATED", "Error occurred while generating project numbers from IdGen service");
+                throw new CustomException("PROJECT_NUMBER_NOT_GENERATED",
+                        "Error occurred while generating project numbers from IdGen service");
             }
 
             //Enrich Project id and audit details
@@ -492,7 +491,7 @@ public class ProjectEnrichment {
         } catch (Exception exception) {
             log.error("error while calling id gen service", ExceptionUtils.getStackTrace(exception));
             throw new CustomException("IDGEN_ERROR",
-                    String.format("error while calling id gen service for %s", idformat));
+                    String.format("error while calling id gen service for %s", idKey));
         }
     }
 }

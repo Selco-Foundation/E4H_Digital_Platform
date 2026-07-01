@@ -121,6 +121,9 @@ public class Configuration {
     @Value("${egov.localization.upsert.path}")
     private String localizationUpsertPath;
 
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
     /**
      * Base URL for im-services (e.g. {@code http://localhost:8880}). When blank, incident boundary sync after facility block update is skipped.
      */
@@ -132,4 +135,28 @@ public class Configuration {
      */
     @Value("${egov.im.services.incident.boundary-by-facility.path:/im-services/v2/request/_update-boundary-by-facility}")
     private String imIncidentBoundaryByFacilityUpdatePath;
+
+    @Value("${egov.boundary.hierarchy.type:SELCO}")
+    private String boundaryHierarchyType;
+
+    /**
+     * Operator endpoint {@code POST /v2/facility/_backfill-boundary-relationships}. Disabled by default.
+     */
+    @Value("${facility.boundary.backfill.enabled:false}")
+    private boolean facilityBoundaryBackfillEnabled;
+
+    /**
+     * Operator endpoint {@code POST /v2/facility/_reindex-kibana}. Disabled by default.
+     */
+    @Value("${facility.kibana.reindex.enabled:false}")
+    private boolean facilityKibanaReindexEnabled;
+
+    @Value("${egov.vendor.host:}")
+    private String vendorHost;
+
+    @Value("${egov.vendor.organisation.search.path:/vendor/organisation/v1/_search}")
+    private String vendorOrganisationSearchPath;
+
+    @Value("${egov.vendor.organisation.user.search.path:/vendor/organisation/v1/user/_search}")
+    private String vendorOrganisationUserSearchPath;
 }

@@ -67,4 +67,7 @@ public class FieldPlan {
     @JsonProperty("isDuplicate")
     private Boolean isDuplicate = false;
 
+    @JsonProperty("poc_number")
+    private String pocNumber = null;
+
 }

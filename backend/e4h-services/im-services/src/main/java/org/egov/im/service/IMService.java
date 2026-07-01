@@ -105,6 +105,10 @@ public class IMService {
         // System reinstallation process
         Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(request);
         if(facilityDetails !=null && !facilityDetails.isEmpty()){
+            String facilityCategory = (String) facilityDetails.get("facility_category");
+            if (facilityCategory !=null){
+                request.getIncident().setFacilityCategory(facilityCategory);
+            }
             String facilityStatus = (String) facilityDetails.get("facility_status");
             if (facilityStatus !=null){
                 if (facilityStatus.trim().equalsIgnoreCase(UNINSTALLED) && !request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
@@ -272,7 +276,18 @@ public class IMService {
         log.trace("Validating update request");
         validator.validateUpdate(request, mdmsData);
 
-        // Warranty status handling: default to WITHIN_WARRANTY, flip permanently on OUT_OF_WARRANTY action
+        String boundaryCode = request.getIncident().getBoundaryCode();
+        if (boundaryCode != null && !boundaryCode.isEmpty()) {
+            Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(request);
+            if (facilityDetails != null && !facilityDetails.isEmpty()) {
+                String facilityCategory = (String) facilityDetails.get("facility_category");
+                if (facilityCategory != null) {
+                    request.getIncident().setFacilityCategory(facilityCategory);
+                }
+            }
+        }
+
+        log.trace("Enriching update request");
         if (request.getIncident().getWarrantyStatus() == null) {
             request.getIncident().setWarrantyStatus(WarrantyStatus.WITHIN_WARRANTY);
         }
@@ -299,7 +314,6 @@ public class IMService {
                 && updatedProcessInstance.getState() != null && updatedProcessInstance.getState().getApplicationStatus()!=null
                 && updatedProcessInstance.getState().getApplicationStatus().equals("PENDINGRESOLUTION")){
 
-            String boundaryCode = request.getIncident().getBoundaryCode();
             String facilityId = imUtils.extractFacilityCode(boundaryCode);
             request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
             Map<String, Object> facility = new HashMap<>();
@@ -376,6 +390,28 @@ public class IMService {
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         return request;
     }
+
+//    public MigrationV2Request migrationV2Update(MigrationV2Request request){
+//        String tenantId = request.getTenantId();
+//        RequestSearchCriteria criteria = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDINGFORASSIGNMENT")).incidentType(Set.of("RMS Device")).build();
+//        List<IncidentWrapper> response = search(request.getRequestInfo(), criteria);
+//        if(response !=null && !response.isEmpty()){
+//            for (IncidentWrapper wrapper: response){
+//                wrapper.getIncident().setApplicationStatus("PENDINGFORASSIGNMENT_RMS_DEVICE");
+//                producer.push(tenantId,config.getUpdateMigrationTopic(),wrapper);
+//            }
+//        }
+//
+////        RequestSearchCriteria criteriaSparePart = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDING_ASSIGNMENT_SPARE_PART_NEEDED")).build();
+////        List<IncidentWrapper> responseSparePart = search(request.getRequestInfo(), criteriaSparePart);
+////        if(responseSparePart !=null && !responseSparePart.isEmpty()){
+////            for (IncidentWrapper wrapper: responseSparePart){
+////                wrapper.getIncident().setApplicationStatus("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+////                producer.push(tenantId,config.getUpdateMigrationTopic(),wrapper);
+////            }
+////        }
+//        return request;
+//    }
 
     /**
      * Returns the total number of comaplaints matching the given criteria

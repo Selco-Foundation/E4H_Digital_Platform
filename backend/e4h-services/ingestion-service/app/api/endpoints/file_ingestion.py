@@ -12,7 +12,12 @@ from openpyxl.styles import Protection, Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
-from app.utils.excel_utils import autofit_columns
+from app.utils.excel_utils import (
+    FACILITY_IDENTIFIER_COLUMNS,
+    autofit_columns,
+    normalize_excel_integer_columns,
+    prepare_dataframe_for_excel_export,
+)
 from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
@@ -33,6 +38,7 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
+    resolve_mapped_vendor_for_facility_row, \
     get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
     get_user_creation_payload_supervisors, \
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
@@ -109,6 +115,104 @@ DB_CONFIG = {
 }
 
 FACILITY_VENDOR_CODE_COLUMN = "Vendor Code (Mandatory)"
+
+
+def _bulk_create_facilities_for_ingestion(
+        df: pd.DataFrame,
+        facility_client: FacilityServiceClient,
+        org_client: Optional[OrganizationServiceClient],
+        request_info: RequestInfo,
+        facility_schema: List[Dict],
+        are_facilities_onm_ready: bool,
+        vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]],
+        hfr_nin_db_cache: Dict[str, bool],
+) -> None:
+    """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service)."""
+    pending_creates: List[tuple] = []
+
+    for index, row in df[df['status'] != 'success'].iterrows():
+        hfr_nin_errs = collect_hfr_nin_errors_for_row(
+            row, index, df, facility_client, hfr_nin_db_cache,
+        )
+        anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
+            row, index, df, facility_schema,
+        )
+        pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
+        if pre_errs:
+            df.at[index, 'status'] = 'failed'
+            df.at[index, 'error'] = '; '.join(pre_errs)
+            continue
+
+        pending_creates.append((index, row.copy()))
+
+    if not pending_creates:
+        return
+
+    logger.info("Processing %s facilities using bulk create API", len(pending_creates))
+    request_info_payload = request_info.model_dump(by_alias=True, exclude_none=True)
+
+    for chunk_start in range(0, len(pending_creates), BULK_INGEST_CHUNK_SIZE):
+        chunk = pending_creates[chunk_start:chunk_start + BULK_INGEST_CHUNK_SIZE]
+        bulk_payload = {
+            "RequestInfo": request_info_payload,
+            "facilities": [],
+        }
+        creation_meta: List[int] = []
+
+        for index, row_data in chunk:
+            vendor_mapping = resolve_mapped_vendor_for_facility_row(
+                org_client,
+                request_info,
+                row_data,
+                FACILITY_VENDOR_CODE_COLUMN,
+                vendor_mapping_cache,
+            )
+            single_payload = create_facility_payload(
+                request_info,
+                row_data,
+                are_facilities_onm_ready,
+                facility_schema,
+                mapped_vendor_name=vendor_mapping.get("mappedVendorName"),
+                mapped_vendor_user_name=vendor_mapping.get("mappedVendorUserName"),
+            )
+            facilities = single_payload.get("facilities", [])
+            if facilities:
+                bulk_payload["facilities"].append(facilities[0])
+                creation_meta.append(index)
+            else:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = 'Invalid facility payload'
+
+        if not bulk_payload["facilities"]:
+            continue
+
+        create_resp = None
+        try:
+            create_resp = facility_client.create_facility(bulk_payload)
+        except Exception as exc:
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = f'Exception during bulk create: {str(exc)}'
+            continue
+
+        if create_resp.status_code in (200, 201):
+            for row_idx in creation_meta:
+                df.at[row_idx, 'status'] = 'success'
+                df.at[row_idx, 'error'] = ''
+        elif create_resp.status_code == 400:
+            try:
+                error_data = create_resp.json()
+                error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
+            except Exception:
+                error_message = create_resp.text
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = error_message
+        else:
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = f'{create_resp.status_code}: {create_resp.text}'
+
 
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -243,11 +347,17 @@ async def upload_boundaries_excel_sheet(
         writer = ExcelDataWriter(output_file_path, output_sheet="Boundary Data")
         writer.write_data(boundary_df)
 
-        return FileResponse(
+        error_count = int(
+            boundary_df["status"].astype(str).str.strip().str.lower().eq("fail").sum()
+        )
+
+        response = FileResponse(
             path=output_file_path,
             filename=output_filename,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        response.headers["X-Error-Count"] = str(error_count)
+        return response
 
     except Exception as e:
         logger.error(f"Error processing boundary data: {e}")
@@ -299,6 +409,7 @@ async def validate_facilities_excel_sheet(
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+        df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         # ----------------- Read Facility Column ----------------- #
         if 'Facility Id' not in df.columns:
@@ -422,7 +533,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -490,6 +602,7 @@ async def upload_facilities_excel_sheet(
         df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+        df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         if 'status' not in df.columns:
             df['status'] = ''
@@ -508,36 +621,20 @@ async def upload_facilities_excel_sheet(
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
+            org_client = OrganizationServiceClient(org_service_url) if org_service_url else None
+            vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]] = {}
             hfr_nin_db_cache: Dict[str, bool] = {}
-            for index, row in df[df['status'] != 'success'].iterrows():
-                hfr_nin_errs = collect_hfr_nin_errors_for_row(
-                    row, index, df, facility_client, hfr_nin_db_cache,
-                )
-                anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
-                    row, index, df, facility_schema,
-                )
-                pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
-                if pre_errs:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = '; '.join(pre_errs)
-                    continue
-                try:
-                    facility_data_payload = create_facility_payload(request_info, row, are_facilities_onm_ready, facility_schema)
-                    response = facility_client.create_facility(facility_data_payload)
-                    if response.status_code in (200, 201):
-                        df.at[index, 'status'] = 'success'
-                        df.at[index, 'error'] = ''
-                    elif response.status_code == 400:
-                        error_data = response.json()
-                        error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
-                        df.at[index, 'status'] = 'failed'
-                        df.at[index, 'error'] = error_message
-                    else:
-                        df.at[index, 'status'] = 'failed'
-                        df.at[index, 'error'] = f'{response.status_code}: {response.text}'
-                except Exception as e:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'Exception: {str(e)}'
+
+            _bulk_create_facilities_for_ingestion(
+                df=df,
+                facility_client=facility_client,
+                org_client=org_client,
+                request_info=request_info,
+                facility_schema=facility_schema,
+                are_facilities_onm_ready=are_facilities_onm_ready,
+                vendor_mapping_cache=vendor_mapping_cache,
+                hfr_nin_db_cache=hfr_nin_db_cache,
+            )
 
         writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)
         writer.write_data(df)
@@ -2028,7 +2125,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2156,7 +2254,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2433,7 +2532,8 @@ async def create_facilities_and_update_project(
             ws.delete_rows(2, ws.max_row - 1)
 
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2677,7 +2777,8 @@ async def create_fielplan_facilities(
             ws.delete_rows(2, ws.max_row - 1)
 
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2809,7 +2910,8 @@ async def validate_amc_configurations_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 

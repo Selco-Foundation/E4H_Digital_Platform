@@ -27,6 +27,9 @@ public class FacilityKibanaIndex {
 
     @JsonProperty("phcType")
     private String phcType;
+
+    @JsonProperty("facilityCategory")
+    private String facilityCategory;
     
     @JsonProperty("tenantId")
     private String tenantId;

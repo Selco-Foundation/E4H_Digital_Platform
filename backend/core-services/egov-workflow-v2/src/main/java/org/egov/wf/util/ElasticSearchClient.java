@@ -114,15 +114,23 @@ public class ElasticSearchClient {
 
         if (updatedProcessInstance != null) {
             dataMap.put("currentProcessInstance", updatedProcessInstance);
-//            String localizedApplicationStatus =  updatedProcessInstance.getState().getApplicationStatus().equalsIgnoreCase("PENDINGFORASSIGNMENT_THEFT") ?
-//                    "Pending For Assignment" : "Pending Resolution Spare Part Needed" ;
+            String applicationStatus = updatedProcessInstance.getState().getApplicationStatus();
+            String localizedApplicationStatus;
+            if ("PENDINGFORASSIGNMENT_THEFT".equalsIgnoreCase(applicationStatus)
+                    || "PENDINGFORASSIGNMENT_RMS_DEVICE".equalsIgnoreCase(applicationStatus)) {
+                localizedApplicationStatus = "Pending For Assignment";
+            } else if ("PENDING_RESOLUTION_SPARE_PART_NEEDED".equalsIgnoreCase(applicationStatus)) {
+                localizedApplicationStatus = "Pending Resolution Spare Part Needed";
+            } else {
+                localizedApplicationStatus = applicationStatus;
+            }
 
             // Update incident.applicationStatus if state and applicationStatus are available
             if (updatedProcessInstance.getState() != null && updatedProcessInstance.getState().getApplicationStatus() != null) {
-//                Map<String, Object> incidentMap = new HashMap<>();
-//                incidentMap.put("applicationStatus", updatedProcessInstance.getState().getApplicationStatus());
-//                incidentMap.put("applicationStatus_localized", localizedApplicationStatus);
-//                dataMap.put("incident", incidentMap);
+                Map<String, Object> incidentMap = new HashMap<>();
+                incidentMap.put("applicationStatus", updatedProcessInstance.getState().getApplicationStatus());
+                incidentMap.put("applicationStatus_localized", localizedApplicationStatus);
+                dataMap.put("incident", incidentMap);
                 log.debug("Updating incident.applicationStatus to: {}", updatedProcessInstance.getState().getApplicationStatus());
             }
         }

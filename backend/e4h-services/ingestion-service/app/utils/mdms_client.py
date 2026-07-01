@@ -37,6 +37,15 @@ class MDMSClient:
     def __init__(self, mdms_url: str):
         self.mdms_url = mdms_url
 
+    @staticmethod
+    def _is_active_mdms_entry(mdms: MDMS) -> bool:
+        if mdms.data is None:
+            return True
+        data = mdms.data.model_dump()
+        if "active" in data:
+            return data["active"] is True
+        return True
+
     def fetch_schema(self, request_info: RequestInfo, schema_code: str) -> 'IngestionSchemaResponse':
         logger.trace(f"Fetching schema from MDMS: {schema_code}")
         url = f"{self.mdms_url}/egov-mdms-service/v2/_search"
@@ -84,7 +93,10 @@ class MDMSClient:
         }
         headers = {"Accept": "application/json, text/plain, */*"}
         response = requests.post(url, headers=headers, json=payload)
-        return IngestionSchemaResponse.model_validate(response.json())
+        parsed = IngestionSchemaResponse.model_validate(response.json())
+        if parsed.mdms:
+            parsed.mdms = [mdms for mdms in parsed.mdms if self._is_active_mdms_entry(mdms)]
+        return parsed
 
     def get_column_definitions_with_metadata(self, request_info: RequestInfo, schema_code: str) -> List[Dict[str, Any]]:
         logger.trace(f"Getting column definitions with metadata for schema: {schema_code}")
