@@ -18,7 +18,7 @@ const AuditTrail = ({t, auditTrail}) => {
                 padding: 10,
                 marginTop: 10
               }}>
-                <div style={{color: "#0B4B66", fontWeight: "bold", marginBottom: 6}}>{t(`QC_INSTALLATION_${section.name}`)}</div>
+                <div style={{color: "#0B4B66", fontWeight: "bold", marginBottom: 6}}>{section.sectionLabel || t(`QC_INSTALLATION_${section.name}`)}</div>
                 {section.reasons.map((reason, j) => (
                   <div style={{display: "flex", justifyContent: "space-between", padding: "4px 0"}} key={j}>
                     <div style={{fontWeight: "bold", width: "50%", marginRight: "10px"}}>{reason.reason}</div>
