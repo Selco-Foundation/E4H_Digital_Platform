@@ -19,6 +19,7 @@ const Filter = (props) => {
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
+  const isStateProgramManagerUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_1");
   const isTechPocUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
 
   const assignedToOptions = useMemo(
@@ -83,7 +84,7 @@ const isCodePresent = (array, codeToCheck) =>{
 
   const [wfFilters, setWfFilters] = useState(
     searchParams?.filters?.wfFilters ||
-      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")
+      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") || isStateProgramManagerUser
         ? { assignee: [{ code: userName }] }
         : isTechPocUser
         ? {
@@ -378,7 +379,7 @@ const isCodePresent = (array, codeToCheck) =>{
       isSystemFunctional: [],
       applicationStatus: []
     };
-    let wfRest = isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")
+    let wfRest = isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") || isStateProgramManagerUser
       ? { assignee: [{ code: userName }] }
       : isTechPocUser
       ? {
@@ -398,7 +399,7 @@ const isCodePresent = (array, codeToCheck) =>{
     pgrQuery = {};
     wfQuery = {};
     setSelectedAssigned(
-      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) || isTechPocUser ? assignedToOptions[0] : assignedToOptions[1]
+      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) || isStateProgramManagerUser || isTechPocUser ? assignedToOptions[0] : assignedToOptions[1]
     );
   }
 
