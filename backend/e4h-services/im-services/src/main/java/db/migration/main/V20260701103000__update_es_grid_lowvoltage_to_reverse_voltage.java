@@ -34,7 +34,7 @@ import java.util.Base64;
 
 /**
  * Aligns Elasticsearch / Kibana incident documents with the PostgreSQL rename of
- * Grid|GRID / LowVoltage → ReverseVoltage (see V20260507120000__rename_grid_low_to_reverse_voltage.sql).
+ * Grid|GRID / LowVoltage → ReverseVoltage (see V202607011200000__rename_grid_low_to_reverse_voltage.sql).
  * Matches both {@code Grid} and {@code GRID} incident types in Elasticsearch.
  * <p>
  * Targets the same indices as other IM ticket ES migrations. Requires {@code EGOV_ES_HOST}
@@ -42,7 +42,7 @@ import java.util.Base64;
  * {@link V20260226130000__update_es_warranty_status}.
  */
 @Slf4j
-public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage extends BaseJavaMigration {
+public class V20260701103000__update_es_grid_lowvoltage_to_reverse_voltage extends BaseJavaMigration {
 
     private static final String[] ES_INDICES = {
             "computed-sla-im-services-write",
