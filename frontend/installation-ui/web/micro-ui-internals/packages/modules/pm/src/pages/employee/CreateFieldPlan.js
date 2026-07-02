@@ -714,6 +714,30 @@ const CreateFieldPlan = () => {
         body: [
           {
             isMandatory: false,
+            key: "iccPrepopulationConfiguration",
+            withoutLabelFieldPair: true,
+            withoutLabel: true,
+            type: "component",
+            component: "PMICCPrepopulationConfiguration",
+            disable: false,
+            route: "icc-prepopulation-configuration",
+            customProps: {
+              name: "iccPrepopulationConfiguration",
+              t,
+            },
+            nextRoute: "",
+            populators: {
+              name: "iccPrepopulationConfiguration",
+              error: "Required",
+            },
+          },
+        ],
+      },
+      {
+        key: "4",
+        body: [
+          {
+            isMandatory: false,
             key: "activityUserAssignment",
             withoutLabelFieldPair: true,
             withoutLabel: true,
@@ -761,6 +785,9 @@ const CreateFieldPlan = () => {
         setDefaultFormData(persistedFormData.facilityData);
         break;
       case 3:
+        setDefaultFormData(persistedFormData.iccPrepopulationConfiguration);
+        break;
+      case 4:
         setDefaultFormData(persistedFormData.activityDetails);
     }
   }, [persistedFormData, currentKey]);
@@ -950,6 +977,10 @@ const CreateFieldPlan = () => {
         setCurrentKey((prev) => prev + 1);
         break;
       case 3:
+        setPersistedFormData((prev) => ({ ...prev, iccPrepopulationConfiguration: data }));
+        setCurrentKey((prev) => prev + 1);
+        break;
+      case 4:
         await saveActivityDetailsAndUpdateFieldPlan(data.activityUserAssignment);
     }
   };
@@ -959,7 +990,7 @@ const CreateFieldPlan = () => {
   };
 
   const getNextActionLabel = () => {
-    if (currentKey === 1 || currentKey === 2) {
+    if (currentKey === 1 || currentKey === 2 || currentKey === 3) {
       return t("CORE_COMMON_NEXT");
     } else {
       return t("CORE_COMMON_SUBMIT");
@@ -970,7 +1001,7 @@ const CreateFieldPlan = () => {
     switch (currentKey) {
       case 1:
         return t("PM_CREATE_FIELD_PLAN_HEAD_FIELD_PLAN_DETAILS");
-      case 3:
+      case 4:
         return t("PM_CREATE_FIELD_PLAN_HEAD_ACTIVITY_DETAILS");
     }
   };
@@ -989,6 +1020,9 @@ const CreateFieldPlan = () => {
         setCurrentKey(key + 1);
         break;
       case 3:
+        setCurrentKey(key + 1);
+        break;
+      case 4:
         const savedActivityAssignments = getDefaultActivityAssignments();
         const currentActivityAssignments = getFormData("activityUserAssignment");
         if (CommonUtils.isNotEqual(savedActivityAssignments, currentActivityAssignments)) {
@@ -1040,6 +1074,9 @@ const CreateFieldPlan = () => {
         setCurrentKey((prev) => prev - 1);
         break;
       case 3:
+        setCurrentKey((prev) => prev - 1);
+        break;
+      case 4:
         const savedActivityAssignments = getDefaultActivityAssignments();
         const currentActivityAssignments = getFormData("activityUserAssignment");
         if (CommonUtils.isNotEqual(savedActivityAssignments, currentActivityAssignments)) {
@@ -1065,6 +1102,8 @@ const CreateFieldPlan = () => {
       case 1:
         return persistedFormData.fieldPlanDetails;
       case 3:
+        return persistedFormData.iccPrepopulationConfiguration;
+      case 4:
         return persistedFormData.activityDetails;
     }
   }
@@ -1106,6 +1145,7 @@ const CreateFieldPlan = () => {
         customSteps={[
           "PM_CREATE_FIELD_PLAN_HEAD_FIELD_PLAN_DETAILS",
           "PM_CREATE_FIELD_PLAN_HEAD_FACILITY_DATA",
+          "ICC_PRE_POPULATION",
           "PM_CREATE_FIELD_PLAN_HEAD_ACTIVITY_DETAILS",
         ]}
         onStepClick={onStepClick}
