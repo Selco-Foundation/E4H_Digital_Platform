@@ -223,10 +223,11 @@ public class IMConstants {
     public static final String ROLE_COMPLAINT_FACILITATOR_1 = "COMPLAINT_FACILITATOR_1";
     public static final String ROLE_COMPLAINT_FACILITATOR_2 = "COMPLAINT_FACILITATOR_2";
 
-    // Roles registered at the state level (jurisdiction "India_<State>"), not at the facility boundary.
-    // HRMS searches for these roles must not be restricted to the facility boundary, otherwise no employee is found.
+    // CRM and Tech POC: registered at state level; HRMS search runs without boundary (whole tenant).
+    // State SPOC (ROLE_COMPLAINT_FACILITATOR_1): registered at state jurisdiction "India_<State>";
+    // boundary is resolved in NotificationService.getHRMSEmployee via IMUtils.extractStateBoundaryCode.
     public static final List<String> STATE_LEVEL_ROLES = Arrays.asList(
-            ROLE_COMPLAINT_ASSESSOR, ROLE_COMPLAINT_FACILITATOR_1, ROLE_COMPLAINT_FACILITATOR_2);
+            ROLE_COMPLAINT_ASSESSOR, ROLE_COMPLAINT_FACILITATOR_2);
 
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
 

@@ -11,6 +11,7 @@ import org.egov.common.utils.MultiStateInstanceUtil;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.util.HRMSUtil;
+import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.util.NotificationUtil;
 import org.egov.im.web.models.Notification.*;
@@ -790,10 +791,10 @@ public class NotificationService {
         if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
             tenantId = tenantId.split("\\.")[0];
         }
-        // State-level roles (CRM, Tech POC, State SPOC) are registered against the state jurisdiction,
-        // not the facility boundary. Restricting the HRMS search to the facility boundary returns no result,
-        // so we search across the whole tenant instead.
-        if (STATE_LEVEL_ROLES.contains(role)) {
+        if (ROLE_COMPLAINT_FACILITATOR_1.equals(role)) {
+            boundaryCode = IMUtils.extractStateBoundaryCode(boundaryCode);
+        } else if (STATE_LEVEL_ROLES.contains(role)) {
+            // CRM and Tech POC are registered at state level; search across the whole tenant.
             boundaryCode = null;
         }
         if (request.getWorkflow() != null && request.getWorkflow().getAssignes() != null)
