@@ -753,6 +753,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                     ) ??
                                 <Comment>[],
                             excludeStandardTypes: true,
+                            showSectionLabel: true,
                           ),
                         ],
                       ),
@@ -959,11 +960,13 @@ class RejectedEditAssetSummary extends StatelessWidget {
 class RejectionReasonsList extends StatelessWidget {
   final List<Comment>? comments;
   final bool excludeStandardTypes;
+  final bool showSectionLabel;
 
   const RejectionReasonsList({
     Key? key,
     required this.comments,
     this.excludeStandardTypes = false,
+    this.showSectionLabel = false,
   }) : super(key: key);
 
   @override
@@ -1031,6 +1034,9 @@ class RejectionReasonsList extends StatelessWidget {
 
     final reason = comment.reason;
     final details = comment.displayComment;
+    final sectionLabel = comment.sectionLabel?.trim();
+    final reasonText =
+        reason ?? '${context.translate(i18.submitForApproval.reason)} $index';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1044,16 +1050,17 @@ class RejectionReasonsList extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
                 vertical: spacer1, horizontal: spacer3),
-            child: Text(
-              reason == null
-                  ? '${context.translate(i18.submitForApproval.reason)} $index'
-                  : '$reason',
-              style: labelStyle,
-            ),
+            child: Text(reasonText, style: labelStyle),
           ),
         ),
         const SizedBox(height: spacer2),
-        Text(details ?? "", style: valueStyle),
+        Text(details, style: valueStyle),
+        if (showSectionLabel &&
+            sectionLabel != null &&
+            sectionLabel.isNotEmpty) ...[
+          const SizedBox(height: spacer2),
+          Text(sectionLabel, style: valueStyle),
+        ],
       ],
     );
   }

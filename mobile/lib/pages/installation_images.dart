@@ -11,8 +11,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/cache_installation_image/cache_installation_image.dart';
 import '../blocs/installation_images/installation_images.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_installation_image.dart';
+import '../model/comment/comment.dart';
 import '../model/installation_images/installation_images.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../router/app_router.dart';
@@ -304,6 +306,31 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
     return _hasAnyInvalidRequirement(requirements);
   }
 
+  Map<String, List<Comment>> _installationImageCommentsByCode(
+    BuildContext context,
+  ) {
+    final workflow = context
+        .watch<SelectedActivityFacilityBloc>()
+        .state
+        .whenOrNull(selected: (wf) => wf);
+    final commentsByCode = <String, List<Comment>>{};
+
+    for (final transaction in workflow?.transactions ?? const []) {
+      for (final comment in transaction.comments ?? const <Comment>[]) {
+        final assetType = comment.assetType?.trim().toUpperCase();
+        if (assetType == null || !assetType.startsWith('INSTALLATION_IMAGE_')) {
+          continue;
+        }
+
+        final code = assetType.substring('INSTALLATION_IMAGE_'.length);
+        if (code.isEmpty) continue;
+        commentsByCode.putIfAbsent(code, () => <Comment>[]).add(comment);
+      }
+    }
+
+    return commentsByCode;
+  }
+
   Widget _buildBody(
     BuildContext context,
     ThemeData theme,
@@ -363,12 +390,16 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           );
         }
 
+        final commentsByCode = _installationImageCommentsByCode(context);
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ...requirements.map((requirement) {
               final feedbackMessage = _feedbackMessageFor(requirement);
               final isError = _isErrorMessage(requirement, feedbackMessage);
+              final rejectionComments =
+                  commentsByCode[requirement.code.trim().toUpperCase()];
               return Padding(
                 padding: const EdgeInsets.only(bottom: spacer4),
                 child: DigitCard(
@@ -398,6 +429,11 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                       onImagesSelected: (files) =>
                           _handleImagesSelected(requirement, files),
                     ),
+                    if (rejectionComments != null &&
+                        rejectionComments.isNotEmpty)
+                      _InstallationImageRejectionReasonsCard(
+                        comments: rejectionComments,
+                      ),
                     if (feedbackMessage != null) ...[
                       Text(
                         feedbackMessage,
@@ -517,6 +553,110 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           },
         );
       },
+    );
+  }
+}
+
+class _InstallationImageRejectionReasonsCard extends StatelessWidget {
+  const _InstallationImageRejectionReasonsCard({
+    required this.comments,
+  });
+
+  final List<Comment> comments;
+
+  @override
+  Widget build(BuildContext context) {
+    if (comments.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    return Column(
+      children: [
+        const SizedBox(height: spacer2),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.colorTheme.paper.secondary,
+            border: Border.all(color: theme.colorTheme.generic.divider),
+            borderRadius: BorderRadius.circular(spacer1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: spacer3,
+              vertical: spacer4,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.translate(i18.submitForApproval.rejectionReasons),
+                  style: textTheme.headingS.copyWith(
+                    color: theme.colorTheme.text.primary,
+                  ),
+                ),
+                const SizedBox(height: spacer5),
+                for (var i = 0; i < comments.length; i++) ...[
+                  _InstallationImageRejectionReason(
+                    comment: comments[i],
+                    index: i + 1,
+                  ),
+                  if (i < comments.length - 1) const SizedBox(height: spacer4),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InstallationImageRejectionReason extends StatelessWidget {
+  const _InstallationImageRejectionReason({
+    required this.comment,
+    required this.index,
+  });
+
+  final Comment comment;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final labelStyle = theme.digitTextTheme(context).label.copyWith(
+          color: theme.colorTheme.primary.primary2,
+        );
+    final valueStyle = theme.digitTextTheme(context).label.copyWith(
+          color: theme.colorTheme.text.primary,
+        );
+    final reason = comment.reason;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: theme.colorTheme.primary.primary2),
+            borderRadius: BorderRadius.circular(spacer2),
+            color: theme.colorTheme.paper.primary,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: spacer1,
+              horizontal: spacer3,
+            ),
+            child: Text(
+              reason == null || reason.isEmpty
+                  ? '${context.translate(i18.submitForApproval.reason)} $index'
+                  : reason,
+              style: labelStyle,
+            ),
+          ),
+        ),
+        const SizedBox(height: spacer2),
+        Text(comment.displayComment, style: valueStyle),
+      ],
     );
   }
 }
