@@ -471,7 +471,7 @@ public class RuleEngineService {
             // Reverse voltage: grid voltage falls within [reverseMin, reverseMax] inclusive.
             // minVoltage is populated by DataCollectorService for low/reverse-side candidates.
             Double reverseVoltage = facility.getMinVoltage();
-            if (reverseVoltage != null && reverseVoltage >= reverseMin && reverseVoltage <= reverseMax) {
+            if ( gridHighVoltageTicketsEnabled && reverseVoltage != null && reverseVoltage >= reverseMin && reverseVoltage <= reverseMax) {
                 Alert alert = Alert.builder()
                         .id(UUID.randomUUID().toString())
                         .facilityId(facilityId)
