@@ -70,6 +70,15 @@ public class FieldPlannerConfiguration {
     @Value("${fieldPlan.management.system.kafka.create.topic}")
     private String saveFieldPlanTopic;
 
+    @Value("${icc.report.kafka.create.topic}")
+    private String saveIccTemplate;
+
+    @Value("${egov.filestore.host}")
+    private String fileStoreHost;
+
+    @Value("${egov.filestore.module}")
+    private String fileStoreModule;
+
     @Value("${fieldPlan.facility.kafka.create.topic}")
     private String createFieldPlanFacilityTopic;
 

@@ -515,17 +515,12 @@ def _cell_str(val: Any) -> str:
 
 def build_field_plan_facility_additional_details(
     row: Series,
-    facility_type_column: Optional[str] = None,
     system_type_column: Optional[str] = None,
     total_system_capacity_column: Optional[str] = None,
     solution_design_type_column: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Extract solar configuration values from an Excel row."""
     details: Dict[str, Any] = {}
-    if facility_type_column:
-        facility_type = _cell_str(row.get(facility_type_column, ""))
-        if facility_type:
-            details["facilityType"] = facility_type
     if system_type_column:
         system_type = _cell_str(row.get(system_type_column, ""))
         if system_type:
@@ -548,8 +543,6 @@ def build_field_plan_facility_additional_fields(
     if not additional_details:
         return None
     fields = []
-    if additional_details.get("facilityType"):
-        fields.append({"key": "facilityType", "value": str(additional_details["facilityType"])})
     if additional_details.get("systemType"):
         fields.append({"key": "systemType", "value": str(additional_details["systemType"])})
     if additional_details.get("solarSolutionDesignType"):
@@ -575,14 +568,12 @@ def build_field_plan_facility_additional_fields(
 def build_field_plan_facility_bulk_entry(
     row: Series,
     facility_id: str,
-    facility_type_column: Optional[str] = None,
     system_type_column: Optional[str] = None,
     total_system_capacity_column: Optional[str] = None,
     solution_design_type_column: Optional[str] = None,
 ) -> Dict[str, Any]:
     additional_details = build_field_plan_facility_additional_details(
         row,
-        facility_type_column=facility_type_column,
         system_type_column=system_type_column,
         total_system_capacity_column=total_system_capacity_column,
         solution_design_type_column=solution_design_type_column,

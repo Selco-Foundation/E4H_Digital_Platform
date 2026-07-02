@@ -2622,7 +2622,6 @@ async def create_fielplan_facilities(
         include_col = find_col("Included in Field Plan")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
-        facility_type_col = find_col("Type of HC")
         system_type_col = find_col("System Type")
         solution_design_type_col = find_col("Solution Design Type")
         total_system_capacity_col = find_col("Total System Capacity")
@@ -2717,7 +2716,6 @@ async def create_fielplan_facilities(
                                             build_field_plan_facility_bulk_entry(
                                                 row,
                                                 facility_id,
-                                                facility_type_column=facility_type_col,
                                                 system_type_column=system_type_col,
                                                 total_system_capacity_column=total_system_capacity_col,
                                                 solution_design_type_column=solution_design_type_col,
