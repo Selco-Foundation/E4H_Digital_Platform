@@ -6,7 +6,7 @@ const AuditTrail = ({t, auditTrail}) => {
 
   const getTimelineCaptions = (checkpoint) => {
     return (
-      <div style={{ marginTop: "12px", width: "800px" }}>
+      <div style={{ marginTop: "12px", width: "100%", maxWidth: "1200px" }}>
         <div style={{fontSize: "14px", color: "#666"}}>{checkpoint.date}</div>
         {checkpoint.reasons?.length > 0 && (
           <div style={{ marginTop: 12 }}>
@@ -16,13 +16,16 @@ const AuditTrail = ({t, auditTrail}) => {
                 border: "1px solid #eee",
                 borderRadius: 4,
                 padding: 10,
-                marginTop: 10
+                marginTop: 10,
+                width: "100%",
+                maxWidth: "100%",
+                boxSizing: "border-box"
               }}>
-                <div style={{color: "#0B4B66", fontWeight: "bold", marginBottom: 6}}>{section.sectionLabel || t(`QC_INSTALLATION_${section.name}`)}</div>
+                <div style={{color: "#0B4B66", fontWeight: "bold", marginBottom: 6, overflowWrap: "anywhere"}}>{section.sectionLabel || t(`QC_INSTALLATION_${section.name}`)}</div>
                 {section.reasons.map((reason, j) => (
-                  <div style={{display: "flex", justifyContent: "space-between", padding: "4px 0"}} key={j}>
-                    <div style={{fontWeight: "bold", width: "50%", marginRight: "10px"}}>{reason.reason}</div>
-                    <div style={{color: "#555", width: "50%"}}>{reason.comment}</div>
+                  <div style={{display: "flex", gap: "16px", alignItems: "flex-start", padding: "4px 0"}} key={j}>
+                    <div style={{fontWeight: "bold", flex: "0 0 35%", minWidth: 0, overflowWrap: "anywhere"}}>{reason.reason}</div>
+                    <div style={{color: "#555", flex: "1 1 auto", minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-word"}}>{reason.comment}</div>
                   </div>
                 ))}
               </div>
