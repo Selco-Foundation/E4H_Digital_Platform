@@ -4,3 +4,4 @@ CREATE TABLE icc_templates (
                                        total_system_capacity VARCHAR,
                                        filestoreid VARCHAR
 );
+CREATE UNIQUE INDEX uk_icc_templates ON icc_templates (system_type, COALESCE(total_system_capacity, ''));
