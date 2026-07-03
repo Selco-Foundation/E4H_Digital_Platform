@@ -212,6 +212,33 @@ public class StorageController {
         }
     }
 
+    @GetMapping("/actualurl")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getActualUrl(@RequestParam(value = "tenantId") String tenantId,
+                                                             @RequestParam("fileStoreId") String fileStoreId) {
+        Map<String, Object> responseMap = new HashMap<>();
+        if (tenantId == null || tenantId.trim().isEmpty() || fileStoreId == null || fileStoreId.trim().isEmpty()) {
+            return new ResponseEntity<>(responseMap, HttpStatus.BAD_REQUEST);
+        }
+        try {
+            // signed URL for the actual file only, no thumbnail variants appended
+            String signedUrl = storageService.retrieveSignedUrl(fileStoreId, tenantId);
+            if (signedUrl == null || signedUrl.trim().isEmpty()) {
+                return new ResponseEntity<>(responseMap, HttpStatus.NOT_FOUND);
+            }
+
+            List<FileStoreResponse> responses = new ArrayList<>();
+            responses.add(FileStoreResponse.builder().id(fileStoreId).url(signedUrl).build());
+            responseMap.put(fileStoreId, signedUrl);
+            responseMap.put("fileStoreIds", responses);
+
+            return new ResponseEntity<>(responseMap, HttpStatus.OK);
+        } catch (Exception e) {
+            logger.error("Error while retrieving actual-resolution URL for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId, e);
+            return new ResponseEntity<>(responseMap, HttpStatus.NOT_FOUND);
+        }
+    }
+
     @GetMapping("/file")
     public ResponseEntity<Void> getS3SignedUrlFile( @RequestParam String tenantId, @RequestParam String fileStoreId) {
         log.trace("Entering getS3SignedUrlFile method with fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
