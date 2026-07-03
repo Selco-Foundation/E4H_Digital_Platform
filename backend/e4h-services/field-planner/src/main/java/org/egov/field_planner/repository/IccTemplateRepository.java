@@ -1,6 +1,7 @@
 package org.egov.field_planner.repository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.field_planner.web.models.ICCReportUploadResponse;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -12,6 +13,7 @@ import java.util.Map;
 
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class IccTemplateRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -20,8 +22,11 @@ public class IccTemplateRepository {
             String systemType,
             String totalSystemCapacity) {
 
+        log.info("Searching ICC templates. systemType='{}', totalSystemCapacity='{}'",
+                systemType, totalSystemCapacity);
+
         StringBuilder sql = new StringBuilder(
-                "SELECT * FROM icc_templates WHERE 1=1 "
+                "SELECT * FROM icc_templates WHERE 1=1"
         );
 
         Map<String, Object> params = new HashMap<>();
@@ -36,7 +41,10 @@ public class IccTemplateRepository {
             params.put("capacity", totalSystemCapacity);
         }
 
-        return jdbcTemplate.query(
+        log.info("Executing SQL: {}", sql);
+        log.info("SQL Parameters: {}", params);
+
+        List<ICCReportUploadResponse> results = jdbcTemplate.query(
                 sql.toString(),
                 params,
                 (rs, rowNum) ->
@@ -47,5 +55,13 @@ public class IccTemplateRepository {
                                 .fileStoreId(rs.getString("filestoreid"))
                                 .build()
         );
+
+        log.info("Found {} ICC template(s).", results.size());
+
+        if (log.isDebugEnabled()) {
+            log.debug("Search results: {}", results);
+        }
+
+        return results;
     }
 }
