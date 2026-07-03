@@ -180,27 +180,25 @@ public class StorageController {
     @GetMapping("/actualurl")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getActualUrl(@RequestParam(value = "tenantId") String tenantId,
-                                                             @RequestParam("fileStoreId") List<String> fileStoreId) {
+                                                             @RequestParam("fileStoreId") String fileStoreId) {
+        // always responds 200 with a null url on any failure (blank/unresolvable id, not found, etc.)
+        // instead of 4xx: callers that batch several of these calls (eg. pdf-service's Promise.all)
+        // treat any single non-2xx response as fatal for the whole batch, so a missing optional
+        // image must not surface as an HTTP error here
         Map<String, Object> responseMap = new HashMap<>();
-        if (fileStoreId == null || fileStoreId.isEmpty()) {
-            responseMap.put("fileStoreIds", new ArrayList<FileStoreResponse>());
-            return new ResponseEntity<>(responseMap, HttpStatus.OK);
-        }
-
-        // preserves the order fileStoreId was passed in, so callers can index into
-        // the response (eg. fileStoreIds[0].url) instead of relying on map ordering
-        List<FileStoreResponse> responses = new ArrayList<>();
-        for (String id : fileStoreId) {
-            String signedUrl = null;
+        String signedUrl = null;
+        if (tenantId != null && !tenantId.trim().isEmpty() && fileStoreId != null && !fileStoreId.trim().isEmpty()) {
             try {
                 // signed URL for the actual file only, no thumbnail variants appended
-                signedUrl = storageService.retrieveSignedUrl(id, tenantId);
+                signedUrl = storageService.retrieveSignedUrl(fileStoreId, tenantId);
             } catch (Exception e) {
-                logger.error("Error while retrieving actual-resolution URL for fileStoreId: {} and tenantId: {}", id, tenantId, e);
+                logger.error("Error while retrieving actual-resolution URL for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId, e);
             }
-            responses.add(FileStoreResponse.builder().id(id).url(signedUrl).build());
-            responseMap.put(id, signedUrl);
         }
+
+        List<FileStoreResponse> responses = new ArrayList<>();
+        responses.add(FileStoreResponse.builder().id(fileStoreId).url(signedUrl).build());
+        responseMap.put(fileStoreId, signedUrl);
         responseMap.put("fileStoreIds", responses);
 
         return new ResponseEntity<>(responseMap, HttpStatus.OK);
