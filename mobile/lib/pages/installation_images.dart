@@ -314,18 +314,17 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
         .state
         .whenOrNull(selected: (wf) => wf);
     final commentsByCode = <String, List<Comment>>{};
+    final latestTransaction = latestTransactionWithComments(workflow);
 
-    for (final transaction in workflow?.transactions ?? const []) {
-      for (final comment in transaction.comments ?? const <Comment>[]) {
-        final assetType = comment.assetType?.trim().toUpperCase();
-        if (assetType == null || !assetType.startsWith('INSTALLATION_IMAGE_')) {
-          continue;
-        }
-
-        final code = assetType.substring('INSTALLATION_IMAGE_'.length);
-        if (code.isEmpty) continue;
-        commentsByCode.putIfAbsent(code, () => <Comment>[]).add(comment);
+    for (final comment in latestTransaction?.comments ?? const <Comment>[]) {
+      final assetType = comment.assetType?.trim().toUpperCase();
+      if (assetType == null || !assetType.startsWith('INSTALLATION_IMAGE_')) {
+        continue;
       }
+
+      final code = assetType.substring('INSTALLATION_IMAGE_'.length);
+      if (code.isEmpty) continue;
+      commentsByCode.putIfAbsent(code, () => <Comment>[]).add(comment);
     }
 
     return commentsByCode;
@@ -391,6 +390,13 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
         }
 
         final commentsByCode = _installationImageCommentsByCode(context);
+        final showRejectionCards =
+            context.watch<SelectedActivityFacilityBloc>().state.whenOrNull(
+                      selected: (workflow) =>
+                          workflow.status ==
+                          WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name,
+                    ) ??
+                false;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,7 +435,8 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                       onImagesSelected: (files) =>
                           _handleImagesSelected(requirement, files),
                     ),
-                    if (rejectionComments != null &&
+                    if (showRejectionCards &&
+                        rejectionComments != null &&
                         rejectionComments.isNotEmpty)
                       _InstallationImageRejectionReasonsCard(
                         comments: rejectionComments,

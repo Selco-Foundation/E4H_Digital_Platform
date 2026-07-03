@@ -746,10 +746,9 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                     .read<SelectedActivityFacilityBloc>()
                                     .state
                                     .whenOrNull(
-                                      selected: (wf) => wf.transactions
-                                          ?.expand((tx) =>
-                                              tx.comments ?? <Comment>[])
-                                          .toList(),
+                                      selected: (wf) =>
+                                          latestTransactionWithComments(wf)
+                                              ?.comments,
                                     ) ??
                                 <Comment>[],
                             excludeStandardTypes: true,
@@ -1041,6 +1040,12 @@ class RejectionReasonsList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (showSectionLabel &&
+            sectionLabel != null &&
+            sectionLabel.isNotEmpty) ...[
+          Text(sectionLabel, style: valueStyle),
+          const SizedBox(height: spacer2),
+        ],
         Container(
           decoration: BoxDecoration(
             border: Border.all(color: theme.colorTheme.primary.primary2),
@@ -1055,12 +1060,6 @@ class RejectionReasonsList extends StatelessWidget {
         ),
         const SizedBox(height: spacer2),
         Text(details, style: valueStyle),
-        if (showSectionLabel &&
-            sectionLabel != null &&
-            sectionLabel.isNotEmpty) ...[
-          const SizedBox(height: spacer2),
-          Text(sectionLabel, style: valueStyle),
-        ],
       ],
     );
   }
