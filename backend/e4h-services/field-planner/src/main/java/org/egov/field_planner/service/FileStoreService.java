@@ -56,8 +56,8 @@ public class FileStoreService {
         Map<String, Object> fileStore = mapper.convertValue(response, Map.class);
         if(fileStore == null){
             throw new CustomException(
-                    "ERROR_PDF_GENERATION",
-                    "Error occured while generating PDF"
+                    "ERROR_FILE_UPLOAD",
+                    "Error occurred while uploading file to filestore"
             );
         }
         List<Map<String, Object>> filestoreIds = (List<Map<String, Object>>) fileStore.get("files");

@@ -8,6 +8,7 @@ import org.egov.field_planner.repository.IccTemplateRepository;
 import org.egov.field_planner.web.models.ICCReportUploadRequest;
 import org.egov.field_planner.web.models.ICCReportUploadResponse;
 import org.egov.field_planner.web.models.IccTemplateSearchRequest;
+import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,7 +39,8 @@ public class ICCReportService {
         try {
             fileStoreId = fileStoreService.upload(requestInfo, file);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("Failed to upload ICC report file", e);
+            throw new CustomException("ERROR_ICC_REPORT_UPLOAD", "Failed to upload ICC report file: " + e.getMessage());
         }
         ICCReportUploadResponse response = new ICCReportUploadResponse();
 
