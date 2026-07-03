@@ -180,28 +180,30 @@ public class StorageController {
     @GetMapping("/actualurl")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getActualUrl(@RequestParam(value = "tenantId") String tenantId,
-                                                             @RequestParam("fileStoreId") String fileStoreId) {
+                                                             @RequestParam("fileStoreId") List<String> fileStoreId) {
         Map<String, Object> responseMap = new HashMap<>();
-        if (tenantId == null || tenantId.trim().isEmpty() || fileStoreId == null || fileStoreId.trim().isEmpty()) {
-            return new ResponseEntity<>(responseMap, HttpStatus.BAD_REQUEST);
-        }
-        try {
-            // signed URL for the actual file only, no thumbnail variants appended
-            String signedUrl = storageService.retrieveSignedUrl(fileStoreId, tenantId);
-            if (signedUrl == null || signedUrl.trim().isEmpty()) {
-                return new ResponseEntity<>(responseMap, HttpStatus.NOT_FOUND);
-            }
-
-            List<FileStoreResponse> responses = new ArrayList<>();
-            responses.add(FileStoreResponse.builder().id(fileStoreId).url(signedUrl).build());
-            responseMap.put(fileStoreId, signedUrl);
-            responseMap.put("fileStoreIds", responses);
-
+        if (fileStoreId == null || fileStoreId.isEmpty()) {
+            responseMap.put("fileStoreIds", new ArrayList<FileStoreResponse>());
             return new ResponseEntity<>(responseMap, HttpStatus.OK);
-        } catch (Exception e) {
-            logger.error("Error while retrieving actual-resolution URL for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId, e);
-            return new ResponseEntity<>(responseMap, HttpStatus.NOT_FOUND);
         }
+
+        // preserves the order fileStoreId was passed in, so callers can index into
+        // the response (eg. fileStoreIds[0].url) instead of relying on map ordering
+        List<FileStoreResponse> responses = new ArrayList<>();
+        for (String id : fileStoreId) {
+            String signedUrl = null;
+            try {
+                // signed URL for the actual file only, no thumbnail variants appended
+                signedUrl = storageService.retrieveSignedUrl(id, tenantId);
+            } catch (Exception e) {
+                logger.error("Error while retrieving actual-resolution URL for fileStoreId: {} and tenantId: {}", id, tenantId, e);
+            }
+            responses.add(FileStoreResponse.builder().id(id).url(signedUrl).build());
+            responseMap.put(id, signedUrl);
+        }
+        responseMap.put("fileStoreIds", responses);
+
+        return new ResponseEntity<>(responseMap, HttpStatus.OK);
     }
 
     @GetMapping("/file")
