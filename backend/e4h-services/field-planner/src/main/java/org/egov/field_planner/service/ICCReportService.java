@@ -56,7 +56,9 @@ public class ICCReportService {
     }
 
     public List<ICCReportUploadResponse> search(IccTemplateSearchRequest request) {
-
+        if(request ==null || request.getSystemType() == null || request.getSystemType().isEmpty()){
+            throw new CustomException("ERROR", "System Type cannot be empty");
+        }
         return repository.search(
                 request.getSystemType(),
                 request.getTotalSystemCapacity()

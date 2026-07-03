@@ -1,5 +1,6 @@
 package org.egov.field_planner.web.models;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import org.egov.common.contract.request.RequestInfo;
 
@@ -10,6 +11,7 @@ import org.egov.common.contract.request.RequestInfo;
 @Builder
 public class IccTemplateSearchRequest {
     private RequestInfo RequestInfo;
+    @NotBlank
     private String systemType;
     private String totalSystemCapacity;
 }
