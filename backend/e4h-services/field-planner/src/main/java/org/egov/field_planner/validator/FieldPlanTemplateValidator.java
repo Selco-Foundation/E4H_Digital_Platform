@@ -1,7 +1,6 @@
 package org.egov.field_planner.validator;
 
 import org.apache.commons.lang3.StringUtils;
-import org.egov.field_planner.util.FieldPlanTemplateConstants;
 import org.egov.field_planner.web.models.FieldPlanTemplate;
 import org.egov.field_planner.web.models.FieldPlanTemplateBulkRequest;
 import org.egov.field_planner.web.models.FieldPlanTemplateSearchRequest;
@@ -47,20 +46,11 @@ public class FieldPlanTemplateValidator {
             boolean requireTemplateFile,
             Map<String, String> errorMap,
             int index) {
-        String expectedTemplateFile = FieldPlanTemplateConstants.expectedTemplateFileForSystemType(systemType);
-        if (expectedTemplateFile == null) {
-            errorMap.put(
-                    "UNSUPPORTED_SYSTEM_TYPE_" + index,
-                    "Unsupported systemType '" + systemType + "'. Allowed values: AC Off-grid, AC Hybrid, DC Off-grid, AC On-grid");
-            return;
-        }
-
         if (templateFile == null || templateFile.isEmpty()) {
             if (requireTemplateFile) {
                 errorMap.put(
                         "MISSING_TEMPLATE_FILE_" + index,
-                        "Template file is required for systemType '" + systemType
-                                + "'. Expected file: " + expectedTemplateFile);
+                        "Template file is required for systemType '" + systemType + "'");
             }
             return;
         }
@@ -74,16 +64,6 @@ public class FieldPlanTemplateValidator {
         String extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase();
         if (!ALLOWED_EXCEL_EXTENSIONS.contains(extension)) {
             errorMap.put("INVALID_TEMPLATE_FILE_" + index, "Only .xls and .xlsx template files are supported");
-            return;
-        }
-
-        String uploadedBaseName = FieldPlanTemplateConstants.baseNameWithoutExtension(originalFilename);
-        String expectedBaseName = FieldPlanTemplateConstants.baseNameWithoutExtension(expectedTemplateFile);
-        if (!expectedBaseName.equalsIgnoreCase(uploadedBaseName)) {
-            errorMap.put(
-                    "INVALID_TEMPLATE_FILE_" + index,
-                    "For systemType '" + systemType + "', expected template file '"
-                            + expectedTemplateFile + "' but received '" + uploadedBaseName + "." + extension + "'");
         }
     }
 

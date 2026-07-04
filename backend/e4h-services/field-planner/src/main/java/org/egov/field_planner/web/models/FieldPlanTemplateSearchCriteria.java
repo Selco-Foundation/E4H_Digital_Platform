@@ -29,6 +29,9 @@ public class FieldPlanTemplateSearchCriteria {
     @JsonProperty("totalCapacity")
     private List<String> totalCapacity;
 
+    @JsonProperty("fileStoreId")
+    private List<String> fileStoreId;
+
     private String tenantId;
 
     private boolean countQuery;

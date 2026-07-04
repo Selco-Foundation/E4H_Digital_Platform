@@ -299,3 +299,68 @@ class FieldPlanServiceClient:
         except requests.exceptions.RequestException as req_err:
             logger.error(f"Request error unlinking field plan facility: {req_err}", exc_info=True)
             raise req_err
+
+    def create_field_plan_template(
+        self,
+        request_info: RequestInfo,
+        tenant_id: str,
+        field_plan_id: str,
+        system_type: str,
+        total_capacity: str,
+        template_data: Dict[str, Any],
+        file_bytes: bytes,
+        file_name: str,
+    ):
+        """
+        Store an ICC report's converted JSON (plus the uploaded Excel for validation) via the
+        existing bulk endpoint POST /field-planner/v1/field-plan-templates/_create.
+
+        That endpoint (FieldPlanTemplateApiController) expects two multipart parts:
+          - "request": a FieldPlanTemplateBulkRequest JSON object -
+            {"RequestInfo": ..., "FieldPlanTemplates": [{tenantId, fieldPlanId, systemType,
+            totalCapacity, templateData}]}
+          - "excelFile": the uploaded Excel file (used there for its own filename-based
+            validation; not persisted).
+        This always sends a single-element FieldPlanTemplates list, matching the /icc-reports
+        endpoint's one-file-at-a-time flow.
+        """
+        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plan-templates/_create"
+
+        bulk_request = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "FieldPlanTemplates": [
+                {
+                    "tenantId": tenant_id,
+                    "fieldPlanId": field_plan_id,
+                    "systemType": system_type,
+                    "totalCapacity": total_capacity,
+                    "templateData": template_data,
+                }
+            ],
+        }
+
+        files = {
+            "request": (None, json.dumps(bulk_request), "application/json"),
+            "excelFile": (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        }
+
+        logger.trace(
+            f"Creating field plan template: fieldPlanId={field_plan_id}, systemType={system_type}, "
+            f"totalCapacity={total_capacity}"
+        )
+        try:
+            response = requests.post(url, files=files)
+            logger.info(f"Field plan template request sent: fieldPlanId={field_plan_id}, status={response.status_code}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error creating field plan template: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error creating field plan template: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error creating field plan template: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error creating field plan template: {req_err}", exc_info=True)
+            raise req_err

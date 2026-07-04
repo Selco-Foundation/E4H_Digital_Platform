@@ -1,0 +1,770 @@
+{
+  "key": "dc_system_2_0",
+  "config": {
+    "content": [
+      { "text": "Bill Of Material(For Solar System)", "style": "header" },
+      {
+        "table": {
+          "widths": ["50%", "50%"],
+          "body": [
+            [
+              {
+                "text": "Health Facility Name & Address",
+                "style": "tableHeader"
+              },
+              { "text": "Project Details", "style": "tableHeader" }
+            ],
+            [
+              { "text": "Name: {{health_facility_name}}" },
+              { "text": "Project Number: {{project_number}}" }
+            ],
+            [
+              { "text": "Address: {{health_facility_address}}" },
+              { "text": "Date: {{project_date}}" }
+            ],
+            [
+              { "text": "Vendor Name: {{vendor_name}}" },
+              { "text": "State: {{project_state}}" }
+            ],
+            [
+              { "text": "PO/WO Number: {{po_wo_number}}" },
+              { "text": "Block: {{project_block}}" }
+            ]
+          ]
+        },
+        "layout": "lightHorizontalLines",
+        "margin": [0, 0, 0, 15]
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [50, "*", 100, 100, 80],
+          "body": [
+            [
+              { "text": "Sl. No.", "style": "tableHeader" },
+              { "text": "Product", "style": "tableHeader" },
+              { "text": "Make", "style": "tableHeader" },
+              { "text": "Capacity", "style": "tableHeader" },
+              { "text": "Quantity", "style": "tableHeader" }
+            ],
+            [
+              "1",
+              "Solar Module",
+              "{{solar_module_make}}",
+              "{{solar_module_capacity}}",
+              "{{solar_module_qty}}"
+            ],
+            [
+              "2",
+              "Solar Battery",
+              "{{solar_battery_make}}",
+              "{{solar_battery_capacity}}",
+              "{{solar_battery_qty}}"
+            ],
+            [
+              "3",
+              "Module Mounting structure (MMS)",
+              "{{mms_make}}",
+              "{{mms_capacity}}",
+              "{{mms_qty}}"
+            ],
+            [
+              "4",
+              "Solar Charge Controller (CCU)",
+              "{{solar_charge_controller_make}}",
+              "{{solar_charge_controller_capacity}}",
+              "{{solar_charge_controller_qty}}"
+            ],
+            [
+              "5",
+              "DC -DC Converter",
+              "{{ dc_dc_converter_make }}",
+              "{{ dc_dc_converter_capacity }}",
+              "{{ dc_dc_converter_qty }}"
+            ],
+            [
+              "6",
+              "Copper Cable (Module – CCU) -PV1-F (Solar cables)",
+              "{{ module_ccu_pv1f_make }}",
+              "{{ module_ccu_pv1f_capacity }}",
+              "{{ module_ccu_pv1f_qty }}"
+            ],
+            [
+              "7",
+              " Copper Cable (Battery -Battery) - (DC Cables)",
+              "{{ battery_battery_dc_make }}",
+              "{{ battery_battery_dc_capacity }}",
+              "{{ battery_battery_dc_qty }}"
+            ],
+            [
+              "8",
+              "Copper Cable (Battery - CCU) - (DC Cables)",
+              "{{ battery_ccu_dc_make }}",
+              "{{ battery_ccu_dc_capacity }}",
+              "{{ battery_ccu_dc_qty }}"
+            ],
+            [
+              "9",
+              "Battery trolley box with wheels – Hard Plastic",
+              "{{ battery_trolley_box_make }}",
+              "{{ battery_trolley_box_capacity }}",
+              "{{ battery_trolley_box_qty }}"
+            ],
+            [
+              "10",
+              "MC4 connector with inline fuse",
+              "{{ mc4_inline_fuse_make }}",
+              "{{ mc4_inline_fuse_capacity }}",
+              "{{ mc4_inline_fuse_qty }}"
+            ],
+            [
+              "11",
+              "MC4 connectors",
+              "{{ mc4_connectors_make }}",
+              "{{ mc4_connectors_capacity }}",
+              "{{ mc4_connectors_qty }}"
+            ],
+            [
+              "12",
+              "MC4 connectors Y Branch",
+              "{{ mc4_y_branch_make }}",
+              "{{ mc4_y_branch_capacity }}",
+              "{{ mc4_y_branch_qty }}"
+            ],
+            [
+              "13",
+              "Double Pole MCB (load Side) with Conduit box",
+              "{{ load_side_mcb_conduit_box_make }}",
+              "{{ load_side_mcb_conduit_box_capacity }}",
+              "{{ load_side_mcb_conduit_box_qty }}"
+            ],
+            [
+              "14",
+              "Single Line Diagram (SLD) for the system",
+              "{{ sld_make }}",
+              "{{ sld_capacity }}",
+              "{{ sld_qty }}"
+            ],
+            [
+              "15",
+              "Do's and Don'ts Practices Poster (Solar Panels, Battery and CCU)",
+              "{{ dos_donts_poster_make }}",
+              "{{ dos_donts_poster_capacity }}",
+              "{{ dos_donts_poster_qty }}"
+            ],
+            [
+              "16",
+              "Signboard for Danger (Electric Shock), No Fire and PASS",
+              "{{ signboard_danger_make }}",
+              "{{ signboard_danger_capacity }}",
+              "{{ signboard_danger_qty }}"
+            ],
+            [
+              "17",
+              "Fire Extinguisher",
+              "{{ fire_extinguisher_make }}",
+              "{{ fire_extinguisher_capacity }}",
+              "{{ fire_extinguisher_qty }}"
+            ],
+            [
+              "18",
+              "Metallic enclosure with isolator’s having minimum gap of 1 inch(PV and Battery)",
+              "{{ metallic_enclosure_isolator_make }}",
+              "{{ metallic_enclosure_isolator_capacity }}",
+              "{{ metallic_enclosure_isolator_qty }}"
+            ],
+            [
+              "19",
+              "Consumables",
+              "{{ consumables_make }}",
+              "{{ consumables_capacity }}",
+              "{{ consumables_qty }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Bill of material (For Luminaries & Fans)", "style": "header" },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Sl. No.", "style": "tableHeader" },
+              { "text": "Product", "style": "tableHeader" },
+              { "text": "Make", "style": "tableHeader" },
+              { "text": "Capacity", "style": "tableHeader" },
+              { "text": "Quantity", "style": "tableHeader" },
+              { "text": "Remarks", "style": "tableHeader" }
+            ],
+            [
+              "1",
+              "LED Bulb",
+              "{{led_bulb_1_make}}",
+              "{{led_bulb_1_capacity}}",
+              "{{led_bulb_1_qty}}",
+              "{{led_bulb_1_remarks}}"
+            ],
+            [
+              "2",
+              "LED Bulb",
+              "{{led_bulb_2_make}}",
+              "{{led_bulb_2_capacity}}",
+              "{{led_bulb_2_qty}}",
+              "{{led_bulb_2_remarks}}"
+            ],
+            [
+              "3",
+              "LED Tube light",
+              "{{led_tube_light_1_make}}",
+              "{{led_tube_light_1_capacity}}",
+              "{{led_tube_light_1_qty}}",
+              "{{led_tube_light_1_remarks}}"
+            ],
+            [
+              "4",
+              "LED Tube light",
+              "{{led_tube_light_2_make}}",
+              "{{led_tube_light_2_capacity}}",
+              "{{led_tube_light_2_qty}}",
+              "{{led_tube_light_2_remarks}}"
+            ],
+            [
+              "5",
+              "Wall Mounted Fan",
+              "{{ wall_mounted_fan_make }}",
+              "{{ wall_mounted_fan_capacity }}",
+              "{{ wall_mounted_fan_qty }}",
+              "{{ wall_mounted_fan_remarks }}"
+            ],
+            [
+              "6",
+              "Mobile Charging with USB port",
+              "{{ mobile_charging_make }}",
+              "{{ mobile_charging_capacity }}",
+              "{{ mobile_charging_qty }}",
+              "{{ mobile_charging_remarks }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Bill of material (For Load Wiring)", "style": "header" },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [50, "*", 100, 100, 80],
+          "body": [
+            [
+              { "text": "Sl. No.", "style": "tableHeader" },
+              { "text": "Items", "style": "tableHeader" },
+              { "text": "Description & Make", "style": "tableHeader" },
+              { "text": "Capacity", "style": "tableHeader" },
+              { "text": "Quantity", "style": "tableHeader" }
+            ],
+            [
+              "1",
+              "Switch (Modular)",
+              "{{switch_modular_description}} : {{switch_modular_make}}",
+              "{{switch_modular_capacity}}",
+              "{{switch_modular_qty}}"
+            ],
+            [
+              "2",
+              "Socket (Modular)",
+              "{{socket_modular_description}} : {{socket_modular_make}}",
+              "{{socket_modular_capacity }}",
+              "{{socket_modular_qty}}"
+            ],
+            [
+              "3",
+              "USB Port for mobile charging",
+              "{{usb_port_for_mobile_charging_description}} : {{usb_port_for_mobile_charging_make }}",
+              "{{usb_port_for_mobile_charging_capacity}}",
+              "{{usb_port_for_mobile_charging_qty}}"
+            ],
+            [
+              "4",
+              "Cables - For Load Connection (Red)",
+              "{{cables_for_load_connection_red_description}} : {{cables_for_load_connection_red_make }}",
+              "{{cables_for_load_connection_red_capacity }}",
+              "{{cables_for_load_connection_red_qty }}"
+            ],
+            [
+              "5",
+              "Cables - For Load Connection (Black)",
+              "{{ cables_for_load_connection_black_description }} : {{ cables_for_load_connection_black_make }}",
+              "{{ cables_for_load_connection_black_capacity }}",
+              "{{ cables_for_load_connection_black_qty }}"
+            ],
+            [
+              "6",
+              "Power Cable - From CCU to Room (Red)",
+              "{{ isolator_2_description }} : {{isolator_2_make}} ",
+              "{{ isolator_2_capacity }}",
+              "{{ isolator_2_qty }}"
+            ],
+            [
+              "7",
+              "Power Cable - From CCU to Room (Black)",
+              "{{ power_cable_from_ccu_to_room_black_description }} : {{power_cable_from_ccu_to_room_black_make}}",
+              "{{ power_cable_from_ccu_to_room_black_capacity }}",
+              "{{ power_cable_from_ccu_to_room_black_qty }}"
+            ],
+            [
+              "8",
+              "Ceiling Rose",
+              "{{ ceiling_rose_description }} : {{ceiling_rose_make}}",
+              "{{ ceiling_rose_capacity }}",
+              "{{ ceiling_rose_qty }}"
+            ],
+            [
+              "9",
+              "Angle holder",
+              "{{ angle_holder_description }} : {{angle_holder_make}}",
+              "{{ angle_holder_capacity }}",
+              "{{ angle_holder_qty }}"
+            ],
+            [
+              "10",
+              "1 modular Switch Box with plate",
+              "{{ 1_modular_switch_box_with_plate_description }} : {{1_modular_switch_box_with_plate_make}}",
+              "{{ 1_modular_switch_box_with_plate_capacity }}",
+              "{{ 1_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "11",
+              "2 modular Switch Box with plate",
+              "{{ 2_modular_switch_box_with_plate_description }} : {{2_modular_switch_box_with_plate_make}}",
+              "{{ 2_modular_switch_box_with_plate_capacity }}",
+              "{{ 2_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "12",
+              "3 modular Switch Box with plate",
+              "{{ 3_modular_switch_box_with_plate_description }} : {{3_modular_switch_box_with_plate_make}}",
+              "{{ 3_modular_switch_box_with_plate_capacity }}",
+              "{{ 3_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "13",
+              "UPVC Conduit Pipe (White)",
+              "{{ upvc_conduit_pipe_white_description }} : {{upvc_conduit_pipe_white_make}}",
+              "{{ upvc_conduit_pipe_white_capacity }}",
+              "{{ upvc_conduit_pipe_white_qty }}"
+            ],
+            [
+              "14",
+              "UPVC - Coupler (White)",
+              "{{ upvc_coupler_white_description }} : {{upvc_coupler_white_make}}",
+              "{{ upvc_coupler_white_capacity }}",
+              "{{ upvc_coupler_white_qty }}"
+            ],
+            [
+              "15",
+              "UPVC Conduit Tee Joint",
+              "{{ upvc_conduit_tee_joint_description }} : {{upvc_conduit_tee_joint_make}}",
+              "{{ upvc_conduit_tee_joint_capacity }}",
+              "{{ upvc_conduit_tee_joint_qty }}"
+            ],
+            [
+              "16",
+              "UPVC - Short & Long Elbow (White)",
+              "{{ upvc_short_and_long_elbow_white_description }} : {{upvc_short_and_long_elbow_white_make}}",
+              "{{ upvc_short_and_long_elbow_white_capacity }}",
+              "{{ upvc_short_and_long_elbow_white_qty }}"
+            ],
+            [
+              "17",
+              "2way Junction Box",
+              "{{ 2way_junction_box_description }} : {{2way_junction_box_make}}",
+              "{{ 2way_junction_box_capacity }}",
+              "{{ 2way_junction_box_qty }}"
+            ],
+            [
+              "18",
+              "3way Junction Box",
+              "{{3way_junction_box_description}} : {{3way_junction_box_make}}",
+              "{{ 3way_junction_box_capacity }}",
+              "{{ 3way_junction_box_qty }}"
+            ],
+            [
+              "19",
+              "Square Box",
+              "{{square_box_description}} : {{square_box_make}}",
+              "{{ square_box_capacity }}",
+              "{{ square_box_qty }}"
+            ],
+            [
+              "20",
+              "Plastic wall lug",
+              "{{ plastic_wall_lug_qty }} : {{plastic_wall_lug_make}}",
+              "{{ plastic_wall_lug_capacity }}",
+              "{{ plastic_wall_lug_description }}"
+            ],
+            [
+              "21",
+              "Plastic wall lug",
+              "{{ plastic_wall_lug_2_description }} : {{plastic_wall_lug_2_make}}",
+              "{{ plastic_wall_lug_2_capacity }}",
+              "{{ plastic_wall_lug_2_qty }}"
+            ],
+            [
+              "22",
+              "Screw",
+              "{{ screw_description }} : {{screw_make}}",
+              "{{ screw_capacity }}",
+              "{{ screw_qty }}"
+            ],
+            [
+              "23",
+              "Screw",
+              "{{ screw_2_description }} : {{screw_2_make}}",
+              "{{ screw_2_capacity }}",
+              "{{ screw_2_qty }}"
+            ],
+            [
+              "24",
+              "Electrical Insulating Tape",
+              "{{ electrical_insulating_tape_description }} : {{electrical_insulating_tape_make}}",
+              "{{ electrical_insulating_tape_capacity }}",
+              "{{ electrical_insulating_tape_qty }}"
+            ],
+            [
+              "25",
+              "Pipe Saddle Clamps",
+              "{{ pipe_saddle_clamps_description }} : {{pipe_saddle_clamps_make}}",
+              "{{ pipe_saddle_clamps_capacity }}",
+              "{{ pipe_saddle_clamps_qty }}"
+            ],
+            [
+              "26",
+              "Saddle Nail",
+              "{{ saddle_nail_description }} : {{saddle_nail_make}}",
+              "{{ saddle_nail_capacity }}",
+              "{{ saddle_nail_qty }}"
+            ],
+            [
+              "27",
+              "Cable Tie",
+              "{{ cable_tie_description }} : {{cable_tie_make}}",
+              "{{ cable_tie_capacity }}",
+              "{{ cable_tie_qty }}"
+            ],
+            [
+              "28",
+              "Cable Lugs",
+              "{{ cable_lugs_description }} : {{cable_lugs_make}}",
+              "{{ cable_lugs_capacity }}",
+              "{{ cable_lugs_qty }}"
+            ],
+            [
+              "29",
+              "Flexible Pipe",
+              "{{ flexible_pipe_description }} : {{flexible_pipe_make}}",
+              "{{ flexible_pipe_capacity }}",
+              "{{ flexible_pipe_qty }}"
+            ],
+            [
+              "30",
+              "Labelling Tags (Load identification tags)",
+              "{{ labelling_tags_load_identification_tags_description }} : {{labelling_tags_load_identification_tags_make}}",
+              "{{ labelling_tags_load_identification_tags_capacity }}",
+              "{{ labelling_tags_load_identification_tags_qty }}"
+            ],
+            [
+              "31",
+              "Labelling Tags (Cable identification tags)",
+              "{{ labelling_tags_cable_identification_tags_description }} : {{labelling_tags_cable_identification_tags_make}}",
+              "{{ labelling_tags_cable_identification_tags_capacity }}",
+              "{{ labelling_tags_cable_identification_tags_qty }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "SYSTEM FUNCTIONALITY PARAMETERS", "style": "header" },
+      {
+        "table": {
+          "body": [
+            [
+              { "text": "Date of recording", "style": "tableHeader" },
+              { "text": "{{dc_date_of_recording}}" },
+              { "text": "Time of recording", "style": "tableHeader" },
+              { "text": "{{ dc_time_of_recording }}" }
+            ],
+            [
+              {
+                "text": "Weather Condition at the time of recording",
+                "style": "tableHeader"
+              },
+              { "text": "{{dc_weather_condition}}" },
+              { "text": "" },
+              { "text": "" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Array Details", "style": "header" },
+      {
+        "table": {
+          "body": [
+            [
+              { "text": "Array Size:(kWp)", "style": "tableHeader" },
+              { "text": "{{dc_array_size_kwp}}" },
+              { "text": "No. of modules: ", "style": "tableHeader" },
+              { "text": "{{ dc_array_no_modules }}" },
+              { "text": "No. of strings: ", "style": "tableHeader" },
+              { "text": "{{ dc_array_no_strings }}" },
+              { "text": "No. of modules per string: ", "style": "tableHeader" },
+              { "text": "{{ dc_array_modules_per_string }}" }
+            ],
+            [
+              { "text": "Each module capacity(Wp): ", "style": "tableHeader" },
+              { "text": "{{ dc_array_each_module_capacity_wp }}" },
+              { "text": "" },
+              { "text": "" },
+              { "text": "" },
+              { "text": "" },
+              { "text": "" },
+              { "text": "" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Array Parameters (CCU Input Side)", "style": "header" },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [100, 50, 70, 80, 100],
+          "body": [
+            [
+              { "text": "Test Condition", "style": "tableHeader" },
+              { "text": "Voltage", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Current", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" }
+            ],
+            [
+              "Measurement with Panel MCB OFF",
+              "{{dc_on_vmp_rn_string1_uom}}",
+              "String 1: {{dc_on_vmp_rn_string1_mv}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Panel MCB OFF",
+              "{{dc_on_vmp_rn_string2_uom}}",
+              "String 2: {{dc_on_vmp_rn_string2_mv}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Panel MCB OFF",
+              "{{dc_on_vmp_rn_array_uom}}",
+              "Array: {{dc_on_vmp_rn_array_mv}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Panel MCB ON(Wait for 20 seconds)",
+              "Vmp(in Volts)",
+              "String 1: {{ajb_on_vmp_string_1}}",
+              "{{dc_on_imp_rn_string1_uom}}",
+              "String 1: {{dc_on_imp_rn_string1_mv}}"
+            ],
+            [
+              "Measurement with Panel MCB ON(Wait for 20 seconds)",
+              "Vmp(in Volts)",
+              "String 2: {{ajb_on_vmp_string_2}}",
+              "{{dc_on_imp_rn_string2_uom}}",
+              "String 2: {{dc_on_imp_rn_string2_mv}}"
+            ],
+            [
+              "Measurement with Panel MCB ON(Wait for 20 seconds)",
+              "Vmp(in Volts)",
+              "Array: {{}}",
+              "{{dc_on_imp_rn_array_uom}}",
+              "Array: {{dc_on_imp_rn_array_mv}}"
+            ],
+            [
+              "Measurement with Panel MCB ON(Wait for 20 seconds)",
+              "Pmp(in Volts)",
+              "String 1: {{}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Panel MCB ON(Wait for 20 seconds)",
+              "Pmp(in Volts)",
+              "String 2: {{}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Panel MCB ON(Wait for 20 seconds)",
+              "Pmp(in Volts)",
+              "Array: {{}}",
+              "NA",
+              "NA"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Battery Bank parameters With Grid OFF & Load ON",
+        "style": "header"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [100, 100, 50],
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            ["Battery Bank Voltage", "{{bb_voltage_mv}}", "{{bb_voltage_uom}}"],
+            ["Battery Bank Current", "{{bb_current_mv}}", "{{bb_current_uom}}"]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "CCU parameters (Load ON)",
+        "style": "header"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": ["50%", "30%", "20%"],
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            [
+              "Load voltage/CGU output voltage",
+              "{{dc_ccu_output_voltage_mv}}",
+              "{{dc_ccu_output_voltage_uom}}"
+            ],
+            [
+              "CCU output current at full load:(All solar loads turned on for 5 minutes)",
+              "{{dc_ccu_output_current_full_load_mv}}",
+              "{{dc_ccu_output_current_full_load_uom}}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "CCU Display & Settings",
+        "style": "header"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": ["50%", "30%", "20%"],
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Set Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            [
+              "Load-disconnect Voltage",
+              "{{dc_ccu_ldv_set_value}}",
+              "{{dc_ccu_ldv_uom}}"
+            ],
+            [
+              "Load-Reconnect Voltage",
+              "{{dc_ccu_lrv_set_value}}",
+              "{{dc_ccu_lrv_uom}}"
+            ],
+            ["Battery Settings", "{{dc_battery_type}}", "{{  }}"],
+            ["Battery Type", "{{disp_battery_type}}", "{{  }}"]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Orientation Checklist",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Checklist", "style": "tableHeader" },
+              { "text": "Status", "style": "tableHeader" },
+              { "text": " Remarks", "style": "tableHeader" }
+            ],
+            [
+              "Is the orientation on solar system’s basic operational instructions given to the health center POC?",
+              "{{orientation_operational_instructions_status}}",
+              "{{orientation_operational_instructions_remarks}}"
+            ],
+            [
+              "Is the orientation on solar system’s basic routine maintenances given to the health center POC?",
+              "{{orientation_routine_maintenance_status}}",
+              "{{orientation_routine_maintenance_remarks}}"
+            ],
+            [
+              "Are the stickers containing POCs pasted in the control room?",
+              "{{stickers_pasted_status}}",
+              "{{stickers_pasted_remarks}}"
+            ],
+            [
+              "Are the Do’s and Don’ts posters with helpline numbers pasted in the control room?",
+              "{{posters_pasted_status}}",
+              "{{posters_pasted_remarks}}"
+            ],
+            [
+              { "text": "Additional remarks:" },
+              { "text": "{{orientation_additional_remarks}}", "colSpan": 2 },
+              { "text": "" }
+            ]
+          ]
+        },
+        "layout": ""
+      }
+    ],
+    "styles": {
+      "tl-head": {
+        "margin": [-41, -41, -41, 0]
+      },
+      "pt-reciept-citizen-header": {
+        "fontSize": 12,
+        "bold": true,
+        "margin": [0, 8, 0, 0],
+        "color": "#484848"
+      },
+      "header": {
+        "fontSize": 18,
+        "bold": true,
+        "margin": [0, 10, 0, 5],
+        "text-align": "center"
+      },
+      "tableHeader": {
+        "fontSize": 14,
+        "bold": true,
+        "margin": [0, 10, 0, 10]
+      }
+    }
+  }
+}

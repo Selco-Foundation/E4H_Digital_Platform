@@ -26,6 +26,7 @@ public class FieldPlanTemplateRowMapper implements RowMapper<FieldPlanTemplate> 
                     .fieldPlanId(resultSet.getString("fpt_fieldPlanId"))
                     .systemType(resultSet.getString("fpt_systemType"))
                     .totalCapacity(resultSet.getString("fpt_totalCapacity"))
+                    .fileStoreId(resultSet.getString("fpt_fileStoreId"))
                     .templateData(readJsonMap(resultSet, "fpt_templateData"))
                     .auditDetails(AuditDetails.builder()
                             .createdBy(resultSet.getString("fpt_createdBy"))

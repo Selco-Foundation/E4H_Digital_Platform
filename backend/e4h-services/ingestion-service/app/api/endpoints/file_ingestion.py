@@ -49,6 +49,7 @@ from app.utils.boundary_service_client import BoundaryServiceClient
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
+from app.utils.icc_report_converter import validate_and_convert, ICCValidationError, SYSTEM_TYPE_TO_INTERNAL
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
@@ -1433,6 +1434,83 @@ async def upload_facility_selection_excel_sheet(
             status_code=500,
             detail=f"Failed to process facility selection data: {str(e)}"
         )
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+
+
+@router.post('/icc-reports',
+             summary='Upload an ICC report Excel file, validate it against the selected System Type, '
+                     'convert it to JSON, and store it via field-planner',
+             response_description='Returns the field-planner template creation response')
+async def upload_icc_report(
+        icc_file: UploadFile = File(..., description="ICC Report Excel file (.xlsx)"),
+        system_type: str = Form(..., description=f"One of {list(SYSTEM_TYPE_TO_INTERNAL)}"),
+        total_system_capacity: str = Form(..., description="Total system capacity"),
+        field_plan_id: str = Form(..., description="Field plan this template belongs to"),
+        tenant_id: str = Form(default="in", description="Tenant id"),
+        request_info: str = Form(default="")
+):
+    """
+    Validation 1 (ICC Format Verification) + Validation 2 (System Type Matching) both happen
+    inside validate_and_convert(): required sheets/columns are checked, and the uploaded
+    template's actual content is matched against the selected System Type before anything is
+    converted or saved - a mismatch or malformed file is rejected with a 400 and nothing is
+    forwarded to field-planner. field-planner runs its own (filename-based) validation on top
+    of this via FieldPlanTemplateApiController's existing POST /v1/field-plan-templates/_create.
+    """
+    input_temp_file = None
+    request_info_obj = request_info_from_json(request_info)
+
+    try:
+        input_temp_file, _ = await _save_upload_to_temp_file(icc_file, suffix=".xlsx")
+        icc_file_path = input_temp_file.name
+
+        try:
+            detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
+                icc_file_path, system_type
+            )
+        except ICCValidationError as e:
+            logger.warning(f"ICC report upload rejected: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+
+        logger.info(
+            f"ICC report converted: systemType={system_type} (detected={detected_type}), "
+            f"keys={len(icc_json)}, fallback_keys={len(fallback_fields)}, unmatched={len(unmatched_fields)}"
+        )
+
+        if not fieldPlan_service_url:
+            raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+        with open(icc_file_path, "rb") as f:
+            file_bytes = f.read()
+
+        field_plan_client = FieldPlanServiceClient(fieldPlan_service_url)
+        response = field_plan_client.create_field_plan_template(
+            request_info_obj,
+            tenant_id,
+            field_plan_id,
+            system_type,
+            total_system_capacity,
+            icc_json,
+            file_bytes,
+            icc_file.filename or "icc_report.xlsx",
+        )
+
+        if response.status_code in (200, 201, 202):
+            return JSONResponse(status_code=response.status_code, content=response.json())
+
+        logger.error(f"field-planner rejected the template: {response.status_code} - {response.text}")
+        raise HTTPException(
+            status_code=response.status_code if response.status_code >= 400 else 502,
+            detail=f"field-planner rejected the template: {response.text}",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing ICC report: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process ICC report: {str(e)}")
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)

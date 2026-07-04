@@ -46,6 +46,9 @@ public class FieldPlanTemplate {
     @JsonProperty("templateData")
     private Map<String, Object> templateData;
 
+    @JsonProperty("fileStoreId")
+    private String fileStoreId;
+
     @JsonProperty("auditDetails")
     @Valid
     private AuditDetails auditDetails;

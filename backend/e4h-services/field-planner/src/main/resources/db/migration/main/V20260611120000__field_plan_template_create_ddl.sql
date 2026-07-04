@@ -5,6 +5,7 @@ CREATE TABLE field_plan_template (
     total_capacity VARCHAR NOT NULL,
     template_data JSONB NOT NULL DEFAULT '{}',
     tenant_id VARCHAR NOT NULL,
+    file_store_id VARCHAR NOT NULL,
     created_by VARCHAR,
     last_modified_by VARCHAR,
     created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
