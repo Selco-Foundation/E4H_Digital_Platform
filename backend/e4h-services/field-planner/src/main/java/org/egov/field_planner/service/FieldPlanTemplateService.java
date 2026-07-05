@@ -13,6 +13,7 @@ import org.egov.field_planner.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -64,21 +65,20 @@ public class FieldPlanTemplateService {
         validateFieldPlanIds(request);
 
         List<FieldPlanTemplate> templates = request.getFieldPlanTemplates();
-        // Excel file is required for create (enforced by validateTemplateFileForWrite in the
-        // controller), so it is always uploaded and every template in the bulk list is stamped
-        // with the resulting fileStoreId - letting the user re-open the exact file they
-        // uploaded, with the filled-in data, later.
-        String fileStoreId = uploadExcelFile(request.getRequestInfo(), writeRequest.getExcelFile());
+        List<MultipartFile> excelFiles = writeRequest.getExcelFiles();
+        // Excel files are required for create and length-validated 1:1 against templates by
+        // validateTemplateFileForWrite in the controller, so it's safe to index files by
+        // position. Each template is stamped with its own fileStoreId - letting the user
+        // re-open the exact file they uploaded, with the filled-in data, later.
         try {
-            for (FieldPlanTemplate template : templates) {
+            for (int i = 0; i < templates.size(); i++) {
+                FieldPlanTemplate template = templates.get(i);
+                String fileStoreId = uploadExcelFile(request.getRequestInfo(), excelFiles.get(i));
                 template.setFileStoreId(fileStoreId);
                 enrichment.enrichOnCreate(template, request.getRequestInfo());
             }
             producer.push(fieldPlannerConfiguration.getCreateFieldPlanTemplateTopic(), request);
-            log.info(
-                    "Successfully pushed {} field plan templates for creation (fileStoreId={})",
-                    templates.size(),
-                    fileStoreId);
+            log.info("Successfully pushed {} field plan templates for creation", templates.size());
         } catch (Exception exception) {
             log.error("Error occurred while creating field plan templates: {}", ExceptionUtils.getStackTrace(exception));
             throw new CustomException("FIELD_PLAN_TEMPLATE_CREATE", "Failed to create field plan templates");
@@ -99,27 +99,28 @@ public class FieldPlanTemplateService {
 
         // The filestore has no delete API (files are kept immutable for audit), so "replacing"
         // a template's file means uploading the new one and swapping the fileStoreId reference
-        // - the old file is simply left unreferenced rather than deleted. If no new excelFile
-        // is provided, the existing fileStoreId from the DB is carried over unchanged.
-        String newFileStoreId = hasExcelFile(writeRequest.getExcelFile())
-                ? uploadExcelFile(request.getRequestInfo(), writeRequest.getExcelFile())
-                : null;
+        // - the old file is simply left unreferenced rather than deleted. If no new excelFiles
+        // list is provided, every template's existing fileStoreId from the DB is carried over
+        // unchanged.
+        List<MultipartFile> excelFiles = writeRequest.getExcelFiles();
+        boolean hasNewFiles = !CollectionUtils.isEmpty(excelFiles);
 
-        for (FieldPlanTemplate template : request.getFieldPlanTemplates()) {
+        List<FieldPlanTemplate> templates = request.getFieldPlanTemplates();
+        for (int i = 0; i < templates.size(); i++) {
+            FieldPlanTemplate template = templates.get(i);
             FieldPlanTemplate templateFromDb = findTemplateById(template.getId(), templatesFromDb);
             if (templateFromDb != null) {
                 mergeTemplateData(template, templateFromDb);
-                template.setFileStoreId(newFileStoreId != null ? newFileStoreId : templateFromDb.getFileStoreId());
+                String fileStoreId = hasNewFiles
+                        ? uploadExcelFile(request.getRequestInfo(), excelFiles.get(i))
+                        : templateFromDb.getFileStoreId();
+                template.setFileStoreId(fileStoreId);
                 enrichment.enrichOnUpdate(template, templateFromDb, request.getRequestInfo());
             }
         }
 
         producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTemplateTopic(), request);
         return request;
-    }
-
-    private boolean hasExcelFile(MultipartFile excelFile) {
-        return excelFile != null && !excelFile.isEmpty();
     }
 
     private String uploadExcelFile(RequestInfo requestInfo, MultipartFile excelFile) {

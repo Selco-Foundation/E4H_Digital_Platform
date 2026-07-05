@@ -300,67 +300,71 @@ class FieldPlanServiceClient:
             logger.error(f"Request error unlinking field plan facility: {req_err}", exc_info=True)
             raise req_err
 
-    def create_field_plan_template(
+    def create_field_plan_templates(
         self,
         request_info: RequestInfo,
-        tenant_id: str,
-        field_plan_id: str,
-        system_type: str,
-        total_capacity: str,
-        template_data: Dict[str, Any],
-        file_bytes: bytes,
-        file_name: str,
+        items: List[Dict[str, Any]],
+        files: List[tuple],
     ):
         """
-        Store an ICC report's converted JSON (plus the uploaded Excel for validation) via the
-        existing bulk endpoint POST /field-planner/v1/field-plan-templates/_create.
+        Store N ICC reports' converted JSON (plus their uploaded Excel files) via the bulk
+        endpoint POST /field-planner/v1/field-plan-templates/_create.
 
-        That endpoint (FieldPlanTemplateApiController) expects two multipart parts:
-          - "request": a FieldPlanTemplateBulkRequest JSON object -
-            {"RequestInfo": ..., "FieldPlanTemplates": [{tenantId, fieldPlanId, systemType,
-            totalCapacity, templateData}]}
-          - "excelFile": the uploaded Excel file (used there for its own filename-based
-            validation; not persisted).
-        This always sends a single-element FieldPlanTemplates list, matching the /icc-reports
-        endpoint's one-file-at-a-time flow.
+        Sends:
+          - "request": one FieldPlanTemplateBulkRequest JSON object with an N-element
+            FieldPlanTemplates list.
+          - "excelFiles": the N uploaded Excel files as N separate multipart parts all sharing
+            the same field name "excelFiles" (not indexed) - matched positionally to
+            FieldPlanTemplates[i] on the Java side.
+
+        `items` and `files` must be the same length and already paired positionally; `files` is
+        a list of (file_name, file_bytes) tuples.
         """
+        if len(items) != len(files):
+            raise ValueError(f"items ({len(items)}) and files ({len(files)}) must be the same length")
+
         url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plan-templates/_create"
 
         bulk_request = {
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
             "FieldPlanTemplates": [
                 {
-                    "tenantId": tenant_id,
-                    "fieldPlanId": field_plan_id,
-                    "systemType": system_type,
-                    "totalCapacity": total_capacity,
-                    "templateData": template_data,
+                    "tenantId": item["tenant_id"],
+                    "fieldPlanId": item["field_plan_id"],
+                    "systemType": item["system_type"],
+                    "totalCapacity": item["total_capacity"],
+                    "templateData": item["template_data"],
                 }
+                for item in items
             ],
         }
 
-        files = {
-            "request": (None, json.dumps(bulk_request), "application/json"),
-            "excelFile": (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-        }
+        # `requests` accepts `files` as a list of (field_name, value_tuple) pairs, not just a
+        # dict - this is the only way to send multiple parts under the SAME field name
+        # ("excelFiles" repeated N times), which a dict cannot express.
+        multipart_fields = [
+            ("request", (None, json.dumps(bulk_request), "application/json")),
+        ]
+        for file_name, file_bytes in files:
+            multipart_fields.append((
+                "excelFiles",
+                (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            ))
 
-        logger.trace(
-            f"Creating field plan template: fieldPlanId={field_plan_id}, systemType={system_type}, "
-            f"totalCapacity={total_capacity}"
-        )
+        logger.trace(f"Creating {len(items)} field plan template(s) in one bulk call")
         try:
-            response = requests.post(url, files=files)
-            logger.info(f"Field plan template request sent: fieldPlanId={field_plan_id}, status={response.status_code}")
+            response = requests.post(url, files=multipart_fields)
+            logger.info(f"Field plan template bulk request sent: count={len(items)}, status={response.status_code}")
             return response
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error creating field plan template: {http_err}", exc_info=True)
+            logger.error(f"HTTP error creating field plan templates: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error creating field plan template: {conn_err}", exc_info=True)
+            logger.error(f"Connection error creating field plan templates: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error creating field plan template: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error creating field plan templates: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error creating field plan template: {req_err}", exc_info=True)
+            logger.error(f"Request error creating field plan templates: {req_err}", exc_info=True)
             raise req_err

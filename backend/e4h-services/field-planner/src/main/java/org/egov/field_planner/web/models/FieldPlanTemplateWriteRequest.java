@@ -9,9 +9,13 @@ import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Controller-only request wrapper for create/update.
- * The template file is accepted for validation/processing but is not persisted in the database.
+ * Each template file is persisted individually via FileStoreService and its resulting
+ * fileStoreId is stamped onto the corresponding FieldPlanTemplate at the same list index.
  */
 @Validated
 @Data
@@ -24,5 +28,6 @@ public class FieldPlanTemplateWriteRequest {
     @Valid
     private FieldPlanTemplateBulkRequest bulkRequest;
 
-    private MultipartFile excelFile;
+    @Builder.Default
+    private List<MultipartFile> excelFiles = new ArrayList<>();
 }

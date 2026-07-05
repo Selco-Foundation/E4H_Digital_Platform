@@ -23,6 +23,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Controller
 @RequestMapping("/v1/field-plan-templates")
 @Validated
@@ -43,14 +46,14 @@ public class FieldPlanTemplateApiController {
     public ResponseEntity<FieldPlanTemplateResponse> createFieldPlanTemplates(
             @ApiParam(value = "Field plan template payload.", required = true)
             @Valid @RequestPart("request") FieldPlanTemplateBulkRequest request,
-            @ApiParam(value = "ICC report template Excel file (.xls/.xlsx, not persisted in database).", required = true)
-            @RequestPart("excelFile") MultipartFile excelFile) {
+            @ApiParam(value = "ICC report template Excel files (.xls/.xlsx), one per template, matched positionally to request.FieldPlanTemplates.", required = true)
+            @RequestPart("excelFiles") List<MultipartFile> excelFiles) {
 
-        fieldPlanTemplateValidator.validateTemplateFileForWrite(request, excelFile, true);
+        fieldPlanTemplateValidator.validateTemplateFileForWrite(request, excelFiles, true);
 
         FieldPlanTemplateWriteRequest writeRequest = FieldPlanTemplateWriteRequest.builder()
                 .bulkRequest(request)
-                .excelFile(excelFile)
+                .excelFiles(excelFiles)
                 .build();
 
         FieldPlanTemplateResponse response = FieldPlanTemplateResponse.builder()
@@ -64,14 +67,15 @@ public class FieldPlanTemplateApiController {
     public ResponseEntity<FieldPlanTemplateResponse> updateFieldPlanTemplates(
             @ApiParam(value = "Field plan template payload.", required = true)
             @Valid @RequestPart("request") FieldPlanTemplateBulkRequest request,
-            @ApiParam(value = "ICC report template Excel file (.xls/.xlsx, not persisted in database).")
-            @RequestPart(value = "excelFile", required = false) MultipartFile excelFile) {
+            @ApiParam(value = "ICC report template Excel files (.xls/.xlsx), one per template. Omit entirely to leave every template's file unchanged.")
+            @RequestPart(value = "excelFiles", required = false) List<MultipartFile> excelFiles) {
 
-        fieldPlanTemplateValidator.validateTemplateFileForWrite(request, excelFile, false);
+        List<MultipartFile> safeExcelFiles = excelFiles != null ? excelFiles : new ArrayList<>();
+        fieldPlanTemplateValidator.validateTemplateFileForWrite(request, safeExcelFiles, false);
 
         FieldPlanTemplateWriteRequest writeRequest = FieldPlanTemplateWriteRequest.builder()
                 .bulkRequest(request)
-                .excelFile(excelFile)
+                .excelFiles(safeExcelFiles)
                 .build();
 
         FieldPlanTemplateBulkRequest enrichedRequest = fieldPlanTemplateService.update(writeRequest);

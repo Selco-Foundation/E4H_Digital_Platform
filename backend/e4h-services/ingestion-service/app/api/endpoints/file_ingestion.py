@@ -1440,80 +1440,126 @@ async def upload_facility_selection_excel_sheet(
 
 
 @router.post('/icc-reports',
-             summary='Upload an ICC report Excel file, validate it against the selected System Type, '
-                     'convert it to JSON, and store it via field-planner',
-             response_description='Returns the field-planner template creation response')
-async def upload_icc_report(
-        icc_file: UploadFile = File(..., description="ICC Report Excel file (.xlsx)"),
-        system_type: str = Form(..., description=f"One of {list(SYSTEM_TYPE_TO_INTERNAL)}"),
-        total_system_capacity: str = Form(..., description="Total system capacity"),
-        field_plan_id: str = Form(..., description="Field plan this template belongs to"),
-        tenant_id: str = Form(default="in", description="Tenant id"),
+             summary='Bulk-upload ICC report Excel files, validate each against its System Type, '
+                     'convert to JSON, and store them via field-planner in one call',
+             response_description='Returns the field-planner bulk template creation response')
+async def upload_icc_reports(
+        items: str = Form(
+            ...,
+            description='JSON array of metadata objects, one per file, paired positionally with '
+                        'icc_files: [{"systemType": "...", "totalSystemCapacity": "...", '
+                        '"fieldPlanId": "...", "tenantId": "in"}]'
+        ),
+        icc_files: List[UploadFile] = File(
+            ..., description="ICC Report Excel files (.xlsx), positionally paired with items"
+        ),
         request_info: str = Form(default="")
 ):
     """
-    Validation 1 (ICC Format Verification) + Validation 2 (System Type Matching) both happen
-    inside validate_and_convert(): required sheets/columns are checked, and the uploaded
-    template's actual content is matched against the selected System Type before anything is
-    converted or saved - a mismatch or malformed file is rejected with a 400 and nothing is
-    forwarded to field-planner. field-planner runs its own (filename-based) validation on top
-    of this via FieldPlanTemplateApiController's existing POST /v1/field-plan-templates/_create.
+    Accepts N metadata items and N Excel files, paired positionally (items[i] <-> icc_files[i]).
+    Validation is all-or-nothing: every item is validated first, and if ANY item fails
+    (structural mismatch, wrong System Type, missing field, count mismatch), the whole batch is
+    rejected with a 400 listing every failing index - nothing is converted twice and nothing is
+    forwarded to field-planner unless every item passes.
     """
-    input_temp_file = None
     request_info_obj = request_info_from_json(request_info)
 
     try:
-        input_temp_file, _ = await _save_upload_to_temp_file(icc_file, suffix=".xlsx")
-        icc_file_path = input_temp_file.name
+        parsed_items = json.loads(items)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"`items` is not valid JSON: {e}")
 
-        try:
-            detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
-                icc_file_path, system_type
-            )
-        except ICCValidationError as e:
-            logger.warning(f"ICC report upload rejected: {e}")
-            raise HTTPException(status_code=400, detail=str(e))
+    if not isinstance(parsed_items, list) or len(parsed_items) == 0:
+        raise HTTPException(status_code=400, detail="`items` must be a non-empty JSON array")
 
-        logger.info(
-            f"ICC report converted: systemType={system_type} (detected={detected_type}), "
-            f"keys={len(icc_json)}, fallback_keys={len(fallback_fields)}, unmatched={len(unmatched_fields)}"
+    if len(parsed_items) != len(icc_files):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Item count ({len(parsed_items)}) does not match file count ({len(icc_files)}); "
+                "items[i] and icc_files[i] must be paired positionally."
+            ),
         )
+
+    required_keys = ("systemType", "totalSystemCapacity", "fieldPlanId")
+    field_errors = []
+    for idx, item in enumerate(parsed_items):
+        if not isinstance(item, dict):
+            field_errors.append({"index": idx, "error": "item must be a JSON object"})
+            continue
+        missing = [k for k in required_keys if not item.get(k)]
+        if missing:
+            field_errors.append({"index": idx, "error": f"missing required field(s): {', '.join(missing)}"})
+
+    if field_errors:
+        raise HTTPException(status_code=400, detail={"message": "Invalid items in batch", "errors": field_errors})
+
+    temp_files = []
+    converted = []
+    validation_errors = []
+
+    try:
+        for idx, (item, upload) in enumerate(zip(parsed_items, icc_files)):
+            temp_file, _ = await _save_upload_to_temp_file(upload, suffix=".xlsx")
+            temp_files.append((temp_file, upload))
+            try:
+                detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
+                    temp_file.name, item["systemType"]
+                )
+                converted.append({
+                    "tenant_id": item.get("tenantId", "in"),
+                    "field_plan_id": item["fieldPlanId"],
+                    "system_type": item["systemType"],
+                    "total_capacity": item["totalSystemCapacity"],
+                    "template_data": icc_json,
+                })
+                logger.info(
+                    f"ICC report[{idx}] converted: systemType={item['systemType']} "
+                    f"(detected={detected_type}), keys={len(icc_json)}, "
+                    f"fallback_keys={len(fallback_fields)}, unmatched={len(unmatched_fields)}"
+                )
+            except ICCValidationError as e:
+                logger.warning(f"ICC report[{idx}] upload rejected: {e}")
+                validation_errors.append({"index": idx, "fileName": upload.filename, "error": str(e)})
+
+        if validation_errors:
+            logger.warning(
+                f"ICC bulk upload rejected: {len(validation_errors)} of {len(parsed_items)} item(s) failed validation"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail={"message": "One or more items failed validation; nothing was submitted", "errors": validation_errors},
+            )
 
         if not fieldPlan_service_url:
             raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
 
-        with open(icc_file_path, "rb") as f:
-            file_bytes = f.read()
+        files_payload = []
+        for temp_file, upload in temp_files:
+            with open(temp_file.name, "rb") as f:
+                files_payload.append((upload.filename or "icc_report.xlsx", f.read()))
 
         field_plan_client = FieldPlanServiceClient(fieldPlan_service_url)
-        response = field_plan_client.create_field_plan_template(
-            request_info_obj,
-            tenant_id,
-            field_plan_id,
-            system_type,
-            total_system_capacity,
-            icc_json,
-            file_bytes,
-            icc_file.filename or "icc_report.xlsx",
-        )
+        response = field_plan_client.create_field_plan_templates(request_info_obj, converted, files_payload)
 
         if response.status_code in (200, 201, 202):
             return JSONResponse(status_code=response.status_code, content=response.json())
 
-        logger.error(f"field-planner rejected the template: {response.status_code} - {response.text}")
+        logger.error(f"field-planner rejected the bulk template request: {response.status_code} - {response.text}")
         raise HTTPException(
             status_code=response.status_code if response.status_code >= 400 else 502,
-            detail=f"field-planner rejected the template: {response.text}",
+            detail=f"field-planner rejected the template batch: {response.text}",
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error processing ICC report: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to process ICC report: {str(e)}")
+        logger.error(f"Error processing ICC report batch: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process ICC report batch: {str(e)}")
     finally:
-        if input_temp_file and os.path.exists(input_temp_file.name):
-            os.unlink(input_temp_file.name)
+        for temp_file, _ in temp_files:
+            if temp_file and os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
 
 
 def get_hrms_employee_info(codes: List[str], db_conn) -> Dict[str, str]:

@@ -21,8 +21,8 @@ public class FieldPlanTemplateValidator {
 
     public void validateTemplateFileForWrite(
             FieldPlanTemplateBulkRequest request,
-            MultipartFile templateFile,
-            boolean requireTemplateFile) {
+            List<MultipartFile> excelFiles,
+            boolean requireTemplateFiles) {
         Map<String, String> errorMap = new HashMap<>();
         List<FieldPlanTemplate> templates = request.getFieldPlanTemplates();
 
@@ -30,9 +30,26 @@ public class FieldPlanTemplateValidator {
             throw new CustomException("FIELD_PLAN_TEMPLATE", "At least one template is required");
         }
 
-        int index = 1;
-        for (FieldPlanTemplate template : templates) {
-            validateSystemTypeTemplateFile(template.getSystemType(), templateFile, requireTemplateFile, errorMap, index++);
+        boolean noFilesProvided = CollectionUtils.isEmpty(excelFiles);
+
+        if (requireTemplateFiles && noFilesProvided) {
+            throw new CustomException("MISSING_TEMPLATE_FILES", "At least one template file is required");
+        }
+
+        // Update allows a fully-omitted excelFiles list (no template in this batch gets a new
+        // file). But once ANY file is supplied, the list must exactly match the templates list
+        // 1:1 - partial/sparse lists are rejected rather than guessed at positionally.
+        if (!noFilesProvided && excelFiles.size() != templates.size()) {
+            throw new CustomException(
+                    "TEMPLATE_FILE_COUNT_MISMATCH",
+                    "Expected " + templates.size() + " template file(s) but received " + excelFiles.size());
+        }
+
+        if (!noFilesProvided) {
+            int index = 1;
+            for (int i = 0; i < templates.size(); i++) {
+                validateSystemTypeTemplateFile(templates.get(i).getSystemType(), excelFiles.get(i), true, errorMap, index++);
+            }
         }
 
         if (!errorMap.isEmpty()) {
