@@ -4,14 +4,15 @@ flat JSON keyed by the {{placeholder}} field names used in the pdf-service BOM f
 templates bundled under app/config/icc_templates/.
 
 This mirrors the standalone icc_report_to_json.py script (built and verified against real
-sample files for the "dc", "ac_off", and "hybrid" system types), reshaped into importable
-functions for the /icc-reports endpoint: structural validation happens before conversion, and
-conversion never guesses a System Type the caller didn't ask for - see validate_icc_report().
+sample files for the "dc", "ac_off", "hybrid", and "ac_on_grid" system types), reshaped into
+importable functions for the /icc-reports endpoint: structural validation happens before
+conversion, and conversion never guesses a System Type the caller didn't ask for - see
+validate_icc_report().
 
 Ground truth for "Field Label -> JSON key" comes from the templates directly (they place
 {{field_name}} placeholders right next to the same item labels used in the Excel form), not
 from fuzzy-matching against an MDMS schema. See detect_system_type()'s docstring for how the
-3 supported formats are told apart.
+4 supported formats are told apart.
 """
 import json
 import os
@@ -30,21 +31,19 @@ REQUIRED_SHEETS = (DATA_SHEET, MAP_SHEET)
 REQUIRED_MAP_COLUMNS = ("Section", "Field Label", "Cell Address", "Row No.", "Column No.", "Expected Input Type")
 
 # Public systemType values the /icc-reports endpoint accepts -> internal format key used by
-# TEMPLATE_BY_TYPE/SFP_FIELD_MAPS/detect_system_type(). AC_ON_GRID has no approved template
-# bundled yet (none of the pdf-service format-config templates cover it), so it intentionally
-# maps to None - the endpoint rejects it with a clear "not yet supported" error rather than
-# silently mis-converting it against the wrong template.
+# TEMPLATE_BY_TYPE/SFP_FIELD_MAPS/detect_system_type().
 SYSTEM_TYPE_TO_INTERNAL = {
     "DC_OFF_GRID": "dc",
     "AC_OFF_GRID": "ac_off",
     "AC_HYBRID": "hybrid",
-    "AC_ON_GRID": None,
+    "AC_ON_GRID": "ac_on_grid",
 }
 
 TEMPLATE_BY_TYPE = {
     "dc": "bom_dc_system.json",
     "hybrid": "bom_hybrid_three.json",  # identical to bom_hybrid_single.json
     "ac_off": "bom_ac_off_three.json",  # cosmetically identical to bom_ac_off_single.json
+    "ac_on_grid": "bom_ac_on_grid_single.json",
 }
 
 SECTION_TEMPLATE_HEADERS = {
@@ -52,6 +51,9 @@ SECTION_TEMPLATE_HEADERS = {
     "Bill of material (For Luminaries & Fans)": "Bill of material (For Luminaries & Fans)",
     "Bill of materials (For RMS)": "Bill of material (For RMS)",
     "Bill Of Material (For Load Wiring)": "Bill of material (For Load Wiring)",
+    # ac_on_grid's Data_Ingestion_Map names its (only) BOM section just "Bill Of Material",
+    # without the "(For Solar System)" qualifier every other type uses.
+    "Bill Of Material": "Bill Of Material(For Solar System)",
 }
 
 SERIAL_RE = re.compile(r"^\d+[a-z]?$")
@@ -269,10 +271,139 @@ SFP_FIELD_MAP_DC = {
     (108, 13): "posters_pasted_status",
 }
 
+# Verified against ICC_Report_Ongrid.xlsx + bom_ac_on_grid_single.json. Unlike the other 3
+# sample files, this one's Data_Ingestion_Map labels are already fully descriptive and its row
+# order lines up with the template's 1:1 everywhere, so no header-text reconstruction or
+# "mislabeled by a nearby static cell" workarounds were needed here.
+SFP_FIELD_MAP_AC_ON_GRID = {
+    (42, 1): "sfp_date",
+    (42, 13): "sfp_time",
+    (43, 6): "sfp_weather",
+    # Array Details
+    (45, 4): "array_size_kwp",
+    (45, 8): "array_no_modules",
+    (45, 13): "array_no_strings",
+    (45, 18): "array_no_modules_per_string",
+    (45, 23): "array_each_module_wp",
+    # (46-49, 18) "No. of modules String 2-5" have no template key (singular
+    # array_no_modules_per_string only) -> fallback
+    # Array Parameters (At the AJB/CCU side) - Voc (AJB MCB OFF)
+    (52, 8): "ajb_off_voc_string_1",
+    (53, 8): "ajb_off_voc_string_2",
+    (54, 8): "ajb_off_voc_string_3",
+    (55, 8): "ajb_off_voc_string_4",
+    (56, 8): "ajb_off_voc_string_5",
+    (57, 8): "ajb_off_voc_mv_anchor",
+    # Array Parameters (At the AJB/CCU side) - Vmp + Imp (AJB MCB ON)
+    (58, 8): "ajb_on_vmp_string_1", (58, 18): "ajb_on_imp_string_1",
+    (59, 8): "ajb_on_vmp_string_2", (59, 18): "ajb_on_imp_string_2",
+    (60, 8): "ajb_on_vmp_string_3", (60, 18): "ajb_on_imp_string_3",
+    (61, 8): "ajb_on_vmp_string_4", (61, 18): "ajb_on_imp_string_4",
+    (62, 8): "ajb_on_vmp_string_5", (62, 18): "ajb_on_imp_string_5",
+    (63, 8): "ajb_on_vmp_mv_anchor", (63, 18): "ajb_on_imp_mv_anchor",
+    # Array Parameters (At the AJB/CCU side) - Pmp (AJB MCB ON)
+    (64, 8): "ajb_on_pmp_string_1",
+    (65, 8): "ajb_on_pmp_string_2",
+    (66, 8): "ajb_on_pmp_string_3",
+    (67, 8): "ajb_on_pmp_string_4",
+    (68, 8): "ajb_on_pmp_string_5",
+    (69, 8): "ajb_on_pmp_array",
+    # PCU/Inverter & Charge Controller Details
+    (71, 7): "pcu_inverter_count",
+    (71, 20): "charge_controller_count",
+    (72, 7): "pcu_inverter_rating_kva",
+    (72, 10): "pcu_inverter_rating_phase",
+    (72, 20): "charge_controller_ratings",
+    (73, 7): "pcu_inverter_total_capacity_kva",
+    (74, 7): "pcu_inverter_mppt_count",
+    # 1-Phase System - PCU/Inverter parameters (no Grid ON section for 1-phase in this template)
+    (77, 15): "ph1_load_voltage_mv",
+    (78, 15): "ph1_output_freq_mv",
+    (79, 15): "ph1_output_power_mv",
+    # 3-Phase System - PCU/Inverter parameters (R-N, Y-N, B-N, R-Y, R-B, Y-B, in that order)
+    (82, 15): "ph3_rpn_voltage_mv",
+    (83, 15): "ph3_rpn_freq_mv",
+    (84, 15): "ph3_rpn_current_mv",
+    (85, 15): "ph3_ypn_voltage_mv",
+    (86, 15): "ph3_ypn_freq_mv",
+    (87, 15): "ph3_ypn_current_mv",
+    (88, 15): "ph3_bpn_voltage_mv",
+    (89, 15): "ph3_bpn_freq_mv",
+    (90, 15): "ph3_bpn_current_mv",
+    (91, 15): "ph3_r_y_voltage_mv",
+    (92, 15): "ph3_r_y_freq_mv",
+    (93, 15): "ph3_r_b_voltage_mv",
+    (94, 15): "ph3_r_b_freq_mv",
+    (95, 15): "ph3_y_b_voltage_mv",
+    (96, 15): "ph3_y_b_freq_mv",
+    # PCU/Inverter Display
+    (99, 6): "pcu_display_status",
+    (100, 6): "pcu_display_parameters",
+    # Isolator & Breaker functionality check (col13 = ON, col23 = OFF)
+    (152, 13): "pv_line1_pcu_mcb_isolator_on_v", (152, 23): "pv_line1_pcu_mcb_isolator_off_v",
+    (153, 13): "pv_line2_pcu_mcb_isolator_on_v", (153, 23): "pv_line2_pcu_mcb_isolator_off_v",
+    (154, 13): "pv_line3_pcu_mcb_isolator_on_v", (154, 23): "pv_line3_pcu_mcb_isolator_off_v",
+    (155, 13): "pv_line4_pcu_mcb_isolator_on_v", (155, 23): "pv_line4_pcu_mcb_isolator_off_v",
+    (156, 13): "pv_line5_pcu_mcb_isolator_on_v", (156, 23): "pv_line5_pcu_mcb_isolator_off_v",
+    (157, 13): "acdb_contactor_ry_on_v", (157, 23): "acdb_contactor_ry_off_v",
+    (158, 13): "acdb_contactor_yb_on_v", (158, 23): "acdb_contactor_yb_off_v",
+    (159, 13): "acdb_contactor_rb_on_v", (159, 23): "acdb_contactor_rb_off_v",
+    (160, 13): "acdb_mcb_ry_on_v", (160, 23): "acdb_mcb_ry_off_v",
+    (161, 13): "acdb_mcb_yb_on_v", (161, 23): "acdb_mcb_yb_off_v",
+    (162, 13): "acdb_mcb_rb_on_v", (162, 23): "acdb_mcb_rb_off_v",
+    (163, 13): "lt_panel_main_mcb_ry_on_v", (163, 23): "lt_panel_main_mcb_ry_off_v",
+    (164, 13): "lt_panel_main_mcb_yb_on_v", (164, 23): "lt_panel_main_mcb_yb_off_v",
+    (165, 13): "lt_panel_main_mcb_rb_on_v", (165, 23): "lt_panel_main_mcb_rb_off_v",
+    (166, 13): "lt_panel_phase_mcb1_ry_on_v", (166, 23): "lt_panel_phase_mcb1_ry_off_v",
+    (167, 13): "lt_panel_phase_mcb1_yb_on_v", (167, 23): "lt_panel_phase_mcb1_yb_off_v",
+    (168, 13): "lt_panel_phase_mcb1_rb_on_v", (168, 23): "lt_panel_phase_mcb1_rb_off_v",
+    (169, 13): "lt_panel_phase_mcb2_ry_on_v", (169, 23): "lt_panel_phase_mcb2_ry_off_v",
+    (170, 13): "lt_panel_phase_mcb2_yb_on_v", (170, 23): "lt_panel_phase_mcb2_yb_off_v",
+    (171, 13): "lt_panel_phase_mcb2_rb_on_v", (171, 23): "lt_panel_phase_mcb2_rb_off_v",
+    (172, 13): "lt_panel_phase_mcb3_ry_on_v", (172, 23): "lt_panel_phase_mcb3_ry_off_v",
+    (173, 13): "lt_panel_phase_mcb3_yb_on_v", (173, 23): "lt_panel_phase_mcb3_yb_off_v",
+    (174, 13): "lt_panel_phase_mcb3_rb_on_v", (174, 23): "lt_panel_phase_mcb3_rb_off_v",
+    # Earth Pit Tests
+    (129, 1): "ept_dc_earthing_mv",
+    (129, 6): "ept_ac_earthing_mv",
+    (129, 13): "ept_lightning_arrester1_mv",
+    (129, 18): "ept_lightning_arrester2_mv",
+    # Earth-Down Conductor Continuity Test
+    (132, 19): "dc_panel_panel_res",
+    (133, 19): "dc_panel_mms_res",
+    (134, 19): "dc_mms_ajb_res",
+    (135, 19): "dc_ajb_busbar_res",
+    (136, 19): "dc_busbar_earth_pit_res",
+    (137, 19): "ac_inverter_busbar_res",
+    (138, 19): "ac_acdb_busbar_res",
+    (139, 19): "ac_ltpanel_busbar_res",
+    (140, 19): "ac_loads_busbar_res",
+    (141, 19): "ac_coswitch_busbar_res",
+    (142, 19): "ac_busbar_earth_pit_res",
+    (143, 19): "la1_la_aluminium_cable_res",
+    (144, 19): "la1_aluminium_gi_strip_res",
+    (145, 19): "la1_gi_strip_earth_pit_res",
+    (146, 19): "la2_la_aluminium_cable_res",
+    (147, 19): "la2_aluminium_gi_strip_res",
+    (148, 19): "la2_gi_strip_earth_pit_res",
+    (149, 19): "earthpit_ac_dc_interconnection_res",
+    (150, 19): "earthpit_la1_la2_interconnection_res",
+    # Orientation Checklist
+    (177, 13): "orientation_operational_instructions_status",
+    (178, 13): "orientation_routine_maintenance_status",
+    (179, 13): "stickers_pasted_status",
+    (180, 13): "posters_pasted_status",
+    (181, 13): "orientation_warranty_solar_panel_status",
+    (182, 13): "orientation_warranty_pcu_inverter_ccu_status",
+    (183, 13): "orientation_warranty_bidirectional_meter_status",
+    (184, 13): "orientation_warranty_check_meter_status",
+}
+
 SFP_FIELD_MAPS = {
     "hybrid": SFP_FIELD_MAP_HYBRID,
     "ac_off": SFP_FIELD_MAP_AC_OFF,
     "dc": SFP_FIELD_MAP_DC,
+    "ac_on_grid": SFP_FIELD_MAP_AC_ON_GRID,
 }
 
 
@@ -381,12 +512,21 @@ def load_data_ingestion_map(wb):
 def detect_system_type(instances):
     """See icc_report_to_json.py's detect_system_type() for the full rationale: phase
     (single/three) is not detected because it never changes which Excel cell maps to which
-    key for any of the 3 supported formats."""
+    key for any of the supported formats.
+
+    4 formats now, told apart purely from Data_Ingestion_Map's own Section/Field Label text:
+      - no "Bill of materials (For RMS)" section at all, AND its solar BOM section is named
+        exactly "Bill Of Material" (no "(For Solar System)" qualifier)  -> ac_on_grid
+      - no RMS section otherwise                                        -> dc
+      - "Solar Hybrid PCU" or a "Net Meter" BOM row                     -> hybrid
+      - otherwise (has RMS)                                             -> ac_off
+    """
     labels_lower = [inst["label"].lower() for inst in instances]
 
     has_rms = any(inst["section"] == "Bill of materials (For RMS)" for inst in instances)
     if not has_rms:
-        return "dc"
+        is_on_grid = any(inst["section"] == "Bill Of Material" for inst in instances)
+        return "ac_on_grid" if is_on_grid else "dc"
 
     is_hybrid = any("solar hybrid pcu" in l or l.strip() == "net meter" for l in labels_lower)
     return "hybrid" if is_hybrid else "ac_off"
