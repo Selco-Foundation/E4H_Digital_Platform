@@ -24,6 +24,14 @@ const isValidPoNumber = (poNumber) => {
   return PO_NUMBER_REGEX.test(poNumber || "");
 };
 
+const getICCTemplates = (fieldPlan, fieldPlanData) => (
+  fieldPlan?.iccTemplates ||
+  fieldPlan?.additionalDetails?.iccTemplates ||
+  fieldPlan?.additionalDetails?.iccPrepopulationTemplates ||
+  fieldPlanData?.iccTemplates ||
+  []
+);
+
 const CreateFieldPlan = () => {
 
   const { t } = useTranslation();
@@ -724,6 +732,8 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "iccPrepopulationConfiguration",
               t,
+              uploadFacilityData: persistedFormData?.facilityData?.uploadFacilityData,
+              iccTemplates: getICCTemplates(createdFieldPlan, fieldPlanData),
             },
             nextRoute: "",
             populators: {
@@ -763,7 +773,7 @@ const CreateFieldPlan = () => {
         ],
       },
     ],
-    [t, activityData, boundaryData, createdProject, createdFieldPlan, organizationData, file, invalidDataError]
+    [t, activityData, boundaryData, createdProject, createdFieldPlan, fieldPlanData, organizationData, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {

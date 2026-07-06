@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { AddIcon, Button, CardLabel, DeleteIcon, Dropdown } from "@egovernments/digit-ui-react-components";
+import { AddIcon, Button, CardLabel, DownloadIcon, DustbinIcon, Dropdown } from "@egovernments/digit-ui-react-components";
 import { UploadFile } from "@egovernments/digit-ui-components";
+import { ICCService } from "../../services/ICC";
+import { FilestoreService } from "../../services/Filestore";
 
 const getDefaultRows = () => [
   {
@@ -8,19 +10,107 @@ const getDefaultRows = () => [
     systemType: null,
     totalSystemCapacity: null,
     file: null,
+    template: null,
+    templateFile: null,
+    templateOptions: [],
+    capacityOptions: [],
   },
 ];
 
+const getOption = (value) => value ? ({ code: value, name: value }) : null;
+
+const getUniqueOptions = (values = []) => {
+  return [...new Set(values.filter(Boolean))].map(getOption);
+};
+
+const getColumnValue = (row = {}, possibleKeys = []) => {
+  const rowKeys = Object.keys(row);
+  const matchedKey = rowKeys.find((key) => possibleKeys.includes(key?.trim?.().toLowerCase()));
+
+  return matchedKey ? row[matchedKey] : "";
+};
+
+const getTemplateFileName = (template) => {
+  if (!template?.fileStoreId) {
+    return "";
+  }
+
+  return `${template.systemType || "ICC"}_${template.totalSystemCapacity || "template"}.xlsx`.replace(/\s+/g, "_");
+};
+
+const getICCApiSystemType = (systemType) => {
+  return systemType?.split(/\s+[–—]\s+/)?.[0] || systemType;
+};
+
+const normalizeValue = (value) => (value || "").toString().trim().toLowerCase();
+
+const getTemplateForRow = (row, templates = []) => {
+  const systemType = getICCApiSystemType(row.systemType?.name);
+  const capacity = row.totalSystemCapacity?.name;
+
+  return templates.find((template) => (
+    normalizeValue(template.systemType) === normalizeValue(systemType) &&
+    (!capacity || normalizeValue(template.totalSystemCapacity) === normalizeValue(capacity))
+  )) || templates.find((template) => normalizeValue(template.systemType) === normalizeValue(systemType));
+};
+
 const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
-  const { t, name } = props;
+  const { t, name, uploadFacilityData, iccTemplates = [] } = props;
   const [rows, setRows] = useState(data[name] || getDefaultRows());
-  const [systemTypeOptions] = useState([]);
-  const [capacityOptions] = useState([]);
+  const [systemTypeOptions, setSystemTypeOptions] = useState([]);
+  const [facilitySystemCapacityMap, setFacilitySystemCapacityMap] = useState({});
 
   useEffect(() => {
-    setValue(name, rows);
+    const formRows = rows.map(({ templateOptions, capacityOptions, ...row }) => row);
+    setValue(name, formRows);
   }, [name, rows, setValue]);
+
+  useEffect(() => {
+    const parseFacilityData = async () => {
+      const uploadedFacilityFile = uploadFacilityData || data?.uploadFacilityData;
+      const file = uploadedFacilityFile?.data || uploadedFacilityFile;
+
+      if (!file) {
+        return;
+      }
+
+      try {
+        const parsedSheets = await Digit.Utils.parsingUtils.parseXlsToJsonMultipleSheets({
+          target: {
+            files: [file],
+          },
+        });
+        const facilityRows = Object.values(parsedSheets || {})?.[0] || [];
+        const systemCapacityMap = {};
+
+        facilityRows.forEach((row) => {
+          const systemType = getColumnValue(row, ["system type (mandatory)", "system type"]);
+          const capacity = getColumnValue(row, ["total system capacity (mandatory)", "total system capacity"]);
+
+          if (!systemType) {
+            return;
+          }
+
+          systemCapacityMap[systemType] = systemCapacityMap[systemType] || new Set();
+
+          if (capacity) {
+            systemCapacityMap[systemType].add(capacity);
+          }
+        });
+
+        setSystemTypeOptions(getUniqueOptions(Object.keys(systemCapacityMap)));
+        setFacilitySystemCapacityMap(Object.entries(systemCapacityMap).reduce((acc, [systemType, capacities]) => ({
+          ...acc,
+          [systemType]: getUniqueOptions([...capacities]),
+        }), {}));
+      } catch (error) {
+        console.error("Error parsing facility data for ICC pre-population", error);
+      }
+    };
+
+    parseFacilityData();
+  }, [data?.uploadFacilityData, uploadFacilityData]);
 
   const updateRow = (rowId, fieldName, fieldValue) => {
     setRows((prevRows) => prevRows.map((row) => {
@@ -41,6 +131,10 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
         systemType: null,
         totalSystemCapacity: null,
         file: null,
+        template: null,
+        templateFile: null,
+        templateOptions: [],
+        capacityOptions: [],
       },
     ]));
   };
@@ -55,7 +149,78 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
   const handleFileUpload = (rowId, event) => {
     const uploadedFile = event.target.files?.[0];
     if (uploadedFile) {
-      updateRow(rowId, "file", uploadedFile);
+      setRows((prevRows) => prevRows.map((row) => {
+        if (row.id !== rowId) return row;
+
+        return {
+          ...row,
+          file: uploadedFile,
+        };
+      }));
+    }
+  };
+
+  const handleSystemTypeSelection = async (rowId, option) => {
+    const capacityOptionsFromFacilityData = facilitySystemCapacityMap[option?.name] || [];
+
+    setRows((prevRows) => prevRows.map((row) => {
+      if (row.id !== rowId) return row;
+
+      return {
+        ...row,
+        systemType: option,
+        totalSystemCapacity: null,
+        file: null,
+        template: null,
+        templateFile: null,
+        templateOptions: [],
+        capacityOptions: capacityOptionsFromFacilityData,
+      };
+    }));
+
+    if (!option?.name) {
+      return;
+    }
+  };
+
+  const handleCapacitySelection = async (rowId, option) => {
+    updateRow(rowId, "totalSystemCapacity", option);
+  };
+
+  const handleTemplateDownload = async (row) => {
+    if (!row.systemType?.name) {
+      return;
+    }
+
+    try {
+      const searchedTemplates = await ICCService.searchICCTemplates(getICCApiSystemType(row.systemType.name));
+      const templateOptions = searchedTemplates?.length ? searchedTemplates : iccTemplates;
+      const selectedTemplate = getTemplateForRow(row, templateOptions);
+
+      if (!selectedTemplate?.fileStoreId) {
+        return;
+      }
+
+      const templateFile = {
+        name: getTemplateFileName(selectedTemplate),
+        fileStoreId: selectedTemplate.fileStoreId,
+        isTemplate: true,
+      };
+
+      setRows((prevRows) => prevRows.map((prevRow) => {
+        if (prevRow.id !== row.id) return prevRow;
+
+        return {
+          ...prevRow,
+          template: selectedTemplate,
+          templateFile: templateFile,
+          templateOptions: templateOptions,
+        };
+      }));
+
+      await FilestoreService.downloadFileFromFilestore(selectedTemplate.fileStoreId, templateFile.name);
+    } catch (error) {
+      console.error("Error downloading ICC template", error);
     }
   };
 
@@ -115,6 +280,12 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             border: 1px solid #D1D5DB;
           }
 
+          .icc-prepopulation-upload {
+            position: relative;
+            height: 40px;
+            width: 200px;
+          }
+
           .icc-prepopulation-upload .upload-file > div {
             height: 100%;
             margin: 0px;
@@ -140,6 +311,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             padding: 0px 12px !important;
             border: none !important;
             background: transparent !important;
+            justify-content: flex-start !important;
           }
 
           .icc-prepopulation-upload .digit-upload-file button {
@@ -151,6 +323,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             padding: 0px 12px !important;
             border: none !important;
             background: transparent !important;
+            justify-content: flex-start !important;
           }
 
           .icc-prepopulation-upload .upload-file button h2 {
@@ -175,6 +348,31 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             text-overflow: ellipsis;
           }
 
+          .icc-prepopulation-upload.has-file .digit-upload-file button h2 {
+            visibility: hidden;
+          }
+
+          .icc-prepopulation-file-name {
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            right: 0px;
+            height: 40px;
+            padding: 0px 12px;
+            display: flex;
+            align-items: center;
+            font-family: Roboto;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 20px;
+            color: #0B0C0C;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            pointer-events: none;
+            box-sizing: border-box;
+          }
+
           .icc-prepopulation-upload .upload-file input {
             height: 40px !important;
             width: 200px !important;
@@ -186,11 +384,33 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           }
 
           .icc-prepopulation-upload .tag-container {
-            max-width: 100%;
+            display: none !important;
           }
 
           .icc-prepopulation-upload .digit-tag-container {
-            max-width: 100%;
+            display: none !important;
+          }
+
+          .icc-prepopulation-upload .tag {
+            display: none !important;
+          }
+
+          .icc-prepopulation-upload .digit-tag {
+            display: none !important;
+          }
+
+          .icc-prepopulation-upload .digit-file-upload-status {
+            display: none !important;
+          }
+
+          .icc-prepopulation-delete-icon svg {
+            width: 26px;
+            height: 26px;
+          }
+
+          .icc-prepopulation-download-icon svg {
+            width: 24px;
+            height: 24px;
           }
         `}
       </style>
@@ -217,7 +437,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                 option={systemTypeOptions}
                 optionKey={"name"}
                 selected={row.systemType}
-                select={(option) => updateRow(row.id, "systemType", option)}
+                select={(option) => handleSystemTypeSelection(row.id, option)}
                 optionsCardStyle={{
                   zIndex: 10000000,
                   maxHeight: "400px",
@@ -233,10 +453,10 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
               <FieldLabel label={"ICC_TOTAL_SYSTEM_CAPACITY"} />
               <Dropdown
                 t={t}
-                option={capacityOptions}
+                option={row.capacityOptions || []}
                 optionKey={"name"}
                 selected={row.totalSystemCapacity}
-                select={(option) => updateRow(row.id, "totalSystemCapacity", option)}
+                select={(option) => handleCapacitySelection(row.id, option)}
                 optionsCardStyle={{
                   zIndex: 10000000,
                   maxHeight: "400px",
@@ -250,58 +470,92 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             </FieldWrapper>
             <FieldWrapper>
               <FieldLabel label={row.file ? "ICC_PRE_FILLING_TEMPLATE" : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"} />
-              <div className={"icc-prepopulation-upload"}>
-                <UploadFile
-                  accept={".xlsx,.xls"}
-                  customClass={"icc-prepopulation-upload-file"}
-                  enableButton={true}
-                  onUpload={(event) => handleFileUpload(row.id, event)}
-                  onDelete={() => updateRow(row.id, "file", null)}
-                  removeTargetedFile={() => updateRow(row.id, "file", null)}
-                  uploadedFiles={row.file ? [[row.file.name, row.file]] : []}
-                  message={""}
-                  textStyles={{
-                    fontSize: "14px",
-                    fontFamily: "Roboto",
-                    fontWeight: "500",
-                  }}
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div className={`icc-prepopulation-upload ${row.file ? "has-file" : ""}`}>
+                  <UploadFile
+                    accept={".xlsx,.xls"}
+                    customClass={"icc-prepopulation-upload-file"}
+                    enableButton={true}
+                    onUpload={(event) => handleFileUpload(row.id, event)}
+                    onDelete={() => updateRow(row.id, "file", null)}
+                    removeTargetedFile={() => updateRow(row.id, "file", null)}
+                    uploadedFiles={[]}
+                    message={""}
+                    textStyles={{
+                      fontSize: "14px",
+                      fontFamily: "Roboto",
+                      fontWeight: "500",
+                    }}
+                    style={{
+                      minHeight: "40px",
+                      height: "40px",
+                      width: "200px",
+                      maxWidth: "200px",
+                    }}
+                    extraStyles={{
+                      buttonStyles: {
+                        height: "38px",
+                        minHeight: "38px",
+                        maxHeight: "38px",
+                        width: "100%",
+                        margin: "0px",
+                        padding: "0px 12px",
+                      },
+                    }}
+                  />
+                  {row.file && (
+                    <span className={"icc-prepopulation-file-name"} title={row.file.name}>
+                      {row.file.name}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variation={"secondary"}
+                  label={""}
+                  icon={(
+                    <span className={"icc-prepopulation-download-icon"}>
+                      <DownloadIcon fill={"#C84C0E"} />
+                    </span>
+                  )}
+                  onButtonClick={() => handleTemplateDownload(row)}
                   style={{
-                    minHeight: "40px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    cursor: row.systemType ? "pointer" : "not-allowed",
                     height: "40px",
-                    width: "200px",
-                    maxWidth: "200px",
+                    width: "40px",
+                    padding: "0px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: row.systemType ? 1 : 0.5,
                   }}
-                  extraStyles={{
-                    buttonStyles: {
-                      height: "38px",
-                      minHeight: "38px",
-                      maxHeight: "38px",
-                      width: "100%",
-                      margin: "0px",
-                      padding: "0px 12px",
-                    },
+                  aria-label={t("CORE_COMMON_DOWNLOAD")}
+                />
+                <Button
+                  variation={"secondary"}
+                  label={""}
+                  icon={(
+                    <span className={"icc-prepopulation-delete-icon"}>
+                      <DustbinIcon />
+                    </span>
+                  )}
+                  onButtonClick={() => deleteRow(row.id)}
+                  style={{
+                    border: "none",
+                    backgroundColor: "transparent",
+                    cursor: "pointer",
+                    height: "40px",
+                    width: "40px",
+                    padding: "0px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
+                  aria-label={t("CORE_COMMON_DELETE")}
                 />
               </div>
             </FieldWrapper>
-            <Button
-              variation={"secondary"}
-              label={""}
-              icon={<DeleteIcon fill={"#C84C0E"} />}
-              onButtonClick={() => deleteRow(row.id)}
-              style={{
-                border: "none",
-                backgroundColor: "transparent",
-                cursor: "pointer",
-                height: "44px",
-                width: "44px",
-                marginTop: "20px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              aria-label={t("CORE_COMMON_DELETE")}
-            />
           </div>
         ))}
       </div>
