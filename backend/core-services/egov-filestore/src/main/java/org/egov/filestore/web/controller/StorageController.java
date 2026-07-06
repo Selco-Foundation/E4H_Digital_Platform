@@ -227,7 +227,7 @@ public class StorageController {
                 // signed URL for the actual file only, no thumbnail variants appended
                 signedUrl = storageService.retrieveSignedUrl(fileStoreId, tenantId);
             } catch (Exception e) {
-                logger.error("Error while retrieving actual-resolution URL for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId, e);
+                log.error("Error while retrieving actual-resolution URL for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId, e);
             }
         }
 
