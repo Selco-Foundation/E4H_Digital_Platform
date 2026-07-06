@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -179,14 +180,15 @@ public class BomService {
         bomData.put("tenantId", TENANTID);
 
         Object rawDocuments = bomData.get("documents");
-        if (!(rawDocuments instanceof List)) {
-            return;
-        }
-        List<Map<String, Object>> documents = (List<Map<String, Object>>) rawDocuments;
+        List<Map<String, Object>> documents = rawDocuments instanceof List
+                ? (List<Map<String, Object>>) rawDocuments
+                : Collections.emptyList();
 
         Map<String, String> installationImageDescriptions =
                 mdmsUtils.fetchInstallationImageDescriptions(request.getRequestInfo(), TENANTID);
 
+        // Every code from the MDMS master gets an entry so its documentName always renders,
+        // even when no matching upload exists — fileStoreIds is just empty in that case.
         List<BomPdfDocument> groupedDocuments = new ArrayList<>();
         for (Map.Entry<String, String> entry : installationImageDescriptions.entrySet()) {
             String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + entry.getKey();
@@ -195,10 +197,6 @@ public class BomService {
                     .filter(document -> documentType.equals(document.get("documentType")) && document.get("fileStoreId") != null)
                     .map(document -> String.valueOf(document.get("fileStoreId")))
                     .collect(Collectors.toList());
-
-            if (fileStoreIds.isEmpty()) {
-                continue;
-            }
 
             groupedDocuments.add(BomPdfDocument.builder()
                     .documentType(documentType)
