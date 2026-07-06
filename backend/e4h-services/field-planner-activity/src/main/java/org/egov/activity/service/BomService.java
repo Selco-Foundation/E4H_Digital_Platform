@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -146,7 +147,7 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
-        groupInstallationImageDocuments(request);
+        enrichBomData(request);
         return getBOMPdfFile(pdfKey, tenantId, request);
     }
 
@@ -158,45 +159,53 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
-        groupInstallationImageDocuments(request);
+        enrichBomData(request);
         return uploadBOMPdfFilestore(pdfKey, tenantId, request);
     }
 
     /**
-     * For every code in the common-masters.InstallationImages MDMS master, combines the
-     * fileStoreIds of all "documents" entries whose documentType is "INSTALLATION_IMAGE-<code>"
-     * into one entry on installationImages, with documentName resolved from that code's description.
+     * The PDF service reads tenantId and documents off the "bom" object, so both are written
+     * there rather than as sibling fields on the request. For every code in the
+     * common-masters.InstallationImages MDMS master, combines the fileStoreIds of all raw
+     * "documents" entries whose documentType is "INSTALLATION_IMAGE-<code>" into one grouped
+     * entry, with documentName resolved from that code's description.
      */
-    private void groupInstallationImageDocuments(GenerateBOMPdfRequest request) {
-        List<Document> documents = request.getDocuments();
-        if (documents == null || documents.isEmpty()) {
-            return;
+    private void enrichBomData(GenerateBOMPdfRequest request) {
+        Map<String, Object> bomData = new LinkedHashMap<>();
+        if (request.getBomData() != null) {
+            bomData.putAll(request.getBomData());
         }
+        bomData.put("tenantId", TENANTID);
 
-        Map<String, String> installationImageDescriptions =
-                mdmsUtils.fetchInstallationImageDescriptions(request.getRequestInfo(), TENANTID);
+        List<Document> documents = request.getDocuments();
+        if (documents != null && !documents.isEmpty()) {
+            Map<String, String> installationImageDescriptions =
+                    mdmsUtils.fetchInstallationImageDescriptions(request.getRequestInfo(), TENANTID);
 
-        List<BomPdfDocument> installationImages = new ArrayList<>();
-        for (Map.Entry<String, String> entry : installationImageDescriptions.entrySet()) {
-            String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + entry.getKey();
+            List<BomPdfDocument> groupedDocuments = new ArrayList<>();
+            for (Map.Entry<String, String> entry : installationImageDescriptions.entrySet()) {
+                String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + entry.getKey();
 
-            List<String> fileStoreIds = documents.stream()
-                    .filter(document -> documentType.equals(document.getDocumentType()) && document.getFileStoreId() != null)
-                    .map(Document::getFileStoreId)
-                    .collect(Collectors.toList());
+                List<String> fileStoreIds = documents.stream()
+                        .filter(document -> documentType.equals(document.getDocumentType()) && document.getFileStoreId() != null)
+                        .map(Document::getFileStoreId)
+                        .collect(Collectors.toList());
 
-            if (fileStoreIds.isEmpty()) {
-                continue;
+                if (fileStoreIds.isEmpty()) {
+                    continue;
+                }
+
+                groupedDocuments.add(BomPdfDocument.builder()
+                        .documentType(documentType)
+                        .documentName(entry.getValue())
+                        .fileStoreIds(fileStoreIds)
+                        .build());
             }
 
-            installationImages.add(BomPdfDocument.builder()
-                    .documentType(documentType)
-                    .documentName(entry.getValue())
-                    .fileStoreIds(fileStoreIds)
-                    .build());
+            bomData.put("documents", groupedDocuments);
         }
 
-        request.setInstallationImages(installationImages);
+        request.setBomData(bomData);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {

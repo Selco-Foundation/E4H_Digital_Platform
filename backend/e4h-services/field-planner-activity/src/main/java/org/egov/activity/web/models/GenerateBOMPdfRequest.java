@@ -30,7 +30,4 @@ public class GenerateBOMPdfRequest {
 
     @JsonProperty("documents")
     private List<Document> documents = null;
-
-    @JsonProperty("installationImages")
-    private List<BomPdfDocument> installationImages = null;
 }
