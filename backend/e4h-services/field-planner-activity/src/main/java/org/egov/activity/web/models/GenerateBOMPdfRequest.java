@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.List;
 import java.util.Map;
 
 @Validated
@@ -26,4 +27,10 @@ public class GenerateBOMPdfRequest {
 
     @JsonProperty("bom")
     private Map<String, Object> bomData = null;
+
+    @JsonProperty("documents")
+    private List<Document> documents = null;
+
+    @JsonProperty("installationImages")
+    private List<BomPdfDocument> installationImages = null;
 }

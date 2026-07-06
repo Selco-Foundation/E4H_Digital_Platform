@@ -18,9 +18,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static org.egov.activity.util.ActivityConstants.INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX;
+import static org.egov.activity.util.ActivityConstants.TENANTID;
 
 @Service
 @Slf4j
@@ -141,6 +146,7 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
+        groupInstallationImageDocuments(request);
         return getBOMPdfFile(pdfKey, tenantId, request);
     }
 
@@ -152,7 +158,45 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
+        groupInstallationImageDocuments(request);
         return uploadBOMPdfFilestore(pdfKey, tenantId, request);
+    }
+
+    /**
+     * For every code in the common-masters.InstallationImages MDMS master, combines the
+     * fileStoreIds of all "documents" entries whose documentType is "INSTALLATION_IMAGE-<code>"
+     * into one entry on installationImages, with documentName resolved from that code's description.
+     */
+    private void groupInstallationImageDocuments(GenerateBOMPdfRequest request) {
+        List<Document> documents = request.getDocuments();
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
+
+        Map<String, String> installationImageDescriptions =
+                mdmsUtils.fetchInstallationImageDescriptions(request.getRequestInfo(), TENANTID);
+
+        List<BomPdfDocument> installationImages = new ArrayList<>();
+        for (Map.Entry<String, String> entry : installationImageDescriptions.entrySet()) {
+            String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + entry.getKey();
+
+            List<String> fileStoreIds = documents.stream()
+                    .filter(document -> documentType.equals(document.getDocumentType()) && document.getFileStoreId() != null)
+                    .map(Document::getFileStoreId)
+                    .collect(Collectors.toList());
+
+            if (fileStoreIds.isEmpty()) {
+                continue;
+            }
+
+            installationImages.add(BomPdfDocument.builder()
+                    .documentType(documentType)
+                    .documentName(entry.getValue())
+                    .fileStoreIds(fileStoreIds)
+                    .build());
+        }
+
+        request.setInstallationImages(installationImages);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
