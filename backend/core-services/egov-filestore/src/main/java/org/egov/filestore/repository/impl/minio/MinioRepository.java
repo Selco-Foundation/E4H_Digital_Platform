@@ -66,9 +66,9 @@ public class MinioRepository implements CloudFilesManager {
 
 		List<org.egov.filestore.persistence.entity.Artifact> persistList = new ArrayList<>();
 		artifacts.forEach(artifact -> {
-			log.trace("Processing artifact: {}", artifact.getFileLocation().getFileName());
 			FileLocation fileLocation = artifact.getFileLocation();
 			String completeName = fileLocation.getFileName();
+			log.trace("Processing artifact: {}", completeName);
 			int index = completeName.indexOf('/');
 			String fileNameWithPath = completeName.substring(index + 1, completeName.length());
 			log.debug("Uploading file to MinIO: {}", fileNameWithPath);
@@ -261,10 +261,7 @@ public class MinioRepository implements CloudFilesManager {
 	}
 
 	public Resource read(FileLocation fileLocation) {
-		log.trace("Entering read method for fileName: {}, tenantId: {}", 
-				fileLocation.getFileName(), fileLocation.getTenantId());
-		log.info("Reading file from MinIO for fileName: {}, tenantId: {}", 
-				fileLocation.getFileName(), fileLocation.getTenantId());
+		log.trace("Entering read method for tenantId: {}", fileLocation.getTenantId());
 
 		Resource resource = null;
 		File f = new File(fileLocation.getFileStoreId());
@@ -275,8 +272,8 @@ public class MinioRepository implements CloudFilesManager {
 		}
 
 		if (fileLocation.getFileSource() == null || fileLocation.getFileSource().equals(minioConfig.getSource())) {
-			String fileName = fileLocation.getFileName().substring(fileLocation.getFileName().indexOf('/') + 1,
-					fileLocation.getFileName().length());
+			String completeName = fileLocation.getFileName();
+			String fileName = completeName.substring(completeName.indexOf('/') + 1, completeName.length());
 			log.debug("Extracted fileName: {} from fileLocation", fileName);
 
 			try {
