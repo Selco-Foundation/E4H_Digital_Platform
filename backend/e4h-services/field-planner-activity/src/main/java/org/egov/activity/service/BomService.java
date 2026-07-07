@@ -18,9 +18,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static org.egov.activity.util.ActivityConstants.INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX;
+import static org.egov.activity.util.ActivityConstants.TENANTID;
 
 @Service
 @Slf4j
@@ -141,6 +147,7 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
+        enrichBomData(request);
         return getBOMPdfFile(pdfKey, tenantId, request);
     }
 
@@ -152,7 +159,53 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
+        enrichBomData(request);
         return uploadBOMPdfFilestore(pdfKey, tenantId, request);
+    }
+
+    /**
+     * The client sends the raw, ungrouped documents array nested inside "bom.documents" (not as
+     * a sibling field on the request), and the PDF service reads tenantId from "bom.tenantId".
+     * For every code in the common-masters.InstallationImages MDMS master, this combines the
+     * fileStoreIds of all raw entries whose documentType is "INSTALLATION_IMAGE-<code>" into one
+     * grouped entry, with documentName resolved from that code's description, then overwrites
+     * "bom.documents" with the grouped result.
+     */
+    @SuppressWarnings("unchecked")
+    private void enrichBomData(GenerateBOMPdfRequest request) {
+        Map<String, Object> bomData = request.getBomData();
+        if (bomData == null) {
+            return;
+        }
+        bomData.put("tenantId", TENANTID);
+
+        Object rawDocuments = bomData.get("documents");
+        List<Map<String, Object>> documents = rawDocuments instanceof List
+                ? (List<Map<String, Object>>) rawDocuments
+                : Collections.emptyList();
+
+        Map<String, String> installationImageDescriptions =
+                mdmsUtils.fetchInstallationImageDescriptions(request.getRequestInfo(), TENANTID);
+
+        // Every code from the MDMS master gets an entry so its documentName always renders,
+        // even when no matching upload exists — fileStoreIds is just empty in that case.
+        List<BomPdfDocument> groupedDocuments = new ArrayList<>();
+        for (Map.Entry<String, String> entry : installationImageDescriptions.entrySet()) {
+            String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + entry.getKey();
+
+            List<String> fileStoreIds = documents.stream()
+                    .filter(document -> documentType.equals(document.get("documentType")) && document.get("fileStoreId") != null)
+                    .map(document -> String.valueOf(document.get("fileStoreId")))
+                    .collect(Collectors.toList());
+
+            groupedDocuments.add(BomPdfDocument.builder()
+                    .documentType(documentType)
+                    .documentName(entry.getValue())
+                    .fileStoreIds(fileStoreIds)
+                    .build());
+        }
+
+        bomData.put("documents", groupedDocuments);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
