@@ -165,10 +165,15 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
+
+        // Must run before enrichBomData, which overwrites bom.documents with only the grouped
+        // INSTALLATION_IMAGE-* entries used for in-PDF image rendering.
+        List<Map<String, Object>> documentsToAppend = extractAppendableDocuments(request.getBomData());
+
         enrichBomData(request);
 
         String pdfFilestoreId = uploadBOMPdfFilestore(pdfKey, tenantId, request);
-        return appendBomDocumentsToPdf(pdfFilestoreId, tenantId, request);
+        return appendBomDocumentsToPdf(pdfFilestoreId, tenantId, documentsToAppend);
     }
 
     /**
@@ -176,8 +181,7 @@ public class BomService {
      * BOM onto the end of the generated PDF via ingestion-service, returning the merged fileStoreId.
      * If no such documents are present, the original PDF fileStoreId is returned unchanged.
      */
-    private String appendBomDocumentsToPdf(String parentFilestoreId, String tenantId, GenerateBOMPdfRequest request) {
-        List<Map<String, Object>> documentsToAppend = extractAppendableDocuments(request.getBomData());
+    private String appendBomDocumentsToPdf(String parentFilestoreId, String tenantId, List<Map<String, Object>> documentsToAppend) {
         if (documentsToAppend.isEmpty()) {
             return parentFilestoreId;
         }
@@ -201,18 +205,28 @@ public class BomService {
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractAppendableDocuments(Map<String, Object> bomData) {
-        if (bomData == null || !(bomData.get("documents") instanceof List)) {
+        if (bomData == null || !(bomData.get("documents") instanceof List<?> rawDocuments)) {
             return Collections.emptyList();
         }
-        List<Map<String, Object>> documents = (List<Map<String, Object>>) bomData.get("documents");
+
+        // Raw bom.documents entries carry a singular fileStoreId (same shape enrichBomData itself
+        // reads via document.get("fileStoreId") below). Depending on Jackson default-typing metadata
+        // on the incoming request, each element may already be a LinkedHashMap or a concrete POJO
+        // (e.g. Document) - convertValue normalizes either case to a plain Map.
+        List<Map<String, Object>> documents = new ArrayList<>();
+        for (Object rawDocument : rawDocuments) {
+            documents.add(mapper.convertValue(rawDocument, Map.class));
+        }
 
         // Group by documentType in APPENDABLE_DOCUMENT_TYPES order (all ASSET_HANDOVER_DOCUMENT
         // documents first, then all INSTALLATION_COMPLETION_CERTIFICATE), not source order.
         List<Map<String, Object>> ordered = new ArrayList<>();
         for (String documentType : APPENDABLE_DOCUMENT_TYPES) {
-            documents.stream()
-                    .filter(doc -> doc.get("fileStoreId") != null && documentType.equals(doc.get("documentType")))
-                    .forEach(ordered::add);
+            for (Map<String, Object> document : documents) {
+                if (document.get("fileStoreId") != null && documentType.equals(document.get("documentType"))) {
+                    ordered.add(document);
+                }
+            }
         }
         return ordered;
     }
