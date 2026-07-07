@@ -19,6 +19,7 @@ dependencies = [
     "fastapi-health>=0.4.0",
     "greenlet>=3.2.4",
     "pillow>=11.3.0",
+    "pypdf>=4.0.0",
     "psycopg>=3.2.9",
     "sqlalchemy>=2.0.43",
 ]
