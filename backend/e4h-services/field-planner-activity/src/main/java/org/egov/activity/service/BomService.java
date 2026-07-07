@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +32,11 @@ import static org.egov.activity.util.ActivityConstants.TENANTID;
 @Service
 @Slf4j
 public class BomService {
+
+    // Order matters: documents are appended to the PDF in this documentType order.
+    private static final List<String> APPENDABLE_DOCUMENT_TYPES = List.of(
+            "ASSET_HANDOVER_DOCUMENT", "INSTALLATION_COMPLETION_CERTIFICATE"
+    );
 
     private final BomRepository bomRepository;
 
@@ -148,7 +154,55 @@ public class BomService {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
         enrichBomData(request);
-        return uploadBOMPdfFilestore(pdfKey, tenantId, request);
+
+        String pdfFilestoreId = uploadBOMPdfFilestore(pdfKey, tenantId, request);
+        return appendBomDocumentsToPdf(pdfFilestoreId, tenantId, request);
+    }
+
+    /**
+     * Appends any INSTALLATION_COMPLETION_CERTIFICATE / ASSET_HANDOVER_DOCUMENT documents attached to the
+     * BOM onto the end of the generated PDF via ingestion-service, returning the merged fileStoreId.
+     * If no such documents are present, the original PDF fileStoreId is returned unchanged.
+     */
+    private String appendBomDocumentsToPdf(String parentFilestoreId, String tenantId, GenerateBOMPdfRequest request) {
+        List<Map<String, Object>> documentsToAppend = extractAppendableDocuments(request.getBomData());
+        if (documentsToAppend.isEmpty()) {
+            return parentFilestoreId;
+        }
+
+        Map<String, Object> appendRequest = new HashMap<>();
+        appendRequest.put("tenantId", tenantId);
+        appendRequest.put("module", activityConfiguration.getIngestionDocumentAppendModule());
+        appendRequest.put("parentFileStoreId", parentFilestoreId);
+        appendRequest.put("documents", documentsToAppend);
+
+        String url = activityConfiguration.getIngestionServiceHost() + activityConfiguration.getIngestionDocumentAppendUrl();
+        Object response = serviceRequest.fetchResult(new StringBuilder(url), appendRequest);
+
+        Map<String, Object> appendResponse = mapper.convertValue(response, Map.class);
+        String mergedFilestoreId = appendResponse != null ? (String) appendResponse.get("fileStoreId") : null;
+        if (mergedFilestoreId == null) {
+            throw new CustomException("ERROR_PDF_DOCUMENT_APPEND", "No fileStoreId returned from document append");
+        }
+        return mergedFilestoreId;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> extractAppendableDocuments(Map<String, Object> bomData) {
+        if (bomData == null || !(bomData.get("documents") instanceof List)) {
+            return Collections.emptyList();
+        }
+        List<Map<String, Object>> documents = (List<Map<String, Object>>) bomData.get("documents");
+
+        // Group by documentType in APPENDABLE_DOCUMENT_TYPES order (all ASSET_HANDOVER_DOCUMENT
+        // documents first, then all INSTALLATION_COMPLETION_CERTIFICATE), not source order.
+        List<Map<String, Object>> ordered = new ArrayList<>();
+        for (String documentType : APPENDABLE_DOCUMENT_TYPES) {
+            documents.stream()
+                    .filter(doc -> doc.get("fileStoreId") != null && documentType.equals(doc.get("documentType")))
+                    .forEach(ordered::add);
+        }
+        return ordered;
     }
 
     /**
