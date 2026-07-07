@@ -2,8 +2,6 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel
 
-from app.schemas.request_info import RequestInfo
-
 
 class AuditDetails(BaseModel):
     createdBy: Optional[str] = None
@@ -25,7 +23,6 @@ class Document(BaseModel):
 
 
 class DocumentAppendRequest(BaseModel):
-    RequestInfo: Optional[RequestInfo] = None
     tenantId: str
     module: str
     parentFileStoreId: str
