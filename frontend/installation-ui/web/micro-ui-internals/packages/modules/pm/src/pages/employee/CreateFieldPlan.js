@@ -59,7 +59,9 @@ const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
 
   iccReportsData.append("items", JSON.stringify(items));
   rows.forEach((row) => {
-    iccReportsData.append("icc_files", row.file);
+    if (!row.file?.isSavedTemplate) {
+      iccReportsData.append("icc_files", row.file);
+    }
   });
 
   return iccReportsData;
@@ -793,6 +795,7 @@ const CreateFieldPlan = () => {
               uploadFacilityData: persistedFormData?.facilityData?.uploadFacilityData,
               iccTemplates: getICCTemplates(createdFieldPlan, fieldPlanData),
               validationAttempt: iccPrepopulationValidationAttempt,
+              fieldPlanId: createdFieldPlan?.id || fieldPlanId,
             },
             nextRoute: "",
             populators: {
