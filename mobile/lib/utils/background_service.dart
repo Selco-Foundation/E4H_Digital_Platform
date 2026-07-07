@@ -1521,10 +1521,16 @@ Future<void> _performSubmissionForActivityFacility({
       );
       String bomFileStoreId = bomCheckpoint?.remoteId ?? '';
       if (bomFileStoreId.isEmpty) {
+        final installationReportPdfDocuments = <Document>[
+          ...installationImageDocuments,
+          ...assetHandoverDocumentsPayload,
+          ...completionCertificateDocuments,
+        ];
         bomFileStoreId = await BomRepository().generateBomPdf(
           isar: isar,
           activityFacilityId: activityFacilityId,
           userType: userType,
+          documents: installationReportPdfDocuments,
         );
         await _saveCheckpoint(
           isar: isar,

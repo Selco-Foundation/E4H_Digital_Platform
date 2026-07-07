@@ -13,6 +13,7 @@ import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
+import '../model/document/document.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart' as env;
 import '../utils/utils.dart';
@@ -551,6 +552,7 @@ class BomRepository {
     required Isar isar,
     required String activityFacilityId,
     required String userType,
+    required List<Document> documents,
   }) async {
     try {
       final cachedBomData = await getProjectBomKV(
@@ -585,9 +587,13 @@ class BomRepository {
       );
 
       final tenantId = env.envConfig.variables.tenantId;
+      final bomPayload = Map<String, dynamic>.from(enriched)
+        ..['tenantId'] = tenantId
+        ..['documents'] = documents.map((d) => d.toJsonForWorkflow()).toList();
+
       final body = {
         "system": system,
-        "bom": enriched,
+        "bom": bomPayload,
       };
 
       final path = "activity/v1/bom/_save_pdf?tenantId=$tenantId";
