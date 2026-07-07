@@ -38,6 +38,9 @@ public class BomService {
             "ASSET_HANDOVER_DOCUMENT", "INSTALLATION_COMPLETION_CERTIFICATE"
     );
 
+    private static final String DOCUMENTS_KEY = "documents";
+    private static final String FILE_STORE_ID_KEY = "fileStoreId";
+
     private final BomRepository bomRepository;
 
     private final Producer producer;
@@ -190,13 +193,13 @@ public class BomService {
         appendRequest.put("tenantId", tenantId);
         appendRequest.put("module", activityConfiguration.getIngestionDocumentAppendModule());
         appendRequest.put("parentFileStoreId", parentFilestoreId);
-        appendRequest.put("documents", documentsToAppend);
+        appendRequest.put(DOCUMENTS_KEY, documentsToAppend);
 
         String url = activityConfiguration.getIngestionServiceHost() + activityConfiguration.getIngestionDocumentAppendUrl();
         Object response = serviceRequest.fetchResult(new StringBuilder(url), appendRequest);
 
         Map<String, Object> appendResponse = mapper.convertValue(response, Map.class);
-        String mergedFilestoreId = appendResponse != null ? (String) appendResponse.get("fileStoreId") : null;
+        String mergedFilestoreId = appendResponse != null ? (String) appendResponse.get(FILE_STORE_ID_KEY) : null;
         if (mergedFilestoreId == null) {
             throw new CustomException("ERROR_PDF_DOCUMENT_APPEND", "No fileStoreId returned from document append");
         }
@@ -205,12 +208,12 @@ public class BomService {
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractAppendableDocuments(Map<String, Object> bomData) {
-        if (bomData == null || !(bomData.get("documents") instanceof List<?> rawDocuments)) {
+        if (bomData == null || !(bomData.get(DOCUMENTS_KEY) instanceof List<?> rawDocuments)) {
             return Collections.emptyList();
         }
 
         // Raw bom.documents entries carry a singular fileStoreId (same shape enrichBomData itself
-        // reads via document.get("fileStoreId") below). Depending on Jackson default-typing metadata
+        // reads via document.get(FILE_STORE_ID_KEY) below). Depending on Jackson default-typing metadata
         // on the incoming request, each element may already be a LinkedHashMap or a concrete POJO
         // (e.g. Document) - convertValue normalizes either case to a plain Map.
         List<Map<String, Object>> documents = new ArrayList<>();
@@ -223,7 +226,7 @@ public class BomService {
         List<Map<String, Object>> ordered = new ArrayList<>();
         for (String documentType : APPENDABLE_DOCUMENT_TYPES) {
             for (Map<String, Object> document : documents) {
-                if (document.get("fileStoreId") != null && documentType.equals(document.get("documentType"))) {
+                if (document.get(FILE_STORE_ID_KEY) != null && documentType.equals(document.get("documentType"))) {
                     ordered.add(document);
                 }
             }
@@ -247,7 +250,7 @@ public class BomService {
         }
         bomData.put("tenantId", TENANTID);
 
-        Object rawDocuments = bomData.get("documents");
+        Object rawDocuments = bomData.get(DOCUMENTS_KEY);
         List<Map<String, Object>> documents = rawDocuments instanceof List
                 ? (List<Map<String, Object>>) rawDocuments
                 : Collections.emptyList();
@@ -262,8 +265,8 @@ public class BomService {
             String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + entry.getKey();
 
             List<String> fileStoreIds = documents.stream()
-                    .filter(document -> documentType.equals(document.get("documentType")) && document.get("fileStoreId") != null)
-                    .map(document -> String.valueOf(document.get("fileStoreId")))
+                    .filter(document -> documentType.equals(document.get("documentType")) && document.get(FILE_STORE_ID_KEY) != null)
+                    .map(document -> String.valueOf(document.get(FILE_STORE_ID_KEY)))
                     .collect(Collectors.toList());
 
             groupedDocuments.add(BomPdfDocument.builder()
@@ -273,7 +276,7 @@ public class BomService {
                     .build());
         }
 
-        bomData.put("documents", groupedDocuments);
+        bomData.put(DOCUMENTS_KEY, groupedDocuments);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
