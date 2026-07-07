@@ -35,6 +35,7 @@ export const ICCService = {
         "Content-Type": "application/json",
       },
       attachAuthHeaders: true,
+      setTimeParam: false,
       noRequestInfo: true,
     });
 

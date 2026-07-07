@@ -4,24 +4,28 @@ import { UploadFile } from "@egovernments/digit-ui-components";
 import { ICCService } from "../../services/ICC";
 import { FilestoreService } from "../../services/Filestore";
 
-const getDefaultRows = () => [
-  {
-    id: "icc-row-3",
-    systemType: null,
-    totalSystemCapacity: null,
-    file: null,
-    template: null,
-    templateFile: null,
-    templateOptions: [],
-    capacityOptions: [],
-  },
-];
+const getEmptyRow = (id = "icc-row-3") => ({
+  id,
+  systemType: null,
+  totalSystemCapacity: null,
+  file: null,
+  template: null,
+  templateFile: null,
+  templateOptions: [],
+  capacityOptions: [],
+});
+
+const getDefaultRows = () => [getEmptyRow()];
 
 const getOption = (value) => value ? ({ code: value, name: value }) : null;
 
 const getUniqueOptions = (values = []) => {
   return [...new Set(values.filter(Boolean))].map(getOption);
 };
+
+const getMDMSSystemTypeCode = (systemType = {}) => systemType?.data?.code || systemType?.code || systemType?.uniqueIdentifier;
+
+const getMDMSSystemTypeName = (systemType = {}) => systemType?.data?.name || systemType?.name;
 
 const getColumnValue = (row = {}, possibleKeys = []) => {
   const rowKeys = Object.keys(row);
@@ -44,14 +48,29 @@ const getICCApiSystemType = (systemType) => {
 
 const normalizeValue = (value) => (value || "").toString().trim().toLowerCase();
 
+const getSystemTypeOption = (systemType, systemTypeMaster = []) => {
+  const matchedSystemType = systemTypeMaster.find((mdmsSystemType) => (
+    normalizeValue(getMDMSSystemTypeName(mdmsSystemType)) === normalizeValue(systemType) ||
+    normalizeValue(getMDMSSystemTypeCode(mdmsSystemType)) === normalizeValue(systemType)
+  ));
+
+  return {
+    code: getMDMSSystemTypeCode(matchedSystemType) || systemType,
+    name: getMDMSSystemTypeName(matchedSystemType) || systemType,
+  };
+};
+
 const getTemplateForRow = (row, templates = []) => {
-  const systemType = getICCApiSystemType(row.systemType?.name);
+  const systemTypeName = getICCApiSystemType(row.systemType?.name);
+  const systemTypeCode = row.systemType?.code;
   const capacity = row.totalSystemCapacity?.name;
 
   return templates.find((template) => (
-    normalizeValue(template.systemType) === normalizeValue(systemType) &&
+    [systemTypeCode, systemTypeName].some((systemType) => normalizeValue(template.systemType) === normalizeValue(systemType)) &&
     (!capacity || normalizeValue(template.totalSystemCapacity) === normalizeValue(capacity))
-  )) || templates.find((template) => normalizeValue(template.systemType) === normalizeValue(systemType));
+  )) || templates.find((template) => (
+    [systemTypeCode, systemTypeName].some((systemType) => normalizeValue(template.systemType) === normalizeValue(systemType))
+  ));
 };
 
 const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
@@ -60,6 +79,21 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
   const [rows, setRows] = useState(data[name] || getDefaultRows());
   const [systemTypeOptions, setSystemTypeOptions] = useState([]);
   const [facilitySystemCapacityMap, setFacilitySystemCapacityMap] = useState({});
+  const tenantId = Digit.ULBService.getCurrentTenantId();
+  const { data: systemTypeMDMSResponse } = Digit.Hooks.useCustomMDMS(
+    tenantId,
+    "facility",
+    [
+      {
+        name: "SystemType",
+      },
+    ],
+    {
+      select: (data) => data,
+      enabled: !!tenantId,
+    }
+  );
+  const systemTypeMaster = systemTypeMDMSResponse?.facility?.SystemType || [];
 
   useEffect(() => {
     const formRows = rows.map(({ templateOptions, capacityOptions, ...row }) => row);
@@ -85,32 +119,66 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
         const systemCapacityMap = {};
 
         facilityRows.forEach((row) => {
-          const systemType = getColumnValue(row, ["system type (mandatory)", "system type"]);
+          const systemTypeValue = getColumnValue(row, ["system type (mandatory)", "system type"]);
+          const systemType = getSystemTypeOption(systemTypeValue, systemTypeMaster);
           const capacity = getColumnValue(row, ["total system capacity (mandatory)", "total system capacity"]);
 
-          if (!systemType) {
+          if (!systemTypeValue) {
             return;
           }
 
-          systemCapacityMap[systemType] = systemCapacityMap[systemType] || new Set();
+          systemCapacityMap[systemType.name] = systemCapacityMap[systemType.name] || {
+            option: systemType,
+            capacities: new Set(),
+          };
 
           if (capacity) {
-            systemCapacityMap[systemType].add(capacity);
+            systemCapacityMap[systemType.name].capacities.add(capacity);
           }
         });
 
-        setSystemTypeOptions(getUniqueOptions(Object.keys(systemCapacityMap)));
-        setFacilitySystemCapacityMap(Object.entries(systemCapacityMap).reduce((acc, [systemType, capacities]) => ({
+        const parsedSystemTypeOptions = Object.values(systemCapacityMap).map(({ option }) => option);
+        const parsedCapacityMap = Object.entries(systemCapacityMap).reduce((acc, [systemType, capacities]) => ({
           ...acc,
-          [systemType]: getUniqueOptions([...capacities]),
-        }), {}));
+          [systemType]: getUniqueOptions([...capacities.capacities]),
+        }), {});
+        const parsedRows = Object.values(systemCapacityMap).map(({ option, capacities }, index) => {
+          const capacityOptions = getUniqueOptions([...capacities]);
+
+          return {
+            ...getEmptyRow(`icc-row-${option.code || option.name || index}`),
+            systemType: option,
+            totalSystemCapacity: capacityOptions.length === 1 ? capacityOptions[0] : null,
+            capacityOptions,
+          };
+        });
+
+        setSystemTypeOptions(parsedSystemTypeOptions);
+        setFacilitySystemCapacityMap(parsedCapacityMap);
+        setRows((prevRows) => {
+          const updatedRows = parsedRows.map((parsedRow) => {
+            const existingRow = prevRows.find((prevRow) => (
+              normalizeValue(prevRow.systemType?.code || prevRow.systemType?.name) === normalizeValue(parsedRow.systemType?.code || parsedRow.systemType?.name)
+            ));
+
+            return existingRow ? {
+              ...parsedRow,
+              file: existingRow.file,
+              template: existingRow.template,
+              templateFile: existingRow.templateFile,
+              templateOptions: existingRow.templateOptions,
+            } : parsedRow;
+          });
+
+          return updatedRows.length ? updatedRows : getDefaultRows();
+        });
       } catch (error) {
         console.error("Error parsing facility data for ICC pre-population", error);
       }
     };
 
     parseFacilityData();
-  }, [data?.uploadFacilityData, uploadFacilityData]);
+  }, [data?.uploadFacilityData, systemTypeMDMSResponse, uploadFacilityData]);
 
   const updateRow = (rowId, fieldName, fieldValue) => {
     setRows((prevRows) => prevRows.map((row) => {
@@ -126,16 +194,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
   const addRow = () => {
     setRows((prevRows) => ([
       ...prevRows,
-      {
-        id: `icc-row-${Date.now()}`,
-        systemType: null,
-        totalSystemCapacity: null,
-        file: null,
-        template: null,
-        templateFile: null,
-        templateOptions: [],
-        capacityOptions: [],
-      },
+      getEmptyRow(`icc-row-${Date.now()}`),
     ]));
   };
 
@@ -193,7 +252,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     }
 
     try {
-      const searchedTemplates = await ICCService.searchICCTemplates(getICCApiSystemType(row.systemType.name));
+      const searchedTemplates = await ICCService.searchICCTemplates(row.systemType?.code || getICCApiSystemType(row.systemType.name));
       const templateOptions = searchedTemplates?.length ? searchedTemplates : iccTemplates;
       const selectedTemplate = getTemplateForRow(row, templateOptions);
 
@@ -226,7 +285,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
   const FieldLabel = ({ label }) => (
     <CardLabel
-      className={"card-label-smaller"}
+      className={"card-label-smaller icc-prepopulation-label"}
       style={{
         color: "#505A5F",
         fontSize: "12px",
@@ -235,6 +294,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
         display: "block",
         marginBottom: "6px",
         minHeight: "14px",
+        width:"100%",
+        whiteSpace: "nowrap",
       }}
     >
       {t(label)}
@@ -255,7 +316,6 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
   return (
     <div
       style={{
-        border: "1px solid #F4C6BD",
         padding: "24px",
         backgroundColor: "#FFFFFF",
       }}
@@ -412,12 +472,27 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             width: 24px;
             height: 24px;
           }
+
+          .icc-prepopulation-label {
+            display: block !important;
+            width: 100% !important;
+            white-space: nowrap !important;
+          }
         `}
       </style>
       <h2 style={{ margin: 0, fontSize: "32px", fontWeight: "700", marginBottom: "20px" }}>
         {t("ICC_PRE_POPULATION_CONFIGURATION")}
       </h2>
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "20px",
+          maxHeight: rows.length > 3 ? "390px" : "none",
+          overflowY: rows.length > 3 ? "auto" : "visible",
+          paddingRight: rows.length > 3 ? "4px" : "0px",
+        }}
+      >
         {rows.map((row) => (
           <div
             key={row.id}
