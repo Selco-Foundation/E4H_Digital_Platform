@@ -18,13 +18,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static org.egov.activity.util.ActivityConstants.INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX;
+import static org.egov.activity.util.ActivityConstants.TENANTID;
 
 @Service
 @Slf4j
 public class BomService {
+
+    // Order matters: documents are appended to the PDF in this documentType order.
+    private static final List<String> APPENDABLE_DOCUMENT_TYPES = List.of(
+            "ASSET_HANDOVER_DOCUMENT", "INSTALLATION_COMPLETION_CERTIFICATE"
+    );
 
     private final BomRepository bomRepository;
 
@@ -141,6 +153,7 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
+        enrichBomData(request);
         return getBOMPdfFile(pdfKey, tenantId, request);
     }
 
@@ -152,7 +165,101 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
-        return uploadBOMPdfFilestore(pdfKey, tenantId, request);
+        enrichBomData(request);
+
+        String pdfFilestoreId = uploadBOMPdfFilestore(pdfKey, tenantId, request);
+        return appendBomDocumentsToPdf(pdfFilestoreId, tenantId, request);
+    }
+
+    /**
+     * Appends any INSTALLATION_COMPLETION_CERTIFICATE / ASSET_HANDOVER_DOCUMENT documents attached to the
+     * BOM onto the end of the generated PDF via ingestion-service, returning the merged fileStoreId.
+     * If no such documents are present, the original PDF fileStoreId is returned unchanged.
+     */
+    private String appendBomDocumentsToPdf(String parentFilestoreId, String tenantId, GenerateBOMPdfRequest request) {
+        List<Map<String, Object>> documentsToAppend = extractAppendableDocuments(request.getBomData());
+        if (documentsToAppend.isEmpty()) {
+            return parentFilestoreId;
+        }
+
+        Map<String, Object> appendRequest = new HashMap<>();
+        appendRequest.put("tenantId", tenantId);
+        appendRequest.put("module", activityConfiguration.getIngestionDocumentAppendModule());
+        appendRequest.put("parentFileStoreId", parentFilestoreId);
+        appendRequest.put("documents", documentsToAppend);
+
+        String url = activityConfiguration.getIngestionServiceHost() + activityConfiguration.getIngestionDocumentAppendUrl();
+        Object response = serviceRequest.fetchResult(new StringBuilder(url), appendRequest);
+
+        Map<String, Object> appendResponse = mapper.convertValue(response, Map.class);
+        String mergedFilestoreId = appendResponse != null ? (String) appendResponse.get("fileStoreId") : null;
+        if (mergedFilestoreId == null) {
+            throw new CustomException("ERROR_PDF_DOCUMENT_APPEND", "No fileStoreId returned from document append");
+        }
+        return mergedFilestoreId;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> extractAppendableDocuments(Map<String, Object> bomData) {
+        if (bomData == null || !(bomData.get("documents") instanceof List)) {
+            return Collections.emptyList();
+        }
+        List<Map<String, Object>> documents = (List<Map<String, Object>>) bomData.get("documents");
+
+        // Group by documentType in APPENDABLE_DOCUMENT_TYPES order (all ASSET_HANDOVER_DOCUMENT
+        // documents first, then all INSTALLATION_COMPLETION_CERTIFICATE), not source order.
+        List<Map<String, Object>> ordered = new ArrayList<>();
+        for (String documentType : APPENDABLE_DOCUMENT_TYPES) {
+            documents.stream()
+                    .filter(doc -> doc.get("fileStoreId") != null && documentType.equals(doc.get("documentType")))
+                    .forEach(ordered::add);
+        }
+        return ordered;
+    }
+
+    /**
+     * The client sends the raw, ungrouped documents array nested inside "bom.documents" (not as
+     * a sibling field on the request), and the PDF service reads tenantId from "bom.tenantId".
+     * For every code in the common-masters.InstallationImages MDMS master, this combines the
+     * fileStoreIds of all raw entries whose documentType is "INSTALLATION_IMAGE-<code>" into one
+     * grouped entry, with documentName resolved from that code's description, then overwrites
+     * "bom.documents" with the grouped result.
+     */
+    @SuppressWarnings("unchecked")
+    private void enrichBomData(GenerateBOMPdfRequest request) {
+        Map<String, Object> bomData = request.getBomData();
+        if (bomData == null) {
+            return;
+        }
+        bomData.put("tenantId", TENANTID);
+
+        Object rawDocuments = bomData.get("documents");
+        List<Map<String, Object>> documents = rawDocuments instanceof List
+                ? (List<Map<String, Object>>) rawDocuments
+                : Collections.emptyList();
+
+        Map<String, String> installationImageDescriptions =
+                mdmsUtils.fetchInstallationImageDescriptions(request.getRequestInfo(), TENANTID);
+
+        // Every code from the MDMS master gets an entry so its documentName always renders,
+        // even when no matching upload exists — fileStoreIds is just empty in that case.
+        List<BomPdfDocument> groupedDocuments = new ArrayList<>();
+        for (Map.Entry<String, String> entry : installationImageDescriptions.entrySet()) {
+            String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + entry.getKey();
+
+            List<String> fileStoreIds = documents.stream()
+                    .filter(document -> documentType.equals(document.get("documentType")) && document.get("fileStoreId") != null)
+                    .map(document -> String.valueOf(document.get("fileStoreId")))
+                    .collect(Collectors.toList());
+
+            groupedDocuments.add(BomPdfDocument.builder()
+                    .documentType(documentType)
+                    .documentName(entry.getValue())
+                    .fileStoreIds(fileStoreIds)
+                    .build());
+        }
+
+        bomData.put("documents", groupedDocuments);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
