@@ -12,6 +12,7 @@ import useFieldPlan from "../../hooks/useFieldPlan";
 import { FieldPlanService } from "../../services/FieldPlan";
 import { PMService } from "../../services/PMService";
 import { ActivityService } from "../../services/Activity";
+import { IngestionService } from "../../services/Ingestion";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useActivityAssignment from "../../hooks/useActivityAssignment";
@@ -32,6 +33,38 @@ const getICCTemplates = (fieldPlan, fieldPlanData) => (
   []
 );
 
+const getICCPrepopulationRows = (data) => Array.isArray(data) ? data : data?.iccPrepopulationConfiguration || [];
+
+const isICCPrepopulationComplete = (data) => {
+  const rows = getICCPrepopulationRows(data);
+
+  return rows.length > 0 && rows.every((row) => row?.systemType && row?.totalSystemCapacity && row?.file);
+};
+
+const getSystemCapacityValue = (capacity) => {
+  const capacityValue = capacity?.code || capacity?.name || "";
+  const matchedCapacity = capacityValue.toString().match(/[\d.]+/);
+
+  return matchedCapacity?.[0] || capacityValue;
+};
+
+const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
+  const iccReportsData = new FormData();
+  const items = rows.map((row) => ({
+    systemType: row.systemType?.code,
+    totalSystemCapacity: getSystemCapacityValue(row.totalSystemCapacity),
+    fieldPlanId: fieldPlanId,
+    tenantId: tenantId,
+  }));
+
+  iccReportsData.append("items", JSON.stringify(items));
+  rows.forEach((row) => {
+    iccReportsData.append("icc_files", row.file);
+  });
+
+  return iccReportsData;
+};
+
 const CreateFieldPlan = () => {
 
   const { t } = useTranslation();
@@ -44,12 +77,14 @@ const CreateFieldPlan = () => {
   const { key, fieldPlanId } = Digit.Hooks.useQueryParams();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
+  const [toastQueue, setToastQueue] = useState([]);
   const [blockUI, setBlockUI] = useState(null);
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
   const [backAlert, setBackAlert] = useState(null);
   const [boundaryData, setBoundaryData] = useState(null);
+  const [iccPrepopulationValidationAttempt, setICCPrepopulationValidationAttempt] = useState(0);
   const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
@@ -140,10 +175,33 @@ const CreateFieldPlan = () => {
   useEffect(()=>{
     if (toast) {
       setTimeout(()=>{
-        setToast(null);
+        setToastQueue((prevQueue) => {
+          if (prevQueue.length) {
+            setToast(prevQueue[0]);
+            return prevQueue.slice(1);
+          }
+
+          setToast(null);
+          return [];
+        });
       },2500)
     }
   },[toast])
+
+  const showToastMessages = (messages, key = "error") => {
+    const formattedToasts = messages.filter(Boolean).map((message) => ({
+      key,
+      label: message,
+      translate: false,
+    }));
+
+    if (!formattedToasts.length) {
+      return;
+    }
+
+    setToast(formattedToasts[0]);
+    setToastQueue(formattedToasts.slice(1));
+  };
 
   useEffect(() => {
     if (fetchedBoundaryData && createdProject) {
@@ -734,6 +792,7 @@ const CreateFieldPlan = () => {
               t,
               uploadFacilityData: persistedFormData?.facilityData?.uploadFacilityData,
               iccTemplates: getICCTemplates(createdFieldPlan, fieldPlanData),
+              validationAttempt: iccPrepopulationValidationAttempt,
             },
             nextRoute: "",
             populators: {
@@ -773,7 +832,7 @@ const CreateFieldPlan = () => {
         ],
       },
     ],
-    [t, activityData, boundaryData, createdProject, createdFieldPlan, fieldPlanData, organizationData, file, invalidDataError]
+    [t, activityData, boundaryData, createdProject, createdFieldPlan, fieldPlanData, iccPrepopulationValidationAttempt, organizationData, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -987,8 +1046,39 @@ const CreateFieldPlan = () => {
         setCurrentKey((prev) => prev + 1);
         break;
       case 3:
-        setPersistedFormData((prev) => ({ ...prev, iccPrepopulationConfiguration: data }));
-        setCurrentKey((prev) => prev + 1);
+        if (!isICCPrepopulationComplete(data)) {
+          setICCPrepopulationValidationAttempt((prev) => prev + 1);
+          setToast({
+            key: "error",
+            label: "CORE_COMMON_REQUIRED",
+          });
+          return;
+        }
+
+        setBlockUI(true);
+        try {
+          const rows = getICCPrepopulationRows(data);
+          const iccReportsData = getICCReportsFormData(rows, createdFieldPlan?.id || fieldPlanId, tenantId);
+
+          await IngestionService.uploadICCReports(iccReportsData);
+          setPersistedFormData((prev) => ({ ...prev, iccPrepopulationConfiguration: data }));
+          setCurrentKey((prev) => prev + 1);
+        } catch (error) {
+          console.error("Error uploading ICC reports", error);
+          const apiErrorMessages = CommonUtils.getApiErrorMessages(error);
+
+          if (apiErrorMessages?.length) {
+            showToastMessages(apiErrorMessages);
+            return;
+          }
+
+          setToast({
+            key: "error",
+            label: CommonUtils.getApiErrorMessage(error) || "CORE_COMMON_ERROR",
+          });
+        } finally {
+          setBlockUI(false);
+        }
         break;
       case 4:
         await saveActivityDetailsAndUpdateFieldPlan(data.activityUserAssignment);
@@ -1201,9 +1291,12 @@ const CreateFieldPlan = () => {
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          label={t(toast.label)}
+          label={toast.translate === false ? toast.label : t(toast.label)}
           isDleteBtn={true}
-          onClose={() => setToast(null)}
+          onClose={() => {
+            setToast(null);
+            setToastQueue([]);
+          }}
         />
       )}
       {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}

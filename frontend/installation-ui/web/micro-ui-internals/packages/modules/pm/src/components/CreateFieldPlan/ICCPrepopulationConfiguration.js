@@ -42,6 +42,15 @@ const getTemplateFileName = (template) => {
   return `${template.systemType || "ICC"}_${template.totalSystemCapacity || "template"}.xlsx`.replace(/\s+/g, "_");
 };
 
+const getTemplateFileNameForRow = (row, template) => {
+  if (!template?.fileStoreId) {
+    return "";
+  }
+
+  return `${row.systemType?.code || template.systemType || "ICC"}_${row.totalSystemCapacity?.name || template.totalSystemCapacity || "template"}.xlsx`
+    .replace(/\s+/g, "_");
+};
+
 const getICCApiSystemType = (systemType) => {
   return systemType?.split(/\s+[–—]\s+/)?.[0] || systemType;
 };
@@ -67,7 +76,7 @@ const getTemplateForRow = (row, templates = []) => {
 
   return templates.find((template) => (
     [systemTypeCode, systemTypeName].some((systemType) => normalizeValue(template.systemType) === normalizeValue(systemType)) &&
-    (!capacity || normalizeValue(template.totalSystemCapacity) === normalizeValue(capacity))
+    normalizeValue(template.totalSystemCapacity) === normalizeValue(capacity)
   )) || templates.find((template) => (
     [systemTypeCode, systemTypeName].some((systemType) => normalizeValue(template.systemType) === normalizeValue(systemType))
   ));
@@ -75,7 +84,7 @@ const getTemplateForRow = (row, templates = []) => {
 
 const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
-  const { t, name, uploadFacilityData, iccTemplates = [] } = props;
+  const { t, name, uploadFacilityData, iccTemplates = [], validationAttempt = 0 } = props;
   const [rows, setRows] = useState(data[name] || getDefaultRows());
   const [systemTypeOptions, setSystemTypeOptions] = useState([]);
   const [facilitySystemCapacityMap, setFacilitySystemCapacityMap] = useState({});
@@ -261,7 +270,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       }
 
       const templateFile = {
-        name: getTemplateFileName(selectedTemplate),
+        name: getTemplateFileNameForRow(row, selectedTemplate),
         fileStoreId: selectedTemplate.fileStoreId,
         isTemplate: true,
       };
@@ -313,6 +322,19 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     </div>
   );
 
+  const RequiredError = () => (
+    <span
+      style={{
+        color: "#B91900",
+        fontSize: "12px",
+        fontFamily: "Roboto",
+        marginTop: "4px",
+      }}
+    >
+      {"*CORE_COMMON_REQUIRED"}
+    </span>
+  );
+
   return (
     <div
       style={{
@@ -325,8 +347,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           .icc-prepopulation-upload .upload-file {
             min-height: 40px !important;
             height: 40px !important;
-            width: 200px !important;
-            max-width: 200px !important;
+            width: 500px !important;
+            max-width: 500px !important;
             box-sizing: border-box;
             border: 1px solid #D1D5DB;
           }
@@ -334,8 +356,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           .icc-prepopulation-upload .digit-upload-file {
             min-height: 40px !important;
             height: 40px !important;
-            width: 200px !important;
-            max-width: 200px !important;
+            width: 500px !important;
+            max-width: 500px !important;
             box-sizing: border-box;
             border: 1px solid #D1D5DB;
           }
@@ -343,7 +365,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           .icc-prepopulation-upload {
             position: relative;
             height: 40px;
-            width: 200px;
+            width: 500px;
           }
 
           .icc-prepopulation-upload .upload-file > div {
@@ -435,12 +457,12 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
           .icc-prepopulation-upload .upload-file input {
             height: 40px !important;
-            width: 200px !important;
+            width: 500px !important;
           }
 
           .icc-prepopulation-upload .digit-upload-file input {
             height: 40px !important;
-            width: 200px !important;
+            width: 500px !important;
           }
 
           .icc-prepopulation-upload .tag-container {
@@ -518,11 +540,12 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                   maxHeight: "400px",
                 }}
                 style={{
-                  minWidth: "200px",
+                  minWidth: "380px",
                   display: "flex",
                   justifyContent: "space-between",
                 }}
               />
+              {validationAttempt > 0 && !row.systemType && <RequiredError />}
             </FieldWrapper>
             <FieldWrapper>
               <FieldLabel label={"ICC_TOTAL_SYSTEM_CAPACITY"} />
@@ -537,11 +560,12 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                   maxHeight: "400px",
                 }}
                 style={{
-                  minWidth: "200px",
+                  minWidth: "380px",
                   display: "flex",
                   justifyContent: "space-between",
                 }}
               />
+              {validationAttempt > 0 && !row.totalSystemCapacity && <RequiredError />}
             </FieldWrapper>
             <FieldWrapper>
               <FieldLabel label={row.file ? "ICC_PRE_FILLING_TEMPLATE" : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"} />
@@ -564,8 +588,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                     style={{
                       minHeight: "40px",
                       height: "40px",
-                      width: "200px",
-                      maxWidth: "200px",
+                      width: "500px",
+                      maxWidth: "500px",
                     }}
                     extraStyles={{
                       buttonStyles: {
@@ -630,6 +654,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                   aria-label={t("CORE_COMMON_DELETE")}
                 />
               </div>
+              {validationAttempt > 0 && !row.file && <RequiredError />}
             </FieldWrapper>
           </div>
         ))}
