@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.core.AdditionalFields;
+import org.egov.common.models.core.Field;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
@@ -48,6 +50,8 @@ public class FieldPlannerService {
 
     private final FieldPlannerFacilityService facilityService;
 
+    private final FieldPlanTemplateService fieldPlanTemplateService;
+
     @Autowired
     @Qualifier("objectMapper")
     ObjectMapper mapper;
@@ -56,7 +60,8 @@ public class FieldPlannerService {
     public FieldPlannerService(
             FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators, FieldPlannerFacilityService facilityService,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
-            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository) {
+            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository,
+            FieldPlanTemplateService fieldPlanTemplateService) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -67,6 +72,7 @@ public class FieldPlannerService {
             this.fieldPlanServiceUtil = fieldPlanServiceUtil;
             this.serviceRequestRepository = serviceRequestRepository;
             this.facilityService = facilityService;
+            this.fieldPlanTemplateService = fieldPlanTemplateService;
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
@@ -519,6 +525,7 @@ public class FieldPlannerService {
                                     Collectors.mapping(item -> (String) item.getAssignedTo(), Collectors.toList())
                             ));
                     for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
+                        Map<String, Object> additionalDetails = buildActivityFacilityAdditionalDetails(request, fieldPlanFacility);
                         for(Map<String, Object> activity : fieldPlan.getActivities()){
                             ActivityFacility activityFacility = ActivityFacility.builder()
                                     .tenantId("in")
@@ -530,6 +537,7 @@ public class FieldPlannerService {
                                     .reviewerUser(roleToIds.get(INSTALLATION_REVIEWER_ROLE))
                                     .fieldStaffUsers(roleToIds.get(FIELD_STAFF_ROLE))
                                     .fieldSupervisorUsers(roleToIds.get(FIELD_SUPERVISOR_ROLE))
+                                    .additionalDetails(additionalDetails)
                                     .build();
 
                             activityFacilities.add(activityFacility);
@@ -557,6 +565,72 @@ public class FieldPlannerService {
         producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTopic(), request);
         log.info("Field plan update pushed to Kafka successfully");
         log.trace("Exiting handleUpdateFieldPlan method");
+    }
+
+    /**
+     * Builds the additionalDetails for an ActivityFacility being created on SCHEDULED field plan
+     * update: the matching FieldPlanTemplate's templateData (by fieldPlanId + systemType, the
+     * latter read from the FieldPlanFacility's own additionalFields) under key "bom", merged with
+     * the FieldPlanFacility's additionalFields themselves (facilityType/systemType/
+     * solarSolutionDesignType/totalSystemCapacity, as set at link time).
+     */
+    private Map<String, Object> buildActivityFacilityAdditionalDetails(FieldPlanRequest request, FieldPlanFacility fieldPlanFacility) {
+        log.trace("Entering buildActivityFacilityAdditionalDetails method for facility: {}", fieldPlanFacility.getFacilityId());
+        Map<String, Object> additionalDetails = new HashMap<>(extractAdditionalFieldsAsMap(fieldPlanFacility.getAdditionalFields()));
+
+        String systemType = (String) additionalDetails.get("systemType");
+        String totalSystemCapacity = (String) additionalDetails.get("totalSystemCapacity");
+        if (StringUtils.isNotBlank(systemType)) {
+            FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType, totalSystemCapacity);
+            if (template != null && template.getTemplateData() != null) {
+                additionalDetails.put("bom", template.getTemplateData());
+            } else {
+                log.warn("No FieldPlanTemplate found for fieldPlanId: {}, systemType: {}", fieldPlanFacility.getFieldPlanId(), systemType);
+            }
+        } else {
+            log.warn("FieldPlanFacility {} has no systemType in additionalFields - skipping BOM template lookup", fieldPlanFacility.getFacilityId());
+        }
+
+        log.trace("Exiting buildActivityFacilityAdditionalDetails method");
+        return additionalDetails;
+    }
+
+    private Map<String, Object> extractAdditionalFieldsAsMap(AdditionalFields additionalFields) {
+        if (additionalFields == null || additionalFields.getFields() == null) {
+            return new HashMap<>();
+        }
+        Map<String, Object> result = new HashMap<>();
+        for (Field field : additionalFields.getFields()) {
+            if (field.getKey() != null) {
+                result.put(field.getKey(), field.getValue());
+            }
+        }
+        return result;
+    }
+
+    private FieldPlanTemplate findFieldPlanTemplate(FieldPlanRequest request, String fieldPlanId, String systemType, String totalSystemCapacity) {
+        try {
+            FieldPlanTemplateSearchCriteria criteria = FieldPlanTemplateSearchCriteria.builder()
+                    .fieldPlanId(List.of(fieldPlanId))
+                    .systemType(List.of(systemType))
+                    .totalCapacity(List.of(totalSystemCapacity))
+                    .build();
+            FieldPlanTemplateSearchRequest searchRequest = FieldPlanTemplateSearchRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .criteria(criteria)
+                    .build();
+            List<FieldPlanTemplate> templates = fieldPlanTemplateService.search(
+                    searchRequest,
+                    fieldPlannerConfiguration.getMaxLimit(),
+                    fieldPlannerConfiguration.getDefaultOffset(),
+                    "in",
+                    null
+            );
+            return (templates != null && !templates.isEmpty()) ? templates.get(0) : null;
+        } catch (Exception e) {
+            log.error("Error searching field plan template for fieldPlanId: {}, systemType: {}", fieldPlanId, systemType, e);
+            return null;
+        }
     }
 
     private boolean isValidCascadingUpdate(FieldPlan fieldPlanFromDB, FieldPlan fieldPlan) {
