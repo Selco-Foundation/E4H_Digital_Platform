@@ -2700,6 +2700,7 @@ async def create_fielplan_facilities(
 
     # parse
     request_info = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
 
     try:
         # ---------- save uploaded file ----------
@@ -2746,9 +2747,22 @@ async def create_fielplan_facilities(
         include_col = find_col("Included in Field Plan")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
+        facility_type_col = find_col("Type of HC")
         system_type_col = find_col("System Type")
         solution_design_type_col = find_col("Solution Design Type")
         total_system_capacity_col = find_col("Total System Capacity")
+
+        # MDMS schema for facilityType/systemType/solarSolutionDesignType/totalSystemCapacity
+        # code lookups (see build_field_plan_facility_additional_details) - falls back to raw
+        # Excel labels if the schema can't be fetched, same graceful-degradation pattern used
+        # elsewhere in this endpoint for other external service calls.
+        field_plan_facility_schema = []
+        try:
+            field_plan_facility_schema = mdms_client.get_column_definitions_with_metadata(
+                request_info, 'data-ingestion.FieldPlanFacilityIngestionSchema'
+            )
+        except Exception as e:
+            logger.warning(f"Could not fetch FieldPlanFacilityIngestionSchema for code lookup: {e}")
 
         # add result columns if missing
         if 'Field Plan Linking Status' not in df.columns:
@@ -2840,6 +2854,8 @@ async def create_fielplan_facilities(
                                             build_field_plan_facility_bulk_entry(
                                                 row,
                                                 facility_id,
+                                                column_list=field_plan_facility_schema,
+                                                facility_type_column=facility_type_col,
                                                 system_type_column=system_type_col,
                                                 total_system_capacity_column=total_system_capacity_col,
                                                 solution_design_type_column=solution_design_type_col,
