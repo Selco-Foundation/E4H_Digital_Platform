@@ -2751,6 +2751,8 @@ async def create_fielplan_facilities(
         system_type_col = find_col("System Type")
         solution_design_type_col = find_col("Solution Design Type")
         total_system_capacity_col = find_col("Total System Capacity")
+        custom_solution_design_col = find_col("Custom Solution Design Type")
+        custom_total_system_capacity_col = find_col("Custom Total System Capacity")
 
         # MDMS schema for facilityType/systemType/solarSolutionDesignType/totalSystemCapacity
         # code lookups (see build_field_plan_facility_additional_details) - falls back to raw
@@ -2859,6 +2861,8 @@ async def create_fielplan_facilities(
                                                 system_type_column=system_type_col,
                                                 total_system_capacity_column=total_system_capacity_col,
                                                 solution_design_type_column=solution_design_type_col,
+                                                custom_solution_design_column=custom_solution_design_col,
+                                                custom_total_system_capacity_column=custom_total_system_capacity_col,
                                             ),
                                         )
                                     )

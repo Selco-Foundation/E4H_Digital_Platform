@@ -528,12 +528,16 @@ def build_field_plan_facility_additional_details(
     system_type_column: Optional[str] = None,
     total_system_capacity_column: Optional[str] = None,
     solution_design_type_column: Optional[str] = None,
+    custom_solution_design_column: Optional[str] = None,
+    custom_total_system_capacity_column: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Extract facility type + solar configuration values from an Excel row, resolved to their MDMS
     codes (via `column_list`, e.g. data-ingestion.FieldPlanFacilityIngestionSchema) rather than the
     Excel display label - falls back to the raw label if `column_list` isn't provided or the value
     isn't found in MDMS, same as facility_solar_config_validator's cross-field validation.
+    The custom solution design / capacity columns are free text (no MDMS dropdown behind them),
+    so they're carried through as-is when filled.
     """
     facility_type_name_to_code = _mdms_name_to_code_map(column_list or [], COLUMN_CODE_FACILITY_TYPE)
     system_type_name_to_code = _mdms_name_to_code_map(column_list or [], COLUMN_CODE_SYSTEM_TYPE)
@@ -559,6 +563,14 @@ def build_field_plan_facility_additional_details(
         capacity = _cell_str(row.get(total_system_capacity_column, ""))
         if capacity:
             details["totalSystemCapacity"] = resolve_display_to_code(capacity, total_capacity_name_to_code)
+    if custom_solution_design_column:
+        custom_solution_design = _cell_str(row.get(custom_solution_design_column, ""))
+        if custom_solution_design:
+            details["customSolarSolutionDesignType"] = custom_solution_design
+    if custom_total_system_capacity_column:
+        custom_total_system_capacity = _cell_str(row.get(custom_total_system_capacity_column, ""))
+        if custom_total_system_capacity:
+            details["customTotalSystemCapacity"] = custom_total_system_capacity
     return details or None
 
 
@@ -583,6 +595,20 @@ def build_field_plan_facility_additional_fields(
     if additional_details.get("totalSystemCapacity"):
         fields.append(
             {"key": "totalSystemCapacity", "value": str(additional_details["totalSystemCapacity"])}
+        )
+    if additional_details.get("customSolarSolutionDesignType"):
+        fields.append(
+            {
+                "key": "customSolarSolutionDesignType",
+                "value": str(additional_details["customSolarSolutionDesignType"]),
+            }
+        )
+    if additional_details.get("customTotalSystemCapacity"):
+        fields.append(
+            {
+                "key": "customTotalSystemCapacity",
+                "value": str(additional_details["customTotalSystemCapacity"]),
+            }
         )
     if not fields:
         return None
@@ -641,6 +667,8 @@ def build_field_plan_facility_bulk_entry(
     system_type_column: Optional[str] = None,
     total_system_capacity_column: Optional[str] = None,
     solution_design_type_column: Optional[str] = None,
+    custom_solution_design_column: Optional[str] = None,
+    custom_total_system_capacity_column: Optional[str] = None,
 ) -> Dict[str, Any]:
     additional_details = build_field_plan_facility_additional_details(
         row,
@@ -649,6 +677,8 @@ def build_field_plan_facility_bulk_entry(
         system_type_column=system_type_column,
         total_system_capacity_column=total_system_capacity_column,
         solution_design_type_column=solution_design_type_column,
+        custom_solution_design_column=custom_solution_design_column,
+        custom_total_system_capacity_column=custom_total_system_capacity_column,
     )
     entry: Dict[str, Any] = {"facilityId": facility_id}
     additional_fields = build_field_plan_facility_additional_fields(additional_details)

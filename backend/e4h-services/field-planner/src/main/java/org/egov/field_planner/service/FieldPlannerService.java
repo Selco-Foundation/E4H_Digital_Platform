@@ -580,6 +580,9 @@ public class FieldPlannerService {
 
         String systemType = (String) additionalDetails.get("systemType");
         String totalSystemCapacity = (String) additionalDetails.get("totalSystemCapacity");
+        if (StringUtils.equalsIgnoreCase(totalSystemCapacity, "CUSTOM")) {
+            totalSystemCapacity = (String) additionalDetails.get("customTotalSystemCapacity");
+        }
         if (StringUtils.isNotBlank(systemType)) {
             FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType, totalSystemCapacity);
             if (template != null && template.getTemplateData() != null) {

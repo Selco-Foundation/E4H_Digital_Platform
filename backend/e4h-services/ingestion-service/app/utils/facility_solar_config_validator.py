@@ -26,6 +26,8 @@ COLUMN_CODE_FACILITY_TYPE = "facility_type"
 COLUMN_CODE_SYSTEM_TYPE = "system_type"
 COLUMN_CODE_SOLUTION_DESIGN = "facility_details.solar_solution_design_type"
 COLUMN_CODE_TOTAL_CAPACITY = "total_system_capacity"
+COLUMN_CODE_CUSTOM_SOLUTION_DESIGN = "custom_solar_solution_design"
+COLUMN_CODE_CUSTOM_TOTAL_CAPACITY = "custom_solar_system_capacity"
 
 CAPACITY_TOLERANCE = 0.001
 
@@ -44,6 +46,12 @@ ERR_SOLAR_PAIR_NOT_ALLOWED = (
 )
 ERR_SOLAR_CUSTOM_ONLY_FACILITY_TYPE = (
     "For Health Facility Type '{facility_type}', only Custom Solution Design and Custom Capacity are allowed."
+)
+ERR_CUSTOM_SOLUTION_DESIGN_REQUIRED = (
+    "Custom Solution Design Type is mandatory when Solution Design Type is '{solution}'."
+)
+ERR_CUSTOM_CAPACITY_REQUIRED = (
+    "Custom Total System Capacity is mandatory when Total System Capacity is '{capacity}'."
 )
 
 # Fallback when MDMS rules are not yet loaded (codes must match facility.* masters).
@@ -212,6 +220,8 @@ def validate_facility_solar_configuration_row(
     capacity_header: Optional[str],
     name_to_code_by_column: Dict[str, Dict[str, str]],
     capacity_name_to_kwp: Dict[str, float],
+    custom_solution_header: Optional[str] = None,
+    custom_capacity_header: Optional[str] = None,
 ) -> List[str]:
     if not all([facility_type_header, system_type_header, solution_header, capacity_header]):
         return [ERR_SOLAR_COLUMNS_MISSING]
@@ -240,29 +250,35 @@ def validate_facility_solar_configuration_row(
     is_custom_solution = solution_code == CUSTOM_SOLUTION_DESIGN_CODE
     is_custom_capacity = capacity_code == CUSTOM_CAPACITY_CODE
 
+    # These apply regardless of which branch below the row falls into, so they're collected
+    # into `errors` (not returned early) and carried through every return path.
+    errors: List[str] = []
+    if is_custom_solution and custom_solution_header and not _cell_str(row.get(custom_solution_header, "")):
+        errors.append(ERR_CUSTOM_SOLUTION_DESIGN_REQUIRED.format(solution=solution_display))
+    if is_custom_capacity and custom_capacity_header and not _cell_str(row.get(custom_capacity_header, "")):
+        errors.append(ERR_CUSTOM_CAPACITY_REQUIRED.format(capacity=capacity_display))
+
     covered_types = covered_facility_types(rules_index)
     if covered_types and facility_code not in covered_types:
         if not (is_custom_solution and is_custom_capacity):
-            return [
-                ERR_SOLAR_CUSTOM_ONLY_FACILITY_TYPE.format(facility_type=facility_display)
-            ]
-        return []
+            errors.append(ERR_SOLAR_CUSTOM_ONLY_FACILITY_TYPE.format(facility_type=facility_display))
+        return errors
 
     combo_key = (facility_code, system_code)
     allowed_pairs = rules_index.get(combo_key)
 
     if allowed_pairs is None:
         if not (is_custom_solution and is_custom_capacity):
-            return [
+            errors.append(
                 ERR_SOLAR_CUSTOM_ONLY_UNCOVERED.format(
                     facility_type=facility_display,
                     system_type=system_display,
                 )
-            ]
-        return []
+            )
+        return errors
 
     if is_custom_solution or is_custom_capacity:
-        return []
+        return errors
 
     capacity_kwp = resolve_capacity_kwp(
         capacity_display,
@@ -270,13 +286,13 @@ def validate_facility_solar_configuration_row(
         name_to_code_by_column.get(COLUMN_CODE_TOTAL_CAPACITY, {}),
     )
     if capacity_kwp is None:
-        return []
+        return errors
 
     for allowed_solution, allowed_capacity in allowed_pairs:
         if solution_code == allowed_solution and _capacities_equal(capacity_kwp, allowed_capacity):
-            return []
+            return errors
 
-    return [
+    errors.append(
         ERR_SOLAR_PAIR_NOT_ALLOWED.format(
             facility_type=facility_display,
             system_type=system_display,
@@ -287,7 +303,8 @@ def validate_facility_solar_configuration_row(
                 name_to_code_by_column.get(COLUMN_CODE_SOLUTION_DESIGN, {}),
             ),
         )
-    ]
+    )
+    return errors
 
 
 def validate_facility_solar_configuration(
@@ -314,6 +331,12 @@ def validate_facility_solar_configuration(
     capacity_header = resolve_spreadsheet_header_for_schema_code(
         df, column_list, COLUMN_CODE_TOTAL_CAPACITY
     )
+    custom_solution_header = resolve_spreadsheet_header_for_schema_code(
+        df, column_list, COLUMN_CODE_CUSTOM_SOLUTION_DESIGN
+    )
+    custom_capacity_header = resolve_spreadsheet_header_for_schema_code(
+        df, column_list, COLUMN_CODE_CUSTOM_TOTAL_CAPACITY
+    )
 
     name_to_code_by_column = {
         COLUMN_CODE_FACILITY_TYPE: _mdms_name_to_code_map(column_list, COLUMN_CODE_FACILITY_TYPE),
@@ -336,6 +359,8 @@ def validate_facility_solar_configuration(
             capacity_header=capacity_header,
             name_to_code_by_column=name_to_code_by_column,
             capacity_name_to_kwp=capacity_name_to_kwp,
+            custom_solution_header=custom_solution_header,
+            custom_capacity_header=custom_capacity_header,
         ):
             add_err(idx, message)
 
