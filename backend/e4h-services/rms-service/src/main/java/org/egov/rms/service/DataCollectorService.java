@@ -149,6 +149,7 @@ public class DataCollectorService {
                     .hfrId(hfrId)
                     .deviceName(centerData.getDeviceName())
                     .statusOfDevice(centerData.getStatusOfDevice())
+                    .lastSyncTime(parseRmsLastSyncTime(centerData.getLastSyncTime()))
                     .solarPercent(consumption.getSolarPercents())
                     .solarConsumption(consumption.getSolarDatas())
                     .gridConsumption(consumption.getGridDatas())
@@ -781,24 +782,29 @@ public class DataCollectorService {
     }
 
     /**
-     * Collects grid voltage data for low/high voltage conditions
-     * Makes separate API calls for low voltage (< 200V) and high voltage (> 250V)
+     * Collects grid voltage data for reverse voltage and high voltage conditions.
+     * Makes separate API calls for reverse voltage (configured range, default 50V-150V)
+     * and high voltage (&gt; configured threshold, default 250V).
      */
     public List<RMSFacilityData> collectGridVoltageData() {
         log.info("Collecting grid voltage data");
         List<RMSFacilityData> allFacilities = new ArrayList<>();
         
         try {
-            // Collect high voltage facilities (> 250V)
-            List<RMSFacilityData> highVoltageFacilities = collectGridHighVoltageData();
-            allFacilities.addAll(highVoltageFacilities);
-            
-            // Collect low voltage facilities (< 200V)
-            List<RMSFacilityData> lowVoltageFacilities = collectGridLowVoltageData();
-            allFacilities.addAll(lowVoltageFacilities);
+            List<RMSFacilityData> highVoltageFacilities = new ArrayList<>();
+            if (config.isGridHighVoltageTicketsEnabled()) {
+                highVoltageFacilities = collectGridHighVoltageData();
+                allFacilities.addAll(highVoltageFacilities);
+            } else {
+                log.info("Skipping grid high voltage data collection (rms.rule.grid.high.voltage.tickets.enabled=false)");
+            }
 
-            log.info("Collected grid voltage data for {} facilities ({} high, {} low)", 
-                    allFacilities.size(), highVoltageFacilities.size(), lowVoltageFacilities.size());
+            // Collect reverse voltage facilities (voltage within configured range, e.g. 50V-150V)
+            List<RMSFacilityData> reverseVoltageFacilities = collectGridReverseVoltageData();
+            allFacilities.addAll(reverseVoltageFacilities);
+
+            log.info("Collected grid voltage data for {} facilities ({} high, {} reverse)",
+                    allFacilities.size(), highVoltageFacilities.size(), reverseVoltageFacilities.size());
             
             // Enrich with HFR IDs from mapping table
             mappingService.enrichFacilitiesWithHfrId(allFacilities);
@@ -884,36 +890,40 @@ public class DataCollectorService {
     }
 
     /**
-     * Collects grid voltage data for low voltage conditions (< 200V)
+     * Collects grid voltage data for reverse voltage conditions.
+     * The upstream API supports a single comparator per filter, so we ask for
+     * voltage strictly less than (max + 1) to fetch all candidates &lt;= configured max.
+     * The {@link RuleEngineService} then enforces the inclusive [min, max] range.
      */
-    private List<RMSFacilityData> collectGridLowVoltageData() {
-        log.info("Collecting grid low voltage data (< 200V)");
+    private List<RMSFacilityData> collectGridReverseVoltageData() {
+        int reverseMax = config.getGridVoltageReverseMaxThreshold();
+        int reverseMin = config.getGridVoltageReverseMinThreshold();
+        log.info("Collecting grid reverse voltage data (range {}V-{}V)", reverseMin, reverseMax);
         List<RMSFacilityData> allFacilities = new ArrayList<>();
-        
+
         try {
             int page = 1;
             int pageSize = 100;
             boolean hasMore = true;
 
             while (hasMore) {
-                // Build request for low voltage
                 Map<String, Object> timePeriod = new HashMap<>();
                 timePeriod.put("value", "today");
-                
+
                 Map<String, Object> timeRange = new HashMap<>();
                 timeRange.put("time_period", timePeriod);
                 timeRange.put("custom_range", new HashMap<>());
-                
+
                 List<Map<String, Object>> filters = new ArrayList<>();
-                Map<String, Object> filterLow = new HashMap<>();
-                filterLow.put("compareFunction", "lt");
-                filterLow.put("compareValue", 200);
-                filters.add(filterLow);
-                
+                Map<String, Object> filterReverse = new HashMap<>();
+                filterReverse.put("compareFunction", "lt");
+                filterReverse.put("compareValue", reverseMax + 1);
+                filters.add(filterReverse);
+
                 Map<String, Object> pagination = new HashMap<>();
                 pagination.put("page", page);
                 pagination.put("size", pageSize);
-                
+
                 Map<String, Object> requestBody = new HashMap<>();
                 requestBody.put("graphType", "gridVoltage_Filtered");
                 requestBody.put("time_range", timeRange);
@@ -923,21 +933,19 @@ public class DataCollectorService {
                 requestBody.put("pagination", pagination);
 
                 PanelGraphResponse response = callGridVoltageApi(config.getCenterDetailsEndpoint(), requestBody);
-                
-                if (response != null && response.getData() != null && 
+
+                if (response != null && response.getData() != null &&
                     response.getData().getFacilities() != null) {
-                    
+
                     List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
-                    
+
                     for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
-                        // Convert PanelFacility to RMSFacilityData
                         RMSFacilityData facility = convertGridVoltageToRMSFacilityData(panelFacility, false);
                         if (facility != null) {
                             allFacilities.add(facility);
                         }
                     }
-                    
-                    // Check if there are more pages
+
                     if (facilities.size() < pageSize) {
                         hasMore = false;
                     } else {
@@ -948,17 +956,17 @@ public class DataCollectorService {
                 }
             }
 
-            log.info("Collected grid low voltage data for {} facilities", allFacilities.size());
+            log.info("Collected grid reverse voltage candidates for {} facilities", allFacilities.size());
             return allFacilities;
         } catch (Exception e) {
-            log.error("Error collecting grid low voltage data", e);
+            log.error("Error collecting grid reverse voltage data", e);
             return new ArrayList<>();
         }
     }
 
     /**
      * Converts PanelFacility to RMSFacilityData for grid voltage
-     * @param isHighVoltage true for high voltage, false for low voltage
+     * @param isHighVoltage true for high voltage, false for reverse voltage candidates
      */
     private RMSFacilityData convertGridVoltageToRMSFacilityData(PanelGraphResponse.PanelFacility panelFacility, boolean isHighVoltage) {
         try {
@@ -993,8 +1001,8 @@ public class DataCollectorService {
                     .deviceName(centerData.getDeviceName())
                     .statusOfDevice(centerData.getStatusOfDevice())
                     .gridVoltage(gridVoltage)
-                    .minVoltage(isHighVoltage ? null : gridVoltage) // Store as minVoltage for low voltage
-                    .maxVoltage(isHighVoltage ? gridVoltage : null) // Store as maxVoltage for high voltage
+                    .minVoltage(isHighVoltage ? null : gridVoltage) // Stored as minVoltage for reverse voltage candidates
+                    .maxVoltage(isHighVoltage ? gridVoltage : null) // Stored as maxVoltage for high voltage
                     .build();
             
             return facility;
@@ -1080,16 +1088,7 @@ public class DataCollectorService {
                         log.debug("Parsing {} centerDatas from API response", tmp.getCenterData().size());
                         for (CenterData centerData : tmp.getCenterData()){
                             try {
-                                // Parse lastSyncTime safely
-                                Instant lastSyncTime = null;
-                                if (centerData.getLastSyncTime() != null && !centerData.getLastSyncTime().isEmpty()) {
-                                    try {
-                                        lastSyncTime = Instant.parse(centerData.getLastSyncTime());
-                                    } catch (Exception e) {
-                                        log.warn("Failed to parse lastSyncTime for center {}: {}", 
-                                                centerData.getCenterId(), centerData.getLastSyncTime());
-                                    }
-                                }
+                                Instant lastSyncTime = parseRmsLastSyncTime(centerData.getLastSyncTime());
                                 
                                 // Map HFRID to hfrId (handle "Not Available" case)
                                 String hfrId = null;
@@ -1142,6 +1141,21 @@ public class DataCollectorService {
         }
         
         return null;
+    }
+
+    /**
+     * Parses {@code last_sync_time} strings from RMS graph / centerDatas payloads (typically ISO-8601).
+     */
+    private Instant parseRmsLastSyncTime(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Instant.parse(raw.trim());
+        } catch (Exception e) {
+            log.warn("Failed to parse RMS last_sync_time: {}", raw);
+            return null;
+        }
     }
 
     /**

@@ -169,6 +169,9 @@ public class ActivityConfiguration {
     @Value("${egov.vendor.user.update.url}")
     private String orgUserUpdateUrl;
 
+    @Value("${egov.vendor.organisation.search.url}")
+    private String organisationSearchUrl;
+
     @Value("${facility.management.transaction.kafka.create.topic}")
     private String transactionPersistTopic;
 

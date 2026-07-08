@@ -347,6 +347,11 @@ public class WorkflowService {
                 request.getIncident().getApplicationStatus().trim().equals("PENDINGRESOLUTION") && action.equalsIgnoreCase("MARK_OUT_OF_SCOPE")) {
             reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
         }
+        else if (request.getIncident() != null && request.getIncident().getApplicationStatus() != null
+                && OUT_OF_WARRANTY_PENDING_TECH_POC.equals(request.getIncident().getApplicationStatus().trim())
+                && action.equalsIgnoreCase(APPROVE_ACTION)) {
+            reassignWorkflow(workflow, request, ROLE_COMPLAINT_FACILITATOR_1);
+        }
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(incident.getIncidentId());
         processInstance.setAction(request.getWorkflow().getAction());
@@ -378,10 +383,14 @@ public class WorkflowService {
     }
 
     private void reassignWorkflow(Workflow workflow, IncidentRequest request, String role) {
-        log.trace("WorkflowService::reassignWorkflow method invoked for role: {}", role);
+        reassignWorkflow(workflow, request, role, request.getIncident().getBoundaryCode());
+    }
+
+    private void reassignWorkflow(Workflow workflow, IncidentRequest request, String role, String boundaryCode) {
+        log.trace("WorkflowService::reassignWorkflow method invoked for role: {} and boundaryCode: {}", role, boundaryCode);
         workflow.setAssignes(null);
-        log.debug("Fetching employee details for role: {}", role);
-        Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, role);
+        log.debug("Fetching employee details for role: {} at boundary: {}", role, boundaryCode);
+        Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, role, boundaryCode);
         List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
         workflow.setAssignes(assignee);
         log.debug("Workflow reassigned to employee with UUID: {}", reassigneeDetails.get("employeeUUID"));

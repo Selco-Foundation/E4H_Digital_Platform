@@ -93,4 +93,16 @@ public class IMUtils {
         return lastPart.startsWith("FAC/") ? lastPart : null;
     }
 
+    /**
+     * Extracts state-level boundary code from a facility boundary code.
+     * e.g. India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329 -> India_Karnataka
+     */
+    public static String extractStateBoundaryCode(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return boundaryCode;
+        }
+        String[] parts = boundaryCode.replace('.', '_').split("_");
+        return parts.length < 2 ? boundaryCode : parts[0] + "_" + parts[1];
+    }
+
 }

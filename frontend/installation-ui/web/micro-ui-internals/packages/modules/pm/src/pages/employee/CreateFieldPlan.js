@@ -18,6 +18,12 @@ import useActivityAssignment from "../../hooks/useActivityAssignment";
 import CommonUtils from "../../utilities/CommonUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
+const PO_NUMBER_REGEX = /^PUR-ORD-\d{4}-\d{4}-\d{5}$/;
+
+const isValidPoNumber = (poNumber) => {
+  return PO_NUMBER_REGEX.test(poNumber || "");
+};
+
 const CreateFieldPlan = () => {
 
   const { t } = useTranslation();
@@ -345,9 +351,13 @@ const CreateFieldPlan = () => {
     let emptyData = true;
 
     const validatedData = activityData.map((dataEntry) => ({
-      ...dataEntry,
+      ...dataEntry, 
       users: dataEntry.users.map((userEntry) => {
         const newUserEntry = {}
+
+        if (userEntry.deleteAssignment) {
+          return userEntry;
+        }
 
         if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key) || !userEntry[key].value))) {
           Object.keys(userEntry).forEach((key) => {
@@ -372,6 +382,12 @@ const CreateFieldPlan = () => {
             newUserEntry[key] = {
               ...userEntry[key],
               error: t("CORE_COMMON_REQUIRED")
+            };
+          } else if (key === "poNumber" && !isValidPoNumber(userEntry[key].value)) {
+            faultyData = true;
+            newUserEntry[key] = {
+              ...userEntry[key],
+              error: t("PO_NUMBER_FORMAT_ERROR"),
             };
           } else {
             newUserEntry[key] =  {
@@ -491,7 +507,7 @@ const CreateFieldPlan = () => {
         console.error("Error assigning users for field plan activities", error);
         setToast({
           key: "error",
-          label: t("PM_TOAST_ACTIVITY_DETAILS_SAVE_ERROR"),
+          label: CommonUtils.getApiErrorMessage(error) || t("PM_TOAST_ACTIVITY_DETAILS_SAVE_ERROR"),
         })
 
       } finally {

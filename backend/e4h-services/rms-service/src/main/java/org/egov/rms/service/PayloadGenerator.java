@@ -52,18 +52,8 @@ public class PayloadGenerator {
             // Extract boundaryCode from facility details
             String boundaryCode = facilityDetails.getBoundaryCode();
             if (boundaryCode == null || boundaryCode.trim().isEmpty()) {
-                log.warn("SKIPPING TICKET CREATION: Alert {} has null/empty boundaryCode (facility: {}, hfrId: {}). " +
-                        "Only Karnataka boundary tickets are allowed for production release.",
+                log.warn("SKIPPING TICKET CREATION: Alert {} has null/empty boundaryCode (facility: {}, hfrId: {}).",
                         alert.getId(), alert.getFacilityId(), alert.getHfrId());
-                return null;
-            }
-            
-            // PROD RELEASE: Validate that boundaryCode is for Karnataka
-            // Format: India_Karnataka_...
-            if (!boundaryCode.startsWith("India_Karnataka")) {
-                log.warn("SKIPPING TICKET CREATION: Alert {} has non-Karnataka boundary code: {} (facility: {}, hfrId: {}). " +
-                        "Only Karnataka boundary tickets are allowed for production release.",
-                        alert.getId(), boundaryCode, alert.getFacilityId(), alert.getHfrId());
                 return null;
             }
 
@@ -135,8 +125,8 @@ public class PayloadGenerator {
                 return "DeepDischarge";
             case OVERCHARGING:
                 return "Overcharge";
-            case VOLTAGE_VARIATION_LOW:
-                return "LowVoltage";
+            case VOLTAGE_VARIATION_REVERSE:
+                return "ReverseVoltage";
             case VOLTAGE_VARIATION_HIGH:
                 return "HighVoltage";
             default:
@@ -522,7 +512,7 @@ public class PayloadGenerator {
      */
     private IMServiceRequest.User buildReporter(RequestInfo requestInfo) {
         return IMServiceRequest.User.builder()
-                .uuid("fb022833-743d-43cb-adfa-312fbd13f438")
+                .uuid("dee83ed3-8fc3-4cef-a5d3-8464bf1b1155")
                 .tenantId("in")
                 .build();
     }
