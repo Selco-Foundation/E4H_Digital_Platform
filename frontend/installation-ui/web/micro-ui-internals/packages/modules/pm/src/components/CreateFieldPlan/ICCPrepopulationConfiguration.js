@@ -110,7 +110,13 @@ const getSavedTemplateFileStoreId = (template = {}) => (
   template.fileStoreId ||
   template.filestoreId ||
   template.fileStoreID ||
+  template.iccFileStoreId ||
+  template.uploadedFileStoreId ||
+  template.preFillingTemplateFileStoreId ||
   template.additionalDetails?.fileStoreId ||
+  template.additionalDetails?.iccFileStoreId ||
+  template.additionalDetails?.uploadedFileStoreId ||
+  template.additionalDetails?.preFillingTemplateFileStoreId ||
   template.template?.fileStoreId ||
   template.file?.fileStoreId ||
   ""
@@ -122,12 +128,30 @@ const getSavedTemplateFileName = (template = {}) => (
   template.name ||
   template.templateFileName ||
   template.originalFileName ||
+  template.preFillingTemplateFileName ||
+  template.uploadedFileName ||
   template.additionalDetails?.fileName ||
   template.additionalDetails?.filename ||
+  template.additionalDetails?.preFillingTemplateFileName ||
+  template.additionalDetails?.uploadedFileName ||
   template.template?.fileName ||
   template.file?.name ||
   ""
 );
+
+const getSavedTemplateDisplayName = (template = {}) => {
+  const fileName = getSavedTemplateFileName(template);
+
+  if (fileName) {
+    return fileName;
+  }
+
+  if (!getSavedTemplateFileStoreId(template)) {
+    return "";
+  }
+
+  return `${getSavedTemplateSystemType(template) || "ICC"}_${getSavedTemplateCapacity(template) || "template"}.xlsx`.replace(/\s+/g, "_");
+};
 
 const getTemplateForRow = (row, templates = []) => {
   const systemTypeName = getICCApiSystemType(row.systemType?.name);
@@ -173,20 +197,22 @@ const applySavedTemplatesToRows = (rows = [], templates = []) => {
 
     const savedCapacity = getSavedTemplateCapacity(savedTemplate);
     const savedCapacityOption = savedCapacity ? getOption(savedCapacity) : null;
-    const fileName = getSavedTemplateFileName(savedTemplate);
+    const fileName = getSavedTemplateDisplayName(savedTemplate);
+    const fileStoreId = getSavedTemplateFileStoreId(savedTemplate);
 
     return {
       ...row,
       totalSystemCapacity: row.totalSystemCapacity || savedCapacityOption,
       capacityOptions: row.capacityOptions?.length ? row.capacityOptions : savedCapacityOption ? [savedCapacityOption] : row.capacityOptions,
-      file: fileName ? {
+      file: fileName || fileStoreId ? {
         name: fileName,
         isSavedTemplate: true,
+        fileStoreId,
       } : row.file,
       template: savedTemplate,
-      templateFile: fileName ? {
+      templateFile: fileName || fileStoreId ? {
         name: fileName,
-        fileStoreId: getSavedTemplateFileStoreId(savedTemplate),
+        fileStoreId,
         isTemplate: true,
       } : row.templateFile,
     };
@@ -199,20 +225,22 @@ const getRowsFromSavedTemplates = (templates = [], systemTypeMaster = []) => (
     const capacityValue = getSavedTemplateCapacity(template);
     const systemType = getSystemTypeOption(systemTypeValue, systemTypeMaster);
     const capacity = getOption(capacityValue);
-    const fileName = getSavedTemplateFileName(template);
+    const fileName = getSavedTemplateDisplayName(template);
+    const fileStoreId = getSavedTemplateFileStoreId(template);
 
     return {
       ...getEmptyRow(`icc-row-saved-${template.id || index}`),
       systemType,
       totalSystemCapacity: capacity,
-      file: fileName ? {
+      file: fileName || fileStoreId ? {
         name: fileName,
         isSavedTemplate: true,
+        fileStoreId,
       } : null,
       template,
-      templateFile: fileName ? {
+      templateFile: fileName || fileStoreId ? {
         name: fileName,
-        fileStoreId: getSavedTemplateFileStoreId(template),
+        fileStoreId,
         isTemplate: true,
       } : null,
       capacityOptions: capacity ? [capacity] : [],

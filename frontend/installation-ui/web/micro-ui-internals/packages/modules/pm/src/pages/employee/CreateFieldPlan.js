@@ -48,6 +48,8 @@ const getSystemCapacityValue = (capacity) => {
   return matchedCapacity?.[0] || capacityValue;
 };
 
+const getNewICCPrepopulationRows = (rows = []) => rows.filter((row) => row?.file && !row.file?.isSavedTemplate);
+
 const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
   const iccReportsData = new FormData();
   const items = rows.map((row) => ({
@@ -1061,9 +1063,13 @@ const CreateFieldPlan = () => {
         setBlockUI(true);
         try {
           const rows = getICCPrepopulationRows(data);
-          const iccReportsData = getICCReportsFormData(rows, createdFieldPlan?.id || fieldPlanId, tenantId);
+          const newRows = getNewICCPrepopulationRows(rows);
 
-          await IngestionService.uploadICCReports(iccReportsData);
+          if (newRows.length) {
+            const iccReportsData = getICCReportsFormData(newRows, createdFieldPlan?.id || fieldPlanId, tenantId);
+            await IngestionService.uploadICCReports(iccReportsData);
+          }
+
           setPersistedFormData((prev) => ({ ...prev, iccPrepopulationConfiguration: data }));
           setCurrentKey((prev) => prev + 1);
         } catch (error) {
