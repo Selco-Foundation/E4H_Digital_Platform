@@ -523,8 +523,9 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     </CardLabel>
   );
 
-  const FieldWrapper = ({ children }) => (
+  const FieldWrapper = ({ children, className = "" }) => (
     <div
+      className={`icc-prepopulation-field ${className}`}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -538,7 +539,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     <div
       style={{
         height: "40px",
-        width: "380px",
+        width: "100%",
       }}
     >
       {children}
@@ -570,8 +571,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           .icc-prepopulation-upload .upload-file {
             min-height: 40px !important;
             height: 40px !important;
-            width: 500px !important;
-            max-width: 500px !important;
+            width: 100% !important;
+            max-width: 100% !important;
             box-sizing: border-box;
             border: 1px solid #D1D5DB;
           }
@@ -579,8 +580,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           .icc-prepopulation-upload .digit-upload-file {
             min-height: 40px !important;
             height: 40px !important;
-            width: 500px !important;
-            max-width: 500px !important;
+            width: 100% !important;
+            max-width: 100% !important;
             box-sizing: border-box;
             border: 1px solid #D1D5DB;
           }
@@ -588,7 +589,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           .icc-prepopulation-upload {
             position: relative;
             height: 40px;
-            width: 500px;
+            width: 100%;
           }
 
           .icc-prepopulation-upload .upload-file > div {
@@ -680,12 +681,12 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
           .icc-prepopulation-upload .upload-file input {
             height: 40px !important;
-            width: 500px !important;
+            width: 100% !important;
           }
 
           .icc-prepopulation-upload .digit-upload-file input {
             height: 40px !important;
-            width: 500px !important;
+            width: 100% !important;
           }
 
           .icc-prepopulation-upload .tag-container {
@@ -723,6 +724,68 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             width: 100% !important;
             white-space: nowrap !important;
           }
+
+          .icc-prepopulation-row {
+            border: 1px solid #EEEEEE;
+            padding: 16px 20px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            box-sizing: border-box;
+            width: 100%;
+          }
+
+          .icc-prepopulation-field {
+            flex: 1 1 280px;
+            max-width: 380px;
+            min-width: 0;
+          }
+
+          .icc-prepopulation-file-field {
+            flex: 1.2 1 320px;
+            max-width: 580px;
+          }
+
+          .icc-prepopulation-template-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+          }
+
+          .icc-prepopulation-template-input {
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+
+          @media (max-width: 768px) {
+            .icc-prepopulation-row {
+              padding: 16px;
+              flex-direction: column;
+            }
+
+            .icc-prepopulation-field,
+            .icc-prepopulation-file-field {
+              width: 100%;
+              max-width: 100%;
+              flex-basis: auto;
+            }
+
+            .icc-prepopulation-template-actions {
+              align-items: center;
+            }
+
+            .icc-prepopulation-download-icon svg {
+              width: 22px;
+              height: 22px;
+            }
+
+            .icc-prepopulation-delete-icon svg {
+              width: 24px;
+              height: 24px;
+            }
+          }
         `}
       </style>
       <h2 style={{ margin: 0, fontSize: "32px", fontWeight: "700", marginBottom: "20px" }}>
@@ -741,14 +804,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
         {rows.map((row) => (
           <div
             key={row.id}
-            style={{
-              border: "1px solid #EEEEEE",
-              padding: "16px 20px",
-              display: "flex",
-              gap: "12px",
-              alignItems: "flex-start",
-              flexWrap: "wrap",
-            }}
+            className={"icc-prepopulation-row"}
           >
             <FieldWrapper>
               <FieldLabel label={"ICC_SYSTEM_TYPE"} />
@@ -764,7 +820,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                     maxHeight: "400px",
                   }}
                   style={{
-                    minWidth: "380px",
+                    width: "100%",
+                    minWidth: "100%",
                     display: "flex",
                     justifyContent: "space-between",
                   }}
@@ -786,7 +843,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                     maxHeight: "400px",
                   }}
                   style={{
-                    minWidth: "380px",
+                    width: "100%",
+                    minWidth: "100%",
                     display: "flex",
                     justifyContent: "space-between",
                   }}
@@ -794,10 +852,10 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
               </DropdownWrapper>
               {validationAttempt > 0 && !row.totalSystemCapacity && <RequiredError />}
             </FieldWrapper>
-            <FieldWrapper>
+            <FieldWrapper className={"icc-prepopulation-file-field"}>
               <FieldLabel label={row.file ? "ICC_PRE_FILLING_TEMPLATE" : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"} />
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div className={`icc-prepopulation-upload ${row.file ? "has-file" : ""}`}>
+              <div className={"icc-prepopulation-template-actions"}>
+                <div className={`icc-prepopulation-upload icc-prepopulation-template-input ${row.file ? "has-file" : ""}`}>
                   <UploadFile
                     accept={".xlsx,.xls"}
                     customClass={"icc-prepopulation-upload-file"}
@@ -815,8 +873,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                     style={{
                       minHeight: "40px",
                       height: "40px",
-                      width: "500px",
-                      maxWidth: "500px",
+                      width: "100%",
+                      maxWidth: "100%",
                     }}
                     extraStyles={{
                       buttonStyles: {
