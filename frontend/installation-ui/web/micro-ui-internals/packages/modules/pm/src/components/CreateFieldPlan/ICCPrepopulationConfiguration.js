@@ -88,13 +88,21 @@ const getSavedTemplateSystemType = (template = {}) => (
 
 const getSavedTemplateCapacity = (template = {}) => (
   template.totalSystemCapacity ||
+  template.totalCapacity ||
   template.systemCapacity ||
   template.capacity ||
+  template.systemCapacityValue ||
   template.additionalDetails?.totalSystemCapacity ||
+  template.additionalDetails?.totalCapacity ||
   template.additionalDetails?.systemCapacity ||
   template.additionalDetails?.capacity ||
+  template.additionalDetails?.systemCapacityValue ||
   template.template?.totalSystemCapacity ||
+  template.template?.totalCapacity ||
+  template.template?.capacity ||
   template.data?.totalSystemCapacity ||
+  template.data?.totalCapacity ||
+  template.data?.capacity ||
   ""
 );
 
@@ -163,24 +171,24 @@ const applySavedTemplatesToRows = (rows = [], templates = []) => {
       return row;
     }
 
+    const savedCapacity = getSavedTemplateCapacity(savedTemplate);
+    const savedCapacityOption = savedCapacity ? getOption(savedCapacity) : null;
     const fileName = getSavedTemplateFileName(savedTemplate);
-
-    if (!fileName) {
-      return row;
-    }
 
     return {
       ...row,
-      file: {
+      totalSystemCapacity: row.totalSystemCapacity || savedCapacityOption,
+      capacityOptions: row.capacityOptions?.length ? row.capacityOptions : savedCapacityOption ? [savedCapacityOption] : row.capacityOptions,
+      file: fileName ? {
         name: fileName,
         isSavedTemplate: true,
-      },
+      } : row.file,
       template: savedTemplate,
-      templateFile: {
+      templateFile: fileName ? {
         name: fileName,
         fileStoreId: getSavedTemplateFileStoreId(savedTemplate),
         isTemplate: true,
-      },
+      } : row.templateFile,
     };
   });
 };
@@ -339,6 +347,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
             return existingRow ? {
               ...parsedRow,
+              totalSystemCapacity: existingRow.totalSystemCapacity || parsedRow.totalSystemCapacity,
               file: existingRow.file,
               template: existingRow.template,
               templateFile: existingRow.templateFile,
