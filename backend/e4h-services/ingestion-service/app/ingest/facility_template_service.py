@@ -30,6 +30,8 @@ EDITABLE_SOLAR_COLUMN_CODES = {
     "total_system_capacity",
     "solution_design_type",
     "facility_details.solar_solution_design_type",
+    "custom_solar_solution_design",
+    "custom_solar_system_capacity",
 }
 
 FACILITY_TYPE_DROPDOWN_FALLBACK = ["Sub Center", "Primary Health Centre", "Anganwadi"]
