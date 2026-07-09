@@ -586,7 +586,11 @@ public class FieldPlannerService {
         if (StringUtils.isNotBlank(systemType)) {
             FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType, totalSystemCapacity);
             if (template != null && template.getTemplateData() != null) {
-                additionalDetails.put("bom", template.getTemplateData());
+                Map<String, Object> templateData = template.getTemplateData();
+                additionalDetails.put("bom", templateData);
+                additionalDetails.put("panel", buildBomComponent(templateData, "solar_module_capacity", "solar_module_make"));
+                additionalDetails.put("battery", buildBomComponent(templateData, "solar_battery_capacity", "solar_battery_make"));
+                additionalDetails.put("inverter", buildInverterComponent(templateData));
             } else {
                 log.warn("No FieldPlanTemplate found for fieldPlanId: {}, systemType: {}", fieldPlanFacility.getFieldPlanId(), systemType);
             }
@@ -596,6 +600,43 @@ public class FieldPlannerService {
 
         log.trace("Exiting buildActivityFacilityAdditionalDetails method");
         return additionalDetails;
+    }
+
+    // The BOM template's "inverter" component is named differently per system type - only one
+    // of these key pairs is ever present in a given templateData (each FieldPlanTemplate is
+    // generated from exactly one system type's template), so the first pair found wins:
+    //   - inverter_*: AC_OFF_GRID and AC_ON_GRID templates
+    //   - solar_hybrid_pcu_*: AC_HYBRID template
+    //   - solar_charge_controller_*: DC_OFF_GRID template (no dedicated inverter - CCU serves that role)
+    private static final List<String[]> INVERTER_KEY_CANDIDATES = List.of(
+            new String[]{"inverter_capacity", "inverter_make"},
+            new String[]{"solar_hybrid_pcu_capacity", "solar_hybrid_pcu_make"},
+            new String[]{"solar_charge_controller_capacity", "solar_charge_controller_make"}
+    );
+
+    private Map<String, Object> buildInverterComponent(Map<String, Object> templateData) {
+        for (String[] candidate : INVERTER_KEY_CANDIDATES) {
+            if (templateData.containsKey(candidate[0]) || templateData.containsKey(candidate[1])) {
+                return buildBomComponent(templateData, candidate[0], candidate[1]);
+            }
+        }
+        return buildBomComponent(templateData, INVERTER_KEY_CANDIDATES.get(0)[0], INVERTER_KEY_CANDIDATES.get(0)[1]);
+    }
+
+    /**
+     * Builds a {capacity, brandCode, brandName} component (panel/battery/inverter) from the
+     * FieldPlanTemplate's flat templateData: brandCode is the uppercased make value, brandName
+     * is the make value as entered in the ICC report (e.g. make "ReNew" -> brandCode "RENEW",
+     * brandName "ReNew").
+     */
+    private Map<String, Object> buildBomComponent(Map<String, Object> templateData, String capacityKey, String makeKey) {
+        Object capacity = templateData.get(capacityKey);
+        Object make = templateData.get(makeKey);
+        Map<String, Object> component = new HashMap<>();
+        component.put("capacity", capacity);
+        component.put("brandCode", make != null ? make.toString().toUpperCase() : null);
+        component.put("brandName", make);
+        return component;
     }
 
     private Map<String, Object> extractAdditionalFieldsAsMap(AdditionalFields additionalFields) {
