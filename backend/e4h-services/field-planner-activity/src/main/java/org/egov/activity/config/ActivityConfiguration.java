@@ -47,6 +47,15 @@ public class ActivityConfiguration {
     @Value("${egov.createandsave.pdf.url}")
     private String pdfCreateSaveFilestore;
 
+    @Value("${egov.ingestion.host}")
+    private String ingestionServiceHost;
+
+    @Value("${egov.ingestion.document.append.url}")
+    private String ingestionDocumentAppendUrl;
+
+    @Value("${egov.ingestion.document.append.module}")
+    private String ingestionDocumentAppendModule;
+
     @Value("${egov.kafka.notification.email.topic}")
     private String notificationEmailTopic;
 
