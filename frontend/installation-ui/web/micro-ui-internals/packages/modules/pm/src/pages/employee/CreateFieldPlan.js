@@ -378,6 +378,7 @@ const CreateFieldPlan = () => {
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
+          originalData: chosenFile,
           errorCodes: ["INVALID_DATA"]
         }
 
@@ -390,6 +391,7 @@ const CreateFieldPlan = () => {
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
+          originalData: chosenFile,
         }
       }
 
@@ -798,6 +800,8 @@ const CreateFieldPlan = () => {
               iccTemplates: getICCTemplates(createdFieldPlan, fieldPlanData),
               validationAttempt: iccPrepopulationValidationAttempt,
               fieldPlanId: createdFieldPlan?.id || fieldPlanId,
+              setToast,
+              setBlockUI,
             },
             nextRoute: "",
             populators: {
