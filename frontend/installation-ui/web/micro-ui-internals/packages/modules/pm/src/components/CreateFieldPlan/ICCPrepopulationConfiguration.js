@@ -53,7 +53,12 @@ const normalizeSystemTypeKey = (value) => normalizeValue(value).replace(/[\s_-]+
 
 const normalizeCapacity = (value) => {
   const matchedCapacity = value?.toString?.()?.match(/[\d.]+/);
-  return matchedCapacity?.[0] || normalizeValue(value);
+  if (!matchedCapacity?.[0]) {
+    return normalizeValue(value);
+  }
+
+  const numericCapacity = Number(matchedCapacity[0]);
+  return Number.isNaN(numericCapacity) ? matchedCapacity[0] : numericCapacity.toString();
 };
 
 const getICCReportFormData = (row, file, fieldPlanId, tenantId) => {
@@ -71,15 +76,23 @@ const getICCReportFormData = (row, file, fieldPlanId, tenantId) => {
   return formData;
 };
 
-const getRowKey = (row = {}) => (
-  `${normalizeSystemTypeKey(row.systemType?.name || row.systemType?.code)}-${normalizeCapacity(row.totalSystemCapacity?.name || row.totalSystemCapacity?.code)}`
-);
+const getRowKey = (row = {}) => {
+  const systemTypeKey = normalizeSystemTypeKey(row.systemType?.name || row.systemType?.code);
+  const capacityKey = normalizeCapacity(row.totalSystemCapacity?.name || row.totalSystemCapacity?.code);
+
+  return systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "";
+};
 
 const getUniqueRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
   const rowKey = getRowKey(row);
   const existingRow = acc[rowKey];
 
-  if (!rowKey || !existingRow || (!existingRow.file && row.file) || (!existingRow.templateFile && row.templateFile)) {
+  if (!rowKey) {
+    acc[row.id || `empty-row-${Object.keys(acc).length}`] = row;
+    return acc;
+  }
+
+  if (!existingRow || (!existingRow.file && row.file) || (!existingRow.templateFile && row.templateFile)) {
     acc[rowKey] = row;
   }
 
@@ -314,7 +327,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       const uniqueRows = getUniqueRows(prevRows);
       return uniqueRows.length === prevRows.length ? prevRows : uniqueRows;
     });
-  }, []);
+  }, [rows]);
 
   useEffect(() => {
     const searchSavedTemplates = async () => {

@@ -36,7 +36,7 @@ const getICCTemplates = (fieldPlan, fieldPlanData) => (
 const getICCPrepopulationRows = (data) => Array.isArray(data) ? data : data?.iccPrepopulationConfiguration || [];
 
 const isICCPrepopulationComplete = (data) => {
-  const rows = getICCPrepopulationRows(data);
+  const rows = getUniqueICCPrepopulationRows(getICCPrepopulationRows(data));
 
   return rows.length > 0 && rows.every((row) => row?.systemType && row?.totalSystemCapacity && row?.file);
 };
@@ -45,8 +45,38 @@ const getSystemCapacityValue = (capacity) => {
   const capacityValue = capacity?.code || capacity?.name || "";
   const matchedCapacity = capacityValue.toString().match(/[\d.]+/);
 
-  return matchedCapacity?.[0] || capacityValue;
+  if (!matchedCapacity?.[0]) {
+    return capacityValue;
+  }
+
+  const numericCapacity = Number(matchedCapacity[0]);
+  return Number.isNaN(numericCapacity) ? matchedCapacity[0] : numericCapacity.toString();
 };
+
+const normalizeICCValue = (value) => (value || "").toString().trim().toLowerCase();
+
+const getICCPrepopulationRowKey = (row = {}) => {
+  const systemTypeKey = normalizeICCValue(row.systemType?.name || row.systemType?.code).replace(/[\s_-]+/g, "");
+  const capacityKey = getSystemCapacityValue(row.totalSystemCapacity);
+
+  return systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "";
+};
+
+const getUniqueICCPrepopulationRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
+  const rowKey = getICCPrepopulationRowKey(row);
+  const existingRow = acc[rowKey];
+
+  if (!rowKey) {
+    acc[row.id || `empty-row-${Object.keys(acc).length}`] = row;
+    return acc;
+  }
+
+  if (!existingRow || (!existingRow.file && row.file)) {
+    acc[rowKey] = row;
+  }
+
+  return acc;
+}, {}));
 
 const getNewICCPrepopulationRows = (rows = []) => rows.filter((row) => row?.file && !row.file?.isSavedTemplate);
 
@@ -1066,7 +1096,7 @@ const CreateFieldPlan = () => {
 
         setBlockUI(true);
         try {
-          const rows = getICCPrepopulationRows(data);
+          const rows = getUniqueICCPrepopulationRows(getICCPrepopulationRows(data));
           const newRows = getNewICCPrepopulationRows(rows);
 
           if (newRows.length) {
