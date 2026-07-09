@@ -567,24 +567,114 @@ def run_length_group(items, key_fn):
     return runs
 
 
-def zip_section(template_entries, excel_instances, section, unmatched):
-    output = {}
+def align_bom_rows(template_entries, excel_instances, section, unmatched):
+    """
+    Shared row-alignment between a BOM template's rows and the uploaded Excel's matching
+    instances - yields (label, value_keys, excel_cells) per aligned row, where value_keys is
+    the per-column list of placeholder keys (see extract_bom_entries) and excel_cells is the
+    per-column list of (row_no, col_no) cells that row landed on in the uploaded workbook.
+
+    Used by both zip_section() (build the {{field_name}}: value JSON) and
+    validate_bom_editable_fields_filled() (Validation 3: Make/Capacity/Quantity aren't blank).
+    """
     template_key_fn = lambda e: TEMPLATE_LABEL_MERGE.get(normalize_label(e[0]), normalize_label(e[0]))
     template_runs = run_length_group(template_entries, key_fn=template_key_fn)
     excel_runs = run_length_group(excel_instances, key_fn=lambda e: normalize_label(e["label"]))
 
     for (_t_label, t_items), (_e_label, e_items) in zip(template_runs, excel_runs):
-        for i, (_, value_keys) in enumerate(t_items):
+        for i, (label, value_keys) in enumerate(t_items):
             excel_inst = e_items[i] if i < len(e_items) else e_items[-1]
-            for col_idx, keys in enumerate(value_keys):
-                if col_idx >= len(excel_inst["cells"]) or not keys:
-                    continue
-                row_no, col_no = excel_inst["cells"][col_idx]
-                for key in keys:
-                    output.setdefault(key, []).append((row_no, col_no))
+            yield label, value_keys, excel_inst["cells"]
         for extra in e_items[len(t_items):]:
             unmatched.append((section, extra["label"]))
+
+
+def zip_section(template_entries, excel_instances, section, unmatched):
+    output = {}
+    for _label, value_keys, excel_cells in align_bom_rows(template_entries, excel_instances, section, unmatched):
+        for col_idx, keys in enumerate(value_keys):
+            if col_idx >= len(excel_cells) or not keys:
+                continue
+            row_no, col_no = excel_cells[col_idx]
+            for key in keys:
+                output.setdefault(key, []).append((row_no, col_no))
     return output
+
+
+# Placeholder key suffixes that identify an editable BOM table cell's role - every template
+# uses these exact suffixes consistently (confirmed against all 4 bundled templates).
+BOM_ROLE_SUFFIXES = OrderedDict([
+    ("_make", "Make"),
+    ("_capacity", "Capacity"),
+    ("_qty", "Quantity"),
+])
+
+
+def _bom_role_for_keys(keys):
+    """Returns the display role name ('Make'/'Capacity'/'Quantity') for a template column's
+    placeholder key(s), or None if none of them are a required BOM role (e.g. "_remarks",
+    "_description" alone). A column can carry more than one key (e.g. Load Wiring's combined
+    "Description & Make" column has both a "_description" and a "_make" key) - the column
+    counts as a "Make" column if any of its keys end with "_make"."""
+    for key in keys:
+        for suffix, role in BOM_ROLE_SUFFIXES.items():
+            if key.endswith(suffix):
+                return role
+    return None
+
+
+def validate_bom_editable_fields_filled(wb, detected_type):
+    """
+    Validation 3 (BOM completeness): every row of the editable BOM tables (the "Bill Of
+    Material..." sections listed in SECTION_TEMPLATE_HEADERS - Solar System / Luminaries &
+    Fans / Load Wiring) must have its Make, Capacity and Quantity cells filled in. SYSTEM
+    FUNCTIONALITY PARAMETERS (and any other non-BOM section, e.g. RMS/Header/Image/Annexure)
+    is out of scope for this check, matching the same "out of scope" sections already excluded
+    from template-key coverage elsewhere in this module.
+
+    Raises ICCValidationError listing every blank field found (not just the first) so the
+    caller can fix them all in one pass; returns nothing on success.
+    """
+    ws = wb[DATA_SHEET]
+    instances = load_data_ingestion_map(wb)
+
+    template_path = os.path.join(TEMPLATE_DIR, TEMPLATE_BY_TYPE[detected_type])
+    with open(template_path) as f:
+        template = json.load(f)
+
+    by_section = OrderedDict()
+    for inst in instances:
+        by_section.setdefault(inst["section"], []).append(inst)
+
+    blank_fields = []
+    unmatched = []
+    for section, section_instances in by_section.items():
+        header_text = SECTION_TEMPLATE_HEADERS.get(section)
+        if not header_text:
+            # Not an editable BOM table (SYSTEM FUNCTIONALITY PARAMETERS / RMS / Header /
+            # Image / Annexure) - out of scope for this check.
+            continue
+
+        rows = extract_section_rows(template, header_text)
+        template_entries = extract_bom_entries(rows)
+
+        for label, value_keys, excel_cells in align_bom_rows(template_entries, section_instances, section, unmatched):
+            for col_idx, keys in enumerate(value_keys):
+                if col_idx >= len(excel_cells) or not keys:
+                    continue
+                role = _bom_role_for_keys(keys)
+                if role is None:
+                    continue
+                row_no, col_no = excel_cells[col_idx]
+                value = ws.cell(row=row_no, column=col_no).value
+                if value is None or str(value).strip() == "":
+                    blank_fields.append(f"{section} > '{label}' - {role} is empty")
+
+    if blank_fields:
+        raise ICCValidationError(
+            "The uploaded ICC report has empty required fields in the editable BOM tables "
+            "(Make/Capacity/Quantity must be filled in):\n- " + "\n- ".join(blank_fields)
+        )
 
 
 def convert_icc_report(wb, detected_type):
@@ -652,5 +742,6 @@ def validate_and_convert(xlsx_path, requested_system_type):
         raise ICCValidationError(f"Uploaded file is not a valid Excel (.xlsx) file: {exc}") from exc
 
     detected_type = validate_icc_report(wb, requested_system_type)
+    validate_bom_editable_fields_filled(wb, detected_type)
     data, fallback_fields, unmatched_fields = convert_icc_report(wb, detected_type)
     return detected_type, data, fallback_fields, unmatched_fields
