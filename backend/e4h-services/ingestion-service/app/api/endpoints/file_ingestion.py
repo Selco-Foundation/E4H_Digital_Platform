@@ -1,5 +1,6 @@
 import io
 import json
+import math
 import os
 import tempfile
 from datetime import datetime, timedelta
@@ -2850,6 +2851,20 @@ async def create_fielplan_facilities(
                                         df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
                                 if should_link:
+                                    custom_capacity_val = row.get(custom_total_system_capacity_col, None) \
+                                        if custom_total_system_capacity_col else None
+                                    custom_capacity_str = str(custom_capacity_val).strip() \
+                                        if pd.notna(custom_capacity_val) else ""
+                                    if custom_capacity_str:
+                                        try:
+                                            if not math.isfinite(float(custom_capacity_str)):
+                                                raise ValueError(custom_capacity_str)
+                                        except ValueError:
+                                            df.at[index, 'Field Plan Linking Status'] = (
+                                                f"Error: Custom Total System Capacity '{custom_capacity_str}' must be numeric"
+                                            )
+                                            continue
+
                                     pending_bulk_fieldplan_links.append(
                                         (
                                             index,
