@@ -189,6 +189,12 @@ const getSavedTemplateDisplayName = (template = {}) => {
   return `${getSavedTemplateSystemType(template) || "ICC"}_${getSavedTemplateCapacity(template) || "template"}.xlsx`.replace(/\s+/g, "_");
 };
 
+const getICCUploadErrorMessage = (error) => (
+  error?.response?.data?.detail?.message ||
+  CommonUtils.getApiErrorMessage(error) ||
+  "CORE_COMMON_ERROR"
+);
+
 const getTemplateForRow = (row, templates = []) => {
   const systemTypeName = getICCApiSystemType(row.systemType?.name);
   const systemTypeCode = row.systemType?.code;
@@ -487,10 +493,19 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
         };
       }));
     } catch (error) {
-      console.error("Error saving ICC report", error);
+      const uploadError = getICCUploadErrorMessage(error);
+
+      setRows((prevRows) => prevRows.map((row) => {
+        if (row.id !== rowId) return row;
+
+        return {
+          ...row,
+          file: null,
+        };
+      }));
       setToast?.({
         key: "error",
-        label: CommonUtils.getApiErrorMessage(error) || "CORE_COMMON_ERROR",
+        label: uploadError,
         translate: false,
       });
     } finally {
