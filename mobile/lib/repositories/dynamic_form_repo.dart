@@ -56,6 +56,7 @@ class BomRepository {
       final af = row.activityFacility;
 
       final facilityName = af.facility?.facilityName?.toString();
+      final facilityType = af.facility?.facilityType?.toString();
       final address = _formatFacilityAddress(af);
       final projectNumber = af.fieldPlan?.project?.projectNumber?.toString();
       final vendorName = af.facility?.vendorName;
@@ -72,6 +73,7 @@ class BomRepository {
       if (facilityName != null && facilityName.trim().isNotEmpty) {
         enriched['health_facility_name'] = facilityName.trim();
       }
+      _putIfNotBlank(enriched, 'health_facility_type', facilityType);
       if (address != null && address.trim().isNotEmpty) {
         enriched['health_facility_address'] = address.trim();
       }
