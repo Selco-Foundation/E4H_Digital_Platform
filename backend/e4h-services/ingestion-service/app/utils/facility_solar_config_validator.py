@@ -56,8 +56,8 @@ ERR_CUSTOM_CAPACITY_REQUIRED = (
 
 # Fallback when MDMS rules are not yet loaded (codes must match facility.* masters).
 _DEFAULT_RULES: List[Dict[str, Any]] = [
-    {"facilityType": "SC", "systemType": "DC_OFF_GRID", "solutionDesignType": "OFF_GRID_DC_SYSTEM", "capacityKwp": 0.25},
-    {"facilityType": "SC", "systemType": "DC_OFF_GRID", "solutionDesignType": "OFF_GRID_DC_SYSTEM", "capacityKwp": 0.5},
+    {"facilityType": "SC", "systemType": "DC", "solutionDesignType": "OFF_GRID_DC_SYSTEM", "capacityKwp": 0.25},
+    {"facilityType": "SC", "systemType": "DC", "solutionDesignType": "OFF_GRID_DC_SYSTEM", "capacityKwp": 0.5},
     {"facilityType": "SC", "systemType": "AC_OFF_GRID", "solutionDesignType": "NO_DELIVERY_NO_COLDCHAIN", "capacityKwp": 1.0},
     {"facilityType": "SC", "systemType": "AC_OFF_GRID", "solutionDesignType": "DELIVERY_ROOM_ONLY", "capacityKwp": 2.0},
     {"facilityType": "SC", "systemType": "AC_OFF_GRID", "solutionDesignType": "DELIVERY_ROOM_COLDCHAIN", "capacityKwp": 3.0},
@@ -67,14 +67,25 @@ _DEFAULT_RULES: List[Dict[str, Any]] = [
     {"facilityType": "PHC", "systemType": "AC_OFF_GRID", "solutionDesignType": "PHC_COLDCHAIN_LAB", "capacityKwp": 5.0},
     {"facilityType": "PHC", "systemType": "AC_OFF_GRID", "solutionDesignType": "PHC_DELIVERY_COLDCHAIN_LAB", "capacityKwp": 6.0},
     {"facilityType": "PHC", "systemType": "AC_OFF_GRID", "solutionDesignType": "PHC_DELIVERY_COLDCHAIN_LAB_DENTAL_ADMIN", "capacityKwp": 8.0},
-    {"facilityType": "PHC", "systemType": "AC_HYBRID", "solutionDesignType": "AC_HYBRID_SYSTEM", "capacityKwp": 7.0},
-    {"facilityType": "PHC", "systemType": "AC_HYBRID", "solutionDesignType": "AC_HYBRID_SYSTEM", "capacityKwp": 10.0},
+    {"facilityType": "PHC", "systemType": "HYBRID", "solutionDesignType": "AC_HYBRID_SYSTEM", "capacityKwp": 7.0},
+    {"facilityType": "PHC", "systemType": "HYBRID", "solutionDesignType": "AC_HYBRID_SYSTEM", "capacityKwp": 10.0},
     {"facilityType": "ANGANWADI", "systemType": "AC_OFF_GRID", "solutionDesignType": "LIGHT_FAN_EQUIPMENT", "capacityKwp": 0.63},
     {"facilityType": "ANGANWADI", "systemType": "AC_OFF_GRID", "solutionDesignType": "LIGHT_FAN_EQUIPMENT", "capacityKwp": 1.0},
     {"facilityType": "ANGANWADI", "systemType": "DC_OFF_GRID", "solutionDesignType": "ONLY_LIGHT_FAN", "capacityKwp": 0.25},
 ]
 
 SolarRulesIndex = Dict[Tuple[str, str], Set[Tuple[str, float]]]
+
+# facility.SystemType now has separate codes per phase (e.g. AC_ON_GRID_SINGLE_PHASE /
+# AC_ON_GRID_THREE_PHASE, HYBRID_SINGLE_PHASE / HYBRID_THREE_PHASE, AC_OFF_GRID_THREE_PHASE),
+# but facility.FacilitySolarConfigurationRule still keys its combos on the base system type
+# (DC, AC_OFF_GRID, HYBRID, AC_ON_GRID) - phase doesn't change which combos are allowed. Strip
+# the phase suffix before looking a system type code up against the rules index.
+SYSTEM_TYPE_PHASE_SUFFIX_RE = re.compile(r"_(?:SINGLE|THREE)_PHASE$", re.IGNORECASE)
+
+
+def normalize_system_type_code(system_code: str) -> str:
+    return SYSTEM_TYPE_PHASE_SUFFIX_RE.sub("", system_code or "")
 
 
 def _cell_str(val: Any) -> str:
@@ -237,9 +248,9 @@ def validate_facility_solar_configuration_row(
     facility_code = resolve_display_to_code(
         facility_display, name_to_code_by_column.get(COLUMN_CODE_FACILITY_TYPE, {})
     )
-    system_code = resolve_display_to_code(
+    system_code = normalize_system_type_code(resolve_display_to_code(
         system_display, name_to_code_by_column.get(COLUMN_CODE_SYSTEM_TYPE, {})
-    )
+    ))
     solution_code = resolve_display_to_code(
         solution_display, name_to_code_by_column.get(COLUMN_CODE_SOLUTION_DESIGN, {})
     )
