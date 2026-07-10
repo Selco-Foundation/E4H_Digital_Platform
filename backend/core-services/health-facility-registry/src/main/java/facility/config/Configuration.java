@@ -80,6 +80,9 @@ public class Configuration {
     @Value("${egov.hrms.create.endpoint}")
     private String hrmsCreateEndPoint;
 
+    @Value("${egov.hrms.update.username.endpoint}")
+    private String hrmsUpdateUsernameEndPoint;
+
 //    @Value("${egov.hrms.create.endpoint}")
 //    private String hrmsCreateEndpoint;
 

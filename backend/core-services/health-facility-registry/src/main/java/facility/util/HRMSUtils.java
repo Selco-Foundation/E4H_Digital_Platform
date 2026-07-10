@@ -51,6 +51,48 @@ public class HRMSUtils {
         return employeeResponse.getEmployees().get(0);
     }
 
+    /**
+     * Searches for the first employee (active or inactive) assigned to the given boundary
+     * (facility) code. Does not filter by active status so callers can detect and reactivate an
+     * existing-but-inactive POC employee rather than mistakenly creating a duplicate.
+     * Returns null (rather than throwing) when no employee is found, since that is a valid
+     * outcome for callers reconciling a facility's HRMS-side username.
+     */
+    public Employee getEmployeeByBoundaryCode(Object request, String boundaryCode) {
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in&boundaryCodes=" + boundaryCode + "&roles=COMPLAINANT&searchOnlyInBoundary=true";
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            return null;
+        }
+        return employeeResponse.getEmployees().get(0);
+    }
+
+    /**
+     * Calls egov-hrms {@code /employees/_update_username} to force eg_user.username to match
+     * eg_hrms_employee.code for the given employee uuid.
+     */
+    public boolean updateHrmsUsername(Object requestInfo, String uuid, String code, String tenantId) {
+        String url = config.getHrmsHost() + config.getHrmsUpdateUsernameEndPoint();
+        Map<String, Object> employee = new HashMap<>();
+        employee.put("tenantId", tenantId);
+        employee.put("uuid", uuid);
+        employee.put("code", code);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("RequestInfo", requestInfo);
+        body.put("employee", employee);
+        try {
+            serviceRequestRepository.fetchResult(new StringBuilder(url), body);
+            return true;
+        } catch (Exception e) {
+            log.error("Error calling HRMS update-username for uuid {}: {}", uuid, e.getMessage(), e);
+            return false;
+        }
+    }
+
     public List<Employee> getUserByPhoneNumber(Object request, String phoneNumber) {
         String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()+ "?tenantId=in&phone="+phoneNumber;
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
