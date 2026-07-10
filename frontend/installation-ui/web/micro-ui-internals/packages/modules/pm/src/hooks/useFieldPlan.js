@@ -14,7 +14,9 @@ const useFieldPlan = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, s
   const { tenantId, ids, projectIds } = queryFilter;
 
   const filter = {
-    FieldPlans : {}
+    FieldPlans : {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+    }
   };
 
   if (tenantId) {

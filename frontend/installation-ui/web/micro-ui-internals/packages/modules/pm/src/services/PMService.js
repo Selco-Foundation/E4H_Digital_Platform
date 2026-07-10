@@ -353,5 +353,72 @@ export const PMService = {
     }
   },
 
+  downloadFieldPlanBOMDataTemplate: async (projectId, fieldPlanId) => {
+    return await IngestionService.downloadFieldPlanBOMDataTemplate({
+      fieldplan_id: fieldPlanId,
+      project_id: projectId,
+    });
+  },
+
+  uploadFieldPlanBOMDataTemplate: async (file, fieldPlanId) => {
+    const extractBlobFile = (response) => {
+      const disposition = response.headers["content-disposition"];
+      const filename = disposition?.split("filename=")[1]?.replace(/"/g, "");
+
+      const blobData = new Blob([response.data], {
+        type: response.headers["content-type"],
+      });
+
+      return {
+        name: filename,
+        data: blobData,
+      };
+    };
+
+    let validatedFile;
+
+    try {
+      const validationRequest = new FormData();
+      validationRequest.append("bom_file", file);
+      validationRequest.append("fieldplan_id", fieldPlanId);
+      const validationResponse = await IngestionService.validateFieldPlanBOMData(validationRequest);
+
+      validatedFile = extractBlobFile(validationResponse);
+      const errorCount = parseInt(validationResponse.headers["x-error-count"] || "0", 10);
+      if (errorCount) {
+        return {
+          errorCode: "INVALID_DATA",
+          file: validatedFile,
+          errorCount: errorCount,
+        };
+      }
+    } catch (error) {
+      console.error("Error validating BOM data", error);
+
+      if (error?.response?.status === 400) {
+        return {
+          errorCode: "INVALID_TEMPLATE",
+        };
+      }
+
+      throw error;
+    }
+
+    try {
+      const uploadRequest = new FormData();
+      uploadRequest.append("bom_file", validatedFile.data);
+      uploadRequest.append("fieldplan_id", fieldPlanId);
+      const uploadResponse = await IngestionService.uploadFieldPlanBOMData(uploadRequest);
+
+      const uploadedFile = extractBlobFile(uploadResponse);
+      return {
+        file: uploadedFile,
+      };
+    } catch (error) {
+      console.error("Error uploading BOM data", error);
+      throw error;
+    }
+  },
+
 
 }

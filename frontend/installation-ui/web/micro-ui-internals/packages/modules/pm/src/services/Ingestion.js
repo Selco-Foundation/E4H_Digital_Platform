@@ -148,4 +148,53 @@ export const IngestionService = {
       responseType: "blob",
     });
   },
+
+  downloadFieldPlanBOMDataTemplate: async (requestData) => {
+    const endpoint = "/ingestion-service/template/fieldPlanBomIngestionTemplate";
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    await CustomRequest({
+      url: endpoint,
+      data: requestData,
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers: headers,
+      fileDownload: true,
+      responseType: "blob",
+      defaultFilename: "bom-template.xlsx",
+    });
+  },
+
+  validateFieldPlanBOMData: async (filledBOMData) => {
+    const endpoint = "/ingestion-service/ingest/fieldPlanBomValidateData";
+
+    return await CustomRequest({
+      url: endpoint,
+      data: filledBOMData,
+      userService: true,
+      method: "POST",
+      attachAuthHeaders: true,
+      auth: true,
+      attachRequestInfo: (data, RequestInfo) => { data.append("request_info", JSON.stringify(RequestInfo)); },
+      responseType: "blob",
+    });
+  },
+
+  uploadFieldPlanBOMData: async (validatedBOMData) => {
+    const endpoint = "/ingestion-service/ingest/createFieldPlanBom";
+
+    return await CustomRequest({
+      url: endpoint,
+      data: validatedBOMData,
+      userService: true,
+      method: "POST",
+      attachAuthHeaders: true,
+      auth: true,
+      attachRequestInfo: (data, RequestInfo) => { data.append("request_info", JSON.stringify(RequestInfo)); },
+      responseType: "blob",
+    });
+  },
 }
