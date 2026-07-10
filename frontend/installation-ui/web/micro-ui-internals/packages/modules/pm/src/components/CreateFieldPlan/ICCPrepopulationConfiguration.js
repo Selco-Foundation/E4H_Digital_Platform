@@ -302,6 +302,8 @@ const getRowsFromSavedTemplates = (templates = [], systemTypeMaster = []) => (
   })
 );
 
+const hasSystemCapacityRows = (rows = []) => rows.some((row) => row.systemType || row.totalSystemCapacity);
+
 const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
   const { t, name, uploadFacilityData, iccTemplates = [], validationAttempt = 0, fieldPlanId, setToast, setBlockUI } = props;
@@ -362,7 +364,11 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     const savedRows = getRowsFromSavedTemplates(savedTemplates, systemTypeMaster);
 
     if (savedRows.length) {
-      setRows(savedRows);
+      setRows((prevRows) => (
+        hasSystemCapacityRows(prevRows)
+          ? getUniqueRows(applySavedTemplatesToRows(prevRows, savedTemplates))
+          : savedRows
+      ));
     }
   }, [data?.uploadFacilityData, savedTemplates, systemTypeMDMSResponse, uploadFacilityData]);
 
