@@ -58,10 +58,12 @@ public class HRMSUtils {
      * Returns null (rather than throwing) when no employee is found, since that is a valid
      * outcome for callers reconciling a facility's HRMS-side username.
      */
-    public Employee getEmployeeByBoundaryCode(Object request, String boundaryCode) {
+    public Employee getEmployeeByBoundaryCode(Object requestInfo, String boundaryCode) {
         String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
                 + "?tenantId=in&boundaryCodes=" + boundaryCode + "&roles=COMPLAINANT&searchOnlyInBoundary=true";
-        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        Map<String, Object> searchRequest = new HashMap<>();
+        searchRequest.put("RequestInfo", requestInfo);
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
