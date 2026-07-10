@@ -90,6 +90,7 @@ class ActivityFacilityWorkflowRepository {
     required Isar isar,
     required String activityFacilityId,
     required List<Mdms<SolutionDesignType>> solutionDesignList,
+    required String? facilitySystemType,
     required String? facilitySolutionDesignCode,
   }) async {
     String fallback = SYSTEM_TYPE.DC.name;
@@ -100,6 +101,11 @@ class ActivityFacilityWorkflowRepository {
 
     final saved = spec?.system.trim();
     if (saved != null && saved.isNotEmpty) return saved;
+
+    final directSystemType = facilitySystemType?.trim();
+    if (directSystemType != null && directSystemType.isNotEmpty) {
+      return directSystemType;
+    }
 
     if (facilitySolutionDesignCode != null &&
         facilitySolutionDesignCode.trim().isNotEmpty) {

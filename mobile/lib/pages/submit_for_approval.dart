@@ -261,12 +261,15 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
 
     final facilityCode = project?.activityFacility.facility?.facilityDetails
         ?.solar_solution_design_type;
+    final facilitySystemType =
+        project?.activityFacility.facility?.facilityDetails?.systemType;
 
     final sys = await ActivityFacilityWorkflowRepository()
         .getActivityFacilitySystem(
             isar: isar,
             activityFacilityId: activityFacilityId,
             solutionDesignList: solutionDesignList,
+            facilitySystemType: facilitySystemType,
             facilitySolutionDesignCode: facilityCode);
 
     if (!mounted) return;

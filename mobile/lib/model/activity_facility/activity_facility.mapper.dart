@@ -1303,6 +1303,9 @@ class FacilityDetailsMapper extends ClassMapperBase<FacilityDetails> {
       v.solar_solution_design_type;
   static const Field<FacilityDetails, String> _f$solar_solution_design_type =
       Field('solar_solution_design_type', _$solar_solution_design_type);
+  static String? _$systemType(FacilityDetails v) => v.systemType;
+  static const Field<FacilityDetails, String> _f$systemType =
+      Field('systemType', _$systemType, mode: FieldMode.member);
 
   @override
   final MappableFields<FacilityDetails> fields = const {
@@ -1312,6 +1315,7 @@ class FacilityDetailsMapper extends ClassMapperBase<FacilityDetails> {
     #pocContact: _f$pocContact,
     #pocDesignation: _f$pocDesignation,
     #solar_solution_design_type: _f$solar_solution_design_type,
+    #systemType: _f$systemType,
   };
   @override
   final bool ignoreNull = true;

@@ -107,6 +107,8 @@ void saveCacheSpecification(
 
   final selectedSolutionDesignCode = project
       ?.activityFacility.facility?.facilityDetails?.solar_solution_design_type;
+  final selectedSystemType =
+      project?.activityFacility.facility?.facilityDetails?.systemType?.trim();
 
   final matchedSystemCode = solutionDesignList
       .map((m) => m.data)
@@ -114,7 +116,9 @@ void saveCacheSpecification(
       ?.systemCode;
 
   final systemCode =
-      matchedSystemCode ?? systemList.first.data.system.lastOrNull?.code;
+      (selectedSystemType != null && selectedSystemType.isNotEmpty)
+          ? selectedSystemType
+          : matchedSystemCode ?? systemList.first.data.system.lastOrNull?.code;
   if (systemCode == null) return;
 
   final systemName = systemList.first.data.system

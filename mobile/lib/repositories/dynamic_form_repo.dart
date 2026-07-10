@@ -579,8 +579,18 @@ class BomRepository {
           .findFirst();
 
       final saved = spec?.system.trim();
-      final system =
-          (saved != null && saved.isNotEmpty) ? saved : SYSTEM_TYPE.DC.name;
+      final workflow = await isar.cacheActivityFacilityWorkflows
+          .where()
+          .activityFacilityIdEqualTo(activityFacilityId)
+          .findFirst();
+      final facilitySystemType =
+          workflow?.activityFacility.facility?.facilityDetails?.systemType;
+      final directSystemType = facilitySystemType?.trim();
+      final system = (saved != null && saved.isNotEmpty)
+          ? saved
+          : (directSystemType != null && directSystemType.isNotEmpty)
+              ? directSystemType
+              : SYSTEM_TYPE.DC.name;
       final enriched = await enrichWithActivityFacilityContext(
         isar: isar,
         activityFacilityId: activityFacilityId,

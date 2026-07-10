@@ -226,12 +226,15 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
     final facilityCode = projectWorkflow?.activityFacility.facility
         ?.facilityDetails?.solar_solution_design_type;
+    final facilitySystemType =
+        projectWorkflow?.activityFacility.facility?.facilityDetails?.systemType;
 
     final sys = await ActivityFacilityWorkflowRepository()
         .getActivityFacilitySystem(
             isar: isar,
             activityFacilityId: _currentProjectId!,
             solutionDesignList: solutionDesignList,
+            facilitySystemType: facilitySystemType,
             facilitySolutionDesignCode: facilityCode);
 
     if (!mounted) return;

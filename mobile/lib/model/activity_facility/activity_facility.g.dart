@@ -5366,6 +5366,11 @@ const FacilityDetailsSchema = Schema(
       id: 5,
       name: r'solar_solution_design_type',
       type: IsarType.string,
+    ),
+    r'systemType': PropertySchema(
+      id: 6,
+      name: r'systemType',
+      type: IsarType.string,
     )
   },
   estimateSize: _facilityDetailsEstimateSize,
@@ -5416,6 +5421,12 @@ int _facilityDetailsEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.systemType;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -5431,6 +5442,7 @@ void _facilityDetailsSerialize(
   writer.writeString(offsets[3], object.pocDesignation);
   writer.writeString(offsets[4], object.pocName);
   writer.writeString(offsets[5], object.solar_solution_design_type);
+  writer.writeString(offsets[6], object.systemType);
 }
 
 FacilityDetails _facilityDetailsDeserialize(
@@ -5446,6 +5458,7 @@ FacilityDetails _facilityDetailsDeserialize(
   object.pocDesignation = reader.readStringOrNull(offsets[3]);
   object.pocName = reader.readStringOrNull(offsets[4]);
   object.solar_solution_design_type = reader.readStringOrNull(offsets[5]);
+  object.systemType = reader.readStringOrNull(offsets[6]);
   return object;
 }
 
@@ -5467,6 +5480,8 @@ P _facilityDetailsDeserializeProp<P>(
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
+      return (reader.readStringOrNull(offset)) as P;
+    case 6:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -6396,6 +6411,160 @@ extension FacilityDetailsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'solar_solution_design_type',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'systemType',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'systemType',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'systemType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'systemType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'systemType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'systemType',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'systemType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'systemType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'systemType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'systemType',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'systemType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FacilityDetails, FacilityDetails, QAfterFilterCondition>
+      systemTypeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'systemType',
         value: '',
       ));
     });

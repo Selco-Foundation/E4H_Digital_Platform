@@ -216,6 +216,7 @@ class FacilityDetails with FacilityDetailsMappable {
   String? pocDesignation;
   @MappableField(key: 'solar_solution_design_type')
   String? solar_solution_design_type;
+  String? systemType;
 
   FacilityDetails();
 
@@ -226,8 +227,8 @@ class FacilityDetails with FacilityDetailsMappable {
       ..pocName = m['pocName']?.toString()
       ..pocContact = m['pocContact']?.toString()
       ..pocDesignation = m['pocDesignation']?.toString()
-      ..solar_solution_design_type =
-          m['solar_solution_design_type']?.toString();
+      ..solar_solution_design_type = m['solar_solution_design_type']?.toString()
+      ..systemType = m['systemType']?.toString();
   }
 
   Map<String, dynamic> toMap() => {
@@ -237,6 +238,7 @@ class FacilityDetails with FacilityDetailsMappable {
         'pocContact': pocContact,
         'pocDesignation': pocDesignation,
         'solar_solution_design_type': solar_solution_design_type,
+        'systemType': systemType,
       };
 }
 

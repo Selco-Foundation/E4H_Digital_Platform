@@ -203,6 +203,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   .facility
                   ?.facilityDetails
                   ?.solar_solution_design_type;
+              final selectedSystemType = activityFacilityWorkflow
+                  ?.activityFacility.facility?.facilityDetails?.systemType
+                  ?.trim();
 
               final matchedSystemCode = solutionDesign
                   .map((m) => m.data)
@@ -210,8 +213,11 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       (sd) => sd.code == selectedSolutionDesignCode)
                   ?.systemCode;
 
-              final systemCode = matchedSystemCode ??
-                  system.first.data.system.firstOrNull?.code;
+              final systemCode =
+                  (selectedSystemType != null && selectedSystemType.isNotEmpty)
+                      ? selectedSystemType
+                      : matchedSystemCode ??
+                          system.first.data.system.firstOrNull?.code;
 
               selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
                   asset.code.toUpperCase() == currentAssetType.toUpperCase());
@@ -293,8 +299,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     if (statuses[Permission.camera] != PermissionStatus.granted) {
       context.showSnackBar(
         SnackBar(
-            content:
-                Text(context.translate(i18.addNewAsset.cameraPermissionRequired))),
+            content: Text(
+                context.translate(i18.addNewAsset.cameraPermissionRequired))),
       );
     }
 
