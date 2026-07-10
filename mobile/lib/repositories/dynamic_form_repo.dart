@@ -113,7 +113,6 @@ class BomRepository {
       _putIfNotBlank(
           enriched, 'solar_battery_capacity', batterySummary.capacity);
       _putIfNotBlank(enriched, 'solar_battery_qty', batterySummary.quantity);
-      _putIfNotBlank(enriched, 'disp_battery_type', batterySummary.batteryType);
 
       return enriched;
     } catch (_) {
