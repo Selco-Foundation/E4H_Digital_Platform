@@ -459,11 +459,15 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     }));
   };
 
-  const deleteRow = (rowId) => {
-    setRows((prevRows) => {
-      const updatedRows = prevRows.filter((row) => row.id !== rowId);
-      return updatedRows.length ? updatedRows : getDefaultRows();
-    });
+  const deletePreFillingTemplate = (rowId) => {
+    setRows((prevRows) => prevRows.map((row) => {
+      if (row.id !== rowId) return row;
+
+      return {
+        ...row,
+        file: null,
+      };
+    }));
   };
 
   const handleFileUpload = async (rowId, event) => {
@@ -953,17 +957,18 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                       <DustbinIcon />
                     </span>
                   )}
-                  onButtonClick={() => deleteRow(row.id)}
+                  onButtonClick={() => deletePreFillingTemplate(row.id)}
                   style={{
                     border: "none",
                     backgroundColor: "transparent",
-                    cursor: "pointer",
+                    cursor: row.file ? "pointer" : "not-allowed",
                     height: "40px",
                     width: "40px",
                     padding: "0px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    opacity: row.file ? 1 : 0.5,
                   }}
                   aria-label={t("CORE_COMMON_DELETE")}
                 />
