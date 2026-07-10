@@ -887,6 +887,8 @@ public class FacilityService {
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true)
+                    .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
+                    .facilityStatus(facility.getFacilityStatus() != null ? facility.getFacilityStatus() : existingFacility.getFacilityStatus())
                     .build();
 
             try{
