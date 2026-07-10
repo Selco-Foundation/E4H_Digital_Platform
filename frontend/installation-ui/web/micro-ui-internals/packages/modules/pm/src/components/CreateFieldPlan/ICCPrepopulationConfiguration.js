@@ -302,6 +302,22 @@ const getRowsFromSavedTemplates = (templates = [], systemTypeMaster = []) => (
   })
 );
 
+const getRowsFromSystemTypeCapacities = (systemTypeCapacities = [], systemTypeMaster = []) => (
+  systemTypeCapacities.map((systemTypeCapacity, index) => {
+    const systemTypeValue = systemTypeCapacity.systemType || systemTypeCapacity.systemTypeCode || systemTypeCapacity.code;
+    const capacityValue = systemTypeCapacity.totalSystemCapacity || systemTypeCapacity.totalCapacity || systemTypeCapacity.capacity;
+    const systemType = getSystemTypeOption(systemTypeValue, systemTypeMaster);
+    const capacity = getOption(capacityValue);
+
+    return {
+      ...getEmptyRow(`icc-row-api-${systemType.code || systemType.name || index}-${normalizeCapacity(capacityValue)}`),
+      systemType,
+      totalSystemCapacity: capacity,
+      capacityOptions: capacity ? [capacity] : [],
+    };
+  })
+);
+
 const hasSystemCapacityRows = (rows = []) => rows.some((row) => row.systemType || row.totalSystemCapacity);
 
 const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
@@ -309,6 +325,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
   const { t, name, uploadFacilityData, iccTemplates = [], validationAttempt = 0, fieldPlanId, setToast, setBlockUI } = props;
   const [rows, setRows] = useState(data[name] || getDefaultRows());
   const [savedTemplates, setSavedTemplates] = useState([]);
+  const [systemTypeCapacities, setSystemTypeCapacities] = useState([]);
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const { data: systemTypeMDMSResponse } = Digit.Hooks.useCustomMDMS(
     tenantId,
@@ -355,9 +372,51 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
   }, [fieldPlanId]);
 
   useEffect(() => {
+    const searchSystemTypeCapacities = async () => {
+      if (!fieldPlanId) {
+        return;
+      }
+
+      try {
+        const capacities = await FieldPlanService.searchFieldPlanFacilitySystemTypeCapacities(fieldPlanId);
+        setSystemTypeCapacities(capacities || []);
+      } catch (error) {
+        console.error("Error fetching ICC system type capacities", error);
+        setSystemTypeCapacities([]);
+      }
+    };
+
+    searchSystemTypeCapacities();
+  }, [fieldPlanId]);
+
+  useEffect(() => {
+    if (!systemTypeCapacities?.length) {
+      return;
+    }
+
+    const apiRows = getRowsFromSystemTypeCapacities(systemTypeCapacities, systemTypeMaster);
+
+    setRows((prevRows) => {
+      const updatedRows = apiRows.map((apiRow) => {
+        const existingRow = prevRows.find((prevRow) => getRowKey(prevRow) === getRowKey(apiRow));
+
+        return existingRow ? {
+          ...apiRow,
+          file: existingRow.file,
+          template: existingRow.template,
+          templateFile: existingRow.templateFile,
+          templateOptions: existingRow.templateOptions,
+        } : apiRow;
+      });
+
+      return getUniqueRows(applySavedTemplatesToRows(updatedRows.length ? updatedRows : getDefaultRows(), savedTemplates));
+    });
+  }, [savedTemplates, systemTypeCapacities, systemTypeMDMSResponse]);
+
+  useEffect(() => {
     const uploadedFacilityFile = uploadFacilityData || data?.uploadFacilityData;
 
-    if (uploadedFacilityFile || !savedTemplates?.length) {
+    if (uploadedFacilityFile || systemTypeCapacities?.length || !savedTemplates?.length) {
       return;
     }
 
@@ -377,7 +436,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       const uploadedFacilityFile = uploadFacilityData || data?.uploadFacilityData;
       const file = uploadedFacilityFile?.originalData || uploadedFacilityFile?.data || uploadedFacilityFile;
 
-      if (!file) {
+      if (!file || systemTypeCapacities?.length) {
         return;
       }
 
@@ -444,7 +503,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     };
 
     parseFacilityData();
-  }, [data?.uploadFacilityData, savedTemplates, systemTypeMDMSResponse, uploadFacilityData]);
+  }, [data?.uploadFacilityData, savedTemplates, systemTypeCapacities, systemTypeMDMSResponse, uploadFacilityData]);
 
   useEffect(() => {
     if (!savedTemplates?.length) {
