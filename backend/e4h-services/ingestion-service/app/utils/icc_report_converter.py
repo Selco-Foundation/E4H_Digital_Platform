@@ -32,11 +32,25 @@ REQUIRED_MAP_COLUMNS = ("Section", "Field Label", "Cell Address", "Row No.", "Co
 
 # Public systemType values the /icc-reports endpoint accepts -> internal format key used by
 # TEMPLATE_BY_TYPE/SFP_FIELD_MAPS/detect_system_type().
+#
+# facility.SystemType now issues a separate MDMS code per phase (e.g. AC_ON_GRID_SINGLE_PHASE /
+# AC_ON_GRID_THREE_PHASE), but phase never changes which Excel cell maps to which template
+# key (see detect_system_type()'s docstring) - so every phase variant of a given system type
+# maps to the same internal key here. The pre-phase-split codes (DC_OFF_GRID, AC_HYBRID,
+# AC_ON_GRID) are kept as aliases for backward compatibility with any caller still sending them.
 SYSTEM_TYPE_TO_INTERNAL = {
+    # Legacy codes (pre phase-split), kept as aliases.
     "DC_OFF_GRID": "dc",
-    "AC_OFF_GRID": "ac_off",
     "AC_HYBRID": "hybrid",
     "AC_ON_GRID": "ac_on_grid",
+    # Current facility.SystemType MDMS codes.
+    "DC": "dc",
+    "AC_OFF_GRID": "ac_off",
+    "AC_OFF_GRID_THREE_PHASE": "ac_off",
+    "HYBRID_SINGLE_PHASE": "hybrid",
+    "HYBRID_THREE_PHASE": "hybrid",
+    "AC_ON_GRID_SINGLE_PHASE": "ac_on_grid",
+    "AC_ON_GRID_THREE_PHASE": "ac_on_grid",
 }
 
 TEMPLATE_BY_TYPE = {
