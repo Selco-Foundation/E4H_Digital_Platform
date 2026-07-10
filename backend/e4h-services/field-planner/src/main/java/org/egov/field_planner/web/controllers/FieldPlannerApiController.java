@@ -177,6 +177,34 @@ public class FieldPlannerApiController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @RequestMapping(value = "/facility/system_type_capacity/_search", method = RequestMethod.POST)
+    public ResponseEntity<SystemTypeCapacityResponse> searchFieldPlanFacilitySystemTypeCapacity(
+            @Valid @ModelAttribute URLParams urlParams,
+            @ApiParam(value = "Search field plan facilities by fieldPlanId and return the systemType/totalSystemCapacity combination from each facility's additionalDetails.", required = true) @Valid @RequestBody FieldPlanFacilitySearchRequest request
+    ) throws Exception {
+        log.trace("Entering searchFieldPlanFacilitySystemTypeCapacity endpoint");
+        log.info("Received field plan facility systemType/totalSystemCapacity search request for tenant: {}",
+                urlParams.getTenantId());
+
+        List<SystemTypeCapacity> systemTypeCapacities = fieldPlannerFacilityService.searchSystemTypeCapacity(
+                request,
+                urlParams.getLimit(),
+                urlParams.getOffset(),
+                urlParams.getTenantId(),
+                urlParams.getLastChangedSince(),
+                urlParams.getIncludeDeleted()
+        );
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        SystemTypeCapacityResponse response = SystemTypeCapacityResponse.builder()
+                .responseInfo(responseInfo)
+                .systemTypeCapacities(systemTypeCapacities)
+                .build();
+        log.info("Field plan facility systemType/totalSystemCapacity search completed, found {} results",
+                systemTypeCapacities.size());
+        log.trace("Exiting searchFieldPlanFacilitySystemTypeCapacity endpoint");
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
     @RequestMapping(value = "/facility/_unassign", method = RequestMethod.POST)
     public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityUnassign(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
         log.trace("Entering fieldPlanFacilityUnassign endpoint");
