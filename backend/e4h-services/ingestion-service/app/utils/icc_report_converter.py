@@ -760,13 +760,17 @@ def convert_icc_report(wb, detected_type):
             continue
 
         if not header_text:
+            # SYSTEM FUNCTIONALITY PARAMETERS (and its subsections) are out of scope for
+            # conversion - always emit null rather than whatever the Data_Ingestion_Map cell
+            # holds (which can be a static label, not an actual recorded value). Key resolution
+            # (sfp_map vs. fallback) is left unchanged so diagnostics keep working the same way.
             for inst in section_instances:
                 for idx, (row_no, col_no) in enumerate(inst["cells"]):
                     key = sfp_map.get((row_no, col_no))
                     if key is None:
                         key = make_fallback_key(section, inst["label"], idx, len(inst["cells"]))
                         fallback_fields.append((section, inst["label"], key))
-                    output[key] = ws.cell(row=row_no, column=col_no).value
+                    output[key] = None
             continue
 
         rows = extract_section_rows(template, header_text)
