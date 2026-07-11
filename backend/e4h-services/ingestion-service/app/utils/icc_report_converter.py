@@ -644,6 +644,9 @@ def _is_number_not_text(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+_BOM_ROLE_ORDER = list(BOM_ROLE_SUFFIXES.values())  # ["Make", "Capacity", "Quantity"]
+
+
 def validate_bom_editable_fields_filled(wb, detected_type):
     """
     Validation 3 (BOM completeness): every row of the editable BOM tables (the "Bill Of
@@ -654,8 +657,15 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     is out of scope for this check, matching the same "out of scope" sections already excluded
     from template-key coverage elsewhere in this module.
 
-    Raises ICCValidationError listing every failing field found (not just the first) so the
-    caller can fix them all in one pass; returns nothing on success.
+    Blank fields are reported as one summary line per section with a per-role count (e.g.
+    "5 Make, 5 Capacity, 5 Quantity missing") rather than one line per blank cell - an entirely
+    empty upload would otherwise produce a message with hundreds of near-identical lines, which
+    renders poorly on the frontend and isn't any more actionable than the count. Invalid (non-
+    blank but non-numeric) Quantity values are rare and specific, so those stay listed in full
+    per-row detail, same as before.
+
+    Raises ICCValidationError on any failure (blank and/or invalid-Quantity); returns nothing on
+    success.
     """
     ws = wb[DATA_SHEET]
     instances = load_data_ingestion_map(wb)
@@ -668,7 +678,8 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     for inst in instances:
         by_section.setdefault(inst["section"], []).append(inst)
 
-    field_errors = []
+    blank_counts_by_section = OrderedDict()  # section -> {role: count}
+    invalid_quantity_errors = []
     unmatched = []
     for section, section_instances in by_section.items():
         header_text = SECTION_TEMPLATE_HEADERS.get(section)
@@ -690,18 +701,27 @@ def validate_bom_editable_fields_filled(wb, detected_type):
                 row_no, col_no = excel_cells[col_idx]
                 value = ws.cell(row=row_no, column=col_no).value
                 if value is None or str(value).strip() == "":
-                    field_errors.append(f"{section} > '{label}' - {role} is empty")
+                    section_counts = blank_counts_by_section.setdefault(section, {})
+                    section_counts[role] = section_counts.get(role, 0) + 1
                 elif role == "Quantity" and not _is_number_not_text(value):
-                    field_errors.append(
+                    invalid_quantity_errors.append(
                         f"{section} > '{label}' - Quantity '{value}' must be a number, not text"
                     )
 
-    if field_errors:
-        raise ICCValidationError(
-            "The uploaded ICC report has invalid required fields in the editable BOM tables "
-            "(Make/Capacity/Quantity must be filled in, and Quantity must be a number):\n- "
-            + "\n- ".join(field_errors)
-        )
+    if not blank_counts_by_section and not invalid_quantity_errors:
+        return
+
+    error_lines = []
+    for section, section_counts in blank_counts_by_section.items():
+        parts = [f"{section_counts[role]} {role}" for role in _BOM_ROLE_ORDER if role in section_counts]
+        error_lines.append(f"{section}: {', '.join(parts)} missing")
+    error_lines.extend(invalid_quantity_errors)
+
+    raise ICCValidationError(
+        "The uploaded ICC report has invalid required fields in the editable BOM tables "
+        "(Make/Capacity/Quantity must be filled in, and Quantity must be a number):\n- "
+        + "\n- ".join(error_lines)
+    )
 
 
 def convert_icc_report(wb, detected_type):
