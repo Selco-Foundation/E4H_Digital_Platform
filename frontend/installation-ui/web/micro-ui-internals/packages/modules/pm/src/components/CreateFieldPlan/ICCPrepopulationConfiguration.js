@@ -39,7 +39,7 @@ const getTemplateFileNameForRow = (row, template) => {
     return "";
   }
 
-  return `${row.systemType?.code || template.systemType || "ICC"}_${row.totalSystemCapacity?.name || template.totalSystemCapacity || "template"}.xlsx`
+  return `${row.systemType?.name || row.systemType?.code || template.systemType || "ICC"}_${row.totalSystemCapacity?.name || template.totalSystemCapacity || "template"}.xlsx`
     .replace(/\s+/g, "_");
 };
 

@@ -118,6 +118,8 @@ const CreateFieldPlan = () => {
   const [getFormData, setGetFormData] = useState(null);
   const [backAlert, setBackAlert] = useState(null);
   const [boundaryData, setBoundaryData] = useState(null);
+  const [hasSavedFacilityUpload, setHasSavedFacilityUpload] = useState(false);
+  const [facilityUploadStatusLoading, setFacilityUploadStatusLoading] = useState(false);
   const [iccPrepopulationValidationAttempt, setICCPrepopulationValidationAttempt] = useState(0);
   const history = useHistory();
   const url = window.location.href;
@@ -205,6 +207,50 @@ const CreateFieldPlan = () => {
     }
 
   }, [createdFieldPlan?.id, currentKey])
+
+  useEffect(() => {
+    const selectedFieldPlanId = createdFieldPlan?.id || fieldPlanId;
+
+    if (!selectedFieldPlanId) {
+      setHasSavedFacilityUpload(false);
+      return;
+    }
+
+    let isCurrentRequest = true;
+    const fetchFacilityUploadStatus = async () => {
+      setFacilityUploadStatusLoading(true);
+
+      try {
+        const capacities = await FieldPlanService.searchFieldPlanFacilitySystemTypeCapacities(selectedFieldPlanId);
+
+        if (isCurrentRequest) {
+          setHasSavedFacilityUpload(Boolean(capacities?.length));
+        }
+      } catch (error) {
+        console.error("Error fetching field plan facility upload status", error);
+
+        if (isCurrentRequest) {
+          setHasSavedFacilityUpload(false);
+        }
+      } finally {
+        if (isCurrentRequest) {
+          setFacilityUploadStatusLoading(false);
+        }
+      }
+    };
+
+    fetchFacilityUploadStatus();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [createdFieldPlan?.id, fieldPlanId]);
+
+  useEffect(() => {
+    if (currentKey === 2 && !file && persistedFormData?.facilityData?.uploadFacilityData) {
+      setFile(persistedFormData.facilityData.uploadFacilityData);
+    }
+  }, [currentKey, file, persistedFormData?.facilityData?.uploadFacilityData]);
 
   useEffect(()=>{
     if (toast) {
@@ -418,6 +464,7 @@ const CreateFieldPlan = () => {
           label: t("PM_TOAST_FACILITY_DATA_UPLOAD_SUCCESS"),
         })
         setInvalidDataError(null);
+        setHasSavedFacilityUpload(true);
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
@@ -1069,6 +1116,15 @@ const CreateFieldPlan = () => {
     }
   }
 
+  const hasSuccessfulFacilityUpload = (data) => {
+    const uploadedFacilityData = data?.uploadFacilityData || file;
+    if (uploadedFacilityData) {
+      return !uploadedFacilityData?.errorCodes?.length;
+    }
+
+    return hasSavedFacilityUpload;
+  };
+
   const handleFormSubmit = async (data) => {
     switch (currentKey) {
       case 1:
@@ -1081,6 +1137,14 @@ const CreateFieldPlan = () => {
         }
         break;
       case 2:
+        if (!hasSuccessfulFacilityUpload(data)) {
+          setToast({
+            key: "error",
+            label: "UPLOAD_VALID_FACILITY_DATA",
+          });
+          return;
+        }
+
         setPersistedFormData((prev) => ({ ...prev, facilityData: data }));
         setCurrentKey((prev) => prev + 1);
         break;
@@ -1244,6 +1308,8 @@ const CreateFieldPlan = () => {
     switch (currentKey) {
       case 1:
         return persistedFormData.fieldPlanDetails;
+      case 2:
+        return persistedFormData.facilityData;
       case 3:
         return persistedFormData.iccPrepopulationConfiguration;
       case 4:
@@ -1251,7 +1317,7 @@ const CreateFieldPlan = () => {
     }
   }
 
-  if (projectDataLoading || fieldPlanDataLoading || activityAssignmentDataLoading) {
+  if (projectDataLoading || fieldPlanDataLoading || activityAssignmentDataLoading || facilityUploadStatusLoading) {
     return <Loader />;
   }
 
