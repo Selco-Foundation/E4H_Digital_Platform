@@ -637,16 +637,24 @@ def _bom_role_for_keys(keys):
     return None
 
 
+def _is_number_not_text(value):
+    """True only if openpyxl handed us an actual numeric cell value - not a string, even one
+    that merely looks numeric (e.g. "5"). bool is excluded since Python's bool is technically
+    an int subclass but isn't a meaningful Quantity value."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def validate_bom_editable_fields_filled(wb, detected_type):
     """
     Validation 3 (BOM completeness): every row of the editable BOM tables (the "Bill Of
     Material..." sections listed in SECTION_TEMPLATE_HEADERS - Solar System / Luminaries &
-    Fans / Load Wiring) must have its Make, Capacity and Quantity cells filled in. SYSTEM
+    Fans / Load Wiring) must have its Make, Capacity and Quantity cells filled in, and Quantity
+    must additionally be an actual number (not text, even numeric-looking text). SYSTEM
     FUNCTIONALITY PARAMETERS (and any other non-BOM section, e.g. RMS/Header/Image/Annexure)
     is out of scope for this check, matching the same "out of scope" sections already excluded
     from template-key coverage elsewhere in this module.
 
-    Raises ICCValidationError listing every blank field found (not just the first) so the
+    Raises ICCValidationError listing every failing field found (not just the first) so the
     caller can fix them all in one pass; returns nothing on success.
     """
     ws = wb[DATA_SHEET]
@@ -660,7 +668,7 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     for inst in instances:
         by_section.setdefault(inst["section"], []).append(inst)
 
-    blank_fields = []
+    field_errors = []
     unmatched = []
     for section, section_instances in by_section.items():
         header_text = SECTION_TEMPLATE_HEADERS.get(section)
@@ -682,12 +690,17 @@ def validate_bom_editable_fields_filled(wb, detected_type):
                 row_no, col_no = excel_cells[col_idx]
                 value = ws.cell(row=row_no, column=col_no).value
                 if value is None or str(value).strip() == "":
-                    blank_fields.append(f"{section} > '{label}' - {role} is empty")
+                    field_errors.append(f"{section} > '{label}' - {role} is empty")
+                elif role == "Quantity" and not _is_number_not_text(value):
+                    field_errors.append(
+                        f"{section} > '{label}' - Quantity '{value}' must be a number, not text"
+                    )
 
-    if blank_fields:
+    if field_errors:
         raise ICCValidationError(
-            "The uploaded ICC report has empty required fields in the editable BOM tables "
-            "(Make/Capacity/Quantity must be filled in):\n- " + "\n- ".join(blank_fields)
+            "The uploaded ICC report has invalid required fields in the editable BOM tables "
+            "(Make/Capacity/Quantity must be filled in, and Quantity must be a number):\n- "
+            + "\n- ".join(field_errors)
         )
 
 
