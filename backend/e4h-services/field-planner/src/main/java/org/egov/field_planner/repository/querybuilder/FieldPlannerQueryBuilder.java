@@ -38,6 +38,8 @@ public class FieldPlannerQueryBuilder {
             "from field_plans fp LEFT JOIN project prj ON prj.id = fp.project_id ";
     private static final String FIELDPLAN_COUNT_QUERY = "SELECT COUNT(*) FROM field_plans fp ";
 
+    private static final String FETCH_ICC_TEMPLATE_QUERY = "SELECT * FROM icc_templates ";
+
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY fp_lastModifiedTime DESC , fieldPlanId) offset_ FROM " +
             "({})" +
@@ -241,6 +243,26 @@ public class FieldPlannerQueryBuilder {
         }
         log.trace("Exiting createQuery method");
         return builder.toString();
+    }
+
+    public String getIccTemplateQuery(String systemType, String totalSystemCapacity, List<Object> preparedStmtList) {
+        log.info("Entering getIccTemplateQuery method");
+
+        StringBuilder queryBuilder = new StringBuilder(FETCH_ICC_TEMPLATE_QUERY);
+        if (StringUtils.isNotBlank(systemType)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" system_type = ? ");
+            preparedStmtList.add(systemType);
+            log.debug("Added name filter to query");
+        }
+        if (StringUtils.isNotBlank(totalSystemCapacity)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" total_system_capacity = ? ");
+            preparedStmtList.add(totalSystemCapacity);
+        }
+
+        log.trace("Exiting getIccTemplateQuery method");
+        return queryBuilder.toString();
     }
 
 }
