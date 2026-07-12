@@ -781,12 +781,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           }
 
           .icc-prepopulation-file-name {
-            position: absolute;
-            top: 0px;
-            left: 0px;
-            right: 0px;
-            height: 40px;
-            padding: 0px 12px;
+            min-width: 0;
+            width: 100%;
             display: flex;
             align-items: center;
             font-family: Roboto;
@@ -799,6 +795,18 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             text-overflow: ellipsis;
             pointer-events: none;
             box-sizing: border-box;
+          }
+
+          .icc-prepopulation-saved-file-field {
+            height: 40px;
+            width: 100%;
+            padding: 0px 12px;
+            border: 1px solid #D1D5DB;
+            box-sizing: border-box;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
           }
 
           .icc-prepopulation-upload .upload-file input {
@@ -958,41 +966,50 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
               <FieldLabel label={row.file ? "ICC_PRE_FILLING_TEMPLATE" : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"} />
               <div className={"icc-prepopulation-template-actions"}>
                 <div className={`icc-prepopulation-upload icc-prepopulation-template-input ${row.file ? "has-file" : ""}`}>
-                  <UploadFile
-                    accept={".xlsx,.xls"}
-                    customClass={"icc-prepopulation-upload-file"}
-                    enableButton={true}
-                    onUpload={(event) => handleFileUpload(row.id, event)}
-                    onDelete={() => updateRow(row.id, "file", null)}
-                    removeTargetedFile={() => updateRow(row.id, "file", null)}
-                    uploadedFiles={[]}
-                    message={""}
-                    textStyles={{
-                      fontSize: "14px",
-                      fontFamily: "Roboto",
-                      fontWeight: "500",
-                    }}
-                    style={{
-                      minHeight: "40px",
-                      height: "40px",
-                      width: "100%",
-                      maxWidth: "100%",
-                    }}
-                    extraStyles={{
-                      buttonStyles: {
-                        height: "38px",
-                        minHeight: "38px",
-                        maxHeight: "38px",
+                  {row.file ? (
+                    <label className={"icc-prepopulation-saved-file-field"} title={row.file.name}>
+                      <span className={"icc-prepopulation-file-name"}>
+                        {row.file.name}
+                      </span>
+                      <input
+                        type={"file"}
+                        accept={".xlsx,.xls"}
+                        onChange={(event) => handleFileUpload(row.id, event)}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+                  ) : (
+                    <UploadFile
+                      accept={".xlsx,.xls"}
+                      customClass={"icc-prepopulation-upload-file"}
+                      enableButton={true}
+                      onUpload={(event) => handleFileUpload(row.id, event)}
+                      onDelete={() => updateRow(row.id, "file", null)}
+                      removeTargetedFile={() => updateRow(row.id, "file", null)}
+                      uploadedFiles={[]}
+                      message={""}
+                      textStyles={{
+                        fontSize: "14px",
+                        fontFamily: "Roboto",
+                        fontWeight: "500",
+                      }}
+                      style={{
+                        minHeight: "40px",
+                        height: "40px",
                         width: "100%",
-                        margin: "0px",
-                        padding: "0px 12px",
-                      },
-                    }}
-                  />
-                  {row.file && (
-                    <span className={"icc-prepopulation-file-name"} title={row.file.name}>
-                      {row.file.name}
-                    </span>
+                        maxWidth: "100%",
+                      }}
+                      extraStyles={{
+                        buttonStyles: {
+                          height: "38px",
+                          minHeight: "38px",
+                          maxHeight: "38px",
+                          width: "100%",
+                          margin: "0px",
+                          padding: "0px 12px",
+                        },
+                      }}
+                    />
                   )}
                 </div>
                 <Button
