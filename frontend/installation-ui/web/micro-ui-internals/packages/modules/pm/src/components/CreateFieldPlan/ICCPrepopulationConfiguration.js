@@ -190,8 +190,8 @@ const getSavedTemplateDisplayName = (template = {}) => {
 };
 
 const getICCUploadErrorMessage = (error) => (
-  error?.response?.data?.detail?.message ||
   CommonUtils.getApiErrorMessage(error) ||
+  error?.response?.data?.detail?.message ||
   "CORE_COMMON_ERROR"
 );
 
