@@ -1464,6 +1464,7 @@ async def upload_icc_reports(
     forwarded to field-planner unless every item passes.
     """
     request_info_obj = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
 
     try:
         parsed_items = json.loads(items)
@@ -1505,7 +1506,8 @@ async def upload_icc_reports(
             temp_files.append((temp_file, upload))
             try:
                 detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
-                    temp_file.name, item["systemType"]
+                    temp_file.name, item["systemType"],
+                    mdms_client=mdms_client, request_info=request_info_obj,
                 )
                 converted.append({
                     "tenant_id": item.get("tenantId", "in"),
