@@ -647,24 +647,27 @@ def _is_number_not_text(value):
 _BOM_ROLE_ORDER = list(BOM_ROLE_SUFFIXES.values())  # ["Make", "Capacity", "Quantity"]
 
 
+NUMERIC_BOM_ROLES = ("Capacity", "Quantity")
+
+
 def validate_bom_editable_fields_filled(wb, detected_type):
     """
     Validation 3 (BOM completeness): every row of the editable BOM tables (the "Bill Of
     Material..." sections listed in SECTION_TEMPLATE_HEADERS - Solar System / Luminaries &
-    Fans / Load Wiring) must have its Make, Capacity and Quantity cells filled in, and Quantity
-    must additionally be an actual number (not text, even numeric-looking text). SYSTEM
-    FUNCTIONALITY PARAMETERS (and any other non-BOM section, e.g. RMS/Header/Image/Annexure)
-    is out of scope for this check, matching the same "out of scope" sections already excluded
-    from template-key coverage elsewhere in this module.
+    Fans / Load Wiring) must have its Make, Capacity and Quantity cells filled in, and Capacity
+    and Quantity must additionally be an actual number (not text, even numeric-looking text).
+    SYSTEM FUNCTIONALITY PARAMETERS (and any other non-BOM section, e.g. RMS/Header/Image/
+    Annexure) is out of scope for this check, matching the same "out of scope" sections already
+    excluded from template-key coverage elsewhere in this module.
 
     Blank fields are reported as one summary line per section with a per-role count (e.g.
     "5 Make, 5 Capacity, 5 Quantity missing") rather than one line per blank cell - an entirely
     empty upload would otherwise produce a message with hundreds of near-identical lines, which
     renders poorly on the frontend and isn't any more actionable than the count. Invalid (non-
-    blank but non-numeric) Quantity values are rare and specific, so those stay listed in full
-    per-row detail, same as before.
+    blank but non-numeric) Capacity/Quantity values are rare and specific, so those stay listed
+    in full per-row detail, same as before.
 
-    Raises ICCValidationError on any failure (blank and/or invalid-Quantity); returns nothing on
+    Raises ICCValidationError on any failure (blank and/or invalid-number); returns nothing on
     success.
     """
     ws = wb[DATA_SHEET]
@@ -679,7 +682,7 @@ def validate_bom_editable_fields_filled(wb, detected_type):
         by_section.setdefault(inst["section"], []).append(inst)
 
     blank_counts_by_section = OrderedDict()  # section -> {role: count}
-    invalid_quantity_errors = []
+    invalid_numeric_errors = []
     unmatched = []
     for section, section_instances in by_section.items():
         header_text = SECTION_TEMPLATE_HEADERS.get(section)
@@ -703,23 +706,23 @@ def validate_bom_editable_fields_filled(wb, detected_type):
                 if value is None or str(value).strip() == "":
                     section_counts = blank_counts_by_section.setdefault(section, {})
                     section_counts[role] = section_counts.get(role, 0) + 1
-                elif role == "Quantity" and not _is_number_not_text(value):
-                    invalid_quantity_errors.append(
-                        f"{section} > '{label}' - Quantity '{value}' must be a number, not text"
+                elif role in NUMERIC_BOM_ROLES and not _is_number_not_text(value):
+                    invalid_numeric_errors.append(
+                        f"{section} > '{label}' - {role} '{value}' must be a number, not text"
                     )
 
-    if not blank_counts_by_section and not invalid_quantity_errors:
+    if not blank_counts_by_section and not invalid_numeric_errors:
         return
 
     error_lines = []
     for section, section_counts in blank_counts_by_section.items():
         parts = [f"{section_counts[role]} {role}" for role in _BOM_ROLE_ORDER if role in section_counts]
         error_lines.append(f"{section}: {', '.join(parts)} missing")
-    error_lines.extend(invalid_quantity_errors)
+    error_lines.extend(invalid_numeric_errors)
 
     raise ICCValidationError(
         "The uploaded ICC report has invalid required fields in the editable BOM tables "
-        "(Make/Capacity/Quantity must be filled in, and Quantity must be a number):\n- "
+        "(Make/Capacity/Quantity must be filled in, and Capacity/Quantity must be a number):\n- "
         + "\n- ".join(error_lines)
     )
 
