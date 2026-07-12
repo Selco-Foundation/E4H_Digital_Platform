@@ -573,7 +573,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
         return {
           ...row,
-          file: null,
+          file: selectedRow.file || null,
         };
       }));
       setToast?.({

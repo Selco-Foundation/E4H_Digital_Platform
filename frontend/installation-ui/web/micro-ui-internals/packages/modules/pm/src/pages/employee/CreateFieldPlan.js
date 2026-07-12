@@ -264,7 +264,7 @@ const CreateFieldPlan = () => {
           setToast(null);
           return [];
         });
-      },2500)
+      },6000)
     }
   },[toast])
 
