@@ -400,9 +400,9 @@
             [
               "20",
               "Plastic wall lug",
-              "{{ plastic_wall_lug_qty }} : {{plastic_wall_lug_make}}",
+              "{{ plastic_wall_lug_description }} : {{plastic_wall_lug_make}}",
               "{{ plastic_wall_lug_capacity }}",
-              "{{ plastic_wall_lug_description }}"
+              "{{ plastic_wall_lug_qty }}"
             ],
             [
               "21",
