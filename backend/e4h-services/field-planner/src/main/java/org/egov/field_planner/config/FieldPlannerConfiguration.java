@@ -63,12 +63,23 @@ public class FieldPlannerConfiguration {
     private String mdmsHost;
     @Value("${egov.mdms.search.endpoint}")
     private String mdmsEndPoint;
+    @Value("${egov.mdms.v2.search.endpoint}")
+    private String mdmsV2SearchEndpoint;
 
     @Value("${project.document.id.verification.required}")
     private String documentIdVerificationRequired;
 
     @Value("${fieldPlan.management.system.kafka.create.topic}")
     private String saveFieldPlanTopic;
+
+    @Value("${icc.report.kafka.create.topic}")
+    private String saveIccTemplate;
+
+    @Value("${egov.filestore.host}")
+    private String fileStoreHost;
+
+    @Value("${egov.filestore.module}")
+    private String fileStoreModule;
 
     @Value("${fieldPlan.facility.kafka.create.topic}")
     private String createFieldPlanFacilityTopic;
@@ -78,6 +89,12 @@ public class FieldPlannerConfiguration {
 
     @Value("${fieldPlan.kafka.update.topic}")
     private String updateFieldPlanTopic;
+
+    @Value("${fieldPlan.template.kafka.create.topic}")
+    private String createFieldPlanTemplateTopic;
+
+    @Value("${fieldPlan.template.kafka.update.topic}")
+    private String updateFieldPlanTemplateTopic;
 
     @Value("${project.search.max.limit}")
     private Integer maxLimit;

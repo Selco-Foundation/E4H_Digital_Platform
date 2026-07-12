@@ -1,6 +1,7 @@
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
+import pandas as pd
 import requests
 
 from app.core.logging import AppLogger
@@ -29,45 +30,66 @@ class FieldPlanServiceClient:
                 'tenantId': 'in'
             }
         }
+        logger.trace(f"Creating field plan facility: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
         try:
             response = requests.post(url, headers=headers, json=payload)
-            print(f"FieldPlan Facility called successfully: {json.loads(response.text)}")
+            logger.info(f"Field plan facility created successfully: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
+            logger.debug(f"Create response: {json.loads(response.text)}")
             return response
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error creating field plan facility: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error creating field plan facility: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error creating field plan facility: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"Request error creating field plan facility: {req_err}", exc_info=True)
             raise req_err
 
-    def create_fieldPlan_facility_bulk(self, request_info: RequestInfo, fieldPlan_id: str, facility_ids: list[str]):
+    def create_fieldPlan_facility_bulk(
+        self,
+        request_info: RequestInfo,
+        fieldPlan_id: str,
+        facilities: List[Dict[str, Any]],
+    ):
+        """
+        Bulk-link facilities to a field plan.
+
+        Each item in ``facilities`` must contain ``facilityId`` and may include
+        ``additionalFields`` (schema/version/fields).
+        """
         url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/bulk/_create"
         headers = {
             "Content-Type": "application/json"
         }
+
+        field_plan_facilities = []
+        for facility in facilities:
+            entry: Dict[str, Any] = {
+                "facilityId": facility["facilityId"],
+                "fieldPlanId": fieldPlan_id,
+                "isdeleted": False,
+                "tenantId": "in",
+            }
+            additional_fields = facility.get("additionalFields")
+            if additional_fields:
+                entry["additionalFields"] = additional_fields
+            field_plan_facilities.append(entry)
+
         payload = {
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "FieldPlanFacilities": [
-                {
-                    "facilityId": facility_id,
-                    "fieldPlanId": fieldPlan_id,
-                    "isdeleted": False,
-                    "tenantId": "in"
-                }
-                for facility_id in facility_ids
-            ]
+            "FieldPlanFacilities": field_plan_facilities,
         }
-        logger.trace(f"Bulk creating field plan facilities: fieldplan_id={fieldPlan_id}, count={len(facility_ids)}")
+        logger.trace(
+            f"Bulk creating field plan facilities: fieldplan_id={fieldPlan_id}, count={len(facilities)}"
+        )
         try:
             response = requests.post(url, headers=headers, json=payload)
-            logger.info(f"Field plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facility_ids)}")
+            logger.info(f"Field plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facilities)}")
             logger.debug(f"Bulk create response status: {response.status_code}")
             return response
         except requests.exceptions.HTTPError as http_err:
@@ -131,16 +153,16 @@ class FieldPlanServiceClient:
             }
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error searching field plan: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error searching field plan: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error searching field plan: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"Request error searching field plan: {req_err}", exc_info=True)
             raise req_err
 
     def search_fieldplan_facility(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
@@ -190,16 +212,16 @@ class FieldPlanServiceClient:
             }
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error searching field plan facility: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error searching field plan facility: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error searching field plan facility: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"Request error searching field plan facility: {req_err}", exc_info=True)
             raise req_err
 
 
@@ -209,13 +231,14 @@ class FieldPlanServiceClient:
         Unlink a facility from a field plan by setting isDeleted to True
         """
         try:
+            logger.trace(f"Unlinking field plan facility: fieldplan_id={fieldplan_id}, facility_id={facility_id}")
             # Use provided project_facility_data if available, otherwise search for it
             if fieldplan_facility_data:
                 target_facility = fieldplan_facility_data
-                print(f"Using provided FieldPlanFacility data for facility {facility_id}")
+                logger.debug(f"Using provided FieldPlanFacility data for facility {facility_id}")
             else:
                 # Fallback: Use existing search method to find the FieldPlanFacility record
-                print(f"Searching for FieldPlanFacility record for facility {facility_id}")
+                logger.debug(f"Searching for FieldPlanFacility record for facility {facility_id}")
                 search_response = self.search_fieldplan_facility(request_info, fieldplan_id)
                 fieldplan_facilities = search_response.get("FieldPlanFacilities", [])
 
@@ -227,16 +250,16 @@ class FieldPlanServiceClient:
                         break
 
                 if not target_facility:
-                    print(f"No FieldPlanFacility record found for facility {facility_id} and field plan {fieldplan_id}")
+                    logger.warning(f"No FieldPlanFacility record found for facility {facility_id} and field plan {fieldplan_id}")
                     return None
 
             fieldplan_facility_id = target_facility.get("id")
 
             if not fieldplan_facility_id:
-                print("No ID found for FieldPlanFacility record")
+                logger.warning("No ID found for FieldPlanFacility record")
                 return None
 
-            print(f"Found FieldPlanFacility record with ID: {fieldplan_facility_id}")
+            logger.debug(f"Found FieldPlanFacility record with ID: {fieldplan_facility_id}")
 
             # Now update the record to set isDeleted = True
             update_url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/_unassign"
@@ -260,18 +283,88 @@ class FieldPlanServiceClient:
 
             update_response = requests.post(update_url, headers=update_headers, json=update_payload)
             update_response.raise_for_status()
-            print(f"Field Plan Facility unlinked successfully: {json.loads(update_response.text)}")
+            logger.info(f"Field plan facility unlinked successfully: fieldplan_id={fieldplan_id}, facility_id={facility_id}")
+            logger.debug(f"Unlink response: {json.loads(update_response.text)}")
             return update_response
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error unlinking field plan facility: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error unlinking field plan facility: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error unlinking field plan facility: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"Request error unlinking field plan facility: {req_err}", exc_info=True)
+            raise req_err
+
+    def create_field_plan_templates(
+        self,
+        request_info: RequestInfo,
+        items: List[Dict[str, Any]],
+        files: List[tuple],
+    ):
+        """
+        Store N ICC reports' converted JSON (plus their uploaded Excel files) via the bulk
+        endpoint POST /field-planner/v1/field-plan-templates/_create.
+
+        Sends:
+          - "request": one FieldPlanTemplateBulkRequest JSON object with an N-element
+            FieldPlanTemplates list.
+          - "excelFiles": the N uploaded Excel files as N separate multipart parts all sharing
+            the same field name "excelFiles" (not indexed) - matched positionally to
+            FieldPlanTemplates[i] on the Java side.
+
+        `items` and `files` must be the same length and already paired positionally; `files` is
+        a list of (file_name, file_bytes) tuples.
+        """
+        if len(items) != len(files):
+            raise ValueError(f"items ({len(items)}) and files ({len(files)}) must be the same length")
+
+        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plan-templates/_create"
+
+        bulk_request = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "FieldPlanTemplates": [
+                {
+                    "tenantId": item["tenant_id"],
+                    "fieldPlanId": item["field_plan_id"],
+                    "systemType": item["system_type"],
+                    "totalCapacity": item["total_capacity"],
+                    "templateData": item["template_data"],
+                }
+                for item in items
+            ],
+        }
+
+        # `requests` accepts `files` as a list of (field_name, value_tuple) pairs, not just a
+        # dict - this is the only way to send multiple parts under the SAME field name
+        # ("excelFiles" repeated N times), which a dict cannot express.
+        multipart_fields = [
+            ("request", (None, json.dumps(bulk_request), "application/json")),
+        ]
+        for file_name, file_bytes in files:
+            multipart_fields.append((
+                "excelFiles",
+                (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            ))
+
+        logger.trace(f"Creating {len(items)} field plan template(s) in one bulk call")
+        try:
+            response = requests.post(url, files=multipart_fields)
+            logger.info(f"Field plan template bulk request sent: count={len(items)}, status={response.status_code}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error creating field plan templates: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error creating field plan templates: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error creating field plan templates: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error creating field plan templates: {req_err}", exc_info=True)
             raise req_err

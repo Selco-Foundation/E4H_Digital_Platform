@@ -1,0 +1,1580 @@
+{
+  "key": "ac_on_grid_single_phase",
+  "config": {
+    "content": [
+      {
+        "text": "Bill Of Material(For Solar System)",
+        "style": "header"
+      },
+      {
+        "table": {
+          "widths": [
+            "50%",
+            "50%"
+          ],
+          "body": [
+            [
+              {
+                "text": "Health Facility Name & Address",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Project Details",
+                "style": "tableHeader"
+              }
+            ],
+            [
+              {
+                "text": "Name: {{health_facility_name}}"
+              },
+              {
+                "text": "Project Number: {{project_number}}"
+              }
+            ],
+            [
+              {
+                "text": "Address: {{health_facility_address}}"
+              },
+              {
+                "text": "Date: {{project_date}}"
+              }
+            ],
+            [
+              {
+                "text": "Vendor Name: {{vendor_name}}"
+              },
+              {
+                "text": "State: {{project_state}}"
+              }
+            ],
+            [
+              {
+                "text": "PO/WO Number: {{po_wo_number}}"
+              },
+              {
+                "text": "Block: {{project_block}}"
+              }
+            ]
+          ]
+        },
+        "layout": "lightHorizontalLines",
+        "margin": [
+          0,
+          0,
+          0,
+          15
+        ]
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [
+            50,
+            "*",
+            100,
+            100,
+            80
+          ],
+          "body": [
+            [
+              {
+                "text": "Sl. No.",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Product",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Make",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Capacity",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Quantity",
+                "style": "tableHeader"
+              }
+            ],
+            [
+              "1",
+              "Solar Module",
+              "{{ solar_module_make }}",
+              "{{ solar_module_capacity }}",
+              "{{ solar_module_qty }}"
+            ],
+            [
+              "2",
+              "Module Mounting structure (MMS)",
+              "{{ mms_make }}",
+              "{{ mms_capacity }}",
+              "{{ mms_qty }}"
+            ],
+            [
+              "3",
+              "Solar On-Grid PCU/Inverter",
+              "{{ inverter_make }}",
+              "{{ inverter_capacity }}",
+              "{{ inverter_qty }}"
+            ],
+            [
+              "4",
+              "Copper Cable (Red + Black) (Module – Module-AJB) -PV1-F (Solar cables)",
+              "{{ module_ajb_pv1f_make }}",
+              "{{ module_ajb_pv1f_capacity }}",
+              "{{ module_ajb_pv1f_qty }}"
+            ],
+            [
+              "5",
+              "Copper Cable (Red + Black) (AJB - Inverter)- (DC Cables)",
+              "{{ ajb_inverter_dc_make }}",
+              "{{ ajb_inverter_dc_capacity }}",
+              "{{ ajb_inverter_dc_qty }}"
+            ],
+            [
+              "6",
+              "Copper Cable – 1 (PCU/Inverter to ACDB)",
+              "{{ pcu_acdb_cable1_make }}",
+              "{{ pcu_acdb_cable1_capacity }}",
+              "{{ pcu_acdb_cable1_qty }}"
+            ],
+            [
+              "7",
+              "Copper Cable – 2 (ACDB + Solar meter + LT panel + Net meter + Grid)",
+              "{{ acdb_meter_ltpanel_cable2_make }}",
+              "{{ acdb_meter_ltpanel_cable2_capacity }}",
+              "{{ acdb_meter_ltpanel_cable2_qty }}"
+            ],
+            [
+              "8",
+              "DC Earthing Cable – 1 (Panels + MMS + AJB)",
+              "{{ dc_earthing_cable1_make }}",
+              "{{ dc_earthing_cable1_capacity }}",
+              "{{ dc_earthing_cable1_qty }}"
+            ],
+            [
+              "9",
+              "DC Earthing Cable – 2 (AJB + ACDB + Inverter)",
+              "{{ dc_earthing_cable2_make }}",
+              "{{ dc_earthing_cable2_capacity }}",
+              "{{ dc_earthing_cable2_qty }}"
+            ],
+            [
+              "10",
+              "Earthing Cable / Down conductor for Lightning Arrestor",
+              "{{ lightning_down_conductor_make }}",
+              "{{ lightning_down_conductor_capacity }}",
+              "{{ lightning_down_conductor_qty }}"
+            ],
+            [
+              "11",
+              "Earthing Kit",
+              "{{ earthing_kit_make }}",
+              "{{ earthing_kit_capacity }}",
+              "{{ earthing_kit_qty }}"
+            ],
+            [
+              "12",
+              "Lightning Protection System",
+              "{{ lightning_protection_make }}",
+              "{{ lightning_protection_capacity }}",
+              "{{ lightning_protection_qty }}"
+            ],
+            [
+              "13",
+              "ACDB with Relay Contractor + SPD + MCB + Solar Meter",
+              "{{ acdb_relay_spd_mcb_meter_make }}",
+              "{{ acdb_relay_spd_mcb_meter_capacity }}",
+              "{{ acdb_relay_spd_mcb_meter_qty }}"
+            ],
+            [
+              "14",
+              "Solar Array Junction Box with MCB and SPD and String Fuse.",
+              "{{ solar_array_junction_box_make }}",
+              "{{ solar_array_junction_box_capacity }}",
+              "{{ solar_array_junction_box_qty }}"
+            ],
+            [
+              "15",
+              "LT Panel with Net-Meter",
+              "{{ lt_panel_net_meter_make }}",
+              "{{ lt_panel_net_meter_capacity }}",
+              "{{ lt_panel_net_meter_qty }}"
+            ],
+            [
+              "16",
+              "Marking for AC earthing with Elevated Plaques (ACDB + Inverter)",
+              "{{ marking_ac_earthing_make }}",
+              "{{ marking_ac_earthing_capacity }}",
+              "{{ marking_ac_earthing_qty }}"
+            ],
+            [
+              "17",
+              "Marking for DC earthing with Elevated Plaques (AJB + MMS + Panels)",
+              "{{ marking_dc_earthing_make }}",
+              "{{ marking_dc_earthing_capacity }}",
+              "{{ marking_dc_earthing_qty }}"
+            ],
+            [
+              "18",
+              "Marking of Lightning Arrester Earthing with Elevated Plaques",
+              "{{ marking_lightning_arrester_make }}",
+              "{{ marking_lightning_arrester_capacity }}",
+              "{{ marking_lightning_arrester_qty }}"
+            ],
+            [
+              "19",
+              "Single Line Diagram (SLD) for the system",
+              "{{ sld_make }}",
+              "{{ sld_capacity }}",
+              "{{ sld_qty }}"
+            ],
+            [
+              "20",
+              "Do's and Don'ts Practices Poster (Solar Panels, Battery and Inverter)",
+              "{{ dos_donts_poster_make }}",
+              "{{ dos_donts_poster_capacity }}",
+              "{{ dos_donts_poster_qty }}"
+            ],
+            [
+              "21",
+              "Signboard for Danger (Electric Shock & High Voltage), No Fire and PASS",
+              "{{ signboard_danger_make }}",
+              "{{ signboard_danger_capacity }}",
+              "{{ signboard_danger_qty }}"
+            ],
+            [
+              "22",
+              "Fire Extinguisher",
+              "{{ fire_extinguisher_make }}",
+              "{{ fire_extinguisher_capacity }}",
+              "{{ fire_extinguisher_qty }}"
+            ],
+            [
+              "23",
+              "Isolator MCBs with PVC case",
+              "{{ isolator_mcbs_pvc_case_make }}",
+              "{{ isolator_mcbs_pvc_case_capacity }}",
+              "{{ isolator_mcbs_pvc_case_qty }}"
+            ],
+            [
+              "24",
+              "Consumables",
+              "{{ consumables_make }}",
+              "{{ consumables_capacity }}",
+              "{{ consumables_qty }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "SYSTEM FUNCTIONALITY PARAMETERS",
+        "style": "header"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              {
+                "text": "Date of recording",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{sfp_date}}"
+              },
+              {
+                "text": "Time of recording",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ sfp_time }}"
+              }
+            ],
+            [
+              {
+                "text": "Weather Condition at the time of recording",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{sfp_weather}}"
+              },
+              {
+                "text": ""
+              },
+              {
+                "text": ""
+              }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "Array Details",
+        "style": "header"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              {
+                "text": "Array Size:(kWp)",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{array_size_kwp}}"
+              },
+              {
+                "text": "No. of modules: ",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ array_no_modules }}"
+              },
+              {
+                "text": "No. of strings: ",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ array_no_strings }}"
+              },
+              {
+                "text": "No. of modules per string: ",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ array_no_modules_per_string }}"
+              }
+            ],
+            [
+              {
+                "text": "Each module capacity(Wp): ",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ array_each_module_wp }}"
+              },
+              {
+                "text": ""
+              },
+              {
+                "text": ""
+              },
+              {
+                "text": ""
+              },
+              {
+                "text": ""
+              },
+              {
+                "text": ""
+              },
+              {
+                "text": ""
+              }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "Array Parameters (At the AJB/CCU side)",
+        "style": "header"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [
+            100,
+            50,
+            70,
+            80,
+            100
+          ],
+          "body": [
+            [
+              {
+                "text": "Test Condition",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Voltage",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Measured Value",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Current",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Measured Value",
+                "style": "tableHeader"
+              }
+            ],
+            [
+              "Measurement with AJB MCB OFF",
+              "Voc(in Volts)",
+              "String 1: {{ajb_off_voc_string_1}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB OFF",
+              "Voc(in Volts)",
+              "String 2: {{ajb_off_voc_string_2}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB OFF",
+              "Voc(in Volts)",
+              "String 3: {{ajb_off_voc_string_3}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB OFF",
+              "Voc(in Volts)",
+              "String 4: {{ajb_off_voc_string_4}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB OFF",
+              "Voc(in Volts)",
+              "String 5: {{ajb_off_voc_string_5}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB OFF",
+              "Voc(in Volts)",
+              "Array: {{ajb_off_voc_mv_anchor}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Vmp(in Volts)",
+              "String 1: {{ajb_on_vmp_string_1}}",
+              "Imp(in Amperes)",
+              "String 1: {{ajb_on_imp_string_1}}"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Vmp(in Volts)",
+              "String 2: {{ajb_on_vmp_string_2}}",
+              "Imp(in Amperes)",
+              "String 2: {{ajb_on_imp_string_2}}"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Vmp(in Volts)",
+              "String 3: {{ajb_on_vmp_string_3}}",
+              "Imp(in Amperes)",
+              "String 3: {{ajb_on_imp_string_3}}"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Vmp(in Volts)",
+              "String 4: {{ajb_on_vmp_string_4}}",
+              "Imp(in Amperes)",
+              "String 4: {{ajb_on_imp_string_4}}"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Vmp(in Volts)",
+              "String 5: {{ajb_on_vmp_string_5}}",
+              "Imp(in Amperes)",
+              "String 5: {{ajb_on_imp_string_5}}"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Vmp(in Volts)",
+              "Array: {{ajb_on_vmp_mv_anchor}}",
+              "Imp(in Amperes)",
+              "Array: {{ajb_on_imp_mv_anchor}}"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 1: {{ ajb_on_pmp_string_1 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 2: {{ ajb_on_pmp_string_2 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 3: {{ ajb_on_pmp_string_3 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 4: {{ ajb_on_pmp_string_4 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 5: {{ ajb_on_pmp_string_5 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with AJB MCB ON",
+              "Pmp(in Watts)",
+              "Array: {{ ajb_on_pmp_array }}",
+              "NA",
+              "NA"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "PCU/Inverter details",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "widths": [
+            100,
+            100,
+            50
+          ],
+          "body": [
+            [
+              {
+                "text": "Number of PCUs/Inverters:",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ pcu_inverter_count }}"
+              },
+              {
+                "text": ""
+              }
+            ],
+            [
+              "Ratings of each PCU/Inverter",
+              "kVA: {{ pcu_inverter_rating_kva }}",
+              "Phase: {{ pcu_inverter_rating_phase }}"
+            ],
+            [
+              "Total capacity of the PCU/Inverter(kVA)",
+              "kVA: {{ pcu_inverter_total_capacity_kva }}",
+              "Phase: {{ pcu_inverter_total_capacity_phase }}"
+            ],
+            [
+              {
+                "text": "Number of MPPT's:",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ pcu_inverter_mppt_count }}"
+              },
+              {
+                "text": ""
+              }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "Charge Controller details",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              {
+                "text": "Number of Charge Controllers:",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ charge_controller_count }}"
+              }
+            ],
+            [
+              "Charge Controller ratings:",
+              "{{ charge_controller_ratings }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "1-Phase System - PCU/Inverter parameters",
+        "style": "header"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              {
+                "text": "Particulars",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Measured Value",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Unit",
+                "style": "tableHeader"
+              }
+            ],
+            [
+              "Load voltage/Inverter output voltage",
+              "{{ph1_load_voltage_mv}}",
+              "{{ph1_load_voltage_uom}}"
+            ],
+            [
+              "Inverter output frequency",
+              "{{ph1_output_freq_mv}}",
+              "{{ph1_output_freq_uom}}"
+            ],
+            [
+              "Inverter output power",
+              "{{ph1_output_power_mv}}",
+              "{{ph1_output_power_uom}}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "3-Phase System - PCU/Inverter parameters",
+        "style": "header"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              {
+                "text": "Particulars",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Measured Value",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Unit",
+                "style": "tableHeader"
+              }
+            ],
+            [
+              "Load voltage/Inverter output voltage(R phase & Neutral)",
+              "{{ ph3_rpn_voltage_mv }}",
+              "{{ ph3_rpn_voltage_uom }}"
+            ],
+            [
+              "Inverter output frequency(R phase & Neutral)",
+              "{{ ph3_rpn_freq_mv }}",
+              "{{ ph3_rpn_freq_uom }}"
+            ],
+            [
+              "Inverter output current at full load(R phase & Neutral)",
+              "{{ ph3_rpn_current_mv }}",
+              "{{ ph3_rpn_current_uom }}"
+            ],
+            [
+              "Load voltage/Inverter output voltage(Y phase & Neutral)",
+              "{{ ph3_ypn_voltage_mv }}",
+              "{{ ph3_ypn_voltage_uom }}"
+            ],
+            [
+              "Inverter output frequency(Y phase & Neutral)",
+              "{{ ph3_ypn_freq_mv }}",
+              "{{ ph3_ypn_freq_uom }}"
+            ],
+            [
+              "Inverter output current at full load(Y phase & Neutral)",
+              "{{ ph3_ypn_current_mv }}",
+              "{{ ph3_ypn_current_uom }}"
+            ],
+            [
+              "Load voltage/Inverter output voltage(B phase & Neutral)",
+              "{{ ph3_bpn_voltage_mv }}",
+              "{{ ph3_bpn_voltage_uom }}"
+            ],
+            [
+              "Inverter output frequency(B phase & Neutral)",
+              "{{ ph3_bpn_freq_mv }}",
+              "{{ ph3_bpn_freq_uom }}"
+            ],
+            [
+              "Inverter output current at full load(B phase & Neutral)",
+              "{{ ph3_bpn_current_mv }}",
+              "{{ ph3_bpn_current_uom }}"
+            ],
+            [
+              "Inverter output voltage(R & Y phase)",
+              "{{ ph3_r_y_voltage_mv }}",
+              "{{ ph3_r_y_voltage_uom }}"
+            ],
+            [
+              "Inverter output frequency(R & Y phase)",
+              "{{ ph3_r_y_freq_mv }}",
+              "{{ ph3_r_y_freq_uom }}"
+            ],
+            [
+              "Inverter output voltage(R & B phase)",
+              "{{ ph3_r_b_voltage_mv }}",
+              "{{ ph3_r_b_voltage_uom }}"
+            ],
+            [
+              "Inverter output frequency(R & B phase)",
+              "{{ ph3_r_b_freq_mv }}",
+              "{{ ph3_r_b_freq_uom }}"
+            ],
+            [
+              "Inverter output voltage(Y & B phase)",
+              "{{ ph3_y_b_voltage_mv }}",
+              "{{ ph3_y_b_voltage_uom }}"
+            ],
+            [
+              "Inverter output frequency(Y & B phase)",
+              "{{ ph3_y_b_freq_mv }}",
+              "{{ ph3_y_b_freq_uom }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "PCU/Inverter Display",
+        "style": "header"
+      },
+      {
+        "text": "For both 1-Phase & 3-Phase connectivity",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              {
+                "text": "Display:",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{pcu_display_status}}"
+              },
+              {
+                "text": "Parameters:",
+                "style": "tableHeader"
+              },
+              {
+                "text": "{{ pcu_display_parameters }}"
+              }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "Isolator & Breaker functionality check",
+        "style": "tableHeader"
+      },
+      {
+        "text": "For both 1-Phase & 3-Phase connectivity",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "widths": [
+            "70%",
+            "30%"
+          ],
+          "body": [
+            [
+              {
+                "text": "PV Line-1 & PCU MCB Isolator Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ pv_line1_pcu_mcb_isolator_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-1 & PCU MCB Isolator Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ pv_line1_pcu_mcb_isolator_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-2 & PCU MCB Isolator Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ pv_line2_pcu_mcb_isolator_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-2 & PCU MCB Isolator Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ pv_line2_pcu_mcb_isolator_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-3 & PCU MCB Isolator Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ pv_line3_pcu_mcb_isolator_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-3 & PCU MCB Isolator Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ pv_line3_pcu_mcb_isolator_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-4 & PCU MCB Isolator Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ pv_line4_pcu_mcb_isolator_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-4 & PCU MCB Isolator Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ pv_line4_pcu_mcb_isolator_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-5 & PCU MCB Isolator Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ pv_line5_pcu_mcb_isolator_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "PV Line-5 & PCU MCB Isolator Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ pv_line5_pcu_mcb_isolator_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB Contactor R-Y Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ acdb_contactor_ry_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB Contactor R-Y Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ acdb_contactor_ry_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB Contactor Y-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ acdb_contactor_yb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB Contactor Y-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ acdb_contactor_yb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB Contactor R-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ acdb_contactor_rb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB Contactor R-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ acdb_contactor_rb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB MCB R-Y Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ acdb_mcb_ry_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB MCB R-Y Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ acdb_mcb_ry_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB MCB Y-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ acdb_mcb_yb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB MCB Y-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ acdb_mcb_yb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB MCB R-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ acdb_mcb_rb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "ACDB MCB R-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ acdb_mcb_rb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Main MCB R-Y Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_main_mcb_ry_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Main MCB R-Y Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_main_mcb_ry_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Main MCB Y-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_main_mcb_yb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Main MCB Y-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_main_mcb_yb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Main MCB R-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_main_mcb_rb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Main MCB R-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_main_mcb_rb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-1 R-Y Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb1_ry_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-1 R-Y Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb1_ry_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-1 Y-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb1_yb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-1 Y-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb1_yb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-1 R-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb1_rb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-1 R-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb1_rb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-2 R-Y Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb2_ry_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-2 R-Y Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb2_ry_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-2 Y-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb2_yb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-2 Y-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb2_yb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-2 R-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb2_rb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-2 R-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb2_rb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-3 R-Y Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb3_ry_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-3 R-Y Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb3_ry_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-3 Y-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb3_yb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-3 Y-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb3_yb_off_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-3 R-B Voltage in ON position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb3_rb_on_v }}"
+              }
+            ],
+            [
+              {
+                "text": "LT Panel Phase MCB-3 R-B Voltage in OFF position (Volts):"
+              },
+              {
+                "text": "{{ lt_panel_phase_mcb3_rb_off_v }}"
+              }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "Power Lines Polarity Check",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              "Array Junction Box String 1 – Input Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 2 - Input Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 3 - Input Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 4 - Input Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 5 - Input Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 1 - Output Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 2 - Output Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 3 - Output Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 4 - Output Lines",
+              "NA"
+            ],
+            [
+              "Array Junction Box String 5 - Output Lines",
+              "NA"
+            ],
+            [
+              "PCU/Inverter PV Input Line 1",
+              "NA"
+            ],
+            [
+              "PCU/Inverter PV Input Line 2",
+              "NA"
+            ],
+            [
+              "PCU/Inverter PV Input Line 3",
+              "NA"
+            ],
+            [
+              "PCU/Inverter PV Input Line 4",
+              "NA"
+            ],
+            [
+              "PCU/Inverter PV Input Line 5",
+              "NA"
+            ],
+            [
+              "PCU/Inverter PCU Output (R-Y-B-N)",
+              "NA"
+            ],
+            [
+              "ACDB-1 PCU (R-Y-B-N)",
+              "NA"
+            ],
+            [
+              "ACDB-1 ACDB-1 (R-Y-B-N)",
+              "NA"
+            ],
+            [
+              "Solar Check Meter ACDB-1 (R-Y-B-N)",
+              "NA"
+            ],
+            [
+              "Solar Check Meter Solar Check Meter (R-Y-B-N)",
+              "NA"
+            ],
+            [
+              "LT Panel Solar Check Meter (R-Y-B-N)",
+              "NA"
+            ],
+            [
+              "LT Panel Bi-Directional Meter (R-Y-B-N)",
+              "NA"
+            ],
+            [
+              "Bi-Directional Meter ACDB-2 (R-Y-B-N)",
+              "NA"
+            ],
+            [
+              "Bi-Directional Meter Grid (R-Y-B-N)",
+              "NA"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "Earth pit resistance tests",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              {
+                "text": "Earth pit resistance test",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Measured Value",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Unit",
+                "style": "tableHeader"
+              }
+            ],
+            [
+              "DC Earthing",
+              "{{ept_dc_earthing_mv}}",
+              "{{ept_dc_earthing_uom}}"
+            ],
+            [
+              "AC Earthing",
+              "{{ept_ac_earthing_mv}}",
+              "{{ept_ac_earthing_uom}}"
+            ],
+            [
+              "Lightning arrester-1",
+              "{{ept_lightning_arrester1_mv}}",
+              "{{ept_lightning_arrester1_uom}}"
+            ],
+            [
+              "Lightning arrester-2",
+              "{{ept_lightning_arrester2_mv}}",
+              "{{ept_lightning_arrester2_uom}}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "Earth-Down conductor continuity test",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              {
+                "text": "Particulars",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Measured Value",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Unit",
+                "style": "tableHeader"
+              }
+            ],
+            [
+              "DC side Panel - Panel:",
+              "{{ dc_panel_panel_res }}",
+              "Ω"
+            ],
+            [
+              "DC side Panel - MMS:",
+              "{{ dc_panel_mms_res }}",
+              "Ω"
+            ],
+            [
+              "DC side MMS - AJB:",
+              "{{ dc_mms_ajb_res }}",
+              "Ω"
+            ],
+            [
+              "DC side AJB - Busbar:",
+              "{{ dc_ajb_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "DC side Busbar - Earth pit:",
+              "{{ dc_busbar_earth_pit_res }}",
+              "Ω"
+            ],
+            [
+              "AC side Inverter - Busbar:",
+              "{{ ac_inverter_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "AC side ACDB - Busbar:",
+              "{{ ac_acdb_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "AC side LT Panel - Busbar:",
+              "{{ ac_ltpanel_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "AC side Loads - Busbar:",
+              "{{ ac_loads_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "AC side CO Switch - Busbar:",
+              "{{ ac_coswitch_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "AC side Busbar - Earth pit:",
+              "{{ ac_busbar_earth_pit_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 1 LA - Aluminium cable:",
+              "{{ la1_la_aluminium_cable_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 1 Aluminium cable – GI strip:",
+              "{{ la1_aluminium_gi_strip_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 1 GI strip – Earth pit:",
+              "{{ la1_gi_strip_earth_pit_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 2 LA - Aluminium cable:",
+              "{{ la2_la_aluminium_cable_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 2 Aluminium cable – GI strip:",
+              "{{ la2_aluminium_gi_strip_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 2 GI strip – Earth pit:",
+              "{{ la2_gi_strip_earth_pit_res }}",
+              "Ω"
+            ],
+            [
+              "Earth Pits AC – DC Earth pit interconnection:",
+              "{{ earthpit_ac_dc_interconnection_res }}",
+              "Ω"
+            ],
+            [
+              "Earth Pits LA 1 – LA 2 Earth pit interconnection:",
+              "{{ earthpit_la1_la2_interconnection_res }}",
+              "Ω"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+      {
+        "text": "Orientation Checklist",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              {
+                "text": "Checklist",
+                "style": "tableHeader"
+              },
+              {
+                "text": "Status",
+                "style": "tableHeader"
+              },
+              {
+                "text": " Remarks",
+                "style": "tableHeader"
+              }
+            ],
+            [
+              "Is the orientation on the solar system’s basic operational instructions given to the health center POC?",
+              "{{orientation_operational_instructions_status}}",
+              "{{orientation_operational_instructions_remarks}}"
+            ],
+            [
+              "Is the orientation on the solar system’s basic routine maintenance given to the health center POC?",
+              "{{orientation_routine_maintenance_status}}",
+              "{{orientation_routine_maintenance_remarks}}"
+            ],
+            [
+              "Are the stickers containing POCs pasted in the control room?",
+              "{{stickers_pasted_status}}",
+              "{{stickers_pasted_remarks}}"
+            ],
+            [
+              "Are the Do’s and Don’ts posters with helpline numbers pasted in the control room?",
+              "{{posters_pasted_status}}",
+              "{{posters_pasted_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the solar panel handed over to the health facility?",
+              "{{orientation_warranty_solar_panel_status}}",
+              "{{orientation_warranty_solar_panel_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the PCU/Inverter-CCU handed over to the health facility?",
+              "{{orientation_warranty_pcu_inverter_ccu_status}}",
+              "{{orientation_warranty_pcu_inverter_ccu_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the solar Bi-directional meter handed over to the health facility?",
+              "{{orientation_warranty_bidirectional_meter_status}}",
+              "{{orientation_warranty_bidirectional_meter_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the solar check meter handed over to the health facility?",
+              "{{orientation_warranty_check_meter_status}}",
+              "{{orientation_warranty_check_meter_remarks}}"
+            ],
+            [
+              {
+                "text": "Additional remarks:"
+              },
+              {
+                "text": "{{orientation_additional_remarks}}",
+                "colSpan": 2
+              },
+              {
+                "text": ""
+              }
+            ]
+          ]
+        },
+        "layout": ""
+      }
+    ],
+    "styles": {
+      "tl-head": {
+        "margin": [
+          -41,
+          -41,
+          -41,
+          0
+        ]
+      },
+      "pt-reciept-citizen-header": {
+        "fontSize": 12,
+        "bold": true,
+        "margin": [
+          0,
+          8,
+          0,
+          0
+        ],
+        "color": "#484848"
+      },
+      "header": {
+        "fontSize": 18,
+        "bold": true,
+        "margin": [
+          0,
+          10,
+          0,
+          5
+        ],
+        "text-align": "center"
+      },
+      "tableHeader": {
+        "fontSize": 14,
+        "bold": true,
+        "margin": [
+          0,
+          10,
+          0,
+          10
+        ]
+      }
+    }
+  }
+}
