@@ -166,12 +166,18 @@ public class FieldPlannerFacilityService {
         }
         String systemType = null;
         String totalSystemCapacity = null;
+        String customTotalSystemCapacity = null;
         for (Field field : additionalFields.getFields()) {
             if ("systemType".equals(field.getKey())) {
                 systemType = field.getValue();
             } else if ("totalSystemCapacity".equals(field.getKey())) {
                 totalSystemCapacity = field.getValue();
+            } else if ("customTotalSystemCapacity".equals(field.getKey())) {
+                customTotalSystemCapacity = field.getValue();
             }
+        }
+        if ("CUSTOM".equalsIgnoreCase(totalSystemCapacity)) {
+            totalSystemCapacity = customTotalSystemCapacity;
         }
         if (systemType == null && totalSystemCapacity == null) {
             return null;
