@@ -63,6 +63,8 @@ public class FieldPlannerConfiguration {
     private String mdmsHost;
     @Value("${egov.mdms.search.endpoint}")
     private String mdmsEndPoint;
+    @Value("${egov.mdms.v2.search.endpoint}")
+    private String mdmsV2SearchEndpoint;
 
     @Value("${project.document.id.verification.required}")
     private String documentIdVerificationRequired;

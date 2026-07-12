@@ -786,10 +786,115 @@ def convert_icc_report(wb, detected_type):
     return output, fallback_fields, unmatched_excel_fields
 
 
-def validate_and_convert(xlsx_path, requested_system_type):
+# MDMS schema listing every registered brand, grouped by asset type (PANEL/BATTERY/INVERTER).
+BRAND_SCHEMA_CODE = "asset-registry.BrandSchema"
+
+# Which converted-JSON key holds the Make value for panel/battery/inverter, per detected system
+# type, and which asset_type_code (from BRAND_SCHEMA_CODE) it must be validated against. Mirrors
+# FieldPlannerService.INVERTER_KEY_CANDIDATES on the Java side: DC has no dedicated inverter (the
+# CCU serves that role), HYBRID's is the "hybrid PCU", AC_OFF_GRID/AC_ON_GRID call it "inverter".
+# AC_ON_GRID has no battery bank at all, so it's omitted from that type's mapping.
+BOM_BRAND_FIELDS_BY_TYPE = {
+    "dc": {
+        "solar_module_make": "PANEL",
+        "solar_battery_make": "BATTERY",
+        "solar_charge_controller_make": "INVERTER",
+    },
+    "ac_off": {
+        "solar_module_make": "PANEL",
+        "solar_battery_make": "BATTERY",
+        "inverter_make": "INVERTER",
+    },
+    "hybrid": {
+        "solar_module_make": "PANEL",
+        "solar_battery_make": "BATTERY",
+        "solar_hybrid_pcu_make": "INVERTER",
+    },
+    "ac_on_grid": {
+        "solar_module_make": "PANEL",
+        "inverter_make": "INVERTER",
+    },
+}
+
+
+def _brand_names_by_asset_type(mdms_client, request_info):
+    """Returns {asset_type_code: {registered brand names}}, e.g. {"PANEL": {"Gautam", "ReNew", ...}}.
+
+    Returns an empty dict (never raises) if the schema can't be fetched - brand validation is then
+    silently skipped, the same graceful-degradation choice already made for
+    facility.FacilitySolarConfigurationRule elsewhere in this codebase, rather than blocking every
+    upload on an MDMS outage.
+    """
+    try:
+        records = mdms_client.fetch_mdms_records(request_info, BRAND_SCHEMA_CODE)
+    except Exception:
+        return {}
+
+    brands = records[0].get("Brand") or [] if records else []
+    names_by_asset_type = {}
+    for brand in brands:
+        if brand.get("active") is False:
+            continue
+        asset_type = brand.get("asset_type_code")
+        name = brand.get("name")
+        if not asset_type or not name:
+            continue
+        names_by_asset_type.setdefault(asset_type, set()).add(name)
+    return names_by_asset_type
+
+
+def validate_bom_brand_names(data, detected_type, mdms_client, request_info):
+    """
+    Validation 4 (brand names): the Make value recorded for the Solar Module (panel), Solar
+    Battery, and the system's inverter-equivalent component (Solar Charge Controller for DC, the
+    hybrid PCU for HYBRID, Inverter for AC_OFF_GRID/AC_ON_GRID) must be one of the active brand
+    names registered in MDMS asset-registry.BrandSchema for that component's asset type - e.g.
+    Solar Battery's Make must be "NED" or "Coslight", not an arbitrary string.
+
+    Raises ICCValidationError listing every invalid Make value found; returns nothing on success
+    (including when the brand schema itself can't be fetched, or has no entries for a given
+    asset type - this check simply doesn't block in either case).
+    """
+    fields_by_role = BOM_BRAND_FIELDS_BY_TYPE.get(detected_type, {})
+    if not fields_by_role:
+        return
+
+    names_by_asset_type = _brand_names_by_asset_type(mdms_client, request_info)
+    if not names_by_asset_type:
+        return
+
+    errors = []
+    for key, asset_type in fields_by_role.items():
+        value = data.get(key)
+        if value is None or str(value).strip() == "":
+            continue  # blank Make is already reported by Validation 3
+
+        allowed_names = names_by_asset_type.get(asset_type)
+        if not allowed_names:
+            continue  # no MDMS brands registered for this asset type - nothing to check against
+
+        value_str = str(value).strip()
+        if value_str not in allowed_names:
+            errors.append(
+                f"'{value_str}' is not a recognized {asset_type.title()} brand - expected one of: "
+                + ", ".join(sorted(allowed_names))
+            )
+
+    if errors:
+        raise ICCValidationError(
+            "The uploaded ICC report has invalid brand names in the editable BOM tables:\n- "
+            + "\n- ".join(errors)
+        )
+
+
+def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, request_info=None):
     """Single entry point for the /icc-reports endpoint: raises ICCValidationError on any
-    Validation 1/2 failure (nothing is saved in that case); otherwise returns
-    (detected_type, data, fallback_fields, unmatched_fields)."""
+    Validation 1/2/3/4 failure (nothing is saved in that case); otherwise returns
+    (detected_type, data, fallback_fields, unmatched_fields).
+
+    mdms_client/request_info are optional: pass both to also run Validation 4 (brand names);
+    omit either to skip it (e.g. for callers/tests without MDMS access).
+    """
     try:
         wb = load_workbook(xlsx_path, data_only=True)
     except InvalidFileException as exc:
@@ -798,4 +903,6 @@ def validate_and_convert(xlsx_path, requested_system_type):
     detected_type = validate_icc_report(wb, requested_system_type)
     validate_bom_editable_fields_filled(wb, detected_type)
     data, fallback_fields, unmatched_fields = convert_icc_report(wb, detected_type)
+    if mdms_client is not None and request_info is not None:
+        validate_bom_brand_names(data, detected_type, mdms_client, request_info)
     return detected_type, data, fallback_fields, unmatched_fields
