@@ -111,7 +111,13 @@ public class FieldPlanTemplateQueryBuilder {
 
         if (!CollectionUtils.isEmpty(criteria.getTotalCapacity())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" fpt.total_capacity IN (").append(createQuery(criteria.getTotalCapacity())).append(")");
+            // Cast both sides to numeric rather than comparing as exact text: totalCapacity is
+            // free text typed independently in two different places (the ICC report's
+            // totalSystemCapacity vs. a FieldPlanFacility's customTotalSystemCapacity), so "45"
+            // and "45.0" refer to the same capacity but would never match as raw strings.
+            queryBuilder.append(" fpt.total_capacity::numeric IN (")
+                    .append(createNumericQuery(criteria.getTotalCapacity()))
+                    .append(")");
             preparedStmtList.addAll(criteria.getTotalCapacity());
         }
 
@@ -138,5 +144,9 @@ public class FieldPlanTemplateQueryBuilder {
 
     private String createQuery(Collection<String> ids) {
         return String.join(",", ids.stream().map(id -> "?").toList());
+    }
+
+    private String createNumericQuery(Collection<String> values) {
+        return String.join(",", values.stream().map(v -> "?::numeric").toList());
     }
 }
