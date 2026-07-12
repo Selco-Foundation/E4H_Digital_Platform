@@ -34,12 +34,13 @@ public class ProjectNameGenerationService {
     private static final Pattern REVISED_PROJECT_ID_PATTERN =
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]{5}(-[0-9])?)$");
     private static final Pattern JUSTIFICATION_CODE_PATTERN =
-            Pattern.compile("^JUS-[0-9]{5}(-[0-9])?$", Pattern.CASE_INSENSITIVE);
-    private static final String JUS_PREFIX = "JUS-";
+            Pattern.compile("^(?:JUS|SFJ)-([0-9]{5}(?:-[0-9])?)$", Pattern.CASE_INSENSITIVE);
     private static final String SCHEDULED_STATUS = "SCHEDULED";
     public static final String JUSTIFICATION_CODE_MESSAGE =
-            "Justification code is required and must follow the format JUS-00000 or JUS-00000-0 "
-                    + "(5 digits after JUS-, optional single-digit suffix after hyphen, e.g., JUS-00120, JUS-00120-1).";
+            "Justification code is required and must follow the format JUS-00000 or JUS-00000-0, "
+                    + "or SFJ-00000 or SFJ-00000-0 "
+                    + "(5 digits after the prefix, optional single-digit suffix after hyphen, "
+                    + "e.g., JUS-00120, JUS-00120-1, SFJ-00120, SFJ-00120-1).";
     public static String duplicateJustificationCodeMessage(String justificationCode) {
         return String.format(
                 "Justification code %s is already assigned to another project. Please use a different justification code.",
@@ -185,11 +186,11 @@ public class ProjectNameGenerationService {
             throw new CustomException("JUSTIFICATION_CODE_REQUIRED", JUSTIFICATION_CODE_MESSAGE);
         }
         validateJustificationCodeFormat(justificationCode);
-        String trimmed = justificationCode.trim().toUpperCase().substring(JUS_PREFIX.length());
-        if (trimmed.startsWith("-")) {
-            trimmed = trimmed.substring(1);
+        Matcher matcher = JUSTIFICATION_CODE_PATTERN.matcher(justificationCode.trim());
+        if (!matcher.matches()) {
+            throw new CustomException("INVALID_JUSTIFICATION_CODE", JUSTIFICATION_CODE_MESSAGE);
         }
-        return trimmed;
+        return matcher.group(1);
     }
 
     public String extractJustificationCode(Object additionalDetails) {

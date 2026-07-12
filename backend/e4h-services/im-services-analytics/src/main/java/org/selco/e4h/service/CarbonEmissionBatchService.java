@@ -3,22 +3,17 @@ package org.selco.e4h.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
-import org.selco.e4h.service.CarbonEmissionMdmsClient;
-import org.selco.e4h.service.Co2ReferenceClient;
-import org.selco.e4h.service.FacilityRegistryClient;
-import org.selco.e4h.service.ProjectCo2Client;
-import org.selco.e4h.service.RmsConsumptionClient;
 import org.selco.e4h.config.CarbonEmissionProperties;
+import org.selco.e4h.repository.Co2IndexerRepository;
 import org.selco.e4h.web.models.CarbonEmissionKafkaMessage;
 import org.selco.e4h.web.models.Co2FacilityContext;
 import org.selco.e4h.web.models.Co2MonthlyDocument;
 import org.selco.e4h.web.models.Co2ReferenceBundle;
-import org.selco.e4h.repository.Co2IndexerRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -66,7 +61,6 @@ public class CarbonEmissionBatchService {
                     requestInfo, tenantId, batchIds);
 
             for (Co2FacilityContext facility : facilities) {
-                // Use empty project name when unmapped so old indexed values are replaced on re-run.
                 facility.setProjectName(projectNames.getOrDefault(facility.getFacilityId(), ""));
                 processFacility(facility, current, references, List.of(facility));
             }
@@ -83,14 +77,16 @@ public class CarbonEmissionBatchService {
             log.warn("Skipping facilityId={} — missing solarInstallationDate", facility.getFacilityId());
             return;
         }
+        if (facility.getSolarSystemCapacity() == null || facility.getSolarSystemCapacity() <= 0) {
+            log.warn("Skipping facilityId={} — missing solarSystemCapacityKwp", facility.getFacilityId());
+            return;
+        }
 
         YearMonth lifecycleStart = YearMonth.from(calculator.lifecycleStartMonth(facility.getSolarInstallationDate()));
         YearMonth lifecycleEnd = calculator.lifecycleEnd(lifecycleStart);
         YearMonth rmsStart = facility.getRmsInstallationDate() != null
                 ? YearMonth.from(calculator.rmsDataStartMonth(facility.getRmsInstallationDate()))
                 : null;
-
-        List<Co2MonthlyDocument> projections = new ArrayList<>();
 
         List<YearMonth> rmsMonths = new ArrayList<>();
         if (rmsStart != null) {
@@ -102,40 +98,121 @@ public class CarbonEmissionBatchService {
                 ? Map.of()
                 : rmsConsumptionClient.fetchSolarKwhByFacilityMonth(consumptionBatch, rmsMonths);
 
-        for (YearMonth ym = lifecycleStart; !ym.isAfter(lifecycleEnd); ym = ym.plusMonths(1)) {
-            double tonnes = resolveMonthlyTonnes(facility, ym, rmsStart, references, solarByMonth);
-            Co2MonthlyDocument doc = buildDocument(facility, ym.getMonthValue(), ym.getYear(), tonnes);
+        Map<YearMonth, Double> projectionSolarKwh = new LinkedHashMap<>();
+        List<Co2MonthlyDocument> projections = new ArrayList<>();
 
+        for (YearMonth ym = lifecycleStart; !ym.isAfter(lifecycleEnd); ym = ym.plusMonths(1)) {
             if (!ym.isAfter(current)) {
+                double tonnes = resolveActualMonthlyTonnes(
+                        facility, ym, rmsStart, current, references, solarByMonth);
+                Co2MonthlyDocument doc = buildDocument(facility, ym.getMonthValue(), ym.getYear(), tonnes);
                 doc.setCo2EmissionsAvoidedInTonnes(tonnes);
                 indexerRepository.publishActual(doc);
             } else {
-                doc.setProjectedCo2EmissionsAvoidedInTonnes(tonnes);
-                projections.add(doc);
+                if (rmsStart != null && !calculator.hasSunshineHoursForState(facility, references)) {
+                    log.warn("Skipping projection months facilityId={} — no sunshine hours for state={}",
+                            facility.getFacilityId(), facility.getState());
+                    break;
+                }
+                double solarKwh = resolveProjectionSolarKwh(facility, ym, rmsStart, references);
+                projectionSolarKwh.put(ym, solarKwh);
             }
         }
 
-        // Publish future months; existing docs with the same id are replaced.
-        indexerRepository.publishProjections(projections);
+        if (!projectionSolarKwh.isEmpty()) {
+            calculator.applyAnnualProjectionSolarCap(projectionSolarKwh, facility, references);
+            for (Map.Entry<YearMonth, Double> entry : projectionSolarKwh.entrySet()) {
+                YearMonth ym = entry.getKey();
+                double tonnes = calculator.monthlyTonnesFromSolarKwh(
+                        entry.getValue(), ym.getMonthValue(), ym.getYear(), references);
+                Co2MonthlyDocument doc = buildDocument(facility, ym.getMonthValue(), ym.getYear(), tonnes);
+                doc.setProjectedCo2EmissionsAvoidedInTonnes(tonnes);
+                projections.add(doc);
+            }
+            indexerRepository.publishProjections(projections);
+        }
     }
 
-    private double resolveMonthlyTonnes(Co2FacilityContext facility,
-                                        YearMonth ym,
-                                        YearMonth rmsStart,
-                                        Co2ReferenceBundle references,
-                                        Map<String, Double> solarByMonth) {
-        boolean useRmsActual = rmsStart != null && !ym.isBefore(rmsStart);
-        if (useRmsActual) {
-            String key = RmsConsumptionClient.key(
-                    facility.getFacilityId(), ym.getYear(), ym.getMonthValue());
-            Double solarKwh = solarByMonth.get(key);
+    private double resolveActualMonthlyTonnes(Co2FacilityContext facility,
+                                              YearMonth ym,
+                                              YearMonth rmsStart,
+                                              YearMonth current,
+                                              Co2ReferenceBundle references,
+                                              Map<String, Double> solarByMonth) {
+        if (rmsStart == null) {
+            return calculator.calculateNonRmsMonthlyTonnes(
+                    facility, ym.getMonthValue(), ym.getYear(), references);
+        }
+        if (ym.isBefore(rmsStart)) {
+            return calculator.calculatePart1PreRmsMonthlyTonnes(
+                    facility, ym.getMonthValue(), ym.getYear(), references);
+        }
+        if (!ym.isAfter(current)) {
+            Double solarKwh = resolveRmsSolarKwh(facility, ym, references, solarByMonth);
             if (solarKwh != null && solarKwh > 0) {
                 return calculator.calculateRmsActualMonthlyTonnes(
                         solarKwh, facility, ym.getMonthValue(), ym.getYear(), references);
             }
+            log.warn("RMS solar gap facilityId={} period={}-{} — using forward estimate from RMS FY",
+                    facility.getFacilityId(), ym.getYear(), ym.getMonthValue());
+            return calculator.calculatePart3ProjectionMonthlyTonnes(
+                    facility, ym.getMonthValue(), ym.getYear(), references);
         }
-        return calculator.calculateArchetypeMonthlyTonnes(
+        return 0.0;
+    }
+
+    private double resolveProjectionSolarKwh(Co2FacilityContext facility,
+                                             YearMonth ym,
+                                             YearMonth rmsStart,
+                                             Co2ReferenceBundle references) {
+        if (rmsStart == null) {
+            return calculator.estimateNonRmsMonthlySolarKwh(
+                    facility, ym.getMonthValue(), ym.getYear(), references);
+        }
+        return calculator.estimatePart3ProjectionMonthlySolarKwh(
                 facility, ym.getMonthValue(), ym.getYear(), references);
+    }
+
+    private Double resolveRmsSolarKwh(Co2FacilityContext facility,
+                                      YearMonth ym,
+                                      Co2ReferenceBundle references,
+                                      Map<String, Double> solarByMonth) {
+        String key = RmsConsumptionClient.key(facility.getFacilityId(), ym.getYear(), ym.getMonthValue());
+        Double solarKwh = solarByMonth.get(key);
+        if (solarKwh != null && solarKwh > 0) {
+            return solarKwh;
+        }
+        return interpolateSolarKwh(solarByMonth, facility.getFacilityId(), ym);
+    }
+
+    private Double interpolateSolarKwh(Map<String, Double> solarByMonth, String facilityId, YearMonth ym) {
+        List<Double> neighbours = new ArrayList<>(2);
+        YearMonth prev = ym.minusMonths(1);
+        YearMonth next = ym.plusMonths(1);
+        addPositiveSolar(neighbours, solarByMonth, facilityId, prev);
+        addPositiveSolar(neighbours, solarByMonth, facilityId, next);
+        if (neighbours.isEmpty()) {
+            return null;
+        }
+        double sum = 0.0;
+        for (Double value : neighbours) {
+            sum += value;
+        }
+        double interpolated = sum / neighbours.size();
+        log.warn("Interpolated RMS solar facilityId={} period={}-{} kWh={}",
+                facilityId, ym.getYear(), ym.getMonthValue(), interpolated);
+        return interpolated;
+    }
+
+    private static void addPositiveSolar(List<Double> neighbours,
+                                         Map<String, Double> solarByMonth,
+                                         String facilityId,
+                                         YearMonth ym) {
+        String key = RmsConsumptionClient.key(facilityId, ym.getYear(), ym.getMonthValue());
+        Double value = solarByMonth.get(key);
+        if (value != null && value > 0) {
+            neighbours.add(value);
+        }
     }
 
     private Co2MonthlyDocument buildDocument(Co2FacilityContext f, int month, int year, double tonnes) {
@@ -166,10 +243,7 @@ public class CarbonEmissionBatchService {
     }
 
     private static String financialYearFor(int month, int year) {
-        if (month >= 4) {
-            return year + "-" + String.format("%02d", (year + 1) % 100);
-        }
-        return (year - 1) + "-" + String.format("%02d", year % 100);
+        return CarbonEmissionCalculator.financialYearFor(month, year);
     }
 
     /** Financial month index for FY view: Apr=1 ... Mar=12. */
