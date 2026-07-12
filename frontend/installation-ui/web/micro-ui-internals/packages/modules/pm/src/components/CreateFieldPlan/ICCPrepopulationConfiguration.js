@@ -51,6 +51,10 @@ const normalizeValue = (value) => (value || "").toString().trim().toLowerCase();
 
 const normalizeSystemTypeKey = (value) => normalizeValue(value).replace(/[\s_-]+/g, "");
 
+const isCustomCapacitySelection = (value) => ["custom", "custom capacity"].includes(normalizeValue(value));
+
+const hasValue = (value) => value !== undefined && value !== null && value !== "";
+
 const normalizeCapacity = (value) => {
   const matchedCapacity = value?.toString?.()?.match(/[\d.]+/);
   if (!matchedCapacity?.[0]) {
@@ -456,8 +460,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           const solutionDesignType = getColumnValue(row, ["solution design type (mandatory)", "solution design type"]);
           const selectedCapacity = getColumnValue(row, ["total system capacity (mandatory)", "total system capacity"]);
           const customCapacity = getColumnValue(row, ["custom total system capacity"]);
-          const isCustomCapacity = normalizeValue(solutionDesignType) === "custom solution design" &&
-            normalizeValue(selectedCapacity) === "custom capacity";
+          const isCustomCapacity = isCustomCapacitySelection(selectedCapacity) &&
+            hasValue(customCapacity);
           const capacity = isCustomCapacity ? customCapacity : selectedCapacity;
 
           if (normalizeValue(includedInFieldPlan) !== "yes" || !systemTypeValue) {
