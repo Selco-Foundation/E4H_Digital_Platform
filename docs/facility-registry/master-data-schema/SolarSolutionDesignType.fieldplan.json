@@ -1,0 +1,20 @@
+{
+  "tenantId": "in",
+  "module": "facility",
+  "SolarSolutionDesignType": [
+    { "active": true, "code": "CUSTOM", "name": "Custom Solution Design" },
+    { "active": true, "code": "OFF_GRID_DC_SYSTEM", "name": "Off-grid DC System" },
+    { "active": true, "code": "NO_DELIVERY_NO_COLDCHAIN", "name": "No Delivery Room, No Cold-chain" },
+    { "active": true, "code": "DELIVERY_ROOM_ONLY", "name": "Delivery Room Only" },
+    { "active": true, "code": "DELIVERY_ROOM_COLDCHAIN", "name": "Delivery Room + Cold-chain" },
+    { "active": true, "code": "COLDCHAIN_ONLY", "name": "Cold-chain Only" },
+    { "active": true, "code": "PHC_NO_DELIVERY_NO_COLDCHAIN_LAB", "name": "No Delivery Room, No Cold-chain, With/Without Lab" },
+    { "active": true, "code": "PHC_DELIVERY_ROOM", "name": "Delivery Room" },
+    { "active": true, "code": "PHC_COLDCHAIN_LAB", "name": "Cold-chain + Lab" },
+    { "active": true, "code": "PHC_DELIVERY_COLDCHAIN_LAB", "name": "Delivery Room + Cold-chain + Lab" },
+    { "active": true, "code": "PHC_DELIVERY_COLDCHAIN_LAB_DENTAL_ADMIN", "name": "Delivery Room + Cold-chain + Lab + Dental Unit + Admin" },
+    { "active": true, "code": "AC_HYBRID_SYSTEM", "name": "AC Hybrid System" },
+    { "active": true, "code": "LIGHT_FAN_EQUIPMENT", "name": "Light + Fan + Equipment" },
+    { "active": true, "code": "ONLY_LIGHT_FAN", "name": "Only Light & Fan" }
+  ]
+}

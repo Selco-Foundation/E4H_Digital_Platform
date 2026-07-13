@@ -122,6 +122,39 @@ def project_facility_validation(
     return errors
 
 
+def field_plan_facility_validation(
+    df, mdms_client, request_info, facility_client, boundary_data, schemaName
+):
+    """
+    Field plan facility Excel validation: standard project checks for new rows,
+    plus solar configuration rules for rows marked Included in Field Plan = Yes.
+    """
+    from app.utils.facility_solar_config_validator import validate_facility_solar_configuration
+
+    errors = project_facility_validation(
+        df, mdms_client, request_info, facility_client, boundary_data, schemaName
+    )
+
+    df = df.reset_index(drop=True)
+    schema = mdms_client.get_column_definitions_and_row_constraints_with_metadata(
+        request_info, schemaName
+    )
+
+    def add_err(i: int, msg: str) -> None:
+        errors[i].append(msg)
+
+    validate_facility_solar_configuration(
+        df,
+        schema,
+        mdms_client,
+        request_info,
+        add_err,
+        only_included_in_field_plan=True,
+    )
+
+    return errors
+
+
 def facility_validation(
     df, mdms_client, request_info, facility_client, boundary_data, schemaName
 ):
