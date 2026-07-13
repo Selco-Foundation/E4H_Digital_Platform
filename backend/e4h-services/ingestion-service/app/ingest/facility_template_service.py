@@ -24,6 +24,24 @@ boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 vendor_service_url = os.getenv("VENDOR_SERVICE_URL")
 localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
+EDITABLE_SOLAR_COLUMN_CODES = {
+    "facility_type",
+    "system_type",
+    "total_system_capacity",
+    "solution_design_type",
+    "facility_details.solar_solution_design_type",
+    "custom_solar_solution_design",
+    "custom_solar_system_capacity",
+}
+
+FACILITY_TYPE_DROPDOWN_FALLBACK = ["Sub Center", "Primary Health Centre", "Anganwadi"]
+SYSTEM_TYPE_DROPDOWN_FALLBACK = ["DC Off-grid", "AC Off-grid", "AC Hybrid"]
+SOLAR_CAPACITY_DROPDOWN_FALLBACK = [
+    "0.25 kWp", "0.5 kWp", "1 kWp", "2 kWp", "3 kWp", "5 kWp",
+    "6 kWp", "7 kWp", "8 kWp", "10 kWp", "Custom",
+]
+SOLUTION_DESIGN_DROPDOWN_FALLBACK = ["Custom Solution Design"]
+
 class FacilityTemplateService:
 
     def get_all_boundaries(self, request_info: RequestInfo) -> List[Boundary]:
@@ -88,12 +106,28 @@ class FacilityTemplateService:
 
                 allow_blank_map[header_name] = not col.get("required", False)
 
+                column_code = col.get("code")
+
                 # --- 1. MDMS Dropdowns ---
                 mdms_values = col.get("mdms_values")
                 if mdms_values:
                     dropdown_options = [item.get("name") for item in mdms_values if item.get("name")]
                     if dropdown_options:
                         dropdowns_map[header_name] = dropdown_options
+
+                if column_code in EDITABLE_SOLAR_COLUMN_CODES:
+                    editable_columns.append(header_name)
+                    if column_code == "facility_type" and header_name not in dropdowns_map:
+                        dropdowns_map[header_name] = FACILITY_TYPE_DROPDOWN_FALLBACK
+                    elif column_code == "system_type" and header_name not in dropdowns_map:
+                        dropdowns_map[header_name] = SYSTEM_TYPE_DROPDOWN_FALLBACK
+                    elif column_code == "total_system_capacity" and header_name not in dropdowns_map:
+                        dropdowns_map[header_name] = SOLAR_CAPACITY_DROPDOWN_FALLBACK
+                    elif column_code in {
+                        "solution_design_type",
+                        "facility_details.solar_solution_design_type",
+                    } and header_name not in dropdowns_map:
+                        dropdowns_map[header_name] = SOLUTION_DESIGN_DROPDOWN_FALLBACK
 
                 # --- 2. Yes/No Dropdowns ---
                 if col.get("type", "") in ["enum-yes-no"]:

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import requests
 
@@ -7,6 +7,30 @@ from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse, MDMS
 
 logger = AppLogger().get_logger()
+
+
+def _is_active_mdms_record(mdms: MDMS) -> bool:
+    """Include only MDMS records explicitly marked active."""
+    if mdms.isActive is not None:
+        return mdms.isActive is True
+
+    if not mdms.data:
+        return False
+
+    data = mdms.data.model_dump()
+    for field in ("isActive", "active"):
+        if field in data and data[field] is not None:
+            return data[field] is True
+
+    return True
+
+
+def _extract_active_mdms_values(mdms_records: Optional[List[MDMS]]) -> List[Dict[str, Any]]:
+    return [
+        mdms.data.model_dump()
+        for mdms in (mdms_records or [])
+        if mdms.data and _is_active_mdms_record(mdms)
+    ]
 
 
 class MDMSClient:
@@ -101,7 +125,7 @@ class MDMSClient:
                 logger.trace(f"Fetching dependent schema for column {col.name}: {dependent_schema_code}")
                 mdms_response = self.fetch_schema_column_definitions(request_info, dependent_schema_code)
                 if mdms_response.mdms:
-                    column_info["mdms_values"] = [mdms.data.model_dump() for mdms in mdms_response.mdms if mdms.data]
+                    column_info["mdms_values"] = _extract_active_mdms_values(mdms_response.mdms)
                     logger.debug(f"Found {len(column_info['mdms_values'])} MDMS values for column {col.name}")
 
             result.append(column_info)
@@ -136,11 +160,23 @@ class MDMSClient:
                 dependent_schema_code = f"{col.mdmsSource.module}.{col.mdmsSource.master}"
                 mdms_response = self.fetch_schema_column_definitions(request_info, dependent_schema_code)
                 if mdms_response.mdms:
-                    column_info["mdms_values"] = [mdms.data.model_dump() for mdms in mdms_response.mdms if mdms.data]
+                    column_info["mdms_values"] = _extract_active_mdms_values(mdms_response.mdms)
 
             column_list.append(column_info)
         result["column_list"] = column_list
         return result
+
+    def fetch_mdms_records(self, request_info: RequestInfo, schema_code: str) -> List[Dict[str, Any]]:
+        """Return active MDMS data rows for a schema (e.g. facility.FacilitySolarConfigurationRule)."""
+        response = self.fetch_schema_column_definitions(request_info, schema_code)
+        if not response.mdms:
+            return []
+        records: List[Dict[str, Any]] = []
+        for mdms in response.mdms:
+            if not self._is_active_mdms_entry(mdms) or not mdms.data:
+                continue
+            records.append(mdms.data.model_dump())
+        return records
 
     def get_tenant_mapping(self, request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
         logger.trace(f"Fetching tenant mapping for {len(tenant_ids)} tenants")

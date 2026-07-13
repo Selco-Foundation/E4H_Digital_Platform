@@ -15,9 +15,11 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import static org.egov.activity.util.ActivityConstants.*;
 
@@ -98,6 +100,56 @@ public class MDMSUtils {
 
     public StringBuilder getMdmsSearchUrl() {
         return new StringBuilder().append(config.getMdmsHost()).append(config.getMdmsEndPoint());
+    }
+
+    public Map<String, String> fetchInstallationImageDescriptions(RequestInfo requestInfo, String tenantId) {
+        log.trace("fetchInstallationImageDescriptions method invoked for tenantId: {}", tenantId);
+        log.info("Fetching InstallationImages MDMS master for tenantId: {}", tenantId);
+
+        MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder()
+                .requestInfo(requestInfo)
+                .mdmsCriteria(MdmsCriteria.builder()
+                        .tenantId(tenantId)
+                        .moduleDetails(Collections.singletonList(getInstallationImageModuleRequestData()))
+                        .build())
+                .build();
+
+        Map<String, String> codeToDescription = new LinkedHashMap<>();
+        try {
+            Map response = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, Map.class);
+            Map<String, Object> mdmsRes = (Map<String, Object>) response.get("MdmsRes");
+            Map<String, Object> commonMasters = mdmsRes != null
+                    ? (Map<String, Object>) mdmsRes.get(MDMS_COMMON_MASTERS_MODULE_NAME)
+                    : null;
+            List<Map<String, Object>> installationImageMasters = commonMasters != null
+                    ? (List<Map<String, Object>>) commonMasters.get(MASTER_INSTALLATION_IMAGES)
+                    : null;
+            if (installationImageMasters != null && !installationImageMasters.isEmpty()) {
+                List<Map<String, Object>> installationImages =
+                        (List<Map<String, Object>>) installationImageMasters.get(0).get(INSTALLATION_IMAGE_FIELD);
+                if (installationImages != null) {
+                    for (Map<String, Object> image : installationImages) {
+                        Object code = image.get("code");
+                        Object description = image.get("description");
+                        if (code != null && description != null) {
+                            codeToDescription.put(String.valueOf(code), String.valueOf(description));
+                        }
+                    }
+                }
+            }
+            log.debug("Fetched {} InstallationImages descriptions for tenantId: {}", codeToDescription.size(), tenantId);
+        } catch (Exception e) {
+            log.error("Error while fetching InstallationImages MDMS master for tenantId: {}", tenantId, e);
+            throw new CustomException("MDMS_ERROR", "error while calling mdms for InstallationImages master");
+        }
+        return codeToDescription;
+    }
+
+    private ModuleDetail getInstallationImageModuleRequestData() {
+        MasterDetail installationImageMasterDetail = MasterDetail.builder().name(MASTER_INSTALLATION_IMAGES).build();
+        return ModuleDetail.builder()
+                .masterDetails(Collections.singletonList(installationImageMasterDetail))
+                .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
     }
 
     private ModuleDetail getTenantModuleRequestData() {

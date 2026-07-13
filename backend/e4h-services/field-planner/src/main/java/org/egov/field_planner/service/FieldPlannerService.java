@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.core.AdditionalFields;
+import org.egov.common.models.core.Field;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
@@ -48,6 +50,8 @@ public class FieldPlannerService {
 
     private final FieldPlannerFacilityService facilityService;
 
+    private final FieldPlanTemplateService fieldPlanTemplateService;
+
     @Autowired
     @Qualifier("objectMapper")
     ObjectMapper mapper;
@@ -56,7 +60,8 @@ public class FieldPlannerService {
     public FieldPlannerService(
             FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators, FieldPlannerFacilityService facilityService,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
-            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository) {
+            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository,
+            FieldPlanTemplateService fieldPlanTemplateService) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -67,6 +72,7 @@ public class FieldPlannerService {
             this.fieldPlanServiceUtil = fieldPlanServiceUtil;
             this.serviceRequestRepository = serviceRequestRepository;
             this.facilityService = facilityService;
+            this.fieldPlanTemplateService = fieldPlanTemplateService;
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
@@ -518,7 +524,12 @@ public class FieldPlannerService {
                                     item -> (String) ((Map<String, Object>) item.getRole()).get("code"),
                                     Collectors.mapping(item -> (String) item.getAssignedTo(), Collectors.toList())
                             ));
+                    // Fetched once for the whole batch rather than once per facility/component -
+                    // asset-registry.BrandSchema doesn't change within a single scheduling run.
+                    Map<String, Map<String, String>> brandCodeByNameByAssetType =
+                            fetchBrandCodeByNameByAssetType(request.getRequestInfo());
                     for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
+                        Map<String, Object> additionalDetails = buildActivityFacilityAdditionalDetails(request, fieldPlanFacility, brandCodeByNameByAssetType);
                         for(Map<String, Object> activity : fieldPlan.getActivities()){
                             ActivityFacility activityFacility = ActivityFacility.builder()
                                     .tenantId("in")
@@ -530,6 +541,7 @@ public class FieldPlannerService {
                                     .reviewerUser(roleToIds.get(INSTALLATION_REVIEWER_ROLE))
                                     .fieldStaffUsers(roleToIds.get(FIELD_STAFF_ROLE))
                                     .fieldSupervisorUsers(roleToIds.get(FIELD_SUPERVISOR_ROLE))
+                                    .additionalDetails(additionalDetails)
                                     .build();
 
                             activityFacilities.add(activityFacility);
@@ -557,6 +569,166 @@ public class FieldPlannerService {
         producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTopic(), request);
         log.info("Field plan update pushed to Kafka successfully");
         log.trace("Exiting handleUpdateFieldPlan method");
+    }
+
+    /**
+     * Builds the additionalDetails for an ActivityFacility being created on SCHEDULED field plan
+     * update: the matching FieldPlanTemplate's templateData (by fieldPlanId + systemType, the
+     * latter read from the FieldPlanFacility's own additionalFields) under key "bom", merged with
+     * the FieldPlanFacility's additionalFields themselves (facilityType/systemType/
+     * solarSolutionDesignType/totalSystemCapacity, as set at link time).
+     */
+    private Map<String, Object> buildActivityFacilityAdditionalDetails(
+            FieldPlanRequest request, FieldPlanFacility fieldPlanFacility, Map<String, Map<String, String>> brandCodeByNameByAssetType) {
+        log.trace("Entering buildActivityFacilityAdditionalDetails method for facility: {}", fieldPlanFacility.getFacilityId());
+        Map<String, Object> additionalDetails = new HashMap<>(extractAdditionalFieldsAsMap(fieldPlanFacility.getAdditionalFields()));
+
+        String systemType = (String) additionalDetails.get("systemType");
+        String totalSystemCapacity = (String) additionalDetails.get("totalSystemCapacity");
+        if (StringUtils.equalsIgnoreCase(totalSystemCapacity, "CUSTOM")) {
+            totalSystemCapacity = (String) additionalDetails.get("customTotalSystemCapacity");
+        }
+        if (StringUtils.isNotBlank(systemType)) {
+            FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType, totalSystemCapacity);
+            if (template != null && template.getTemplateData() != null) {
+                Map<String, Object> templateData = template.getTemplateData();
+                additionalDetails.put("bom", templateData);
+                additionalDetails.put("panel", buildBomComponent(templateData, "solar_module_capacity", "solar_module_make",
+                        brandCodeByNameByAssetType.getOrDefault("PANEL", Collections.emptyMap())));
+                additionalDetails.put("battery", buildBomComponent(templateData, "solar_battery_capacity", "solar_battery_make",
+                        brandCodeByNameByAssetType.getOrDefault("BATTERY", Collections.emptyMap())));
+                additionalDetails.put("inverter", buildInverterComponent(templateData,
+                        brandCodeByNameByAssetType.getOrDefault("INVERTER", Collections.emptyMap())));
+            } else {
+                log.warn("No FieldPlanTemplate found for fieldPlanId: {}, systemType: {}", fieldPlanFacility.getFieldPlanId(), systemType);
+            }
+        } else {
+            log.warn("FieldPlanFacility {} has no systemType in additionalFields - skipping BOM template lookup", fieldPlanFacility.getFacilityId());
+        }
+
+        log.trace("Exiting buildActivityFacilityAdditionalDetails method");
+        return additionalDetails;
+    }
+
+    // The BOM template's "inverter" component is named differently per system type - only one
+    // of these key pairs is ever present in a given templateData (each FieldPlanTemplate is
+    // generated from exactly one system type's template), so the first pair found wins:
+    //   - inverter_*: AC_OFF_GRID and AC_ON_GRID templates
+    //   - solar_hybrid_pcu_*: AC_HYBRID template
+    //   - solar_charge_controller_*: DC_OFF_GRID template (no dedicated inverter - CCU serves that role)
+    private static final List<String[]> INVERTER_KEY_CANDIDATES = List.of(
+            new String[]{"inverter_capacity", "inverter_make"},
+            new String[]{"solar_hybrid_pcu_capacity", "solar_hybrid_pcu_make"},
+            new String[]{"solar_charge_controller_capacity", "solar_charge_controller_make"}
+    );
+
+    private Map<String, Object> buildInverterComponent(Map<String, Object> templateData, Map<String, String> inverterBrandCodeByName) {
+        for (String[] candidate : INVERTER_KEY_CANDIDATES) {
+            if (templateData.containsKey(candidate[0]) || templateData.containsKey(candidate[1])) {
+                return buildBomComponent(templateData, candidate[0], candidate[1], inverterBrandCodeByName);
+            }
+        }
+        return buildBomComponent(templateData, INVERTER_KEY_CANDIDATES.get(0)[0], INVERTER_KEY_CANDIDATES.get(0)[1], inverterBrandCodeByName);
+    }
+
+    private static final String BRAND_SCHEMA_CODE = "asset-registry.BrandSchema";
+
+    /**
+     * Fetches every active brand registered in MDMS asset-registry.BrandSchema, grouped by
+     * asset type (PANEL/BATTERY/INVERTER) and indexed by brand name -> brand code (e.g.
+     * PANEL: {"Gautam Solar" -> "GAUTAM_SOLAR", "ReNew" -> "RENEW", ...}). Returns an empty map
+     * (never throws) if MDMS can't be reached - brandCode then simply comes out null for every
+     * component rather than blocking the whole field plan scheduling run.
+     */
+    private Map<String, Map<String, String>> fetchBrandCodeByNameByAssetType(RequestInfo requestInfo) {
+        Map<String, Map<String, String>> result = new HashMap<>();
+        try {
+            Map<String, Object> mdmsCriteria = new HashMap<>();
+            mdmsCriteria.put("tenantId", "in");
+            mdmsCriteria.put("schemaCode", BRAND_SCHEMA_CODE);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("RequestInfo", requestInfo);
+            payload.put("MdmsCriteria", mdmsCriteria);
+
+            String url = fieldPlannerConfiguration.getMdmsHost() + fieldPlannerConfiguration.getMdmsV2SearchEndpoint();
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), payload);
+            JsonNode mdmsArray = mapper.valueToTree(response).path("mdms");
+            for (JsonNode mdmsEntry : mdmsArray) {
+                for (JsonNode brand : mdmsEntry.path("data").path("Brand")) {
+                    if (brand.path("active").isBoolean() && !brand.path("active").asBoolean()) {
+                        continue;
+                    }
+                    String assetType = brand.path("asset_type_code").asText(null);
+                    String name = brand.path("name").asText(null);
+                    String code = brand.path("code").asText(null);
+                    if (assetType == null || name == null || code == null) {
+                        continue;
+                    }
+                    result.computeIfAbsent(assetType, k -> new HashMap<>()).put(name, code);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error fetching {} for brand code lookup", BRAND_SCHEMA_CODE, e);
+        }
+        return result;
+    }
+
+    /**
+     * Builds a {capacity, brandCode, brandName} component (panel/battery/inverter) from the
+     * FieldPlanTemplate's flat templateData: brandCode is looked up from MDMS
+     * asset-registry.BrandSchema by brand name (e.g. make "Gautam Solar" -> brandCode
+     * "GAUTAM_SOLAR"), not derived from the name text itself - null if the name isn't a
+     * registered brand for this asset type (shouldn't happen once /icc-reports' own brand name
+     * validation is in place, but this stays defensive for already-stored data predating it).
+     */
+    private Map<String, Object> buildBomComponent(
+            Map<String, Object> templateData, String capacityKey, String makeKey, Map<String, String> brandCodeByName) {
+        Object capacity = templateData.get(capacityKey);
+        Object make = templateData.get(makeKey);
+        Map<String, Object> component = new HashMap<>();
+        component.put("capacity", capacity);
+        component.put("brandCode", make != null ? brandCodeByName.get(make.toString()) : null);
+        component.put("brandName", make);
+        return component;
+    }
+
+    private Map<String, Object> extractAdditionalFieldsAsMap(AdditionalFields additionalFields) {
+        if (additionalFields == null || additionalFields.getFields() == null) {
+            return new HashMap<>();
+        }
+        Map<String, Object> result = new HashMap<>();
+        for (Field field : additionalFields.getFields()) {
+            if (field.getKey() != null) {
+                result.put(field.getKey(), field.getValue());
+            }
+        }
+        return result;
+    }
+
+    private FieldPlanTemplate findFieldPlanTemplate(FieldPlanRequest request, String fieldPlanId, String systemType, String totalSystemCapacity) {
+        try {
+            FieldPlanTemplateSearchCriteria criteria = FieldPlanTemplateSearchCriteria.builder()
+                    .fieldPlanId(List.of(fieldPlanId))
+                    .systemType(List.of(systemType))
+                    .totalCapacity(List.of(totalSystemCapacity))
+                    .build();
+            FieldPlanTemplateSearchRequest searchRequest = FieldPlanTemplateSearchRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .criteria(criteria)
+                    .build();
+            List<FieldPlanTemplate> templates = fieldPlanTemplateService.search(
+                    searchRequest,
+                    fieldPlannerConfiguration.getMaxLimit(),
+                    fieldPlannerConfiguration.getDefaultOffset(),
+                    "in",
+                    null
+            );
+            return (templates != null && !templates.isEmpty()) ? templates.get(0) : null;
+        } catch (Exception e) {
+            log.error("Error searching field plan template for fieldPlanId: {}, systemType: {}", fieldPlanId, systemType, e);
+            return null;
+        }
     }
 
     private boolean isValidCascadingUpdate(FieldPlan fieldPlanFromDB, FieldPlan fieldPlan) {
