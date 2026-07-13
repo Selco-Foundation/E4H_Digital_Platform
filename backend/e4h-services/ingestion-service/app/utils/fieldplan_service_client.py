@@ -368,3 +368,71 @@ class FieldPlanServiceClient:
         except requests.exceptions.RequestException as req_err:
             logger.error(f"Request error creating field plan templates: {req_err}", exc_info=True)
             raise req_err
+
+    def update_field_plan_templates(
+        self,
+        request_info: RequestInfo,
+        items: List[Dict[str, Any]],
+        files: List[tuple],
+    ):
+        """
+        Update N existing field plan templates via the bulk endpoint
+        POST /field-planner/v1/field-plan-templates/_update.
+
+        Sends:
+          - "request": one FieldPlanTemplateBulkRequest JSON object with an N-element
+            FieldPlanTemplates list, each carrying the existing template's "id".
+          - "excelFiles": omitted entirely when `files` is empty (metadata-only update, every
+            template keeps its existing file), otherwise exactly N multipart parts sharing the
+            field name "excelFiles" - field-planner rejects a partial list that doesn't match
+            the template count 1:1.
+
+        `items` each need an "id" key identifying the template being updated. `files` is a list
+        of (file_name, file_bytes) tuples; if non-empty it must be the same length as `items`.
+        """
+        if files and len(items) != len(files):
+            raise ValueError(f"items ({len(items)}) and files ({len(files)}) must be the same length")
+
+        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plan-templates/_update"
+
+        bulk_request = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "FieldPlanTemplates": [
+                {
+                    "id": item["id"],
+                    "tenantId": item["tenant_id"],
+                    "fieldPlanId": item["field_plan_id"],
+                    "systemType": item["system_type"],
+                    "totalCapacity": item["total_capacity"],
+                    "templateData": item.get("template_data"),
+                }
+                for item in items
+            ],
+        }
+
+        multipart_fields = [
+            ("request", (None, json.dumps(bulk_request), "application/json")),
+        ]
+        for file_name, file_bytes in files:
+            multipart_fields.append((
+                "excelFiles",
+                (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            ))
+
+        logger.trace(f"Updating {len(items)} field plan template(s) in one bulk call, files={len(files)}")
+        try:
+            response = requests.post(url, files=multipart_fields)
+            logger.info(f"Field plan template bulk update sent: count={len(items)}, status={response.status_code}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error updating field plan templates: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error updating field plan templates: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error updating field plan templates: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error updating field plan templates: {req_err}", exc_info=True)
+            raise req_err

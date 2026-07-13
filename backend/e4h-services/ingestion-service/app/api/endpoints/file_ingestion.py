@@ -1565,6 +1565,145 @@ async def upload_icc_reports(
                 os.unlink(temp_file.name)
 
 
+@router.post('/icc-reports/_update',
+             summary='Bulk-update existing ICC report field plan templates, optionally replacing '
+                     'their Excel files, via field-planner in one call',
+             response_description='Returns the field-planner bulk template update response')
+async def update_icc_reports(
+        items: str = Form(
+            ...,
+            description='JSON array of metadata objects, one per template to update: '
+                        '[{"id": "...", "systemType": "...", "totalSystemCapacity": "...", '
+                        '"fieldPlanId": "...", "tenantId": "in"}]'
+        ),
+        icc_files: Optional[List[UploadFile]] = File(
+            default=None,
+            description="Optional ICC Report Excel files (.xlsx), positionally paired 1:1 with "
+                        "items. Omit entirely to update metadata only and keep every template's "
+                        "existing file - a partial list (fewer files than items) is rejected."
+        ),
+        request_info: str = Form(default="")
+):
+    """
+    Accepts N metadata items, each identifying an existing FieldPlanTemplate by "id", and either
+    zero or exactly N Excel files paired positionally (items[i] <-> icc_files[i]). Validation is
+    all-or-nothing: every item (and every file that was provided) is validated first, and if ANY
+    item fails, the whole batch is rejected with a 400 listing every failing index - nothing is
+    forwarded to field-planner unless every item passes.
+    """
+    request_info_obj = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
+
+    try:
+        parsed_items = json.loads(items)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"`items` is not valid JSON: {e}")
+
+    if not isinstance(parsed_items, list) or len(parsed_items) == 0:
+        raise HTTPException(status_code=400, detail="`items` must be a non-empty JSON array")
+
+    has_files = icc_files is not None and len(icc_files) > 0
+    if has_files and len(icc_files) != len(parsed_items):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Item count ({len(parsed_items)}) does not match file count ({len(icc_files)}); "
+                "provide exactly one file per item, or omit icc_files entirely to update "
+                "metadata only."
+            ),
+        )
+
+    required_keys = ("id", "systemType", "totalSystemCapacity", "fieldPlanId")
+    field_errors = []
+    for idx, item in enumerate(parsed_items):
+        if not isinstance(item, dict):
+            field_errors.append({"index": idx, "error": "item must be a JSON object"})
+            continue
+        missing = [k for k in required_keys if not item.get(k)]
+        if missing:
+            field_errors.append({"index": idx, "error": f"missing required field(s): {', '.join(missing)}"})
+
+    if field_errors:
+        raise HTTPException(status_code=400, detail={"message": "Invalid items in batch", "errors": field_errors})
+
+    temp_files = []
+    converted = []
+    validation_errors = []
+
+    try:
+        for idx, item in enumerate(parsed_items):
+            upload = icc_files[idx] if has_files else None
+            template_data = None
+            if upload is not None:
+                temp_file, _ = await _save_upload_to_temp_file(upload, suffix=".xlsx")
+                temp_files.append((temp_file, upload))
+                try:
+                    detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
+                        temp_file.name, item["systemType"],
+                        mdms_client=mdms_client, request_info=request_info_obj,
+                    )
+                    template_data = icc_json
+                    logger.info(
+                        f"ICC report[{idx}] (update, id={item['id']}) converted: "
+                        f"systemType={item['systemType']} (detected={detected_type}), "
+                        f"keys={len(icc_json)}, fallback_keys={len(fallback_fields)}, "
+                        f"unmatched={len(unmatched_fields)}"
+                    )
+                except ICCValidationError as e:
+                    logger.warning(f"ICC report[{idx}] update rejected: {e}")
+                    validation_errors.append({"index": idx, "fileName": upload.filename, "error": str(e)})
+                    continue
+
+            converted.append({
+                "id": item["id"],
+                "tenant_id": item.get("tenantId", "in"),
+                "field_plan_id": item["fieldPlanId"],
+                "system_type": item["systemType"],
+                "total_capacity": item["totalSystemCapacity"],
+                "template_data": template_data,
+            })
+
+        if validation_errors:
+            logger.warning(
+                f"ICC bulk update rejected: {len(validation_errors)} of {len(parsed_items)} item(s) failed validation"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail={"message": "One or more items failed validation; nothing was submitted", "errors": validation_errors},
+            )
+
+        if not fieldPlan_service_url:
+            raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+        files_payload = []
+        if has_files:
+            for temp_file, upload in temp_files:
+                with open(temp_file.name, "rb") as f:
+                    files_payload.append((upload.filename or "icc_report.xlsx", f.read()))
+
+        field_plan_client = FieldPlanServiceClient(fieldPlan_service_url)
+        response = field_plan_client.update_field_plan_templates(request_info_obj, converted, files_payload)
+
+        if response.status_code in (200, 201, 202):
+            return JSONResponse(status_code=response.status_code, content=response.json())
+
+        logger.error(f"field-planner rejected the bulk template update: {response.status_code} - {response.text}")
+        raise HTTPException(
+            status_code=response.status_code if response.status_code >= 400 else 502,
+            detail=f"field-planner rejected the template update batch: {response.text}",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing ICC report update batch: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process ICC report update batch: {str(e)}")
+    finally:
+        for temp_file, _ in temp_files:
+            if temp_file and os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
+
+
 def get_hrms_employee_info(codes: List[str], db_conn) -> Dict[str, str]:
     try:
         with db_conn.cursor() as cursor:
