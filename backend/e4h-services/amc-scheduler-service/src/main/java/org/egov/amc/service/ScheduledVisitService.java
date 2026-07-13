@@ -97,6 +97,7 @@ public class ScheduledVisitService {
                 throw new CustomException("CREATE_VISIT_ERROR", "Facility not found for facilityId: " + scheduledVisit.getFacilityId());
             }
             scheduledVisit.setFacilityName(facility.getFacilityName());
+            scheduledVisit.setFacility(facility);
 
             // remove Duplicate Assignments
             Set<String> seenUsers = new HashSet<>();
@@ -108,7 +109,25 @@ public class ScheduledVisitService {
             log.info("Pushed to kafka");
         }
         producer.push(amcServiceConfiguration.getSaveScheduledVisitTopic(), request);
+        pushNonDraftVisitsToIndex(request.getRequestInfo(), request.getScheduledVisits(), amcServiceConfiguration.getSaveScheduledVisitIndexTopic());
         return request;
+    }
+
+    /**
+     * Index only non-DRAFT visits - the search index should never surface visits that are still being drafted.
+     */
+    private void pushNonDraftVisitsToIndex(RequestInfo requestInfo, List<ScheduledVisit> visits, String indexTopic) {
+        List<ScheduledVisit> nonDraftVisits = visits.stream()
+                .filter(visit -> visit.getStatus() != null && !DRAFT_STATUS.equalsIgnoreCase(visit.getStatus()))
+                .toList();
+        if (nonDraftVisits.isEmpty()) {
+            return;
+        }
+        ScheduledVisitRequest indexRequest = ScheduledVisitRequest.builder()
+                .requestInfo(requestInfo)
+                .scheduledVisits(nonDraftVisits)
+                .build();
+        producer.push(indexTopic, indexRequest);
     }
 
     public ScheduledVisitResponse generateScheduledVisits(VisitGenerationRequest request) {
@@ -385,6 +404,12 @@ public class ScheduledVisitService {
 
         // 7. Perform enriched update using standard handler
         handleUpdateScheduledVisit(enrichedRequest, updatedScheduledVisit, existingVisit);
+
+        // 8. Push the fully-enriched visit (facility, amcConfiguration, assignments) to the search index
+        // topic, skipping DRAFT visits. existingVisit already carries the updated status/visitReport, but
+        // the refreshed auditDetails (bumped lastModifiedTime) landed on updatedScheduledVisit - carry it over.
+        existingVisit.setAuditDetails(updatedScheduledVisit.getAuditDetails());
+        pushNonDraftVisitsToIndex(request.getRequestInfo(), List.of(existingVisit), amcServiceConfiguration.getUpdateScheduledVisitIndexTopic());
 
         return List.of(updatedScheduledVisit);
     }
@@ -733,6 +758,13 @@ public class ScheduledVisitService {
                 .scheduledVisits(List.of(expiredVisit))
                 .build();
         producer.push(amcServiceConfiguration.getUpdateScheduledVisitTopic(), expireRequest);
+
+        // Push the fully-enriched visit (facility, amcConfiguration, assignments) to the search index topic.
+        // EXPIRED is always non-DRAFT, but route through the shared helper for consistency. Carry over the
+        // new status and the refreshed auditDetails (bumped lastModifiedTime) that landed on expiredVisit.
+        visit.setStatus(expiredStatus);
+        visit.setAuditDetails(expiredVisit.getAuditDetails());
+        pushNonDraftVisitsToIndex(requestInfo, List.of(visit), amcServiceConfiguration.getUpdateScheduledVisitIndexTopic());
     }
 
     /**
