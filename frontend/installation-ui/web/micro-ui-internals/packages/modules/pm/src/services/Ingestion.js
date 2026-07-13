@@ -100,6 +100,20 @@ export const IngestionService = {
     });
   },
 
+  uploadICCReports : async (iccReportsData) => {
+    const endpoint = "/ingestion-service/ingest/icc-reports";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : iccReportsData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+    });
+  },
+
   downloadAMCFacilityDataTemplate : async (requestData) => {
     const endpoint = "/ingestion-service/template/amcConfigurationTemplate";
     const headers = {
