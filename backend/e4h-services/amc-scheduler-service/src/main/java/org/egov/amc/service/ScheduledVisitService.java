@@ -9,6 +9,7 @@ import org.egov.amc.service.enrichment.ScheduledVisitEnrichment;
 import org.egov.amc.util.AmcConfigurationServiceUtil;
 import org.egov.amc.util.BoundaryUtil;
 import org.egov.amc.util.FacilityPocPhoneUtil;
+import org.egov.amc.util.LocalizationUtil;
 import org.egov.amc.util.MDMSUtils;
 import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
@@ -49,6 +50,7 @@ public class ScheduledVisitService {
     private final MDMSUtils mdmsUtils;
     private BoundaryUtil boundaryUtil;
     private final FacilityPocPhoneUtil facilityPocPhoneUtil;
+    private final LocalizationUtil localizationUtil;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -58,7 +60,7 @@ public class ScheduledVisitService {
     public ScheduledVisitService(
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
             Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil,
-            FacilityPocPhoneUtil facilityPocPhoneUtil) {
+            FacilityPocPhoneUtil facilityPocPhoneUtil, LocalizationUtil localizationUtil) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
         this.producer = producer;
@@ -72,6 +74,7 @@ public class ScheduledVisitService {
         this.mdmsUtils = mdmsUtils;
         this.boundaryUtil = boundaryUtil;
         this.facilityPocPhoneUtil = facilityPocPhoneUtil;
+        this.localizationUtil = localizationUtil;
     }
 
     public ScheduledVisitRequest createScheduledVisit(ScheduledVisitRequest request) {
@@ -115,19 +118,107 @@ public class ScheduledVisitService {
 
     /**
      * Index only non-DRAFT visits - the search index should never surface visits that are still being drafted.
+     * Returns the number of visits actually pushed (DRAFT visits in the input are silently skipped).
      */
-    private void pushNonDraftVisitsToIndex(RequestInfo requestInfo, List<ScheduledVisit> visits, String indexTopic) {
+    private int pushNonDraftVisitsToIndex(RequestInfo requestInfo, List<ScheduledVisit> visits, String indexTopic) {
         List<ScheduledVisit> nonDraftVisits = visits.stream()
                 .filter(visit -> visit.getStatus() != null && !DRAFT_STATUS.equalsIgnoreCase(visit.getStatus()))
                 .toList();
         if (nonDraftVisits.isEmpty()) {
-            return;
+            return 0;
         }
+        enrichBoundaryLocalization(requestInfo, nonDraftVisits);
         ScheduledVisitRequest indexRequest = ScheduledVisitRequest.builder()
                 .requestInfo(requestInfo)
                 .scheduledVisits(nonDraftVisits)
                 .build();
         producer.push(indexTopic, indexRequest);
+        return nonDraftVisits.size();
+    }
+
+    /**
+     * Backfills the search index from the DB: pages through every visit for the tenant and pushes the
+     * non-DRAFT ones onto the same index topic/pipeline used by create/update/expire. Existing documents
+     * with the same id are overwritten (upsert), so this is safe to re-run.
+     */
+    public int reindexNonDraftVisits(RequestInfo requestInfo, String tenantId) {
+        int limit = amcServiceConfiguration.getMaxLimit();
+        int offset = 0;
+        int totalIndexed = 0;
+
+        while (true) {
+            ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder()
+                    .tenantId(tenantId)
+                    .build();
+            ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                    .RequestInfo(requestInfo)
+                    .searchCriteria(criteria)
+                    .build();
+            List<ScheduledVisit> visits = searchScheduledVisit(searchRequest, limit, offset, tenantId, false, null);
+            if (visits == null || visits.isEmpty()) {
+                break;
+            }
+
+            int indexedInBatch = pushNonDraftVisitsToIndex(requestInfo, visits, amcServiceConfiguration.getSaveScheduledVisitIndexTopic());
+            totalIndexed += indexedInBatch;
+            log.info("Reindex batch offset={} fetched={} indexed={} totalIndexed={}",
+                    offset, visits.size(), indexedInBatch, totalIndexed);
+
+            if (visits.size() < limit) {
+                break;
+            }
+            offset += limit;
+        }
+
+        log.info("Reindex complete for tenantId={}. Total non-DRAFT visits pushed to index: {}", tenantId, totalIndexed);
+        return totalIndexed;
+    }
+
+    /**
+     * Resolves each visit's facility boundary (state/district/block codes) and merges it into
+     * facility.additionalDetails.boundary - matching what searchScheduledVisit already does for search
+     * responses - then localizes those codes via egov-localization and sets visit.state/district/block
+     * so the index carries the exact "state"/"district"/"block" field names used by other indices.
+     */
+    private void enrichBoundaryLocalization(RequestInfo requestInfo, List<ScheduledVisit> visits) {
+        List<ScheduledVisit> visitsWithBoundaryCode = visits.stream()
+                .filter(v -> v.getFacility() != null && v.getFacility().getBoundaryCode() != null)
+                .toList();
+        if (visitsWithBoundaryCode.isEmpty()) {
+            return;
+        }
+
+        Map<String, Boundary> boundaryByFacilityCode = boundaryUtil.getBoundaryByCode();
+        if (boundaryByFacilityCode == null || boundaryByFacilityCode.isEmpty()) {
+            return;
+        }
+
+        Set<String> rawBoundaryCodes = new HashSet<>();
+        for (ScheduledVisit visit : visitsWithBoundaryCode) {
+            Boundary boundary = boundaryByFacilityCode.get(visit.getFacility().getBoundaryCode());
+            if (boundary == null) continue;
+            Object additionalDetails = visit.getFacility().getAdditionalDetails();
+            visit.getFacility().setAdditionalDetails(
+                    (Map<String, Object>) mergeListIntoAdditionalDetails(additionalDetails, "boundary", boundary));
+            if (boundary.getState() != null) rawBoundaryCodes.add(boundary.getState());
+            if (boundary.getDistrict() != null) rawBoundaryCodes.add(boundary.getDistrict());
+            if (boundary.getBlock() != null) rawBoundaryCodes.add(boundary.getBlock());
+        }
+        if (rawBoundaryCodes.isEmpty()) {
+            return;
+        }
+
+        String tenantId = requestInfo != null && requestInfo.getUserInfo() != null
+                ? requestInfo.getUserInfo().getTenantId() : null;
+        Map<String, String> labels = localizationUtil.fetchBoundaryLabels(requestInfo, tenantId, rawBoundaryCodes);
+
+        for (ScheduledVisit visit : visitsWithBoundaryCode) {
+            Boundary boundary = boundaryByFacilityCode.get(visit.getFacility().getBoundaryCode());
+            if (boundary == null) continue;
+            visit.setState(labels.getOrDefault(boundary.getState(), boundary.getState()));
+            visit.setDistrict(labels.getOrDefault(boundary.getDistrict(), boundary.getDistrict()));
+            visit.setBlock(labels.getOrDefault(boundary.getBlock(), boundary.getBlock()));
+        }
     }
 
     public ScheduledVisitResponse generateScheduledVisits(VisitGenerationRequest request) {
