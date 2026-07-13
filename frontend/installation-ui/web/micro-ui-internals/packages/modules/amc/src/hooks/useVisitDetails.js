@@ -128,7 +128,6 @@ const fetchVisitDetails = async (filter, limit, offset) => {
   const visitData = visitsResponse?.ScheduledVisits?.[0];
 
   const facility = visitData?.facility || {};
-  const assigneeDetails = visitData?.processInstances?.[0]?.assignes?.[0] || {};
   const auditTrail = generateAuditTrail(visitData.processInstances);
   const { reportDocumentAggregation, workflowDocuments } = await getDocumentAggregation(visitData.processInstances);
   const mdmsConfigResponse = await Digit.MDMSService.getMultipleTypes(Digit.ULBService.getCurrentTenantId(), "AMC", ["FormConfig"]);
@@ -142,10 +141,10 @@ const fetchVisitDetails = async (filter, limit, offset) => {
       facilityName: facility.facility_name,
       facilityId: facility.id,
       facilityType: facility.facility_type,
-      block: facility.additionalDetails?.block,
-      district: facility.additionalDetails?.district,
+      block: facility.additionalDetails?.boundary?.block,
+      district: facility.additionalDetails?.boundary?.district,
       status: visitData?.status,
-      assigned: assigneeDetails.name,
+      assigned: visitData?.assignments?.[0]?.user?.name,
     },
     visitReport: format,
     visitImages,
