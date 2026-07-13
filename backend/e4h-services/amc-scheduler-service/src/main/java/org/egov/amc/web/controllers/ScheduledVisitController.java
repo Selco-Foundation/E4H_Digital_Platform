@@ -124,10 +124,10 @@ public class ScheduledVisitController {
     @RequestMapping(value = "/index/_reindex", method = RequestMethod.POST)
     public ResponseEntity<ReindexResponse> reindexNonDraftVisits(
             @ApiParam(value = "RequestInfo for the reindex trigger.", required = true) @Valid @RequestBody RequestInfoWrapper request,
-            @Valid @ModelAttribute URLParams urlParams
+            @RequestParam(name = "tenantId") String tenantId
     ) {
-        log.info("Received request to reindex non-DRAFT scheduled visits for tenantId={}", urlParams.getTenantId());
-        int totalIndexed = scheduledVisitService.reindexNonDraftVisits(request.getRequestInfo(), urlParams.getTenantId());
+        log.info("Received request to reindex non-DRAFT scheduled visits for tenantId={}", tenantId);
+        int totalIndexed = scheduledVisitService.reindexNonDraftVisits(request.getRequestInfo(), tenantId);
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ReindexResponse response = ReindexResponse.builder()
                 .responseInfo(responseInfo)
