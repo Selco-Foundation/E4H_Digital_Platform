@@ -47,6 +47,15 @@ public class ActivityConfiguration {
     @Value("${egov.createandsave.pdf.url}")
     private String pdfCreateSaveFilestore;
 
+    @Value("${egov.ingestion.host}")
+    private String ingestionServiceHost;
+
+    @Value("${egov.ingestion.document.append.url}")
+    private String ingestionDocumentAppendUrl;
+
+    @Value("${egov.ingestion.document.append.module}")
+    private String ingestionDocumentAppendModule;
+
     @Value("${egov.kafka.notification.email.topic}")
     private String notificationEmailTopic;
 
@@ -64,6 +73,12 @@ public class ActivityConfiguration {
 
     @Value("${egov.dc.system.key}")
     private String bomDCSystem;
+
+    @Value("${egov.on.grid.single.phase.key}")
+    private String bomACOnGridSinglePhase;
+
+    @Value("${egov.on.grid.three.phase.key}")
+    private String bomACOnGridSThreePhase;
 
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
