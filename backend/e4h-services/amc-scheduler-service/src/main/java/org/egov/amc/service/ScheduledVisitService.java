@@ -147,8 +147,12 @@ public class ScheduledVisitService {
         int totalIndexed = 0;
 
         while (true) {
+            // includeExpired doesn't actually filter anything in ScheduledVisitQueryBuilder - it's set here
+            // purely to satisfy the search validator's "any one search field is required" check, since we
+            // deliberately want every visit (no status/id/date filter) for a full reindex.
             ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder()
                     .tenantId(tenantId)
+                    .includeExpired(true)
                     .build();
             ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
                     .RequestInfo(requestInfo)
