@@ -20,6 +20,8 @@ const Summary = ({
   videos,
   report,
   isReport,
+  customTitle,
+  renderContent,
   supportingDocuments = [],
   installationImages = [],
   installationCompletionCertificate = [],
@@ -34,13 +36,19 @@ const Summary = ({
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const rejectionReasons = rejectionData?.[section] || [];
   const [imageToView, setImageToView] = useState(null);
+  const rejectionSectionLabel = customTitle || t(`QC_${section}_SUMMARY`);
 
   const handleSave = (data) => {
-    dispatch(setRejectionReasons(section, [...rejectionReasons, ...data.filter((reason) => reason?.reason?.trim())]));
+    dispatch(setRejectionReasons(section, [
+      ...rejectionReasons,
+      ...data
+        .filter((reason) => reason?.reason?.trim())
+        .map((reason) => ({ ...reason, sectionLabel: rejectionSectionLabel })),
+    ]));
   };
 
   const handleUpdate = (reason) => {
-    dispatch(setRejectionReasons(section, rejectionReasons.map((r) => r.id === reason.id ? reason : r)));
+    dispatch(setRejectionReasons(section, rejectionReasons.map((r) => r.id === reason.id ? { ...reason, sectionLabel: rejectionSectionLabel } : r)));
   };
 
   const handleDelete = (reason) => {
@@ -99,16 +107,19 @@ const Summary = ({
           borderBottom: expanded ? "1px solid #eee" : "none",
         }}
       >
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: "1 1 auto", minWidth: 0, maxWidth: "calc(100% - 260px)" }}>
           <div
             style={{
               margin: 0,
               color: "#0B4B66",
               fontSize: "32px",
               fontWeight: "bold",
+              maxWidth: "100%",
+              overflowWrap: "break-word",
+              lineHeight: "30px",
             }}
           >
-            {t(`QC_${section}_SUMMARY`)}
+            {customTitle || t(`QC_${section}_SUMMARY`)}
           </div>
           <button
             style={{
@@ -151,7 +162,9 @@ const Summary = ({
       </div>
 
       {expanded &&
-        (isReport ? (
+        (renderContent ? (
+          renderContent({ setImageToView })
+        ) : isReport ? (
           report && <SystemParameterReport
             t={t}
             file={report}
@@ -211,8 +224,6 @@ const Summary = ({
               </Section>
             )}
 
-            {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
-
             {videos?.length > 0 && (
               <Section title={t(`QC_INSTALLATION_${section}_VIDEOS`)}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -260,6 +271,8 @@ const Summary = ({
             )}
           </div>
         ))}
+
+      {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
 
       {showRejectionModal && (
         <AddRejectionReasonModal
