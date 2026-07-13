@@ -88,22 +88,31 @@ public class PropertiesManager {
 	
 	@Value("${egov.boundary.search.endpoint}")
 	public String boundarySearchEndpoint;
-	
-	
+
+	@Value("${egov.enc.host}")
+	public String encServiceHost;
+
+	@Value("${egov.enc.encrypt.endpoint}")
+	public String encServiceEncryptEndpoint;
+
+
 	//Kafka Topics
 	@Value("${kafka.topics.save.service}")
 	public String saveEmployeeTopic;
-	
+
 	@Value("${kafka.topics.update.service}")
 	public String UpdateEmployeeTopic;
-	
+
 	@Value("${kafka.topics.notification.sms}")
 	public String coreNotificationTopic;
 
 	@Value("${kafka.topics.hrms.updateData}")
 	public String updateTopic;
-	
-	
+
+	@Value("${kafka.topics.hrms.update.username}")
+	public String updateUsernameTopic;
+
+
 	//Variables
 	@Value("${egov.idgen.ack.name}")
 	public String hrmsIdGenKey;
