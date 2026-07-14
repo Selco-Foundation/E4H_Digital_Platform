@@ -252,21 +252,10 @@ const CreateFieldPlan = () => {
     }
   }, [currentKey, file, persistedFormData?.facilityData?.uploadFacilityData]);
 
-  useEffect(()=>{
-    if (toast) {
-      setTimeout(()=>{
-        setToastQueue((prevQueue) => {
-          if (prevQueue.length) {
-            setToast(prevQueue[0]);
-            return prevQueue.slice(1);
-          }
-
-          setToast(null);
-          return [];
-        });
-      },6000)
-    }
-  },[toast])
+  const closeToast = useCallback(() => {
+    setToast(null);
+    setToastQueue([]);
+  }, []);
 
   const showToastMessages = (messages, key = "error") => {
     const formattedToasts = messages.filter(Boolean).map((message) => ({
@@ -1402,10 +1391,7 @@ const CreateFieldPlan = () => {
           }}
           label={toast.translate === false ? toast.label : t(toast.label)}
           isDleteBtn={true}
-          onClose={() => {
-            setToast(null);
-            setToastQueue([]);
-          }}
+          onClose={closeToast}
         />
       )}
       {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}
