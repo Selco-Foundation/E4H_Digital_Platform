@@ -10,12 +10,21 @@
   @apply fixed flex bg-success leading-7 z-20 items-center pl-md pr-sm;
 
   svg {
-    height: 20px;
-    width: 20px;
+    height: 28px;
+    width: 28px;
+    flex-shrink: 0;
   }
 
   .toast-close-btn {
+    align-self: flex-start;
     margin-left: auto;
+    margin-top: 4px;
+    cursor: pointer;
+
+    &,
+    * {
+      cursor: pointer;
+    }
   }
 
   h2 {
