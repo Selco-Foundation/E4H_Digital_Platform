@@ -38,6 +38,8 @@ public class Co2MonthlyIndexPayload {
     private String geoPoint;
     private Boolean isLive;
     private Long solarInstallationDate;
+    
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private Long rmsInstallationDate;
     private Double solarSystemCapacity;
     private int month;
