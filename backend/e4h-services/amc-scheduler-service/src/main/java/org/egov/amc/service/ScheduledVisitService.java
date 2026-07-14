@@ -497,14 +497,10 @@ public class ScheduledVisitService {
                 .scheduledVisits(List.of(updatedScheduledVisit))
                 .build();
 
-        // 7. Perform enriched update using standard handler
+        // 7. Perform enriched update using standard handler - this also pushes the index update (see
+        // handleUpdateScheduledVisit), so both this workflow-driven update and the plain /_update endpoint
+        // push consistently, including the first DRAFT -> SCHEDULED transition regardless of which endpoint drove it.
         handleUpdateScheduledVisit(enrichedRequest, updatedScheduledVisit, existingVisit);
-
-        // 8. Push the fully-enriched visit (facility, amcConfiguration, assignments) to the search index
-        // topic, skipping DRAFT visits. existingVisit already carries the updated status/visitReport, but
-        // the refreshed auditDetails (bumped lastModifiedTime) landed on updatedScheduledVisit - carry it over.
-        existingVisit.setAuditDetails(updatedScheduledVisit.getAuditDetails());
-        pushNonDraftVisitsToIndex(request.getRequestInfo(), List.of(existingVisit), amcServiceConfiguration.getUpdateScheduledVisitIndexTopic());
 
         return List.of(updatedScheduledVisit);
     }
@@ -711,6 +707,23 @@ public class ScheduledVisitService {
          * Check and enrich cascading scheduledVisits dates and push the update to the message broker
          */
         producer.push(amcServiceConfiguration.getUpdateScheduledVisitTopic(), request);
+
+        /*
+         * scheduledVisitsFromDB (facility, amcConfiguration, assignments with hydrated user, etc.) is the
+         * fully-enriched object we want in the index, but it never receives this update's actual changes -
+         * only scheduledVisits (the thin request object) does. Carry over exactly the fields
+         * isValidCascadingUpdate allows to differ, then push. This covers both callers of this method
+         * (the plain /_update endpoint and the /workflow/_update endpoint), including the very first
+         * DRAFT -> SCHEDULED transition, whichever endpoint drives it.
+         */
+        scheduledVisitsFromDB.setStatus(scheduledVisits.getStatus());
+        scheduledVisitsFromDB.setScheduledDate(scheduledVisits.getScheduledDate());
+        scheduledVisitsFromDB.setActualVisitDate(scheduledVisits.getActualVisitDate());
+        scheduledVisitsFromDB.setVisitReport(scheduledVisits.getVisitReport());
+        scheduledVisitsFromDB.setAssignments(scheduledVisits.getAssignments());
+        scheduledVisitsFromDB.setAdditionalDetails(scheduledVisits.getAdditionalDetails());
+        scheduledVisitsFromDB.setAuditDetails(scheduledVisits.getAuditDetails());
+        pushNonDraftVisitsToIndex(request.getRequestInfo(), List.of(scheduledVisitsFromDB), amcServiceConfiguration.getUpdateScheduledVisitIndexTopic());
     }
 
     private boolean isValidCascadingUpdate(ScheduledVisit scheduledVisitsFromDB, ScheduledVisit scheduledVisits) {
