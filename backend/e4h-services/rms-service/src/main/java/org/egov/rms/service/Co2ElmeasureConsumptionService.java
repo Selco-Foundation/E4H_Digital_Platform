@@ -176,7 +176,9 @@ public class Co2ElmeasureConsumptionService {
             return req.getCenterId().trim();
         }
         if (StringUtils.hasText(req.getHfrId())) {
-            Optional<String> center = centerIdMappingRepository.findCenterIdByHfrId(req.getHfrId().trim());
+            Optional<String> center = centerIdMappingRepository.findCenterIdByHfrId(
+                    req.getHfrId().trim(),
+                    req.getFacilityName());
             if (center.isPresent()) {
                 return center.get();
             }

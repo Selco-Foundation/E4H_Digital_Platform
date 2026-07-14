@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -63,15 +64,109 @@ public class CenterIdMappingRepository {
     }
 
     /**
-     * Finds HFR ID by Center ID
+     * Resolve center_id by HFR. When facilityName is provided and multiple active rows
+     * share the same HFR (wrong remaps + correct site), prefer the Elmeasure name that
+     * best matches the registry facility name. Falls back to LIMIT 1 when name is blank
+     * or no name match is found.
      */
     public Optional<String> findCenterIdByHfrId(String hfrId) {
-        String sql = "SELECT center_id FROM center_id_to_hfr_id_mapping "
-                + "WHERE hfr_id = ? AND is_active = true LIMIT 1";
-        List<String> results = jdbcTemplate.query(sql,
-                (rs, rowNum) -> rs.getString("center_id"),
-                hfrId);
-        return results.isEmpty() ? Optional.empty() : Optional.ofNullable(results.get(0));
+        return findCenterIdByHfrId(hfrId, null);
+    }
+
+    public Optional<String> findCenterIdByHfrId(String hfrId, String facilityName) {
+        if (hfrId == null || hfrId.isBlank()) {
+            return Optional.empty();
+        }
+        String sql = "SELECT center_id, facility_name FROM center_id_to_hfr_id_mapping "
+                + "WHERE hfr_id = ? AND is_active = true";
+        List<CenterCandidate> candidates = jdbcTemplate.query(sql,
+                (rs, rowNum) -> new CenterCandidate(rs.getString("center_id"), rs.getString("facility_name")),
+                hfrId.trim());
+        if (candidates.isEmpty()) {
+            return Optional.empty();
+        }
+        if (candidates.size() == 1 || facilityName == null || facilityName.isBlank()) {
+            if (candidates.size() > 1) {
+                log.warn("Multiple centers for hfrId={} and no facilityName — using first row centerId={}",
+                        hfrId, candidates.get(0).centerId());
+            }
+            return Optional.ofNullable(candidates.get(0).centerId());
+        }
+
+        String needle = normalizeFacilityName(facilityName);
+        CenterCandidate best = null;
+        int bestScore = 0;
+        for (CenterCandidate c : candidates) {
+            int score = nameMatchScore(needle, normalizeFacilityName(c.facilityName()));
+            if (score > bestScore) {
+                bestScore = score;
+                best = c;
+            }
+        }
+        if (best != null && bestScore > 0) {
+            log.info("Resolved hfrId={} facilityName='{}' to centerId={} elmeasureName='{}' score={}",
+                    hfrId, facilityName, best.centerId(), best.facilityName(), bestScore);
+            return Optional.ofNullable(best.centerId());
+        }
+
+        log.warn("No name match for hfrId={} facilityName='{}' among {} centers — using first row centerId={}",
+                hfrId, facilityName, candidates.size(), candidates.get(0).centerId());
+        return Optional.ofNullable(candidates.get(0).centerId());
+    }
+
+    /**
+     * Score how well a registry facility name matches an Elmeasure facility_name.
+     * Higher is better; 0 means no usable match.
+     */
+    static int nameMatchScore(String registryNorm, String elmeasureNorm) {
+        if (registryNorm == null || registryNorm.isEmpty()
+                || elmeasureNorm == null || elmeasureNorm.isEmpty()) {
+            return 0;
+        }
+        if (registryNorm.equals(elmeasureNorm)) {
+            return 1000 + registryNorm.length();
+        }
+        if (elmeasureNorm.contains(registryNorm)) {
+            return 500 + registryNorm.length();
+        }
+        if (registryNorm.contains(elmeasureNorm)) {
+            return 400 + elmeasureNorm.length();
+        }
+        // token overlap (e.g. "Themra CHC" vs "Themra 1 CHC" after normalize)
+        String[] a = registryNorm.split(" ");
+        String[] b = elmeasureNorm.split(" ");
+        int hits = 0;
+        for (String t : a) {
+            if (t.length() < 3) {
+                continue;
+            }
+            for (String u : b) {
+                if (t.equals(u)) {
+                    hits++;
+                    break;
+                }
+            }
+        }
+        return hits > 0 ? 100 * hits + registryNorm.length() : 0;
+    }
+
+    /**
+     * Lowercase and strip common facility-type suffixes/noise so registry vs Elmeasure names align.
+     */
+    static String normalizeFacilityName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String n = name.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\b(phc|chc|mphc|uphc|hwc|sd|sc|sub|center|centre|clinic|new|primary|health)\\b", " ")
+                .replaceAll("\\d+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return n;
+    }
+
+    private record CenterCandidate(String centerId, String facilityName) {
     }
 
     public Optional<String> findHfrIdByCenterId(String centerId) {
