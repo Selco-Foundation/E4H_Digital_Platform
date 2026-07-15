@@ -10,6 +10,7 @@ import ProjectFieldPlans from "./ProjectFieldPlans";
 import ProjectTable from "./ProjectTable";
 import ProjectDetails from "./ProjectDetails";
 import CreateAMC from "./CreateAMC";
+import Translation from "./Translation";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -56,6 +57,11 @@ const PMApp = () => {
     response: {
       content: t("CORE_COMMON_RESPONSE"),
       internalLink: match.url + `/response`,
+      show: true,
+    },
+    translation: {
+      content: t("Translation"),
+      internalLink: match.url + `/translation`,
       show: true,
     },
   }), [pmStore]);
@@ -115,6 +121,13 @@ const PMApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.response]}
           />
           <Response />
+        </Route>
+        <Route path={`${path}/translation`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.translation]}
+          />
+          <Translation />
         </Route>
       </Switch>
     </div>
