@@ -42,6 +42,7 @@ const generateAuditTrail = (workflow, transactions) => {
       assetTypeReasonsMap.forEach((value, key) => {
         comments.push({
           name: key,
+          sectionLabel: value.find((reason) => reason?.sectionLabel)?.sectionLabel,
           reasons: value
         });
       })
