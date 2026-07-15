@@ -23,6 +23,16 @@ const getDefaultRows = () => [getEmptyRow()];
 
 const getOption = (value) => value ? ({ code: value, name: value }) : null;
 
+const getCapacityDisplayValue = (capacity) => {
+  const value = capacity?.name || capacity?.code || "";
+
+  if (!value) {
+    return "";
+  }
+
+  return /\bkwp\b/i.test(value.toString()) ? value : `${value} kWp`;
+};
+
 const getMDMSSystemTypeCode = (systemType = {}) => systemType?.data?.code || systemType?.code || systemType?.uniqueIdentifier;
 
 const getMDMSSystemTypeName = (systemType = {}) => systemType?.data?.name || systemType?.name;
@@ -959,7 +969,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             </FieldWrapper>
             <FieldWrapper>
               <FieldLabel label={"ICC_TOTAL_SYSTEM_CAPACITY"} />
-              <ReadOnlyField value={row.totalSystemCapacity?.name} />
+              <ReadOnlyField value={getCapacityDisplayValue(row.totalSystemCapacity)} />
               {validationAttempt > 0 && !row.totalSystemCapacity && <RequiredError />}
             </FieldWrapper>
             <FieldWrapper className={"icc-prepopulation-file-field"}>
