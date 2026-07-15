@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React from "react";
 import { SideNav, Loader } from "@egovernments/digit-ui-components";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
@@ -14,6 +14,7 @@ const EmployeeSideBar = () => {
   const history = useHistory();
   const tenantId = Digit.ULBService.getStateId();
   const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "installation-qc";
+  const translationUrl = `/${window.contextPath}/employee/pm/translation`;
 
   function extractLeftIcon(data = {}) {
     for (const key in data) {
@@ -156,6 +157,20 @@ const EmployeeSideBar = () => {
 
   const transformedData = transformData(splitKeyValue(configEmployeeSideBar));
   const sortedTransformedData= sortDataByOrderNumber(transformedData);
+  const translateItem = {
+    label: t("Translate"),
+    icon: { icon: "Search", iconFill: "transparent", width: "1.5rem", height: "1.5rem" },
+    selectedIcon: { icon: "Search", iconFill: "transparent", width: "1.5rem", height: "1.5rem" },
+    navigationUrl: translationUrl,
+    orderNumber: 3,
+  };
+  const hasTranslateItem = sortedTransformedData.some((item) => item?.navigationUrl === translationUrl);
+  const inboxIndex = sortedTransformedData.findIndex((item) => item?.navigationUrl?.toLowerCase?.().includes("inbox"));
+  const sideNavItems = [...sortedTransformedData];
+  if (!hasTranslateItem) {
+    sideNavItems.splice(inboxIndex >= 0 ? inboxIndex + 1 : sideNavItems.length, 0, translateItem);
+  }
+
   if (isLoading) {
     return <Loader />;
   }
@@ -166,26 +181,43 @@ const EmployeeSideBar = () => {
   
   return (
     <MediaQuery minWidth={768}>
-      <SideNav
-        items={sortedTransformedData}
-        hideAccessbilityTools={true}
-        onSelect={({ item, index, parentIndex }) => onItemSelect({ item, index, parentIndex })}
-        theme={"dark"}
-        variant={"primary"}
-        transitionDuration={""}
-        className=""
-        styles={{}}
-        expandedWidth=""
-        collapsedWidth=""
-        onBottomItemClick={() => { }}
-      />
+      <div style={{ position: "relative", height: "100%" }}>
+        <SideNav
+          items={sideNavItems}
+          hideAccessbilityTools={true}
+          onSelect={({ item, index, parentIndex }) => onItemSelect({ item, index, parentIndex })}
+          theme={"dark"}
+          variant={"primary"}
+          transitionDuration={""}
+          className=""
+          styles={{}}
+          expandedWidth=""
+          collapsedWidth=""
+          onBottomItemClick={() => { }}
+        />
+        <div
+          style={{
+            alignItems: "center",
+            color: "white",
+            display: "flex",
+            fontFamily: "Roboto",
+            fontSize: "18px",
+            fontWeight: "700",
+            height: "48px",
+            left: 0,
+            justifyContent: "center",
+            pointerEvents: "none",
+            position: "absolute",
+            top: "232px",
+            width: "48px",
+            zIndex: 9999,
+          }}
+        >
+          T
+        </div>
+      </div>
     </MediaQuery>
   );
 };
 
 export default EmployeeSideBar;
-
-
-
-
-
