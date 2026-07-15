@@ -652,6 +652,10 @@ String labelForKey(DigitPropertySchema.PropertySchema pageSchema, String key) {
 dynamic coerceForControl(AbstractControl<Object?> control, dynamic v) {
   if (v == null) return null;
 
+  if (control is FormControl<String?>) {
+    return v.toString();
+  }
+
   if (control is FormControl<DateTime?>) {
     if (v is DateTime) return v;
     if (v is String) return DateTime.tryParse(v);
