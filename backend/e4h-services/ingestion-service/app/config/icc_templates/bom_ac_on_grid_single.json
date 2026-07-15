@@ -107,160 +107,167 @@
             ],
             [
               "2",
+              "Solar Battery",
+              "{{ solar_battery_make }}",
+              "{{ solar_battery_capacity }}",
+              "{{ solar_battery_qty }}"
+            ],
+            [
+              "3",
               "Module Mounting structure (MMS)",
               "{{ mms_make }}",
               "{{ mms_capacity }}",
               "{{ mms_qty }}"
             ],
             [
-              "3",
+              "4",
               "Solar On-Grid PCU/Inverter",
               "{{ inverter_make }}",
               "{{ inverter_capacity }}",
               "{{ inverter_qty }}"
             ],
             [
-              "4",
+              "5",
               "Copper Cable (Red + Black) (Module – Module-AJB) -PV1-F (Solar cables)",
               "{{ module_ajb_pv1f_make }}",
               "{{ module_ajb_pv1f_capacity }}",
               "{{ module_ajb_pv1f_qty }}"
             ],
             [
-              "5",
+              "6",
               "Copper Cable (Red + Black) (AJB - Inverter)- (DC Cables)",
               "{{ ajb_inverter_dc_make }}",
               "{{ ajb_inverter_dc_capacity }}",
               "{{ ajb_inverter_dc_qty }}"
             ],
             [
-              "6",
+              "7",
               "Copper Cable – 1 (PCU/Inverter to ACDB)",
               "{{ pcu_acdb_cable1_make }}",
               "{{ pcu_acdb_cable1_capacity }}",
               "{{ pcu_acdb_cable1_qty }}"
             ],
             [
-              "7",
+              "8",
               "Copper Cable – 2 (ACDB + Solar meter + LT panel + Net meter + Grid)",
               "{{ acdb_meter_ltpanel_cable2_make }}",
               "{{ acdb_meter_ltpanel_cable2_capacity }}",
               "{{ acdb_meter_ltpanel_cable2_qty }}"
             ],
             [
-              "8",
+              "9",
               "DC Earthing Cable – 1 (Panels + MMS + AJB)",
               "{{ dc_earthing_cable1_make }}",
               "{{ dc_earthing_cable1_capacity }}",
               "{{ dc_earthing_cable1_qty }}"
             ],
             [
-              "9",
+              "10",
               "DC Earthing Cable – 2 (AJB + ACDB + Inverter)",
               "{{ dc_earthing_cable2_make }}",
               "{{ dc_earthing_cable2_capacity }}",
               "{{ dc_earthing_cable2_qty }}"
             ],
             [
-              "10",
+              "11",
               "Earthing Cable / Down conductor for Lightning Arrestor",
               "{{ lightning_down_conductor_make }}",
               "{{ lightning_down_conductor_capacity }}",
               "{{ lightning_down_conductor_qty }}"
             ],
             [
-              "11",
+              "12",
               "Earthing Kit",
               "{{ earthing_kit_make }}",
               "{{ earthing_kit_capacity }}",
               "{{ earthing_kit_qty }}"
             ],
             [
-              "12",
+              "13",
               "Lightning Protection System",
               "{{ lightning_protection_make }}",
               "{{ lightning_protection_capacity }}",
               "{{ lightning_protection_qty }}"
             ],
             [
-              "13",
+              "14",
               "ACDB with Relay Contractor + SPD + MCB + Solar Meter",
               "{{ acdb_relay_spd_mcb_meter_make }}",
               "{{ acdb_relay_spd_mcb_meter_capacity }}",
               "{{ acdb_relay_spd_mcb_meter_qty }}"
             ],
             [
-              "14",
+              "15",
               "Solar Array Junction Box with MCB and SPD and String Fuse.",
               "{{ solar_array_junction_box_make }}",
               "{{ solar_array_junction_box_capacity }}",
               "{{ solar_array_junction_box_qty }}"
             ],
             [
-              "15",
+              "16",
               "LT Panel with Net-Meter",
               "{{ lt_panel_net_meter_make }}",
               "{{ lt_panel_net_meter_capacity }}",
               "{{ lt_panel_net_meter_qty }}"
             ],
             [
-              "16",
+              "17",
               "Marking for AC earthing with Elevated Plaques (ACDB + Inverter)",
               "{{ marking_ac_earthing_make }}",
               "{{ marking_ac_earthing_capacity }}",
               "{{ marking_ac_earthing_qty }}"
             ],
             [
-              "17",
+              "18",
               "Marking for DC earthing with Elevated Plaques (AJB + MMS + Panels)",
               "{{ marking_dc_earthing_make }}",
               "{{ marking_dc_earthing_capacity }}",
               "{{ marking_dc_earthing_qty }}"
             ],
             [
-              "18",
+              "19",
               "Marking of Lightning Arrester Earthing with Elevated Plaques",
               "{{ marking_lightning_arrester_make }}",
               "{{ marking_lightning_arrester_capacity }}",
               "{{ marking_lightning_arrester_qty }}"
             ],
             [
-              "19",
+              "20",
               "Single Line Diagram (SLD) for the system",
               "{{ sld_make }}",
               "{{ sld_capacity }}",
               "{{ sld_qty }}"
             ],
             [
-              "20",
+              "21",
               "Do's and Don'ts Practices Poster (Solar Panels, Battery and Inverter)",
               "{{ dos_donts_poster_make }}",
               "{{ dos_donts_poster_capacity }}",
               "{{ dos_donts_poster_qty }}"
             ],
             [
-              "21",
+              "22",
               "Signboard for Danger (Electric Shock & High Voltage), No Fire and PASS",
               "{{ signboard_danger_make }}",
               "{{ signboard_danger_capacity }}",
               "{{ signboard_danger_qty }}"
             ],
             [
-              "22",
+              "23",
               "Fire Extinguisher",
               "{{ fire_extinguisher_make }}",
               "{{ fire_extinguisher_capacity }}",
               "{{ fire_extinguisher_qty }}"
             ],
             [
-              "23",
+              "24",
               "Isolator MCBs with PVC case",
               "{{ isolator_mcbs_pvc_case_make }}",
               "{{ isolator_mcbs_pvc_case_capacity }}",
               "{{ isolator_mcbs_pvc_case_qty }}"
             ],
             [
-              "24",
+              "25",
               "Consumables",
               "{{ consumables_make }}",
               "{{ consumables_capacity }}",
