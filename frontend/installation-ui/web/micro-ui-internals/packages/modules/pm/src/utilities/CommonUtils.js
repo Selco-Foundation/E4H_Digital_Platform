@@ -36,13 +36,32 @@ const isNotEqual = (a, b) => {
   return !_.isEqual(normA, normB);
 };
 
+const getApiErrorMessages = (e) => {
+  const data = e?.response?.data;
+  const detailErrors = data?.detail?.errors;
+
+  if (data?.Errors?.[0]?.message) {
+    return [data.Errors[0].message];
+  }
+
+  if (detailErrors?.length) {
+    return detailErrors
+      .map((error) => `${error.fileName ? `${error.fileName} ` : ""}${error.error}`);
+  }
+
+  if (data?.detail?.message) {
+    return [data.detail.message];
+  }
+
+  return e?.message ? [e.message] : [];
+};
+
 const getApiErrorMessage = (e) => {
-  return (e?.response?.data?.Errors?.[0]?.message)
-    ? e.response.data.Errors[0].message
-    : (e?.message ? e.message : "");
+  return getApiErrorMessages(e)?.[0] || "";
 };
 
 export default {
   isNotEqual,
   getApiErrorMessage,
+  getApiErrorMessages,
 }
