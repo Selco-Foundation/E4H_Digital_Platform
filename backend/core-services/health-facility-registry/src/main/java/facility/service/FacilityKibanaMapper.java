@@ -197,6 +197,11 @@ public class FacilityKibanaMapper {
             existingDoc.setPhcType(facility.getFacilityType());
             log.info("Updated Kibana fields type/phcType for facilityId={}", facility.getFacilityId());
         }
+        if (facility.getFacilityCategory() != null && !facility.getFacilityCategory().isBlank()) {
+            existingDoc.setFacilityCategory(facility.getFacilityCategory());
+            log.info("Updated Kibana field facilityCategory={} for facilityId={}",
+                    facility.getFacilityCategory(), facility.getFacilityId());
+        }
         if (facility.getIsActive() != null) {
             existingDoc.setIsLive(facility.getIsActive());
             log.info("Updated Kibana field isLive={} for facilityId={}",

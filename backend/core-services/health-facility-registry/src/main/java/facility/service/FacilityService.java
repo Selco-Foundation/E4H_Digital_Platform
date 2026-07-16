@@ -825,7 +825,6 @@ public class FacilityService {
                     .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
                     .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
                     .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
-                    .facilityCategory(existingFacility.getFacilityCategory())
                     .facilityOwnership(existingFacility.getFacilityOwnership())
                     .facilityRegion(existingFacility.getFacilityRegion())
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
@@ -879,7 +878,6 @@ public class FacilityService {
                     .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
                     .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
                     .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
-                    .facilityCategory(existingFacility.getFacilityCategory()) // Not in update request, use existing
                     .facilityOwnership(existingFacility.getFacilityOwnership()) // Not in update request, use existing
                     .facilityRegion(existingFacility.getFacilityRegion()) // Not in update request, use existing
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
