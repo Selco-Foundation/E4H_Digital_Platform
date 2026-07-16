@@ -170,6 +170,7 @@ const EmployeeSideBar = () => {
   if (!hasTranslateItem) {
     sideNavItems.splice(inboxIndex >= 0 ? inboxIndex + 1 : sideNavItems.length, 0, translateItem);
   }
+  const translateItemIndex = sideNavItems.findIndex((item) => item?.navigationUrl === translationUrl);
 
   if (isLoading) {
     return <Loader />;
@@ -181,41 +182,34 @@ const EmployeeSideBar = () => {
   
   return (
     <MediaQuery minWidth={768}>
-      <div style={{ position: "relative", height: "100%" }}>
-        <SideNav
-          items={sideNavItems}
-          hideAccessbilityTools={true}
-          onSelect={({ item, index, parentIndex }) => onItemSelect({ item, index, parentIndex })}
-          theme={"dark"}
-          variant={"primary"}
-          transitionDuration={""}
-          className=""
-          styles={{}}
-          expandedWidth=""
-          collapsedWidth=""
-          onBottomItemClick={() => { }}
-        />
-        <div
-          style={{
-            alignItems: "center",
-            color: "white",
-            display: "flex",
-            fontFamily: "Roboto",
-            fontSize: "18px",
-            fontWeight: "700",
-            height: "48px",
-            left: 0,
-            justifyContent: "center",
-            pointerEvents: "none",
-            position: "absolute",
-            top: "232px",
-            width: "48px",
-            zIndex: 9999,
-          }}
-        >
-          T
-        </div>
-      </div>
+      {translateItemIndex >= 0 && (
+        <style>
+          {`
+            .employee-sidebar .digit-sidebar-items-container .item-child-wrapper:nth-child(${translateItemIndex + 1}) .icon svg {
+              display: none;
+            }
+            .employee-sidebar .digit-sidebar-items-container .item-child-wrapper:nth-child(${translateItemIndex + 1}) .icon::before {
+              content: "T";
+              color: #fff;
+              font-size: 18px;
+              font-weight: 700;
+            }
+          `}
+        </style>
+      )}
+      <SideNav
+        items={sideNavItems}
+        hideAccessbilityTools={true}
+        onSelect={({ item, index, parentIndex }) => onItemSelect({ item, index, parentIndex })}
+        theme={"dark"}
+        variant={"primary"}
+        transitionDuration={""}
+        className="employee-sidebar"
+        styles={{}}
+        expandedWidth=""
+        collapsedWidth=""
+        onBottomItemClick={() => { }}
+      />
     </MediaQuery>
   );
 };
