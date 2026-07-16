@@ -29,6 +29,22 @@ const Translation = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  const translateFile = async (selectedFile) => {
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("sourceLanguage", Digit.StoreData.getCurrentLanguage());
+
+    try {
+      setIsLoading(true);
+      setErrorMessage("");
+      await TranslationService.translateExcel(formData);
+    } catch (error) {
+      setErrorMessage(await getBackendErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleFileUpload = async (uploadedFile, setUploadedFile) => {
     setUploadedFile({
       name: uploadedFile.name,
@@ -42,19 +58,7 @@ const Translation = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file.data);
-    formData.append("sourceLanguage", Digit.StoreData.getCurrentLanguage());
-
-    try {
-      setIsLoading(true);
-      setErrorMessage("");
-      await TranslationService.translateExcel(formData);
-    } catch (error) {
-      setErrorMessage(await getBackendErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
+    await translateFile(file.data);
   };
 
   return (
