@@ -43,6 +43,7 @@ public class RmsConsumptionClient {
                 req.put("facilityId", f.getFacilityId());
                 req.put("facilityName", f.getFacilityName());
                 req.put("hfrId", f.getHfrId());
+                req.put("ninId", f.getNinId());
                 req.put("month", ym.getMonthValue());
                 req.put("year", ym.getYear());
                 requests.add(req);

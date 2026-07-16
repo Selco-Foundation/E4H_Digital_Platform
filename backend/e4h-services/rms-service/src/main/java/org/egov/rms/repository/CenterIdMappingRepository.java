@@ -66,7 +66,7 @@ public class CenterIdMappingRepository {
     /**
      * Resolve center_id by HFR. When facilityName is provided and multiple active rows
      * share the same HFR (wrong remaps + correct site), prefer the Elmeasure name that
-     * best matches the registry facility name. Falls back to LIMIT 1 when name is blank
+     * best matches the registry facility name. Falls back to first row when name is blank
      * or no name match is found.
      */
     public Optional<String> findCenterIdByHfrId(String hfrId) {
@@ -74,21 +74,41 @@ public class CenterIdMappingRepository {
     }
 
     public Optional<String> findCenterIdByHfrId(String hfrId, String facilityName) {
-        if (hfrId == null || hfrId.isBlank()) {
+        return findCenterIdByLookupKey("hfr_id", hfrId, facilityName);
+    }
+
+    /**
+     * Resolve center_id by NIN (fallback when registry hfr_id is null).
+     * Same name-scoring behaviour as {@link #findCenterIdByHfrId(String, String)}.
+     */
+    public Optional<String> findCenterIdByNinId(String ninId) {
+        return findCenterIdByNinId(ninId, null);
+    }
+
+    public Optional<String> findCenterIdByNinId(String ninId, String facilityName) {
+        return findCenterIdByLookupKey("nin_id", ninId, facilityName);
+    }
+
+    private Optional<String> findCenterIdByLookupKey(String column, String key, String facilityName) {
+        if (key == null || key.isBlank()) {
             return Optional.empty();
         }
+        if (!"hfr_id".equals(column) && !"nin_id".equals(column)) {
+            throw new IllegalArgumentException("Unsupported mapping lookup column: " + column);
+        }
         String sql = "SELECT center_id, facility_name FROM center_id_to_hfr_id_mapping "
-                + "WHERE hfr_id = ? AND is_active = true";
+                + "WHERE " + column + " = ? AND is_active = true";
         List<CenterCandidate> candidates = jdbcTemplate.query(sql,
                 (rs, rowNum) -> new CenterCandidate(rs.getString("center_id"), rs.getString("facility_name")),
-                hfrId.trim());
+                key.trim());
         if (candidates.isEmpty()) {
             return Optional.empty();
         }
+        String keyLabel = "hfr_id".equals(column) ? "hfrId" : "ninId";
         if (candidates.size() == 1 || facilityName == null || facilityName.isBlank()) {
             if (candidates.size() > 1) {
-                log.warn("Multiple centers for hfrId={} and no facilityName — using first row centerId={}",
-                        hfrId, candidates.get(0).centerId());
+                log.warn("Multiple centers for {}={} and no facilityName — using first row centerId={}",
+                        keyLabel, key, candidates.get(0).centerId());
             }
             return Optional.ofNullable(candidates.get(0).centerId());
         }
@@ -104,13 +124,13 @@ public class CenterIdMappingRepository {
             }
         }
         if (best != null && bestScore > 0) {
-            log.info("Resolved hfrId={} facilityName='{}' to centerId={} elmeasureName='{}' score={}",
-                    hfrId, facilityName, best.centerId(), best.facilityName(), bestScore);
+            log.info("Resolved {}={} facilityName='{}' to centerId={} elmeasureName='{}' score={}",
+                    keyLabel, key, facilityName, best.centerId(), best.facilityName(), bestScore);
             return Optional.ofNullable(best.centerId());
         }
 
-        log.warn("No name match for hfrId={} facilityName='{}' among {} centers — using first row centerId={}",
-                hfrId, facilityName, candidates.size(), candidates.get(0).centerId());
+        log.warn("No name match for {}={} facilityName='{}' among {} centers — using first row centerId={}",
+                keyLabel, key, facilityName, candidates.size(), candidates.get(0).centerId());
         return Optional.ofNullable(candidates.get(0).centerId());
     }
 

@@ -13,6 +13,7 @@ public class MonthlyConsumptionRequest {
     private String facilityId;
     private String facilityName;
     private String hfrId;
+    private String ninId;
     private String centerId;
     private int month;
     private int year;
