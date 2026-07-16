@@ -105,6 +105,21 @@ class BomRepository {
         capacitySelector: (asset) => asset.batteryCapacity,
         includeBatteryType: true,
       );
+      final panelSerialNumbers = await _getAssetSerialNumbers(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        assetType: ASSET_TYPES.PANEL.name.toLowerCase(),
+      );
+      final batterySerialNumbers = await _getAssetSerialNumbers(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        assetType: ASSET_TYPES.BATTERY.name.toLowerCase(),
+      );
+      final inverterSerialNumbers = await _getAssetSerialNumbers(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        assetType: ASSET_TYPES.INVERTER.name.toLowerCase(),
+      );
 
       _putIfNotBlank(enriched, 'solar_module_make', panelSummary.make);
       _putIfNotBlank(enriched, 'solar_module_capacity', panelSummary.capacity);
@@ -113,6 +128,9 @@ class BomRepository {
       _putIfNotBlank(
           enriched, 'solar_battery_capacity', batterySummary.capacity);
       _putIfNotBlank(enriched, 'solar_battery_qty', batterySummary.quantity);
+      _putIfNotEmpty(enriched, 'panel_serial_number', panelSerialNumbers);
+      _putIfNotEmpty(enriched, 'battery_serial_number', batterySerialNumbers);
+      _putIfNotEmpty(enriched, 'inverter_serial_number', inverterSerialNumbers);
 
       return enriched;
     } catch (_) {
@@ -153,6 +171,39 @@ class BomRepository {
     );
   }
 
+  Future<List<Map<String, dynamic>>> _getAssetSerialNumbers({
+    required Isar isar,
+    required String activityFacilityId,
+    required String assetType,
+  }) async {
+    final assets = await isar.cacheAddNewAssets
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .filter()
+        .assetTypeEqualTo(assetType)
+        .findAll();
+
+    assets.sort((a, b) {
+      final aSerial = a.serialNumber.trim();
+      final bSerial = b.serialNumber.trim();
+      final serialCompare = aSerial.compareTo(bSerial);
+      if (serialCompare != 0) return serialCompare;
+      return a.id.compareTo(b.id);
+    });
+
+    final serialNumbers = <Map<String, dynamic>>[];
+    for (final asset in assets) {
+      final serialNumber = asset.serialNumber.trim();
+      if (serialNumber.isEmpty) continue;
+      serialNumbers.add({
+        'srNo': serialNumbers.length + 1,
+        'serialNumber': serialNumber,
+      });
+    }
+
+    return serialNumbers;
+  }
+
   void _putIfNotBlank(
     Map<String, dynamic> values,
     String key,
@@ -160,6 +211,14 @@ class BomRepository {
   ) {
     final cleaned = _blankToNull(value);
     if (cleaned != null) values[key] = cleaned;
+  }
+
+  void _putIfNotEmpty(
+    Map<String, dynamic> values,
+    String key,
+    List<Map<String, dynamic>> value,
+  ) {
+    if (value.isNotEmpty) values[key] = value;
   }
 
   static String? _firstNonBlank(Iterable<String?> values) {
@@ -409,6 +468,11 @@ class BomRepository {
     final apiName = (solutionName != null && solutionName.trim().isNotEmpty)
         ? solutionName.trim()
         : 'BOM.SolarSystem';
+    final enrichedBomData = await enrichWithActivityFacilityContext(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      bomData: mergedKV,
+    );
 
     final payload = {
       "bom": [
@@ -419,7 +483,7 @@ class BomRepository {
           "facilityId": facilityId,
           "activityFacilityId": activityFacilityId,
           "assignUser": assignUserUuid,
-          "data": mergedKV,
+          "data": enrichedBomData,
           "isActive": true,
         }
       ],
