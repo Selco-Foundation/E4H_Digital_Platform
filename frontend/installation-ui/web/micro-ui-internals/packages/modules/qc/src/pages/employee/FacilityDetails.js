@@ -9,6 +9,7 @@ import useFieldPlan from "../../hooks/useFieldPlan";
 import useFacilityDetails from "../../hooks/useFacilityDetails";
 import useAsset from "../../hooks/useAsset";
 import InfoCard from "../../components/FacilityDetails/InfoCard";
+import InstallationImageReviewCard from "../../components/FacilityDetails/InstallationImageReviewCard";
 
 const FacilityDetails = ({t}) => {
 
@@ -85,6 +86,7 @@ const FacilityDetails = ({t}) => {
     if (facilityData?.installationImages && installationImageCriteria) {
       setInstallationImages(
         installationImageCriteria.map((criterion) => ({
+          code: criterion.code,
           description: criterion.description,
           images: facilityData?.installationImages.filter((image) => image.imageCode === criterion.code),
           providedImagesCount: facilityData?.installationImages.filter((image) => image.imageCode === criterion.code).length,
@@ -166,10 +168,19 @@ const FacilityDetails = ({t}) => {
           supportingDocuments={aggregatedDocuments.installationReportDocuments}
           installationCompletionCertificate={aggregatedDocuments.installationCompletionCertificate}
           assetHandoverDocument={aggregatedDocuments.assetHandoverDocument}
-          installationImages={installationImages}
+          installationImages={[]}
           isReport={true}
         />
       )}
+
+      {installationImages.map((installationImage, index) => (
+        <InstallationImageReviewCard
+          key={installationImage.code || index}
+          t={t}
+          installationImage={installationImage}
+          index={index}
+        />
+      ))}
 
       {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
         <QCActions
