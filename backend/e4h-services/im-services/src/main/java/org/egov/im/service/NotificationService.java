@@ -788,13 +788,15 @@ public class NotificationService {
 
         StringBuilder url = null;
         String tenantId = request.getIncident().getTenantId();
-        if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
+        boolean isStateJurisdictionRole = ROLE_COMPLAINT_FACILITATOR_1.equals(role) || ROLE_COMPLAINT_FACILITATOR_2.equals(role);
+        if (isStateJurisdictionRole && tenantId != null && tenantId.contains(".")) {
             tenantId = tenantId.split("\\.")[0];
         }
-        if (ROLE_COMPLAINT_FACILITATOR_1.equals(role)) {
+        if (isStateJurisdictionRole) {
+            // State SPOC and Tech POC are registered at state jurisdiction "India_<State>"; scope the search to it.
             boundaryCode = IMUtils.extractStateBoundaryCode(boundaryCode);
         } else if (STATE_LEVEL_ROLES.contains(role)) {
-            // CRM and Tech POC are registered at state level; search across the whole tenant.
+            // CRM is registered at state level; search across the whole tenant.
             boundaryCode = null;
         }
         if (request.getWorkflow() != null && request.getWorkflow().getAssignes() != null)
