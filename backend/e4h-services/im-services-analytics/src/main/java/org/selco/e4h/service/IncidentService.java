@@ -137,6 +137,7 @@ public class IncidentService {
                         incidentStatusAgregation.setSynced(Boolean.TRUE.equals(synced));
                         incidentStatusAgregation.setName((String) data.get("name"));
                         incidentStatusAgregation.setPhcType((String) data.get("phcType"));
+                        incidentStatusAgregation.setFacilityCategory((String) data.get("facilityCategory"));
                         incidentStatusAgregation.setType((String) data.get("type"));
                         incidentStatusAgregation.setFacilityId((String) data.get("facilityId"));
                         incidentStatusAgregation.setTenantId(tenantId);
@@ -223,6 +224,7 @@ public class IncidentService {
             incidentStatusAgregation.setName(name);
             incidentStatusAgregation.setBoundary(boundary);
             incidentStatusAgregation.setPhcType(phcType);
+            incidentStatusAgregation.setFacilityCategory((String) data.get("facilityCategory"));
             incidentStatusAgregation.setType(type);
             incidentStatusAgregation.setFacilityId((String) data.get("facilityId"));
             incidentStatusAgregation.setTenantId(tenantId);
