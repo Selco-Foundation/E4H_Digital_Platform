@@ -24,13 +24,13 @@ const getDefaultRows = () => [getEmptyRow()];
 const getOption = (value) => value ? ({ code: value, name: value }) : null;
 
 const getCapacityDisplayValue = (capacity) => {
-  const value = capacity?.name || capacity?.code || "";
+  const value = (capacity?.name || capacity?.code || "").toString().trim();
 
   if (!value) {
     return "";
   }
 
-  return /\bkwp\b/i.test(value.toString()) ? value : `${value} kWp`;
+  return /kwp$/i.test(value) ? value : `${value} kWp`;
 };
 
 const getMDMSSystemTypeCode = (systemType = {}) => systemType?.data?.code || systemType?.code || systemType?.uniqueIdentifier;

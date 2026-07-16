@@ -253,8 +253,10 @@ const CreateFieldPlan = () => {
   }, [currentKey, file, persistedFormData?.facilityData?.uploadFacilityData]);
 
   const closeToast = useCallback(() => {
-    setToast(null);
-    setToastQueue([]);
+    setToastQueue((previousQueue) => {
+      setToast(previousQueue[0] || null);
+      return previousQueue.slice(1);
+    });
   }, []);
 
   const showToastMessages = (messages, key = "error") => {
