@@ -14,7 +14,7 @@ const EmployeeSideBar = () => {
   const history = useHistory();
   const tenantId = Digit.ULBService.getStateId();
   const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "installation-qc";
-  const translationUrl = `/${window.contextPath}/employee/pm/translation`;
+  const translationUrl = `/${contextPath}/employee/pm/translation`;
 
   function extractLeftIcon(data = {}) {
     for (const key in data) {
