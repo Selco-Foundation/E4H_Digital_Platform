@@ -11,6 +11,20 @@ import useAsset from "../../hooks/useAsset";
 import InfoCard from "../../components/FacilityDetails/InfoCard";
 import InstallationImageReviewCard from "../../components/FacilityDetails/InstallationImageReviewCard";
 
+const sectionLoaderStyle = {
+  width: "95%",
+  minWidth: "900px",
+  marginTop: "15px",
+  padding: "20px",
+  background: "white",
+  borderRadius: "4px",
+  boxShadow: "0px 0px 4px rgba(0, 0, 0, 0.25)",
+  border: "1px solid #eee",
+  color: "#0B4B66",
+  fontSize: "20px",
+  fontWeight: "bold",
+};
+
 const FacilityDetails = ({t}) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
@@ -39,11 +53,14 @@ const FacilityDetails = ({t}) => {
     isLoading: facilityDataLoading,
     isFetching: facilityDataFetching,
     data: facilityData,
+    documentsLoading,
+    documentsFetching,
+    documentsData,
     revalidate: revalidateFacilityDetails,
     revalidateFacilities
   } = useFacilityDetails(activityFacilityId);
 
-  const { isLoading, data: assetData } = useAsset(activityFacilityId);
+  const { isLoading: assetDataLoading, data: assetData } = useAsset(activityFacilityId);
 
   const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
     tenantId,
@@ -75,26 +92,33 @@ const FacilityDetails = ({t}) => {
     if (facilityData) {
       setAuditTrail(facilityData.auditTrail);
       setFacilityDetails(facilityData.facilityDetails);
-      setAggregatedDocuments(facilityData.documentAggregation);
-      setWorkflowDocuments(facilityData.workflowDocuments);
       dispatch(setSelectedFacility(facilityData.facilityDetails));
     }
   }, [facilityData]);
 
   useEffect(() => {
+    if (documentsData) {
+      setAggregatedDocuments(documentsData.documentAggregation);
+      setWorkflowDocuments(documentsData.workflowDocuments);
+    }
+  }, [documentsData]);
+
+  useEffect(() => {
     const installationImageCriteria = mdmsResponse?.["common-masters"]?.["InstallationImages"]?.[0]?.["InstallationImage"];
-    if (facilityData?.installationImages && installationImageCriteria) {
+    if (documentsData?.installationImages && installationImageCriteria) {
       setInstallationImages(
         installationImageCriteria.map((criterion) => ({
           code: criterion.code,
           description: criterion.description,
-          images: facilityData?.installationImages.filter((image) => image.imageCode === criterion.code),
-          providedImagesCount: facilityData?.installationImages.filter((image) => image.imageCode === criterion.code).length,
+          images: documentsData?.installationImages.filter((image) => image.imageCode === criterion.code),
+          providedImagesCount: documentsData?.installationImages.filter((image) => image.imageCode === criterion.code).length,
           requiredImagesCount: criterion["required_count"],
         }))
       )
+    } else {
+      setInstallationImages([]);
     }
-  }, [facilityData, mdmsResponse]);
+  }, [documentsData, mdmsResponse]);
 
   useEffect(() => {
     return () => {
@@ -102,7 +126,7 @@ const FacilityDetails = ({t}) => {
     }
   }, []);
 
-  if (isLoading || facilityDataLoading || fieldPlanDataLoading || mdmsLoading) {
+  if (facilityDataLoading || fieldPlanDataLoading) {
     return <Loader />;
   }
 
@@ -141,6 +165,8 @@ const FacilityDetails = ({t}) => {
 
       {auditTrail?.length > 0 && <AuditTrail t={t} auditTrail={auditTrail} />}
 
+      {assetDataLoading && <div style={sectionLoaderStyle}>{t("CORE_COMMON_LOADING")}</div>}
+
       {assets && assets.map((asset) => {
         return <Summary
           t={t}
@@ -155,6 +181,10 @@ const FacilityDetails = ({t}) => {
           videos={aggregatedDocuments.videos?.[asset.assetType]}
         />
       })}
+
+      {(documentsLoading || documentsFetching || mdmsLoading) && (
+        <div style={sectionLoaderStyle}>{t("CORE_COMMON_LOADING")}</div>
+      )}
 
       {aggregatedDocuments?.bomCompletionReport && (
         <Summary

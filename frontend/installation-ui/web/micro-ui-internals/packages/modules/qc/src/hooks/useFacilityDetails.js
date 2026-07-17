@@ -58,8 +58,17 @@ const generateAuditTrail = (workflow, transactions) => {
   return auditTrail;
 }
 
+const emptyDocumentAggregation = {
+  images: {},
+  videos: {},
+  installationReportDocuments: [],
+  installationCompletionCertificate: [],
+  assetHandoverDocument: [],
+};
+
 const getAssetAggregation = async (workflow) => {
   const documentAggregation = {
+    ...emptyDocumentAggregation,
     images: {},
     videos: {},
     installationReportDocuments: [],
@@ -175,7 +184,6 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
     facility?.additionalDetails?.mappedVendorName ||
     activityFacilityData?.facility?.additionalDetails?.mappedVendorName;
   const auditTrail = generateAuditTrail(activityFacilityData.workflow, activityFacilityData.transactions);
-  const { documentAggregation, installationImages, workflowDocuments } = await getAssetAggregation(activityFacilityData.workflow);
 
   return {
     facilityDetails: {
@@ -189,9 +197,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       assigned: assignedVendorName || assigneeDetails.name,
     },
     auditTrail,
-    documentAggregation,
-    installationImages,
-    workflowDocuments,
+    workflow: activityFacilityData?.workflow,
   }
 }
 
@@ -213,9 +219,36 @@ const useFacilityDetails = (facilityAssignmentId) => {
       () => fetchFacilityDetails(filter, limit, offset)
   )
 
+  const {
+    isLoading: documentsLoading,
+    isFetching: documentsFetching,
+    isError: documentsError,
+    error: documentsErrorData,
+    data: documentsData,
+  } = useQuery(
+    ["FACILITY_DOCUMENTS", facilityAssignmentId, data?.workflow?.[0]?.id],
+    () => getAssetAggregation(data?.workflow),
+    {
+      enabled: !!data,
+      initialData: {
+        documentAggregation: emptyDocumentAggregation,
+        installationImages: [],
+        workflowDocuments: [],
+      },
+    }
+  )
+
   return {
     isLoading, isFetching, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["FACILITY_DETAILS"]),
+    documentsLoading,
+    documentsFetching,
+    documentsError,
+    documentsErrorData,
+    documentsData,
+    revalidate: () => {
+      queryClient.invalidateQueries(["FACILITY_DETAILS"]);
+      queryClient.invalidateQueries(["FACILITY_DOCUMENTS"]);
+    },
     revalidateFacilities: () => queryClient.invalidateQueries(["FACILITY"])
   }
 }

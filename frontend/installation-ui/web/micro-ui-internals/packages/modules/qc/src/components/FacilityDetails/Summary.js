@@ -75,7 +75,7 @@ const Summary = ({
     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
       {images.map((doc, idx) => (
         <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(doc)}>
-          <img src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
+          <img loading="lazy" decoding="async" src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
         </div>
       ))}
     </div>
@@ -217,7 +217,7 @@ const Summary = ({
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                   {images.map((img, idx) => (
                     <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(img)}>
-                      <img src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
+                      <img loading="lazy" decoding="async" src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
                     </div>
                   ))}
                 </div>
@@ -253,7 +253,7 @@ const Summary = ({
                             gap: "10px",
                           }}
                         >
-                          <video width="50" height="50" controls={true}>
+                          <video width="50" height="50" controls={true} preload="metadata">
                             <source src={video.fileUrl} type="video/mp4" />
                           </video>
                           <div>
