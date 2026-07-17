@@ -6,6 +6,7 @@ const fetchProject = async (filter, limit, offset) => {
   return {
     fieldPlans: response?.FieldPlans,
     totalCount: response?.TotalCount,
+    iccTemplates: response?.iccTemplates || response?.IccTemplates || [],
   };
 }
 
