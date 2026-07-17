@@ -78,6 +78,7 @@ const normalizeCapacity = (value) => {
 const getICCReportFormData = (row, file, fieldPlanId, tenantId) => {
   const formData = new FormData();
   const items = [{
+    id: row.template?.id || "",
     systemType: row.systemType?.code,
     totalSystemCapacity: normalizeCapacity(row.totalSystemCapacity?.code || row.totalSystemCapacity?.name),
     fieldPlanId,
@@ -562,7 +563,11 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
     try {
       const formData = getICCReportFormData(selectedRow, uploadedFile, fieldPlanId, tenantId);
-      await IngestionService.uploadICCReports(formData);
+      if (selectedRow.template?.id) {
+        await IngestionService.upsertICCReports(formData);
+      } else {
+        await IngestionService.uploadICCReports(formData);
+      }
 
       setRows((prevRows) => prevRows.map((row) => {
         if (row.id !== rowId) return row;
