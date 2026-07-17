@@ -66,7 +66,36 @@ const emptyDocumentAggregation = {
   assetHandoverDocument: [],
 };
 
-const getAssetAggregation = async (workflow) => {
+const isReportDocument = (documentType) => {
+  const type = documentType?.toUpperCase();
+
+  return (
+    type === "INSTALLATION_REPORT" ||
+    type === "INSTALLATION_REPORT_BOM" ||
+    type === "INSTALLATION_COMPLETION_CERTIFICATE" ||
+    type === "ASSET_HANDOVER_DOCUMENT"
+  );
+};
+
+const shouldLoadDocument = (documentType, section) => {
+  const type = documentType?.toUpperCase();
+  const selectedSection = section?.toUpperCase();
+
+  if (!selectedSection) return true;
+  if (!type) return false;
+
+  if (selectedSection === "INSTALLATION_COMPLETION_REPORT") {
+    return isReportDocument(type);
+  }
+
+  if (selectedSection.includes("INSTALLATION_IMAGE")) {
+    return type.includes("INSTALLATION_IMAGE") && selectedSection === `INSTALLATION_IMAGE_${type.split("-")[1]}`;
+  }
+
+  return type.split("-")[0] === selectedSection && (type.includes("IMAGE") || type.includes("VIDEO"));
+};
+
+export const getAssetAggregation = async (workflow, section) => {
   const documentAggregation = {
     ...emptyDocumentAggregation,
     images: {},
@@ -83,18 +112,30 @@ const getAssetAggregation = async (workflow) => {
     && Array.isArray(workflow[0].documents)
   ) {
     for (const document of workflow[0].documents) {
+      if (!shouldLoadDocument(document.documentType, section)) {
+        continue;
+      }
 
-      let fileUrl, fileDetails;
+      let fileUrl;
       try {
         const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(document.fileStoreId);
         fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
-        fileDetails = await QCService.fetchDocumentDetails(fileUrl);
       } catch (error) {
         console.error(`Failed to fetch document ${document.fileStoreId}:`, error);
         continue;
       }
 
       const documentType = document.documentType;
+      const isMediaDocument = documentType.toUpperCase().includes("IMAGE") || documentType.toUpperCase().includes("VIDEO");
+      let fileDetails = {};
+      if (!isMediaDocument) {
+        try {
+          fileDetails = await QCService.fetchDocumentDetails(fileUrl);
+        } catch (error) {
+          console.error(`Failed to fetch document details ${document.fileStoreId}:`, error);
+        }
+      }
+
       let documentRequired = false;
 
       if (documentType.toUpperCase().includes("INSTALLATION_IMAGE")) {
@@ -219,35 +260,10 @@ const useFacilityDetails = (facilityAssignmentId) => {
       () => fetchFacilityDetails(filter, limit, offset)
   )
 
-  const {
-    isLoading: documentsLoading,
-    isFetching: documentsFetching,
-    isError: documentsError,
-    error: documentsErrorData,
-    data: documentsData,
-  } = useQuery(
-    ["FACILITY_DOCUMENTS", facilityAssignmentId, data?.workflow?.[0]?.id],
-    () => getAssetAggregation(data?.workflow),
-    {
-      enabled: !!data,
-      initialData: {
-        documentAggregation: emptyDocumentAggregation,
-        installationImages: [],
-        workflowDocuments: [],
-      },
-    }
-  )
-
   return {
     isLoading, isFetching, isError, error, data,
-    documentsLoading,
-    documentsFetching,
-    documentsError,
-    documentsErrorData,
-    documentsData,
     revalidate: () => {
       queryClient.invalidateQueries(["FACILITY_DETAILS"]);
-      queryClient.invalidateQueries(["FACILITY_DOCUMENTS"]);
     },
     revalidateFacilities: () => queryClient.invalidateQueries(["FACILITY"])
   }

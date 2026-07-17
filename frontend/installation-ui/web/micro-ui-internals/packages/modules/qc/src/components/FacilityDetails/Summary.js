@@ -5,7 +5,7 @@ import SystemParameterReport from "./SystemParameterReport";
 import EditRejectionReasonModal from "./EditRejectionReasonModal";
 import { useDispatch, useSelector } from "react-redux";
 import { setRejectionReasons } from "../../redux/actions";
-import { ImageViewer } from "@egovernments/digit-ui-react-components";
+import { ImageViewer, Loader } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
 const Summary = ({
@@ -22,6 +22,8 @@ const Summary = ({
   isReport,
   customTitle,
   renderContent,
+  isLoadingContent = false,
+  onExpand,
   supportingDocuments = [],
   installationImages = [],
   installationCompletionCertificate = [],
@@ -37,6 +39,13 @@ const Summary = ({
   const rejectionReasons = rejectionData?.[section] || [];
   const [imageToView, setImageToView] = useState(null);
   const rejectionSectionLabel = customTitle || t(`QC_${section}_SUMMARY`);
+
+  const toggleExpanded = () => {
+    if (!expanded && onExpand) {
+      onExpand();
+    }
+    setExpanded((prev) => !prev);
+  };
 
   const handleSave = (data) => {
     dispatch(setRejectionReasons(section, [
@@ -135,7 +144,7 @@ const Summary = ({
               alignItems: "center",
               justifyContent: "center",
             }}
-            onClick={() => setExpanded((prev) => !prev)}
+            onClick={toggleExpanded}
           >
             {expanded ? "−" : "+"}
           </button>
@@ -162,17 +171,23 @@ const Summary = ({
       </div>
 
       {expanded &&
-        (renderContent ? (
+        (isLoadingContent ? (
+          <div style={{ padding: "20px" }}>
+            <Loader />
+          </div>
+        ) : renderContent ? (
           renderContent({ setImageToView })
         ) : isReport ? (
-          report && <SystemParameterReport
+          report ? <SystemParameterReport
             t={t}
             file={report}
             supportingDocuments={supportingDocuments}
             installationImages={installationImages}
             installationCompletionCertificate={installationCompletionCertificate}
             assetHandoverDocument={assetHandoverDocument}
-          />
+          /> : (
+            <div style={{ padding: "20px" }}>{t("CORE_COMMON_NOT_APPLICABLE")}</div>
+          )
         ) : (
           <div style={{ padding: "20px" }}>
             <Section title={t(`QC_INSTALLATION_ASSET_COUNT`)}>
