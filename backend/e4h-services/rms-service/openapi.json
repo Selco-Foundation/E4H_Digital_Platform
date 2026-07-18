@@ -1,0 +1,2552 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "RMS Service API",
+    "version": "1.0.0",
+    "description": "Remote Monitoring System (RMS) service for the E4H Digital Platform. It collects facility solar/grid telemetry, evaluates alert rules, creates/pauses IM-service tickets, maintains the center-id-to-HFR-id mapping, and exposes CO2 emissions reference/consumption data consumed by im-services-analytics.\n\n**Authentication**: This service follows the eGov DIGIT convention of embedding authentication in the request body rather than using an `Authorization` header. Endpoints that accept a `RequestInfo` object (see the `RequestInfo` schema) carry the caller's identity via `RequestInfo.authToken` (the Bearer JWT obtained from egov-user's `/user/oauth/token` or `/user/_login`) plus `RequestInfo.userInfo` (uuid, userName, roles, tenantId). rms-service itself does not run a Spring Security filter chain; it trusts the caller/API-gateway to have validated this token, and uses `userInfo`/`authToken` only to resolve tenant/actor context for auditing. The 401/403 responses documented on each operation reflect platform/gateway-level behavior for an invalid or missing token, not enforcement inside rms-service.\n\nNot every endpoint in this service takes a `RequestInfo` - the manual admin trigger endpoints (`/v1/trigger`, `/v1/mapping/sync`, `/v1/mapping/validate`) and the CO2 endpoints take no request envelope at all, since they are invoked by CronJobs/internal jobs rather than end users."
+  },
+  "servers": [
+    {
+      "url": "/rms-service",
+      "description": "Default context path (server.servlet.context-path=/rms-service)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "RMS Workflow",
+      "description": "Manual triggers for the RMS data-collection/rule-engine/mapping workflow."
+    },
+    {
+      "name": "Ticket Status",
+      "description": "Webhook for ticket lifecycle updates from Saura eMitra."
+    },
+    {
+      "name": "Ticket Pause",
+      "description": "Pause/resume of RMS auto-ticket creation for facilities, and pause-expiry reconciliation."
+    },
+    {
+      "name": "CO2 Consumption",
+      "description": "Monthly solar/grid consumption figures sourced from the Selco Elmeasure dashboard API, used for CO2 emission calculations."
+    },
+    {
+      "name": "CO2 Reference Data",
+      "description": "Reference tables (grid intensity factors, archetype lookups/properties, state sunshine hours) used by the CO2 emissions calculation job."
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Role": {
+        "type": "object",
+        "description": "A role assigned to the requesting user (org.egov.common.contract.request.Role).",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 101
+          },
+          "name": {
+            "type": "string",
+            "example": "Employee"
+          },
+          "code": {
+            "type": "string",
+            "example": "EMPLOYEE"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "in"
+          }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "Authenticated user context (org.egov.common.contract.request.User), embedded inside RequestInfo.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 4521
+          },
+          "userName": {
+            "type": "string",
+            "example": "rms.admin"
+          },
+          "name": {
+            "type": "string",
+            "example": "Asha Kumari"
+          },
+          "type": {
+            "type": "string",
+            "example": "EMPLOYEE"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "example": "9886012345"
+          },
+          "emailId": {
+            "type": "string",
+            "example": "asha.kumari@selco.org"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "in"
+          },
+          "uuid": {
+            "type": "string",
+            "example": "3fa1a9f0-6b3d-4b8e-9e0a-1c9a2d5f7e21"
+          }
+        }
+      },
+      "RequestInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT request envelope sent by the caller. `authToken` is the Bearer JWT issued by egov-user (via /user/oauth/token or /user/_login) and, together with `userInfo`, IS the authentication mechanism for this API - there is no separate Authorization header.",
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "example": "rms-service"
+          },
+          "ver": {
+            "type": "string",
+            "example": "1.0"
+          },
+          "ts": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Epoch millis.",
+            "example": 1752741600000
+          },
+          "action": {
+            "type": "string",
+            "example": "_update"
+          },
+          "did": {
+            "type": "string",
+            "nullable": true,
+            "example": "web"
+          },
+          "key": {
+            "type": "string",
+            "nullable": true,
+            "example": ""
+          },
+          "msgId": {
+            "type": "string",
+            "example": "20260717130900|en_IN"
+          },
+          "authToken": {
+            "type": "string",
+            "description": "Bearer JWT obtained from egov-user's /user/oauth/token or /user/_login. This is the auth carrier for the request - rms-service has no separate Authorization header scheme.",
+            "example": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyb3ZhLmFkbWluIiwidGVuYW50X2lkIjoiaW4ifQ.4f2Yl4Q3Vw9nQ8Zt3s6cP0m1kM7bY2xR5aH8dJ6nL0k"
+          },
+          "correlationId": {
+            "type": "string",
+            "nullable": true,
+            "example": "6a6e6d8a-6e21-4c39-9f8e-6f6c9d0b6a11"
+          },
+          "userInfo": {
+            "$ref": "#/components/schemas/UserInfo"
+          }
+        }
+      },
+      "ResponseInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT response envelope.",
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "example": "rms-service"
+          },
+          "ver": {
+            "type": "string",
+            "example": "1.0"
+          },
+          "ts": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1752741600123
+          },
+          "resMsgId": {
+            "type": "string",
+            "example": "uief87324kjhsdfk234"
+          },
+          "msgId": {
+            "type": "string",
+            "example": "20260717130900|en_IN"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "successful",
+              "failed"
+            ],
+            "example": "successful"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "org.egov.tracer.model.Error - one entry of a generic egov-tracer error response.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "code": {
+            "type": "string",
+            "example": "IllegalArgumentException"
+          },
+          "message": {
+            "type": "string",
+            "example": "requests must not be empty"
+          },
+          "description": {
+            "type": "string",
+            "example": "requests must not be empty"
+          },
+          "params": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "example": []
+          }
+        }
+      },
+      "ErrorRes": {
+        "type": "object",
+        "description": "Generic egov-tracer error response (org.egov.tracer.model.ErrorRes), returned by rms-service's default exception handling for endpoints that do not catch exceptions themselves (the CO2 controllers). Field names are the actual camelCase Jackson serialization of the tracer library (not the PascalCase RequestInfo/ResponseInfo convention).",
+        "properties": {
+          "responseInfo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResponseInfo"
+              }
+            ],
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        },
+        "example": {
+          "responseInfo": null,
+          "errors": [
+            {
+              "id": null,
+              "parentId": null,
+              "code": "InternalServerError",
+              "message": "An unexpected error occurred",
+              "description": "An unexpected error occurred",
+              "params": []
+            }
+          ]
+        }
+      },
+      "TicketStatusUpdateRequest": {
+        "type": "object",
+        "required": [
+          "incidentId",
+          "applicationStatus"
+        ],
+        "description": "Webhook payload sent by Saura eMitra when a ticket's status changes.",
+        "properties": {
+          "incidentId": {
+            "type": "string",
+            "description": "Saura eMitra incident/ticket id.",
+            "example": "INC0012345"
+          },
+          "applicationStatus": {
+            "type": "string",
+            "description": "Ticket status from Saura eMitra. Recognized closed statuses (case-insensitive): RESOLVED, CLOSEDAFTERRESOLUTION, REJECTED, CLOSEDAFTERREJECTION.",
+            "example": "RESOLVED"
+          },
+          "requestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          }
+        }
+      },
+      "TicketStatusUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Ticket status update processed successfully"
+          },
+          "ticketId": {
+            "type": "string",
+            "nullable": true,
+            "example": "INC0012345"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "example": "RESOLVED"
+          },
+          "alertsUpdated": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          },
+          "isClosed": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          }
+        }
+      },
+      "TicketPausePayload": {
+        "type": "object",
+        "required": [
+          "action",
+          "facilityId"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "PAUSE",
+              "RESUME"
+            ],
+            "example": "PAUSE"
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Defaults to RequestInfo.userInfo.tenantId, then to rms.default.tenant.id (\"in\") if omitted.",
+            "example": "in"
+          },
+          "facilityId": {
+            "type": "string",
+            "example": "HFR-KA-0004521"
+          },
+          "facilityName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Primary Health Center, Doddaballapur"
+          },
+          "boundaryCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "KA.BENGALURU_RURAL.DODDABALLAPUR"
+          },
+          "pausedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Required and must be a future timestamp when action=PAUSE. Ignored for RESUME.",
+            "example": "2026-08-15T00:00:00Z"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "example": "Facility undergoing panel maintenance"
+          }
+        }
+      },
+      "TicketPauseManageRequest": {
+        "type": "object",
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "PauseFacility": {
+            "$ref": "#/components/schemas/TicketPausePayload"
+          }
+        }
+      },
+      "TicketPauseErrorPayload": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "VALIDATION_ERROR"
+          },
+          "message": {
+            "type": "string",
+            "example": "facilityId is required"
+          }
+        }
+      },
+      "TicketPauseResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "facilityId": {
+            "type": "string",
+            "nullable": true,
+            "example": "HFR-KA-0004521"
+          },
+          "isPaused": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "pausedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-08-15T00:00:00Z"
+          },
+          "daysLeft": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 29
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "example": "Facility undergoing panel maintenance"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true,
+            "example": "Auto ticket creation paused successfully"
+          },
+          "error": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketPauseErrorPayload"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "TicketPauseSearchPayload": {
+        "type": "object",
+        "required": [
+          "facilityId"
+        ],
+        "properties": {
+          "facilityId": {
+            "type": "string",
+            "example": "HFR-KA-0004521"
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "in"
+          }
+        }
+      },
+      "TicketPauseSearchRequest": {
+        "type": "object",
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "FacilitySearch": {
+            "$ref": "#/components/schemas/TicketPauseSearchPayload"
+          }
+        }
+      },
+      "FacilityFilter": {
+        "type": "object",
+        "description": "Boundary filter for listing paused facilities. Most-specific level wins: boundaryCodes > block > district > state; at least one must be non-empty.",
+        "properties": {
+          "tenantId": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "example": [
+              "in"
+            ]
+          },
+          "state": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "example": [
+              "KARNATAKA"
+            ]
+          },
+          "district": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "example": [
+              "BENGALURU_RURAL"
+            ]
+          },
+          "block": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "example": [
+              "DODDABALLAPUR"
+            ]
+          },
+          "boundaryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "example": [
+              "KA.BENGALURU_RURAL.DODDABALLAPUR"
+            ]
+          },
+          "offset": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "limit": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Defaults to 50, capped at 200.",
+            "example": 50
+          }
+        }
+      },
+      "TicketPausedFacilityListRequest": {
+        "type": "object",
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "Facility": {
+            "$ref": "#/components/schemas/FacilityFilter"
+          }
+        }
+      },
+      "PausedFacilityItem": {
+        "type": "object",
+        "properties": {
+          "facilityId": {
+            "type": "string",
+            "example": "HFR-KA-0004521"
+          },
+          "facilityName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Primary Health Center, Doddaballapur"
+          },
+          "boundaryCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "KA.BENGALURU_RURAL.DODDABALLAPUR"
+          },
+          "pausedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-08-15T00:00:00Z"
+          },
+          "daysLeft": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 29
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "example": "Facility undergoing panel maintenance"
+          },
+          "pausedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "uuid of the requester, resolved to a display name where possible.",
+            "example": "Asha Kumari"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-07-16T09:12:41Z"
+          }
+        }
+      },
+      "TicketPausedFacilityListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "pausedFacilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PausedFacilityItem"
+            }
+          },
+          "error": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketPauseErrorPayload"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "TicketPauseExpiryRequest": {
+        "type": "object",
+        "description": "Optional request body - may be omitted entirely (Kubernetes CronJob typically POSTs with an empty/no body).",
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "limit": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Max expired pauses to reconcile in this call. Defaults to 200, capped at 1000.",
+            "example": 200
+          }
+        }
+      },
+      "TicketPauseExpiryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "processedCount": {
+            "type": "integer",
+            "example": 3
+          },
+          "resumedCount": {
+            "type": "integer",
+            "example": 3
+          },
+          "skippedCount": {
+            "type": "integer",
+            "example": 0
+          },
+          "message": {
+            "type": "string",
+            "example": "Expired paused facilities reconciled successfully"
+          },
+          "error": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketPauseErrorPayload"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "MonthlyConsumptionRequest": {
+        "type": "object",
+        "description": "One (facility, month, year) tuple to resolve monthly consumption for. Provide either centerId directly or hfrId (resolved to a centerId via the center-id-to-HFR mapping table).",
+        "properties": {
+          "facilityId": {
+            "type": "string",
+            "nullable": true,
+            "example": "HFR-KA-0004521"
+          },
+          "hfrId": {
+            "type": "string",
+            "nullable": true,
+            "example": "IN2909000123"
+          },
+          "centerId": {
+            "type": "string",
+            "nullable": true,
+            "example": "SELCO-CTR-88231"
+          },
+          "month": {
+            "type": "integer",
+            "description": "1-12",
+            "example": 6
+          },
+          "year": {
+            "type": "integer",
+            "example": 2026
+          }
+        }
+      },
+      "MonthlyConsumptionBatchRequest": {
+        "type": "object",
+        "properties": {
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyConsumptionRequest"
+            }
+          }
+        }
+      },
+      "MonthlyConsumptionData": {
+        "type": "object",
+        "properties": {
+          "facilityId": {
+            "type": "string",
+            "nullable": true,
+            "example": "HFR-KA-0004521"
+          },
+          "centerId": {
+            "type": "string",
+            "nullable": true,
+            "example": "SELCO-CTR-88231"
+          },
+          "month": {
+            "type": "integer",
+            "example": 6
+          },
+          "year": {
+            "type": "integer",
+            "example": 2026
+          },
+          "monthlySolarConsumptionKwh": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "example": 412.35
+          },
+          "monthlyGridConsumptionKwh": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "example": 96.8
+          },
+          "monthlyTotalConsumptionKwh": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "example": 509.15
+          },
+          "source": {
+            "type": "string",
+            "description": "Provenance of the figures.",
+            "enum": [
+              "ELMEASURE_SELCO_GRAPH",
+              "ELMEASURE_NO_DATA",
+              "ELMEASURE_NOT_FOUND",
+              "CENTER_NOT_MAPPED"
+            ],
+            "example": "ELMEASURE_SELCO_GRAPH"
+          }
+        }
+      },
+      "MonthlyConsumptionBatchResponse": {
+        "type": "object",
+        "properties": {
+          "consumption": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyConsumptionData"
+            }
+          }
+        }
+      },
+      "GridIntensityFactor": {
+        "type": "object",
+        "description": "kg CO2 per kWh grid intensity factor for a tenant/financial-year. `gridIntensityFactor` is the published value; `projectedGridIntensityFactor` is used when the published value is not yet available.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "eb80650d-baa0-4dde-9aee-d9cc187f3ec8"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "in"
+          },
+          "financialYear": {
+            "type": "string",
+            "example": "2023-24"
+          },
+          "gridIntensityFactor": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "description": "kg CO2/kWh",
+            "example": 0.961
+          },
+          "projectedGridIntensityFactor": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "description": "kg CO2/kWh",
+            "example": 0.947
+          }
+        }
+      },
+      "ArchetypeLookup": {
+        "type": "object",
+        "description": "Maps a (state, facility type) pair to an energy-consumption archetype code.",
+        "properties": {
+          "state": {
+            "type": "string",
+            "example": "India_Karnataka"
+          },
+          "facilityType": {
+            "type": "string",
+            "example": "Primary Health Center"
+          },
+          "archetype": {
+            "type": "string",
+            "example": "A3"
+          }
+        }
+      },
+      "ArchetypeProperties": {
+        "type": "object",
+        "description": "Per-archetype annual energy profile used in the emission formula.",
+        "properties": {
+          "archetype": {
+            "type": "string",
+            "example": "A3"
+          },
+          "yearOneAnnualConsumptionKwh": {
+            "type": "number",
+            "format": "double",
+            "description": "Year-one total facility energy consumption (kWh/year).",
+            "example": 3387.6662
+          },
+          "alpha": {
+            "type": "number",
+            "format": "double",
+            "description": "Solar share of consumption (0-1).",
+            "example": 0.6763567628355457
+          }
+        }
+      },
+      "StateSunshineHours": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "example": "India_Karnataka"
+          },
+          "sunshineHoursPerDay": {
+            "type": "number",
+            "format": "double",
+            "example": 5.0
+          }
+        }
+      },
+      "Co2ReferenceDataResponse": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "example": "in"
+          },
+          "gridIntensityFactors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GridIntensityFactor"
+            }
+          },
+          "archetypeLookups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchetypeLookup"
+            }
+          },
+          "archetypeProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchetypeProperties"
+            }
+          },
+          "stateSunshineHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StateSunshineHours"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/trigger": {
+      "post": {
+        "tags": [
+          "RMS Workflow"
+        ],
+        "summary": "Manually trigger the RMS orchestration workflow",
+        "description": "Synchronously runs the full RMS workflow: collects facility telemetry (inverter/panel/center data), evaluates alert rules, and creates IM-service tickets for facilities that trip a rule. Intended for manual/ops triggering or as a CronJob target; normally the same workflow runs on a schedule (rms.scheduler.rule.engine.cron). Takes no request body and returns a plain-text status message (not JSON).",
+        "operationId": "triggerRmsWorkflow",
+        "responses": {
+          "200": {
+            "description": "Workflow executed successfully.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "RMS workflow executed successfully"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - malformed request body/parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "BadRequest",
+                      "message": "Could not read/parse the request",
+                      "description": "Could not read/parse the request",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Workflow execution failed.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Error executing RMS workflow: connection timed out while calling Selco dashboard API"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mapping/sync": {
+      "post": {
+        "tags": [
+          "RMS Workflow"
+        ],
+        "summary": "Manually trigger center-id-to-HFR-id mapping sync",
+        "description": "Refreshes the rms_center_hfr mapping table from the dedicated RMS mapping API (rms.api.center.mappings.endpoint). If that call fails, falls back to deriving mappings from the inverter-no-signal facility data collection endpoint. Takes no request body and returns a plain-text status message (not JSON).",
+        "operationId": "syncCenterHfrMappings",
+        "responses": {
+          "200": {
+            "description": "Mapping sync completed (either via the dedicated API or the fallback path).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Mapping sync completed successfully"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - malformed request body/parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "BadRequest",
+                      "message": "Could not read/parse the request",
+                      "description": "Could not read/parse the request",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Both the primary mapping API and the fallback sync failed.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Error syncing mappings: fallback facility data collection failed"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mapping/validate": {
+      "post": {
+        "tags": [
+          "RMS Workflow"
+        ],
+        "summary": "Manually trigger mapping validation",
+        "description": "Validates existing center-id-to-HFR-id mappings that have not been re-validated within rms.mapping.validation.days (default 7) days. Takes no request body and returns a plain-text status message (not JSON).",
+        "operationId": "validateCenterHfrMappings",
+        "responses": {
+          "200": {
+            "description": "Mapping validation completed successfully.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Mapping validation completed successfully"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - malformed request body/parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "BadRequest",
+                      "message": "Could not read/parse the request",
+                      "description": "Could not read/parse the request",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Mapping validation failed.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Error validating mappings: facility-service search timed out"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ticket/status/update": {
+      "post": {
+        "tags": [
+          "Ticket Status"
+        ],
+        "summary": "Webhook: receive a ticket status update from Saura eMitra",
+        "description": "Called by Saura eMitra when an IM-service ticket's status changes. When the new status is a closed/resolved status (RESOLVED, CLOSEDAFTERRESOLUTION, REJECTED, CLOSEDAFTERREJECTION, case-insensitive), the matching row(s) in the active_alerts table are marked resolved so RMS does not raise a duplicate ticket for the same condition.",
+        "operationId": "updateTicketStatus",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketStatusUpdateRequest"
+              },
+              "example": {
+                "incidentId": "INC0012345",
+                "applicationStatus": "RESOLVED",
+                "requestInfo": {
+                  "apiId": "saura-emitra",
+                  "ver": "1.0",
+                  "ts": 1752741600000,
+                  "action": "_update",
+                  "msgId": "20260717130900|en_IN",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeXN0ZW0ifQ.a1B2c3D4e5F6g7H8i9J0",
+                  "correlationId": "6a6e6d8a-6e21-4c39-9f8e-6f6c9d0b6a11",
+                  "userInfo": {
+                    "uuid": "d2a12218-c71b-4aa3-b7e4-a811c522ef0c",
+                    "userName": "system",
+                    "tenantId": "in",
+                    "roles": [
+                      {
+                        "code": "SYSTEM",
+                        "name": "System",
+                        "tenantId": "in"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ticket status update processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketStatusUpdateResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Ticket status update processed successfully",
+                  "ticketId": "INC0012345",
+                  "status": "RESOLVED",
+                  "alertsUpdated": 2,
+                  "isClosed": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "incidentId or applicationStatus missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketStatusUpdateResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid request: incidentId and applicationStatus are required",
+                  "ticketId": null,
+                  "status": null,
+                  "alertsUpdated": 0,
+                  "isClosed": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled error while processing the update.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketStatusUpdateResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Error processing ticket status update: database connection lost",
+                  "ticketId": null,
+                  "status": null,
+                  "alertsUpdated": 0,
+                  "isClosed": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ticket/pause": {
+      "post": {
+        "tags": [
+          "Ticket Pause"
+        ],
+        "summary": "Pause or resume RMS auto-ticket creation for a facility",
+        "description": "action=PAUSE requires a future `pausedUntil` timestamp and upserts an active pause row; action=RESUME deactivates any active pause for the facility (a no-op success if none exists). Publishes a pause/resume audit Kafka event on both paths. Returns 400 if the RMS ticket pause feature is disabled (rms.ticket.pause.enabled=false) or the payload is invalid.",
+        "operationId": "manageTicketPause",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketPauseManageRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "rms-service",
+                  "ver": "1.0",
+                  "ts": 1752741600000,
+                  "action": "_create",
+                  "msgId": "20260717130900|en_IN",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyb3ZhLmFkbWluIn0.dJ6nL0kM7bY2xR5aH8",
+                  "correlationId": "6a6e6d8a-6e21-4c39-9f8e-6f6c9d0b6a11",
+                  "userInfo": {
+                    "uuid": "3fa1a9f0-6b3d-4b8e-9e0a-1c9a2d5f7e21",
+                    "userName": "rms.admin",
+                    "name": "Asha Kumari",
+                    "tenantId": "in",
+                    "roles": [
+                      {
+                        "code": "RMS_ADMIN",
+                        "name": "RMS Admin",
+                        "tenantId": "in"
+                      }
+                    ]
+                  }
+                },
+                "PauseFacility": {
+                  "action": "PAUSE",
+                  "tenantId": "in",
+                  "facilityId": "HFR-KA-0004521",
+                  "facilityName": "Primary Health Center, Doddaballapur",
+                  "boundaryCode": "KA.BENGALURU_RURAL.DODDABALLAPUR",
+                  "pausedUntil": "2026-08-15T00:00:00Z",
+                  "reason": "Facility undergoing panel maintenance"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pause/resume applied.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseResponse"
+                },
+                "example": {
+                  "success": true,
+                  "facilityId": "HFR-KA-0004521",
+                  "isPaused": true,
+                  "pausedUntil": "2026-08-15T00:00:00Z",
+                  "daysLeft": 29,
+                  "reason": "Facility undergoing panel maintenance",
+                  "message": "Auto ticket creation paused successfully",
+                  "error": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (e.g. missing facilityId/action, pausedUntil not in the future, or feature disabled).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseResponse"
+                },
+                "example": {
+                  "success": false,
+                  "facilityId": null,
+                  "isPaused": null,
+                  "pausedUntil": null,
+                  "daysLeft": null,
+                  "reason": null,
+                  "message": "pausedUntil must be a future timestamp when action is PAUSE",
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "pausedUntil must be a future timestamp when action is PAUSE"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled error while managing the pause.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseResponse"
+                },
+                "example": {
+                  "success": false,
+                  "facilityId": null,
+                  "isPaused": null,
+                  "pausedUntil": null,
+                  "daysLeft": null,
+                  "reason": null,
+                  "message": "Error managing ticket pause: database connection lost",
+                  "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "Error managing ticket pause: database connection lost"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ticket/pause/_search": {
+      "post": {
+        "tags": [
+          "Ticket Pause"
+        ],
+        "summary": "Fetch the current pause state for a facility",
+        "description": "Returns whether the given facility currently has an active auto-ticket-creation pause, and how many days remain.",
+        "operationId": "searchTicketPause",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketPauseSearchRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "rms-service",
+                  "ver": "1.0",
+                  "ts": 1752741600000,
+                  "action": "_search",
+                  "msgId": "20260717130900|en_IN",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyb3ZhLmFkbWluIn0.dJ6nL0kM7bY2xR5aH8",
+                  "userInfo": {
+                    "uuid": "3fa1a9f0-6b3d-4b8e-9e0a-1c9a2d5f7e21",
+                    "userName": "rms.admin",
+                    "tenantId": "in"
+                  }
+                },
+                "FacilitySearch": {
+                  "facilityId": "HFR-KA-0004521",
+                  "tenantId": "in"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pause state resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseResponse"
+                },
+                "example": {
+                  "success": true,
+                  "facilityId": "HFR-KA-0004521",
+                  "isPaused": true,
+                  "pausedUntil": "2026-08-15T00:00:00Z",
+                  "daysLeft": 29,
+                  "reason": "Facility undergoing panel maintenance",
+                  "message": "Facility is paused",
+                  "error": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error, e.g. missing facilityId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseResponse"
+                },
+                "example": {
+                  "success": false,
+                  "facilityId": null,
+                  "isPaused": null,
+                  "pausedUntil": null,
+                  "daysLeft": null,
+                  "reason": null,
+                  "message": "facilityId is required",
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "facilityId is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled error while searching pause state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseResponse"
+                },
+                "example": {
+                  "success": false,
+                  "facilityId": null,
+                  "isPaused": null,
+                  "pausedUntil": null,
+                  "daysLeft": null,
+                  "reason": null,
+                  "message": "Error searching ticket pause: database connection lost",
+                  "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "Error searching ticket pause: database connection lost"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ticket/paused_facility": {
+      "post": {
+        "tags": [
+          "Ticket Pause"
+        ],
+        "summary": "List paused facilities within a boundary",
+        "description": "Lists currently-paused facilities under the given boundary filter. The most specific non-empty filter wins in this order: boundaryCodes > block > district > state - at least one of these must be supplied. `pausedBy` in the response is resolved from a uuid to a display name via egov-user where possible.",
+        "operationId": "listPausedFacilities",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketPausedFacilityListRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "rms-service",
+                  "ver": "1.0",
+                  "ts": 1752741600000,
+                  "action": "_search",
+                  "msgId": "20260717130900|en_IN",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyb3ZhLmFkbWluIn0.dJ6nL0kM7bY2xR5aH8",
+                  "userInfo": {
+                    "uuid": "3fa1a9f0-6b3d-4b8e-9e0a-1c9a2d5f7e21",
+                    "userName": "rms.admin",
+                    "tenantId": "in"
+                  }
+                },
+                "Facility": {
+                  "tenantId": [
+                    "in"
+                  ],
+                  "district": [
+                    "BENGALURU_RURAL"
+                  ],
+                  "offset": 0,
+                  "limit": 50
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paused facilities returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPausedFacilityListResponse"
+                },
+                "example": {
+                  "success": true,
+                  "totalCount": 1,
+                  "pausedFacilities": [
+                    {
+                      "facilityId": "HFR-KA-0004521",
+                      "facilityName": "Primary Health Center, Doddaballapur",
+                      "boundaryCode": "KA.BENGALURU_RURAL.DODDABALLAPUR",
+                      "pausedUntil": "2026-08-15T00:00:00Z",
+                      "daysLeft": 29,
+                      "reason": "Facility undergoing panel maintenance",
+                      "pausedBy": "Asha Kumari",
+                      "updatedAt": "2026-07-16T09:12:41Z"
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No boundary filter supplied, or limit not positive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPausedFacilityListResponse"
+                },
+                "example": {
+                  "success": false,
+                  "totalCount": 0,
+                  "pausedFacilities": [],
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "At least one of Facility.state, Facility.district, Facility.block or Facility.boundaryCodes is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled error while listing paused facilities.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPausedFacilityListResponse"
+                },
+                "example": {
+                  "success": false,
+                  "totalCount": 0,
+                  "pausedFacilities": [],
+                  "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "Error searching paused facilities: database connection lost"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ticket/pause/_expire": {
+      "post": {
+        "tags": [
+          "Ticket Pause"
+        ],
+        "summary": "Reconcile expired facility pauses",
+        "description": "Intended to be invoked by a Kubernetes CronJob. Finds active pauses whose pausedUntil has elapsed, deactivates them, and publishes a RESUME audit event for each. The request body is optional; an empty POST body is accepted.",
+        "operationId": "reconcileExpiredTicketPauses",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketPauseExpiryRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "rms-service",
+                  "ver": "1.0",
+                  "ts": 1752741600000,
+                  "action": "_expire",
+                  "msgId": "20260717130900|en_IN",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeXN0ZW0ifQ.a1B2c3D4e5F6g7H8i9J0",
+                  "userInfo": {
+                    "uuid": "d2a12218-c71b-4aa3-b7e4-a811c522ef0c",
+                    "userName": "system",
+                    "tenantId": "in"
+                  }
+                },
+                "limit": 200
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reconciliation completed (possibly with zero expired pauses found).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseExpiryResponse"
+                },
+                "example": {
+                  "success": true,
+                  "processedCount": 3,
+                  "resumedCount": 3,
+                  "skippedCount": 0,
+                  "message": "Expired paused facilities reconciled successfully",
+                  "error": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "limit supplied but not positive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseExpiryResponse"
+                },
+                "example": {
+                  "success": false,
+                  "processedCount": 0,
+                  "resumedCount": 0,
+                  "skippedCount": 0,
+                  "message": "limit must be positive",
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "limit must be positive"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled error while reconciling expired pauses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketPauseExpiryResponse"
+                },
+                "example": {
+                  "success": false,
+                  "processedCount": 0,
+                  "resumedCount": 0,
+                  "skippedCount": 0,
+                  "message": "Error reconciling expired paused facilities: database connection lost",
+                  "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "Error reconciling expired paused facilities: database connection lost"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/co2/consumption/monthly/batch": {
+      "post": {
+        "tags": [
+          "CO2 Consumption"
+        ],
+        "summary": "Fetch monthly solar/grid/total kWh consumption for a batch of facility/month/year requests",
+        "description": "For each requested (facility, month, year), resolves the Selco center id (directly, or via the HFR-id mapping table) and calls the Selco Elmeasure dashboard graph API (POST /selco/center_details/graph, graphType=solarVsGrid_Eb) to retrieve solar and grid kWh for that month, batching the underlying calls per center to cover the full requested date range in one round trip. Entries whose facility cannot be mapped to a center are returned with null consumption values and source=CENTER_NOT_MAPPED. This endpoint does not wrap requests/responses in RequestInfo/ResponseInfo and has no controller-level exception handling - unhandled failures surface as a generic egov-tracer error response.",
+        "operationId": "fetchMonthlyConsumptionBatch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonthlyConsumptionBatchRequest"
+              },
+              "example": {
+                "requests": [
+                  {
+                    "facilityId": "HFR-KA-0004521",
+                    "hfrId": null,
+                    "centerId": "SELCO-CTR-88231",
+                    "month": 6,
+                    "year": 2026
+                  },
+                  {
+                    "facilityId": "HFR-KA-0004522",
+                    "hfrId": "IN2909000456",
+                    "centerId": null,
+                    "month": 6,
+                    "year": 2026
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Consumption data resolved for each requested tuple (values may be null when unavailable).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthlyConsumptionBatchResponse"
+                },
+                "example": {
+                  "consumption": [
+                    {
+                      "facilityId": "HFR-KA-0004521",
+                      "centerId": "SELCO-CTR-88231",
+                      "month": 6,
+                      "year": 2026,
+                      "monthlySolarConsumptionKwh": 412.35,
+                      "monthlyGridConsumptionKwh": 96.8,
+                      "monthlyTotalConsumptionKwh": 509.15,
+                      "source": "ELMEASURE_SELCO_GRAPH"
+                    },
+                    {
+                      "facilityId": "HFR-KA-0004522",
+                      "centerId": null,
+                      "month": 6,
+                      "year": 2026,
+                      "monthlySolarConsumptionKwh": null,
+                      "monthlyGridConsumptionKwh": null,
+                      "monthlyTotalConsumptionKwh": null,
+                      "source": "CENTER_NOT_MAPPED"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - malformed request body/parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "BadRequest",
+                      "message": "Could not read/parse the request",
+                      "description": "Could not read/parse the request",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled exception (e.g. the upstream Selco dashboard API failed or timed out).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "InternalServerError",
+                      "message": "Error while calling Selco dashboard API",
+                      "description": "Error while calling Selco dashboard API",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/co2/reference": {
+      "get": {
+        "tags": [
+          "CO2 Reference Data"
+        ],
+        "summary": "Fetch all CO2 reference tables for a tenant",
+        "description": "Returns grid intensity factors, archetype lookups, archetype properties, and state sunshine hours for the given tenant, consumed by the im-services-analytics monthly CO2-emissions calculation job. This endpoint takes no RequestInfo/authentication envelope and has no controller-level exception handling - unhandled failures surface as a generic egov-tracer error response.",
+        "operationId": "getCo2ReferenceData",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": false,
+            "description": "Tenant to fetch reference data for. Defaults to rms.default.tenant.id (\"in\") when omitted or blank.",
+            "schema": {
+              "type": "string",
+              "default": "in"
+            },
+            "example": "in"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reference data for the tenant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Co2ReferenceDataResponse"
+                },
+                "example": {
+                  "tenantId": "in",
+                  "gridIntensityFactors": [
+                    {
+                      "id": "eb80650d-baa0-4dde-9aee-d9cc187f3ec8",
+                      "tenantId": "in",
+                      "financialYear": "2023-24",
+                      "gridIntensityFactor": 0.961,
+                      "projectedGridIntensityFactor": null
+                    },
+                    {
+                      "id": "ff2323e8-4ee9-4b35-a47a-7e0b74b041f0",
+                      "tenantId": "in",
+                      "financialYear": "2025-26",
+                      "gridIntensityFactor": null,
+                      "projectedGridIntensityFactor": 0.947
+                    }
+                  ],
+                  "archetypeLookups": [
+                    {
+                      "state": "India_Karnataka",
+                      "facilityType": "Primary Health Center",
+                      "archetype": "A3"
+                    },
+                    {
+                      "state": "India_Karnataka",
+                      "facilityType": "Sub Center",
+                      "archetype": "A5"
+                    }
+                  ],
+                  "archetypeProperties": [
+                    {
+                      "archetype": "A3",
+                      "yearOneAnnualConsumptionKwh": 3387.66621805093,
+                      "alpha": 0.6763567628355457
+                    },
+                    {
+                      "archetype": "A5",
+                      "yearOneAnnualConsumptionKwh": 1685.3050084136687,
+                      "alpha": 0.7705846803989232
+                    }
+                  ],
+                  "stateSunshineHours": [
+                    {
+                      "state": "India_Karnataka",
+                      "sunshineHoursPerDay": 5.0
+                    },
+                    {
+                      "state": "India_Bihar",
+                      "sunshineHoursPerDay": 5.0
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - malformed request body/parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "BadRequest",
+                      "message": "Could not read/parse the request",
+                      "description": "Could not read/parse the request",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid authToken (platform/gateway-level; not enforced by rms-service itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "UNAUTHORIZED",
+                      "message": "Invalid or expired auth token",
+                      "description": "Invalid or expired auth token",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - authenticated user's roles do not permit this action (platform/gateway-level).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "ACCESS_DENIED",
+                      "message": "Access Denied",
+                      "description": "Access Denied",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching route/resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "NOT_FOUND",
+                      "message": "The requested resource was not found",
+                      "description": "The requested resource was not found",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled exception (e.g. database unavailable).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "responseInfo": null,
+                  "errors": [
+                    {
+                      "id": null,
+                      "parentId": null,
+                      "code": "InternalServerError",
+                      "message": "Error while fetching CO2 reference data",
+                      "description": "Error while fetching CO2 reference data",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

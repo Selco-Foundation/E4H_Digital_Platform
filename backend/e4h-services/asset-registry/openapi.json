@@ -1,0 +1,2294 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Asset Registry Service",
+    "version": "1.0.0",
+    "description": "eGov DIGIT Asset Registry service. Manages solar/electro-mechanical assets (inverters, panels, batteries, etc.) installed at facilities, along with their AMC (Annual Maintenance Contract) records, AMC visits, and workflow status transitions.\n\n**Authentication**: This API does NOT use a header-based Authorization scheme. Every request body carries a `RequestInfo` object whose `authToken` field holds the Bearer JWT obtained from egov-user's OAuth login (`/user/oauth/token` or `/user/_login`). The `RequestInfo.userInfo` object (uuid, userName, roles, etc.) identifies the calling user. Services validate `RequestInfo.authToken` server-side against egov-user; there is no separate `Authorization:` header.\n\n**Note on implementation status**: Several endpoints declared by this controller (`/v1/asset/bulk/_create`, `/v1/asset/amc/_create`, `/v1/asset/amc/_update`, `/v1/asset/amc/_search`, `/v1/asset/amc/visit/_create`, `/v1/asset/amc/visit/_update`, `/v1/asset/amc/visit/_search`, `/v1/asset/workflow/{assetID}/_update`) are stubbed and currently always return `501 Not Implemented`. They are documented here because they are live, routable endpoints, with a note in their description.",
+    "contact": {
+      "name": "eGov DIGIT / SELCO E4H Digital Platform"
+    }
+  },
+  "servers": [
+    {
+      "url": "/asset-registry",
+      "description": "Default context path (server.servlet.context-path=/asset-registry)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Asset",
+      "description": "Core asset registry CRUD and search operations"
+    },
+    {
+      "name": "Asset Bulk",
+      "description": "Bulk asset ingestion (not implemented)"
+    },
+    {
+      "name": "Asset AMC",
+      "description": "Annual Maintenance Contract records for an asset (not implemented)"
+    },
+    {
+      "name": "Asset AMC Visit",
+      "description": "AMC visit logging and search (not implemented)"
+    },
+    {
+      "name": "Asset Workflow",
+      "description": "Workflow status transitions for an asset (not implemented)"
+    }
+  ],
+  "paths": {
+    "/v1/asset/_create": {
+      "post": {
+        "tags": [
+          "Asset"
+        ],
+        "summary": "Create a new asset",
+        "description": "Validates and persists a new asset (e.g. inverter, panel, battery) against MDMS master data, checks for duplicates (assetTypeID + serialNumber + brandID + modelNumber), generates an assetId, and raises a create event on the `save-asset` Kafka topic.",
+        "operationId": "createAsset",
+        "requestBody": {
+          "required": true,
+          "description": "Asset data to be added to the registry",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetCreateRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "assetDetail": {
+                  "Asset": {
+                    "tenantId": "pg",
+                    "system": "DC",
+                    "facilityID": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a",
+                    "activityFacilityID": "actfac-2b7d1e44-9c3d-4a1a-8f2e-7d1e44b9c3d4",
+                    "assetTypeID": "INVERTER",
+                    "serialNumber": "SN-INV-2026-000123",
+                    "modelNumber": "MPPT-60A",
+                    "brandID": "LUMINOUS",
+                    "assetDetails": {
+                      "currentUnit": "A",
+                      "voltageUnit": "vDC",
+                      "chargeControllerCurrent": 20,
+                      "chargeControllerVoltage": 12,
+                      "totalCapacity": 1,
+                      "totalCapacityUOM": "kVA"
+                    },
+                    "warrantyStartDate": "2026-01-15",
+                    "warrantyDuration": 24,
+                    "isActive": true,
+                    "isOperational": true,
+                    "documents": [
+                      {
+                        "id": "doc-4b2e7a10-1c3d-4f8e-9a2b-7a104b2e7a10",
+                        "documentType": "INVOICE",
+                        "fileStore": "fs-9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                        "documentUid": "invoice-2026-000123",
+                        "geoLocation": {
+                          "latitude": 13.0827,
+                          "longitude": 77.5877
+                        }
+                      }
+                    ],
+                    "additionalDetails": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Asset created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetCreateResponse"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "asset-registry",
+                    "ver": "1.0",
+                    "ts": 1768636800123,
+                    "resMsgId": "res-msg-uief87324",
+                    "msgId": "1768636800000|en_IN",
+                    "status": "successful"
+                  },
+                  "asset": {
+                    "assetId": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                    "tenantId": "pg",
+                    "system": "DC",
+                    "facilityID": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a",
+                    "activityFacilityID": "actfac-2b7d1e44-9c3d-4a1a-8f2e-7d1e44b9c3d4",
+                    "assetTypeID": "INVERTER",
+                    "serialNumber": "SN-INV-2026-000123",
+                    "modelNumber": "MPPT-60A",
+                    "brandID": "LUMINOUS",
+                    "assetDetails": {
+                      "currentUnit": "A",
+                      "voltageUnit": "vDC",
+                      "chargeControllerCurrent": 20,
+                      "chargeControllerVoltage": 12,
+                      "totalCapacity": 1,
+                      "totalCapacityUOM": "kVA"
+                    },
+                    "warrantyStartDate": "2026-01-15",
+                    "warrantyDuration": 24,
+                    "warrantyEndDate": "2028-01-15",
+                    "wfStatus": "CREATED",
+                    "isActive": true,
+                    "isOperational": true,
+                    "documents": [
+                      {
+                        "id": "doc-4b2e7a10-1c3d-4f8e-9a2b-7a104b2e7a10",
+                        "documentType": "INVOICE",
+                        "fileStore": "fs-9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                        "documentUid": "invoice-2026-000123",
+                        "geoLocation": {
+                          "latitude": 13.0827,
+                          "longitude": 77.5877
+                        }
+                      }
+                    ],
+                    "auditDetails": {
+                      "createdBy": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                      "lastModifiedBy": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                      "createdTime": 1768636800000,
+                      "lastModifiedTime": 1768636800000
+                    },
+                    "additionalDetails": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/_update": {
+      "post": {
+        "tags": [
+          "Asset"
+        ],
+        "summary": "Update an existing asset",
+        "description": "Validates and updates an existing asset identified by the `assetID` query parameter. Re-validates the asset payload (MDMS masters, duplicates) before persisting the update.",
+        "operationId": "updateAsset",
+        "parameters": [
+          {
+            "name": "assetID",
+            "in": "query",
+            "required": true,
+            "description": "Unique identifier of the asset to update",
+            "schema": {
+              "type": "string"
+            },
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Updated asset information",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetCreateRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "assetDetail": {
+                  "Asset": {
+                    "assetId": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                    "tenantId": "pg",
+                    "system": "DC",
+                    "facilityID": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a",
+                    "activityFacilityID": "actfac-2b7d1e44-9c3d-4a1a-8f2e-7d1e44b9c3d4",
+                    "assetTypeID": "INVERTER",
+                    "serialNumber": "SN-INV-2026-000123",
+                    "modelNumber": "MPPT-60A",
+                    "brandID": "LUMINOUS",
+                    "isOperational": false,
+                    "wfStatus": "INACTIVE"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Asset updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetCreateUpdateResponse"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "asset-registry",
+                    "ver": "1.0",
+                    "ts": 1768636800123,
+                    "resMsgId": "res-msg-uief87324",
+                    "msgId": "1768636800000|en_IN",
+                    "status": "successful"
+                  },
+                  "Asset": {
+                    "assetId": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                    "tenantId": "pg",
+                    "system": "DC",
+                    "facilityID": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a",
+                    "activityFacilityID": "actfac-2b7d1e44-9c3d-4a1a-8f2e-7d1e44b9c3d4",
+                    "assetTypeID": "INVERTER",
+                    "serialNumber": "SN-INV-2026-000123",
+                    "modelNumber": "MPPT-60A",
+                    "brandID": "LUMINOUS",
+                    "isOperational": false,
+                    "wfStatus": "INACTIVE",
+                    "auditDetails": {
+                      "createdBy": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                      "lastModifiedBy": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                      "createdTime": 1768636800000,
+                      "lastModifiedTime": 1768723200000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/_search": {
+      "post": {
+        "tags": [
+          "Asset"
+        ],
+        "summary": "Search assets",
+        "description": "Searches for assets matching the given criteria (tenantId is mandatory; assetID, facilityID, assetType, serialNumber, modelNumber, brandID, wfStatus, isOperational and activityFacilityID are optional filters), with pagination via `offset`/`limit` query parameters. Also returns documents attached to each matched asset.",
+        "operationId": "searchAssets",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Offset for pagination",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            },
+            "example": 0
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Limit for pagination",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            },
+            "example": 10
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Asset search request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetSearchRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "criteria": {
+                  "tenantId": "pg",
+                  "facilityID": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a",
+                  "assetType": [
+                    "INVERTER"
+                  ],
+                  "wfStatus": "CREATED",
+                  "isOperational": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of assets matching the search criteria",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Asset"
+                  }
+                },
+                "example": [
+                  {
+                    "assetId": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                    "tenantId": "pg",
+                    "system": "DC",
+                    "facilityID": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a",
+                    "activityFacilityID": "actfac-2b7d1e44-9c3d-4a1a-8f2e-7d1e44b9c3d4",
+                    "assetTypeID": "INVERTER",
+                    "serialNumber": "SN-INV-2026-000123",
+                    "modelNumber": "MPPT-60A",
+                    "brandID": "LUMINOUS",
+                    "wfStatus": "CREATED",
+                    "isActive": true,
+                    "isOperational": true,
+                    "documents": [
+                      {
+                        "id": "doc-4b2e7a10-1c3d-4f8e-9a2b-7a104b2e7a10",
+                        "documentType": "INVOICE",
+                        "fileStore": "fs-9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                        "documentUid": "invoice-2026-000123",
+                        "geoLocation": {
+                          "latitude": 13.0827,
+                          "longitude": 77.5877
+                        }
+                      }
+                    ],
+                    "auditDetails": {
+                      "createdBy": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                      "lastModifiedBy": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                      "createdTime": 1768636800000,
+                      "lastModifiedTime": 1768636800000
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/bulk/_create": {
+      "post": {
+        "tags": [
+          "Asset Bulk"
+        ],
+        "summary": "Bulk create assets (not implemented)",
+        "description": "**Stub endpoint** \u2014 always returns HTTP 501 Not Implemented. Intended to bulk-ingest multiple assets in a single call.",
+        "operationId": "bulkCreateAsset",
+        "requestBody": {
+          "required": true,
+          "description": "Asset data to be added to the registry",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkAssetCreateRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "assetDetails": [
+                  {
+                    "tenantId": "pg",
+                    "assetTypeID": "PANEL",
+                    "serialNumber": "SN-PNL-2026-000456"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Not implemented \u2014 endpoint is stubbed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkAssetCreateResponse"
+                },
+                "example": {
+                  "ResponseInfo": null,
+                  "assets": null
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/amc/_create": {
+      "post": {
+        "tags": [
+          "Asset AMC"
+        ],
+        "summary": "Create an AMC record (not implemented)",
+        "description": "**Stub endpoint** \u2014 always returns HTTP 501 Not Implemented. Intended to create an Annual Maintenance Contract record for an asset.",
+        "operationId": "createAssetAMC",
+        "requestBody": {
+          "required": true,
+          "description": "AMC contract details and visit history",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetAMCRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "AMC": {
+                  "tenantId": "pg",
+                  "assetID": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                  "contractNumber": "AMC-2026-0099",
+                  "vendorCode": "VENDOR-LUMINOUS",
+                  "contractStartDate": "2026-01-01T00:00:00.000+0000",
+                  "contractEndDate": "2027-01-01T00:00:00.000+0000"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Not implemented \u2014 endpoint is stubbed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "example": null
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/amc/_update": {
+      "post": {
+        "tags": [
+          "Asset AMC"
+        ],
+        "summary": "Update an AMC record (not implemented)",
+        "description": "**Stub endpoint** \u2014 always returns HTTP 501 Not Implemented. Intended to update an existing AMC contract or its visit history.\n\nNote: the controller method declares a required `amcId` path variable, but the mapped route (`/v1/asset/amc/_update`) does not actually contain an `{amcId}` path segment \u2014 this is a pre-existing inconsistency in the generated controller code, documented as-is rather than corrected.",
+        "operationId": "updateAssetAMC",
+        "requestBody": {
+          "required": true,
+          "description": "Updated AMC contract or visit information",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetAMCRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "AMC": {
+                  "tenantId": "pg",
+                  "amcID": "amc-1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d",
+                  "assetID": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                  "contractNumber": "AMC-2026-0099",
+                  "vendorCode": "VENDOR-LUMINOUS",
+                  "contractStartDate": "2026-01-01T00:00:00.000+0000",
+                  "contractEndDate": "2027-01-01T00:00:00.000+0000"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Not implemented \u2014 endpoint is stubbed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "example": null
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/amc/_search": {
+      "get": {
+        "tags": [
+          "Asset AMC"
+        ],
+        "summary": "Search AMC records (not implemented)",
+        "description": "**Stub endpoint** \u2014 always returns HTTP 501 Not Implemented. Intended to filter AMC records by asset or contract number.",
+        "operationId": "searchAssetAMC",
+        "parameters": [
+          {
+            "name": "assetID",
+            "in": "query",
+            "required": false,
+            "description": "Filter AMC records for a specific asset",
+            "schema": {
+              "type": "string"
+            },
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          },
+          {
+            "name": "contractNumber",
+            "in": "query",
+            "required": false,
+            "description": "Filter by AMC contract number",
+            "schema": {
+              "type": "string"
+            },
+            "example": "AMC-2026-0099"
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Not implemented \u2014 endpoint is stubbed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "example": ""
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/amc/visit/_create": {
+      "post": {
+        "tags": [
+          "Asset AMC Visit"
+        ],
+        "summary": "Log an AMC visit (not implemented)",
+        "description": "**Stub endpoint** \u2014 always returns HTTP 501 Not Implemented. Intended to log a completed or scheduled AMC visit for an asset.",
+        "operationId": "createAMCVisit",
+        "requestBody": {
+          "required": true,
+          "description": "AMC visit details to be logged",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetAMCVisitRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "AMCVisit": {
+                  "tenantId": "pg",
+                  "assetId": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                  "facilityId": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a",
+                  "scheduledDate": "2026-02-01T00:00:00.000+0000",
+                  "visitDate": "2026-02-01T00:00:00.000+0000",
+                  "engineerName": "Ramesh Kumar",
+                  "observations": "All connections checked, no issues found.",
+                  "nextDueDate": "2026-05-01T00:00:00.000+0000",
+                  "visitStatus": "COMPLETED"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Not implemented \u2014 endpoint is stubbed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "example": null
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/amc/visit/{visitID}/_update": {
+      "post": {
+        "tags": [
+          "Asset AMC Visit"
+        ],
+        "summary": "Update an AMC visit (not implemented)",
+        "description": "**Stub endpoint** \u2014 always returns HTTP 501 Not Implemented. Intended to update an existing AMC visit record.",
+        "operationId": "updateAMCVisit",
+        "parameters": [
+          {
+            "name": "visitID",
+            "in": "path",
+            "required": true,
+            "description": "Unique identifier of the AMC visit record",
+            "schema": {
+              "type": "string"
+            },
+            "example": "visit-7f8e9d0a-1b2c-4d3e-9f8e-7f8e9d0a1b2c"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Updated AMC visit information",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetAMCVisitRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "AMCVisit": {
+                  "tenantId": "pg",
+                  "visitId": "visit-7f8e9d0a-1b2c-4d3e-9f8e-7f8e9d0a1b2c",
+                  "assetId": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                  "facilityId": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a",
+                  "visitDate": "2026-02-01T00:00:00.000+0000",
+                  "engineerName": "Ramesh Kumar",
+                  "observations": "Battery terminals cleaned and re-torqued.",
+                  "visitStatus": "COMPLETED"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Not implemented \u2014 endpoint is stubbed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "example": null
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/amc/visit/_search": {
+      "get": {
+        "tags": [
+          "Asset AMC Visit"
+        ],
+        "summary": "Search AMC visits (not implemented)",
+        "description": "**Stub endpoint** \u2014 always returns HTTP 501 Not Implemented. Intended to filter AMC visits by asset, facility, or visit date.",
+        "operationId": "searchAMCVisits",
+        "parameters": [
+          {
+            "name": "assetID",
+            "in": "query",
+            "required": false,
+            "description": "Filter AMC visits for a specific asset",
+            "schema": {
+              "type": "string"
+            },
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          },
+          {
+            "name": "facilityID",
+            "in": "query",
+            "required": false,
+            "description": "Filter AMC visits for a specific facility",
+            "schema": {
+              "type": "string"
+            },
+            "example": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a"
+          },
+          {
+            "name": "visitDate",
+            "in": "query",
+            "required": false,
+            "description": "Filter AMC visits by visit date (epoch millis)",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1769904000000"
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Not implemented \u2014 endpoint is stubbed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "example": ""
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/asset/workflow/{assetID}/_update": {
+      "post": {
+        "tags": [
+          "Asset Workflow"
+        ],
+        "summary": "Update asset workflow status (not implemented)",
+        "description": "**Stub endpoint** \u2014 always returns HTTP 501 Not Implemented. Intended to transition an asset's workflow status (e.g. CREATED -> VERIFIED -> ACTIVE) via egov-workflow-v2, optionally attaching verification documents and assignees.",
+        "operationId": "updateAssetWorkflow",
+        "parameters": [
+          {
+            "name": "assetID",
+            "in": "path",
+            "required": true,
+            "description": "System-generated unique identifier for the asset",
+            "schema": {
+              "type": "string"
+            },
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Workflow status update for an asset",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetWorkflowRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "asset-registry",
+                  "ver": "1.0",
+                  "ts": 1768636800000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1768636800000|en_IN",
+                  "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+                  "userInfo": {
+                    "id": 1204,
+                    "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+                    "userName": "asset-admin",
+                    "name": "Asset Administrator",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9886012345",
+                    "emailId": "asset-admin@selco-foundation.org",
+                    "tenantId": "pg",
+                    "roles": [
+                      {
+                        "id": 101,
+                        "code": "ASSET_ADMIN",
+                        "name": "Asset Administrator",
+                        "tenantId": "pg"
+                      }
+                    ]
+                  },
+                  "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+                },
+                "assetWorkflow": {
+                  "tenantId": "pg",
+                  "assetID": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c",
+                  "workflow": {
+                    "action": "VERIFY",
+                    "comments": "Site inspection completed, asset verified as operational.",
+                    "assignees": [
+                      "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e"
+                    ],
+                    "verificationDocuments": []
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Not implemented \u2014 endpoint is stubbed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "example": null
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "examples": {
+      "RequestInfoExample": {
+        "value": {
+          "apiId": "asset-registry",
+          "ver": "1.0",
+          "ts": 1768636800000,
+          "action": "_create",
+          "did": "web-client",
+          "key": "",
+          "msgId": "1768636800000|en_IN",
+          "requesterId": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+          "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8",
+          "userInfo": {
+            "id": 1204,
+            "uuid": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e",
+            "userName": "asset-admin",
+            "name": "Asset Administrator",
+            "type": "EMPLOYEE",
+            "mobileNumber": "9886012345",
+            "emailId": "asset-admin@selco-foundation.org",
+            "tenantId": "pg",
+            "roles": [
+              {
+                "id": 101,
+                "code": "ASSET_ADMIN",
+                "name": "Asset Administrator",
+                "tenantId": "pg"
+              }
+            ]
+          },
+          "correlationId": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+        }
+      },
+      "ResponseInfoSuccessExample": {
+        "value": {
+          "apiId": "asset-registry",
+          "ver": "1.0",
+          "ts": 1768636800123,
+          "resMsgId": "res-msg-uief87324",
+          "msgId": "1768636800000|en_IN",
+          "status": "successful"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request \u2014 request failed validation (e.g. MDMS master data mismatch, duplicate asset, missing mandatory field)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorRes"
+            },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "asset-registry",
+                "ver": "1.0",
+                "ts": 1768636800123,
+                "resMsgId": "res-msg-uief87324",
+                "msgId": "1768636800000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "ERR_ASSET_DUPLICATE_VALIDATION",
+                  "message": "Provided assetTypeId, serialNumber, brandId and modelNumber already exist.",
+                  "description": "Provided assetTypeId, serialNumber, brandId and modelNumber already exist.",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized \u2014 the RequestInfo.authToken is missing, invalid or expired",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorRes"
+            },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "asset-registry",
+                "ver": "1.0",
+                "ts": 1768636800123,
+                "resMsgId": "res-msg-uief87324",
+                "msgId": "1768636800000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "UNAUTHORIZED",
+                  "message": "Invalid or expired auth token",
+                  "description": "The authToken provided in RequestInfo could not be validated against egov-user.",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden \u2014 the authenticated user does not have the role/privilege required for this action",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorRes"
+            },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "asset-registry",
+                "ver": "1.0",
+                "ts": 1768636800123,
+                "resMsgId": "res-msg-uief87324",
+                "msgId": "1768636800000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "ACCESS_DENIED",
+                  "message": "Access Denied",
+                  "description": "User does not have permission to perform this action.",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not Found \u2014 the referenced asset (or related entity such as facility) does not exist",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorRes"
+            },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "asset-registry",
+                "ver": "1.0",
+                "ts": 1768636800123,
+                "resMsgId": "res-msg-uief87324",
+                "msgId": "1768636800000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "ERR_ASSET_NOT_FOUND",
+                  "message": "Provided asset does not exist or invalid",
+                  "description": "Provided asset does not exist or invalid",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal Server Error \u2014 unexpected failure (e.g. downstream MDMS/Idgen/Kafka error)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorRes"
+            },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "asset-registry",
+                "ver": "1.0",
+                "ts": 1768636800123,
+                "resMsgId": "res-msg-uief87324",
+                "msgId": "1768636800000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "ERR_MDMS_SERVICE",
+                  "message": "Error occurred while fetching the data from mdms",
+                  "description": "Error occurred while fetching the data from mdms",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Role": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 101
+          },
+          "name": {
+            "type": "string",
+            "example": "Asset Administrator"
+          },
+          "code": {
+            "type": "string",
+            "example": "ASSET_ADMIN"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "pg"
+          }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "Authenticated user details, embedded in RequestInfo.userInfo.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1204
+          },
+          "uuid": {
+            "type": "string",
+            "example": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e"
+          },
+          "userName": {
+            "type": "string",
+            "example": "asset-admin"
+          },
+          "name": {
+            "type": "string",
+            "example": "Asset Administrator"
+          },
+          "type": {
+            "type": "string",
+            "example": "EMPLOYEE"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "example": "9886012345"
+          },
+          "emailId": {
+            "type": "string",
+            "example": "asset-admin@selco-foundation.org"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "pg"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        }
+      },
+      "PlainAccessRequest": {
+        "type": "object",
+        "description": "Optional accessor used by some DIGIT services for field-level decryption requests. Not typically populated by asset-registry clients.",
+        "properties": {
+          "recordId": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RequestInfo": {
+        "type": "object",
+        "required": [
+          "authToken",
+          "userInfo"
+        ],
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "example": "asset-registry"
+          },
+          "ver": {
+            "type": "string",
+            "example": "1.0"
+          },
+          "ts": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Epoch millis timestamp of the request",
+            "example": 1768636800000
+          },
+          "action": {
+            "type": "string",
+            "example": "_create"
+          },
+          "did": {
+            "type": "string",
+            "example": "web-client"
+          },
+          "key": {
+            "type": "string",
+            "example": ""
+          },
+          "msgId": {
+            "type": "string",
+            "example": "1768636800000|en_IN"
+          },
+          "requesterId": {
+            "type": "string",
+            "example": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e"
+          },
+          "authToken": {
+            "type": "string",
+            "description": "The Bearer JWT obtained from egov-user's OAuth login (/user/oauth/token or /user/_login). This IS the authentication mechanism for this API \u2014 there is no separate Authorization header.",
+            "example": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YTJiN2ExMC00YjJlLTRmOGUtMWMzZC05YTJiN2ExMDRiMmUiLCJpc3MiOiJlZ292LXVzZXIiLCJpYXQiOjE3Njg2MzY4MDB9.KZg5s3zW1e2vQhF8xN0tR7bY6cD4mL9pJ3aE1uH2iX8"
+          },
+          "correlationId": {
+            "type": "string",
+            "example": "b4e6f2a1-3c9d-4e7a-8b1f-2a1b4e6f2a1c"
+          },
+          "plainAccessRequest": {
+            "$ref": "#/components/schemas/PlainAccessRequest"
+          },
+          "userInfo": {
+            "$ref": "#/components/schemas/UserInfo"
+          }
+        }
+      },
+      "ResponseInfo": {
+        "type": "object",
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "example": "asset-registry"
+          },
+          "ver": {
+            "type": "string",
+            "example": "1.0"
+          },
+          "ts": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1768636800123
+          },
+          "resMsgId": {
+            "type": "string",
+            "example": "res-msg-uief87324"
+          },
+          "msgId": {
+            "type": "string",
+            "example": "1768636800000|en_IN"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "successful",
+              "failed"
+            ],
+            "example": "successful"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "ERR_ASSET_NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "example": "Provided asset does not exist or invalid"
+          },
+          "description": {
+            "type": "string",
+            "example": "Provided asset does not exist or invalid"
+          },
+          "params": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "ErrorRes": {
+        "type": "object",
+        "description": "Standard eGov error response returned by egov-tracer's default CustomException handling (HTTP 400, or the corresponding status for other failure classes).",
+        "properties": {
+          "ResponseInfo": {
+            "$ref": "#/components/schemas/ResponseInfo"
+          },
+          "Errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "GeoLocation": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "example": 13.0827
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "example": 77.5877
+          },
+          "additionalDetails": {
+            "type": "object",
+            "nullable": true
+          }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "doc-4b2e7a10-1c3d-4f8e-9a2b-7a104b2e7a10"
+          },
+          "documentType": {
+            "type": "string",
+            "example": "INVOICE"
+          },
+          "fileStore": {
+            "type": "string",
+            "example": "fs-9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e"
+          },
+          "documentUid": {
+            "type": "string",
+            "example": "invoice-2026-000123"
+          },
+          "additionalDetails": {
+            "type": "object",
+            "nullable": true
+          },
+          "geoLocation": {
+            "$ref": "#/components/schemas/GeoLocation"
+          }
+        }
+      },
+      "AuditDetails": {
+        "type": "object",
+        "properties": {
+          "createdBy": {
+            "type": "string",
+            "example": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e"
+          },
+          "lastModifiedBy": {
+            "type": "string",
+            "example": "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e"
+          },
+          "createdTime": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1768636800000
+          },
+          "lastModifiedTime": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1768636800000
+          }
+        }
+      },
+      "InverterDetails": {
+        "type": "object",
+        "description": "Master schema for an inverter asset. Typically stored inside Asset.assetDetails and validated against MDMS.",
+        "properties": {
+          "currentUnit": {
+            "type": "string",
+            "example": "A"
+          },
+          "voltageUnit": {
+            "type": "string",
+            "example": "vDC"
+          },
+          "chargeControllerCurrent": {
+            "type": "number",
+            "format": "double",
+            "example": 20
+          },
+          "chargeControllerVoltage": {
+            "type": "number",
+            "format": "double",
+            "example": 12
+          },
+          "totalCapacity": {
+            "type": "number",
+            "format": "double",
+            "example": 1
+          },
+          "totalCapacityUOM": {
+            "type": "string",
+            "example": "kVA"
+          },
+          "inverterCapacity": {
+            "type": "string",
+            "example": "1"
+          },
+          "inverterCapacityUnit": {
+            "type": "string",
+            "example": "kVA"
+          },
+          "outputPhase": {
+            "type": "string",
+            "example": "SINGLE"
+          }
+        }
+      },
+      "PanelDetails": {
+        "type": "object",
+        "description": "Master schema for a solar panel asset. Typically stored inside Asset.assetDetails and validated against MDMS.",
+        "properties": {
+          "totalCapacity": {
+            "type": "number",
+            "format": "double",
+            "example": 5
+          },
+          "totalCapacityUnit": {
+            "type": "string",
+            "example": "kWp"
+          },
+          "panelCapacity": {
+            "type": "number",
+            "format": "double",
+            "example": 330
+          },
+          "capacityUnit": {
+            "type": "string",
+            "example": "Wp"
+          }
+        }
+      },
+      "BatteryDetails": {
+        "type": "object",
+        "description": "Master schema for a battery asset. Typically stored inside Asset.assetDetails and validated against MDMS.",
+        "required": [
+          "totalCapacity"
+        ],
+        "properties": {
+          "totalCapacity": {
+            "type": "number",
+            "format": "double",
+            "example": 2.4
+          },
+          "totalCapacityUOM": {
+            "type": "string",
+            "example": "kWh"
+          },
+          "batteryVoltage": {
+            "type": "number",
+            "format": "double",
+            "example": 12
+          },
+          "voltageUnit": {
+            "type": "string",
+            "example": "Volts"
+          },
+          "batteryCapacity": {
+            "type": "number",
+            "format": "double",
+            "example": 200
+          },
+          "capacityUnit": {
+            "type": "string",
+            "example": "Ah"
+          },
+          "batteryType": {
+            "type": "string",
+            "example": "Tubular"
+          }
+        }
+      },
+      "Asset": {
+        "type": "object",
+        "description": "An installed asset (inverter, panel, battery, etc.) at a facility.",
+        "required": [
+          "tenantId",
+          "system",
+          "facilityID",
+          "activityFacilityID",
+          "assetTypeID",
+          "serialNumber",
+          "brandID"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "pg"
+          },
+          "system": {
+            "type": "string",
+            "description": "System type the asset belongs to, e.g. DC or AC Off Grid",
+            "example": "DC"
+          },
+          "facilityID": {
+            "type": "string",
+            "example": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a"
+          },
+          "activityFacilityID": {
+            "type": "string",
+            "example": "actfac-2b7d1e44-9c3d-4a1a-8f2e-7d1e44b9c3d4"
+          },
+          "assetTypeID": {
+            "type": "string",
+            "example": "INVERTER"
+          },
+          "serialNumber": {
+            "type": "string",
+            "example": "SN-INV-2026-000123"
+          },
+          "modelNumber": {
+            "type": "string",
+            "example": "MPPT-60A"
+          },
+          "brandID": {
+            "type": "string",
+            "example": "LUMINOUS"
+          },
+          "assetDetails": {
+            "type": "object",
+            "description": "Asset-type-specific details (see InverterDetails / PanelDetails / BatteryDetails), keyed as a free-form map and validated against MDMS masters",
+            "additionalProperties": true
+          },
+          "warrantyStartDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-01-15"
+          },
+          "warrantyDuration": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Warranty duration in months",
+            "example": 24
+          },
+          "warrantyEndDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2028-01-15"
+          },
+          "wfStatus": {
+            "type": "string",
+            "example": "CREATED"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "isOperational": {
+            "type": "boolean",
+            "example": true
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            }
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          },
+          "additionalDetails": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "serialNumberSearch": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Used only as an asset search criterion, not persisted on create"
+          },
+          "assetTypeSearch": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Used only as an asset search criterion, not persisted on create"
+          }
+        }
+      },
+      "AssetCreate": {
+        "type": "object",
+        "required": [
+          "Asset"
+        ],
+        "properties": {
+          "Asset": {
+            "$ref": "#/components/schemas/Asset"
+          }
+        }
+      },
+      "AssetCreateRequest": {
+        "type": "object",
+        "required": [
+          "RequestInfo",
+          "assetDetail"
+        ],
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "assetDetail": {
+            "$ref": "#/components/schemas/AssetCreate"
+          }
+        }
+      },
+      "AssetCreateResponse": {
+        "type": "object",
+        "required": [
+          "ResponseInfo",
+          "asset"
+        ],
+        "properties": {
+          "ResponseInfo": {
+            "$ref": "#/components/schemas/ResponseInfo"
+          },
+          "asset": {
+            "$ref": "#/components/schemas/Asset"
+          }
+        }
+      },
+      "AssetCreateUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": {
+            "$ref": "#/components/schemas/ResponseInfo"
+          },
+          "Asset": {
+            "$ref": "#/components/schemas/Asset"
+          }
+        }
+      },
+      "AssetUpdate": {
+        "type": "object",
+        "description": "Minimal warranty-focused update payload (currently unused by the controller's actual /v1/asset/_update route, which reuses AssetCreateRequest/Asset instead; retained here for completeness as it is part of the models package).",
+        "required": [
+          "tenantId",
+          "assetID"
+        ],
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "example": "pg"
+          },
+          "assetID": {
+            "type": "string",
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          },
+          "warrantyStartDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-01-15"
+          },
+          "warrantyDuration": {
+            "type": "integer",
+            "format": "int32",
+            "example": 24
+          },
+          "warrantyEndDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2028-01-15"
+          }
+        }
+      },
+      "AssetUpdateRequest": {
+        "type": "object",
+        "description": "Not directly used by the current controller route (see AssetUpdate note); retained here for completeness.",
+        "required": [
+          "RequestInfo",
+          "assetDetail"
+        ],
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "assetDetail": {
+            "$ref": "#/components/schemas/AssetUpdate"
+          }
+        }
+      },
+      "AssetSearchCriteria": {
+        "type": "object",
+        "description": "Criteria to search for assets. tenantId is mandatory. Send one of the rest.",
+        "required": [
+          "tenantId"
+        ],
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "example": "pg"
+          },
+          "assetID": {
+            "type": "string",
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          },
+          "assetType": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "INVERTER"
+            ]
+          },
+          "facilityID": {
+            "type": "string",
+            "example": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a"
+          },
+          "isOperational": {
+            "type": "boolean",
+            "example": true
+          },
+          "activityFacilityID": {
+            "type": "string",
+            "example": "actfac-2b7d1e44-9c3d-4a1a-8f2e-7d1e44b9c3d4"
+          },
+          "serialNumber": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "SN-INV-2026-000123"
+            ]
+          },
+          "modelNumber": {
+            "type": "string",
+            "example": "MPPT-60A"
+          },
+          "brandID": {
+            "type": "string",
+            "example": "LUMINOUS"
+          },
+          "wfStatus": {
+            "type": "string",
+            "example": "CREATED"
+          }
+        }
+      },
+      "AssetSearchRequest": {
+        "type": "object",
+        "required": [
+          "RequestInfo",
+          "criteria"
+        ],
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "criteria": {
+            "$ref": "#/components/schemas/AssetSearchCriteria"
+          }
+        }
+      },
+      "BulkAssetCreateRequest": {
+        "type": "object",
+        "required": [
+          "RequestInfo",
+          "assetDetails"
+        ],
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "assetDetails": {
+            "description": "List of assets to bulk-create (untyped in the current stub implementation)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            }
+          }
+        }
+      },
+      "BulkAssetCreateResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": {
+            "$ref": "#/components/schemas/ResponseInfo"
+          },
+          "assets": {
+            "description": "Untyped in the current stub implementation",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "AssetAMC": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "example": "pg"
+          },
+          "amcID": {
+            "type": "string",
+            "example": "amc-1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
+          },
+          "assetID": {
+            "type": "string",
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          },
+          "contractNumber": {
+            "type": "string",
+            "example": "AMC-2026-0099"
+          },
+          "vendorCode": {
+            "type": "string",
+            "example": "VENDOR-LUMINOUS"
+          },
+          "contractStartDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-01-01T00:00:00.000+0000"
+          },
+          "contractEndDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2027-01-01T00:00:00.000+0000"
+          },
+          "visitSchedule": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "visits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetAMCVisit"
+            }
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            }
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          },
+          "additionalDetails": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "AssetAMCRequest": {
+        "type": "object",
+        "required": [
+          "RequestInfo",
+          "AMC"
+        ],
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "AMC": {
+            "$ref": "#/components/schemas/AssetAMC"
+          }
+        }
+      },
+      "AssetAMCVisit": {
+        "type": "object",
+        "description": "Description of an AMC visit",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "example": "pg"
+          },
+          "visitId": {
+            "type": "string",
+            "example": "visit-7f8e9d0a-1b2c-4d3e-9f8e-7f8e9d0a1b2c"
+          },
+          "assetId": {
+            "type": "string",
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          },
+          "facilityId": {
+            "type": "string",
+            "example": "fac-6f1e9c2a-6b3a-4e6a-9b8b-3a2f6f1e9c2a"
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-02-01T00:00:00.000+0000"
+          },
+          "visitDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-02-01T00:00:00.000+0000"
+          },
+          "engineerName": {
+            "type": "string",
+            "example": "Ramesh Kumar"
+          },
+          "observations": {
+            "type": "string",
+            "example": "All connections checked, no issues found."
+          },
+          "nextDueDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-05-01T00:00:00.000+0000"
+          },
+          "visitStatus": {
+            "type": "string",
+            "example": "COMPLETED"
+          },
+          "additionalDetails": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "AssetAMCVisitRequest": {
+        "type": "object",
+        "required": [
+          "RequestInfo",
+          "AMCVisit"
+        ],
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "AMCVisit": {
+            "$ref": "#/components/schemas/AssetAMCVisit"
+          }
+        }
+      },
+      "Workflow": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "example": "VERIFY"
+          },
+          "verificationDocuments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            }
+          },
+          "comments": {
+            "type": "string",
+            "example": "Site inspection completed, asset verified as operational."
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "9a2b7a10-4b2e-4f8e-1c3d-9a2b7a104b2e"
+            ]
+          }
+        }
+      },
+      "AssetWorkflowUpdate": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "example": "pg"
+          },
+          "assetID": {
+            "type": "string",
+            "example": "asset-3c9e2f7a-8d4b-4e1a-9c2f-7a8d4b4e1a9c"
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/Workflow"
+          }
+        }
+      },
+      "AssetWorkflowRequest": {
+        "type": "object",
+        "required": [
+          "RequestInfo",
+          "assetWorkflow"
+        ],
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "assetWorkflow": {
+            "$ref": "#/components/schemas/AssetWorkflowUpdate"
+          }
+        }
+      }
+    }
+  }
+}

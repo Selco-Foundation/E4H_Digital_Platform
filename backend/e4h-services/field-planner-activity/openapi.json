@@ -1,0 +1,1958 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Field Planner Activity Service",
+    "version": "1.0.0",
+    "description": "eGov DIGIT `field-planner-activity` service. Manages Activities, Activity-Facility linkages (project field-plan execution against facilities), Activity Assignments, Activity Facility Staff, facility workflow (approval) transitions, and Bill of Material (BOM) records/PDFs for facilities.\n\n**Authentication**: This service does not use an `Authorization` HTTP header. Every authenticated endpoint instead expects a `RequestInfo` object embedded in the JSON request body, whose `authToken` field carries the Bearer JWT issued by eGov-user's OAuth login (`POST /user/oauth/token` or `POST /user/_login`). The platform gateway/services resolve the caller's identity from `RequestInfo.authToken` plus the accompanying `RequestInfo.userInfo` block (uuid, userName, roles, tenantId) - there is no separate header-based auth scheme for this service's own endpoints. The `/health` endpoint is the only exception and requires no `RequestInfo`/auth at all.\n\nAll list/mutation endpoints return a `ResponseInfo` envelope alongside the domain payload, and all synchronous exceptions raised anywhere in the service are funneled through egov-tracer's generic `ExceptionAdvise`, which always responds `HTTP 400` with the standard `ErrorRes` shape (`{\"ResponseInfo\": ..., \"Errors\": [...]}` ). 401/403/404/500 responses documented below are not emitted by this service's own code (its handler always answers 400) but are included for completeness since they can originate from an API gateway, ingress/auth layer, reverse proxy, or the servlet container in front of this service.",
+    "contact": {
+      "name": "eGov DIGIT / E4H Digital Platform"
+    }
+  },
+  "servers": [
+    {
+      "url": "/activity",
+      "description": "Context path configured via server.servlet.context-path in application.properties"
+    }
+  ],
+  "tags": [
+    { "name": "Activity", "description": "Master Activity CRUD" },
+    { "name": "Activity Facility", "description": "Linkage of an Activity/Field-Plan to a Facility, its lifecycle and search" },
+    { "name": "Activity Assignment", "description": "Assignment of an Activity (Field Plan) to a user/role" },
+    { "name": "Activity Facility Staff", "description": "Linkage of field staff users to an Activity Facility" },
+    { "name": "Facility Workflow", "description": "Workflow (approval/rejection) transitions on Activity Facilities" },
+    { "name": "BOM", "description": "Bill of Material CRUD, search and PDF generation" },
+    { "name": "Health", "description": "Unauthenticated service liveness/readiness check" }
+  ],
+  "paths": {
+    "/v1/activities/_create": {
+      "post": {
+        "tags": ["Activity"],
+        "summary": "Create one or more Activities",
+        "description": "Creates master Activity record(s) (e.g. \"Installation\", \"Maintenance\") that can later be linked to facilities. Requires RequestInfo.authToken for authentication.",
+        "operationId": "createActivity",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "Activities": [
+                  {
+                    "tenantId": "pg.citya",
+                    "name": "Installation",
+                    "code": "INSTALLATION",
+                    "sequenceOrder": 1,
+                    "active": true,
+                    "defaultConditions": {},
+                    "requiredRoles": { "roles": ["FIELD_ENGINEER"] },
+                    "additionalDetails": {}
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Activities accepted and created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "create-activity", "status": "successful" },
+                  "Activities": [
+                    {
+                      "id": "6a5b0f3e-7c2e-4b8b-8e7a-2b6d6f7e9c10",
+                      "tenantId": "pg.citya",
+                      "name": "Installation",
+                      "code": "INSTALLATION",
+                      "sequenceOrder": 1,
+                      "active": true,
+                      "defaultConditions": {},
+                      "requiredRoles": { "roles": ["FIELD_ENGINEER"] },
+                      "auditDetails": { "createdBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "lastModifiedBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "createdTime": 1752739200000, "lastModifiedTime": 1752739200000 },
+                      "additionalDetails": {}
+                    }
+                  ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/_update": {
+      "post": {
+        "tags": ["Activity Facility"],
+        "summary": "Update Activity Facility record(s)",
+        "description": "Updates one or more existing Activity-Facility linkage records (e.g. reassigning staff, updating status/additional details). Despite the `/activities/_update` path, the payload and response operate on ActivityFacility, not the master Activity.",
+        "operationId": "updateActivityFacility",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityFacilityBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivitiesFacilities": [ { "$ref": "#/components/examples/ActivityFacilityExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Activity Facility record(s) updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityFacilityResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "update-activity-facility", "status": "successful" },
+                  "ActivityFacility": [ { "$ref": "#/components/examples/ActivityFacilityExample/value" } ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/_delete": {
+      "post": {
+        "tags": ["Activity Facility"],
+        "summary": "Delete (soft-delete) Activity Facility record(s)",
+        "operationId": "deleteActivityFacility",
+        "description": "Soft-deletes one or more Activity-Facility linkage records.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityFacilityBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivitiesFacilities": [ { "$ref": "#/components/examples/ActivityFacilityExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Activity Facility record(s) accepted for deletion",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityFacilityResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "delete-activity-facility", "status": "successful" },
+                  "ActivityFacility": [ { "$ref": "#/components/examples/ActivityFacilityExample/value" } ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/_search": {
+      "post": {
+        "tags": ["Activity Facility"],
+        "summary": "Search Activity Facilities (with transactions, comments and workflow state)",
+        "operationId": "searchActivityFacility",
+        "description": "Searches Activity-Facility linkage records by the given criteria, and enriches each match with its transactions, transaction comments, and process-instance (workflow) history.",
+        "parameters": [
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/offset" },
+          { "$ref": "#/components/parameters/tenantId" },
+          { "$ref": "#/components/parameters/includeDeleted" },
+          { "$ref": "#/components/parameters/lastChangedSince" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityFacilitySearchRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivityFacility": {
+                  "ids": ["b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22"],
+                  "facilityIds": ["d3a8f9a0-2b1c-4e6d-8b7a-1e2f3a4b5c33"],
+                  "activityIds": ["6a5b0f3e-7c2e-4b8b-8e7a-2b6d6f7e9c10"],
+                  "statuses": ["INITIATED"],
+                  "assignedUserId": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11",
+                  "sort_direction": "DESC"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching Activity Facilities, each with transactions, comments and workflow state",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FacilityStatusResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "search-activity-facility", "status": "successful" },
+                  "facility": [
+                    {
+                      "activityFacility": { "$ref": "#/components/examples/ActivityFacilityExample/value" },
+                      "status": "INITIATED",
+                      "transactions": [
+                        {
+                          "transactionId": "5b2f1c3a-9e2d-4c7a-8b1e-3f4a5b6c7d80",
+                          "processInstanceId": "9d8e7f6a-5b4c-3d2e-1f0a-9b8c7d6e5f40",
+                          "activityFacilityId": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22",
+                          "comments": [
+                            {
+                              "commentId": "1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809",
+                              "commentMessage": "Site visit completed",
+                              "assetType": "IMAGE",
+                              "transactionId": "5b2f1c3a-9e2d-4c7a-8b1e-3f4a5b6c7d80",
+                              "auditDetails": { "createdBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "lastModifiedBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "createdTime": 1752739200000, "lastModifiedTime": 1752739200000 }
+                            }
+                          ],
+                          "auditDetails": { "createdBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "lastModifiedBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "createdTime": 1752739200000, "lastModifiedTime": 1752739200000 }
+                        }
+                      ],
+                      "workflow": [
+                        {
+                          "id": "9d8e7f6a-5b4c-3d2e-1f0a-9b8c7d6e5f40",
+                          "tenantId": "pg.citya",
+                          "businessService": "activity-facility",
+                          "businessId": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22",
+                          "action": "APPROVE",
+                          "moduleName": "field-planner-activity",
+                          "state": { "state": "APPROVED", "applicationStatus": "APPROVED", "isStartState": false, "isTerminateState": true },
+                          "comment": "Approved after site verification",
+                          "assigner": { "$ref": "#/components/examples/UserInfoExample/value" },
+                          "assignes": [ { "$ref": "#/components/examples/UserInfoExample/value" } ],
+                          "auditDetails": { "createdBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "lastModifiedBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "createdTime": 1752739200000, "lastModifiedTime": 1752739200000 }
+                        }
+                      ]
+                    }
+                  ],
+                  "totalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/_assign-activity": {
+      "post": {
+        "tags": ["Activity Assignment"],
+        "summary": "Assign Activity/Field-Plan(s) to user(s)",
+        "operationId": "activityAssignmentV1CreatePost",
+        "description": "Creates one or more Activity Assignment records, capturing the linkage of a Field Plan/Activity to the user it is assigned to.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityAssignmentBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivityAssignment": [ { "$ref": "#/components/examples/ActivityAssignmentExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Activity Assignment(s) accepted and created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityAssignmentResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "assign-activity", "status": "successful" },
+                  "ActivityAssignment": [ { "$ref": "#/components/examples/ActivityAssignmentExample/value" } ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/assignment/_update": {
+      "post": {
+        "tags": ["Activity Assignment"],
+        "summary": "Update Activity Assignment(s)",
+        "operationId": "updateFieldPlan",
+        "description": "Updates one or more existing Activity Assignment records.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityAssignmentBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivityAssignment": [ { "$ref": "#/components/examples/ActivityAssignmentExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Activity Assignment(s) updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityAssignmentResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "update-activity-assignment", "status": "successful" },
+                  "ActivityAssignment": [ { "$ref": "#/components/examples/ActivityAssignmentExample/value" } ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/assignment/_search": {
+      "post": {
+        "tags": ["Activity Assignment"],
+        "summary": "Search Activity Assignments",
+        "operationId": "searchActivityAssignment",
+        "description": "Searches Activity Assignment records by the given criteria.",
+        "parameters": [
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/offset" },
+          { "$ref": "#/components/parameters/tenantId" },
+          { "$ref": "#/components/parameters/includeDeleted" },
+          { "$ref": "#/components/parameters/lastChangedSince" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityAssignmentSearchRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivityAssignment": {
+                  "ids": ["c4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70"],
+                  "activityIds": ["6a5b0f3e-7c2e-4b8b-8e7a-2b6d6f7e9c10"],
+                  "fieldPlanIds": ["7b6c5d4e-3f2a-4190-8b7c-6d5e4f3a2b10"],
+                  "statuses": ["ASSIGNED"],
+                  "assignedTo": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching Activity Assignments",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityAssignmentResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "search-activity-assignment", "status": "successful" },
+                  "ActivityAssignment": [ { "$ref": "#/components/examples/ActivityAssignmentExample/value" } ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/_unassign-activity": {
+      "post": {
+        "tags": ["Activity Assignment"],
+        "summary": "Unassign Activity Assignment(s)",
+        "operationId": "activityAssignmentUnassign",
+        "description": "Unassigns (soft-deletes/marks unassigned) one or more Activity Assignment records that link a Field Plan to a facility/user.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityAssignmentBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivityAssignment": [ { "$ref": "#/components/examples/ActivityAssignmentExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Activity Assignment(s) accepted for unassignment",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityAssignmentResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "unassign-activity", "status": "successful" },
+                  "ActivityAssignment": [ { "$ref": "#/components/examples/ActivityAssignmentExample/value" } ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/_assign-staff": {
+      "post": {
+        "tags": ["Activity Facility"],
+        "summary": "Assign field staff / vendor to Activity Facility(s)",
+        "operationId": "activityFacilityV1CreatePost",
+        "description": "Creates Activity-Facility linkage record(s), capturing the assignment of a Project/Field-Plan Activity to a Facility (and its field staff/vendor).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityFacilityBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivitiesFacilities": [ { "$ref": "#/components/examples/ActivityFacilityExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Activity Facility(s) accepted and created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityFacilityResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "assign-staff", "status": "successful" },
+                  "ActivityFacility": [ { "$ref": "#/components/examples/ActivityFacilityExample/value" } ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/workflow/update": {
+      "post": {
+        "tags": ["Facility Workflow"],
+        "summary": "Apply a workflow action (approve/reject/etc.) to a single Activity Facility",
+        "operationId": "updateProjectWorkflow",
+        "description": "Transitions the workflow state of a single Activity Facility (e.g. from INITIATED to APPROVED) and records any accompanying transactions.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FacilityWorkflowRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "activityFacilityId": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22",
+                "workflow": {
+                  "action": "APPROVE",
+                  "comments": "Verified on site, approving",
+                  "documents": [],
+                  "assignes": ["6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11"],
+                  "rating": 5,
+                  "additionalDetails": {}
+                },
+                "transactions": [
+                  {
+                    "transactionId": "5b2f1c3a-9e2d-4c7a-8b1e-3f4a5b6c7d80",
+                    "activityFacilityId": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22",
+                    "comments": [
+                      {
+                        "commentMessage": "Site photos attached",
+                        "assetType": "IMAGE"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow transitioned; the updated Activity Facility, its transactions and process-instance history are returned",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FacilityStatusResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "update-facility-workflow", "status": "successful" },
+                  "facility": [
+                    {
+                      "activityFacility": { "$ref": "#/components/examples/ActivityFacilityExample/value" },
+                      "status": "APPROVED",
+                      "transactions": [],
+                      "workflow": [
+                        {
+                          "id": "9d8e7f6a-5b4c-3d2e-1f0a-9b8c7d6e5f40",
+                          "tenantId": "pg.citya",
+                          "businessService": "activity-facility",
+                          "businessId": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22",
+                          "action": "APPROVE",
+                          "moduleName": "field-planner-activity",
+                          "state": { "state": "APPROVED", "applicationStatus": "APPROVED", "isStartState": false, "isTerminateState": true }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/bulk/workflow/update": {
+      "post": {
+        "tags": ["Facility Workflow"],
+        "summary": "Apply a workflow action in bulk to multiple/all matching Activity Facilities",
+        "operationId": "updateBulkProjectWorkflow",
+        "description": "Applies the same workflow action across either an explicit list of Activity Facility ids, or all facilities matching a search filter (when `isAllSelected` is true). Response status reflects the outcome: `200` when every facility succeeded, `207 Multi-Status` when some succeeded and some failed, `400` when every facility failed.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FacilityBulkApproveRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "isAllSelected": false,
+                "activityFacilityIds": ["b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22", "e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7081"],
+                "filters": {
+                  "searchCriteria": { "statuses": ["INITIATED"], "tenantId": "pg.citya" }
+                },
+                "workflow": { "action": "APPROVE", "comments": "Bulk approval after review" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "All selected Activity Facilities succeeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BulkFacilityUpdateResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "bulk-workflow-update", "status": "successful" },
+                  "failedProjectIDs": [],
+                  "succeededProjectIDs": ["b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22", "e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7081"]
+                }
+              }
+            }
+          },
+          "207": {
+            "description": "Partial success: some Activity Facilities succeeded and some failed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BulkFacilityUpdateResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "bulk-workflow-update", "status": "successful" },
+                  "failedProjectIDs": ["e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7081"],
+                  "succeededProjectIDs": ["b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Either every selected Activity Facility failed the workflow transition (business-logic failure, body is `BulkFacilityUpdateResponse` with an empty `succeededProjectIDs`), or the request itself was invalid (validation/parsing failure, body is the standard `ErrorRes` shape).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/BulkFacilityUpdateResponse" },
+                    { "$ref": "#/components/schemas/ErrorRes" }
+                  ]
+                },
+                "examples": {
+                  "allFailed": {
+                    "summary": "All facilities failed the workflow transition",
+                    "value": {
+                      "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "bulk-workflow-update", "status": "failed" },
+                      "failedProjectIDs": ["b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22", "e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7081"],
+                      "succeededProjectIDs": []
+                    }
+                  },
+                  "validationError": {
+                    "summary": "Request failed bean validation / parsing",
+                    "value": {
+                      "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "bulk-workflow-update", "status": "failed" },
+                      "Errors": [
+                        { "code": "IllegalArgumentException", "message": "isAllSelected: must not be null", "description": "Field 'isAllSelected' is mandatory", "params": ["isAllSelected"] }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/staff/v1/_create": {
+      "post": {
+        "tags": ["Activity Facility Staff"],
+        "summary": "Create Activity Facility Staff linkage(s)",
+        "operationId": "facilityUsersV1CreatePost",
+        "description": "Creates one or more records linking an Activity Facility to a staff user.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityFacilityUserBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivityFacilityUsers": [ { "$ref": "#/components/examples/ActivityFacilityUserExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Activity Facility Staff linkage(s) accepted and created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityFacilityUserResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "create-facility-staff", "status": "successful" },
+                  "ActivityFacilityUser": [ { "$ref": "#/components/examples/ActivityFacilityUserExample/value" } ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/staff/v1/_update": {
+      "post": {
+        "tags": ["Activity Facility Staff"],
+        "summary": "Update Activity Facility Staff linkage(s)",
+        "operationId": "facilityUsersV1UpdatePost",
+        "description": "Updates one or more existing Activity Facility Staff linkage records.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityFacilityUserBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivityFacilityUsers": [ { "$ref": "#/components/examples/ActivityFacilityUserExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Activity Facility Staff linkage(s) accepted and updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityFacilityUserResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "update-facility-staff", "status": "successful" },
+                  "ActivityFacilityUser": [ { "$ref": "#/components/examples/ActivityFacilityUserExample/value" } ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/staff/v1/_delete": {
+      "post": {
+        "tags": ["Activity Facility Staff"],
+        "summary": "Delete (soft-delete) Activity Facility Staff linkage(s)",
+        "operationId": "facilityUsersV1DeletePost",
+        "description": "Soft-deletes one or more Activity Facility Staff linkage records.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityFacilityUserBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivityFacilityUsers": [ { "$ref": "#/components/examples/ActivityFacilityUserExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Activity Facility Staff linkage(s) accepted for deletion",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityFacilityUserResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "delete-facility-staff", "status": "successful" },
+                  "ActivityFacilityUser": [ { "$ref": "#/components/examples/ActivityFacilityUserExample/value" } ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/activities/test_update_activity": {
+      "post": {
+        "tags": ["Activity Facility"],
+        "summary": "[Debug/test endpoint] Publish an Activity Facility payload onto the internal Kafka audit topic",
+        "operationId": "sendDummyTopicActivityFacility",
+        "description": "Internal test/debug endpoint. Wraps the given ActivityFacilityBulkRequest into a Kafka record (topic `save-activity-facility-topic`) and publishes it to the `process-audit-records` Kafka topic via KafkaTemplate, then returns a bare confirmation string. Not part of the documented public API surface, and not wrapped in the standard ResponseInfo envelope.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ActivityFacilityBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "ActivitiesFacilities": [ { "$ref": "#/components/examples/ActivityFacilityExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Kafka record enqueued",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string", "example": "Object sent!" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/bom/_create": {
+      "post": {
+        "tags": ["BOM"],
+        "summary": "Create one or more Bill of Material records",
+        "operationId": "createBOMActivity",
+        "description": "Creates Bill of Material (BOM) record(s) for a facility/activity facility.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BomBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "bom": [ { "$ref": "#/components/examples/BillOfMaterialExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "BOM record(s) accepted and created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BomResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "create-bom", "status": "successful" },
+                  "TotalCount": 1,
+                  "bom": [ { "$ref": "#/components/examples/BillOfMaterialExample/value" } ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/bom/_update": {
+      "post": {
+        "tags": ["BOM"],
+        "summary": "Update Bill of Material record(s)",
+        "operationId": "updateBillOfMaterials",
+        "description": "Updates one or more existing Bill of Material records.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BomBulkRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "bom": [ { "$ref": "#/components/examples/BillOfMaterialExample/value" } ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "BOM record(s) updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BomResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "update-bom", "status": "successful" },
+                  "bom": [ { "$ref": "#/components/examples/BillOfMaterialExample/value" } ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/bom/_search": {
+      "post": {
+        "tags": ["BOM"],
+        "summary": "Search Bill of Material records",
+        "operationId": "searchBillOfMaterials",
+        "description": "Searches Bill of Material records by the given criteria.",
+        "parameters": [
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/offset" },
+          { "$ref": "#/components/parameters/tenantId" },
+          { "$ref": "#/components/parameters/includeDeleted" },
+          { "$ref": "#/components/parameters/lastChangedSince" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BomSearchRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "bom": {
+                  "ids": ["f1a2b3c4-d5e6-4708-91a2-b3c4d5e6f701"],
+                  "facilityIds": ["d3a8f9a0-2b1c-4e6d-8b7a-1e2f3a4b5c33"],
+                  "activityFacilityIds": ["b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22"],
+                  "statuses": ["DRAFT"],
+                  "assignUser": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching BOM records",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BomResponse" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "search-bom", "status": "successful" },
+                  "TotalCount": 1,
+                  "bom": [ { "$ref": "#/components/examples/BillOfMaterialExample/value" } ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/bom/_generate_pdf": {
+      "post": {
+        "tags": ["BOM"],
+        "summary": "Generate a BOM PDF and stream it back",
+        "operationId": "generatePDF",
+        "description": "Renders the given BOM data into a PDF document and returns the raw PDF bytes as an attachment (`report.pdf`).",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": true,
+            "description": "Unique id for a tenant.",
+            "schema": { "type": "string", "example": "pg.citya" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GenerateBOMPdfRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "system": "ONM",
+                "bom": {
+                  "facilityName": "Primary Health Centre - Ward 4",
+                  "items": [
+                    { "name": "Solar Panel 100W", "quantity": 4, "unit": "nos" },
+                    { "name": "Battery 12V 100Ah", "quantity": 2, "unit": "nos" }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generated PDF file",
+            "headers": {
+              "Content-Disposition": { "schema": { "type": "string", "example": "attachment; filename=\"report.pdf\"" } },
+              "Content-Length": { "schema": { "type": "integer", "example": 24576 } }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/bom/_save_pdf": {
+      "post": {
+        "tags": ["BOM"],
+        "summary": "Generate a BOM PDF and persist it to the filestore",
+        "operationId": "createAndSavePDF",
+        "description": "Renders the given BOM data into a PDF, saves it to the eGov filestore service, and returns the resulting filestore id. Unlike most other endpoints in this service, the response is a bare JSON map and is not wrapped in a ResponseInfo envelope.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": true,
+            "description": "Unique id for a tenant.",
+            "schema": { "type": "string", "example": "pg.citya" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GenerateBOMPdfRequest" },
+              "example": {
+                "RequestInfo": { "$ref": "#/components/examples/RequestInfoExample/value" },
+                "system": "ONM",
+                "bom": {
+                  "facilityName": "Primary Health Centre - Ward 4",
+                  "items": [
+                    { "name": "Solar Panel 100W", "quantity": 4, "unit": "nos" },
+                    { "name": "Battery 12V 100Ah", "quantity": 2, "unit": "nos" }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PDF generated and saved; filestore id returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "filestoreId": { "type": "string", "example": "b7e6a5d4-c3b2-4a19-8f7e-6d5c4b3a2910" }
+                  }
+                },
+                "example": { "filestoreId": "b7e6a5d4-c3b2-4a19-8f7e-6d5c4b3a2910" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Service liveness/readiness check",
+        "operationId": "healthCheck",
+        "description": "Unauthenticated health-check endpoint. Does not take a RequestInfo and requires no authentication - suitable for use as a Kubernetes liveness/readiness probe.",
+        "responses": {
+          "200": {
+            "description": "Service is up",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" },
+                "example": { "status": "UP", "groups": ["liveness", "readiness"] }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "description": "Maximum number of records to return.",
+        "schema": { "type": "integer", "example": 10 }
+      },
+      "offset": {
+        "name": "offset",
+        "in": "query",
+        "required": false,
+        "description": "Number of records to skip for pagination.",
+        "schema": { "type": "integer", "example": 0 }
+      },
+      "tenantId": {
+        "name": "tenantId",
+        "in": "query",
+        "required": false,
+        "description": "Unique id for a tenant.",
+        "schema": { "type": "string", "example": "pg.citya" }
+      },
+      "includeDeleted": {
+        "name": "includeDeleted",
+        "in": "query",
+        "required": false,
+        "description": "Whether soft-deleted records should be included in the search results.",
+        "schema": { "type": "boolean", "default": false, "example": false }
+      },
+      "lastChangedSince": {
+        "name": "lastChangedSince",
+        "in": "query",
+        "required": false,
+        "description": "Epoch millis; when provided, only records changed after this time are returned.",
+        "schema": { "type": "integer", "format": "int64", "example": 1752652800000 }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request - request failed bean validation, JSON parsing, or a business rule check raised a `CustomException`. All exceptions in this service are funneled through egov-tracer's generic `ExceptionAdvise`, which always answers HTTP 400 with this shape.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "uief87324", "status": "failed" },
+              "Errors": [
+                { "code": "INVALID_TENANT_ID", "message": "TenantId is mandatory", "description": "The field 'tenantId' is required and was not provided", "params": ["tenantId"] }
+              ]
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - the caller's `RequestInfo.authToken` is missing, malformed or expired. Not raised by this service's own code (its handler always answers 400); included for completeness as this is typically enforced by an API gateway / egov-user token validation filter in front of the service.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "uief87324", "status": "failed" },
+              "Errors": [
+                { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The auth token provided in RequestInfo.authToken could not be validated against egov-user", "params": ["authToken"] }
+              ]
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden - the authenticated user does not hold a role permitted to perform this action. Not raised by this service's own code (its handler always answers 400); included for completeness as this is typically enforced by role-based access control at the gateway.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "uief87324", "status": "failed" },
+              "Errors": [
+                { "code": "ACCESS_DENIED", "message": "Access denied", "description": "The user's roles do not permit this operation", "params": ["roles"] }
+              ]
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not Found - no route matches the request path, or (for update/search flows) the referenced entity id does not exist.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "uief87324", "status": "failed" },
+              "Errors": [
+                { "code": "RESOURCE_NOT_FOUND", "message": "Record not found", "description": "No record was found for the given id(s)", "params": [] }
+              ]
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal Server Error - an unexpected/uncaught failure (e.g. database or downstream service outage).",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": { "apiId": "field-planner-activity", "ver": "1.0", "ts": 1752739200000, "resMsgId": "uief87324", "msgId": "uief87324", "status": "failed" },
+              "Errors": [
+                { "code": "INTERNAL_SERVER_ERROR", "message": "Something went wrong", "description": "An unexpected error occurred while processing the request", "params": [] }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "examples": {
+      "RequestInfoExample": {
+        "summary": "A typical RequestInfo block",
+        "value": {
+          "apiId": "field-planner-activity",
+          "ver": "1.0",
+          "ts": 1752739200000,
+          "action": "_create",
+          "did": "web-portal",
+          "key": "",
+          "msgId": "uief87324",
+          "requesterId": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11",
+          "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2ZjZjYWJmNS0xYTNjLTRkMmMtOWE0OS04YzFkMGU0YjlhMTEiLCJpYXQiOjE3NTI3MzkyMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+          "userInfo": { "$ref": "#/components/examples/UserInfoExample/value" },
+          "correlationId": "f4c9e2a1-8b3d-4e5f-9a0b-1c2d3e4f5a60"
+        }
+      },
+      "UserInfoExample": {
+        "summary": "The user embedded in RequestInfo.userInfo",
+        "value": {
+          "id": 145,
+          "uuid": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11",
+          "userName": "field.engineer1",
+          "name": "Asha Field Engineer",
+          "type": "EMPLOYEE",
+          "mobileNumber": "9876543210",
+          "emailId": "asha.engineer@example.org",
+          "roles": [ { "id": 12, "name": "Field Engineer", "code": "FIELD_ENGINEER", "tenantId": "pg.citya" } ],
+          "tenantId": "pg.citya"
+        }
+      },
+      "ActivityFacilityExample": {
+        "summary": "An Activity Facility linkage record",
+        "value": {
+          "id": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22",
+          "tenantId": "pg.citya",
+          "facilityId": "d3a8f9a0-2b1c-4e6d-8b7a-1e2f3a4b5c33",
+          "activityId": "6a5b0f3e-7c2e-4b8b-8e7a-2b6d6f7e9c10",
+          "activityType": "INSTALLATION",
+          "assignedUser": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11",
+          "staffVendorName": "Acme Solar Services",
+          "fieldStaffUsers": ["6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11"],
+          "fieldSupervisorUsers": ["7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c01"],
+          "reviewerUser": ["8b9c0d1e-2f3a-4b4c-9d5e-6f7a8b9c0d12"],
+          "linkedUsers": ["6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11"],
+          "fieldPlanId": "7b6c5d4e-3f2a-4190-8b7c-6d5e4f3a2b10",
+          "scheduledAt": 1752652800000,
+          "activatedAt": 1752739200000,
+          "status": "INITIATED",
+          "isDeleted": false,
+          "additionalDetails": {},
+          "hasErrors": false,
+          "auditDetails": { "createdBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "lastModifiedBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "createdTime": 1752739200000, "lastModifiedTime": 1752739200000 }
+        }
+      },
+      "ActivityAssignmentExample": {
+        "summary": "An Activity Assignment record",
+        "value": {
+          "id": "c4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70",
+          "tenantId": "pg.citya",
+          "assignedTo": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11",
+          "assignedBy": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c01",
+          "fieldPlanId": "7b6c5d4e-3f2a-4190-8b7c-6d5e4f3a2b10",
+          "pocNumber": "9876543210",
+          "role": { "code": "FIELD_ENGINEER", "name": "Field Engineer" },
+          "activityId": "6a5b0f3e-7c2e-4b8b-8e7a-2b6d6f7e9c10",
+          "activityName": "Installation",
+          "activityCode": "INSTALLATION",
+          "startDate": 1752652800000,
+          "endDate": 1753862400000,
+          "status": "ASSIGNED",
+          "additionalDetails": {},
+          "hasErrors": false,
+          "isEmailSent": true,
+          "auditDetails": { "createdBy": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c01", "lastModifiedBy": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c01", "createdTime": 1752739200000, "lastModifiedTime": 1752739200000 }
+        }
+      },
+      "ActivityFacilityUserExample": {
+        "summary": "An Activity Facility Staff linkage record",
+        "value": {
+          "id": "a1b2c3d4-e5f6-4708-8192-a3b4c5d6e7f8",
+          "tenantId": "pg.citya",
+          "activityFacilityId": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22",
+          "userId": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11",
+          "additionalDetails": {},
+          "isDeleted": false,
+          "auditDetails": { "createdBy": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c01", "lastModifiedBy": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c01", "createdTime": 1752739200000, "lastModifiedTime": 1752739200000 }
+        }
+      },
+      "BillOfMaterialExample": {
+        "summary": "A Bill of Material record",
+        "value": {
+          "id": "f1a2b3c4-d5e6-4708-91a2-b3c4d5e6f701",
+          "tenantId": "pg.citya",
+          "facilityId": "d3a8f9a0-2b1c-4e6d-8b7a-1e2f3a4b5c33",
+          "activityFacilityId": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22",
+          "name": "Solar PV Installation BOM",
+          "assignUser": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11",
+          "additionalDetails": {},
+          "documents": [
+            { "id": "1e2f3a4b-5c6d-4708-8e9f-0a1b2c3d4e51", "tenantId": "pg.citya", "bomId": "f1a2b3c4-d5e6-4708-91a2-b3c4d5e6f701", "documentType": "INVOICE", "fileStoreId": "99dcde84-aae2-4836-9ff9-f711fb82bb8b", "documentUid": "QWERTY123", "status": "ACTIVE" }
+          ],
+          "data": {
+            "items": [
+              { "name": "Solar Panel 100W", "quantity": 4, "unit": "nos" },
+              { "name": "Battery 12V 100Ah", "quantity": 2, "unit": "nos" }
+            ]
+          },
+          "isActive": true,
+          "auditDetails": { "createdBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "lastModifiedBy": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11", "createdTime": 1752739200000, "lastModifiedTime": 1752739200000 }
+        }
+      }
+    },
+    "schemas": {
+      "RequestInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT RequestInfo envelope. Every authenticated request body in this service must include this object.",
+        "required": ["authToken"],
+        "properties": {
+          "apiId": { "type": "string", "description": "Unique API id of the calling client/module.", "example": "field-planner-activity" },
+          "ver": { "type": "string", "description": "API version.", "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "description": "Request timestamp, epoch millis.", "example": 1752739200000 },
+          "action": { "type": "string", "description": "Action being performed.", "example": "_create" },
+          "did": { "type": "string", "description": "Device id of the caller." },
+          "key": { "type": "string", "description": "API key, if applicable." },
+          "msgId": { "type": "string", "description": "Unique message id for this request; echoed back in ResponseInfo.msgId/resMsgId.", "example": "uief87324" },
+          "requesterId": { "type": "string", "description": "Id of the user making the request." },
+          "authToken": {
+            "type": "string",
+            "description": "**Authentication carrier for this service.** The Bearer JWT obtained from egov-user's OAuth login (`POST /user/oauth/token` or `POST /user/_login`). This service has no separate `Authorization` header scheme - identity/authorization is derived entirely from this field (together with `userInfo`).",
+            "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2ZjZjYWJmNS0xYTNjLTRkMmMtOWE0OS04YzFkMGU0YjlhMTEiLCJpYXQiOjE3NTI3MzkyMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+          },
+          "plainAccessRequest": { "type": "object", "description": "Optional plain-access request descriptor used by field-level encryption/masking." },
+          "userInfo": { "$ref": "#/components/schemas/UserInfo" },
+          "correlationId": { "type": "string", "description": "Correlation id used for distributed tracing across services.", "example": "f4c9e2a1-8b3d-4e5f-9a0b-1c2d3e4f5a60" }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "Authenticated caller, embedded in RequestInfo.userInfo (org.egov.common.contract.request.User).",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 145 },
+          "uuid": { "type": "string", "example": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11" },
+          "userName": { "type": "string", "example": "field.engineer1" },
+          "name": { "type": "string", "example": "Asha Field Engineer" },
+          "type": { "type": "string", "example": "EMPLOYEE" },
+          "mobileNumber": { "type": "string", "example": "9876543210" },
+          "emailId": { "type": "string", "example": "asha.engineer@example.org" },
+          "roles": { "type": "array", "items": { "$ref": "#/components/schemas/Role" } },
+          "tenantId": { "type": "string", "example": "pg.citya" }
+        }
+      },
+      "Role": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 12 },
+          "name": { "type": "string", "example": "Field Engineer" },
+          "code": { "type": "string", "example": "FIELD_ENGINEER" },
+          "tenantId": { "type": "string", "example": "pg.citya" }
+        }
+      },
+      "ResponseInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT ResponseInfo envelope returned with every non-health response.",
+        "properties": {
+          "apiId": { "type": "string", "example": "field-planner-activity" },
+          "ver": { "type": "string", "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "example": 1752739200000 },
+          "resMsgId": { "type": "string", "description": "Echoes the request's msgId.", "example": "uief87324" },
+          "msgId": { "type": "string", "description": "Echoes the request's msgId.", "example": "uief87324" },
+          "status": { "type": "string", "enum": ["successful", "failed"], "example": "successful" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "parentId": { "type": "string" },
+          "code": { "type": "string", "example": "INVALID_TENANT_ID" },
+          "message": { "type": "string", "example": "TenantId is mandatory" },
+          "description": { "type": "string", "example": "The field 'tenantId' is required and was not provided" },
+          "params": { "type": "array", "items": { "type": "string" }, "example": ["tenantId"] }
+        }
+      },
+      "ErrorRes": {
+        "type": "object",
+        "description": "Standard error envelope returned by egov-tracer's generic ExceptionAdvise for every uncaught exception, always with HTTP 400.",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "Errors": { "type": "array", "items": { "$ref": "#/components/schemas/Error" } }
+        }
+      },
+      "AuditDetails": {
+        "type": "object",
+        "properties": {
+          "createdBy": { "type": "string", "example": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11" },
+          "lastModifiedBy": { "type": "string", "example": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11" },
+          "createdTime": { "type": "integer", "format": "int64", "example": 1752739200000 },
+          "lastModifiedTime": { "type": "integer", "format": "int64", "example": 1752739200000 }
+        }
+      },
+      "Field": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      },
+      "AdditionalFields": {
+        "type": "object",
+        "description": "Schema-driven custom field bag (org.egov.common.models.core.AdditionalFields).",
+        "properties": {
+          "schema": { "type": "string" },
+          "version": { "type": "integer" },
+          "fields": { "type": "array", "items": { "$ref": "#/components/schemas/Field" } }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "description": "Response of the unauthenticated /health endpoint. Not wrapped in ResponseInfo.",
+        "properties": {
+          "status": { "type": "string", "example": "UP" },
+          "groups": { "type": "array", "items": { "type": "string" }, "example": ["liveness", "readiness"] }
+        }
+      },
+      "Activity": {
+        "type": "object",
+        "required": ["tenantId"],
+        "properties": {
+          "id": { "type": "string", "example": "6a5b0f3e-7c2e-4b8b-8e7a-2b6d6f7e9c10" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "name": { "type": "string", "example": "Installation" },
+          "code": { "type": "string", "example": "INSTALLATION" },
+          "sequenceOrder": { "type": "integer", "example": 1 },
+          "active": { "type": "boolean", "example": true },
+          "defaultConditions": { "type": "object", "additionalProperties": true },
+          "requiredRoles": { "type": "object", "additionalProperties": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "additionalDetails": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "ActivityBulkRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "Activities"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "Activities": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/Activity" } }
+        }
+      },
+      "ActivityResponse": {
+        "type": "object",
+        "required": ["ResponseInfo", "Activities"],
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "Activities": { "type": "array", "items": { "$ref": "#/components/schemas/Activity" } },
+          "TotalCount": { "type": "integer", "example": 1 }
+        }
+      },
+      "Facility": {
+        "type": "object",
+        "description": "Denormalized facility snapshot embedded inside an ActivityFacility.",
+        "properties": {
+          "id": { "type": "string" },
+          "tenant_id": { "type": "string", "example": "pg.citya" },
+          "facility_id": { "type": "string" },
+          "facility_category": { "type": "string" },
+          "facility_type": { "type": "string" },
+          "facility_subtype": { "type": "string" },
+          "facility_name": { "type": "string", "example": "Primary Health Centre - Ward 4" },
+          "facility_ownership": { "type": "string" },
+          "facility_region": { "type": "string" },
+          "address": { "$ref": "#/components/schemas/FacilityAddress" },
+          "wfStatus": { "type": "string" },
+          "additionalDetails": { "type": "object", "additionalProperties": true },
+          "facility_details": { "type": "object", "additionalProperties": true },
+          "isActive": { "type": "boolean" },
+          "boundaryCode": { "type": "string" },
+          "boundary": { "$ref": "#/components/schemas/Boundary" },
+          "isOnmReady": { "type": "boolean", "default": false },
+          "facility_poc_name": { "type": "string" },
+          "facility_poc_phone": { "type": "string" },
+          "facility_poc_email": { "type": "string" },
+          "facility_status": { "type": "string" },
+          "hfr_id": { "type": "string" },
+          "nin_id": { "type": "string" },
+          "user_id": { "type": "string" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "FacilityAddress": {
+        "type": "object",
+        "properties": {
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "addressId": { "type": "string" },
+          "addressNumber": { "type": "string" },
+          "addressLine1": { "type": "string" },
+          "addressLine2": { "type": "string" },
+          "landmark": { "type": "string" },
+          "city": { "type": "string" },
+          "pincode": { "type": "string" },
+          "detail": { "type": "string" },
+          "state": { "type": "string" },
+          "district": { "type": "string" },
+          "block": { "type": "string" },
+          "doorNo": { "type": "string" },
+          "locationAccuracy": { "type": "number", "format": "double" },
+          "type": { "type": "string" },
+          "buildingName": { "type": "string" },
+          "street": { "type": "string" },
+          "localityCode": { "type": "string" }
+        }
+      },
+      "Boundary": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "id": { "type": "string" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "code": { "type": "string", "example": "BOUNDARY_WARD_4" },
+          "state": { "type": "string" },
+          "district": { "type": "string" },
+          "block": { "type": "string" },
+          "geometry": { "type": "object", "additionalProperties": true, "description": "GeoJSON geometry (arbitrary JSON node)." },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "additionalDetails": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "description": "External eGov-project `Project` entity (org.egov.common.models.project.Project), embedded by reference inside FieldPlan. Shown here in minimal/lenient form since it is owned by a different service.",
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "name": { "type": "string" },
+          "projectType": { "type": "string" },
+          "projectSubType": { "type": "string" },
+          "startDate": { "type": "integer", "format": "int64" },
+          "endDate": { "type": "integer", "format": "int64" }
+        }
+      },
+      "FieldPlan": {
+        "type": "object",
+        "required": ["tenantId"],
+        "properties": {
+          "id": { "type": "string", "example": "7b6c5d4e-3f2a-4190-8b7c-6d5e4f3a2b10" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "name": { "type": "string", "example": "Q3 Solar Rollout - Zone 2" },
+          "status": { "type": "string", "example": "ACTIVE" },
+          "healthFacilityNumber": { "type": "integer", "example": 12 },
+          "startDate": { "type": "integer", "format": "int64" },
+          "endDate": { "type": "integer", "format": "int64" },
+          "project": { "$ref": "#/components/schemas/Project" },
+          "projectId": { "type": "string" },
+          "geographyDetails": { "type": "object", "additionalProperties": true },
+          "activities": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "isDeleted": { "type": "boolean", "default": false },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "additionalDetails": { "type": "object", "additionalProperties": true },
+          "isDuplicate": { "type": "boolean", "default": false },
+          "poc_number": { "type": "string" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "description": "Full domain user profile (org.egov.activity.web.models.User), used e.g. as ActivityFacility.assignedEmployeeUser.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "uuid": { "type": "string", "example": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11" },
+          "userName": { "type": "string" },
+          "salutation": { "type": "string" },
+          "name": { "type": "string", "example": "Asha Field Engineer" },
+          "gender": { "type": "string" },
+          "mobileNumber": { "type": "string", "example": "9876543210" },
+          "emailId": { "type": "string" },
+          "altContactNumber": { "type": "string" },
+          "pan": { "type": "string" },
+          "aadhaarNumber": { "type": "string" },
+          "permanentAddress": { "type": "string" },
+          "permanentCity": { "type": "string" },
+          "permanentPincode": { "type": "string" },
+          "correspondenceCity": { "type": "string" },
+          "correspondencePincode": { "type": "string" },
+          "correspondenceAddress": { "type": "string" },
+          "active": { "type": "boolean" },
+          "dob": { "type": "integer", "format": "int64" },
+          "pwdExpiryDate": { "type": "integer", "format": "int64" },
+          "locale": { "type": "string" },
+          "type": { "type": "string", "example": "EMPLOYEE" },
+          "signature": { "type": "string" },
+          "accountLocked": { "type": "boolean" },
+          "fatherOrHusbandName": { "type": "string" },
+          "relationship": { "type": "string" },
+          "bloodGroup": { "type": "string" },
+          "identificationMark": { "type": "string" },
+          "photo": { "type": "string" },
+          "createdBy": { "type": "string" },
+          "createdDate": { "type": "integer", "format": "int64" },
+          "lastModifiedBy": { "type": "string" },
+          "lastModifiedDate": { "type": "integer", "format": "int64" },
+          "otpReference": { "type": "string" },
+          "tenantId": { "type": "string", "example": "pg.citya" }
+        }
+      },
+      "ActivityFacility": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "facilityId": { "type": "string", "example": "d3a8f9a0-2b1c-4e6d-8b7a-1e2f3a4b5c33" },
+          "facility": { "$ref": "#/components/schemas/Facility" },
+          "assignedUser": { "type": "string", "description": "uuid of the assigned user" },
+          "assignedEmployeeUser": { "$ref": "#/components/schemas/User" },
+          "staffVendorName": { "type": "string" },
+          "fieldStaffUsers": { "type": "array", "items": { "type": "string" } },
+          "fieldSupervisorUsers": { "type": "array", "items": { "type": "string" } },
+          "reviewerUser": { "type": "array", "items": { "type": "string" } },
+          "linkedUsers": { "type": "array", "items": { "type": "string" } },
+          "fieldPlanId": { "type": "string", "example": "7b6c5d4e-3f2a-4190-8b7c-6d5e4f3a2b10" },
+          "fieldPlan": { "$ref": "#/components/schemas/FieldPlan" },
+          "activityId": { "type": "string", "example": "6a5b0f3e-7c2e-4b8b-8e7a-2b6d6f7e9c10" },
+          "activityType": { "type": "string", "example": "INSTALLATION" },
+          "scheduledAt": { "type": "integer", "format": "int64" },
+          "activatedAt": { "type": "integer", "format": "int64" },
+          "completedAt": { "type": "integer", "format": "int64" },
+          "status": { "type": "string", "example": "INITIATED" },
+          "isDeleted": { "type": "boolean" },
+          "additionalDetails": { "type": "object", "additionalProperties": true },
+          "conditionsMet": { "description": "Arbitrary condition evaluation result." },
+          "hasErrors": { "type": "boolean", "default": false },
+          "additionalFields": { "$ref": "#/components/schemas/AdditionalFields" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "ActivityFacilityBulkRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "ActivitiesFacilities"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "ActivitiesFacilities": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/ActivityFacility" } }
+        }
+      },
+      "ActivityFacilityResponse": {
+        "type": "object",
+        "required": ["ResponseInfo", "ActivityFacility"],
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "ActivityFacility": { "type": "array", "items": { "$ref": "#/components/schemas/ActivityFacility" } },
+          "TotalCount": { "type": "integer", "example": 1 }
+        }
+      },
+      "ActivityFacilitySearchCriteria": {
+        "type": "object",
+        "properties": {
+          "ids": { "type": "array", "items": { "type": "string" } },
+          "fieldPlanIds": { "type": "array", "items": { "type": "string" } },
+          "facilityIds": { "type": "array", "items": { "type": "string" } },
+          "activityIds": { "type": "array", "items": { "type": "string" } },
+          "activityCodes": { "type": "array", "items": { "type": "string" } },
+          "statuses": { "type": "array", "items": { "type": "string" } },
+          "assignedToMe": { "type": "string", "description": "uuid of the requesting user; when set, results are limited to activity facilities assigned to this user." },
+          "assignedUserId": { "type": "string" },
+          "facilityName": { "type": "string" },
+          "boundaryCodes": { "type": "array", "items": { "type": "string" } },
+          "sort_direction": { "type": "string", "enum": ["ASC", "DESC"], "description": "Sort direction for created_time. Defaults to DESC when not specified." },
+          "tenantId": { "type": "string", "description": "Populated internally from the tenantId query parameter; not required in the request body.", "example": "pg.citya" },
+          "isActive": { "type": "boolean", "description": "Populated internally by the service." },
+          "isCountQuery": { "type": "boolean", "description": "Populated internally by the service." }
+        }
+      },
+      "ActivityFacilitySearchRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "ActivityFacility"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "ActivityFacility": { "$ref": "#/components/schemas/ActivityFacilitySearchCriteria" }
+        }
+      },
+      "ActivityAssignment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "c4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "assignedTo": { "type": "string", "description": "uuid of the assignee user" },
+          "assignedBy": { "type": "string", "description": "uuid of the assigning user" },
+          "fieldPlanId": { "type": "string", "example": "7b6c5d4e-3f2a-4190-8b7c-6d5e4f3a2b10" },
+          "fieldPlan": { "$ref": "#/components/schemas/FieldPlan" },
+          "pocNumber": { "type": "string" },
+          "isDeleted": { "type": "boolean" },
+          "role": { "type": "object", "additionalProperties": true },
+          "activityId": { "type": "string" },
+          "activityName": { "type": "string" },
+          "activityCode": { "type": "string" },
+          "startDate": { "type": "integer", "format": "int64" },
+          "endDate": { "type": "integer", "format": "int64" },
+          "status": { "type": "string", "example": "ASSIGNED" },
+          "additionalDetails": { "type": "object", "additionalProperties": true },
+          "hasErrors": { "type": "boolean", "default": false },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "isEmailSent": { "type": "boolean" }
+        }
+      },
+      "ActivityAssignmentBulkRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "ActivityAssignment"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "ActivityAssignment": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/ActivityAssignment" } }
+        }
+      },
+      "ActivityAssignmentResponse": {
+        "type": "object",
+        "required": ["ResponseInfo", "ActivityAssignment"],
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "ActivityAssignment": { "type": "array", "items": { "$ref": "#/components/schemas/ActivityAssignment" } },
+          "TotalCount": { "type": "integer", "example": 1 }
+        }
+      },
+      "ActivityAssignmentSearchCriteria": {
+        "type": "object",
+        "properties": {
+          "ids": { "type": "array", "items": { "type": "string" } },
+          "activityIds": { "type": "array", "items": { "type": "string" } },
+          "fieldPlanIds": { "type": "array", "items": { "type": "string" } },
+          "statuses": { "type": "array", "items": { "type": "string" } },
+          "roles": { "type": "array", "items": { "type": "string" } },
+          "assignedTo": { "type": "string" },
+          "assignedBy": { "type": "string" },
+          "fieldPlanCode": { "type": "string" },
+          "tenantId": { "type": "string", "description": "Populated internally from the tenantId query parameter.", "example": "pg.citya" },
+          "isActive": { "type": "boolean", "description": "Populated internally by the service." },
+          "isCountQuery": { "type": "boolean", "description": "Populated internally by the service." }
+        }
+      },
+      "ActivityAssignmentSearchRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "ActivityAssignment"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "ActivityAssignment": { "$ref": "#/components/schemas/ActivityAssignmentSearchCriteria" }
+        }
+      },
+      "ActivityFacilityUser": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "a1b2c3d4-e5f6-4708-8192-a3b4c5d6e7f8" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "activityFacilityId": { "type": "string", "example": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22" },
+          "userId": { "type": "string", "example": "6f6cabf5-1a3c-4d2c-9a49-8c1d0e4b9a11" },
+          "additionalDetails": { "type": "object", "additionalProperties": true },
+          "isDeleted": { "type": "boolean" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "ActivityFacilityUserBulkRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "ActivityFacilityUsers"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "ActivityFacilityUsers": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/ActivityFacilityUser" } }
+        }
+      },
+      "ActivityFacilityUserResponse": {
+        "type": "object",
+        "required": ["ResponseInfo", "ActivityFacilityUser"],
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "ActivityFacilityUser": { "type": "array", "items": { "$ref": "#/components/schemas/ActivityFacilityUser" } },
+          "TotalCount": { "type": "integer", "example": 1 }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "maxLength": 64 },
+          "tenantId": { "type": "string", "maxLength": 64, "example": "pg.citya" },
+          "bomId": { "type": "string", "maxLength": 64 },
+          "documentType": { "type": "string", "maxLength": 64, "example": "INVOICE" },
+          "fileStoreId": { "type": "string", "maxLength": 64, "example": "99dcde84-aae2-4836-9ff9-f711fb82bb8b" },
+          "documentUid": { "type": "string", "maxLength": 64 },
+          "additionalDetails": { "type": "object", "additionalProperties": true },
+          "status": { "type": "string", "maxLength": 64, "example": "ACTIVE" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "commentId": { "type": "string", "format": "uuid" },
+          "commentMessage": { "type": "string", "example": "Site visit completed" },
+          "assetType": { "type": "string", "example": "IMAGE" },
+          "transactionId": { "type": "string" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "transactionId": { "type": "string", "example": "5b2f1c3a-9e2d-4c7a-8b1e-3f4a5b6c7d80" },
+          "processInstanceId": { "type": "string", "example": "9d8e7f6a-5b4c-3d2e-1f0a-9b8c7d6e5f40" },
+          "comments": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } },
+          "activityFacilityId": { "type": "string", "example": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "WorkflowAction": {
+        "type": "object",
+        "description": "org.egov.common.contract.workflow.Action - one permissible next-action from a workflow State.",
+        "properties": {
+          "uuid": { "type": "string" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "currentState": { "type": "string" },
+          "action": { "type": "string", "example": "APPROVE" },
+          "nextState": { "type": "string" },
+          "roles": { "type": "array", "items": { "type": "string" } },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "WorkflowState": {
+        "type": "object",
+        "description": "org.egov.common.contract.workflow.State - a workflow state within a business service.",
+        "properties": {
+          "uuid": { "type": "string" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "businessServiceId": { "type": "string" },
+          "sla": { "type": "integer", "format": "int64" },
+          "state": { "type": "string", "example": "APPROVED" },
+          "applicationStatus": { "type": "string", "example": "APPROVED" },
+          "docUploadRequired": { "type": "boolean" },
+          "isStartState": { "type": "boolean" },
+          "isTerminateState": { "type": "boolean" },
+          "isStateUpdatable": { "type": "boolean" },
+          "actions": { "type": "array", "items": { "$ref": "#/components/schemas/WorkflowAction" } },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "ProcessInstance": {
+        "type": "object",
+        "description": "A single workflow transition/history entry for a business object (activity-facility) (egov-workflow ProcessInstance).",
+        "properties": {
+          "id": { "type": "string", "maxLength": 64 },
+          "tenantId": { "type": "string", "maxLength": 128, "example": "pg.citya" },
+          "businessService": { "type": "string", "maxLength": 128, "example": "activity-facility" },
+          "businessId": { "type": "string", "maxLength": 128, "description": "id of the ActivityFacility this transition applies to" },
+          "action": { "type": "string", "maxLength": 128, "example": "APPROVE" },
+          "moduleName": { "type": "string", "maxLength": 64, "example": "field-planner-activity" },
+          "state": { "$ref": "#/components/schemas/WorkflowState" },
+          "comment": { "type": "string", "maxLength": 1024 },
+          "documents": { "type": "array", "items": { "$ref": "#/components/schemas/Document" } },
+          "assigner": { "$ref": "#/components/schemas/UserInfo" },
+          "assignes": { "type": "array", "items": { "$ref": "#/components/schemas/UserInfo" } },
+          "nextActions": { "type": "array", "items": { "$ref": "#/components/schemas/WorkflowAction" } },
+          "stateSla": { "type": "integer", "format": "int64" },
+          "businesssServiceSla": { "type": "integer", "format": "int64" },
+          "previousStatus": { "type": "string", "maxLength": 128 },
+          "entity": { "description": "Arbitrary snapshot of the business entity at this transition." },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "rating": { "type": "integer" },
+          "escalated": { "type": "boolean", "default": false }
+        }
+      },
+      "FacilityStatusWrapper": {
+        "type": "object",
+        "properties": {
+          "activityFacility": { "$ref": "#/components/schemas/ActivityFacility" },
+          "status": { "type": "string", "example": "INITIATED" },
+          "transactions": { "type": "array", "items": { "$ref": "#/components/schemas/Transaction" } },
+          "workflow": { "type": "array", "items": { "$ref": "#/components/schemas/ProcessInstance" } }
+        }
+      },
+      "FacilityStatusResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "facility": { "type": "array", "items": { "$ref": "#/components/schemas/FacilityStatusWrapper" } },
+          "totalCount": { "type": "integer", "example": 1 }
+        }
+      },
+      "Workflow": {
+        "type": "object",
+        "description": "Workflow action payload submitted alongside a business object to transition its state.",
+        "properties": {
+          "action": { "type": "string", "example": "APPROVE" },
+          "comments": { "type": "string", "example": "Verified on site, approving" },
+          "documents": { "type": "array", "items": { "$ref": "#/components/schemas/Document" } },
+          "assignes": { "type": "array", "items": { "type": "string" }, "description": "uuids of users to assign the next workflow state to" },
+          "rating": { "type": "integer", "example": 5 },
+          "additionalDetails": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "FacilityWorkflowRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "activityFacilityId"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "activityFacilityId": { "type": "string", "example": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22" },
+          "workflow": { "$ref": "#/components/schemas/Workflow" },
+          "transactions": { "type": "array", "items": { "$ref": "#/components/schemas/Transaction" } }
+        }
+      },
+      "ActivityFacilitySearchCriteriaRef": {
+        "description": "alias retained for backward reference; see ActivityFacilitySearchCriteria",
+        "$ref": "#/components/schemas/ActivityFacilitySearchCriteria"
+      },
+      "FacilityBulkFilter": {
+        "type": "object",
+        "properties": {
+          "searchCriteria": { "$ref": "#/components/schemas/ActivityFacilitySearchCriteria" }
+        }
+      },
+      "FacilityBulkApproveRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "isAllSelected"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "isAllSelected": { "type": "boolean", "description": "When true, the workflow action is applied to every Activity Facility matching `filters.searchCriteria` instead of the explicit `activityFacilityIds` list.", "example": false },
+          "activityFacilityIds": { "type": "array", "items": { "type": "string" }, "description": "Explicit ids to act on; used when isAllSelected is false." },
+          "filters": { "$ref": "#/components/schemas/FacilityBulkFilter" },
+          "workflow": { "$ref": "#/components/schemas/Workflow" }
+        }
+      },
+      "BulkFacilityUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "failedProjectIDs": { "type": "array", "items": { "type": "string" }, "description": "Activity Facility ids for which the workflow transition failed." },
+          "succeededProjectIDs": { "type": "array", "items": { "type": "string" }, "description": "Activity Facility ids for which the workflow transition succeeded." }
+        }
+      },
+      "BillOfMaterial": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "f1a2b3c4-d5e6-4708-91a2-b3c4d5e6f701" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "facilityId": { "type": "string", "example": "d3a8f9a0-2b1c-4e6d-8b7a-1e2f3a4b5c33" },
+          "activityFacilityId": { "type": "string", "example": "b2d4b5b0-3f0c-4a7e-9f3f-6e6f2a9b7c22" },
+          "name": { "type": "string", "example": "Solar PV Installation BOM" },
+          "assignUser": { "type": "string" },
+          "additionalDetails": { "type": "object", "additionalProperties": true },
+          "documents": { "type": "array", "items": { "$ref": "#/components/schemas/Document" } },
+          "data": { "type": "object", "additionalProperties": true, "description": "Arbitrary BOM line-item payload." },
+          "isActive": { "type": "boolean" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "BomBulkRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "bom"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "bom": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/BillOfMaterial" } }
+        }
+      },
+      "BomResponse": {
+        "type": "object",
+        "required": ["ResponseInfo", "bom"],
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "TotalCount": { "type": "integer", "example": 1 },
+          "bom": { "type": "array", "items": { "$ref": "#/components/schemas/BillOfMaterial" } }
+        }
+      },
+      "BomSearchCriteria": {
+        "type": "object",
+        "properties": {
+          "ids": { "type": "array", "items": { "type": "string" } },
+          "facilityIds": { "type": "array", "items": { "type": "string" } },
+          "activityFacilityIds": { "type": "array", "items": { "type": "string" } },
+          "statuses": { "type": "array", "items": { "type": "string" }, "description": "Serialized as 'statuses' in JSON though the underlying Java field is named 'name'." },
+          "assignUser": { "type": "string" },
+          "tenantId": { "type": "string", "description": "Populated internally from the tenantId query parameter.", "example": "pg.citya" },
+          "isActive": { "type": "boolean", "description": "Populated internally by the service." },
+          "isCountQuery": { "type": "boolean", "description": "Populated internally by the service." }
+        }
+      },
+      "BomSearchRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "bom"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "bom": { "$ref": "#/components/schemas/BomSearchCriteria" }
+        }
+      },
+      "GenerateBOMPdfRequest": {
+        "type": "object",
+        "required": ["RequestInfo"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "system": { "type": "string", "description": "Originating system identifier, used for PDF template selection.", "example": "ONM" },
+          "bom": { "type": "object", "additionalProperties": true, "description": "Arbitrary BOM data to render into the PDF template." }
+        }
+      }
+    }
+  }
+}

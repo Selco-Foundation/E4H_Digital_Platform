@@ -1,0 +1,935 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "im-services-analytics API",
+    "version": "1.0.0",
+    "description": "REST APIs exposed by the IM Services Analytics module (package org.selco.e4h) of the eGov DIGIT platform. This service computes SLA breaches, triggers CO2/carbon-emission batch calculations, and sends daily/weekly SLA escalation e-mails for the Incident Management (IM) domain.\n\nAuthentication mechanism actually found in this codebase: there is NO servlet Filter, Interceptor, or Spring Security configuration in im-services-analytics, so none of the endpoints in this service enforce authentication themselves. Where a request body is present, it follows the standard eGov convention of embedding a `RequestInfo` object (field name `RequestInfo` in JSON) that carries `authToken` (the Bearer JWT obtained from egov-user OAuth login) and `userInfo` (uuid, userName, roles, etc). This service does not itself validate `authToken`/`userInfo` on incoming requests, but forwards the same `RequestInfo` object downstream (to egov-user/HRMS, MDMS, workflow, filestore, etc.) so that those services can authenticate/authorize the call. Several endpoints (`GET /v1/update_phc`, `POST /v1/carbon/trigger`, `GET /v1/escalation-emails/health`) accept no body/`RequestInfo` at all and are intended to be invoked internally (e.g. by a Kubernetes CronJob) with no bearer-token check. Standard errors raised via `org.egov.tracer.model.CustomException` (egov-tracer 2.9.0-SNAPSHOT, `tracer.detailed.tracing.enabled=true`) are rendered by egov-tracer's default exception handling as HTTP 400 with the `ErrorRes` envelope shown below. Some controller methods additionally catch generic `Exception` themselves and return a plain-text HTTP 500 body instead of the JSON `ErrorRes` shape -- this is called out per-endpoint below.",
+    "contact": {
+      "name": "SELCO Foundation / eGov DIGIT E4H Platform"
+    }
+  },
+  "servers": [
+    {
+      "url": "/im-services-analytics",
+      "description": "Server context-path as configured by server.servlet.context-path in application.properties"
+    }
+  ],
+  "tags": [
+    { "name": "IM Analytics", "description": "SLA computation and incident-management analytics/testing utility endpoints (IMAnalyticsController)" },
+    { "name": "Carbon Emission", "description": "CO2 / carbon-emission batch calculation trigger (CarbonEmissionTriggerController)" },
+    { "name": "Escalation", "description": "SLA breach escalation e-mail processing (EscalationController)" }
+  ],
+  "paths": {
+    "/v1/computeSLA": {
+      "post": {
+        "tags": ["IM Analytics"],
+        "summary": "Compute and update SLA for tickets",
+        "description": "Triggers SLA (Service Level Agreement) computation for the tenant identified in the request body, optionally transforming records and optionally including closed tickets. Delegates to PrioritySLAService.computeAndUpdateSLA(...). Returns a plain-text confirmation message on success. NOTE: this endpoint catches all internal exceptions itself and returns a plain-text HTTP 500 body (not the JSON ErrorRes envelope) -- only request-body validation failures (bean validation on SLARequest, via @Valid) surface as the standard egov-tracer 400 ErrorRes shape.",
+        "operationId": "computeSLA",
+        "parameters": [
+          {
+            "name": "transform",
+            "in": "query",
+            "required": false,
+            "description": "Whether to transform/re-map ticket data as part of SLA computation.",
+            "schema": { "type": "boolean", "default": false }
+          },
+          {
+            "name": "closedtickets",
+            "in": "query",
+            "required": false,
+            "description": "Whether to include already-closed tickets in the SLA computation.",
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SLARequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "im-services-analytics",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_compute",
+                  "did": "1",
+                  "key": "",
+                  "msgId": "20260717130000|en_IN",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.7Q1z1c0f6b2b3f9e6a5d4c3b2a1908f7e6d5c4b3a2918f7e6d5c4b3a291807f6",
+                  "userInfo": {
+                    "uuid": "3f5c6a1e-2b3d-4c9a-8e1f-5a6b7c8d9e0f",
+                    "userName": "sysadmin",
+                    "roles": [
+                      { "code": "SYSTEM", "name": "System", "tenantId": "pg" }
+                    ]
+                  },
+                  "correlationId": "8f14e45f-ceea-467e-add0-f26e5c88a5f1"
+                },
+                "tenantId": "pg"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SLA computation completed successfully.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "SLA computation completed successfully"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request -- request-body bean-validation failure (e.g. missing SLARequest fields) surfaced by egov-tracer's default exception handling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    {
+                      "code": "MethodArgumentNotValidException",
+                      "message": "Invalid request. Please check your input.",
+                      "description": "tenantId: must not be null",
+                      "params": ["tenantId"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- not enforced by this service directly; returned only if the downstream authToken passed inside RequestInfo is rejected by a service this call delegates to.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed", "description": "The authToken provided is invalid or has expired", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- not enforced by this service directly; returned only if a downstream service rejects the caller's role/tenant access.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "ACCESS_DENIED", "message": "Access Denied", "description": "User does not have permission to perform this action for tenantId pg", "params": ["pg"] }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found -- no matching route.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "The requested resource could not be found", "description": "No handler found for POST /im-services-analytics/v1/computeSLAA", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error while computing SLA. Caught in-controller and returned as a plain-text body (not the JSON ErrorRes shape).",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "SLA computation failed: Connection refused to elasticsearch host"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/update_phc": {
+      "get": {
+        "tags": ["IM Analytics"],
+        "summary": "Run PHC aggregation update script",
+        "description": "Triggers IncidentService.scriptUpdatePHCAgregation(), a one-off/administrative script that recomputes PHC (Primary Health Center) status aggregation. Takes no parameters and no request body. Any exception thrown inside the service is NOT caught by the controller, so it propagates to egov-tracer's default exception handling (CustomException -> 400 ErrorRes; any other uncaught exception -> 500 ErrorRes).",
+        "operationId": "updatePhcAggregation",
+        "responses": {
+          "200": {
+            "description": "Script completed.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "Script done!"
+              }
+            }
+          },
+          "400": {
+            "description": "A CustomException raised during the script run, rendered by egov-tracer's default exception handling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "PARSING ERROR", "message": "Failed to parse response of workflow processInstance search", "description": "Failed to parse response of workflow processInstance search", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed", "description": "The authToken provided is invalid or has expired", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "ACCESS_DENIED", "message": "Access Denied", "description": "User does not have permission to perform this action", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found -- no matching route.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "The requested resource could not be found", "description": "No handler found for GET /im-services-analytics/v1/update_phcc", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Uncaught internal error while running the PHC aggregation script, rendered by egov-tracer's default exception handling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Internal server error occurred. Please try again after some time", "description": "NullPointerException while aggregating PHC status", "params": [] }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/test_update_phc": {
+      "post": {
+        "tags": ["IM Analytics"],
+        "summary": "Send a test incident onto the process-audit-records Kafka topic",
+        "description": "Test/utility endpoint that wraps the supplied IncidentRequest into a Kafka producer record (topic key \"save-im-request\") and publishes it via KafkaProducerService.sendIncident(...) to topic \"process-audit-records\". Used for manually exercising the incident-audit indexing pipeline. Any exception is NOT caught by the controller, so it propagates to egov-tracer's default exception handling.",
+        "operationId": "testUpdatePhc",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/IncidentRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "im-services-analytics",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_create",
+                  "did": "1",
+                  "key": "",
+                  "msgId": "20260717130000|en_IN",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.7Q1z1c0f6b2b3f9e6a5d4c3b2a1908f7e6d5c4b3a2918f7e6d5c4b3a291807f6",
+                  "userInfo": {
+                    "uuid": "3f5c6a1e-2b3d-4c9a-8e1f-5a6b7c8d9e0f",
+                    "userName": "sysadmin",
+                    "roles": [
+                      { "code": "SYSTEM", "name": "System", "tenantId": "pg" }
+                    ]
+                  },
+                  "correlationId": "8f14e45f-ceea-467e-add0-f26e5c88a5f1"
+                },
+                "incident": {
+                  "incidentType": "PHC",
+                  "incidentSubtype": "SolarPowerBackup",
+                  "reporterType": "SYSTEM",
+                  "id": "b6f2c9a4-1d3e-4a2b-9c8d-7e6f5a4b3c2d",
+                  "tenantId": "pg.gurugram",
+                  "incidentId": "IM-2026-07-000123",
+                  "accountId": "acc-001",
+                  "reporterTenant": "pg",
+                  "additionalDetail": {},
+                  "applicationStatus": "PENDING_ASSIGNMENT",
+                  "district": "Gurugram",
+                  "block": "Sohna",
+                  "phcType": "PHC",
+                  "phcSubType": "Primary Health Center",
+                  "comments": "Test incident for audit pipeline verification",
+                  "auditDetails": {
+                    "createdBy": "3f5c6a1e-2b3d-4c9a-8e1f-5a6b7c8d9e0f",
+                    "lastModifiedBy": "3f5c6a1e-2b3d-4c9a-8e1f-5a6b7c8d9e0f",
+                    "createdTime": 1752739200000,
+                    "lastModifiedTime": 1752739200000
+                  },
+                  "systemFunctional": "FUNCTIONAL",
+                  "filedDate": 1752739200000,
+                  "legacyId": null,
+                  "migrationId": null,
+                  "facilityId": "FAC-0098213",
+                  "boundaryCode": "india_haryana.gurugram.sohna"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message published to Kafka.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "User sent!"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request -- request-body bean-validation failure (e.g. missing incident/RequestInfo) surfaced by egov-tracer's default exception handling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "MethodArgumentNotValidException", "message": "Invalid request. Please check your input.", "description": "incident.tenantId: must not be null", "params": ["incident.tenantId"] }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed", "description": "The authToken provided is invalid or has expired", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "ACCESS_DENIED", "message": "Access Denied", "description": "User does not have permission to perform this action", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found -- no matching route.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "The requested resource could not be found", "description": "No handler found for POST /im-services-analytics/v1/test_update_phcc", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Uncaught internal error (e.g. Kafka publish failure), rendered by egov-tracer's default exception handling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Internal server error occurred. Please try again after some time", "description": "Failed to send record to Kafka topic process-audit-records", "params": [] }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/carbon/trigger": {
+      "post": {
+        "tags": ["Carbon Emission"],
+        "summary": "Trigger CO2/carbon-emission batch calculation",
+        "description": "HTTP trigger intended for a Kubernetes CronJob (same pattern as the RMS service's POST /v1/trigger). Runs CarbonEmissionBatchService.process(...) for the given tenant/month/year. If month and year are not both supplied, the calculation runs for the last fully-completed calendar month. If tenantId is not supplied, the properties-configured default tenant (co2.default.tenant.id, e.g. \"in\") is used. No request body -- an internal RequestInfo is synthesized in code with msgId=\"co2-cron-trigger\" and all other fields null/empty. Any exception is NOT caught by the controller, so it propagates to egov-tracer's default exception handling.",
+        "operationId": "triggerCarbonEmissionCalculation",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": false,
+            "description": "Tenant to run the CO2 calculation for. Defaults to the configured co2.default.tenant.id (e.g. \"in\") when omitted.",
+            "schema": { "type": "string", "example": "in" }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "description": "1-12 calendar month to compute for. Must be supplied together with year, otherwise the last completed month is used.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 12, "example": 6 }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "description": "4-digit calendar year to compute for. Must be supplied together with month, otherwise the last completed month is used.",
+            "schema": { "type": "integer", "example": 2026 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CO2 calculation completed for the resolved tenant/period.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "CO2 calculation completed for tenantId=in period=2026-06"
+              }
+            }
+          },
+          "400": {
+            "description": "A CustomException raised during batch processing (e.g. MDMS lookup failure), rendered by egov-tracer's default exception handling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "CO2_MDMS_ERROR", "message": "Failed to fetch CO2 emission factors from MDMS", "description": "Failed to fetch CO2 emission factors from MDMS for tenantId in", "params": ["in"] }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed", "description": "The authToken provided is invalid or has expired", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "ACCESS_DENIED", "message": "Access Denied", "description": "User does not have permission to perform this action", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found -- no matching route.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "The requested resource could not be found", "description": "No handler found for POST /im-services-analytics/v1/carbon/triggerr", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Uncaught internal error during batch processing, rendered by egov-tracer's default exception handling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Internal server error occurred. Please try again after some time", "description": "Unexpected error while computing carbon emission batch for tenantId in", "params": [] }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/escalation-emails/daily": {
+      "post": {
+        "tags": ["Escalation"],
+        "summary": "Run daily SLA-breach escalation e-mail processing",
+        "description": "For every active EscalationRecipient defined in MDMS (Incident.EscalationRecipient), finds users matching the recipient's role and boundary level (state or country), queries SLA-breach tickets per configured escalation level (LEVEL_ZERO/LEVEL_ONE/LEVEL_TWO), uploads a CSV per level to FileStore, updates Elasticsearch escalation state, and publishes a role-based escalation e-mail per user onto Kafka (egov-notification-mail contract). Intended to be invoked once per day by a scheduler/CronJob. NOTE: this endpoint catches all internal exceptions itself (and also publishes a failure status via EscalationStatusService) and returns a plain-text HTTP 500 body -- it does NOT return the JSON ErrorRes envelope on failure.",
+        "operationId": "sendDailyEscalationEmail",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EscalationEmailRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "im-services-analytics",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_send",
+                  "did": "1",
+                  "key": "",
+                  "msgId": "20260717090000|en_IN",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjcm9uIn0.1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+                  "userInfo": {
+                    "uuid": "9e8d7c6b-5a4f-3e2d-1c0b-9a8f7e6d5c4b",
+                    "userName": "cron-scheduler",
+                    "roles": [
+                      { "code": "SYSTEM", "name": "System", "tenantId": "in" }
+                    ]
+                  },
+                  "correlationId": "3c1a9f2e-7b6d-4e5f-8a9b-0c1d2e3f4a5b"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Daily escalation processing completed (also returned when there simply are no escalation recipients configured in MDMS).",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "examples": {
+                  "completed": { "value": "Daily SLA escalation processing completed successfully" },
+                  "noRecipients": { "value": "No escalation recipients found" }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request -- malformed JSON body.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "HttpMessageNotReadableException", "message": "Invalid request. Please check your input.", "description": "JSON parse error: unexpected token", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed", "description": "The authToken provided is invalid or has expired", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "ACCESS_DENIED", "message": "Access Denied", "description": "User does not have permission to perform this action", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found -- no matching route.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "The requested resource could not be found", "description": "No handler found for POST /im-services-analytics/v1/escalation-emails/dailyy", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error during daily escalation processing (e.g. MDMS/Elasticsearch/FileStore/Kafka failure). Caught in-controller and returned as a plain-text body (not the JSON ErrorRes shape).",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "Daily SLA escalation processing failed: Failed to fetch escalation recipients from MDMS"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/escalation-emails/weekly": {
+      "post": {
+        "tags": ["Escalation"],
+        "summary": "Run weekly SLA/DRE system report escalation e-mail processing",
+        "description": "For every active EscalationRecipient defined in MDMS (Incident.EscalationRecipient), determines relevant tenants/states per recipient, generates per-tenant weekly report data, builds one consolidated CSV across all mapped states (uploaded to FileStore under tenantId \"in\"), and sends one consolidated weekly-report e-mail per unique recipient e-mail address via Kafka. Intended to be invoked once a week (Monday 09:00 IST) by a scheduler/CronJob. NOTE: this endpoint catches all internal exceptions itself (and also publishes a failure status via EscalationStatusService) and returns a plain-text HTTP 500 body -- it does NOT return the JSON ErrorRes envelope on failure.",
+        "operationId": "sendWeeklyEscalationEmail",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EscalationEmailRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "im-services-analytics",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_send",
+                  "did": "1",
+                  "key": "",
+                  "msgId": "20260717090000|en_IN",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjcm9uIn0.1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+                  "userInfo": {
+                    "uuid": "9e8d7c6b-5a4f-3e2d-1c0b-9a8f7e6d5c4b",
+                    "userName": "cron-scheduler",
+                    "roles": [
+                      { "code": "SYSTEM", "name": "System", "tenantId": "in" }
+                    ]
+                  },
+                  "correlationId": "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Weekly escalation processing completed (also returned when there simply are no escalation recipients configured in MDMS).",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "examples": {
+                  "completed": { "value": "Weekly DRE system report processing completed successfully" },
+                  "noRecipients": { "value": "No escalation recipients found" }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request -- malformed JSON body.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "HttpMessageNotReadableException", "message": "Invalid request. Please check your input.", "description": "JSON parse error: unexpected token", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed", "description": "The authToken provided is invalid or has expired", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- not enforced by this service directly.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "ACCESS_DENIED", "message": "Access Denied", "description": "User does not have permission to perform this action", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found -- no matching route.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "The requested resource could not be found", "description": "No handler found for POST /im-services-analytics/v1/escalation-emails/weeklyy", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error during weekly escalation processing (e.g. MDMS/Elasticsearch/FileStore/Kafka failure). Caught in-controller and returned as a plain-text body (not the JSON ErrorRes shape).",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "Weekly DRE system report processing failed: Failed to generate consolidated weekly CSV"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/escalation-emails/health": {
+      "get": {
+        "tags": ["Escalation"],
+        "summary": "Escalation service health check",
+        "description": "Simple liveness check for the escalation e-mail processing endpoints. Always returns HTTP 200 with a fixed plain-text body; no downstream calls are made and no error paths exist for this endpoint.",
+        "operationId": "escalationHealthCheck",
+        "responses": {
+          "200": {
+            "description": "Service is running.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "Escalation service is running"
+              }
+            }
+          },
+          "404": {
+            "description": "Not found -- no matching route.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "The requested resource could not be found", "description": "No handler found for GET /im-services-analytics/v1/escalation-emails/healthz", "params": [] }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error (not expected for this endpoint, listed for completeness/consistency).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": null,
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Internal server error occurred. Please try again after some time", "description": "Unexpected error", "params": [] }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Role": {
+        "type": "object",
+        "description": "org.egov.common.contract.request.Role -- role assigned to a user, scoped to a tenant.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 101 },
+          "name": { "type": "string", "example": "State POC" },
+          "code": { "type": "string", "example": "STATE_POC" },
+          "tenantId": { "type": "string", "example": "pg" }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "org.egov.common.contract.request.User -- authenticated user info embedded in RequestInfo.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 4521 },
+          "uuid": { "type": "string", "format": "uuid", "example": "3f5c6a1e-2b3d-4c9a-8e1f-5a6b7c8d9e0f" },
+          "userName": { "type": "string", "example": "sysadmin" },
+          "name": { "type": "string", "example": "System Administrator" },
+          "type": { "type": "string", "example": "EMPLOYEE" },
+          "mobileNumber": { "type": "string", "example": "9900112233" },
+          "emailId": { "type": "string", "format": "email", "example": "sysadmin@selco-foundation.org" },
+          "tenantId": { "type": "string", "example": "pg" },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Role" }
+          }
+        }
+      },
+      "RequestInfo": {
+        "type": "object",
+        "description": "org.egov.common.contract.request.RequestInfo -- standard eGov DIGIT request envelope carrying request metadata and the caller's auth token/user info. This IS the authentication mechanism for this service's endpoints that accept it: there is no separate Authorization header check, authToken is a Bearer JWT (obtained via egov-user OAuth login) that this service forwards to downstream services.",
+        "properties": {
+          "apiId": { "type": "string", "example": "im-services-analytics" },
+          "ver": { "type": "string", "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "description": "Epoch millis.", "example": 1752739200000 },
+          "action": { "type": "string", "example": "_create" },
+          "did": { "type": "string", "example": "1" },
+          "key": { "type": "string", "example": "" },
+          "msgId": { "type": "string", "example": "20260717130000|en_IN" },
+          "authToken": { "type": "string", "description": "Bearer JWT obtained from egov-user OAuth login.", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.7Q1z1c0f6b2b3f9e6a5d4c3b2a1908f7e6d5c4b3a2918f7e6d5c4b3a291807f6" },
+          "correlationId": { "type": "string", "example": "8f14e45f-ceea-467e-add0-f26e5c88a5f1" },
+          "userInfo": { "$ref": "#/components/schemas/UserInfo" }
+        }
+      },
+      "ResponseInfo": {
+        "type": "object",
+        "description": "org.egov.common.contract.response.ResponseInfo -- standard eGov response envelope. Used inside ErrorRes; this service's success responses are plain-text strings, not ResponseInfo-wrapped JSON.",
+        "properties": {
+          "apiId": { "type": "string", "example": "im-services-analytics" },
+          "ver": { "type": "string", "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "example": 1752739205000 },
+          "resMsgId": { "type": "string", "example": "uief87324kjhfdiuyeqk" },
+          "msgId": { "type": "string", "example": "20260717130000|en_IN" },
+          "status": { "type": "string", "enum": ["successful", "failed"], "example": "failed" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "org.egov.tracer.model.Error -- single error entry inside an ErrorRes, as produced by egov-tracer's default exception handling for CustomException and framework exceptions.",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string", "example": "CO2_MDMS_ERROR" },
+          "message": { "type": "string", "example": "Failed to fetch CO2 emission factors from MDMS" },
+          "description": { "type": "string", "example": "Failed to fetch CO2 emission factors from MDMS for tenantId in" },
+          "params": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["in"]
+          }
+        }
+      },
+      "ErrorRes": {
+        "type": "object",
+        "description": "Standard egov-tracer error envelope, returned with HTTP 400 for CustomException (and, depending on tracer configuration, other HTTP statuses for other uncaught exceptions). Field names ResponseInfo/Errors are capitalized to match egov-tracer's JSON convention.",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo", "nullable": true },
+          "Errors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "SLARequest": {
+        "type": "object",
+        "description": "Request body for POST /v1/computeSLA.",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "tenantId": { "type": "string", "example": "pg" }
+        }
+      },
+      "AuditDetails": {
+        "type": "object",
+        "description": "Collection of audit related fields used by most models.",
+        "properties": {
+          "createdBy": { "type": "string", "example": "3f5c6a1e-2b3d-4c9a-8e1f-5a6b7c8d9e0f" },
+          "lastModifiedBy": { "type": "string", "example": "3f5c6a1e-2b3d-4c9a-8e1f-5a6b7c8d9e0f" },
+          "createdTime": { "type": "integer", "format": "int64", "example": 1752739200000 },
+          "lastModifiedTime": { "type": "integer", "format": "int64", "example": 1752739200000 }
+        }
+      },
+      "Incident": {
+        "type": "object",
+        "description": "Instance of a service request raised for a particular facility/service. Any one of 'address' or '(lat and lng)' or 'addressid' is mandatory (per upstream API contract, not enforced by bean validation on this model beyond the fields marked required).",
+        "required": ["incidentType", "incidentSubtype", "tenantId"],
+        "properties": {
+          "incidentType": { "type": "string", "example": "PHC" },
+          "incidentSubtype": { "type": "string", "example": "SolarPowerBackup" },
+          "reporterType": { "type": "string", "example": "SYSTEM" },
+          "id": { "type": "string", "example": "b6f2c9a4-1d3e-4a2b-9c8d-7e6f5a4b3c2d" },
+          "tenantId": { "type": "string", "example": "pg.gurugram" },
+          "incidentId": { "type": "string", "example": "IM-2026-07-000123" },
+          "accountId": { "type": "string", "example": "acc-001" },
+          "reporterTenant": { "type": "string", "example": "pg" },
+          "additionalDetail": { "type": "object", "nullable": true, "additionalProperties": true, "example": {} },
+          "applicationStatus": { "type": "string", "example": "PENDING_ASSIGNMENT" },
+          "district": { "type": "string", "example": "Gurugram" },
+          "block": { "type": "string", "example": "Sohna" },
+          "phcType": { "type": "string", "example": "PHC" },
+          "phcSubType": { "type": "string", "description": "JSON property name is phcSubType; Java field is 'phcsubtype'.", "example": "Primary Health Center" },
+          "comments": { "type": "string", "example": "Test incident for audit pipeline verification" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "systemFunctional": { "type": "string", "example": "FUNCTIONAL" },
+          "filedDate": { "type": "integer", "format": "int64", "example": 1752739200000 },
+          "legacyId": { "type": "string", "nullable": true, "example": null },
+          "migrationId": { "type": "string", "nullable": true, "example": null },
+          "facilityId": { "type": "string", "example": "FAC-0098213" },
+          "boundaryCode": { "type": "string", "example": "india_haryana.gurugram.sohna" }
+        }
+      },
+      "IncidentRequest": {
+        "type": "object",
+        "description": "Request object to publish/test an incident onto the audit-records processing pipeline. Used by POST /v1/test_update_phc.",
+        "required": ["RequestInfo", "incident"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "incident": { "$ref": "#/components/schemas/Incident" }
+        }
+      },
+      "EscalationEmailRequest": {
+        "type": "object",
+        "description": "Request body for the escalation e-mail trigger endpoints (POST /v1/escalation-emails/daily and /weekly). Carries only RequestInfo -- there is no additional payload; all recipients/tickets are resolved server-side from MDMS, workflow, and Elasticsearch.",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" }
+        }
+      }
+    }
+  }
+}
