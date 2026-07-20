@@ -83,6 +83,7 @@ const getNewICCPrepopulationRows = (rows = []) => rows.filter((row) => row?.file
 const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
   const iccReportsData = new FormData();
   const items = rows.map((row) => ({
+    id: row.template?.id || "",
     systemType: row.systemType?.code,
     totalSystemCapacity: getSystemCapacityValue(row.totalSystemCapacity),
     fieldPlanId: fieldPlanId,
@@ -1155,8 +1156,18 @@ const CreateFieldPlan = () => {
           const newRows = getNewICCPrepopulationRows(rows);
 
           if (newRows.length) {
-            const iccReportsData = getICCReportsFormData(newRows, createdFieldPlan?.id || fieldPlanId, tenantId);
-            await IngestionService.uploadICCReports(iccReportsData);
+            const rowsToCreate = newRows.filter((row) => !row.template?.id);
+            const rowsToUpdate = newRows.filter((row) => row.template?.id);
+
+            if (rowsToCreate.length) {
+              const createReportsData = getICCReportsFormData(rowsToCreate, createdFieldPlan?.id || fieldPlanId, tenantId);
+              await IngestionService.uploadICCReports(createReportsData);
+            }
+
+            if (rowsToUpdate.length) {
+              const updateReportsData = getICCReportsFormData(rowsToUpdate, createdFieldPlan?.id || fieldPlanId, tenantId);
+              await IngestionService.upsertICCReports(updateReportsData);
+            }
           }
 
           setPersistedFormData((prev) => ({ ...prev, iccPrepopulationConfiguration: data }));
