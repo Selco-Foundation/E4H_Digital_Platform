@@ -1,112 +1,73 @@
-# Egov-HRMS Service
-### HRMS Service
-The objective of HRMS is to provide a service that manages all the employees enrolled onto the system. HRMS provides extensive APIs to create, update and search the employees with attributes like assignments, service history, jurisdiction etc. HRMS can be treated a sub-set of the egov-user service, Every employee created through HRMS will also be created as a user in egov-user. 
+# eGov HRMS
 
-### DB UML Diagram
+HRMS manages employees enrolled onto the system, including their assignments, jurisdictions, service history, educational details, departmental tests, and (de)activation history. It is treated as a superset/companion of `egov-user` — every employee created through HRMS is also created as a user in `egov-user`, using the employee code as the login username.
 
-- NA
-
-### Service Dependencies
-- egov-user
+## Service Dependencies
+- egov-user (create/update/search users backing each employee)
 - egov-localization
-- egov-idgen
-- egov-mdms
+- egov-idgen (employee code generation)
+- egov-mdms (master data for departments, designations, etc.)
 - egov-filestore
+- egov-boundary-service (jurisdiction boundary lookups)
+- egov-otp (referenced in config; used for OTP-based flows)
 
-### Swagger API Contract
-- Please refer to the [Swagger API contarct](https://editor.swagger.io/?url=https://raw.githubusercontent.com/egovernments/business-services/master/Docs/hrms-v1.0.0.yaml#!/) for HRMS service to understand the structure of APIs and to have visualization of all internal APIs.
+## API Endpoints
 
+BasePath: `/egov-hrms/employees`
 
-## Service Details
-**Details of all the entities involved:** 
+**Employee** (`EmployeeController`)
+- `POST /_create` — bulk-create employee(s) with assignments, jurisdictions, service history, educational details, departmental tests
+- `POST /_update` — bulk-update employee(s); also used to deactivate/reactivate an employee (marks the linked user inactive too)
+- `POST /_search` — search employees by id, uuid, name, code, status, type, department, designation, position (open search restricted to roles in `open.search.enabled.roles`)
+- `POST /_count` — get counts of active/inactive employees for a tenant
 
-**a) Assignments:** Every employee is assigned a list of assignments, every assignment is a designation provided to that employee for a given period of time. These designations are mapped to departments. This also includes marking the employee as HOD for that dept if needed. Employee can also provide information on who does he report to.
-   
-   - **Constraints:**
-        1. For a given period of time an employee shouldn't have more than one assignments.
-        2. The department and designation part of the employee must be configured in the system.
-        3. Details of assignment once entered in the system cannot be deleted.
-        4. An employee cannot have more than one active assignment.
+## Events
 
-**b) Jurisdictions:** A jurisdiction is a area of power for any employee. It can be a zone, ward, block, city, state or the country. Currently a jurisdiction is defined as combination of Hierarchy type, Boundary Type and the actual Boundary. However, in the current system we are not validating these jurisdictions. This is being collected only for the sake of data.
-   
-   - **Constraints:**
-        1. The details pertaining to a jurisdiction like Hierarchy, Boundary Type and Boundary must be configured in the system.
-        2. An employee can have more than one jurisdictions.
-        3. Currently in the system jurisdiction is limited to within a ULB.
+Kafka producer topics, pushed via `HRMSProducer.push()` (topic names are resolved per-tenant via `MultiStateInstanceUtil`):
 
-**c) Service History:** Service history is the record of an employee's professional experience. It captures information about location and period of work with necessary order number. Information about the current work details are to be entered here.
-   
-   - **Constraints:**
-        1. There's no rule on period, dates of different services can overlap.
-        2. There's no cap on the number of entries in the service history.
-        3. Captured as legacy data.
+| Config key | Default topic | Purpose |
+|---|---|---|
+| `kafka.topics.save.service` | `save-hrms-employee` | New employee created |
+| `kafka.topics.update.service` | `update-hrms-employee` | Employee updated |
+| `kafka.topics.notification.sms` | `egov.core.notification.sms` | SMS notification to employee's phone number |
+| `kafka.topics.hrms.updateData` | `egov-hrms-update` | Data-sync/update event |
 
-**d) Educational Details:** Captures educational details of the employee. Captures information like Degree, Year of Passing, University, Specialization etc as part of the educational details.
-   
-   - **Constraints:**
-        1. Details pertaining to educational details like Degree, Specialization must be configured.
+No Kafka consumers.
 
+## Configuration
 
-**e) Departmental Tests:** Captures details of the tests undertaken by the employee. Like name of the test and year of passing.
-   
-   - **Constraints:**
-        1. Test details must be configures in the system.  
+Non-secret config lives in `src/main/resources/application.properties`, bound via `org/egov/hrms/config/PropertiesManager.java`:
 
-**f) Deactivation Details:** Details of deactivation of the employee, which captures reason for deactivation, period of deactivation and other necessary details. 
-  
-   - **Constraints:**
-        1. Deactivation details are compulsory while deactivating an employee.
+| Property | Description |
+|---|---|
+| `egov.hrms.employee.app.link` | Link to the employee-facing app (env-specific) |
+| `egov.hrms.default.pagination.limit` | Default pagination limit for employee search (default 200) |
+| `egov.hrms.default.pwd.length` | Length of auto-generated password at employee creation (must match egov-user's password policy) |
+| `open.search.enabled.roles` | Role codes allowed to perform open search in HRMS |
+| `egov.idgen.ack.name` / `egov.idgen.ack.format` | Idgen key/format for employee code generation (e.g. `EMP-[city]-[SEQ_EG_HRMS_EMP_CODE]`) |
+| `state.level.tenant.id` | State-level tenant identifier |
+| `decryption.abac.enable` | Toggles ABAC-based decryption flag (`PropertiesManager.isDecryptionEnable`); currently no service-level PII encryption implemented despite this flag |
+| `egov.mdms.host`, `egov.user.host`, `egov.localization.host`, `egov.boundary.host`, `egov.filestore.host`, `egov.otp.host` | Host URLs for dependent services |
 
-**f) Reactivation Details:** Details of reactivation of the employee, which captures reason for reactivation, the effective date from when reactivation take place and other necessary details. 
-  
-   - **Constraints:**
-        1. Reactivation details are compulsory while reactivating an employee.
-   
+## Database
 
+Flyway migrations: `src/main/resources/db/migration/main` (12 versioned migrations, `V20190122152236` through `V20260407120000`) plus a `seed` location.
 
-**Uniqueness Constraints:**
-- Employee code has to be unique and will be used as username for login.
-- Phone number has to be unique, which means no 2 employees can have the same phone number. 
+Key tables (all prefixed `eg_hrms_`):
+- `eg_hrms_employee` — core employee record (code, phone, name, employee status/type, `active` flag)
+- `eg_hrms_assignment` — designation/department assignment per employee
+- `eg_hrms_jurisdiction` — hierarchy/boundary-type/boundary for an employee
+- `eg_hrms_servicehistory`, `eg_hrms_educationaldetails`, `eg_hrms_departmentaltests`, `eg_hrms_empdocuments`, `eg_hrms_deactivationdetails` — child records FK'd to `eg_hrms_employee.uuid` with `ON DELETE CASCADE`
 
+Conventions:
+- Primary keys are the `uuid` column, but it is typed `CHARACTER VARYING(1024)`, not a native Postgres `UUID`.
+- Standard audit columns present on every table: `createdby`, `createddate`, `lastmodifiedby`, `lastmodifieddate`.
+- No soft-delete column; deactivation is modeled as a status change (`active=false` + a row in `eg_hrms_deactivationdetails`), not a row delete.
 
+## Workflow
 
-**Notification:**
-- Notification is sent to the phone number of the employee who has been created in the system. This is an SMS notification.
+No workflow v2 integration. Employee lifecycle (activate/deactivate/reactivate) is handled directly via the `_update` API and status flags, with no `WorkflowService`/state-machine wiring.
 
-### Configurable properties
+## Local Setup
 
-| Environment Variables                     | Description                                                                                                                                               | Value                                             |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------|
-| `egov.hrms.employee.app.link`             | This is the link to the mseva app, which differs based on the environment.                                                                                | https://mseva.lgpunjab.gov.in/employee/user/login |
-| `egov.hrms.default.pagination.limit`      | This is the pagination limit on search results of employee search, it can be set to any numeric value without decimals.                                   | 200                                               |
-| `egov.hrms.default.pwd.length`            | This is the length of password to be generated at the time of employee creation. However, please ensure this is in sync with the egov-user pwd policy.    | 10                                                |
-| `open.search.enabled.roles`               | This is a list of Role codes that are allowed to perform an open-search in hrms.                                                                          | SUPERUSER,ADMIN                                   |
-| `egov.idgen.ack.name`                     | Key to be configured in Idgen alongwith the ID format to generate employee code.                                                                          | hrms.employeecode                                 |
-|  `egov.idgen.ack.format`                  | Format to be configured in ID gen to generate employee code.                                                                                              | EMP-[city]-[SEQ_EG_HRMS_EMP_CODE]                 |
-### API Details
-
-`BasePath` /egov-hrms/employees/[API endpoint]
-
-##### Method
-**a) Create Employee `POST /_create` :** API (Bulk API) to create an employee with the following details: Assignments, Jurisdictions, Service History, Educational Details, Departmental Tests
-
-**b) Update Employee `POST /_update` :** API (Bulk API) to update the details of an employee with the following details: Assignments, Jurisdictions, Service History, Educational Details, Departmental Tests. There are constraints under which the update works, which are listed in the details of entities. As part of the personal details of the employee, Code of the employee cannot be updated once created.
-
-Deactivation is a part of the update API where the employee is marked inactive. This marks the user entry of this employee also as inactive. While deactivating an employee it is mandatory to provide deactivation details as well.
-
-**c) Search Employee `POST /_search` :** API to search the employee in the system on the following criteria: Id, UUID, Name, Code, Status, Type, Department, Designation, Position. All of them being arrays, at a time more than one employees can be fetched.
-Constraints: a. Open Search is enabled only for a set of users. Currently it is enabled only for SUPERUSER, if it has to be enabled for other roles, add those roles to the parameter 'open.search.enabled.roles' in app.properties with values(role codes) separated by comma.
-
-**d) Count of Employee `POST /_count` :** This API is use to get list of active and inactive employee present in the system.
-
-### Kafka Consumers
-
-- NA
-
-### Kafka Producers
-
-- Following are the Producer topic.
-    - **save-hrms-employee** :- This topic is used to create new employee in the system.
-    - **update-hrms-employee** :- This topic is used to update the existing employee in the systen.
-    - **egov.core.notification.sms** :- This topic is used to send noification to the phone number of the employee who has been created in the system.
+See [LOCALSETUP.md](./LOCALSETUP.md)

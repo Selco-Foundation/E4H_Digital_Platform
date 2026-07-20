@@ -168,4 +168,13 @@ Project service APIs - contains create, update, delete and search end point
 ## Usage
 - Start the service
 - Access the API endpoints for searching various project entities
+
+## Local Setup
+
+No `LOCALSETUP.md` exists for this service. Build and run with Maven:
+
+```bash
+mvn clean install
+mvn spring-boot:run
+```
 - Pass list parameters for the search fields mentioned in updates 
