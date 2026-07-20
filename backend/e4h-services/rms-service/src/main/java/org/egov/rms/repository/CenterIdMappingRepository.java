@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -63,15 +64,129 @@ public class CenterIdMappingRepository {
     }
 
     /**
-     * Finds HFR ID by Center ID
+     * Resolve center_id by HFR. When facilityName is provided and multiple active rows
+     * share the same HFR (wrong remaps + correct site), prefer the Elmeasure name that
+     * best matches the registry facility name. Falls back to first row when name is blank
+     * or no name match is found.
      */
     public Optional<String> findCenterIdByHfrId(String hfrId) {
-        String sql = "SELECT center_id FROM center_id_to_hfr_id_mapping "
-                + "WHERE hfr_id = ? AND is_active = true LIMIT 1";
-        List<String> results = jdbcTemplate.query(sql,
-                (rs, rowNum) -> rs.getString("center_id"),
-                hfrId);
-        return results.isEmpty() ? Optional.empty() : Optional.ofNullable(results.get(0));
+        return findCenterIdByHfrId(hfrId, null);
+    }
+
+    public Optional<String> findCenterIdByHfrId(String hfrId, String facilityName) {
+        return findCenterIdByLookupKey("hfr_id", hfrId, facilityName);
+    }
+
+    /**
+     * Resolve center_id by NIN (fallback when registry hfr_id is null).
+     * Same name-scoring behaviour as {@link #findCenterIdByHfrId(String, String)}.
+     */
+    public Optional<String> findCenterIdByNinId(String ninId) {
+        return findCenterIdByNinId(ninId, null);
+    }
+
+    public Optional<String> findCenterIdByNinId(String ninId, String facilityName) {
+        return findCenterIdByLookupKey("nin_id", ninId, facilityName);
+    }
+
+    private Optional<String> findCenterIdByLookupKey(String column, String key, String facilityName) {
+        if (key == null || key.isBlank()) {
+            return Optional.empty();
+        }
+        if (!"hfr_id".equals(column) && !"nin_id".equals(column)) {
+            throw new IllegalArgumentException("Unsupported mapping lookup column: " + column);
+        }
+        String sql = "SELECT center_id, facility_name FROM center_id_to_hfr_id_mapping "
+                + "WHERE " + column + " = ? AND is_active = true";
+        List<CenterCandidate> candidates = jdbcTemplate.query(sql,
+                (rs, rowNum) -> new CenterCandidate(rs.getString("center_id"), rs.getString("facility_name")),
+                key.trim());
+        if (candidates.isEmpty()) {
+            return Optional.empty();
+        }
+        String keyLabel = "hfr_id".equals(column) ? "hfrId" : "ninId";
+        if (candidates.size() == 1 || facilityName == null || facilityName.isBlank()) {
+            if (candidates.size() > 1) {
+                log.warn("Multiple centers for {}={} and no facilityName — using first row centerId={}",
+                        keyLabel, key, candidates.get(0).centerId());
+            }
+            return Optional.ofNullable(candidates.get(0).centerId());
+        }
+
+        String needle = normalizeFacilityName(facilityName);
+        CenterCandidate best = null;
+        int bestScore = 0;
+        for (CenterCandidate c : candidates) {
+            int score = nameMatchScore(needle, normalizeFacilityName(c.facilityName()));
+            if (score > bestScore) {
+                bestScore = score;
+                best = c;
+            }
+        }
+        if (best != null && bestScore > 0) {
+            log.info("Resolved {}={} facilityName='{}' to centerId={} elmeasureName='{}' score={}",
+                    keyLabel, key, facilityName, best.centerId(), best.facilityName(), bestScore);
+            return Optional.ofNullable(best.centerId());
+        }
+
+        log.warn("No name match for {}={} facilityName='{}' among {} centers — using first row centerId={}",
+                keyLabel, key, facilityName, candidates.size(), candidates.get(0).centerId());
+        return Optional.ofNullable(candidates.get(0).centerId());
+    }
+
+    /**
+     * Score how well a registry facility name matches an Elmeasure facility_name.
+     * Higher is better; 0 means no usable match.
+     */
+    static int nameMatchScore(String registryNorm, String elmeasureNorm) {
+        if (registryNorm == null || registryNorm.isEmpty()
+                || elmeasureNorm == null || elmeasureNorm.isEmpty()) {
+            return 0;
+        }
+        if (registryNorm.equals(elmeasureNorm)) {
+            return 1000 + registryNorm.length();
+        }
+        if (elmeasureNorm.contains(registryNorm)) {
+            return 500 + registryNorm.length();
+        }
+        if (registryNorm.contains(elmeasureNorm)) {
+            return 400 + elmeasureNorm.length();
+        }
+        // token overlap (e.g. "Themra CHC" vs "Themra 1 CHC" after normalize)
+        String[] a = registryNorm.split(" ");
+        String[] b = elmeasureNorm.split(" ");
+        int hits = 0;
+        for (String t : a) {
+            if (t.length() < 3) {
+                continue;
+            }
+            for (String u : b) {
+                if (t.equals(u)) {
+                    hits++;
+                    break;
+                }
+            }
+        }
+        return hits > 0 ? 100 * hits + registryNorm.length() : 0;
+    }
+
+    /**
+     * Lowercase and strip common facility-type suffixes/noise so registry vs Elmeasure names align.
+     */
+    static String normalizeFacilityName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String n = name.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\b(phc|chc|mphc|uphc|hwc|sd|sc|sub|center|centre|clinic|new|primary|health)\\b", " ")
+                .replaceAll("\\d+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return n;
+    }
+
+    private record CenterCandidate(String centerId, String facilityName) {
     }
 
     public Optional<String> findHfrIdByCenterId(String centerId) {

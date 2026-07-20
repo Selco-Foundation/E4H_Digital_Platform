@@ -26,6 +26,7 @@ public class Co2MonthlyDocument {
     private String solarInstallationDate;
     private String rmsInstallationDate;
     private Double solarSystemCapacity;
+    private double totalSolarEnergyGeneratedInKwh;
     private int month;
     private int year;
     private String financialYear;
