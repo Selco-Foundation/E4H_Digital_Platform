@@ -64,6 +64,9 @@ public class IncidentStatusAgregation {
     @JsonProperty("phcType")
     private String phcType;
 
+    @JsonProperty("facilityCategory")
+    private String facilityCategory;
+
     @JsonProperty("type")
     private String type;
 
