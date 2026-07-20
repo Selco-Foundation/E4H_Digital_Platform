@@ -50,7 +50,8 @@ public class Co2ElmeasureConsumptionService {
         for (MonthlyConsumptionRequest req : requests) {
             String centerId = resolveCenterId(req);
             if (!StringUtils.hasText(centerId)) {
-                log.warn("No centerId for facilityId={} hfrId={}", req.getFacilityId(), req.getHfrId());
+                log.warn("No centerId for facilityId={} hfrId={} ninId={}",
+                        req.getFacilityId(), req.getHfrId(), req.getNinId());
                 results.add(empty(req, "CENTER_NOT_MAPPED"));
                 continue;
             }
@@ -171,14 +172,30 @@ public class Co2ElmeasureConsumptionService {
         return "error".equalsIgnoreCase(status) || "failed".equalsIgnoreCase(status);
     }
 
+    /**
+     * Resolve Elmeasure center: explicit centerId → hfr_id mapping → nin_id mapping.
+     * NIN is only used when HFR is missing or does not resolve (prod sites with null hfr_id).
+     */
     private String resolveCenterId(MonthlyConsumptionRequest req) {
         if (StringUtils.hasText(req.getCenterId())) {
             return req.getCenterId().trim();
         }
         if (StringUtils.hasText(req.getHfrId())) {
-            Optional<String> center = centerIdMappingRepository.findCenterIdByHfrId(req.getHfrId().trim());
-            if (center.isPresent()) {
-                return center.get();
+            Optional<String> byHfr = centerIdMappingRepository.findCenterIdByHfrId(
+                    req.getHfrId().trim(),
+                    req.getFacilityName());
+            if (byHfr.isPresent()) {
+                return byHfr.get();
+            }
+        }
+        if (StringUtils.hasText(req.getNinId())) {
+            Optional<String> byNin = centerIdMappingRepository.findCenterIdByNinId(
+                    req.getNinId().trim(),
+                    req.getFacilityName());
+            if (byNin.isPresent()) {
+                log.info("Resolved facilityId={} via ninId={} (hfrId={}) to centerId={}",
+                        req.getFacilityId(), req.getNinId(), req.getHfrId(), byNin.get());
+                return byNin.get();
             }
         }
         return null;
