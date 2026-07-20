@@ -42,6 +42,7 @@ public class Co2MonthlyIndexPayload {
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private Long rmsInstallationDate;
     private Double solarSystemCapacity;
+    private Double totalSolarEnergyGeneratedInKwh;
     private int month;
     private int year;
     private String financialYear;
@@ -84,6 +85,7 @@ public class Co2MonthlyIndexPayload {
                 .solarInstallationDate(isoDateToEpochMillis(doc.getSolarInstallationDate()))
                 .rmsInstallationDate(isoDateToEpochMillis(doc.getRmsInstallationDate()))
                 .solarSystemCapacity(doc.getSolarSystemCapacity())
+                .totalSolarEnergyGeneratedInKwh(doc.getTotalSolarEnergyGeneratedInKwh())
                 .month(doc.getMonth())
                 .year(doc.getYear())
                 .financialYear(doc.getFinancialYear())
