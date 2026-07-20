@@ -50,6 +50,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
@@ -73,6 +74,7 @@ jobs:
         with:
           context: .
           file: build/maven/java-21.Dockerfile
+
           push: true
           tags: selcohub/translator-service:${{ env.VERSION }}-${{ env.commit_hash }}
           cache-from: type=gha   # Stores cache in GitHub Actions .
