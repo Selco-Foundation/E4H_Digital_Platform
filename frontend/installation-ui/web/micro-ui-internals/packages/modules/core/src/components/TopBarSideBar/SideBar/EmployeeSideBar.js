@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React from "react";
 import { SideNav, Loader } from "@egovernments/digit-ui-components";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
@@ -14,6 +14,7 @@ const EmployeeSideBar = () => {
   const history = useHistory();
   const tenantId = Digit.ULBService.getStateId();
   const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "installation-qc";
+  const translationUrl = `/${contextPath}/employee/pm/translation`;
 
   function extractLeftIcon(data = {}) {
     for (const key in data) {
@@ -156,6 +157,21 @@ const EmployeeSideBar = () => {
 
   const transformedData = transformData(splitKeyValue(configEmployeeSideBar));
   const sortedTransformedData= sortDataByOrderNumber(transformedData);
+  const translateItem = {
+    label: t("Translate"),
+    icon: { icon: "Search", iconFill: "transparent", width: "1.5rem", height: "1.5rem" },
+    selectedIcon: { icon: "Search", iconFill: "transparent", width: "1.5rem", height: "1.5rem" },
+    navigationUrl: translationUrl,
+    orderNumber: 3,
+  };
+  const hasTranslateItem = sortedTransformedData.some((item) => item?.navigationUrl === translationUrl);
+  const inboxIndex = sortedTransformedData.findIndex((item) => item?.navigationUrl?.toLowerCase?.().includes("inbox"));
+  const sideNavItems = [...sortedTransformedData];
+  if (!hasTranslateItem) {
+    sideNavItems.splice(inboxIndex >= 0 ? inboxIndex + 1 : sideNavItems.length, 0, translateItem);
+  }
+  const translateItemIndex = sideNavItems.findIndex((item) => item?.navigationUrl === translationUrl);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -166,14 +182,29 @@ const EmployeeSideBar = () => {
   
   return (
     <MediaQuery minWidth={768}>
+      {translateItemIndex >= 0 && (
+        <style>
+          {`
+            .employee-sidebar .digit-sidebar-items-container .item-child-wrapper:nth-child(${translateItemIndex + 1}) .icon svg {
+              display: none;
+            }
+            .employee-sidebar .digit-sidebar-items-container .item-child-wrapper:nth-child(${translateItemIndex + 1}) .icon::before {
+              content: "T";
+              color: #fff;
+              font-size: 18px;
+              font-weight: 700;
+            }
+          `}
+        </style>
+      )}
       <SideNav
-        items={sortedTransformedData}
+        items={sideNavItems}
         hideAccessbilityTools={true}
         onSelect={({ item, index, parentIndex }) => onItemSelect({ item, index, parentIndex })}
         theme={"dark"}
         variant={"primary"}
         transitionDuration={""}
-        className=""
+        className="employee-sidebar"
         styles={{}}
         expandedWidth=""
         collapsedWidth=""
@@ -184,8 +215,3 @@ const EmployeeSideBar = () => {
 };
 
 export default EmployeeSideBar;
-
-
-
-
-
