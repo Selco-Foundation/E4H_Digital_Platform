@@ -1,0 +1,154 @@
+{
+  "BusinessServices": [
+    {
+      "businessService": "LivelihoodIncident",
+      "business": "im-services",
+      "businessServiceSla": null,
+      "states": [
+        {
+          "state": null,
+          "sla": null,
+          "applicationStatus": null,
+          "isStartState": true,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "AUTO_ASSIGN",
+              "nextState": "PENDING_FOR_RESOLUTION",
+              "roles": ["SYSTEM_USER"]
+            },
+            {
+              "action": "CREATE",
+              "nextState": "PENDING_FOR_RESOLUTION",
+              "roles": ["COMPLAINANT", "LIVELIHOOD_POC", "SYSTEM_USER"]
+            }
+          ]
+        },
+        {
+          "state": "PENDING_FOR_RESOLUTION",
+          "sla": 604800000,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "RESOLVE",
+              "nextState": "RESOLVED",
+              "roles": ["LIVELIHOOD_VENDOR", "COMPLAINT_RESOLVER"]
+            },
+            {
+              "action": "OUT_OF_SCOPE",
+              "nextState": "OUT_OF_SCOPE_PENDING_POC",
+              "roles": ["LIVELIHOOD_VENDOR", "COMPLAINT_RESOLVER"]
+            },
+            {
+              "action": "OUT_OF_WARRANTY",
+              "nextState": "OUT_OF_WARRANTY_PENDING_VENDOR",
+              "roles": ["LIVELIHOOD_VENDOR", "COMPLAINT_RESOLVER"]
+            }
+          ]
+        },
+        {
+          "state": "OUT_OF_SCOPE_PENDING_POC",
+          "sla": 259200000,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "REASSIGN",
+              "nextState": "OUT_OF_SCOPE_PENDING_VENDOR",
+              "roles": ["LIVELIHOOD_POC"]
+            },
+            {
+              "action": "ASSIGN_VENDOR",
+              "nextState": "OUT_OF_SCOPE_PENDING_VENDOR",
+              "roles": ["LIVELIHOOD_POC"]
+            },
+            {
+              "action": "DECLINE_POC",
+              "nextState": "CLOSED_AFTER_DECLINE",
+              "roles": ["LIVELIHOOD_POC"]
+            }
+          ]
+        },
+        {
+          "state": "OUT_OF_SCOPE_PENDING_VENDOR",
+          "sla": 604800000,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "RESOLVE",
+              "nextState": "RESOLVED",
+              "roles": ["LIVELIHOOD_VENDOR", "COMPLAINT_RESOLVER"]
+            }
+          ]
+        },
+        {
+          "state": "OUT_OF_WARRANTY_PENDING_VENDOR",
+          "sla": 1209600000,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "RESOLVE",
+              "nextState": "RESOLVED",
+              "roles": ["LIVELIHOOD_VENDOR", "COMPLAINT_RESOLVER"]
+            },
+            {
+              "action": "DECLINE",
+              "nextState": "CLOSED_AFTER_DECLINE",
+              "roles": ["LIVELIHOOD_VENDOR", "COMPLAINT_RESOLVER"]
+            }
+          ]
+        },
+        {
+          "state": "RESOLVED",
+          "sla": 259200000,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": false,
+          "actions": [
+            {
+              "action": "REOPEN",
+              "nextState": "PENDING_FOR_RESOLUTION",
+              "roles": ["COMPLAINANT"]
+            },
+            {
+              "action": "AUTO_CLOSE",
+              "nextState": "CLOSED_AFTER_RESOLUTION",
+              "roles": ["SYSTEM_USER"]
+            }
+          ]
+        },
+        {
+          "state": "CLOSED_AFTER_RESOLUTION",
+          "sla": null,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": true,
+          "isStateUpdatable": false,
+          "actions": []
+        },
+        {
+          "state": "CLOSED_AFTER_DECLINE",
+          "sla": null,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": true,
+          "isStateUpdatable": false,
+          "actions": []
+        }
+      ]
+    }
+  ]
+}

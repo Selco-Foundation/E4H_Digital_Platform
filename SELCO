@@ -1,0 +1,444 @@
+------------------------------------------------------------------
+🌏️ SMS 🌏️
+-------------------------------------------------------------------
+https://www.smscountry.com/in
+user Name : helplineselco
+password : Selco@123
+it will send an OTP to me, whats app me @9886443508
+
+
+
+
+---------------------------------------------------------------------------------
+ Health Care Centre: TENANT_TENANTS_PG_DUMMY
+ 
+ --------------------------------------------------------------------------------
+ 
+ NEW DEV
+--------------------------------------------------------------------------------
+ 
+ https://e4h-dev.selcofoundation.org/
+HCR Credentials :- 
+User Name :7346864312
+Password: Beehyv@123
+Health Care Centre: TENANT_TENANTS_PG_DUMMY
+ 
+CRM Credentials  :-
+User Name : 7346864311
+Password: Beehyv@123
+Health Care Centre: pg
+ 
+Vendor/Technician  Credentials : -
+"userName": "selcoindia",
+"password": "Beehyv@123",
+Health Care Centre: TENANT_TENANTS_PG_DUMMY
+
+
+      "userName": "pg_state_program_manager",
+        "password":"Beehyv@123",
+
+------------------------------------------------------
+
+NEW UAT 
+-----------------------------------------------
+
+https://saura-emitra-uat.selcofoundation.org/digit-ui/employee
+ 
+UAT:
+HCR Credentials :- 
+User Name : 7346864312
+Password: Beehyv@123
+Health Care Centre: TENANT_TENANTS_PG_DUMMY
+ 
+CRM Credentials  :-
+User Name : 7346864311
+Password: Beehyv@123
+Health Care Centre: ALL
+ 
+Vendor/Technician  Credentials : -
+"userName": "selcoindia",
+"password": "Health@2026",
+Health Care Centre: TENANT_TENANTS_PG_DUMMY
+
+
+selcoindianew | Energy@123 | ALL - new UAT vendor
+
+
+---------------------------------------------------------------------------
+NAgaland URL▶️.--- prod done ✅️
+-------------------------------------------------------
+
+https://saura-emitra-uat.selcofoundation.org/nagaland-ui/employee/im/inbox
+
+HCR:
+aoyimkum hwc | IN1310000477 | Health@2026
+
+Technician:
+Aboriginal Energy	aboriginal	Energy@123
+A&D Solar		adsolar		Energy@123
+Earthners		earthners	Energy@123
+Solar world Nagaland	solarworld	Energy@123
+
+
+CRM: 8974350748 | Health@2026 | All
+
+SPM: 
+  "userName": "nl_spoc",
+            "password": "Health@2026",
+            
+            
+Vendor:
+            "userName": "aboriginal",
+            "password": "Aboriginal@915#",
+
+-----------------------------------------------------------------------------------------
+Manipur▶️:   prod done✅️
+-------------------------------------------------------------------------------------------
+https://saura-emitra-uat.selcofoundation.org/
+Vendor: 
+"userName": "snl",
+"password": "Energy@123",
+        
+"userName": "earthners",
+"password": "Energy@123",
+        
+"userName": "dkk3sons",
+"password": "Energy@123",
+        
+        
+CRM:e3
+8861811026
+Health@2026
+
+
+mn.ithai | 	 | Health@2026
+mn.leimapokpam | 2587815487 | Health@2026
+mn.nambol | 7877431622 | Health@2026
+
+state Spoc: state program manager mn | Health@2026
+ 
+-----------------------------------------------------------------------------------------------------------
+Mizoram▶️--  prod done ✅️
+---------------------------------------------------------------------------------
+ 
+https://saura-emitra-uat.selcofoundation.org/mizoram/employee/
+HCR:
+mz.maubuangsc | MaubuangSC | Health@2026
+mz.nserzawlsc | NSerzawlSC | Health@2026
+mz.lungdaiphc | LungdaiPHC | Health@2026
+mz.bairabiphc | BairabiPHC | Health@2026
+
+
+Vendor Details:
+        "userName": "ans",
+        "password": "Energy@123",
+        
+        
+        "userName": "agni",
+        "password": "Energy@123",
+        
+        
+        "userName": "krishnapower",
+        "password": "Energy@123",
+
+        "userName": "thaldo",
+        "password": "Energy@123",
+        
+
+Crm Details:
+            "userName": "7005197334",
+            "password": "Health@2026",
+
+ 
+--------------------------------------------------------------------------------------------------------------------------------
+Sikkim▶️-- Prod done ✅️
+-------------------------------------------------------------------------------------------------------------------------
+https://saura-emitra-uat.selcofoundation.org/sikkim
+
+HCR:------------
+sk.sakyongpentong | IN1110000097 | Health@2026
+sk.shyagyongrumtek | IN1110000105 | Health@2026
+sk.yangyang | IN1110000046 | Health@2026
+sk.simicklingzey | IN1110000111 | Health@2026
+sk.luing | IN1110000159 | Health@2026
+sk.penlong | IN1110000161 | Health@2026
+sk.martam | IN1110000131 | Health@2026
+sk.raymindu | IN1110000178 | Health@2026
+sk.pangthang | IN1110000138 | Health@2026
+
+Vendor:----
+
+"userName": "ers",
+"password": "Energy@123",
+
+CRM:
+"userName": "9108221156",
+"password": "Health@2026",
+----------------------------------------------------------------------------------------------------------------------------
+
+Karnataka▶️ prod done ✅️
+--------------------------------------------------------------
+
+pg.bagalkot | 2853844351 | Health@2026
+pg.shirur | 5772344379 | Health@2026
+pg.kamatagi | 1753616216 | Health@2026
+pg.hiresinganagutti | 5472458735 | Health@2026
+pg.chittaragi | 4482185735 | Health@2026
+pg.kandagall | 1115716829 | Health@2026
+pg.togunshi | 3581521162 | Health@2026
+pg.halakurki | 1715761225 | Health@2026
+pg.katageri | 5215752659 | Health@2026
+pg.kulagericross | 1457383386 | Health@2026
+pg.mustigeri | 2887665426 | Health@2026
+pg.belur | 3118715154 | Health@2026
+pg.malali | 6742384537 | Health@2026
+pg.lokapur | 5886268233 | Health@2026
+
+
+
+Vendor:
+            "userName": "selcoindia",
+            "password": "Energy@123",
+            
+CRM DETAILS:
+            "userName": "7346864311", # Not mobile Number
+            "password": "Health@2026",
+            
+            "userName": "7406614137",
+            "password": "Health@2026",
+        
+            "userName": "8867496495",
+           "password": "Health@2026",
+           
+State SPOC : dummy_state_program_manager/ Health@2026
+           
+-------------------------------------------------------------------------------------------------------------------------------------------
+ODISHA ▶️  prod done ✅️
+-------------------------------------------------------------------------------------------------------------------------------------------           
+
+or.adhamunda | 8467177658 | Health@2026
+or.adri | 2865178749 | Health@2026
+or.ainlajore | 8212252160 | Health@2026
+or.amath | 6867741453 | Health@2026
+or.ampani | 1111457725 | Health@2026
+
+CRM: 
+        "userName": "7204453505",
+        "password": "Health@2026",
+        
+        
+        Vendors:
+        "userName": "balaji",
+        "password": "Energy@123",
+        
+        
+        
+        "userName": "onergy",
+        "password": "Energy@123",
+        
+        
+        "userName": "solarinfra",
+        "password": "Energy@123",
+        
+        
+        "userName": "sunpay",
+        "password": "Energy@123",
+        
+        "userName": "tarini",
+        "password": "Energy@123",
+        
+        "userName": "elite",
+        "password": "Energy@123",
+        
+        "userName": "greengold",
+        "password": "Energy@123",
+        
+        
+         "userName": "kumudini",
+        "password": "Energy@123",
+
+---------------------------------------------------------------
+GUJURAT▶️ prod done ✅️
+---------------------------------------------------------------------------------------------------------
+
+https://saura-emitra-uat.selcofoundation.org/gujarat/employee/im/inbox
+HCR:
+gu.ajapupurmota | 3565171166 | Health@2026
+gu.ajapupurvanka | 5618776388 | Health@2026
+gu.amirgadh | 1115843516 | Health@2026
+gu.balundra | 8824328168 | Health@2026
+gu.chiknvas | 5762782448 | Health@2026
+gu.dabhela | 3681111351 | Health@2026
+gu.dabheli | 8761824336 | Health@2026
+
+CRM:
+        "userName": "9902330672",
+        "password": "Health@2026",
+        
+Vendor:
+        "userName": "renesys",
+        "password": "Energy@123",
+--------------------------------------------------------------------------------------------------------------------------------------------
+ASSAM▶️   prod done ✅️
+-----------------------------------------------------------------------------------------------------------------
+  https://saura-emitra-uat.selcofoundation.org/assam/
+
+HCR:
+as.rangamokha | 2646437281 | Health@2026
+as.manpur | 8868714513 | Health@2026
+as.tangla | 1113241762 | Health@2026
+as.bhokelikanda | 6866565846 | Health@2026
+as.singgaon | 7465158785 | Health@2026
+as.bahinigaon | 5235562310 | Health@2026
+as.bandargurisc | 8656384560 | Health@2026
+as.barpukhuri | 7752774336 | Health@2026   
+
+CRM:
+         "userName": "7204448952",
+         "password": "Health@2026",
+            
+        "userName": "9394685713",
+        "password": "Health@2026",
+        
+Vendor:
+        "userName": "ers",
+        "password": "Energy@123",
+
+        "userName": "kirloskar",
+        "password": "Energy@123",   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+MEGHALAYA ▶️ prod done ✅️
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------        
+https://saura-emitra-uat.selcofoundation.org/meghalaya/
+
+HCR:
+ml.digisinggre | mg-0001 | Health@2026
+ml.samkalakgre | mg-0002 | Health@2026
+ml.elaitchiapal | mg-0003 | Health@2026
+ml.rajaapal | mg-0004 | Health@2026
+ml.gosingpita | mg-0005 | Health@2026
+ml.akemgre | mg-0006 | Health@2026
+ml.aruakgre | mg-0007 | Health@2026
+ml.gokulgre | mg-0008 | Health@2026
+ml.damitdanggra | mg-0009 | Health@2026
+
+ CRM:       
+        "userName": "7204445246",
+        "password": "Health@2026",
+        
+        "userName": "7204448931",
+        "password": "Health@2026",
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Prod-Replica Url:▶️
+https://saura-emitra-dryrun.selcofoundation.org/
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+◀️Maharashtra▶️ 
+----------------------------------------------------------------------------------------------------
+
+CRM: 
+Maharashtra CRM | 8660872032 |  
+
+Vendor:
+
+Kirloskar Solar | kirloskar | Energy@123
+
+HCR:
+
+mh.durgapura | 8574533678 | Health@2026
+mh.tadali | 8665287549 | Health@2026
+mh.visapur | 1553522184 | Health@2026
+mh.kalmana | 4676232483 | Health@2026
+mh.kothari | 1111281687 | Health@2026
+mh.dongargaonkhadi | 3763138470 | Health@2026
+mh.sawaribeed | 8668343521 | Health@2026
+mh.nagari | 5415223220 | Health@2026
+mh.madheli | 4278265741 | Health@2026
+---------------------------------------------------------------------------------------------------------------------------------
+HRMS login
+--------------------------------------------------------------------------------------------------------------------------------
+credentials:
+hrms_admin
+Health@2026
+
+
+----------------------------------------------------------------------------
+jmeter 🌏️
+-------------------------------------------
+
+cd Downloads/apache-jmeter-5.6.3/bin/
+
+./jmeter.sh
+
+
+
+------------------------------------------------
+Kibana users 📊️
+------------------------------------------------------------------------------------
+Central User -
+username - central_user
+password - Health@2026
+E4H Operations & Monitoring Dashboard - Overview
+ 
+Karnataka State User -
+username - karnataka_user
+password - Health@2026
+E4H Operations & Monitoring Dashboard - State View
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+Vendor Details 📋️
+-----------------------------------------------------------------------------------------------------------
+
+https://beehyv0-my.sharepoint.com/:x:/g/personal/tanmaynitin_talele_beehyv_com/IQAAjBA67apEQrSvSrDLlUZ2AXwEx56wklvQdqNRFZotzbs?e=UkXf6T
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+RMS Dashboard details 📊️
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+https://selco.theiox.com/
+
+helpline@selcofoundation.org/ RmsOnm@7654321
+
+------------------------------------------------------------------------------------------------------------------
+
+Tech POC 🛂️
+-------------------------------------------------------------------------------------------
+
+super_tech_poc_uat/Beehyv@123 
+--------------------------------------------------------------------------------------------------------
+
+FIGMA LINK 📳️
+------------------------------------------------------------------------------------------------
+https://www.figma.com/design/QTYE57qpo0zHs20VxkFEiV/E4H-Digital-Platform--Selco?node-id=0-1&t=jfutlFpHzRShJNOl-1
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 

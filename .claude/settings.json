@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs -I{} basename {})",
+      "Bash(unzip -l /home/beehyv/.m2/repository/org/egov/services/tracer/2.9.0-SNAPSHOT/tracer-2.9.0-SNAPSHOT.jar)",
+      "Bash(javap -v -p -classpath extracted org.egov.tracer.model.ErrorRes)",
+      "Bash(javap -v -p -classpath extracted org.egov.tracer.model.Error)",
+      "Bash(mkdir -p /tmp/tr-pom)",
+      "Bash(unzip -o /home/beehyv/.m2/repository/org/egov/services/tracer/2.9.0-SNAPSHOT/tracer-2.9.0-SNAPSHOT.jar META-INF/maven/*/pom.xml -d .)",
+      "Bash(unzip -l /home/beehyv/.m2/repository/org/egov/services/services-common/2.9.0-SNAPSHOT/services-common-2.9.0-SNAPSHOT.jar)",
+      "Bash(java -cp /snap/intellij-idea-community/776/plugins/java-decompiler/lib/java-decompiler.jar org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler extracted/org/egov/tracer/ExceptionAdvise.class decompiled_out)",
+      "Bash(mkdir -p decompiled_out)",
+      "Bash(java -cp /snap/intellij-idea-community/776/plugins/java-decompiler/lib/java-decompiler.jar org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler extracted decompiled_out)",
+      "Bash(unzip -o /home/beehyv/.m2/repository/org/egov/services/tracer/2.9.0-SNAPSHOT/tracer-2.9.0-SNAPSHOT.jar org/egov/tracer/model/ErrorRes.class org/egov/tracer/model/Error.class)",
+      "Bash(javap -v org/egov/tracer/model/ErrorRes.class)",
+      "Bash(javap -v org/egov/tracer/model/Error.class)",
+      "Bash(mkdir -p /tmp/pm)",
+      "Bash(unzip -o /home/beehyv/.m2/repository/org/egov/common/health-services-models/1.0.25-SNAPSHOT/health-services-models-1.0.25-SNAPSHOT.jar org/egov/common/models/project/*.class org/egov/common/models/project/useraction/*.class org/egov/common/models/core/*.class -d .)",
+      "Bash(grep -v '\\\\$')",
+      "Bash(mvn -o dependency:tree)",
+      "Bash(unzip -o /home/beehyv/.m2/repository/org/egov/services/services-common/2.9.0-SNAPSHOT/services-common-2.9.0-SNAPSHOT.jar org/egov/common/contract/models/AuditDetails.class org/egov/common/contract/workflow/Action.class org/egov/common/contract/workflow/State.class)",
+      "Bash(javap -p org/egov/common/contract/workflow/Action.class)",
+      "Bash(javap -p org/egov/common/contract/workflow/State.class)",
+      "Bash(javap -p -classpath /tmp/sc_inspect/extracted org.egov.common.contract.request.RequestInfo)",
+      "Bash(javap -p -classpath /tmp/sc_inspect/extracted org.egov.common.contract.response.ResponseInfo)",
+      "Bash(javap -p -classpath /tmp/sc_inspect/extracted org.egov.common.contract.models.AuditDetails)",
+      "Bash(javap -p -classpath /tmp/sc_inspect/extracted org.egov.common.contract.models.Workflow)",
+      "Bash(javap -p -classpath /tmp/sc_inspect/extracted org.egov.common.contract.request.User)",
+      "Bash(javap -v org/egov/common/models/project/BeneficiarySearchRequest.class)",
+      "Bash(javap -v org/egov/common/models/project/BeneficiaryRequest.class)",
+      "Bash(javap -v org/egov/common/models/project/BeneficiaryBulkRequest.class)",
+      "Bash(javap -v org/egov/common/models/project/BeneficiaryBulkResponse.class)",
+      "Bash(javap -v org/egov/common/models/project/BeneficiaryResponse.class)",
+      "Bash(javap -p -classpath /tmp/hsm_inspect/extracted org.egov.common.models.core.URLParams)",
+      "Bash(javap -p -classpath /tmp/hsm_inspect/extracted org.egov.common.models.core.Role)",
+      "Bash(python3 -c ' *)"
+    ],
+    "additionalDirectories": [
+      "/home/beehyv/Desktop/Codes/Selco/E4H_Digital_Platform/backend/e4h-services"
+    ]
+  }
+}

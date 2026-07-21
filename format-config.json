@@ -1,0 +1,48 @@
+{
+  "key": "tlcertificate",
+  "config": {
+    "pageSize": "A4",
+    "pageOrientation": "portrait",
+    "pageMargins": [40, 40, 40, 40],
+    "content": [
+      {
+        "text": "Trade License Certificate",
+        "fontSize": 18,
+        "bold": true,
+        "alignment": "center",
+        "margin": [0, 0, 0, 20]
+      },
+      {
+        "image": "{{ownerPic}}",
+        "width": 80,
+        "height": 90,
+        "alignment": "center",
+        "margin": [0, 0, 0, 20]
+      },
+      {
+        "columns": [
+          { "text": "Application No:", "bold": true, "width": 150 },
+          { "text": "{{applicationNo}}" }
+        ],
+        "margin": [0, 5, 0, 5]
+      },
+      {
+        "columns": [
+          { "text": "Trade Name:", "bold": true, "width": 150 },
+          { "text": "{{tradeName}}" }
+        ],
+        "margin": [0, 5, 0, 5]
+      },
+      {
+        "columns": [
+          { "text": "Owner Name:", "bold": true, "width": 150 },
+          { "text": "{{ownerName}}" }
+        ],
+        "margin": [0, 5, 0, 5]
+      }
+    ],
+    "defaultStyle": {
+      "fontSize": 11
+    }
+  }
+}

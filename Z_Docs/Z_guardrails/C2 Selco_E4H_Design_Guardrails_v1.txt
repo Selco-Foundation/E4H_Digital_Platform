@@ -1,0 +1,949 @@
+﻿SELCO E4H PLATFORM
+Technical Design Guardrails & Coding Standards
+Built on DIGIT Platform Standards
+Version
+	Date
+	Author
+	Changes
+	1.0
+	June 2026
+	eGov Global
+	v1
+	
+
+
+
+Table of Contents
+PART I — INTRODUCTION
+1. About This Document
+2. How to Use This Document
+PART II — ARCHITECTURE & DESIGN
+3. Architecture Principles
+4. Design Governance Framework
+5. Service Design Guardrails
+6. Search and Data Access
+7. BFFs and Aggregator APIs
+8. Extensibility
+9. Security Engineering
+10. Performance, Scale, and Reliability
+11. Observability and Audit
+12. Data Architecture and Lifecycle
+13. Frontend Guardrails
+14. Multi-Tenancy and Compliance
+15. Progressive Delivery
+16. API Lifecycle Governance
+PART III — BUILD STANDARDS
+17. Naming Conventions
+18. Module Design and Layering
+19. Error Handling
+20. Input and Business Validation
+21. Data Contracts and Models
+22. Data Access and Query Building
+23. Event Producer Pattern
+24. Configuration Management
+25. Dependency Management
+26. Method Size and Idioms
+PART IV — PROCESS & GOVERNANCE
+27. Documentation Deliverables
+28. Design Communication
+29. Mentorship and Knowledge Sharing
+30. Handling Design Changes
+31. Unified Review Checklist
+32. Anti-Patterns
+33. Continuous Improvement
+________________
+
+
+Appendix A: Glossary
+This glossary explains the technical terms and acronyms used in this document in plain language, for product owners, programme managers, partners, and other non-technical readers. It is a reference aid and does not change any requirement in the sections above.
+Term / Acronym
+	Plain-language meaning
+	ABAC
+	Attribute-Based Access Control – deciding who can do what based on attributes (such as which tenant or region a record belongs to), not just a fixed role.
+	ADR
+	Architecture Decision Record – a short written note that records an important design choice, the options considered, and why one was picked.
+	Aggregator / BFF
+	Backend-for-Frontend – a helper service that combines data from several services into one tidy response shaped for a particular screen. It only reads data; it never changes it.
+	API
+	Application Programming Interface – the agreed set of requests one piece of software can make to another, like a menu of available actions.
+	API-first
+	Designing the public interface (the API) before writing the internal code, so other teams can build against it early.
+	Audit trail
+	An automatic record of who changed what and when, kept for accountability and investigation.
+	Canary / Blue-Green
+	Safe release techniques: a canary sends the new version to a small slice of users first; blue-green keeps two environments so you can switch over and roll back instantly.
+	CI/CD
+	Continuous Integration / Continuous Delivery – the automated pipeline that builds, tests, and ships code changes.
+	Circuit breaker
+	A safety switch that stops calling a failing service for a while, so one outage does not cascade into others.
+	DDD
+	Domain-Driven Design – organising software around real business areas (“domains”) and their rules, with clear ownership boundaries.
+	DIGIT
+	The open-source government technology platform these standards are built on. Selco E4H reuses its core design philosophy.
+	DLQ
+	Dead-Letter Queue – a holding area for messages that could not be processed, so they are not lost and can be examined later.
+	E4H
+	Energy for Health – the Selco platform these standards apply to.
+	Elasticsearch (ES)
+	A search-and-analytics database used to power fast lists, filters, and dashboards without straining the main database.
+	Event bus / Kafka
+	A messaging backbone where services announce that something happened (an “event”); other services react to it. Kafka is the tool commonly used for this.
+	Flyway
+	A tool that applies database changes in controlled, versioned steps so every environment stays in sync.
+	Idempotency
+	A property where doing the same operation twice has the same effect as doing it once – so a retried request does not create duplicates.
+	ILM
+	Index Lifecycle Management – rules that automatically roll over, archive, and delete search data as it ages.
+	Indexer
+	A background component that copies and reshapes data into Elasticsearch so it can be searched quickly.
+	MDMS
+	Master Data Management Service – the central place to store settings, lists, rules, and templates that change between tenants or over time, instead of hard-coding them.
+	mTLS
+	Mutual TLS – a way for two services to prove their identity to each other and encrypt traffic between them.
+	NFR
+	Non-Functional Requirement – a quality target such as speed, capacity, security, or availability, as opposed to a specific feature.
+	OIDC / OAuth
+	Standard ways to handle secure login and to grant limited access to a user’s data without sharing their password.
+	OpenAPI
+	A standard format for describing an API in writing, so it can be documented, tested, and generated consistently.
+	p95 latency
+	The response time that 95% of requests beat – a realistic measure of “slowest typical” speed, more useful than an average.
+	Persister
+	A component that listens for events on the event bus and is responsible for actually writing the data to the database.
+	PII
+	Personally Identifiable Information – data that can identify a person (name, phone, ID number). It must be protected and kept out of logs and dashboards.
+	RBAC
+	Role-Based Access Control – deciding what someone can do based on their assigned role (for example, “approver” or “viewer”).
+	Read model
+	A pre-built, read-only copy of data shaped for fast viewing and searching, kept separate from the master records.
+	RPO / RTO
+	Recovery Point Objective and Recovery Time Objective – how much recent data you can afford to lose, and how quickly you must be back up, after a failure.
+	Saga
+	A way to coordinate a multi-step process across services, with compensating steps to undo work if something fails partway.
+	SAST / DAST
+	Automated security testing: SAST scans the source code for flaws; DAST tests the running application for vulnerabilities.
+	SBOM
+	Software Bill of Materials – a list of all the third-party components in a release, used to track licences and security risks.
+	Schema registry
+	A central catalogue of the agreed shapes (“schemas”) of event messages, used to keep producers and consumers compatible.
+	SLA / SLO
+	Service Level Agreement / Objective – a promised or targeted level of service, such as how fast or how reliably something must perform.
+	Soft delete
+	Marking a record as inactive instead of permanently erasing it, so history is preserved and nothing is lost by accident.
+	SoR
+	System of Record – the single authoritative source for a piece of data. Other copies (such as search indexes) are derived from it.
+	STRIDE
+	A checklist method for thinking through security threats (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege).
+	UAT
+	User Acceptance Testing – final testing by real users to confirm the system meets their needs before go-live.
+	UUID
+	Universally Unique Identifier – a long, randomly generated ID used so records are unique across the whole system.
+	Workflow v2
+	The platform’s standard engine for approvals and status changes, instead of building custom status columns per service.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PART I
+Introduction
+
+
+________________
+
+
+1. About This Document
+This document is the single source of truth for engineering standards on the Selco E4H (Energy for Health) platform. It establishes the architectural principles, design processes, implementation conventions, and governance practices that all contributors must follow.
+The Selco E4H platform is built on the DIGIT open-source platform and inherits its core design philosophy. These standards ensure that every module delivered is secure, scalable, interoperable, and maintainable, while remaining accessible to the open-source community and external implementation partners.
+1.1 Audience
+* Platform architects and technical leads
+* Backend and frontend engineers
+* External implementation partners and open-source contributors
+* Product owners and programme managers
+* Quality assurance and DevOps teams
+1.2 Scope
+These standards apply to all backend services, frontend modules, BFF/aggregator layers, data pipelines, configuration packs, and infrastructure definitions developed for or integrated with the Selco E4H platform.
+1.3 Tactical Adoption Guide
+This section helps the current Selco E4H team start using this document immediately, and ensures that anyone who later takes over the platform — including government counterparts — can understand and continue the work without ambiguity.
+* Who is this document for today: Backend and frontend engineers use Parts II and III to make day-to-day design and coding decisions. Technical leads and architects use all four parts to drive design reviews and ensure consistency. Product owners and programme managers use Part I and the Maturity Scorecard (section 31) to track progress and governance readiness. External partners and incoming government teams use this document as the single reference for how the platform was designed and why.
+* How to use it for design and code reviews: Every design review and pull request must be checked against the Unified Review Checklist in section 32. Reviewers use the checklist as the standard — not personal judgement — so that feedback is objective and consistent. Disagreements about design choices are resolved by referencing the relevant section of this document and, where needed, by raising an Architecture Decision Record (ADR).
+* How to start using it on an existing platform: Teams joining mid-build should apply these standards to all new code and designs. For existing code that pre-dates these standards, leads should prioritise alignment on the highest-risk areas first (security, API contracts, data ownership). There is no requirement to retroactively rewrite compliant code.
+* Handover readiness: These standards are written to be understood by any competent engineering team, regardless of prior involvement in E4H. All validated design decisions are documented as ADRs and kept alongside the code. This document, together with the Gitbook documentation and code repositories, constitutes the handover pack.
+1.4 Why These Standards: Open Source Precedents
+These guardrails are not invented from scratch. They are grounded in the practices of established open-source government technology platforms and widely adopted engineering standards:
+* DIGIT Platform, HCM, UPYOG, and PUCAR: The Selco E4H platform is built directly on DIGIT. Across DIGIT and DIGIT-based platforms and products — including DIGIT HCM, UPYOG, and PUCAR — the same foundational principles are consistently followed: configuration-over-code through MDMS, workflow-driven approvals, API-first architecture with OpenAPI contracts, event-driven persistence using Kafka, and least-privilege RBAC. The guardrails outlined in this document build upon DIGIT’s established design standards and engineering practices, ensuring that teams already familiar with DIGIT will find the architecture patterns and implementation approach consistent and aligned.
+* eGovStack (UNDP / ITU initiative): eGovStack defines reference architecture for digital government building blocks. Its principles — interoperability, openness, security by design, and re-use — align directly with sections 3, 5, 9, and 16 of this document.
+* OWASP (Open Web Application Security Project): The security guardrails in section 9 (STRIDE threat modelling, input validation, PII handling, mTLS) reflect OWASP’s Application Security Verification Standard (ASVS) and Top 10.
+* The Twelve-Factor App methodology: The configuration, statelessness, event-driven, and observability principles throughout Part II align with the twelve-factor methodology for building scalable, maintainable services.
+2. How to Use This Document
+Find your role in the table below to know which parts to read, which sections to consult at each design phase, and what artefacts to produce. For teams joining an existing platform mid-build, apply the relevant sections to all new work; use the Maturity Scorecard (section 31) to track alignment for pre-existing code. Non-technical readers can refer to Appendix A: Glossary for plain-language definitions.
+Your Role
+	Parts to Read
+	Design Phases & Key Sections
+	Key Artefacts
+	Architect / Technical Lead
+	All four parts
+	Requirements & Scoping:  3, 4.1, 4.3
+Architecture Design (HLD):  5–16 (Part II)
+Review & Approval:  27–32 (Part IV), 32.1–32.3
+Ongoing Operation & Handover:  31, 34;  1.4, 1.5
+	ADRs, API specs, ERDs, event maps, RBAC map, design review checklist
+	Backend / Frontend Engineer
+	Part III (primary)
+Part II & IV for reference
+	Low-Level Design & Coding:  17–26 (Part III)
+Code Review:  32.4–32.5
+	Code, unit and integration tests, Flyway migrations, OpenAPI spec updates
+	QA / Test Lead
+	Part IV (primary)
+Part II for context
+	Testing & Release:  32.6–32.7
+Review & Approval:  27–32.3
+	Test strategy, test plan, QA sign-off, release artefacts, defect log
+	Product Owner / Programme Manager
+	Part I (primary)
+Part IV  31, 34
+	Requirements & Scoping: § 4.3
+Ongoing Operation:  31, 34
+	retrospective, changelog, roadmap
+	Government / Handover Team
+	Parts I and IV
+All parts as reference
+	Adoption & Governance:  1.4, 1.5
+Ongoing Operation:  31, 34
+	All artefacts; ADR log; handover pack
+	Non-Technical Reader
+	Part I + Appendix A
+	Read Appendix A: Glossary first, then Part I
+	Appendix A: Glossary
+	
+
+How the parts connect: Part II answers “what to build and why.” Part III answers “how to write the code.” Part IV answers how Parts II, III, and IV work together. The unified review checklist in section 32 covers all three.
+
+
+
+
+
+
+
+
+PART II
+Architecture & Design
+
+
+________________
+
+
+3. Architecture Principles
+The following principles are mandatory for every service and module on the platform. They are inherited from DIGIT and extended for E4H-specific needs.
+* Config over code: Anything likely to change across tenants, states, or deployments must be managed through MDMS (masters, toggles, templates), not hard-coded constants.
+* Least-privilege by design: Every API must be mapped to a role-action pair. Default deny is enforced; no super-admin roles are permitted in specifications.
+* System of Record vs System of Transaction: Separate systems of record from systems of transaction. Keep computed or derived views out of the system of record.
+* API-first: All services expose public, versioned REST APIs. Include OpenAPI specifications and example payloads in every design document.
+* Workflow everywhere: Human approvals and state transitions must use Workflow v2. Custom status columns are not permitted as substitutes.
+* Events, not cron: Cross-service reactions must use the event bus. Database polling and cron-based integrations are prohibited where events are feasible.
+* Data from day one: Elasticsearch indices, KPIs, and the analytical data models underpinning them must be designed as requirements, not retrofitted.
+* Observability from day one: Metrics, logs, traces, and audit trails are designed as first-class requirements alongside business features.
+________________
+
+
+4. Design Governance Framework
+The platform architect owns the design process end-to-end and is responsible for ensuring every design adheres to these standards and upholds the highest standards of quality, scalability, security, and consistency.
+4.1 Architect Responsibilities
+* Thoroughly analyse and validate all requirements to ensure alignment with the E4H roadmap and E4H interoperability guidelines.
+* Collaborate with technical leads from requirement analysis through final review, not only at the gate review stage.
+* Conducts audit reviews at periodic intervals to ensure alignment with platform standards.
+* Engage all stakeholders (product owner, tech leads, architects, and CTO) early and regularly to validate design decisions. All validated architectural design decisions must be documented as Architecture Decision Records (ADRs) so that the rationale, alternatives considered, and trade-offs are preserved for future contributors.
+* Ensure all design documentation is complete and follows the templates defined in this document.
+* Owns the High-Level Design (HLD) and all associated design documentation; defines Non-Functional Requirements (NFRs) in consultation with the product manager.
+* Guides technical leads on HLD execution through Low-Level Design (LLD) artefacts, clarifying design intent and resolving implementation ambiguities before coding begins.
+4.2 Design Quality Metrics
+Designs must be validated against the following metrics before approval:
+* Performance: Has the design been validated against the latency, throughput, and resource targets defined in the platform SLOs?
+* Scalability: Can the design accommodate future increases in data volume and load in a sustainable (logarithmic) manner?
+* Interoperability: Can the design integrate with other DIGIT services and external systems based on mission needs?
+* User experience: Does the design prioritise ease of use, intuitive workflows, and accessibility?
+* Security and privacy: Does the design comply with the security and privacy guidelines in section 9?
+4.3 Design Process Stages
+Pre-Design (Clarity)
+* Engage with product owners, programme leads,mission leads, and field partners to ensure requirements are clearly understood.
+* Validate that user personas, use cases, workflows, and value bundles are well-defined and aligned with business objectives before design begins.
+* Finalise the design scope. All open questions must be resolved before teams proceed.
+Design Execution
+* Provide technical direction on critical architectural decisions such as tenancy, eventing model (sync vs async), third party integrations, NFRs, etc..
+* Ensure leads and architects adhere to these standards and E4H best practices at every step.
+* Continuously monitor open-source solutions within and outside the E4H ecosystem and encourage reuse where applicable.
+* Implement a fortnightly sync with teams to provide feedback on ongoing design and ensure alignment with the architectural vision.
+Post-Design Review and Approval
+* Review the final design to ensure it meets project requirements and adheres to the standards.
+* Approve the design only after it meets the established quality metrics and has been validated for scalability, interoperability, security, privacy, and performance.
+* Conduct a design showcase to communicate design choices to stakeholders, the tech council, and the platform team.
+* Request validation from the open-source community and external partners when an external perspective is needed.
+________________
+
+
+5. Service Design Guardrails
+5.1 Domain and Data Ownership
+* DDD-lite: Define bounded contexts with a context map, aggregate roots, invariants, and an ownership table mapping services to entities.
+* Schema rules: Use UUID primary keys; include createdBy, createdTime, and lastModified fields; implement soft delete via status (no ON DELETE CASCADE).
+* Migrations: Use Flyway with idempotent scripts. Only additive, backward-compatible changes are permitted.
+* Read models: No runtime cross-service joins. Build search views via the Indexer and domain events.
+See Part III sections 21 and 22 for the implementation patterns that enforce these rules in code.
+5.2 Configuration (MDMS)
+* Store master lists, feature flags, validation constraints, fee/penalty tables, and document templates in MDMS.
+* Add validity dates (from/to) for master data where applicable.
+* Maintain separation between UI-specific masters and service masters. UI may reference service masters but not the reverse.
+* Versioning: Maintain schema version and change logs. Never edit master schemas in place without a version bump.
+* Validation: MDMS runtime validation of master data codes. Fail closed on unknown enums.
+5.3 Workflow
+* Model states as MDMS plus Workflow v2 configuration. Separate business state from technical status.
+* Include SLAs, assignee rules, escalation paths, and re-open paths. Provide sample definitions and state diagrams.
+* For complex workflows with hierarchy and business logic, consider integrating an external workflow engine (e.g. Cadence, Camunda).
+5.4 API Guidelines
+* Start with a minimal API surface: create, update, search, and workflow-transition where ever applicable..
+* Separate workflow transition APIs from data model update APIs for hygiene.
+* Use OpenAPI 3.0+ with examples, request/response contracts, error models, pagination, and filtering.
+* Use DIGIT common contract entities (Document, Workflow, ErrorRes, RequestInfo) via $ref.
+* Provide bulk APIs separate from regular CRUD APIs, since error handling may differ.
+* Enforce idempotency for updates. Do not leak internal IDs; use business keys.
+5.5 Events and Asynchronous Patterns
+* Separate transactional events (for persister/indexer) from domain events.
+* Topic naming: <domain>.<context>.<entity>.<event>.<version> (e.g. e4h.facility.asset.created.v1).
+* Payload must include minimal facts plus version, tenantId, traceId, and occurredAt.
+* Define dead-letter topics for every consumer.
+* Event schemas must be additive-only. Use a schema registry with compatibility tests in CI.
+See section 23 for the Kafka producer code pattern.
+________________
+
+
+6. Search and Data Access
+Service search APIs must query only the data owned by that service. For cross-service search with enrichment, use one of the following approaches:
+* An aggregator/BFF service that composes results by calling public APIs of the owning services.
+* Denormalised read models in Elasticsearch built via the Indexer or domain-specific analytics services.
+Cross-service SQL or database-to-database joins are never permitted. Aggregators are read-only; the owning service remains the source of truth.
+6.1 Decision Tree
+* Cross-entity fields in a response? Use an Aggregator or BFF.
+* Large list/search, ranking, or faceting? Use an Elasticsearch read model.
+* Transactional join needed? Revisit domain boundaries.
+7. BFFs and Aggregator APIs
+BFFs bridge UI needs with backend services by composing multiple public APIs into a single UI-friendly response.
+7.1 When to Use
+* A screen or widget needs data from multiple bounded contexts in one call.
+* The UI needs a tailored response shape, pagination, or sorting that differs from domain APIs.
+* Conditional inclusion of fields by role or tenant for presentation only.
+7.2 Design Rules
+* Public contracts only: Call owning services via documented APIs. Never access service databases directly.
+* Read-only by default: BFFs must not mutate systems of record.
+* Stable contracts: Version BFF endpoints independently of domain APIs.
+* Pagination propagation: Propagate page size, cursors, and totals correctly when aggregating lists.
+* Timeouts and fallbacks: Short per-call timeouts, circuit breakers, and graceful degradation.
+* Caching: Cache safe GET requests with TTL and ETags. Never cache RBAC decisions beyond token lifetime.
+________________
+
+
+8. Extensibility
+* Avoid hard-coded business rules: Use configurable rules (MDMS) or plug-in evaluators where variability exists. Identify these in advance and design for extensibility.
+* Pluggable adapters: External systems (payments, GPS, plant monitoring, SMS) must sit behind interfaces with config-driven endpoints and keys.
+* Document templates: All PDFs are generated from template packs (language and branding), not embedded HTML.
+9. Security Engineering
+* Identity: OIDC/OAuth for authentication; token exchange across BFFs; service-to-service mTLS; documented key rotation policy.
+* Secrets: Centralised secret manager; defined rotation cadences; CI secret-scan gates.
+* Threat modelling: STRIDE analysis for all internet-exposed endpoints. Mitigations must be tracked.
+* PII handling: Minimise collection; field-level encryption at rest; redact from logs; FileStore via signed URLs with TTL. No PII in dashboards.
+* RBAC/ABAC: Explicit API-to-action-to-role map included in every design. ABAC at domain/service level for attribute-level granularity.
+* Enable code and security linting on all repositories to catch vulnerabilities ahead of time.
+* Input validation: enforce size limits, file type restrictions, anti-zip-bomb checks, and authorisation checks before database hits.
+10. Performance, Scale, and Reliability
+* SLOs: State expected RPS, p95 latency, and throughput per hot path. Include back-of-envelope capacity math.
+* Caching: Read-only masters via in-memory or Redis with TTL.
+* Backpressure: Use async queues for heavy flows. Bulk exports run as background jobs with status polling.
+* Resilience: Circuit breakers, compensations for multi-step sagas, timeouts and retries with exponential backoff.
+* Error budgets: Define error budgets per service with an action policy for when budgets are exhausted.
+________________
+
+
+11. Observability and Audit
+* Metrics: API latency/throughput, workflow state counts, queue lag, indexer lag, error rates.
+* Logs: Structured JSON with traceId, user, tenant, and action. No PII in logs.
+* Tracing: Propagate W3C trace headers across gateway, services, and Kafka consumers.
+* Audit: Record who/what/when plus old-to-new diffs. Redact sensitive fields. Store diff snapshots.
+12. Data Architecture and Lifecycle
+12.1 Elasticsearch
+* Index design: Routing keys, shard/replica strategy, ILM with rollover, snapshot/restore procedures.
+* Zero-downtime reindex: Dual-write/backfill approach with cut-over verification.
+* Reconciliation SLO: Define maximum SoR-to-ES lag. Auto-heal jobs with dashboards and alerts on drift.
+* PII in ES: Masked or excluded. Retention and purge jobs must be defined.
+12.2 Lifecycle
+* Retention: Define data retention and archival policies. Implement purging jobs and legal holds.
+* Reconciliation: Periodic health checks for database-to-ES parity with repair jobs.
+* Backups and restores: Document RPO/RTO. Include restore drills.
+________________
+
+
+13. Frontend Guardrails
+These rules apply to all React/Micro UI modules. Backend code conventions are in Part III.
+* Role-based navigation: hide what the user cannot access.
+* Forms driven by JSON schema plus MDMS masters. Client-side validation from configuration.
+* Offline-tolerant data capture (where needed), resumable uploads, and draft states.
+* Inbox pattern implemented using Inbox v2 service with customisations. Ensure performance so users do not experience lag.
+* Base screens on the DIGIT component library (Atoms/Molecules) and follow design tokens.
+* Use localisation helpers (t("KEY")) for every user-facing string. Create localisation under module-specific names.
+* Fetch data via shared hooks (Digit.Hooks.use*) that respect tenant and auth handling.
+* Maintain responsive layout with the provided grid/flex utilities. Test on desktop and mobile. Use rem and percentages; avoid pixels.
+* Follow routing and state conventions (Redux slices or React Query as per module).
+* Use react-hook-form/DIGIT form components including validation messages.
+* Ensure accessibility: semantic markup, alt text, keyboard navigation, WCAG 2.2 AA.
+* Avoid inline styling. Use class-based CSS. Do not create custom components if they exist in the shared library.
+14. Multi-Tenancy and Compliance
+* Define the isolation model (row-level versus schema-per-tenant). Implement quotas and noisy-neighbour controls.
+* Residency and sovereignty: Region-pinned data with per-tenant KMS keys where required.
+15. Progressive Delivery
+* Use canary and blue/green deployment strategies. Define feature-flag taxonomy (experiment versus config) with kill-switches.
+* Schema choreography: Follow the sequence: write-old/read-both, then write-both/read-new, then remove-old.
+* CI gates must include SAST/DAST, SBOM generation, license checks, risk-tier coverage thresholds, and a flaky-test budget.
+16. API Lifecycle Governance
+* Lifecycle stages: Alpha, Beta, GA, Deprecated, Retired. Each stage has entry and exit criteria.
+* Deprecation policy: Include sunset headers, deprecation timelines, and migration guides. APIs are backward-compatible by default.
+* ADRs: Architecture Decision Records are required for choices involving data stores, event schemas, and external dependencies. Link ADRs from repositories.
+________________
+
+
+PART III
+Build Standards
+
+
+                 
+                 These conventions govern how engineers write, structure, and test code across all E4H services. They apply regardless of programming language, so every service on the platform looks and behaves consistently — making it easier to review, maintain, and hand over to any team.
+
+
+Language-agnostic conventions that apply to every service, regardless of implementation language.
+________________
+
+
+About this part
+DIGIT services are implemented in multiple languages (Java, Node.js, Python, Go, and others). The conventions below describe patterns and contracts, not language-specific syntax. Where examples appear, they use neutral pseudocode for illustration only.
+These conventions are recommended best practices, not strict mandates. They are strongly encouraged because consistent structure across services makes debugging, maintenance, and team handover significantly easier. Adapt the idioms to your language's conventions while preserving the underlying patterns wherever possible.
+	
+
+17. Naming Conventions
+Naming is the first thing reviewers see. Consistent names make it possible to navigate any service in the platform without learning per-service conventions.
+17.1 Module and Component Naming
+Every component follows the <Entity><Role> pattern. The role suffix identifies the layer at a glance, regardless of the implementation language.
+Role
+	Convention
+	Example
+	HTTP Handler
+	<Entity>Controller / <Entity>Handler
+	BoundaryController
+	Business Logic
+	<Entity>Service
+	BoundaryService
+	Input Validator
+	<Entity>Validator
+	BoundaryValidator
+	Data Enricher
+	<Entity>Enricher
+	BoundaryEnricher
+	Data Access
+	<Entity>Repository
+	BoundaryRepository
+	Query Builder
+	<Entity>QueryBuilder
+	BoundaryQueryBuilder
+	Row/Record Mapper
+	<Entity>Mapper
+	BoundaryMapper
+	Request Contract
+	<Entity>Request
+	BoundaryRequest
+	Response Contract
+	<Entity>Response
+	BoundaryResponse
+	Search Criteria
+	<Entity>SearchCriteria
+	BoundarySearchCriteria
+	Constants
+	<Domain>Constants
+	BoundaryConstants
+	Config
+	ApplicationProperties / Config
+	(single per service)
+	
+
+17.2 Function and Method Naming
+Functions follow the language's standard casing (camelCase, snake_case) but always start with an action verb that matches the layer.
+Layer
+	Verb Pattern
+	Example Names
+	HTTP Handler
+	create, search, update
+	create, search
+	Service
+	create<Entity>, search<Entity>
+	createBoundary
+	Validator
+	validate<Action><Entity>Request
+	validateCreateBoundaryRequest
+	Enricher
+	enrich<Action><Entity>Request
+	enrichCreateBoundaryRequest
+	Query Builder
+	get<Entity>SearchQuery
+	getBoundarySearchQuery
+	Private Helpers
+	descriptive verb phrase
+	validateBoundaryGeometry
+	
+
+17.3 Variable Naming
+* Use descriptive names. Abbreviations are not permitted.
+* Collections are always plural (boundaryList, errors, codes).
+* Maps describing a relationship include both sides (tenantIdToCodeMap).
+* Follow the language's idiomatic casing — camelCase for Java/JS/Go, snake_case for Python.
+17.4 Constants and Error Codes
+Constants live in a dedicated constants file (BoundaryConstants, boundary_constants.py, etc.). Every error constant must be paired: one for the machine-readable code and one for the human-readable message.
+Rule: paired error constants
+Every error constant exists as a code + message pair (e.g., DUPLICATE_CODE_CODE = "DUPLICATE_CODE" and DUPLICATE_CODE_MSG = "Boundary with same code already exists"). The platform's structured error responses depend on this pairing.
+	________________
+
+
+18. Module Design and Layering
+Every service follows a strict layered architecture. The processing sequence is fixed and applies to every language: validate, then enrich, then persist, then respond. There are no exceptions to this order.
+Layer
+	Responsibility
+	HTTP Handler
+	Routes incoming requests, deserialises the body, delegates to the service. Contains no business logic.
+	Service
+	Orchestrates the validate → enrich → persist → respond sequence. Contains no business rules itself; delegates each step.
+	Validator
+	Performs business rule validation. Public entry point delegates to private helpers. Each helper checks one rule.
+	Enricher
+	Adds UUIDs, audit details (created/modified timestamps and actors), and default values. Stateless — no instance state.
+	Repository
+	Data access. Thin wrapper that delegates query construction to a QueryBuilder and executes against the database.
+	
+
+18.1 The Standard Service Flow
+Every create, update, and delete operation follows this sequence in the service layer:
+// Pseudocode — applies to every language
+function createBoundary(request):
+    validator.validateCreateBoundaryRequest(request)   // step 1
+    enricher.enrichCreateBoundaryRequest(request)      // step 2
+    response = buildResponse(request)
+    repository.create(request)                         // step 3
+    return response                                    // step 4
+	
+
+18.2 Layer Boundaries
+* HTTP handlers must not call repositories or build business logic. They route to a service and return its result.
+* Services must not access the database directly. They must call repositories.
+* Validators and enrichers must not call repositories from helper methods unless the rule genuinely requires a database check (e.g., uniqueness).
+* Repositories must not invoke business logic. They translate criteria into queries and results into objects.
+________________
+
+
+19. Error Handling
+Every service uses the platform's structured error type — never the language's raw exception type. The platform's global error handler converts structured errors into consistent HTTP responses.
+19.1 Single Error
+Throw or return the structured error with a paired code and message.
+// Pseudocode
+raise StructuredError(
+    code:    ErrorCodes.INVALID_GEOMETRY_TYPE_CODE,
+    message: ErrorCodes.INVALID_GEOMETRY_TYPE_MSG
+)
+	
+
+19.2 Multiple Errors
+Collect all validation errors first, then surface them together. Never fail-fast on the first error during a batch validation — the user should see every problem in one round-trip.
+// Pseudocode
+errors = {}
+checkUserDetails(request, errors)
+checkGatewayActive(request, errors)
+checkDuplicates(request, errors)
+
+
+if errors is not empty:
+    raise StructuredError(errors)
+	
+
+19.3 Contextual Information
+Add runtime context to error messages using square brackets so logs and responses identify which entity triggered the error.
+// Pseudocode
+raise StructuredError(
+    code:    DUPLICATE_CODE_CODE,
+    message: DUPLICATE_CODE_MSG + "[" + tenantId + "," + code + "]"
+)
+	
+
+Pair every code with a message
+Every error has a code constant and a message constant defined together in the constants file. The code is the stable machine identifier; the message is the human-readable description. Clients depend on the code; users see the message.
+	________________
+
+
+20. Input and Business Validation
+Validation happens in two places. The rule is simple: declarative validation for format and presence; programmatic validation for business constraints.
+20.1 Declarative Validation (on the data contract)
+* Use the language's standard schema validation (Bean Validation in Java, Pydantic in Python, struct tags in Go, Joi/Zod in Node.js).
+* Enforce required fields, type, format (pattern, email, UUID), and size bounds (min/max for collections and strings).
+* This layer catches malformed input before any business logic runs.
+// Pseudocode contract definition
+BoundaryRequest:
+    requestInfo: RequestInfo (required, valid)
+    boundary:    List<Boundary> (required, size 1..300)
+
+
+Boundary:
+    id:           string (UUID format)
+    tenantId:     string (required, pattern: tenant)
+    code:         string (required, max 64)
+	
+
+20.2 Programmatic Validation (in the Validator)
+* Use for business rules: uniqueness, existence checks, cross-field constraints, references to master data.
+* Each rule is a private helper. The public method calls each helper in turn.
+* Collect errors instead of throwing on the first failure (see section 19.2).
+Split rule of thumb
+If a rule can be expressed by reading a single field's value, it belongs in declarative validation. If it requires a database lookup, another request field, or context from elsewhere, it belongs in the Validator.
+	________________
+
+
+21. Data Contracts and Models
+Request, response, and entity contracts are the public surface of every service. They must be stable, explicit, and consistent across the platform.
+21.1 Rules
+* Explicit field names: Every contract field declares its serialised name explicitly (via @JsonProperty in Java, alias in Pydantic, struct tags in Go, etc.). Never rely on automatic camelCase ↔ snake_case conversion.
+* Auto-generated boilerplate: Use the language's mechanism to generate getters, setters, equality, hash, and string representation (Lombok in Java, dataclasses in Python, generated code in Go). Hand-written boilerplate is not permitted.
+* Builder pattern for construction: Where the language supports it, prefer builder/named-argument construction over positional constructors.
+* Schema-flexible fields: Fields whose schema varies by tenant or use case (additionalDetails, geometry) use a generic JSON type — never a fixed structure.
+* Shared contracts: Audit fields, request envelopes, and response envelopes (AuditDetails, RequestInfo, ResponseInfo) come from the platform's shared contracts library. Never re-implement them per service.
+21.2 Mandatory Audit Fields
+Every persisted entity carries an AuditDetails block with four fields. These are populated by the Enricher layer, not by the caller.
+Field
+	Description
+	createdBy
+	UUID of the user who created the record
+	createdTime
+	Epoch milliseconds when the record was created
+	lastModifiedBy
+	UUID of the user who last modified the record
+	lastModifiedTime
+	Epoch milliseconds of the last modification
+	________________
+
+
+22. Data Access and Query Building
+Direct SQL strings inside repository methods are prohibited in every language. All queries are built in a dedicated QueryBuilder component using the language's parameterised query mechanism.
+22.1 Repository Pattern
+Repositories are thin. They translate criteria into a query (via QueryBuilder), execute it, and map results.
+// Pseudocode
+function search(criteria):
+    params = []
+    query  = queryBuilder.getSearchQuery(criteria, params)
+    return db.execute(query, params, mapper)
+	
+
+22.2 Do vs Don't
+DO
+// Build SQL in QueryBuilder
+query = queryBuilder
+    .getSearchQuery(
+        criteria, params)
+
+
+// Always use parameters
+db.execute(query, params)
+
+
+// Push writes to event bus
+producer.publish(topic, request)
+	DON'T
+// Inline string concatenation
+sql = "SELECT * FROM "
+    + "boundary WHERE "
+    + "tenant_id = '"
+    + tenantId + "'"
+
+
+// Direct write from service
+db.execute(
+    "INSERT INTO ...")
+	
+
+22.3 Persistence via the Event Bus
+Service code does not execute write queries directly. Writes are published to the event bus, and the platform's persister consumes the event and performs the actual database write.
+* The service publishes a domain event to a configured topic.
+* The persister consumes the event and writes to the database according to a registered schema.
+* This decouples the service from database concerns and ensures every write produces an auditable event.
+* Reads (search APIs) go directly through repositories; only writes flow through the event bus.
+________________
+
+
+23. Event Producer Pattern
+Event publishing is wrapped in a thin Producer component. Topic names are injected from configuration — never hardcoded in business logic. See section 5.5 for topic naming and payload rules.
+23.1 Producer Component
+// Pseudocode
+class Producer:
+
+
+    function publish(topic, payload):
+        eventBus.send(topic, payload)
+
+
+    function publishForTenant(tenantId, topic, payload):
+        resolved = resolveTenantTopic(tenantId, topic)
+        eventBus.send(resolved, payload)
+	
+
+23.2 Rules
+* Topic names come from the configuration component (see section 24), not from string literals.
+* Multi-tenant deployments resolve tenant-specific topic names through a shared utility.
+* Payloads conform to the event schema registered with the platform's schema registry.
+* Every event carries minimal facts plus version, tenantId, traceId, and occurredAt.
+24. Configuration Management
+All configuration is centralized in a single configuration component per service. Configuration values come from environment variables, config files, or the platform's config service — never from hardcoded literals.
+// Pseudocode configuration component
+class ApplicationConfig:
+    userServiceHost      : string  ← "egov.user.host"
+    createBoundaryTopic  : string  ← "kafka.topics.create.boundary"
+    defaultPageLimit     : int     ← "boundary.default.limit"
+    maxPageLimit         : int     ← "boundary.max.limit"
+	
+
+24.1 Rules
+* One config component per service. Never split configuration across multiple classes or modules.
+* Hierarchical key naming. Use the format <service>.<entity>.<attribute> with dot separators.
+* No hardcoded environment values. Hostnames, topic names, timeouts, page sizes, and feature flags all come from configuration.
+* Secrets via secret manager. Credentials and API keys are loaded from the platform's secret manager, never from config files.
+________________
+
+
+25. Dependency Management
+Use the platform's shared libraries instead of reinventing common functionality:
+* Shared contracts library: for request/response envelopes, user details, audit details, error contracts, and common data types.
+* Tracing library: for distributed tracing, structured errors, and correlation ID propagation.
+* Encryption client: for PII encryption and decryption via the platform's encryption service.
+* Master data client: for loading master data from MDMS.
+________________
+
+
+26. Method Size and Idioms
+Methods stay short by decomposing into private helpers. The targets below are observable across the E4H codebase and hold across languages.
+Method Type
+	Target Length
+	Service method
+	5 to 10 lines (orchestration only)
+	Validator public method
+	3 to 5 lines (delegates to helpers)
+	Private helpers
+	10 to 20 lines of actual logic
+	Query builder method
+	Split into buildQuery, addPagination, addOrderBy
+	
+
+26.1 Iteration Style
+Prefer the language's higher-order iteration idiom (streams in Java, list comprehensions in Python, range/iterators in Go, map/filter/forEach in JavaScript) over manual index-based loops where the language supports it idiomatically.
+26.2 Null and Emptiness Checks
+Use the language's standard utility methods for null and emptiness checks. The intent — "is this value present and non-empty" — should be obvious from the call.
+* Check for null/None using a named utility, not implicit truthiness.
+* Check for empty collections using a dedicated emptiness check, not by comparing length to zero.
+* Use language-idiomatic optional types where available.
+________________
+
+
+PART IV
+Process & Governance
+
+
+________________
+
+
+27. Documentation Deliverables
+The following artefacts must ship with every design. Designs missing required documentation will not be approved.
+* Context and objectives (what problem is being solved, who uses it).
+* Domain model (ERD plus SoR map).
+* Sequence diagrams for the top 3 to 5 flows from UI to registry and back.
+* API specification (OpenAPI file plus curl documentation).
+* Workflow configuration with state diagram.
+* MDMS pack outline (keys, schemas, sample files).
+* RBAC/ABAC map (API to action to role/attributes).
+* Event map (topic names, payload examples, compatibility rules).
+* Indexing plan (indices, analysers, PII treatment, reconciliation SLO).
+* UI architecture including BFFs/aggregators.
+* NFRs (performance numbers, observability, security).
+* Migration plan (from/to, data seeding, cut-over).
+* Test plan (unit, contract, performance, security, UAT scenarios).
+All documentation must be kept up to date in Gitbook, including high-level architecture, API contracts (in the spec repository), sequence diagrams, user flow diagrams, and DB entity relationship diagrams.
+28. Design Communication
+* Document and share all design-related decisions with stakeholders promptly.
+* Maintain a continuous communication thread to the CTO, principal architect, and relevant platform team members for major decisions.
+* Document all events, decisions, and updates in real-time. Ensure there are no gaps in communication or understanding.
+* Conduct design showcases after each major design milestone.
+________________
+
+
+29. Mentorship and Knowledge Sharing
+* Foster open communication between designers, engineers, and product owners.
+* Provide mentorship and technical guidance to leads, architects, and junior engineers.
+* Facilitate knowledge-sharing sessions where teams learn from each other.
+* Ensure leads and architects conduct sessions for developers on critical design decisions, explaining the rationale.
+* Conduct regular one-on-one calls with engineers (weekly or bi-weekly) to provide actionable feedback and gather process improvement insights.
+* Conduct sessions explaining existing designs within the DIGIT/E4H ecosystem, detailing the reasoning behind architectural choices.
+30. Handling Design Changes
+* Proactively manage design changes. Any alterations or scope changes must be documented, justified, and approved by relevant stakeholders.
+* When facing evolving requirements, maintain continuous engagement with product owners to communicate implications on design and timeline.
+* Work with engineering teams to assess the impact of design changes on implementation.
+* For breaking changes, ensure a migration path is included as part of the documentation.
+31. Unified Review Checklist
+Copy this checklist into every design review and pull request. It combines architectural, build/coding standards, and QA checks. Every item must be considered before approval.
+31.1 Architecture & Design (Part II)
+* Configuration is in MDMS (no hard-coded enums, fees, or templates).
+* Workflow is used for human approvals; SLA and escalation set.
+* Clear system of record defined; read models in ES; no cross-service joins.
+* OpenAPI specification present with examples; idempotency and pagination covered.
+* The RBAC table is complete with least-privilege defaults.
+* Kafka events are versioned; DLQ paths defined.
+* FileStore plus PDF templates parameterised; no raw PII in logs.
+* Observability: metrics, logs, and traces hooked; audit diffs recorded.
+* NFRs: target p95, throughput, and backpressure design defined.
+* Resilience: timeouts, retries, circuit breakers defined; error model standardised.
+* Indexing: mappings, analysers, reindex plan, and reconciliation jobs defined.
+* Data protection: retention, archival, purge, and encryption plan defined.
+* ADRs linked; lifecycle stage declared (Alpha/Beta/GA).
+* Multi-tenant isolation and data residency documented.
+* BFF contract: fan-out budget, cache policy, fallback states defined.
+31.2 Process (Part IV)
+* All documentation deliverables listed in section 27 are present and up to date.
+* Test artefacts included: sample MDMS, workflow YAML, seed data, Postman/JMeter collections.
+* Migrations: Flyway scripts additive; rollback strategy documented.
+31.3 Code Review — Backend (Part III)
+Applies to backend service implementation and every pull request. Covers structural patterns (Part III) and review criteria (DIGIT code review checklist). For frontend pull requests, apply the Frontend Guardrails in section 13 as the review standard.
+* HTTP handlers route only; no business logic in the controller layer.
+* The service method follows the sequence: validate → enrich → persist → respond.
+* The validator has a single public entry point; all rule logic is in private helpers. Multiple validation errors are collected first and surfaced together.
+* The enricher is stateless — no instance state, side-effect-free apart from request mutation.
+* Each class and method has a single responsibility; method lengths stay within the section 26 targets.
+* Names follow section 17; no abbreviations, dead code, commented-out blocks, or leftover TODOs.
+* The change does what the requirement or ticket describes; no unrelated or out-of-scope changes are bundled in.
+* Data contracts use the platform’s auto-generated boilerplate; no hand-written getters, setters, or equals. All serialised field names are declared explicitly. Shared platform contracts are used for audit, request, and response envelopes.
+* No hard-coded values: hosts, topic names, timeouts, page sizes, and business constants come from configuration or MDMS. All configuration is centralized in one configuration component per service.
+* Dependencies are declared at construction time, not via globals.
+* SQL is built in a QueryBuilder; no inline query strings, no string-concatenated user input, and no N+1 query patterns.
+* Input is validated and sanitised before any database hit; size, type, and authorisation checks are present.
+* Writes go through the event bus persister; service code does not write to the database directly. Idempotency is enforced for updates; business keys are used and internal IDs are not leaked.
+* Structured platform errors are used with paired code and message; no exceptions swallowed or rethrown without context.
+* Logging is structured JSON with traceId; no PII, secrets, or tokens in logs; no stray print or console statements.
+* Unit and integration tests are added or updated with meaningful assertions; coverage meets the agreed threshold.
+* Public APIs and OpenAPI specs are updated; backward compatibility is preserved or a migration path is documented. Flyway migration scripts are additive and idempotent; no destructive changes.
+* No new high or critical findings from SAST and dependency (SCA) scans; dependencies are current and licence-compliant.
+* Commits are small, focused, and clearly described; no merge conflicts; the reviewer is not the author (no self-approval).
+* Higher-order iteration idioms are used where the language supports them.
+
+
+31.4 Code Review - Frontend (Part III)
+Applies to every React or Micro UI pull request. Adapted from the DIGIT frontend code review checklist and the Frontend Guardrails in section 13.
+* No hard-coded user-facing strings; every label uses the localisation helper (t(“KEY”)) with keys added to the module bundle.
+* Components reuse the DIGIT component library (Atoms/Molecules); no duplicate component is created where a shared one exists.
+* No inline styles; styling is class-based and uses the shared design tokens; sizes use rem or percentages, not pixels.
+* Navigation, actions, and fields are hidden when the user’s role lacks access; RBAC is honoured in the UI.
+* Data is fetched via shared hooks (Digit.Hooks.use*) that respect tenant and auth handling; no ad-hoc API calls.
+* Forms use the standard form components with validation messages; client-side validation comes from configuration.
+* Loading, empty, and error states are handled for every asynchronous view; there are no silent failures.
+* Layout is responsive and tested on desktop and mobile; inbox and list screens perform without noticeable lag.
+* No console logs, debugger statements, or commented-out code are left in the bundle.
+* State and routing follow the module’s convention (Redux slices or React Query); patterns are not mixed.
+* Localisation is tested in all supported languages (for example, English and Hindi), including right-to-left where applicable.
+31.5 Test Strategy & Test Plan (Part IV)
+Confirm before test execution begins. Adapted from the DIGIT test strategy, test plan, and review checklist.
+* A test strategy and test plan exist and are reviewed and signed off by the test lead.
+* Scope is explicit: what is in scope and out of scope for this release is stated.
+* Test types are identified: unit, integration, contract, system, regression, performance, security, and UAT.
+* Every requirement or acceptance criterion maps to at least one test case (a traceability matrix is maintained).
+* Entry and exit criteria for each test phase are defined and measurable.
+* Test environments mirror production configuration; test data and seed data are prepared and access is granted.
+* Risk-based prioritisation is applied so high-risk areas get the deepest coverage.
+* Automation scope is defined and regression candidates are identified for automation.
+* Roles, responsibilities, and the testing timeline are agreed.
+* The defect management process is defined: logging, triage, severity and priority, and retest.
+* Non-functional targets to be tested (p95 latency, throughput, load profile) are stated and match the NFRs.
+31.6 QA Testing (Part IV)
+Confirm before release sign-off. Adapted from the DIGIT QA testing checklist.
+* Functional testing passed against every acceptance criterion; positive, negative, and boundary cases are covered.
+* The regression suite is executed and passed on the release build.
+* API testing is run (for example, Postman collections) covering both success and error contracts.
+* Performance and load testing is run (for example, JMeter) against the stated targets, and results are recorded.
+* Security testing is performed; there are no open high or critical vulnerabilities.
+* Workflow and role-based access are tested end to end, including escalation and re-open paths.
+* Localisation is verified for all supported languages; there are no missing or untranslated keys.
+* Cross-browser, device, and responsive checks are completed and verified.
+* Data validation is checked: mandatory fields, formats, and master-data references behave as configured.
+* All defects are logged with severity and priority, and fixed defects are retested and closed.
+* Release artefacts are verified: release notes, MDMS/configs/Devops updates, UAT credentials, and Git tags.
+* Test cases are up to date in the shared sheet and verified by the test lead; final QA sign-off is recorded.
+32. Anti-Patterns
+The following patterns must be rejected during design and code review:
+* Business rules are hard-coded in service logic.
+* New status columns used instead of Workflow.
+* Direct table reads across services or database-to-database joins.
+* Cron-only integrations where events are possible.
+* PDFs hard-coded in UI or service code.
+* Catch-all admin role granting every action.
+* BFF writing directly to service databases.
+* Mega endpoints without pagination or filters.
+* Bypassing RBAC or mixing data across tenants in a single response.
+* Dependencies resolved through globals or service locators instead of construction-time injection.
+* Inline SQL string concatenation in repositories.
+* Raw language exceptions thrown instead of the platform's structured error type.
+* Direct database writes from service code (bypassing the event bus persister).
+* Hardcoded topic names, hostnames, or timeouts in business logic.
+* Re-implementation of shared platform contracts (AuditDetails, RequestInfo, ResponseInfo).
+* Hand-written boilerplate (getters, setters, equals, hashCode) where the language provides generation.
+* Reliance on default serialisation conventions instead of explicit field name declarations.
+33. Continuous Improvement
+* After every major release or design milestone, conduct retrospectives to assess what worked and what could be improved.
+* Seek feedback from the tech council, product teams, and engineering teams to identify opportunities for improving the design process.
+* Ensure that learnings from each project feed back into these standards, so future projects benefit from past experience.
+* Maintain a changelog of guideline updates aligned with lifecycle governance and deprecation timelines.

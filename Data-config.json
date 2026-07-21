@@ -1,0 +1,49 @@
+{
+  "key": "tlcertificate",
+  "DataConfigs": {
+    "serviceName": "trade-license",
+    "version": "1.0.0",
+    "baseKeyPath": "$.Licenses.*",
+    "entityIdPath": "$.id",
+    "isCommonTableBorderRequired": true,
+    "mappings": [
+      {
+        "mappings": [
+          {
+            "direct": [
+              {
+                "variable": "applicationNo",
+                "value": { "path": "$.applicationNumber" }
+              },
+              {
+                "variable": "tradeName",
+                "value": { "path": "$.tradeName" }
+              },
+              {
+                "variable": "ownerName",
+                "value": { "path": "$.tradeLicenseDetail.owners[0].name" }
+              }
+            ]
+          },
+          {
+            "externalAPI": [
+              {
+                "path": "http://localhost:8083/filestore/v1/files/url",
+                "queryParam": "tenantId=$.tenantId,fileStoreIds=$.tradeLicenseDetail.applicationDocuments[?(@.documentType=='OWNERPHOTO')].fileStoreId",
+                "apiRequest": null,
+                "requesttype": "GET",
+                "responseMapping": [
+                  {
+                    "variable": "ownerPic",
+                    "value": "$.fileStoreIds[0].url",
+                    "type": "image"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
