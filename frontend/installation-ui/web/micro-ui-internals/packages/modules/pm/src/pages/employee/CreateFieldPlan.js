@@ -80,6 +80,8 @@ const getUniqueICCPrepopulationRows = (rows = []) => Object.values(rows.reduce((
 
 const getNewICCPrepopulationRows = (rows = []) => rows.filter((row) => row?.file && !row.file?.isSavedTemplate);
 
+const isScheduledFieldPlan = (status) => normalizeICCValue(status) === "scheduled";
+
 const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
   const iccReportsData = new FormData();
   const items = rows.map((row) => ({
@@ -869,6 +871,7 @@ const CreateFieldPlan = () => {
               iccTemplates: getICCTemplates(createdFieldPlan, fieldPlanData),
               validationAttempt: iccPrepopulationValidationAttempt,
               fieldPlanId: createdFieldPlan?.id || fieldPlanId,
+              fieldPlanStatus: createdFieldPlan?.status,
               setToast,
               setBlockUI,
             },
@@ -1156,6 +1159,14 @@ const CreateFieldPlan = () => {
           const newRows = getNewICCPrepopulationRows(rows);
 
           if (newRows.length) {
+            if (isScheduledFieldPlan(createdFieldPlan?.status)) {
+              setToast({
+                key: "error",
+                label: "PRE_FILLING_TEMPLATE_SCHEDULED_ERROR",
+              });
+              return;
+            }
+
             const rowsToCreate = newRows.filter((row) => !row.template?.id);
             const rowsToUpdate = newRows.filter((row) => row.template?.id);
 
