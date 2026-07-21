@@ -57,6 +57,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
         rejectionReasonsToUpload[key] = reasons[key].map(reason => ({
           reason: reason.reason,
           comment: reason.comment,
+          sectionLabel: reason.sectionLabel,
         }));
       }
     })

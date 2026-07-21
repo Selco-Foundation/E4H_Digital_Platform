@@ -3,7 +3,12 @@ import axios from "axios";
 export const QCService = {
 
   fetchDocumentDetails : async (fileUrl) => {
-    const response = await axios.get(fileUrl);
+    let response;
+    try {
+      response = await axios.head(fileUrl);
+    } catch (error) {
+      response = await axios.get(fileUrl);
+    }
 
     const contentDisposition = response.headers["content-disposition"];
     let fileName = decodeURIComponent(fileUrl.split("/").pop().split("?")[0]);
@@ -45,3 +50,4 @@ export const QCService = {
     };
   },
 }
+

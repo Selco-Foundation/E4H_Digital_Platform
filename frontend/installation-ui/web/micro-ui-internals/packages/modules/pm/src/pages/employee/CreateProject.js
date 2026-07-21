@@ -223,7 +223,7 @@ const CreateProject = () => {
               name: "justificationCode",
               error: t("JUSTIFICATION_CODE_VALIDATION_ERROR"),
               validation: {
-                pattern: /^JUS-\d{5}(?:-\d)?$/,
+                pattern: /^(?:JUS|SFJ)-\d{5}(?:-\d)?$/,
               },
             },
           },
