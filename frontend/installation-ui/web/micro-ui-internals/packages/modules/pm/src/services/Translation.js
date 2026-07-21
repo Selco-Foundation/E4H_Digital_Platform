@@ -3,7 +3,7 @@ import { CustomRequest } from "../components/Custom/CustomRequest";
 export const TranslationService = {
   translateExcel: async (translationRequest) => {
     return await CustomRequest({
-      url: "/translate/excel",
+      url: "/translator/translate/excel",
       data: translationRequest,
       method: "POST",
       auth: true,
