@@ -183,18 +183,15 @@ class BomRepository {
         .assetTypeEqualTo(assetType)
         .findAll();
 
-    assets.sort((a, b) {
-      final aSerial = a.serialNumber.trim();
-      final bSerial = b.serialNumber.trim();
-      final serialCompare = aSerial.compareTo(bSerial);
-      if (serialCompare != 0) return serialCompare;
-      return a.id.compareTo(b.id);
-    });
+    assets.sort((a, b) => a.id.compareTo(b.id));
 
     final serialNumbers = <Map<String, dynamic>>[];
+    final includedSerialNumbers = <String>{};
     for (final asset in assets) {
       final serialNumber = asset.serialNumber.trim();
-      if (serialNumber.isEmpty) continue;
+      if (serialNumber.isEmpty || !includedSerialNumbers.add(serialNumber)) {
+        continue;
+      }
       serialNumbers.add({
         'srNo': serialNumbers.length + 1,
         'serialNumber': serialNumber,
