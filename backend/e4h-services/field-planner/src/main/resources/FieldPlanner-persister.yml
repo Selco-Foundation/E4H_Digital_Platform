@@ -816,3 +816,56 @@ serviceMaps:
             - jsonPath: $.comments.*.auditDetails.lastModifiedBy
             - jsonPath: $.comments.*.auditDetails.createdTime
             - jsonPath: $.comments.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Saves field plan templates
+      fromTopic: save-field-plan-template-topic
+      isTransaction: true
+      isAuditEnabled: true
+      module: FIELDPLANNER
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.FieldPlanTemplates.[0].auditDetails.createdBy
+      auditAttributeBasePath: $.FieldPlanTemplates.*
+      queryMaps:
+        - query: INSERT INTO field_plan_template (id, field_plan_id, system_type, total_capacity, template_data, tenant_id, file_store_id, created_by, last_modified_by, created_time, last_modified_time) VALUES (?,?,?,?,?,?,?,?,?,?,?);
+          basePath: $.FieldPlanTemplates.*
+          jsonMaps:
+            - jsonPath: $.FieldPlanTemplates.*.id
+            - jsonPath: $.FieldPlanTemplates.*.fieldPlanId
+            - jsonPath: $.FieldPlanTemplates.*.systemType
+            - jsonPath: $.FieldPlanTemplates.*.totalCapacity
+            - jsonPath: $.FieldPlanTemplates.*.templateData
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.FieldPlanTemplates.*.tenantId
+            - jsonPath: $.FieldPlanTemplates.*.fileStoreId
+            - jsonPath: $.FieldPlanTemplates.*.auditDetails.createdBy
+            - jsonPath: $.FieldPlanTemplates.*.auditDetails.lastModifiedBy
+            - jsonPath: $.FieldPlanTemplates.*.auditDetails.createdTime
+            - jsonPath: $.FieldPlanTemplates.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Updates field plan templates
+      fromTopic: update-field-plan-template-topic
+      isTransaction: true
+      isAuditEnabled: true
+      module: FIELDPLANNER
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.FieldPlanTemplates.[0].auditDetails.lastModifiedBy
+      auditAttributeBasePath: $.FieldPlanTemplates.*
+      queryMaps:
+        - query: UPDATE field_plan_template SET field_plan_id=?, system_type=?, total_capacity=?, template_data=?, file_store_id=?, last_modified_by=?, last_modified_time=? WHERE id=?;
+          basePath: $.FieldPlanTemplates.*
+          jsonMaps:
+            - jsonPath: $.FieldPlanTemplates.*.fieldPlanId
+            - jsonPath: $.FieldPlanTemplates.*.systemType
+            - jsonPath: $.FieldPlanTemplates.*.totalCapacity
+            - jsonPath: $.FieldPlanTemplates.*.templateData
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.FieldPlanTemplates.*.fileStoreId
+            - jsonPath: $.FieldPlanTemplates.*.auditDetails.lastModifiedBy
+            - jsonPath: $.FieldPlanTemplates.*.auditDetails.lastModifiedTime
+            - jsonPath: $.FieldPlanTemplates.*.id
