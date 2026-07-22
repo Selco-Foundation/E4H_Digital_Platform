@@ -627,6 +627,8 @@ FIELD_PLAN_FACILITY_ADDITIONAL_FIELD_TO_SCHEMA_PATH = {
     "systemType": "system_type",
     "solarSolutionDesignType": "facility_details.solar_solution_design_type",
     "totalSystemCapacity": "total_system_capacity",
+    "customSolarSolutionDesignType": "custom_solar_solution_design",
+    "customTotalSystemCapacity": "custom_solar_system_capacity",
 }
 
 
@@ -636,7 +638,8 @@ def apply_field_plan_facility_additional_fields(
 ) -> None:
     """
     Overlay a linked FieldPlanFacility's additionalFields codes (facilityType/systemType/
-    solarSolutionDesignType/totalSystemCapacity, as written by build_field_plan_facility_additional_fields
+    solarSolutionDesignType/totalSystemCapacity/customSolarSolutionDesignType/
+    customTotalSystemCapacity, as written by build_field_plan_facility_additional_fields
     when the facility was included in the field plan) onto `facility`, in place, at the same
     schema-code paths format_facility_data_for_template already resolves code -> label from via
     facility_schema's mdms_values - so the Excel template shows the label, not the raw code.
