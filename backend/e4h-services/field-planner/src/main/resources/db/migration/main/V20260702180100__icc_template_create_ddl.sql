@@ -1,4 +1,4 @@
-CREATE TABLE icc_templates (
+CREATE TABLE IF NOT EXISTS icc_templates (
                                id VARCHAR(64) PRIMARY KEY,
                                system_type VARCHAR(100) NOT NULL,
                                total_system_capacity VARCHAR(100),
