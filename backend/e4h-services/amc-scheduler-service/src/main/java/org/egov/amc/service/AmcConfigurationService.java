@@ -219,8 +219,18 @@ public class AmcConfigurationService {
         int originalDurationMonths = amcConfigurationFromDB.getDurationMonths();
         int originalVisitFrequencyMonths = amcConfigurationFromDB.getVisitFrequencyMonths();
         String originalVendorId = amcConfigurationFromDB.getVendorId();
+        Map<String, Object> originalGeographyDetails = amcConfigurationFromDB.getGeographyDetails();
         AuditDetails originalAuditDetails = amcConfigurationFromDB.getAuditDetails();
 
+        /*
+         * Geography details may only change districts/blocks; the state is read-only once set
+         */
+        if (!isValidGeographyDetailsUpdate(originalGeographyDetails, amcConfiguration.getGeographyDetails())) {
+            throw new CustomException(
+                    "AMC_UPDATE_ERROR",
+                    "Cannot change state in geographyDetails during update"
+            );
+        }
 
         /*
          * Update the amcConfiguration with new start date, end date, and additional details
@@ -231,6 +241,7 @@ public class AmcConfigurationService {
         amcConfigurationFromDB.setDurationMonths(amcConfiguration.getDurationMonths());
         amcConfigurationFromDB.setVisitFrequencyMonths(amcConfiguration.getVisitFrequencyMonths());
         amcConfigurationFromDB.setVendorId(amcConfigurationFromDB.getId());
+        amcConfigurationFromDB.setGeographyDetails(amcConfiguration.getGeographyDetails());
         amcConfigurationFromDB.setAuditDetails(amcConfiguration.getAuditDetails());
 
         /*
@@ -239,7 +250,7 @@ public class AmcConfigurationService {
         if (!isValidCascadingUpdate(amcConfigurationFromDB, amcConfiguration)) {
             throw new CustomException(
                     "AMC_UPDATE_ERROR",
-                    "Can only update amc configs dates, asset types, vendor and additional details"
+                    "Can only update amc configs dates, asset types, vendor, geography details and additional details"
             );
         }
 
@@ -252,6 +263,7 @@ public class AmcConfigurationService {
         amcConfigurationFromDB.setDurationMonths(originalDurationMonths);
         amcConfigurationFromDB.setVisitFrequencyMonths(originalVisitFrequencyMonths);
         amcConfigurationFromDB.setVendorId(originalVendorId);
+        amcConfigurationFromDB.setGeographyDetails(originalGeographyDetails);
         amcConfigurationFromDB.setAuditDetails(originalAuditDetails);
 
         /*

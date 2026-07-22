@@ -14,7 +14,7 @@ serviceMaps:
       transactionCodeJsonPath: $.id
       auditAttributeBasePath: $.*
       queryMaps:
-        - query: INSERT INTO amc_configuration (id, tenant_id, vendor_id, facility_id, asset_types, project_id, duration_months, visit_frequency_months, configuration_start_date, configuration_end_date, status, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        - query: INSERT INTO amc_configuration (id, tenant_id, vendor_id, facility_id, asset_types, project_id, duration_months, visit_frequency_months, configuration_start_date, configuration_end_date, status, geography_details, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           basePath: $.AmcConfigurations.*
           jsonMaps:
             - jsonPath: $.AmcConfigurations.*.id
@@ -40,6 +40,10 @@ serviceMaps:
             - jsonPath: $.AmcConfigurations.*.configurationEndDate
 
             - jsonPath: $.AmcConfigurations.*.status
+
+            - jsonPath: $.AmcConfigurations.*.geographyDetails
+              type: JSON
+              dbType: JSONB
 
             - jsonPath: $.AmcConfigurations.*.additionalDetails
               type: JSON
@@ -85,7 +89,7 @@ serviceMaps:
       transactionCodeJsonPath: $.id
       auditAttributeBasePath: $.*
       queryMaps:
-        - query: UPDATE amc_configuration SET vendor_id = ?, facility_id = ?, asset_types = ?, project_id = ?, duration_months = ?, visit_frequency_months = ?, configuration_start_date = ?, configuration_end_date = ?, status = ?, additional_details = ?, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
+        - query: UPDATE amc_configuration SET vendor_id = ?, facility_id = ?, asset_types = ?, project_id = ?, duration_months = ?, visit_frequency_months = ?, configuration_start_date = ?, configuration_end_date = ?, status = ?, geography_details = ?, additional_details = ?, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
           basePath: $.AmcConfigurations.*
           jsonMaps:
             - jsonPath: $.AmcConfigurations.*.vendorId
@@ -107,6 +111,10 @@ serviceMaps:
             - jsonPath: $.AmcConfigurations.*.configurationEndDate
 
             - jsonPath: $.AmcConfigurations.*.status
+
+            - jsonPath: $.AmcConfigurations.*.geographyDetails
+              type: JSON
+              dbType: JSONB
 
             - jsonPath: $.AmcConfigurations.*.additionalDetails
               type: JSON
