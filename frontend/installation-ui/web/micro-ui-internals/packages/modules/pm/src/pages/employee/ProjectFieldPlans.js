@@ -1,31 +1,23 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import useProject from "../../hooks/useProject";
 import InfoCard from "../../components/ProjectFieldPlans/InfoCard";
-import { Loader, Table } from "@egovernments/digit-ui-react-components";
+import { Loader } from "@egovernments/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
-import { Link, useHistory, useRouteMatch } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 import { populateWorkingProject } from "../../redux/actions";
 import { useDispatch } from "react-redux";
 import IntroModal from "../../components/IntroModal";
-import useFieldPlan from "../../hooks/useFieldPlan";
-import useAMCConfiguration from "../../hooks/useAMCConfiguration";
+import FieldPlanTable from "../../components/ProjectFieldPlans/FieldPlanTable";
+import AssessmentTable from "../../components/ProjectFieldPlans/AssessmentTable";
+import AMCTable from "../../components/ProjectFieldPlans/AMCTable";
 
 const ProjectFieldPlans = () => {
 
   const { t } = useTranslation();
-  const tenantId = Digit.ULBService.getStateId();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
-  const { path } = useRouteMatch();
   const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
-  const queryParams = new URLSearchParams(window.location.search);
-  const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
-  const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
-  const prevPageSizeRef = useRef(pageSize);
-  const [amcPageSize, setAMCPageSize] = useState(10);
-  const [amcPageOffset, setAMCPageOffset] = useState(0);
-  const prevAMCPageSizeRef = useRef(amcPageSize);
   const [createdProject, setCreatedProject] = useState(null);
   const dispatch = useDispatch();
   const [introModalData, setIntroModalData] = useState(null);
@@ -41,30 +33,6 @@ const ProjectFieldPlans = () => {
     id: [projectId],
   });
 
-  const { isLoading: fieldPlanDataLoading, data: fieldPlanData } = useFieldPlan({
-    tenantId,
-    projectIds: [projectId],
-  });
-
-  const { isLoading: amcConfigurationDataLoading, data: amcConfigurationData } = useAMCConfiguration({
-    tenantId,
-    projectIds: [projectId],
-  }, amcPageSize, amcPageOffset);
-
-  useEffect(() => {
-    if (prevPageSizeRef.current !== pageSize) {
-      setPageOffset(0);
-      prevPageSizeRef.current = pageSize;
-    }
-  }, [pageSize]);
-
-  useEffect(() => {
-    if (prevAMCPageSizeRef.current !== amcPageSize) {
-      setAMCPageOffset(0);
-      prevAMCPageSizeRef.current = amcPageSize;
-    }
-  }, [amcPageSize]);
-
   useEffect(() => {
     const project = projectData?.projects?.[0];
     if (project) {
@@ -72,158 +40,6 @@ const ProjectFieldPlans = () => {
       setCreatedProject(project);
     }
   }, [projectData])
-
-  const formatDate = (timestamp) => {
-    const date = new Date(timestamp);
-    const month = date.toLocaleString("en-US", { month: "long" });
-    const day = String(date.getDate()).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
-  };
-
-  const placeHolderFieldPlans = [ {}, {} ]
-
-  const GetHead = (value) => (
-    <div style={{ height: "38px", width: "100%", display: "flex", alignItems: "center" }}>
-      <span>{value}</span>
-    </div>
-  );
-
-  const GetCell = (value) => (
-    <span style={{ fontSize: "16px", fontWeight: "400", fontFamily: "Roboto", color: "#363636" }}>
-      {value}
-    </span>
-  );
-
-  const GetActivityList = (activities) => (
-    <div style={{display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center"}}>
-      {activities?.map((activity) => (
-        <span
-          key={activity.code}
-          style={{
-            backgroundColor: "#F1FFF8",
-            color: "#00703C",
-            width: "fit-content",
-            padding: "5px 10px",
-          }}
-        >
-          {activity.name}
-        </span>
-      ))}
-    </div>
-  )
-
-  const columns = useMemo(
-    () => [
-      {
-        id: "fieldPlanName",
-        Header: () => GetHead(t("FIELD_PLAN_NAME")),
-        Cell: ({ row }) => (
-          <Link
-            to={`/${window.contextPath}/employee/pm/project/${projectId}/field-plan/create?fieldPlanId=${row.original["id"]}&key=1`}
-            style={{ color: "#C84C0E" }}
-          >
-            {row.original["name"]}
-          </Link>
-        ),
-      },
-      {
-        id: "activities",
-        Header: () => GetHead(t("ACTIVITIES")),
-        Cell: ({ row }) => GetActivityList(row.original["activities"]),
-      },
-      {
-        id: "startDate",
-        Header: () => GetHead(t("START_DATE")),
-        Cell: ({ row }) => GetCell(row.original["startDate"] ? formatDate(row.original["startDate"]) : ""),
-      },
-      {
-        id: "endDate",
-        Header: () => GetHead(t("END_DATE")),
-        Cell: ({ row }) => GetCell(row.original["endDate"] ? formatDate(row.original["endDate"]) : ""),
-      },
-      {
-        id: "numberOfHealthFacilities",
-        Header: () => GetHead(t("NUMBER_OF_HEALTH_FACILITIES")),
-        Cell: ({ row }) => GetCell(row.original["healthFacilityNumber"]),
-      },
-      {
-        id: "status",
-        Header: () => GetHead(t("FIELD_PLAN_STATUS")),
-        Cell: ({ row }) => GetCell(row.original["status"] ? t(`PM_FIELD_PLAN_STATUS_${row.original["status"].toUpperCase()}`) : ""),
-      },
-    ],
-    [t]
-  );
-
-  const amcColumns = useMemo(
-    () => [
-      {
-        id: "amcPlanName",
-        Header: () => GetHead(t("AMC_PLAN_NAME")),
-        Cell: ({ row }) => (
-          <Link
-            to={`/${window.contextPath}/employee/pm/project/${projectId}/amc/create?amcConfigurationId=${row.original["id"]}&key=1`}
-            style={{ color: "#C84C0E" }}
-          >
-            {row.original["name"]}
-          </Link>
-        ),
-      },
-      {
-        id: "activities",
-        Header: () => GetHead(t("ACTIVITIES")),
-        Cell: ({ row }) => GetActivityList(row.original["activities"]),
-      },
-      {
-        id: "startDate",
-        Header: () => GetHead(t("START_DATE")),
-        Cell: ({ row }) => GetCell(row.original["startDate"] ? formatDate(row.original["startDate"]) : ""),
-      },
-      {
-        id: "endDate",
-        Header: () => GetHead(t("END_DATE")),
-        Cell: ({ row }) => GetCell(row.original["endDate"] ? formatDate(row.original["endDate"]) : ""),
-      },
-      {
-        id: "numberOfHealthFacilities",
-        Header: () => GetHead(t("NUMBER_OF_HEALTH_FACILITIES")),
-        Cell: ({ row }) => GetCell(row.original["healthFacilityNumber"]),
-      },
-      {
-        id: "status",
-        Header: () => GetHead(t("AMC_STATUS")),
-        Cell: ({ row }) => GetCell(row.original["status"] ? t(`AMC_STATUS_${row.original["status"].toUpperCase()}`) : ""),
-      },
-    ],
-    [t]
-  );
-
-  const onPageSizeChange = (e) => {
-    setPageSize(parseInt(e.target.value));
-    setPageOffset(0);
-  }
-
-  const onAMCPageSizeChange = (e) => {
-    setAMCPageSize(parseInt(e.target.value));
-    setAMCPageOffset(0);
-  }
-
-  const onNextPage = () => {
-    setPageOffset(pageOffset + pageSize);
-  }
-
-  const onPrevPage = () => {
-    setPageOffset(pageOffset - pageSize);
-  }
-
-  const onAMCNextPage = () => {
-    setAMCPageOffset(amcPageOffset + amcPageSize);
-  }
-
-  const onAMCPrevPage = () => {
-    setAMCPageOffset(amcPageOffset - amcPageSize);
-  }
 
   const handleFieldPlanCreationNavigation = () => {
     history.push(`/${window.contextPath}/employee/pm/project/${projectId}/field-plan/create`);
@@ -233,74 +49,48 @@ const ProjectFieldPlans = () => {
     history.push(`/${window.contextPath}/employee/pm/project/${projectId}/amc/create`);
   }
 
+  const handleAssessmentCreationNavigation = () => {
+    history.push(`/${window.contextPath}/employee/pm/project/${projectId}/assessment/create`);
+  }
+
+  const sections = useMemo(() => [
+    {
+      key: "ASSESSMENTS",
+      heading: t("PM_LABEL_ASSESSMENT_PLANS"),
+      buttonLabel: t("PM_ACTION_ADD_ASSESSMENT_PLAN"),
+      showAddIcon: true,
+      action: handleAssessmentCreationNavigation,
+      introTitle: "PM_BEFORE_CREATING_ASSESSMENT_PLAN_TITLE",
+      introSubTitle: "PM_BEFORE_CREATING_ASSESSMENT_PLAN_SUBTITLE",
+      introDescription: "PM_BEFORE_CREATING_ASSESSMENT_PLAN_DESC",
+      Table: AssessmentTable,
+    },
+    {
+      key: "FIELD_PLANS",
+      heading: t("CS_COMMON_FIELD_PLANS"),
+      buttonLabel: t("PM_ACTION_ADD_FIELD_PLAN"),
+      showAddIcon: true,
+      action: handleFieldPlanCreationNavigation,
+      introTitle: "PM_BEFORE_CREATING_FIELD_PLAN_TITLE",
+      introSubTitle: "PM_BEFORE_CREATING_FIELD_PLAN_SUBTITLE",
+      introDescription: "PM_BEFORE_CREATING_FIELD_PLAN_DESC",
+      Table: FieldPlanTable,
+    },
+    {
+      key: "AMC",
+      heading: t("PM_LABEL_AMCS"),
+      buttonLabel: t("PM_ACTION_SET_UP_AMC"),
+      showAddIcon: false,
+      action: handleAMCCreationNavigation,
+      introTitle: "PM_BEFORE_CREATING_AMC_TITLE",
+      introSubTitle: "PM_BEFORE_CREATING_AMC_SUBTITLE",
+      introDescription: "PM_BEFORE_CREATING_AMC_DESC",
+      Table: AMCTable,
+    },
+  ], [t, projectId]);
+
   if (projectDataLoading) {
     return <Loader />
-  }
-
-  const renderFieldPlanTable = () => {
-
-    if (fieldPlanDataLoading) {
-      return <Loader />;
-    }
-
-    return (
-      <div style={{ borderRadius: "6px", overflow: "hidden", boxShadow: "0px 0px 4px 0 rgba(0, 0, 0, 0.2)" }}>
-        <Table
-          t={t}
-          data={fieldPlanData?.fieldPlans?.length ? fieldPlanData.fieldPlans : placeHolderFieldPlans}
-          columns={columns}
-          customTableWrapperClassName={"project-details-table"}
-          getCellProps={() => {
-            return {
-              style: {
-                height: "70px",
-                minHeight: "fit-content",
-              }
-            };
-          }}
-          styles={{minWidth: "300px", overflow: "auto"}}
-          onNextPage={onNextPage}
-          onPrevPage={onPrevPage}
-          currentPage={Math.floor(pageOffset / pageSize)}
-          totalRecords={fieldPlanData?.totalCount || placeHolderFieldPlans.length}
-          onPageSizeChange={onPageSizeChange}
-          pageSizeLimit={pageSize}
-        />
-      </div>
-    )
-  }
-
-  const renderAMCConfigurationTable = () => {
-
-    if (amcConfigurationDataLoading) {
-      return <Loader />;
-    }
-
-    return (
-      <div style={{ borderRadius: "6px", overflow: "hidden", boxShadow: "0px 0px 4px 0 rgba(0, 0, 0, 0.2)" }}>
-        <Table
-          t={t}
-          data={amcConfigurationData?.amcConfigurations?.length ? amcConfigurationData.amcConfigurations : placeHolderFieldPlans}
-          columns={amcColumns}
-          customTableWrapperClassName={"project-details-table"}
-          getCellProps={() => {
-            return {
-              style: {
-                height: "70px",
-                minHeight: "fit-content",
-              }
-            };
-          }}
-          styles={{minWidth: "300px", overflow: "auto"}}
-          onNextPage={onAMCNextPage}
-          onPrevPage={onAMCPrevPage}
-          currentPage={Math.floor(amcPageOffset / amcPageSize)}
-          totalRecords={amcConfigurationData?.totalCount || placeHolderFieldPlans.length}
-          onPageSizeChange={onAMCPageSizeChange}
-          pageSizeLimit={amcPageSize}
-        />
-      </div>
-    )
   }
 
   return (
@@ -311,112 +101,68 @@ const ProjectFieldPlans = () => {
         </div>
       )}
       {createdProject && (<InfoCard t={t} project={createdProject} />)}
-      <div style={{display: "flex", gap: "15px", alignItems: "center", marginTop: "20px", marginBottom: "25px"}}>
-        <div style={{fontSize: "32px", fontWeight: "bold", fontFamily: "Roboto Condensed", color: "#0B0C0C"}}>
-          {t("CS_COMMON_FIELD_PLANS")}
-        </div>
-        <button
-          type="button"
-          className={"jk-digit-secondary-btn"}
-          style={{
-            display: "flex",
-            justifyContent: "space-around",
-            alignItems: "center",
-            height: "32px",
-            padding: "0px 20px",
-            cursor: !createdProject?.status ? "default" : "pointer",
-            opacity: !createdProject?.status ? "0.5" : "1",
-          }}
-          disabled={!createdProject?.status}
-          onClick={() => setIntroModalData({
-            action: handleFieldPlanCreationNavigation,
-            title: "PM_BEFORE_CREATING_FIELD_PLAN_TITLE",
-            subTitle: "PM_BEFORE_CREATING_FIELD_PLAN_SUBTITLE",
-            description: "PM_BEFORE_CREATING_FIELD_PLAN_DESC",
-          })}
-        >
-          <span
-            style={{
-              width: "18px",
-              height: "18px",
-              borderRadius: "5px",
-              background: "#C84C0E",
-              color: "white",
-              fontSize: "20px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginRight: "10px"
-            }}
-          >
-            +
-          </span>
-          <span
-            style={{
-              fontSize: "16px",
-              fontWeight: "500",
-              fontFamily: "Roboto"
-            }}
-          >
-            {t("CORE_COMMON_ADD_NEW")}
-          </span>
-        </button>
-      </div>
-      {renderFieldPlanTable()}
-      <div style={{display: "flex", gap: "15px", alignItems: "center", marginTop: "45px", marginBottom: "25px"}}>
-        <div style={{fontSize: "32px", fontWeight: "bold", fontFamily: "Roboto Condensed", color: "#0B0C0C"}}>
-          {t("AMC")}
-        </div>
-        <button
-          type="button"
-          className={"jk-digit-secondary-btn"}
-          style={{
-            display: "flex",
-            justifyContent: "space-around",
-            alignItems: "center",
-            height: "32px",
-            padding: "0px 20px",
-            cursor: !createdProject?.status ? "default" : "pointer",
-            opacity: !createdProject?.status ? "0.5" : "1",
-          }}
-          disabled={!createdProject?.status}
-          onClick={() => setIntroModalData({
-            action: handleAMCCreationNavigation,
-            title: "PM_BEFORE_CREATING_AMC_TITLE",
-            subTitle: "PM_BEFORE_CREATING_AMC_SUBTITLE",
-            description: "PM_BEFORE_CREATING_AMC_DESC",
-          })}
-        >
-          <span
-            style={{
-              width: "18px",
-              height: "18px",
-              borderRadius: "5px",
-              background: "#C84C0E",
-              color: "white",
-              fontSize: "20px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginRight: "10px"
-            }}
-          >
-            +
-          </span>
-          <span
-            style={{
-              fontSize: "16px",
-              fontWeight: "500",
-              fontFamily: "Roboto"
-            }}
-          >
-            {t("CORE_COMMON_ADD_NEW")}
-          </span>
-        </button>
-      </div>
-      {renderAMCConfigurationTable()}
+      {sections.map((section) => {
+        const SectionTable = section.Table;
+        return (
+          <div key={section.key} style={{marginTop: "40px"}}>
+            <div style={{display: "flex", gap: "15px", alignItems: "center", justifyContent: "space-between", marginBottom: "25px"}}>
+              <div style={{fontSize: "32px", fontWeight: "bold", fontFamily: "Roboto Condensed", color: "#0B0C0C"}}>
+                {section.heading}
+              </div>
+              <button
+                type="button"
+                className={"jk-digit-secondary-btn"}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-around",
+                  alignItems: "center",
+                  height: "32px",
+                  padding: "0px 20px",
+                  cursor: !createdProject?.status ? "default" : "pointer",
+                  opacity: !createdProject?.status ? "0.5" : "1",
+                }}
+                disabled={!createdProject?.status}
+                onClick={() => setIntroModalData({
+                  action: section.action,
+                  title: section.introTitle,
+                  subTitle: section.introSubTitle,
+                  description: section.introDescription,
+                })}
+              >
+                {section.showAddIcon && (
+                  <span
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "5px",
+                      background: "#C84C0E",
+                      color: "white",
+                      fontSize: "20px",
+                      fontWeight: "bold",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: "10px"
+                    }}
+                  >
+                    +
+                  </span>
+                )}
+                <span
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: "500",
+                    fontFamily: "Roboto"
+                  }}
+                >
+                  {section.buttonLabel}
+                </span>
+              </button>
+            </div>
+            <SectionTable t={t} projectId={projectId} />
+          </div>
+        );
+      })}
       <IntroModal
         open={!!introModalData}
         onClose={() => setIntroModalData(null)}
