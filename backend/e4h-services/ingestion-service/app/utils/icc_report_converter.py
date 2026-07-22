@@ -813,6 +813,7 @@ BOM_BRAND_FIELDS_BY_TYPE = {
     },
     "ac_on_grid": {
         "solar_module_make": "PANEL",
+        "solar_battery_make": "BATTERY",
         "inverter_make": "INVERTER",
     },
 }
