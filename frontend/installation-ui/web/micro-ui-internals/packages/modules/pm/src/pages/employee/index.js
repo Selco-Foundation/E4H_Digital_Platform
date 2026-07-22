@@ -10,6 +10,8 @@ import ProjectFieldPlans from "./ProjectFieldPlans";
 import ProjectTable from "./ProjectTable";
 import ProjectDetails from "./ProjectDetails";
 import CreateAMC from "./CreateAMC";
+import CreateAssessment from "./CreateAssessment";
+import AssessmentDetails from "./AssessmentDetails";
 import Translation from "./Translation";
 
 const PMApp = () => {
@@ -52,6 +54,16 @@ const PMApp = () => {
     amcCreation: {
       content: t("PM_ACTION_SET_UP_AMC"),
       internalLink: match.url + `/project/${pmStore?.workingProject?.id}/amc/create`,
+      show: true,
+    },
+    assessmentCreation: {
+      content: t("PM_ACTION_ADD_ASSESSMENT_PLAN"),
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/assessment/create`,
+      show: true,
+    },
+    assessmentDetails: {
+      content: pmStore?.workingAssessmentPlan?.name,
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/assessment/${pmStore?.workingAssessmentPlan?.id}/details`,
       show: true,
     },
     response: {
@@ -114,6 +126,20 @@ const PMApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.amcCreation]}
           />
           <CreateAMC />
+        </Route>
+        <Route path={`${path}/project/:projectId/assessment/create`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.assessmentCreation]}
+          />
+          <CreateAssessment />
+        </Route>
+        <Route path={`${path}/project/:projectId/assessment/:assessmentId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.assessmentDetails]}
+          />
+          <AssessmentDetails t={t} />
         </Route>
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb
