@@ -115,7 +115,10 @@ class FieldPlanServiceClient:
         customSolarSolutionDesignType, customTotalSystemCapacity) of already-linked
         FieldPlanFacilities via POST /field-planner/v1/field-plans/facility/bulk/_update.
 
-        Each item in ``updates`` must contain the existing FieldPlanFacility's ``id`` and may
+        Each item in ``updates`` must contain the existing FieldPlanFacility's ``id``,
+        ``facilityId`` and ``fieldPlanId`` (FieldPlanFacility's tenantId/facilityId/fieldPlanId
+        are @NotNull on the shared model even on this update path, so they must be resent even
+        though field-planner overwrites them from the DB record right after validation) and may
         include ``additionalFields`` (schema/version/fields) carrying the new values - any key
         other than the 5 editable ones is ignored by field-planner, which merges onto the DB
         record rather than replacing it wholesale.
@@ -129,6 +132,9 @@ class FieldPlanServiceClient:
         for update in updates:
             entry: Dict[str, Any] = {
                 "id": update["id"],
+                "facilityId": update["facilityId"],
+                "fieldPlanId": update["fieldPlanId"],
+                "tenantId": "in",
             }
             additional_fields = update.get("additionalFields")
             if additional_fields:

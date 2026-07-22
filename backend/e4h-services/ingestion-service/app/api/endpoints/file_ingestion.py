@@ -3055,6 +3055,8 @@ async def create_fielplan_facilities(
                                                     index,
                                                     {
                                                         "id": fieldPlan_facility_data["id"],
+                                                        "facilityId": facility_id,
+                                                        "fieldPlanId": fieldplan_id,
                                                         "additionalFields": additional_fields,
                                                     },
                                                 )
