@@ -105,6 +105,59 @@ class FieldPlanServiceClient:
             logger.error(f"Request error bulk creating field plan facilities: {req_err}", exc_info=True)
             raise req_err
 
+    def update_fieldPlan_facility_bulk(
+        self,
+        request_info: RequestInfo,
+        updates: List[Dict[str, Any]],
+    ):
+        """
+        Bulk-update editable fields (systemType, solarSolutionDesignType, totalSystemCapacity,
+        customSolarSolutionDesignType, customTotalSystemCapacity) of already-linked
+        FieldPlanFacilities via POST /field-planner/v1/field-plans/facility/bulk/_update.
+
+        Each item in ``updates`` must contain the existing FieldPlanFacility's ``id`` and may
+        include ``additionalFields`` (schema/version/fields) carrying the new values - any key
+        other than the 5 editable ones is ignored by field-planner, which merges onto the DB
+        record rather than replacing it wholesale.
+        """
+        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/bulk/_update"
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        field_plan_facilities = []
+        for update in updates:
+            entry: Dict[str, Any] = {
+                "id": update["id"],
+            }
+            additional_fields = update.get("additionalFields")
+            if additional_fields:
+                entry["additionalFields"] = additional_fields
+            field_plan_facilities.append(entry)
+
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "FieldPlanFacilities": field_plan_facilities,
+        }
+        logger.trace(f"Bulk updating field plan facilities: count={len(updates)}")
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            logger.info(f"Field plan facility bulk update accepted: count={len(updates)}")
+            logger.debug(f"Bulk update response status: {response.status_code}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error bulk updating field plan facilities: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error bulk updating field plan facilities: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error bulk updating field plan facilities: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error bulk updating field plan facilities: {req_err}", exc_info=True)
+            raise req_err
+
     def search_fieldPlan(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
         tenant_id = "in"
         limit = 1000
