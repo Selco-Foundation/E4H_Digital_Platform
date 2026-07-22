@@ -41,6 +41,7 @@ from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     resolve_mapped_vendor_for_facility_row, build_field_plan_facility_bulk_entry, \
+    build_field_plan_facility_additional_details, build_field_plan_facility_additional_fields, \
     get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
     get_user_creation_payload_supervisors, \
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
@@ -2886,6 +2887,38 @@ async def create_fielplan_facilities(
                     return c
             return None
 
+        # Editable fields on an already-linked FieldPlanFacility can only be updated while the
+        # parent FieldPlan is still a Draft - matches field-planner's FieldPlannerConstants.DRAFT_STATUS.
+        DRAFT_FIELD_PLAN_STATUS = "DRAFT"
+
+        # Fields a user may update on an already-linked FieldPlanFacility (facilityType and the
+        # facilityId/fieldPlanId link itself stay immutable via this endpoint).
+        EDITABLE_ADDITIONAL_FIELD_KEYS = {
+            "systemType", "solarSolutionDesignType", "totalSystemCapacity",
+            "customSolarSolutionDesignType", "customTotalSystemCapacity",
+        }
+
+        def validate_custom_capacity_numeric(value):
+            """Same numeric-only rule used for create; returns an error message or None."""
+            value_str = str(value).strip() if value not in (None, "") else ""
+            if not value_str:
+                return None
+            try:
+                if not math.isfinite(float(value_str)):
+                    raise ValueError(value_str)
+            except ValueError:
+                return f"Error: Custom Total System Capacity '{value_str}' must be numeric"
+            return None
+
+        def flatten_additional_fields(additional_fields):
+            if not additional_fields:
+                return {}
+            return {
+                f.get("key"): f.get("value")
+                for f in additional_fields.get("fields") or []
+                if f.get("key")
+            }
+
         include_col = find_col("Included in Field Plan")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
@@ -2929,6 +2962,7 @@ async def create_fielplan_facilities(
                 # Get FieldPlan status
                 fieldplan_response = fieldplan_client.search_fieldPlan(request_info, fieldplan_id)
                 fieldplan_data = fieldplan_response.get("FieldPlans", [])
+                fieldplan_status = fieldplan_data[0].get("status") if fieldplan_data else None
 
                 fieldplan_assignment_response = fieldplan_activity_client.search_fieldplan_activity_assignment(request_info, fieldplan_id)
                 fieldplan_assignment_data = fieldplan_assignment_response.get("ActivitiesAssignments", [])
@@ -2942,6 +2976,7 @@ async def create_fielplan_facilities(
                             role_to_ids[code].append(item.get("assignedTo"))
 
                 pending_bulk_fieldplan_links = []
+                pending_bulk_fieldplan_updates = []
                 # iterate all rows — handle existing facility ids (linking/unlinking)
                 for index, row in df.iterrows():
                     try:
@@ -2965,8 +3000,65 @@ async def create_fielplan_facilities(
                             # attempt linking if requested
                             if facility_id in fieldplan_linked_facility_ids:
                                 if should_link:
-                                    # already linked → skip API
-                                    df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                    # already linked → check if the editable fields changed and
+                                    # need an update, otherwise no-op
+                                    fieldPlan_facility_data = next(
+                                        (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
+                                        None)
+                                    existing_values = flatten_additional_fields(
+                                        fieldPlan_facility_data.get("additionalFields") if fieldPlan_facility_data else None
+                                    )
+                                    row_values = build_field_plan_facility_additional_details(
+                                        row,
+                                        column_list=field_plan_facility_schema,
+                                        system_type_column=system_type_col,
+                                        total_system_capacity_column=total_system_capacity_col,
+                                        solution_design_type_column=solution_design_type_col,
+                                        custom_solution_design_column=custom_solution_design_col,
+                                        custom_total_system_capacity_column=custom_total_system_capacity_col,
+                                    ) or {}
+
+                                    # Only a key the Excel row actually fills in and that differs
+                                    # from the stored value counts as "changed" - a blank cell
+                                    # means "leave this field as-is", same semantics used at
+                                    # create time (blank optional fields are simply omitted).
+                                    changed_keys = {
+                                        key for key in EDITABLE_ADDITIONAL_FIELD_KEYS
+                                        if row_values.get(key) and row_values.get(key) != existing_values.get(key)
+                                    }
+
+                                    if not changed_keys:
+                                        df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                    elif fieldplan_status != DRAFT_FIELD_PLAN_STATUS:
+                                        df.at[index, 'Field Plan Linking Status'] = (
+                                            f"Error: Cannot update - FieldPlan status must be DRAFT "
+                                            f"(current status: {fieldplan_status})"
+                                        )
+                                    elif fieldPlan_facility_data is None or not fieldPlan_facility_data.get("id"):
+                                        df.at[index, 'Field Plan Linking Status'] = (
+                                            "Error: Cannot update - FieldPlanFacility record id not found"
+                                        )
+                                    else:
+                                        error = None
+                                        if "customTotalSystemCapacity" in changed_keys:
+                                            error = validate_custom_capacity_numeric(
+                                                row_values.get("customTotalSystemCapacity")
+                                            )
+                                        if error:
+                                            df.at[index, 'Field Plan Linking Status'] = error
+                                        else:
+                                            additional_fields = build_field_plan_facility_additional_fields(
+                                                {key: row_values.get(key) for key in changed_keys}
+                                            )
+                                            pending_bulk_fieldplan_updates.append(
+                                                (
+                                                    index,
+                                                    {
+                                                        "id": fieldPlan_facility_data["id"],
+                                                        "additionalFields": additional_fields,
+                                                    },
+                                                )
+                                            )
                                 else:
                                     # linked but Excel says No → unlink
                                     try:
@@ -2996,15 +3088,10 @@ async def create_fielplan_facilities(
                                         if custom_total_system_capacity_col else None
                                     custom_capacity_str = str(custom_capacity_val).strip() \
                                         if pd.notna(custom_capacity_val) else ""
-                                    if custom_capacity_str:
-                                        try:
-                                            if not math.isfinite(float(custom_capacity_str)):
-                                                raise ValueError(custom_capacity_str)
-                                        except ValueError:
-                                            df.at[index, 'Field Plan Linking Status'] = (
-                                                f"Error: Custom Total System Capacity '{custom_capacity_str}' must be numeric"
-                                            )
-                                            continue
+                                    error = validate_custom_capacity_numeric(custom_capacity_str)
+                                    if error:
+                                        df.at[index, 'Field Plan Linking Status'] = error
+                                        continue
 
                                     pending_bulk_fieldplan_links.append(
                                         (
@@ -3068,6 +3155,27 @@ async def create_fielplan_facilities(
                             else:
                                 for row_idx, _ in chunk:
                                     df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
+                        except Exception as bulk_exc:
+                            for row_idx, _ in chunk:
+                                df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+
+                if pending_bulk_fieldplan_updates:
+                    chunk_size = BULK_INGEST_CHUNK_SIZE
+                    for i in range(0, len(pending_bulk_fieldplan_updates), chunk_size):
+                        chunk = pending_bulk_fieldplan_updates[i:i + chunk_size]
+                        updates_chunk = [entry for _, entry in chunk]
+                        try:
+                            update_resp = fieldplan_client.update_fieldPlan_facility_bulk(
+                                request_info=request_info,
+                                updates=updates_chunk,
+                            )
+
+                            if update_resp.status_code in (200, 201, 202):
+                                for row_idx, _ in chunk:
+                                    df.at[row_idx, 'Field Plan Linking Status'] = "Updated"
+                            else:
+                                for row_idx, _ in chunk:
+                                    df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {update_resp.status_code} {update_resp.text}"
                         except Exception as bulk_exc:
                             for row_idx, _ in chunk:
                                 df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
