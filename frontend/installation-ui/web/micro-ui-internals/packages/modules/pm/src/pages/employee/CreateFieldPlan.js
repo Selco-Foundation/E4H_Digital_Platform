@@ -130,6 +130,21 @@ const CreateFieldPlan = () => {
   const dispatch = useDispatch();
   const [organizationIds, setOrganizationIds] = useState([""]);
 
+  const setFacilityUploadFile = (uploadedFile) => {
+    setFile(uploadedFile);
+
+    if (uploadedFile === null) {
+      setHasSavedFacilityUpload(false);
+      setPersistedFormData((prevState) => ({
+        ...prevState,
+        facilityData: {
+          ...prevState?.facilityData,
+          uploadFacilityData: undefined,
+        },
+      }));
+    }
+  };
+
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
     window.addEventListener("resize", handleResize);
@@ -842,7 +857,7 @@ const CreateFieldPlan = () => {
               setBlockUI,
               setInvalidDataError,
               file,
-              setFile,
+              setFile: setFacilityUploadFile,
             },
             nextRoute: "",
             populators: {
@@ -1410,10 +1425,19 @@ const CreateFieldPlan = () => {
           error={toast.key === "error"}
           warning={toast.key === "warning"}
           style={{
+            width: "480px",
+            maxWidth: "calc(100vw - 32px)",
+            minWidth: "0",
+            left: "50%",
+            transform: "translateX(-50%)",
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          label={toast.translate === false ? toast.label : t(toast.label)}
+          label={(
+            <span style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>
+              {toast.translate === false ? toast.label : t(toast.label)}
+            </span>
+          )}
           isDleteBtn={true}
           onClose={closeToast}
         />
