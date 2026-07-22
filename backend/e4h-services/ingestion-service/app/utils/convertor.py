@@ -627,8 +627,6 @@ FIELD_PLAN_FACILITY_ADDITIONAL_FIELD_TO_SCHEMA_PATH = {
     "systemType": "system_type",
     "solarSolutionDesignType": "facility_details.solar_solution_design_type",
     "totalSystemCapacity": "total_system_capacity",
-    "customSolarSolutionDesignType": "custom_solar_solution_design",
-    "customTotalSystemCapacity": "custom_solar_system_capacity",
 }
 
 
@@ -638,8 +636,7 @@ def apply_field_plan_facility_additional_fields(
 ) -> None:
     """
     Overlay a linked FieldPlanFacility's additionalFields codes (facilityType/systemType/
-    solarSolutionDesignType/totalSystemCapacity/customSolarSolutionDesignType/
-    customTotalSystemCapacity, as written by build_field_plan_facility_additional_fields
+    solarSolutionDesignType/totalSystemCapacity, as written by build_field_plan_facility_additional_fields
     when the facility was included in the field plan) onto `facility`, in place, at the same
     schema-code paths format_facility_data_for_template already resolves code -> label from via
     facility_schema's mdms_values - so the Excel template shows the label, not the raw code.
@@ -920,13 +917,13 @@ def get_incident_request_info():
         "apiId": "Rainmaker",
         "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
         "userInfo": {
-             "id": 4294,
-            "userName": "7204449839",
+            "id": 1863,
+            "userName": "8974350748",
             "salutation": None,
-            "name": "Revathi J",
+            "name": "Tingpai S",
             "gender": "MALE",
-            "mobileNumber": "7204449839",
-            "emailId": "",
+            "mobileNumber": "8974350748",
+            "emailId": None,
             "altContactNumber": None,
             "pan": None,
             "aadhaarNumber": None,
@@ -938,51 +935,51 @@ def get_incident_request_info():
             "correspondencePinCode": None,
             "alternatemobilenumber": None,
             "active": True,
-            "locale": "en_IN",
+            "locale": None,
             "type": "EMPLOYEE",
             "accountLocked": False,
             "accountLockedDate": 0,
-            "fatherOrHusbandName": None,
-            "relationship": None,
+            "fatherOrHusbandName": "Mathihalli",
+            "relationship": "FATHER",
             "signature": None,
             "bloodGroup": None,
             "photo": None,
             "identificationMark": None,
             "createdBy": 0,
-            "lastModifiedBy": 4294,
-            "tenantId": "pg",
+            "lastModifiedBy": 24226,
+            "tenantId": "nl",
             "roles": [
                 {
-                    "code": "COMPLAINANT",
-                    "name": "Complainant",
-                    "tenantId": "pg"
+                    "code": "SUPERUSER",
+                    "name": "Super User",
+                    "tenantId": "nl"
                 },
                 {
                     "code": "EMPLOYEE",
                     "name": "Employee",
-                    "tenantId": "pg"
+                    "tenantId": "nl"
                 },
                 {
-                    "code": "COMPLAINT_ASSESSOR",
-                    "name": "Complaint Assessor",
-                    "tenantId": "pg"
+                    "code": "COMPLAINANT",
+                    "name": "Complainant",
+                    "tenantId": "nl"
                 },
                 {
                     "code": "COMPLAINT_FACILITATOR_2",
                     "name": "Complaint facilitator 2",
-                    "tenantId": "pg"
+                    "tenantId": "nl"
                 },
                 {
-                    "code": "SUPERUSER",
-                    "name": "Super User",
-                    "tenantId": "pg"
+                    "code": "COMPLAINT_ASSESSOR",
+                    "name": "Complaint Assessor",
+                    "tenantId": "nl"
                 }
             ],
-            "uuid": "1e18f9bc-9702-4326-b66f-3732092e25d9",
-            "createdDate": "07-07-2025 12:57:24",
-            "lastModifiedDate": "07-07-2025 16:44:01",
+            "uuid": "8acc5b7b-4dcb-497a-ad08-5eef4f53442c",
+            "createdDate": "17-04-2025 23:19:29",
+            "lastModifiedDate": "04-07-2025 01:30:31",
             "dob": "1994-02-08",
-            "pwdExpiryDate": "05-10-2025 12:57:24"
+            "pwdExpiryDate": "16-07-2025 23:19:29"
         },
         "msgId": "1751897062350|en_IN",
         "plainAccessRequest": {}

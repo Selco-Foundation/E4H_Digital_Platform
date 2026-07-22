@@ -53,9 +53,6 @@ ERR_CUSTOM_SOLUTION_DESIGN_REQUIRED = (
 ERR_CUSTOM_CAPACITY_REQUIRED = (
     "Custom Total System Capacity is mandatory when Total System Capacity is '{capacity}'."
 )
-ERR_CUSTOM_CAPACITY_NOT_NUMERIC = (
-    "Custom Total System Capacity '{value}' must be numeric."
-)
 
 # Fallback when MDMS rules are not yet loaded (codes must match facility.* masters).
 _DEFAULT_RULES: List[Dict[str, Any]] = [
@@ -271,15 +268,6 @@ def validate_facility_solar_configuration_row(
         errors.append(ERR_CUSTOM_SOLUTION_DESIGN_REQUIRED.format(solution=solution_display))
     if is_custom_capacity and custom_capacity_header and not _cell_str(row.get(custom_capacity_header, "")):
         errors.append(ERR_CUSTOM_CAPACITY_REQUIRED.format(capacity=capacity_display))
-
-    if custom_capacity_header:
-        custom_capacity_value = _cell_str(row.get(custom_capacity_header, ""))
-        if custom_capacity_value:
-            try:
-                if not math.isfinite(float(custom_capacity_value)):
-                    raise ValueError(custom_capacity_value)
-            except ValueError:
-                errors.append(ERR_CUSTOM_CAPACITY_NOT_NUMERIC.format(value=custom_capacity_value))
 
     covered_types = covered_facility_types(rules_index)
     if covered_types and facility_code not in covered_types:

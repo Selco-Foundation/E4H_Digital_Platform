@@ -188,6 +188,61 @@ public class FieldPlannerFacilityService {
                 .build();
     }
 
+    public List<SystemTypeCapacity> searchSystemTypeCapacity(FieldPlanFacilitySearchRequest request,
+                                                               Integer limit,
+                                                               Integer offset,
+                                                               String tenantId,
+                                                               Long lastChangedSince,
+                                                               Boolean includeDeleted) throws Exception {
+        log.trace("Entering searchSystemTypeCapacity method for field plan facility");
+        log.info("Received request to search systemType/totalSystemCapacity for field plan facility, tenant: {}", tenantId);
+
+        SearchResponse<FieldPlanFacility> searchResponse = search(request, limit, offset, tenantId, lastChangedSince, includeDeleted);
+        Map<String, SystemTypeCapacity> uniqueCombinations = new LinkedHashMap<>();
+        for (FieldPlanFacility fieldPlanFacility : searchResponse.getResponse()) {
+            SystemTypeCapacity systemTypeCapacity = toSystemTypeCapacity(fieldPlanFacility);
+            if (systemTypeCapacity == null) {
+                continue;
+            }
+            String key = systemTypeCapacity.getSystemType() + "|" + systemTypeCapacity.getTotalSystemCapacity();
+            uniqueCombinations.putIfAbsent(key, systemTypeCapacity);
+        }
+        List<SystemTypeCapacity> result = new ArrayList<>(uniqueCombinations.values());
+
+        log.info("SystemType/totalSystemCapacity search completed, found {} unique combinations", result.size());
+        log.trace("Exiting searchSystemTypeCapacity method");
+        return result;
+    }
+
+    private SystemTypeCapacity toSystemTypeCapacity(FieldPlanFacility fieldPlanFacility) {
+        AdditionalFields additionalFields = fieldPlanFacility.getAdditionalFields();
+        if (additionalFields == null || additionalFields.getFields() == null) {
+            return null;
+        }
+        String systemType = null;
+        String totalSystemCapacity = null;
+        String customTotalSystemCapacity = null;
+        for (Field field : additionalFields.getFields()) {
+            if ("systemType".equals(field.getKey())) {
+                systemType = field.getValue();
+            } else if ("totalSystemCapacity".equals(field.getKey())) {
+                totalSystemCapacity = field.getValue();
+            } else if ("customTotalSystemCapacity".equals(field.getKey())) {
+                customTotalSystemCapacity = field.getValue();
+            }
+        }
+        if ("CUSTOM".equalsIgnoreCase(totalSystemCapacity)) {
+            totalSystemCapacity = customTotalSystemCapacity;
+        }
+        if (systemType == null && totalSystemCapacity == null) {
+            return null;
+        }
+        return SystemTypeCapacity.builder()
+                .systemType(systemType)
+                .totalSystemCapacity(totalSystemCapacity)
+                .build();
+    }
+
     public FieldPlanFacility unassign(FieldPlanFacilityRequest request) {
         log.trace("Entering unassign method for field plan facility");
         log.info("Received request to unassign field plan facility");
