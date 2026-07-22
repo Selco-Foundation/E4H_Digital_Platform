@@ -212,6 +212,16 @@ const getICCUploadErrorMessage = (error) => (
 
 const isScheduledFieldPlan = (status) => normalizeValue(status) === "scheduled";
 
+const isValidExcelFile = (file) => file?.name?.toLowerCase?.().endsWith(".xlsx");
+
+const getUploadedFile = (event) => (
+  event?.target?.files?.[0] ||
+  event?.files?.[0] ||
+  event?.file ||
+  (Array.isArray(event) ? event[0] : null) ||
+  (event?.name ? event : null)
+);
+
 const getTemplateForRow = (row, templates = []) => {
   const systemTypeName = getICCApiSystemType(row.systemType?.name);
   const systemTypeCode = row.systemType?.code;
@@ -565,7 +575,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
   };
 
   const handleFileUpload = async (rowId, event) => {
-    const uploadedFile = event.target.files?.[0];
+    const uploadedFile = getUploadedFile(event);
     const selectedRow = rows.find((row) => row.id === rowId);
 
     if (isScheduledFieldPlan(fieldPlanStatus)) {
@@ -577,6 +587,18 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     }
 
     if (!uploadedFile || !selectedRow?.systemType || !selectedRow?.totalSystemCapacity || !fieldPlanId) {
+      return;
+    }
+
+    if (!isValidExcelFile(uploadedFile)) {
+      if (event?.target) {
+        event.target.value = null;
+      }
+      setToast?.({
+        key: "error",
+        label: "Invalid file format. Please upload a valid Excel file (xlsx).",
+        translate: false,
+      });
       return;
     }
 
@@ -1041,7 +1063,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                       </span>
                       <input
                         type={"file"}
-                        accept={".xlsx,.xls"}
+                        accept={".xlsx"}
                         disabled={isScheduledFieldPlan(fieldPlanStatus)}
                         onChange={(event) => handleFileUpload(row.id, event)}
                         style={{ display: "none" }}
@@ -1049,7 +1071,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                     </label>
                   ) : (
                     <UploadFile
-                      accept={".xlsx,.xls"}
+                      accept={".xlsx"}
                       customClass={"icc-prepopulation-upload-file"}
                       enableButton={true}
                       onUpload={(event) => handleFileUpload(row.id, event)}
