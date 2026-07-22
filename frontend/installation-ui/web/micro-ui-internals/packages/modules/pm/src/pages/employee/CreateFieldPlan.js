@@ -80,9 +80,12 @@ const getUniqueICCPrepopulationRows = (rows = []) => Object.values(rows.reduce((
 
 const getNewICCPrepopulationRows = (rows = []) => rows.filter((row) => row?.file && !row.file?.isSavedTemplate);
 
+const isScheduledFieldPlan = (status) => normalizeICCValue(status) === "scheduled";
+
 const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
   const iccReportsData = new FormData();
   const items = rows.map((row) => ({
+    id: row.template?.id || "",
     systemType: row.systemType?.code,
     totalSystemCapacity: getSystemCapacityValue(row.totalSystemCapacity),
     fieldPlanId: fieldPlanId,
@@ -252,21 +255,12 @@ const CreateFieldPlan = () => {
     }
   }, [currentKey, file, persistedFormData?.facilityData?.uploadFacilityData]);
 
-  useEffect(()=>{
-    if (toast) {
-      setTimeout(()=>{
-        setToastQueue((prevQueue) => {
-          if (prevQueue.length) {
-            setToast(prevQueue[0]);
-            return prevQueue.slice(1);
-          }
-
-          setToast(null);
-          return [];
-        });
-      },6000)
-    }
-  },[toast])
+  const closeToast = useCallback(() => {
+    setToastQueue((previousQueue) => {
+      setToast(previousQueue[0] || null);
+      return previousQueue.slice(1);
+    });
+  }, []);
 
   const showToastMessages = (messages, key = "error") => {
     const formattedToasts = messages.filter(Boolean).map((message) => ({
@@ -877,6 +871,7 @@ const CreateFieldPlan = () => {
               iccTemplates: getICCTemplates(createdFieldPlan, fieldPlanData),
               validationAttempt: iccPrepopulationValidationAttempt,
               fieldPlanId: createdFieldPlan?.id || fieldPlanId,
+              fieldPlanStatus: createdFieldPlan?.status,
               setToast,
               setBlockUI,
             },
@@ -1164,8 +1159,26 @@ const CreateFieldPlan = () => {
           const newRows = getNewICCPrepopulationRows(rows);
 
           if (newRows.length) {
-            const iccReportsData = getICCReportsFormData(newRows, createdFieldPlan?.id || fieldPlanId, tenantId);
-            await IngestionService.uploadICCReports(iccReportsData);
+            if (isScheduledFieldPlan(createdFieldPlan?.status)) {
+              setToast({
+                key: "error",
+                label: "PRE_FILLING_TEMPLATE_SCHEDULED_ERROR",
+              });
+              return;
+            }
+
+            const rowsToCreate = newRows.filter((row) => !row.template?.id);
+            const rowsToUpdate = newRows.filter((row) => row.template?.id);
+
+            if (rowsToCreate.length) {
+              const createReportsData = getICCReportsFormData(rowsToCreate, createdFieldPlan?.id || fieldPlanId, tenantId);
+              await IngestionService.uploadICCReports(createReportsData);
+            }
+
+            if (rowsToUpdate.length) {
+              const updateReportsData = getICCReportsFormData(rowsToUpdate, createdFieldPlan?.id || fieldPlanId, tenantId);
+              await IngestionService.upsertICCReports(updateReportsData);
+            }
           }
 
           setPersistedFormData((prev) => ({ ...prev, iccPrepopulationConfiguration: data }));
@@ -1402,10 +1415,7 @@ const CreateFieldPlan = () => {
           }}
           label={toast.translate === false ? toast.label : t(toast.label)}
           isDleteBtn={true}
-          onClose={() => {
-            setToast(null);
-            setToastQueue([]);
-          }}
+          onClose={closeToast}
         />
       )}
       {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}

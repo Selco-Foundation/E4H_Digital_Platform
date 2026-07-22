@@ -23,6 +23,16 @@ const getDefaultRows = () => [getEmptyRow()];
 
 const getOption = (value) => value ? ({ code: value, name: value }) : null;
 
+const getCapacityDisplayValue = (capacity) => {
+  const value = (capacity?.name || capacity?.code || "").toString().trim();
+
+  if (!value) {
+    return "";
+  }
+
+  return /kwp$/i.test(value) ? value : `${value} kWp`;
+};
+
 const getMDMSSystemTypeCode = (systemType = {}) => systemType?.data?.code || systemType?.code || systemType?.uniqueIdentifier;
 
 const getMDMSSystemTypeName = (systemType = {}) => systemType?.data?.name || systemType?.name;
@@ -68,6 +78,7 @@ const normalizeCapacity = (value) => {
 const getICCReportFormData = (row, file, fieldPlanId, tenantId) => {
   const formData = new FormData();
   const items = [{
+    id: row.template?.id || "",
     systemType: row.systemType?.code,
     totalSystemCapacity: normalizeCapacity(row.totalSystemCapacity?.code || row.totalSystemCapacity?.name),
     fieldPlanId,
@@ -199,6 +210,8 @@ const getICCUploadErrorMessage = (error) => (
   "CORE_COMMON_ERROR"
 );
 
+const isScheduledFieldPlan = (status) => normalizeValue(status) === "scheduled";
+
 const getTemplateForRow = (row, templates = []) => {
   const systemTypeName = getICCApiSystemType(row.systemType?.name);
   const systemTypeCode = row.systemType?.code;
@@ -326,7 +339,7 @@ const hasSystemCapacityRows = (rows = []) => rows.some((row) => row.systemType |
 
 const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
-  const { t, name, uploadFacilityData, iccTemplates = [], validationAttempt = 0, fieldPlanId, setToast, setBlockUI } = props;
+  const { t, name, uploadFacilityData, iccTemplates = [], validationAttempt = 0, fieldPlanId, fieldPlanStatus, setToast, setBlockUI } = props;
   const [rows, setRows] = useState(data[name] || getDefaultRows());
   const [savedTemplates, setSavedTemplates] = useState([]);
   const [systemTypeCapacities, setSystemTypeCapacities] = useState([]);
@@ -528,7 +541,19 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     }));
   };
 
+  const showScheduledFieldPlanError = () => {
+    setToast?.({
+      key: "error",
+      label: "PRE_FILLING_TEMPLATE_SCHEDULED_ERROR",
+    });
+  };
+
   const deletePreFillingTemplate = (rowId) => {
+    if (isScheduledFieldPlan(fieldPlanStatus)) {
+      showScheduledFieldPlanError();
+      return;
+    }
+
     setRows((prevRows) => prevRows.map((row) => {
       if (row.id !== rowId) return row;
 
@@ -543,6 +568,14 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     const uploadedFile = event.target.files?.[0];
     const selectedRow = rows.find((row) => row.id === rowId);
 
+    if (isScheduledFieldPlan(fieldPlanStatus)) {
+      if (event?.target) {
+        event.target.value = null;
+      }
+      showScheduledFieldPlanError();
+      return;
+    }
+
     if (!uploadedFile || !selectedRow?.systemType || !selectedRow?.totalSystemCapacity || !fieldPlanId) {
       return;
     }
@@ -552,7 +585,11 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
 
     try {
       const formData = getICCReportFormData(selectedRow, uploadedFile, fieldPlanId, tenantId);
-      await IngestionService.uploadICCReports(formData);
+      if (selectedRow.template?.id) {
+        await IngestionService.upsertICCReports(formData);
+      } else {
+        await IngestionService.uploadICCReports(formData);
+      }
 
       setRows((prevRows) => prevRows.map((row) => {
         if (row.id !== rowId) return row;
@@ -809,6 +846,11 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             overflow: hidden;
           }
 
+          .icc-prepopulation-saved-file-field.disabled {
+            cursor: not-allowed;
+            background-color: #F5F5F5;
+          }
+
           .icc-prepopulation-upload .upload-file input {
             height: 40px !important;
             width: 100% !important;
@@ -959,21 +1001,48 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             </FieldWrapper>
             <FieldWrapper>
               <FieldLabel label={"ICC_TOTAL_SYSTEM_CAPACITY"} />
-              <ReadOnlyField value={row.totalSystemCapacity?.name} />
+              <ReadOnlyField value={getCapacityDisplayValue(row.totalSystemCapacity)} />
               {validationAttempt > 0 && !row.totalSystemCapacity && <RequiredError />}
             </FieldWrapper>
             <FieldWrapper className={"icc-prepopulation-file-field"}>
               <FieldLabel label={row.file ? "ICC_PRE_FILLING_TEMPLATE" : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"} />
               <div className={"icc-prepopulation-template-actions"}>
-                <div className={`icc-prepopulation-upload icc-prepopulation-template-input ${row.file ? "has-file" : ""}`}>
+                <div
+                  className={`icc-prepopulation-upload icc-prepopulation-template-input ${row.file ? "has-file" : ""}`}
+                  role={isScheduledFieldPlan(fieldPlanStatus) ? "button" : undefined}
+                  tabIndex={isScheduledFieldPlan(fieldPlanStatus) ? 0 : undefined}
+                  onClickCapture={(event) => {
+                    if (isScheduledFieldPlan(fieldPlanStatus)) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      showScheduledFieldPlanError();
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (isScheduledFieldPlan(fieldPlanStatus) && ["Enter", " "].includes(event.key)) {
+                      event.preventDefault();
+                      showScheduledFieldPlanError();
+                    }
+                  }}
+                >
                   {row.file ? (
-                    <label className={"icc-prepopulation-saved-file-field"} title={row.file.name}>
+                    <label
+                      className={`icc-prepopulation-saved-file-field ${isScheduledFieldPlan(fieldPlanStatus) ? "disabled" : ""}`}
+                      title={row.file.name}
+                      onClick={(event) => {
+                        if (isScheduledFieldPlan(fieldPlanStatus)) {
+                          event.preventDefault();
+                          showScheduledFieldPlanError();
+                        }
+                      }}
+                    >
                       <span className={"icc-prepopulation-file-name"}>
                         {row.file.name}
                       </span>
                       <input
                         type={"file"}
                         accept={".xlsx,.xls"}
+                        disabled={isScheduledFieldPlan(fieldPlanStatus)}
                         onChange={(event) => handleFileUpload(row.id, event)}
                         style={{ display: "none" }}
                       />
@@ -1047,14 +1116,14 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                   style={{
                     border: "none",
                     backgroundColor: "transparent",
-                    cursor: row.file ? "pointer" : "not-allowed",
+                    cursor: row.file && !isScheduledFieldPlan(fieldPlanStatus) ? "pointer" : "not-allowed",
                     height: "40px",
                     width: "40px",
                     padding: "0px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    opacity: row.file ? 1 : 0.5,
+                    opacity: row.file && !isScheduledFieldPlan(fieldPlanStatus) ? 1 : 0.5,
                   }}
                   aria-label={t("CORE_COMMON_DELETE")}
                 />
