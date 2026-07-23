@@ -29,6 +29,10 @@
             [
               { "text": "PO/WO Number: {{po_wo_number}}" },
               { "text": "Block: {{project_block}}" }
+            ],
+            [
+              { "text": "Health Facility Type: {{health_facility_type}}" },
+              { "text": "" }
             ]
           ]
         },

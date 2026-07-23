@@ -29,6 +29,10 @@
             [
               { "text": "PO/WO Number: {{po_wo_number}}" },
               { "text": "Block: {{project_block}}" }
+            ],
+            [
+              { "text": "Health Facility Type: {{health_facility_type}}" },
+              { "text": "" }
             ]
           ]
         },
@@ -1552,6 +1556,30 @@
                 "text": "Isolator(Load ACDB) R Voltage in OFF position (Volts):"
               },
               { "text": "{{ isolator_load_acdb_r_off_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) Y Voltage in ON position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_y_on_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) Y Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_y_off_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) B Voltage in ON position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_b_on_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) B Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_b_off_v }}" }
             ],
             [
               { "text": "Main MCB(Load ACDB) Voltage in ON position (Volts):" },
