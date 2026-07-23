@@ -11,15 +11,33 @@ import '../data/nosql/cache_amc_doc.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
+import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../model/document/document.dart';
+import '../model/scheduled_visit/scheduled_visit.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart' as env;
 import '../utils/utils.dart';
 import 'activity_facility_repo.dart';
 
 final envConfigs = env.EnvironmentConfiguration.instance;
+
+Map<String, dynamic> enrichAmcPdfValues({
+  required Map<String, dynamic> formValues,
+  ScheduledVisit? scheduledVisit,
+}) {
+  final enriched = Map<String, dynamic>.from(formValues);
+  final configuration = scheduledVisit?.amcConfiguration;
+
+  enriched['amc_number'] = formatAmcNumber(
+    scheduledVisit?.visitNumber,
+    configuration?.durationMonths,
+    configuration?.visitFrequencyMonths,
+  );
+
+  return enriched;
+}
 
 class _AssetTypeBomSummary {
   final String? make;
@@ -1015,6 +1033,29 @@ class AmcDynamicFormRepository {
 
   AmcDynamicFormRepository();
 
+  Future<Map<String, dynamic>> enrichWithScheduledVisitContext({
+    required Isar isar,
+    required String scheduledVisitId,
+    required Map<String, dynamic> formValues,
+  }) async {
+    ScheduledVisit? scheduledVisit;
+
+    try {
+      final cachedVisit = await isar.cacheScheduledVisits
+          .where()
+          .scheduledVisitIdEqualTo(scheduledVisitId)
+          .findFirst();
+      scheduledVisit = cachedVisit?.toModel();
+    } catch (_) {
+      scheduledVisit = null;
+    }
+
+    return enrichAmcPdfValues(
+      formValues: formValues,
+      scheduledVisit: scheduledVisit,
+    );
+  }
+
   Future<void> saveLocal({
     required Isar isar,
     required String scheduledVisitId,
@@ -1158,10 +1199,15 @@ class AmcDynamicFormRepository {
       }
       final Map<String, dynamic> bomData =
           jsonDecode(rec.dataJson) as Map<String, dynamic>;
+      final enrichedBomData = await enrichWithScheduledVisitContext(
+        isar: isar,
+        scheduledVisitId: scheduledVisitId,
+        formValues: bomData,
+      );
 
       final tenantId = env.envConfig.variables.tenantId;
       final body = {
-        "amc": bomData,
+        "amc": enrichedBomData,
       };
 
       final path = "pdf-service/v1/_create?key=amc-report&tenantId=$tenantId";
