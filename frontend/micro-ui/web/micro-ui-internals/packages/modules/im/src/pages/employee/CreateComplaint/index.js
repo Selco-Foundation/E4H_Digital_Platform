@@ -53,7 +53,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
   const [blockUI, setBlockUI] = useState(false);
   const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
-  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
+  const jurisdictionCurrentBoundary = Digit.PersistantStorage.get("Jurisdiction.CurrentBoundary") || {
     country: ["-"],
   };
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);

@@ -11,7 +11,7 @@ const areFiltersEqual = (left = {}, right = {}) => JSON.stringify(left || getDef
 
 const RMSPausedFilter = ({ onFilterChange, searchParams, type, onClose }) => {
   const { t } = useTranslation();
-  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
+  const jurisdictionCurrentBoundary = Digit.PersistantStorage.get("Jurisdiction.CurrentBoundary") || {};
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
 

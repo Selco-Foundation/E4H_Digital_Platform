@@ -16,8 +16,8 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
   const ComponentProvider = Digit.Contexts.ComponentProvider;
   const { path } = useRouteMatch();
   const location = useLocation();
-  const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
-  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
+  const jurisdictionBoundaries = Digit.PersistantStorage.get("Jurisdiction.Boundaries");
+  const jurisdictionCurrentBoundary = Digit.PersistantStorage.get("Jurisdiction.CurrentBoundary");
   const dispatch = useDispatch();
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries));

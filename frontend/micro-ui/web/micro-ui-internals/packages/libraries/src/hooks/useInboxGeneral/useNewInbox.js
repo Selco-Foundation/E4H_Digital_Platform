@@ -39,7 +39,7 @@ const useNewInboxGeneral = ({ tenantId, ModuleCode, filters, middleware = [], co
   const { t } = useTranslation();
   const { fetchFilters, searchResponseKey, businessIdAliasForSearch, businessIdsParamForSearch } = inboxConfig()[ModuleCode];
   let { workflowFilters, searchFilters, limit, offset, sortBy, sortOrder, applicationNumber} = fetchFilters(filters);
-  const jurisdictionCurrentBoundaries = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
+  const jurisdictionCurrentBoundaries = Digit.PersistantStorage.get("Jurisdiction.CurrentBoundary") || {
     country: ["-"],
   };
 
