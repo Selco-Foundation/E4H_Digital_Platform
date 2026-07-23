@@ -81,4 +81,7 @@ public class IncidentStatusAgregation {
 
     @JsonProperty("mappedVendorName")
     private String mappedVendorName;
+
+    @JsonProperty("projectName")
+    private String projectName;
 }
