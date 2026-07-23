@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.kafka.consumer.KafkaProducerService;
 import org.selco.e4h.repository.IncidentRepository;
@@ -35,15 +36,17 @@ public class IncidentService {
 
     private final ObjectMapper objectMapper;
     private final ElasticSearchClient esClient;
+    private final ProjectCo2Client projectCo2Client;
 
     public IncidentService(IncidentRepository incidentRepository, EscalationMasterDataService masterDataService, ConsumerConfiguration config, @Qualifier("objectMapper") ObjectMapper objectMapper,
-                           KafkaProducerService producerService, ElasticSearchClient esClient){
+                           KafkaProducerService producerService, ElasticSearchClient esClient, ProjectCo2Client projectCo2Client){
         this.incidentRepository = incidentRepository;
         this.masterDataService = masterDataService;
         this.producerService = producerService;
         this.config = config;
         this.objectMapper = objectMapper;
         this.esClient = esClient;
+        this.projectCo2Client = projectCo2Client;
     }
 
     @KafkaListener(topics = { "save-im-request-indexer", "update-im-request-indexer", "process-audit-records" }, groupId = "im-consumer-group")
@@ -146,6 +149,10 @@ public class IncidentService {
                         incidentStatusAgregation.setGeoPoint(parseGeoPoint(data.get("geo-point")));
                         incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
                         incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
+                        // Resolve projectName from the project service so it is preserved on this full-document
+                        // re-index; fall back to the value already indexed when the lookup yields nothing.
+                        incidentStatusAgregation.setProjectName(resolveProjectName(
+                                tenantId, (String) data.get("facilityId"), (String) data.get("projectName")));
 
                         // fields coming only from the wrapper
                         if (mappedVendorName != null) {
@@ -233,6 +240,8 @@ public class IncidentService {
             incidentStatusAgregation.setState(state);
             incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
             incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
+            incidentStatusAgregation.setProjectName(resolveProjectName(
+                    tenantId, (String) data.get("facilityId"), (String) data.get("projectName")));
 
             if(boundary ==null || boundary.getFacilityCode()==null || boundary.getFacilityCode().isEmpty()){
                 return;
@@ -260,6 +269,28 @@ public class IncidentService {
         } catch (Exception e) {
             log.error("Error processing PHC document, skipping: {}", phc, e);
         }
+    }
+
+    /**
+     * Resolves the project name mapped to a facility via the project service. Falls back to
+     * {@code existingProjectName} (the value already indexed) when the lookup yields nothing,
+     * so the projectName is never lost on this full-document re-index.
+     */
+    private String resolveProjectName(String tenantId, String facilityId, String existingProjectName) {
+        if (facilityId == null || facilityId.isBlank()) {
+            return existingProjectName;
+        }
+        try {
+            Map<String, String> names = projectCo2Client.fetchProjectNamesByFacility(
+                    new RequestInfo(), tenantId, List.of(facilityId));
+            String fetched = names.get(facilityId);
+            if (fetched != null && !fetched.isBlank()) {
+                return fetched;
+            }
+        } catch (Exception e) {
+            log.warn("projectName lookup failed for facilityId={}: {}", facilityId, e.getMessage());
+        }
+        return existingProjectName;
     }
 
     private List<Double> parseGeoPoint(Object geoPointValue) {
