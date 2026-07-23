@@ -651,25 +651,41 @@ _BOM_ROLE_ORDER = list(BOM_ROLE_SUFFIXES.values())  # ["Make", "Capacity", "Quan
 NUMERIC_BOM_ROLES = ("Capacity", "Quantity")
 
 
+def _mandatory_bom_key_prefixes(detected_type):
+    """
+    Solar Module, Solar Battery and Inverter (or its per-type equivalent - solar_charge_controller
+    for DC, solar_hybrid_pcu for HYBRID) are the only BOM components whose Make/Capacity/Quantity
+    are mandatory; every other BOM row (wiring, structure, accessories, etc.) may be left blank.
+    Reuses BOM_BRAND_FIELDS_BY_TYPE's make-key names, which already name these exact 3 components
+    per system type, rather than a separate mapping.
+    """
+    make_keys = BOM_BRAND_FIELDS_BY_TYPE.get(detected_type, {})
+    return tuple(key[: -len("_make")] for key in make_keys if key.endswith("_make"))
+
+
+def _is_mandatory_bom_column(keys, mandatory_prefixes):
+    return any(key.startswith(prefix) for key in keys for prefix in mandatory_prefixes)
+
+
 def validate_bom_editable_fields_filled(wb, detected_type):
     """
-    Validation 3 (BOM completeness): every row of the editable BOM tables (the "Bill Of
-    Material..." sections listed in SECTION_TEMPLATE_HEADERS - Solar System / Luminaries &
-    Fans / Load Wiring) must have its Make, Capacity and Quantity cells filled in, and Capacity
-    and Quantity must additionally be an actual number (not text, even numeric-looking text).
-    SYSTEM FUNCTIONALITY PARAMETERS (and any other non-BOM section, e.g. RMS/Header/Image/
-    Annexure) is out of scope for this check, matching the same "out of scope" sections already
-    excluded from template-key coverage elsewhere in this module.
+    Validation 3 (BOM completeness): Make/Capacity/Quantity cells across the editable BOM tables
+    (the "Bill Of Material..." sections listed in SECTION_TEMPLATE_HEADERS - Solar System /
+    Luminaries & Fans / Load Wiring) may be left blank, EXCEPT for the Solar Module, Solar Battery
+    and Inverter (per-type equivalent) rows, whose Make/Capacity/Quantity are mandatory. Wherever
+    a Capacity or Quantity cell IS filled in (mandatory or not), it must additionally be an actual
+    number (not text, even numeric-looking text). SYSTEM FUNCTIONALITY PARAMETERS (and any other
+    non-BOM section, e.g. RMS/Header/Image/Annexure) is out of scope for this check, matching the
+    same "out of scope" sections already excluded from template-key coverage elsewhere in this
+    module.
 
-    Blank fields are reported as one summary line per section with a per-role count (e.g.
-    "5 Make, 5 Capacity, 5 Quantity missing") rather than one line per blank cell - an entirely
-    empty upload would otherwise produce a message with hundreds of near-identical lines, which
-    renders poorly on the frontend and isn't any more actionable than the count. Invalid (non-
-    blank but non-numeric) Capacity/Quantity values are rare and specific, so those stay listed
-    in full per-row detail, same as before.
+    Blank mandatory fields are reported as one summary line per section with a per-role count
+    (e.g. "2 Make, 2 Capacity, 2 Quantity missing") rather than one line per blank cell. Invalid
+    (non-blank but non-numeric) Capacity/Quantity values are rare and specific, so those stay
+    listed in full per-row detail.
 
-    Raises ICCValidationError on any failure (blank and/or invalid-number); returns nothing on
-    success.
+    Raises ICCValidationError on any failure (blank-mandatory and/or invalid-number); returns
+    nothing on success.
     """
     ws = wb[DATA_SHEET]
     instances = load_data_ingestion_map(wb)
@@ -677,6 +693,8 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     template_path = os.path.join(TEMPLATE_DIR, TEMPLATE_BY_TYPE[detected_type])
     with open(template_path) as f:
         template = json.load(f)
+
+    mandatory_prefixes = _mandatory_bom_key_prefixes(detected_type)
 
     by_section = OrderedDict()
     for inst in instances:
@@ -705,8 +723,9 @@ def validate_bom_editable_fields_filled(wb, detected_type):
                 row_no, col_no = excel_cells[col_idx]
                 value = ws.cell(row=row_no, column=col_no).value
                 if value is None or str(value).strip() == "":
-                    section_counts = blank_counts_by_section.setdefault(section, {})
-                    section_counts[role] = section_counts.get(role, 0) + 1
+                    if _is_mandatory_bom_column(keys, mandatory_prefixes):
+                        section_counts = blank_counts_by_section.setdefault(section, {})
+                        section_counts[role] = section_counts.get(role, 0) + 1
                 elif role in NUMERIC_BOM_ROLES and not _is_number_not_text(value):
                     invalid_numeric_errors.append(
                         f"{section} > '{label}' - {role} '{value}' must be a number, not text"
@@ -722,8 +741,9 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     error_lines.extend(invalid_numeric_errors)
 
     raise ICCValidationError(
-        "The uploaded ICC report has invalid required fields in the editable BOM tables "
-        "(Make/Capacity/Quantity must be filled in, and Capacity/Quantity must be a number):\n- "
+        "The uploaded ICC report has invalid fields in the editable BOM tables "
+        "(Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in, "
+        "and Capacity/Quantity must be a number wherever filled in):\n- "
         + "\n- ".join(error_lines)
     )
 

@@ -66,6 +66,15 @@ from dotenv import load_dotenv
 from collections import defaultdict
 
 
+ALLOWED_EXCEL_EXTENSIONS = {"xlsx", "xls"}
+
+
+def _has_allowed_excel_extension(filename: Optional[str]) -> bool:
+    if not filename or "." not in filename:
+        return False
+    return filename.rsplit(".", 1)[-1].strip().lower() in ALLOWED_EXCEL_EXTENSIONS
+
+
 async def _save_upload_to_temp_file(upload_file: UploadFile, suffix: str = ".xlsx", chunk_size: int = 1024 * 1024):
     """
     Persist an UploadFile to disk in chunks to avoid loading
@@ -1493,6 +1502,11 @@ async def upload_icc_reports(
         missing = [k for k in required_keys if not item.get(k)]
         if missing:
             field_errors.append({"index": idx, "error": f"missing required field(s): {', '.join(missing)}"})
+        if not _has_allowed_excel_extension(icc_files[idx].filename):
+            field_errors.append({
+                "index": idx,
+                "error": f"'{icc_files[idx].filename}' is not an Excel file (.xlsx/.xls required)",
+            })
 
     if field_errors:
         raise HTTPException(status_code=400, detail={"message": "Invalid items in batch", "errors": field_errors})
@@ -1623,6 +1637,11 @@ async def update_icc_reports(
         missing = [k for k in required_keys if not item.get(k)]
         if missing:
             field_errors.append({"index": idx, "error": f"missing required field(s): {', '.join(missing)}"})
+        if has_files and not _has_allowed_excel_extension(icc_files[idx].filename):
+            field_errors.append({
+                "index": idx,
+                "error": f"'{icc_files[idx].filename}' is not an Excel file (.xlsx/.xls required)",
+            })
 
     if field_errors:
         raise HTTPException(status_code=400, detail={"message": "Invalid items in batch", "errors": field_errors})
