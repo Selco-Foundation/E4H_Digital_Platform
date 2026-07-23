@@ -595,8 +595,8 @@
               "20",
               "Power Cable - 2 (Red)",
               "{{ power_cable_2_red_description }} : {{power_cable_2_red_make}}",
-              "{{ power_cable_2_black_capacity }}",
-              "{{ power_cable_2_black_qty }}"
+              "{{ power_cable_2_red_capacity }}",
+              "{{ power_cable_2_red_qty }}"
             ],
             [
               "21",

@@ -302,9 +302,9 @@
             [
               "6",
               "Power Cable - From CCU to Room (Red)",
-              "{{ isolator_2_description }} : {{isolator_2_make}} ",
-              "{{ isolator_2_capacity }}",
-              "{{ isolator_2_qty }}"
+              "{{ power_cable_from_ccu_to_room_red_description }} : {{power_cable_from_ccu_to_room_red_make}}",
+              "{{ power_cable_from_ccu_to_room_red_capacity }}",
+              "{{ power_cable_from_ccu_to_room_red_qty }}"
             ],
             [
               "7",
