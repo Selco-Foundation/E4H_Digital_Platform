@@ -295,6 +295,10 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                 if (_selectedTabIndex == 0) {
                   return AMCInstallationReportCard(
                     label: context.translate(i18.submitForApproval.view),
+                    visitNumber: visit.visitNumber,
+                    durationMonths: visit.amcConfiguration?.durationMonths,
+                    visitFrequencyMonths:
+                        visit.amcConfiguration?.visitFrequencyMonths,
                     title: visit.facility?.facilityName ?? '',
                     status: visit.status ?? '---',
                     dateAssigned: visit.scheduledDate ?? DateTime.now(),
@@ -329,6 +333,10 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                     );
                   },
                   title: visit.facility?.facilityName ?? '',
+                  visitNumber: visit.visitNumber,
+                  durationMonths: visit.amcConfiguration?.durationMonths,
+                  visitFrequencyMonths:
+                      visit.amcConfiguration?.visitFrequencyMonths,
                   dateAssigned: visit.scheduledDate ?? DateTime.now(),
                   status: visit.status ?? '---',
                   state: locality.state,

@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as i18;
+import '../../utils/utils.dart';
 import 'report_detail_row.dart';
 
 class InboxReportCard extends StatelessWidget {
@@ -21,6 +22,9 @@ class InboxReportCard extends StatelessWidget {
   final Function() onPress;
   final bool? isAmc;
   final bool? isOtp;
+  final int? visitNumber;
+  final int? durationMonths;
+  final int? visitFrequencyMonths;
 
   const InboxReportCard({
     super.key,
@@ -33,6 +37,9 @@ class InboxReportCard extends StatelessWidget {
     required this.onPress,
     this.isAmc = false,
     this.isOtp = false,
+    this.visitNumber,
+    this.durationMonths,
+    this.visitFrequencyMonths,
   });
 
   @override
@@ -64,6 +71,19 @@ class InboxReportCard extends StatelessWidget {
             label: context.translate(i18.common.submissionDate),
             value: _detailText(formattedDate, textTheme, theme),
           ),
+          if (isAmc == true)
+            ReportDetailRow(
+              label: context.translate(i18.amcSelectFacility.amcNumber),
+              value: _detailText(
+                formatAmcNumber(
+                  visitNumber,
+                  durationMonths,
+                  visitFrequencyMonths,
+                ),
+                textTheme,
+                theme,
+              ),
+            ),
           ReportDetailRow(
             label: context.translate(i18.common.state),
             value: _detailText(_displayValue(state), textTheme, theme),

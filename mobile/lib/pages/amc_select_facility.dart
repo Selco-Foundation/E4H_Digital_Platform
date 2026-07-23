@@ -184,6 +184,14 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                       );
                                       return AMCInstallationReportCard(
                                           scheduledVisitId: items[index].id,
+                                          visitNumber:
+                                              items[index].visitNumber,
+                                          durationMonths: items[index]
+                                              .amcConfiguration
+                                              ?.durationMonths,
+                                          visitFrequencyMonths: items[index]
+                                              .amcConfiguration
+                                              ?.visitFrequencyMonths,
                                           label: label,
                                           title: items[index]
                                                   .facility
@@ -380,6 +388,9 @@ class AMCInstallationReportCard extends StatefulWidget {
   final String? block;
   final DateTime dateAssigned;
   final String? systemDesignCode;
+  final int? visitNumber;
+  final int? durationMonths;
+  final int? visitFrequencyMonths;
   final Function() onPress;
 
   const AMCInstallationReportCard({
@@ -393,6 +404,9 @@ class AMCInstallationReportCard extends StatefulWidget {
     this.block,
     required this.dateAssigned,
     this.systemDesignCode,
+    this.visitNumber,
+    this.durationMonths,
+    this.visitFrequencyMonths,
     required this.onPress,
   });
 
@@ -457,6 +471,18 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
             ReportDetailRow(
               label: context.translate(i18.amcSelectFacility.amcDate),
               value: _detailText(formattedDate, textTheme, theme),
+            ),
+            ReportDetailRow(
+              label: context.translate(i18.amcSelectFacility.amcNumber),
+              value: _detailText(
+                formatAmcNumber(
+                  widget.visitNumber,
+                  widget.durationMonths,
+                  widget.visitFrequencyMonths,
+                ),
+                textTheme,
+                theme,
+              ),
             ),
             ReportDetailRow(
               label: context.translate(i18.common.state),

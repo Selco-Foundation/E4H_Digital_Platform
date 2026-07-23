@@ -45,6 +45,24 @@ import 'app_logger.dart';
 import 'extensions.dart';
 import 'i18_key_constants.dart' as i18;
 
+String formatAmcNumber(
+  int? visitNumber,
+  int? durationMonths,
+  int? visitFrequencyMonths,
+) {
+  final visit = visitNumber?.toString() ?? '---';
+  var total = '---';
+
+  if (durationMonths != null &&
+      visitFrequencyMonths != null &&
+      visitFrequencyMonths > 0 &&
+      durationMonths % visitFrequencyMonths == 0) {
+    total = (durationMonths ~/ visitFrequencyMonths).toString();
+  }
+
+  return '$visit / $total';
+}
+
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
     AppSharedPreferences().setSelectedLocale(

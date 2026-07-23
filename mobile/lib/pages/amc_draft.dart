@@ -204,6 +204,10 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                               );
                       },
                       title: visit.facility?.facilityName ?? '',
+                      visitNumber: visit.visitNumber,
+                      durationMonths: visit.amcConfiguration?.durationMonths,
+                      visitFrequencyMonths:
+                          visit.amcConfiguration?.visitFrequencyMonths,
                       dateAssigned: visit.scheduledDate ?? DateTime.now(),
                       status: visit.status!.isNotEmpty
                           ? (visit.status!.toLowerCase().contains(otpText)
@@ -237,6 +241,10 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                     );
                   },
                   title: visit.facility?.facilityName ?? '',
+                  visitNumber: visit.visitNumber,
+                  durationMonths: visit.amcConfiguration?.durationMonths,
+                  visitFrequencyMonths:
+                      visit.amcConfiguration?.visitFrequencyMonths,
                   dateAssigned: visit.scheduledDate ?? DateTime.now(),
                   status: visit.status ?? '---',
                   state: locality.state,

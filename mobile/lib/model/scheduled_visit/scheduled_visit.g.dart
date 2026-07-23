@@ -44,6 +44,7 @@ _$AmcConfigurationImpl _$$AmcConfigurationImplFromJson(
           const <AmcAssignment>[],
       durationMonths: (json['durationMonths'] as num?)?.toInt(),
       visitFrequencyMonths: (json['visitFrequencyMonths'] as num?)?.toInt(),
+      totalVisits: (json['totalVisits'] as num?)?.toInt(),
       configurationStartDate: const EpochDateTimeConverter()
           .fromJson(json['configurationStartDate']),
       configurationEndDate:
@@ -70,6 +71,7 @@ Map<String, dynamic> _$$AmcConfigurationImplToJson(
       'assignments': instance.assignments,
       'durationMonths': instance.durationMonths,
       'visitFrequencyMonths': instance.visitFrequencyMonths,
+      'totalVisits': instance.totalVisits,
       'configurationStartDate': const EpochDateTimeConverter()
           .toJson(instance.configurationStartDate),
       'configurationEndDate':

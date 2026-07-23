@@ -351,6 +351,7 @@ class AmcSelectFacility {
   String get noVisitsFound => 'AMC_SELECT_FACILITY_NO_VISITS_FOUND';
   String get failedToLoadVisits => 'AMC_SELECT_FACILITY_FAILED_TO_LOAD_VISITS';
   String get amcDate => 'AMC_SELECT_FACILITY_AMC_DATE';
+  String get amcNumber => 'AMC_NUMBER';
   String get report => 'AMC_SELECT_FACILITY_REPORT';
   String get submitForApproval => 'AMC_SELECT_FACILITY_SUBMIT_FOR_APPROVAL';
 }

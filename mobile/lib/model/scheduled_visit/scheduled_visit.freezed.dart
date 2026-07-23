@@ -225,6 +225,7 @@ mixin _$AmcConfiguration {
   List<AmcAssignment> get assignments => throw _privateConstructorUsedError;
   int? get durationMonths => throw _privateConstructorUsedError;
   int? get visitFrequencyMonths => throw _privateConstructorUsedError;
+  int? get totalVisits => throw _privateConstructorUsedError;
   @EpochDateTimeConverter()
   DateTime? get configurationStartDate => throw _privateConstructorUsedError;
   @EpochDateTimeConverter()
@@ -258,6 +259,7 @@ abstract class $AmcConfigurationCopyWith<$Res> {
       List<AmcAssignment> assignments,
       int? durationMonths,
       int? visitFrequencyMonths,
+      int? totalVisits,
       @EpochDateTimeConverter() DateTime? configurationStartDate,
       @EpochDateTimeConverter() DateTime? configurationEndDate,
       String? status,
@@ -291,6 +293,7 @@ class _$AmcConfigurationCopyWithImpl<$Res, $Val extends AmcConfiguration>
     Object? assignments = null,
     Object? durationMonths = freezed,
     Object? visitFrequencyMonths = freezed,
+    Object? totalVisits = freezed,
     Object? configurationStartDate = freezed,
     Object? configurationEndDate = freezed,
     Object? status = freezed,
@@ -341,6 +344,10 @@ class _$AmcConfigurationCopyWithImpl<$Res, $Val extends AmcConfiguration>
       visitFrequencyMonths: freezed == visitFrequencyMonths
           ? _value.visitFrequencyMonths
           : visitFrequencyMonths // ignore: cast_nullable_to_non_nullable
+              as int?,
+      totalVisits: freezed == totalVisits
+          ? _value.totalVisits
+          : totalVisits // ignore: cast_nullable_to_non_nullable
               as int?,
       configurationStartDate: freezed == configurationStartDate
           ? _value.configurationStartDate
@@ -398,6 +405,7 @@ abstract class _$$AmcConfigurationImplCopyWith<$Res>
       List<AmcAssignment> assignments,
       int? durationMonths,
       int? visitFrequencyMonths,
+      int? totalVisits,
       @EpochDateTimeConverter() DateTime? configurationStartDate,
       @EpochDateTimeConverter() DateTime? configurationEndDate,
       String? status,
@@ -430,6 +438,7 @@ class __$$AmcConfigurationImplCopyWithImpl<$Res>
     Object? assignments = null,
     Object? durationMonths = freezed,
     Object? visitFrequencyMonths = freezed,
+    Object? totalVisits = freezed,
     Object? configurationStartDate = freezed,
     Object? configurationEndDate = freezed,
     Object? status = freezed,
@@ -481,6 +490,10 @@ class __$$AmcConfigurationImplCopyWithImpl<$Res>
           ? _value.visitFrequencyMonths
           : visitFrequencyMonths // ignore: cast_nullable_to_non_nullable
               as int?,
+      totalVisits: freezed == totalVisits
+          ? _value.totalVisits
+          : totalVisits // ignore: cast_nullable_to_non_nullable
+              as int?,
       configurationStartDate: freezed == configurationStartDate
           ? _value.configurationStartDate
           : configurationStartDate // ignore: cast_nullable_to_non_nullable
@@ -520,6 +533,7 @@ class _$AmcConfigurationImpl implements _AmcConfiguration {
       final List<AmcAssignment> assignments = const <AmcAssignment>[],
       this.durationMonths,
       this.visitFrequencyMonths,
+      this.totalVisits,
       @EpochDateTimeConverter() this.configurationStartDate,
       @EpochDateTimeConverter() this.configurationEndDate,
       this.status,
@@ -579,6 +593,8 @@ class _$AmcConfigurationImpl implements _AmcConfiguration {
   @override
   final int? visitFrequencyMonths;
   @override
+  final int? totalVisits;
+  @override
   @EpochDateTimeConverter()
   final DateTime? configurationStartDate;
   @override
@@ -602,7 +618,7 @@ class _$AmcConfigurationImpl implements _AmcConfiguration {
 
   @override
   String toString() {
-    return 'AmcConfiguration(id: $id, tenantId: $tenantId, vendorId: $vendorId, facilityId: $facilityId, facility: $facility, projectId: $projectId, project: $project, assetTypes: $assetTypes, assignments: $assignments, durationMonths: $durationMonths, visitFrequencyMonths: $visitFrequencyMonths, configurationStartDate: $configurationStartDate, configurationEndDate: $configurationEndDate, status: $status, additionalDetails: $additionalDetails, auditDetails: $auditDetails)';
+    return 'AmcConfiguration(id: $id, tenantId: $tenantId, vendorId: $vendorId, facilityId: $facilityId, facility: $facility, projectId: $projectId, project: $project, assetTypes: $assetTypes, assignments: $assignments, durationMonths: $durationMonths, visitFrequencyMonths: $visitFrequencyMonths, totalVisits: $totalVisits, configurationStartDate: $configurationStartDate, configurationEndDate: $configurationEndDate, status: $status, additionalDetails: $additionalDetails, auditDetails: $auditDetails)';
   }
 
   @override
@@ -630,6 +646,8 @@ class _$AmcConfigurationImpl implements _AmcConfiguration {
                 other.durationMonths == durationMonths) &&
             (identical(other.visitFrequencyMonths, visitFrequencyMonths) ||
                 other.visitFrequencyMonths == visitFrequencyMonths) &&
+            (identical(other.totalVisits, totalVisits) ||
+                other.totalVisits == totalVisits) &&
             (identical(other.configurationStartDate, configurationStartDate) ||
                 other.configurationStartDate == configurationStartDate) &&
             (identical(other.configurationEndDate, configurationEndDate) ||
@@ -656,6 +674,7 @@ class _$AmcConfigurationImpl implements _AmcConfiguration {
       const DeepCollectionEquality().hash(_assignments),
       durationMonths,
       visitFrequencyMonths,
+      totalVisits,
       configurationStartDate,
       configurationEndDate,
       status,
@@ -690,6 +709,7 @@ abstract class _AmcConfiguration implements AmcConfiguration {
       final List<AmcAssignment> assignments,
       final int? durationMonths,
       final int? visitFrequencyMonths,
+      final int? totalVisits,
       @EpochDateTimeConverter() final DateTime? configurationStartDate,
       @EpochDateTimeConverter() final DateTime? configurationEndDate,
       final String? status,
@@ -722,6 +742,8 @@ abstract class _AmcConfiguration implements AmcConfiguration {
   int? get durationMonths;
   @override
   int? get visitFrequencyMonths;
+  @override
+  int? get totalVisits;
   @override
   @EpochDateTimeConverter()
   DateTime? get configurationStartDate;
