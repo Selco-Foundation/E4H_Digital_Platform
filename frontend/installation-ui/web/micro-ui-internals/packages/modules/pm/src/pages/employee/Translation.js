@@ -98,7 +98,7 @@ const Translation = () => {
             <DownloadIcon fill={"#C84C0E"} />
           </div>
           <span style={{ color: "#C84C0E", fontFamily: "Roboto", fontWeight: "600" }}>
-            {t("Download")}
+            {t("Translate")}
           </span>
         </button>
       </div>
