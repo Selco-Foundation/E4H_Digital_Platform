@@ -648,9 +648,6 @@ def _is_number_not_text(value):
 _BOM_ROLE_ORDER = list(BOM_ROLE_SUFFIXES.values())  # ["Make", "Capacity", "Quantity"]
 
 
-NUMERIC_BOM_ROLES = ("Capacity", "Quantity")
-
-
 def _mandatory_bom_key_prefixes(detected_type):
     """
     Solar Module, Solar Battery and Inverter (or its per-type equivalent - solar_charge_controller
@@ -667,17 +664,30 @@ def _is_mandatory_bom_column(keys, mandatory_prefixes):
     return any(key.startswith(prefix) for key in keys for prefix in mandatory_prefixes)
 
 
+def _requires_numeric_value(role, keys, mandatory_prefixes):
+    """Quantity must always be numeric wherever filled in. Capacity must be numeric only for
+    the mandatory BOM components (Solar Module, Solar Battery, Inverter/per-type equivalent) -
+    every other row's Capacity is a free-form spec (cable cross-section, wire gauge, etc.) and
+    may be alphanumeric."""
+    if role == "Quantity":
+        return True
+    if role == "Capacity":
+        return _is_mandatory_bom_column(keys, mandatory_prefixes)
+    return False
+
+
 def validate_bom_editable_fields_filled(wb, detected_type):
     """
     Validation 3 (BOM completeness): Make/Capacity/Quantity cells across the editable BOM tables
     (the "Bill Of Material..." sections listed in SECTION_TEMPLATE_HEADERS - Solar System /
     Luminaries & Fans / Load Wiring) may be left blank, EXCEPT for the Solar Module, Solar Battery
-    and Inverter (per-type equivalent) rows, whose Make/Capacity/Quantity are mandatory. Wherever
-    a Capacity or Quantity cell IS filled in (mandatory or not), it must additionally be an actual
-    number (not text, even numeric-looking text). SYSTEM FUNCTIONALITY PARAMETERS (and any other
-    non-BOM section, e.g. RMS/Header/Image/Annexure) is out of scope for this check, matching the
-    same "out of scope" sections already excluded from template-key coverage elsewhere in this
-    module.
+    and Inverter (per-type equivalent) rows, whose Make/Capacity/Quantity are mandatory. Quantity
+    must always be an actual number (not text, even numeric-looking text) wherever filled in.
+    Capacity must be numeric too, but only for the Solar Module/Solar Battery/Inverter rows -
+    every other row's Capacity is a free-form spec (cable cross-section, wire gauge, etc.) and may
+    be alphanumeric. SYSTEM FUNCTIONALITY PARAMETERS (and any other non-BOM section, e.g.
+    RMS/Header/Image/Annexure) is out of scope for this check, matching the same "out of scope"
+    sections already excluded from template-key coverage elsewhere in this module.
 
     Blank mandatory fields are reported as one summary line per section with a per-role count
     (e.g. "2 Make, 2 Capacity, 2 Quantity missing") rather than one line per blank cell. Invalid
@@ -726,7 +736,7 @@ def validate_bom_editable_fields_filled(wb, detected_type):
                     if _is_mandatory_bom_column(keys, mandatory_prefixes):
                         section_counts = blank_counts_by_section.setdefault(section, {})
                         section_counts[role] = section_counts.get(role, 0) + 1
-                elif role in NUMERIC_BOM_ROLES and not _is_number_not_text(value):
+                elif _requires_numeric_value(role, keys, mandatory_prefixes) and not _is_number_not_text(value):
                     invalid_numeric_errors.append(
                         f"{section} > '{label}' - {role} '{value}' must be a number, not text"
                     )
@@ -742,8 +752,9 @@ def validate_bom_editable_fields_filled(wb, detected_type):
 
     raise ICCValidationError(
         "The uploaded ICC report has invalid fields in the editable BOM tables "
-        "(Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in, "
-        "and Capacity/Quantity must be a number wherever filled in):\n- "
+        "(Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in "
+        "and must be a number; every other row's Quantity must also be a number wherever "
+        "filled in):\n- "
         + "\n- ".join(error_lines)
     )
 
