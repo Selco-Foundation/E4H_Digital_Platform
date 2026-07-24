@@ -15,6 +15,10 @@ const EmployeeSideBar = () => {
   const tenantId = Digit.ULBService.getStateId();
   const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "installation-qc";
   const translationUrl = `/${contextPath}/employee/pm/translation`;
+  const policyRoutes = {
+    privacy: `/${window?.contextPath}/privacy-policy`,
+    terms: `/${window?.contextPath}/terms-of-use`,
+  };
 
   function extractLeftIcon(data = {}) {
     for (const key in data) {
@@ -166,7 +170,31 @@ const EmployeeSideBar = () => {
   };
   const hasTranslateItem = sortedTransformedData.some((item) => item?.navigationUrl === translationUrl);
   const inboxIndex = sortedTransformedData.findIndex((item) => item?.navigationUrl?.toLowerCase?.().includes("inbox"));
+  const homeIndex = sortedTransformedData.findIndex((item) => item?.label === t("Home") || item?.navigationUrl === `/${window?.contextPath}/employee`);
   const sideNavItems = [...sortedTransformedData];
+  const policyItem = {
+    label: t("Privacy & Terms"),
+    icon: { icon: "Description", width: "1.5rem", height: "1.5rem" },
+    children: [
+      {
+        label: t("ES_PRIVACY_POLICY"),
+        icon: { icon: "Description", width: "1.5rem", height: "1.5rem" },
+        navigationUrl: policyRoutes.privacy,
+        orderNumber: 1,
+      },
+      {
+        label: t("ES_TERMS_OF_USE"),
+        icon: { icon: "Description", width: "1.5rem", height: "1.5rem" },
+        navigationUrl: policyRoutes.terms,
+        orderNumber: 2,
+      },
+    ],
+    orderNumber: 2,
+  };
+  const hasPolicyItem = sideNavItems.some((item) => item?.children?.some((child) => child?.navigationUrl === policyRoutes.privacy || child?.navigationUrl === policyRoutes.terms));
+  if (!hasPolicyItem) {
+    sideNavItems.splice(homeIndex >= 0 ? homeIndex + 1 : 1, 0, policyItem);
+  }
   if (!hasTranslateItem) {
     sideNavItems.splice(inboxIndex >= 0 ? inboxIndex + 1 : sideNavItems.length, 0, translateItem);
   }

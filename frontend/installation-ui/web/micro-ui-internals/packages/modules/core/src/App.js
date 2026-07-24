@@ -9,6 +9,7 @@ import CustomErrorComponent from "./components/CustomErrorComponent";
 import DummyLoaderScreen from "./components/DummyLoader";
 import SignUpV2 from "./pages/employee/SignUp-v2";
 import LoginV2 from "./pages/employee/Login-v2";
+import TermsPrivacyPolicy from "./pages/TermsPrivacyPolicy";
 
 export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite, initData, defaultLanding = "citizen",allowedUserTypes=["citizen","employee"] }) => {
   const history = useHistory();
@@ -74,6 +75,12 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
   };
   return (
     <Switch>
+      <Route exact path={`/${window?.contextPath}/privacy-policy`}>
+        <TermsPrivacyPolicy stateCode={stateCode} type="privacy" />
+      </Route>
+      <Route exact path={`/${window?.contextPath}/terms-of-use`}>
+        <TermsPrivacyPolicy stateCode={stateCode} type="terms" />
+      </Route>
      {allowedUserTypes?.some(userType=>userType=="employee")&& <Route path={`/${window?.contextPath}/employee`}>
         <EmployeeApp {...commonProps} />
       </Route>}
@@ -96,6 +103,7 @@ export const DigitAppWrapper = ({ stateCode, modules, appTenants, logoUrl, logoU
   const { stateInfo } = storeData || {};
   const userScreensExempted = ["user/error"];
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
+  const isPublicPolicyPage = ["privacy-policy", "terms-of-use"].some((url) => location?.pathname === `/${window?.globalPath}/${url}`);
   const userDetails = Digit.UserService.getUser();
   let CITIZEN = userDetails?.info?.type === "CITIZEN" || !window.location.pathname.split("/").includes("employee") ? true : false;
   const innerWidth = window.innerWidth;
@@ -103,12 +111,22 @@ export const DigitAppWrapper = ({ stateCode, modules, appTenants, logoUrl, logoU
 
   return (
     <div
-      className={isUserProfile ? "grounded-container" : "loginContainer"}
+      className={isPublicPolicyPage ? "" : isUserProfile ? "grounded-container" : "loginContainer"}
       style={
-        isUserProfile ? { padding: 0, paddingTop: CITIZEN ? "0" : mobileView && !CITIZEN ? "3rem" : "80px", marginLeft: CITIZEN || mobileView ? "0" : "40px" } : { "--banner-url": `url(${stateInfo?.bannerUrl})`, padding: "0px" }
+        isPublicPolicyPage
+          ? { padding: "0px" }
+          : isUserProfile
+          ? { padding: 0, paddingTop: CITIZEN ? "0" : mobileView && !CITIZEN ? "3rem" : "80px", marginLeft: CITIZEN || mobileView ? "0" : "40px" }
+          : { "--banner-url": `url(${stateInfo?.bannerUrl})`, padding: "0px" }
       }
     >
       <Switch>
+        <Route exact path={`/${window?.globalPath}/privacy-policy`}>
+          <TermsPrivacyPolicy stateCode={stateCode} type="privacy" />
+        </Route>
+        <Route exact path={`/${window?.globalPath}/terms-of-use`}>
+          <TermsPrivacyPolicy stateCode={stateCode} type="terms" />
+        </Route>
         <Route exact path={`/${window?.globalPath}/user/invalid-url`}>
           <CustomErrorComponent />
         </Route>
