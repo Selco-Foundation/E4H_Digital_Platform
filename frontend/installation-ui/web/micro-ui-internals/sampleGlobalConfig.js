@@ -16,6 +16,8 @@ var globalConfigs = (function () {
     var footerBWLogoURL = 'https://unified-dev.digit.org/egov-dev-assets/mseva-white-logo.png';
     var footerLogoURL = 'https://unified-dev.digit.org/egov-dev-assets/digit-footer.png';
     var digitHomeURL = 'https://www.digit.org/';
+    var privacyPolicyURL = 'https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf';
+    var termsOfUseURL = 'https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf';
     var assetS3Bucket = 'works-qa-asset';
     var invalidEmployeeRoles = []
     var getConfig = function (key) {
@@ -33,6 +35,10 @@ var globalConfigs = (function () {
             return footerLogoURL;
         } else if (key === 'DIGIT_HOME_URL') {
             return digitHomeURL;
+        } else if (key === 'PRIVACY_POLICY_URL') {
+            return privacyPolicyURL;
+        } else if (key === 'TERMS_OF_USE_URL') {
+            return termsOfUseURL;
         } else if (key === 'xstate-webchat-services') {
             return xstateWebchatServices;
         } else if (key === 'S3BUCKET') {

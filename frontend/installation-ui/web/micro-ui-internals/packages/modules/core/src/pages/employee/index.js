@@ -58,6 +58,29 @@ const EmployeeApp = ({
       history.replace(`${path}/sandbox/productPage`);
     }
   }, [location.pathname, location.search, path, history, isSuperUserWithMultipleRootTenant]);
+
+  const getDocumentUrl = (keys) => {
+    for (const key of keys) {
+      const url = window?.globalConfigs?.getConfig?.(key);
+      if (typeof url === "string" && url.trim()) {
+        return url.trim();
+      }
+    }
+    return "";
+  };
+
+  const openDocumentLink = (event, url) => {
+    event.preventDefault();
+    if (url) {
+      window.location.href = url;
+    } else {
+      console.warn("Document URL is not configured in globalConfigs.");
+    }
+  };
+
+  const privacyPolicyUrl = getDocumentUrl(["PRIVACY_POLICY_URL", "PRIVACY_POLICY_S3_URL", "E4H_PRIVACY_POLICY_URL"]);
+  const termsOfUseUrl = getDocumentUrl(["TERMS_OF_USE_URL", "TERMS_OF_USE_S3_URL", "E4H_TERMS_OF_USE_URL"]);
+
   return (
     <div className="employee">
       <Switch>
@@ -145,7 +168,7 @@ const EmployeeApp = ({
                 />
               </ErrorBoundary>
             </div>
-            <div className="employee-home-footer">
+            <div className="employee-home-footer" style={{ flexDirection: "column", alignItems: "center", height: "auto" }}>
               <ImageComponent
                 alt="Powered by DIGIT"
                 src={window?.globalConfigs?.getConfig?.("DIGIT_FOOTER")}
@@ -154,6 +177,14 @@ const EmployeeApp = ({
                   window.open(window?.globalConfigs?.getConfig?.("DIGIT_HOME_URL"), "_blank").focus();
                 }}
               />
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
+                <a href="#" onClick={(event) => openDocumentLink(event, privacyPolicyUrl)}>
+                  Privacy Policy
+                </a>
+                <a href="#" onClick={(event) => openDocumentLink(event, termsOfUseUrl)}>
+                  Terms of Use
+                </a>
+              </div>
             </div>
           </div>
         </Route>
