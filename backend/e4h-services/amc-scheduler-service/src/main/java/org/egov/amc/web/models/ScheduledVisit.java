@@ -20,6 +20,11 @@ public class ScheduledVisit {
     private String facilityId;
     private String facilityName;
     private Facility facility;
+    // Localized boundary display names, resolved from facility.additionalDetails.boundary
+    // before indexing - not persisted in the DB, populated only for the search index payload.
+    private String state;
+    private String district;
+    private String block;
     private Integer visitNumber;
     private Long scheduledDate;
     private Long actualVisitDate;
