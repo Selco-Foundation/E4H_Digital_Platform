@@ -71,6 +71,18 @@ class InboxReportCard extends StatelessWidget {
             label: context.translate(i18.common.submissionDate),
             value: _detailText(formattedDate, textTheme, theme),
           ),
+          ReportDetailRow(
+            label: context.translate(i18.common.state),
+            value: _detailText(_displayValue(state), textTheme, theme),
+          ),
+          ReportDetailRow(
+            label: context.translate(i18.common.district),
+            value: _detailText(_displayValue(district), textTheme, theme),
+          ),
+          ReportDetailRow(
+            label: context.translate(i18.common.block),
+            value: _detailText(_displayValue(block), textTheme, theme),
+          ),
           if (isAmc == true)
             ReportDetailRow(
               label: context.translate(i18.amcSelectFacility.amcNumber),
@@ -84,18 +96,6 @@ class InboxReportCard extends StatelessWidget {
                 theme,
               ),
             ),
-          ReportDetailRow(
-            label: context.translate(i18.common.state),
-            value: _detailText(_displayValue(state), textTheme, theme),
-          ),
-          ReportDetailRow(
-            label: context.translate(i18.common.district),
-            value: _detailText(_displayValue(district), textTheme, theme),
-          ),
-          ReportDetailRow(
-            label: context.translate(i18.common.block),
-            value: _detailText(_displayValue(block), textTheme, theme),
-          ),
           const SizedBox(height: spacer4),
           DigitButton(
               mainAxisSize: MainAxisSize.max,

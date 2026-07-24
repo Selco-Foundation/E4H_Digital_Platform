@@ -473,18 +473,6 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
               value: _detailText(formattedDate, textTheme, theme),
             ),
             ReportDetailRow(
-              label: context.translate(i18.amcSelectFacility.amcNumber),
-              value: _detailText(
-                formatAmcNumber(
-                  widget.visitNumber,
-                  widget.durationMonths,
-                  widget.visitFrequencyMonths,
-                ),
-                textTheme,
-                theme,
-              ),
-            ),
-            ReportDetailRow(
               label: context.translate(i18.common.state),
               value: _detailText(_displayValue(widget.state), textTheme, theme),
             ),
@@ -496,6 +484,18 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
             ReportDetailRow(
               label: context.translate(i18.common.block),
               value: _detailText(_displayValue(widget.block), textTheme, theme),
+            ),
+            ReportDetailRow(
+              label: context.translate(i18.amcSelectFacility.amcNumber),
+              value: _detailText(
+                formatAmcNumber(
+                  widget.visitNumber,
+                  widget.durationMonths,
+                  widget.visitFrequencyMonths,
+                ),
+                textTheme,
+                theme,
+              ),
             ),
             const SizedBox(height: spacer4),
             DigitButton(
