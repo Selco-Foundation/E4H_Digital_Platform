@@ -14,6 +14,7 @@ import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
+import '../model/activity_facility/activity_facility.dart';
 import '../model/document/document.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../utils/app_logger.dart';
@@ -23,12 +24,45 @@ import 'activity_facility_repo.dart';
 
 final envConfigs = env.EnvironmentConfiguration.instance;
 
+Map<String, dynamic> enrichWithFacilityDetails({
+  required Map<String, dynamic> values,
+  Facility? facility,
+  String? projectNumber,
+  String? poWoNumber,
+  DateTime? projectDate,
+}) {
+  final enriched = Map<String, dynamic>.from(values);
+  final locality = parseBoundaryCodeLocality(facility?.boundaryCode);
+
+  _putIfNotBlank(enriched, 'health_facility_name', facility?.facilityName);
+  _putIfNotBlank(enriched, 'health_facility_type', facility?.facilityType);
+  _putIfNotBlank(
+    enriched,
+    'health_facility_address',
+    _formatFacilityAddress(facility?.address),
+  );
+  _putIfNotBlank(enriched, 'project_number', projectNumber);
+  _putIfNotBlank(enriched, 'vendor_name', facility?.vendorName);
+  _putIfNotBlank(enriched, 'po_wo_number', poWoNumber);
+  _putIfNotBlank(enriched, 'project_date', _formatProjectDate(projectDate));
+  _putIfNotBlank(enriched, 'project_state', locality.state);
+  _putIfNotBlank(enriched, 'project_block', locality.block);
+
+  return enriched;
+}
+
 Map<String, dynamic> enrichAmcPdfValues({
   required Map<String, dynamic> formValues,
   ScheduledVisit? scheduledVisit,
 }) {
-  final enriched = Map<String, dynamic>.from(formValues);
   final configuration = scheduledVisit?.amcConfiguration;
+  final project = configuration?.project;
+  final enriched = enrichWithFacilityDetails(
+    values: formValues,
+    facility: scheduledVisit?.facility ?? configuration?.facility,
+    projectNumber: project?['projectNumber']?.toString(),
+    projectDate: _dateTimeFromProjectValue(project?['startDate']),
+  );
 
   enriched['amc_number'] = formatAmcNumber(
     scheduledVisit?.visitNumber,
@@ -37,6 +71,64 @@ Map<String, dynamic> enrichAmcPdfValues({
   );
 
   return enriched;
+}
+
+void _putIfNotBlank(
+  Map<String, dynamic> values,
+  String key,
+  String? value,
+) {
+  final cleaned = _blankToNull(value);
+  if (cleaned != null) values[key] = cleaned;
+}
+
+String? _blankToNull(String? value) {
+  final cleaned = value?.trim();
+  return cleaned == null || cleaned.isEmpty ? null : cleaned;
+}
+
+String? _formatProjectDate(DateTime? date) {
+  if (date == null) return null;
+  final year = date.year.toString().padLeft(4, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
+}
+
+DateTime? _dateTimeFromProjectValue(Object? value) {
+  if (value is int) {
+    return DateTime.fromMillisecondsSinceEpoch(value);
+  }
+  if (value is String) {
+    final epoch = int.tryParse(value);
+    if (epoch != null) return DateTime.fromMillisecondsSinceEpoch(epoch);
+    return DateTime.tryParse(value);
+  }
+  return null;
+}
+
+String? _formatFacilityAddress(FacilityAddress? address) {
+  if (address == null) return null;
+  final parts = <String>[];
+
+  void add(String? value) {
+    final cleaned = _blankToNull(value);
+    if (cleaned != null) parts.add(cleaned);
+  }
+
+  add(address.detail);
+  add(address.landmark);
+  add(address.doorNo);
+  add(address.street);
+  add(address.city);
+  add(address.pincode);
+
+  if (parts.isEmpty) {
+    add(address.addressLine1);
+    add(address.addressLine2);
+  }
+
+  return parts.isEmpty ? null : parts.join(', ');
 }
 
 class _AssetTypeBomSummary {
@@ -72,43 +164,17 @@ class BomRepository {
       if (row == null) return bomData;
 
       final af = row.activityFacility;
-
-      final facilityName = af.facility?.facilityName?.toString();
-      final facilityType = af.facility?.facilityType?.toString();
-      final address = _formatFacilityAddress(af);
       final projectNumber = af.fieldPlan?.project?.projectNumber?.toString();
-      final vendorName = af.facility?.vendorName;
       final poWoNumber = af.fieldPlan?.poWoNumber;
-
-      final projectDate = _formatProjectDate(af);
-      final locality =
-          parseBoundaryCodeLocality(af.facility?.boundaryCode?.toString());
-      final projectState = locality.state;
-      final projectBlock = locality.block;
-
-      final enriched = Map<String, dynamic>.from(bomData);
-
-      if (facilityName != null && facilityName.trim().isNotEmpty) {
-        enriched['health_facility_name'] = facilityName.trim();
-      }
-      _putIfNotBlank(enriched, 'health_facility_type', facilityType);
-      if (address != null && address.trim().isNotEmpty) {
-        enriched['health_facility_address'] = address.trim();
-      }
-      if (projectNumber != null && projectNumber.trim().isNotEmpty) {
-        enriched['project_number'] = projectNumber.trim();
-      }
-      _putIfNotBlank(enriched, 'vendor_name', vendorName);
-      _putIfNotBlank(enriched, 'po_wo_number', poWoNumber);
-      if (projectDate != null && projectDate.trim().isNotEmpty) {
-        enriched['project_date'] = projectDate.trim();
-      }
-      if (projectState.trim().isNotEmpty) {
-        enriched['project_state'] = projectState.trim();
-      }
-      if (projectBlock.trim().isNotEmpty) {
-        enriched['project_block'] = projectBlock.trim();
-      }
+      final projectDate = af.fieldPlan?.startDateTime ??
+          af.fieldPlan?.project?.startDateTime;
+      final enriched = enrichWithFacilityDetails(
+        values: bomData,
+        facility: af.facility,
+        projectNumber: projectNumber,
+        poWoNumber: poWoNumber,
+        projectDate: projectDate,
+      );
 
       final panelSummary = await _getAssetTypeBomSummary(
         isar: isar,
@@ -219,15 +285,6 @@ class BomRepository {
     return serialNumbers;
   }
 
-  void _putIfNotBlank(
-    Map<String, dynamic> values,
-    String key,
-    String? value,
-  ) {
-    final cleaned = _blankToNull(value);
-    if (cleaned != null) values[key] = cleaned;
-  }
-
   void _putIfNotEmpty(
     Map<String, dynamic> values,
     String key,
@@ -242,51 +299,6 @@ class BomRepository {
       if (cleaned != null) return cleaned;
     }
     return null;
-  }
-
-  static String? _blankToNull(String? value) {
-    final cleaned = value?.trim();
-    return cleaned == null || cleaned.isEmpty ? null : cleaned;
-  }
-
-  String? _formatProjectDate(dynamic af) {
-    final fpStart = af.fieldPlan?.startDateTime;
-    final pjStart = af.fieldPlan?.project?.startDateTime;
-    final dt = fpStart ?? pjStart;
-    if (dt == null) return null;
-    final y = dt.year.toString().padLeft(4, '0');
-    final m = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
-
-  String? _formatFacilityAddress(dynamic af) {
-    try {
-      final a = af.facility?.address;
-      if (a == null) return null;
-      final parts = <String>[];
-      void add(String? v) {
-        final s = v?.toString().trim();
-        if (s != null && s.isNotEmpty) parts.add(s);
-      }
-
-      add(a.detail);
-      add(a.landmark);
-      add(a.doorNo);
-      add(a.street);
-      add(a.city);
-      add(a.pincode);
-
-      if (parts.isEmpty) {
-        add(a.addressLine1);
-        add(a.addressLine2);
-      }
-
-      if (parts.isEmpty) return null;
-      return parts.join(', ');
-    } catch (_) {
-      return null;
-    }
   }
 
   Future<void> saveLocal({
