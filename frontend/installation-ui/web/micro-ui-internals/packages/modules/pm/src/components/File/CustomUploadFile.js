@@ -7,7 +7,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
   const {
     t, heading, description, name, allowedFileTypes = [], file, setFile,
-    handleFileUpload, invalidDataError, errorViewLabel, setInvalidDataError, setToast
+    handleFileUpload, invalidDataError, setInvalidDataError, setToast
   } = props;
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
@@ -148,7 +148,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
         </p>
       </div>
       {file && <UploadedFilePreview t={t} file={file} onRemove={handleRemove} onReupload={openFileDialog} />}
-      {invalidDataError && <UploadErrorCard t={t} cardLabel={invalidDataError.label} viewActionLabel={errorViewLabel || "CORE_COMMON_VIEW_ERRORS"} />}
+      {invalidDataError && <UploadErrorCard cardLabel={invalidDataError.label} />}
     </div>
   );
 };

@@ -847,7 +847,6 @@ const CreateFieldPlan = () => {
               allowedFileTypes: [".xlsx"],
               handleFileUpload: handleFacilityDataUpload,
               invalidDataError: invalidDataError,
-              errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
               heading: "PM_CREATE_FIELD_PLAN_HEAD_UPLOAD_FACILITY_DATA",
               description: "PM_CREATE_FIELD_PLAN_HEAD_UPLOAD_FACILITY_DATA_DESC",
               t,
@@ -1347,7 +1346,8 @@ const CreateFieldPlan = () => {
     return <Loader />;
   }
 
-  const hasCustomPrepopulationErrorToast = toast?.key === "error" && toast?.translate === false;
+  const isPrepopulationErrorToast = currentKey === 3 && toast?.key === "error";
+  const hasCustomPrepopulationErrorToast = isPrepopulationErrorToast && toast?.translate === false;
 
   return (
     <div style={{padding: mobileView ? "15px" : "0px"}}>
@@ -1430,12 +1430,12 @@ const CreateFieldPlan = () => {
             minWidth: "0",
             left: "50%",
             transform: "translateX(-50%)",
-            alignItems: hasCustomPrepopulationErrorToast ? "flex-start" : "center",
-            ...(hasCustomPrepopulationErrorToast ? { paddingTop: "12px" } : {}),
+            alignItems: isPrepopulationErrorToast ? "flex-start" : "center",
+            ...(isPrepopulationErrorToast ? { paddingTop: "12px" } : {}),
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          labelstyle={hasCustomPrepopulationErrorToast ? {
+          labelstyle={isPrepopulationErrorToast ? {
             flex: 1,
             minWidth: "0",
             position: "relative",
@@ -1443,7 +1443,7 @@ const CreateFieldPlan = () => {
             paddingRight: "0",
             marginTop: "-4px",
           } : undefined}
-          label={hasCustomPrepopulationErrorToast ? (
+          label={isPrepopulationErrorToast ? (
             <div style={{ position: "relative", width: "100%" }}>
               <style>
                 {`
@@ -1470,42 +1470,47 @@ const CreateFieldPlan = () => {
                   }
                 `}
               </style>
+              <div style={{ fontWeight: "700", marginBottom: "4px" }}>Validation error:</div>
               <div
-                className="field-plan-toast-message-scroll"
+                className={hasCustomPrepopulationErrorToast ? "field-plan-toast-message-scroll" : undefined}
                 style={{
-                  maxHeight: "calc(1.5em * 6)",
-                  overflowY: "auto",
-                  overflowX: "hidden",
-                  marginRight: "36px",
-                  paddingRight: "8px",
+                  ...(hasCustomPrepopulationErrorToast ? {
+                    maxHeight: "calc(1.5em * 6)",
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    marginRight: "36px",
+                    paddingRight: "8px",
+                  } : {}),
                   whiteSpace: "normal",
                   overflowWrap: "anywhere",
                   wordBreak: "normal",
                 }}
               >
-                {toast.label}
+                {toast.translate === false ? toast.label : t(toast.label)}
               </div>
-              <button
-                type="button"
-                aria-label="Close validation message"
-                onClick={closeToast}
-                style={{
-                  position: "absolute",
-                  top: "0",
-                  right: "0",
-                  width: "24px",
-                  height: "24px",
-                  border: "none",
-                  background: "transparent",
-                  color: "#FFFFFF",
-                  cursor: "pointer",
-                  fontSize: "24px",
-                  lineHeight: "24px",
-                  padding: "0",
-                }}
-              >
-                X
-              </button>
+              {hasCustomPrepopulationErrorToast && (
+                <button
+                  type="button"
+                  aria-label="Close validation message"
+                  onClick={closeToast}
+                  style={{
+                    position: "absolute",
+                    top: "0",
+                    right: "0",
+                    width: "24px",
+                    height: "24px",
+                    border: "none",
+                    background: "transparent",
+                    color: "#FFFFFF",
+                    cursor: "pointer",
+                    fontSize: "24px",
+                    lineHeight: "24px",
+                    padding: "0",
+                  }}
+                >
+                  X
+                </button>
+              )}
             </div>
           ) : t(toast.label)}
           isDleteBtn={!hasCustomPrepopulationErrorToast}
