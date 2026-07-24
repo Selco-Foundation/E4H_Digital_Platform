@@ -229,9 +229,9 @@
             [
               "23",
               "Load side MCB with Conduit box ",
-              "{{  }}",
-              "{{  }}",
-              "{{  }}"
+              "{{ load_side_mcb_conduit_box_make }}",
+              "{{ load_side_mcb_conduit_box_capacity }}",
+              "{{ load_side_mcb_conduit_box_qty }}"
             ],
             [
               "24",
@@ -405,7 +405,7 @@
             [
               "2",
               " RMS Type Installed (Type 1 / Type 2 / Type 3)",
-              "{{rms_type_installed}}"
+              "{{rms_type_installed}} : {{rms_type_description}}"
             ],
             ["3", "RMS IP Number/MAC ID", "{{ rms_ip_mac_id }}"],
             ["4", "RMS Serial Number", "{{ rms_serial_number }}"],
@@ -413,9 +413,13 @@
             [
               "6",
               "Installation status (Completed/Not Completed)",
-              "{{ rms_installation_status }}"
+              "{{ rms_installation_status }} : {{rms_installation_notes}}"
             ],
-            ["7", "Meter Status (Active/Inactive)", "{{ rms_meter_status }}"],
+            [
+              "7",
+              "Meter Status (Active/Inactive)",
+              "{{ rms_meter_status }} - {{rms_meter_status_notes}}"
+            ],
             [
               "8",
               "Date of Installation completed (DD-MM-YYYY)",
@@ -442,7 +446,11 @@
               "Availability of Airtel Network (Yes/No)",
               "{{ rms_airtel_network_available }}"
             ],
-            ["14", "Type of RMS (Single phase/Three phase)", "{{ rms_type }}"],
+            [
+              "14",
+              "Type of RMS (Single phase/Three phase)",
+              "{{ rms_type }} - {{rms_type_notes}}"
+            ],
             ["15", "RMS - CSQ value (During IP Pinging)", "{{ rms_csq_value }}"]
           ]
         },

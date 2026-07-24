@@ -122,9 +122,9 @@
             [
               "4",
               "Solar On-Grid PCU/Inverter",
-              "{{ inverter_make }}",
-              "{{ inverter_capacity }}",
-              "{{ inverter_qty }}"
+              "{{ solar_on_grid_pcu_inverter_make }}",
+              "{{ solar_on_grid_pcu_inverter_capacity }}",
+              "{{ solar_on_grid_pcu_inverter_qty }}"
             ],
             [
               "5",
@@ -143,37 +143,37 @@
             [
               "7",
               "Copper Cable – 1 (PCU/Inverter to ACDB)",
-              "{{ pcu_acdb_cable1_make }}",
-              "{{ pcu_acdb_cable1_capacity }}",
-              "{{ pcu_acdb_cable1_qty }}"
+              "{{ pcu_inverter_acdb_copper_cable_1_make }}",
+              "{{ pcu_inverter_acdb_copper_cable_1_capacity }}",
+              "{{ pcu_inverter_acdb_copper_cable_1_qty }}"
             ],
             [
               "8",
               "Copper Cable – 2 (ACDB + Solar meter + LT panel + Net meter + Grid)",
-              "{{ acdb_meter_ltpanel_cable2_make }}",
-              "{{ acdb_meter_ltpanel_cable2_capacity }}",
-              "{{ acdb_meter_ltpanel_cable2_qty }}"
+              "{{ acdb_solar_meter_lt_panel_net_meter_grid_copper_cable_2_make }}",
+              "{{ acdb_solar_meter_lt_panel_net_meter_grid_copper_cable_2_capacity }}",
+              "{{ acdb_solar_meter_lt_panel_net_meter_grid_copper_cable_2_qty }}"
             ],
             [
               "9",
               "DC Earthing Cable – 1 (Panels + MMS + AJB)",
-              "{{ dc_earthing_cable1_make }}",
-              "{{ dc_earthing_cable1_capacity }}",
-              "{{ dc_earthing_cable1_qty }}"
+              "{{ dc_earthing_cable_1_make }}",
+              "{{ dc_earthing_cable_1_capacity }}",
+              "{{ dc_earthing_cable_1_qty }}"
             ],
             [
               "10",
               "DC Earthing Cable – 2 (AJB + ACDB + Inverter)",
-              "{{ dc_earthing_cable2_make }}",
-              "{{ dc_earthing_cable2_capacity }}",
-              "{{ dc_earthing_cable2_qty }}"
+              "{{ dc_earthing_cable_2_make }}",
+              "{{ dc_earthing_cable_2_capacity }}",
+              "{{ dc_earthing_cable_2_qty }}"
             ],
             [
               "11",
               "Earthing Cable / Down conductor for Lightning Arrestor",
-              "{{ lightning_down_conductor_make }}",
-              "{{ lightning_down_conductor_capacity }}",
-              "{{ lightning_down_conductor_qty }}"
+              "{{ earthing_down_conductor_lightning_arrestor_make }}",
+              "{{ earthing_down_conductor_lightning_arrestor_capacity }}",
+              "{{ earthing_down_conductor_lightning_arrestor_qty }}"
             ],
             [
               "12",
@@ -192,9 +192,9 @@
             [
               "14",
               "ACDB with Relay Contractor + SPD + MCB + Solar Meter",
-              "{{ acdb_relay_spd_mcb_meter_make }}",
-              "{{ acdb_relay_spd_mcb_meter_capacity }}",
-              "{{ acdb_relay_spd_mcb_meter_qty }}"
+              "{{ acdb_relay_spd_mcb_solar_meter_make }}",
+              "{{ acdb_relay_spd_mcb_solar_meter_capacity }}",
+              "{{ acdb_relay_spd_mcb_solar_meter_qty }}"
             ],
             [
               "15",
