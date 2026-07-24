@@ -661,7 +661,19 @@ def _mandatory_bom_key_prefixes(detected_type):
 
 
 def _is_mandatory_bom_column(keys, mandatory_prefixes):
-    return any(key.startswith(prefix) for key in keys for prefix in mandatory_prefixes)
+    """A column counts as mandatory only if one of its keys is EXACTLY "{prefix}_make" /
+    "{prefix}_capacity" / "{prefix}_qty" for one of the mandatory prefixes. A plain
+    key.startswith(prefix) check would also incorrectly match unrelated rows that merely start
+    with the same word - e.g. prefix "inverter" (from "inverter_make") would wrongly swallow
+    "inverter_elevation_leg_capacity" and "inverter_rack_electrical_insulation_mat_capacity",
+    which are unrelated BOM rows, not the Inverter component itself.
+    """
+    return any(
+        key == prefix + suffix
+        for key in keys
+        for prefix in mandatory_prefixes
+        for suffix in BOM_ROLE_SUFFIXES  # ("_make", "_capacity", "_qty")
+    )
 
 
 def _requires_numeric_value(role, keys, mandatory_prefixes):
