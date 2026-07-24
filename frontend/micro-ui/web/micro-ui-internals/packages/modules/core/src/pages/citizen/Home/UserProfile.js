@@ -71,7 +71,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const [errors, setErrors] = React.useState({});
   const isMobile = window.Digit.Utils.browser.isMobile();
   const analyticsOnceRef = React.useRef(false);
-  const jurisdictionCurrentBoundary = Digit.PersistantStorage.get("Jurisdiction.CurrentBoundary");
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const jurisdictionCurrentBoundaryTypes = Digit.Utils.BoundaryUtil.aggregateBoundaryTypes(jurisdictionCurrentBoundary);
   const isOnlyFacilityType = jurisdictionCurrentBoundaryTypes.length === 1 && jurisdictionCurrentBoundaryTypes[0] === "facility";

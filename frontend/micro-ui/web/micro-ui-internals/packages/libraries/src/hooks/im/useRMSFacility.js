@@ -28,7 +28,7 @@ const useRMSPausedFacility = (queryFilter, limit = 10, offset = 0) => {
     },
   };
 
-  const jurisdictionCurrentBoundary = Digit.PersistantStorage.get("Jurisdiction.CurrentBoundary") || {
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
     country: ["-"],
   };
 

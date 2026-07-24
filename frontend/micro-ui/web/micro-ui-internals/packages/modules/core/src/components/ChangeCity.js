@@ -19,7 +19,7 @@ const ChangeCity = (prop) => {
     sortSelectCityData=selectCityData.sort((a, b) => a.label.localeCompare(b.label));
   }
   const history = useHistory();
-  const jurisdictionBoundaries = Digit.PersistantStorage.get("Jurisdiction.Boundaries");
+  const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
   const [facilityOptions, setFacilityOptions] = useState([]);
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
@@ -51,7 +51,7 @@ const ChangeCity = (prop) => {
 
   const handleChangeCity = (city) => {
     setDropDownData(city);
-    Digit.PersistantStorage.set("Jurisdiction.CurrentBoundary", city.type === "UNIFIED" ? jurisdictionBoundaries : {
+    Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", city.type === "UNIFIED" ? jurisdictionBoundaries : {
       [city.type]: city.code.split(","),
     })
     if (window.location.href.includes(`/${window.contextPath}/employee/`)) {
@@ -84,7 +84,7 @@ const ChangeCity = (prop) => {
       })
     }
     filteredArray.sort((a, b) => a.label.localeCompare(b.label));
-    const jurisdictionCurrentBoundary = Digit.PersistantStorage.get("Jurisdiction.CurrentBoundary");
+    const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
     const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
     const selectedBoundary = filteredArray?.find(select => select?.code === jurisdictionCurrentBoundaryCodes?.join(","));
     setSelectCityData(filteredArray);
