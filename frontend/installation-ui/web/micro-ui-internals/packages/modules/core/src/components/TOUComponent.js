@@ -18,7 +18,7 @@ const TOUComponent = ({ onSelect, formData, control, formState, ...props }) => {
     setIsChecked(event.target.checked);
   };
   useEffect(() => {
-    onSelect("check", isChecked);
+    onSelect("touCheck", isChecked);
   }, [isChecked]);
   const onButtonClick = () => {
     setShowPopUp(true);
