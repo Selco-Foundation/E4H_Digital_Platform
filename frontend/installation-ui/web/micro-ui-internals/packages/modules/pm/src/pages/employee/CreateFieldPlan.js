@@ -1347,6 +1347,8 @@ const CreateFieldPlan = () => {
     return <Loader />;
   }
 
+  const hasCustomPrepopulationErrorToast = toast?.key === "error" && toast?.translate === false;
+
   return (
     <div style={{padding: mobileView ? "15px" : "0px"}}>
       {blockUI && (
@@ -1428,20 +1430,20 @@ const CreateFieldPlan = () => {
             minWidth: "0",
             left: "50%",
             transform: "translateX(-50%)",
-            alignItems: "flex-start",
-            paddingTop: "12px",
+            alignItems: hasCustomPrepopulationErrorToast ? "flex-start" : "center",
+            ...(hasCustomPrepopulationErrorToast ? { paddingTop: "12px" } : {}),
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          labelstyle={{
+          labelstyle={hasCustomPrepopulationErrorToast ? {
             flex: 1,
             minWidth: "0",
             position: "relative",
             overflow: "visible",
             paddingRight: "0",
             marginTop: "-4px",
-          }}
-          label={(
+          } : undefined}
+          label={hasCustomPrepopulationErrorToast ? (
             <div style={{ position: "relative", width: "100%" }}>
               <style>
                 {`
@@ -1481,7 +1483,7 @@ const CreateFieldPlan = () => {
                   wordBreak: "normal",
                 }}
               >
-                {toast.translate === false ? toast.label : t(toast.label)}
+                {toast.label}
               </div>
               <button
                 type="button"
@@ -1497,7 +1499,7 @@ const CreateFieldPlan = () => {
                   background: "transparent",
                   color: "#FFFFFF",
                   cursor: "pointer",
-                  fontSize: "32px",
+                  fontSize: "24px",
                   lineHeight: "24px",
                   padding: "0",
                 }}
@@ -1505,9 +1507,9 @@ const CreateFieldPlan = () => {
                 X
               </button>
             </div>
-          )}
-          isDleteBtn={false}
-          onClose={closeToast}
+          ) : t(toast.label)}
+          isDleteBtn={!hasCustomPrepopulationErrorToast}
+          onClose={hasCustomPrepopulationErrorToast ? undefined : closeToast}
         />
       )}
       {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}
