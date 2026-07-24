@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.service.ScheduledVisitService;
 import org.egov.amc.web.models.*;
+import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.utils.ResponseInfoFactory;
@@ -132,5 +133,20 @@ public class ScheduledVisitController {
                         .createResponseInfo(enrichedScheduledVisitRequest.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/index/_reindex", method = RequestMethod.POST)
+    public ResponseEntity<ReindexResponse> reindexNonDraftVisits(
+            @ApiParam(value = "RequestInfo for the reindex trigger.", required = true) @Valid @RequestBody RequestInfoWrapper request,
+            @RequestParam(name = "tenantId") String tenantId
+    ) {
+        log.info("Received request to reindex non-DRAFT scheduled visits for tenantId={}", tenantId);
+        int totalIndexed = scheduledVisitService.reindexNonDraftVisits(request.getRequestInfo(), tenantId);
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        ReindexResponse response = ReindexResponse.builder()
+                .responseInfo(responseInfo)
+                .totalVisitsIndexed(totalIndexed)
+                .build();
+        return new ResponseEntity<ReindexResponse>(response, HttpStatus.OK);
     }
 }

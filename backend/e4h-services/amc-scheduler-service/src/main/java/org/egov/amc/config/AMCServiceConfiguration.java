@@ -93,6 +93,12 @@ public class AMCServiceConfiguration {
     @Value("${scheduled.visit.update.topic}")
     private String updateScheduledVisitTopic;
 
+    @Value("${scheduled.visit.index.create.topic}")
+    private String saveScheduledVisitIndexTopic;
+
+    @Value("${scheduled.visit.index.update.topic}")
+    private String updateScheduledVisitIndexTopic;
+
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
 
