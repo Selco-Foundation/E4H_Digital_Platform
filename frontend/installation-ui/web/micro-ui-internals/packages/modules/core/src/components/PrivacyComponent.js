@@ -2,11 +2,13 @@ import React, { useState, useEffect, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckBox, PopUp, Button, HeaderComponent } from "@egovernments/digit-ui-components";
 import { LinkButton } from "@egovernments/digit-ui-react-components";
+import { CONSENT_COOKIE_KEYS, getConsentCookie } from "../utilities/consentCookies";
 
 const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) => {
   const { t } = useTranslation();
   const tenantId = Digit.ULBService.getCurrentTenantId();
-  const [isChecked, setIsChecked] = useState(false);
+  const hasStoredConsent = getConsentCookie(CONSENT_COOKIE_KEYS.privacy);
+  const [isChecked, setIsChecked] = useState(hasStoredConsent);
   const [showPopUp, setShowPopUp] = useState(false);
   const moduleName=Digit.Utils.getConfigModuleName();
 
@@ -17,6 +19,9 @@ const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) 
     },
   });
   const handleCheckboxChange = (event) => {
+    if (hasStoredConsent) {
+      return;
+    }
     setIsChecked(event.target.checked);
   };
   useEffect(() => {
@@ -33,10 +38,21 @@ const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) 
     }
   };
 
+  if (hasStoredConsent) {
+    return null;
+  }
+
   return (
     <React.Fragment>
       <div className="digit-privacy-checkbox digit-privacy-checkbox-align">
-        <CheckBox label={t("ES_BY_CLICKING")} checked={isChecked} onChange={handleCheckboxChange} id={"privacy-component-check"}></CheckBox>
+        <CheckBox
+          label={t("ES_BY_CLICKING")}
+          checked={isChecked}
+          onChange={handleCheckboxChange}
+          id={"privacy-component-check"}
+          disabled={hasStoredConsent}
+          disable={hasStoredConsent}
+        ></CheckBox>
         <Button
           label={t(`ES_PRIVACY_POLICY`)}
           variation={"link"}
@@ -62,6 +78,10 @@ const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) 
               variation={"secondary"}
               label={t("DIGIT_I_DO_NOT_ACCEPT")}
               onClick={() => {
+                if (hasStoredConsent) {
+                  setShowPopUp(false);
+                  return;
+                }
                 setIsChecked(false), setShowPopUp(false);
               }}
             />,
@@ -72,6 +92,10 @@ const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) 
               label={t("DIGIT_I_ACCEPT")}
               className={"accept-class"}
               onClick={() => {
+                if (hasStoredConsent) {
+                  setShowPopUp(false);
+                  return;
+                }
                 setIsChecked(true), setShowPopUp(false);
               }}
             />,

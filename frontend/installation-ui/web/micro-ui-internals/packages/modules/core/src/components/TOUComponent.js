@@ -1,11 +1,13 @@
 import React, {useEffect, useState} from "react";
 import {useTranslation} from "react-i18next";
 import {Button, CheckBox, PopUp} from "@egovernments/digit-ui-components";
+import { CONSENT_COOKIE_KEYS, getConsentCookie } from "../utilities/consentCookies";
 
 const TOUComponent = ({ onSelect, formData, control, formState, ...props }) => {
   const { t } = useTranslation();
   const tenantId = Digit.ULBService.getCurrentTenantId();
-  const [isChecked, setIsChecked] = useState(false);
+  const hasStoredConsent = getConsentCookie(CONSENT_COOKIE_KEYS.terms);
+  const [isChecked, setIsChecked] = useState(hasStoredConsent);
   const [showPopUp, setShowPopUp] = useState(false);
   const moduleName=Digit.Utils.getConfigModuleName();
 
@@ -15,6 +17,9 @@ const TOUComponent = ({ onSelect, formData, control, formState, ...props }) => {
     },
   });
   const handleCheckboxChange = (event) => {
+    if (hasStoredConsent) {
+      return;
+    }
     setIsChecked(event.target.checked);
   };
   useEffect(() => {
@@ -31,10 +36,21 @@ const TOUComponent = ({ onSelect, formData, control, formState, ...props }) => {
     }
   };
 
+  if (hasStoredConsent) {
+    return null;
+  }
+
   return (
     <React.Fragment>
       <div className="digit-privacy-checkbox digit-privacy-checkbox-align">
-        <CheckBox label={t("ES_BY_CLICKING")} checked={isChecked} onChange={handleCheckboxChange} id={"privacy-component-check"}></CheckBox>
+        <CheckBox
+          label={t("ES_BY_CLICKING")}
+          checked={isChecked}
+          onChange={handleCheckboxChange}
+          id={"terms-of-use-component-check"}
+          disabled={hasStoredConsent}
+          disable={hasStoredConsent}
+        ></CheckBox>
         <Button
           label={t(`ES_TERMS_OF_USE`)}
           variation={"link"}
@@ -60,6 +76,10 @@ const TOUComponent = ({ onSelect, formData, control, formState, ...props }) => {
               variation={"secondary"}
               label={t("DIGIT_I_DO_NOT_ACCEPT")}
               onClick={() => {
+                if (hasStoredConsent) {
+                  setShowPopUp(false);
+                  return;
+                }
                 setIsChecked(false), setShowPopUp(false);
               }}
             />,
@@ -70,6 +90,10 @@ const TOUComponent = ({ onSelect, formData, control, formState, ...props }) => {
               label={t("DIGIT_I_ACCEPT")}
               className={"accept-class"}
               onClick={() => {
+                if (hasStoredConsent) {
+                  setShowPopUp(false);
+                  return;
+                }
                 setIsChecked(true), setShowPopUp(false);
               }}
             />,
