@@ -50,6 +50,12 @@ if (!user || !user.access_token || !user.info) {
   window.Digit.SessionStorage.set("User", userDetails);
   window.Digit.SessionStorage.set("Citizen.tenantId", citizenTenantId);
   window.Digit.SessionStorage.set("Employee.tenantId", employeeTenantId);
+
+  const jurisdictionBoundaries = getFromStorage("Jurisdiction.Boundaries");
+  if (jurisdictionBoundaries) {
+    window.Digit.SessionStorage.set("Jurisdiction.Boundaries", jurisdictionBoundaries);
+    window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", jurisdictionBoundaries);
+  }
   // end
 }
 

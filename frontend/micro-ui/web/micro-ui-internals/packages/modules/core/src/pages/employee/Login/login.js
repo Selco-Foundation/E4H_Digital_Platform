@@ -110,6 +110,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
       Digit.SessionStorage.set("Jurisdiction.Boundaries", jurisdictionBoundaries);
       Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", jurisdictionBoundaries);
+      localStorage.setItem("Jurisdiction.Boundaries", JSON.stringify(jurisdictionBoundaries));
 
       const fromParam = new URLSearchParams(location.search).get("from");
       if (fromParam) {

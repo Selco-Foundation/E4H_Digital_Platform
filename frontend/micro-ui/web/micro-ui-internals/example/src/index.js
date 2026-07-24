@@ -36,6 +36,13 @@ const initTokens = (stateCode) => {
 
   if (userType !== "CITIZEN") {
     window.Digit.SessionStorage.set("User", { access_token: token, info: userType !== "CITIZEN" ? JSON.parse(employeeInfo) : citizenInfo });
+
+    const jurisdictionBoundaries = window.localStorage.getItem("Jurisdiction.Boundaries");
+    if (jurisdictionBoundaries) {
+      const parsedJurisdictionBoundaries = JSON.parse(jurisdictionBoundaries);
+      window.Digit.SessionStorage.set("Jurisdiction.Boundaries", parsedJurisdictionBoundaries);
+      window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", parsedJurisdictionBoundaries);
+    }
   } else {
     // if (!window.Digit.SessionStorage.get("User")?.extraRoleInfo) window.Digit.SessionStorage.set("User", { access_token: token, info: citizenInfo });
   }
