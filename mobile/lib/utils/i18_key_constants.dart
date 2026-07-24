@@ -130,6 +130,11 @@ class Login {
   String get errorInvalidCredentials => 'LOGIN_ERROR_INVALID_CREDENTIALS';
   String get errorServer => 'LOGIN_ERROR_SERVER';
   String get errorUnknown => 'LOGIN_ERROR_UNKNOWN';
+  String get consentPrefix => 'LOGIN_CONSENT_PREFIX';
+  String get privacyPolicy => 'LOGIN_PRIVACY_POLICY';
+  String get consentConnector => 'LOGIN_CONSENT_CONNECTOR';
+  String get termsAndConditions => 'LOGIN_TERMS_AND_CONDITIONS';
+  String get policyUrlNotConfigured => 'LOGIN_POLICY_URL_NOT_CONFIGURED';
 }
 
 class Scanner {

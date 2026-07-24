@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -37,6 +39,7 @@ class _SecureStorageKeys {
   static const String accessInfo = 'accessInfo';
   static const String actionsWrapper = 'actionsWrapper';
   static const String individualId = 'individualId';
+  static const String loginConsentAccepted = 'loginConsentAccepted';
 }
 
 class SecureStore {
@@ -310,6 +313,20 @@ class SecureStore {
 
   Future deleteSelectedIndividual() async {
     await storage.delete(key: _SecureStorageKeys.individualId);
+  }
+
+  Future<bool> hasAcceptedLoginConsent() async {
+    final value = await storage.read(
+      key: _SecureStorageKeys.loginConsentAccepted,
+    );
+    return value != null;
+  }
+
+  Future<void> setLoginConsentAccepted() async {
+    await storage.write(
+      key: _SecureStorageKeys.loginConsentAccepted,
+      value: 'true',
+    );
   }
 
   String _kRawSchema(String schemaKey) => 'raw_schema_$schemaKey';
