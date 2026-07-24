@@ -1428,15 +1428,85 @@ const CreateFieldPlan = () => {
             minWidth: "0",
             left: "50%",
             transform: "translateX(-50%)",
+            alignItems: "flex-start",
+            paddingTop: "12px",
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
+          labelstyle={{
+            flex: 1,
+            minWidth: "0",
+            position: "relative",
+            overflow: "visible",
+            paddingRight: "0",
+            marginTop: "-4px",
+          }}
           label={(
-            <span style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>
-              {toast.translate === false ? toast.label : t(toast.label)}
-            </span>
+            <div style={{ position: "relative", width: "100%" }}>
+              <style>
+                {`
+                  .field-plan-toast-message-scroll {
+                    scrollbar-color: #FFFFFF transparent;
+                    scrollbar-width: thin;
+                  }
+
+                  .field-plan-toast-message-scroll::-webkit-scrollbar {
+                    width: 8px;
+                  }
+
+                  .field-plan-toast-message-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                  }
+
+                  .field-plan-toast-message-scroll::-webkit-scrollbar-thumb {
+                    background-color: #FFFFFF;
+                    border-radius: 8px;
+                  }
+
+                  .field-plan-toast-message-scroll::-webkit-scrollbar-thumb:hover {
+                    background-color: #F2F2F2;
+                  }
+                `}
+              </style>
+              <div
+                className="field-plan-toast-message-scroll"
+                style={{
+                  maxHeight: "calc(1.5em * 6)",
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  marginRight: "36px",
+                  paddingRight: "8px",
+                  whiteSpace: "normal",
+                  overflowWrap: "anywhere",
+                  wordBreak: "normal",
+                }}
+              >
+                {toast.translate === false ? toast.label : t(toast.label)}
+              </div>
+              <button
+                type="button"
+                aria-label="Close validation message"
+                onClick={closeToast}
+                style={{
+                  position: "absolute",
+                  top: "0",
+                  right: "0",
+                  width: "24px",
+                  height: "24px",
+                  border: "none",
+                  background: "transparent",
+                  color: "#FFFFFF",
+                  cursor: "pointer",
+                  fontSize: "32px",
+                  lineHeight: "24px",
+                  padding: "0",
+                }}
+              >
+                X
+              </button>
+            </div>
           )}
-          isDleteBtn={true}
+          isDleteBtn={false}
           onClose={closeToast}
         />
       )}
