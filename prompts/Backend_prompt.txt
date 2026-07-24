@@ -1,4 +1,4 @@
-Enhanced BeeHyv Project Review Prompt
+Enhanced BeeHyv Project Review Prompt — E4H Digital Platform
 
 Assume the system is production-bound or already running in production.
 
@@ -6,17 +6,19 @@ Assume the system is production-bound or already running in production.
 
 PROJECT CONTEXT (MANDATORY — FILL BEFORE REVIEW)
 
-The Shopify Data Downloader is designed to:
+The E4H Digital Platform backend is designed to:
 
-- Download various business reports from Shopify stores via GraphQL API
-- Process reports in batches using AWS Batch
-- Store processed data in S3 as CSV files
-- Load data into Amazon Redshift for analytics
-- Handle OAuth token refresh automatically
-- Support retry mechanisms for failed downloads
-- Track all events for audit and monitoring
+- Provide the microservices backend for Selco Foundation's Energy for Health (E4H) program, built on the DIGIT/eGov framework
+- Expose REST APIs (Spring Boot) consumed by the frontend and mobile clients, fronted by a Zuul gateway
+- Persist domain data in PostgreSQL, using JdbcTemplate/JPA repositories with Flyway-managed schema migrations
+- Support multi-tenancy via tenantId across services (data isolation between tenants/deployments)
+- Publish and consume events over Kafka for async workflows, notifications, and audit/event tracking
+- Integrate with shared core-services (egov-workflow-v2, egov-filestore, egov-idgen, egov-mdms-service-v2, egov-notification-sms, boundary-service, health-facility-registry)
+- Implement domain-specific e4h-services (field-planner, asset-registry, egov-hrms, im-services, ingestion-service, processor-services, project, rms-service, vendor-registry, translator-service, amc-scheduler-service, inbox, field-planner-activity)
+- Handle retries/idempotency for cross-service calls and Kafka consumers
+- Enforce role-based access via egov-user/RBAC and request validation via RequestInfo/ResponseInfo contracts
 
-Use README.md and codebase for more context.
+Use README.md and the codebase (backend/core-services, backend/e4h-services, backend/municipal-services) for more context.
 
 ================================================
 
@@ -25,7 +27,7 @@ REVIEW SCOPE
 Evaluate the project for:
 
 - Code Correctness & Memory Safety (CRITICAL)
-- Architecture & system boundaries
+- Architecture & system boundaries (service-to-service contracts, core-services vs e4h-services separation)
 - Production readiness
 - Safety, reliability, and maintainability
 - Testing maturity & Operational excellence
@@ -33,9 +35,9 @@ Evaluate the project for:
 
 Assume:
 
-- The reviewer must act as a Senior Java Engineer.
-- Multiple teams will maintain this.
-- Failure to close resources (connections, streams) is a critical blocker.
+- The reviewer must act as a Senior Java/Spring Boot Engineer familiar with the DIGIT/eGov ecosystem.
+- Multiple teams will maintain this (each service may have a different owning team — see CODEOWNERS).
+- Failure to close resources (JDBC connections, streams, Kafka consumers) is a critical blocker.
 
 ================================================
 
@@ -47,12 +49,13 @@ Use it to guide analysis.
 ### Product Intent & Architecture Fit
 
 - System purpose clear from code and README
-- Clear component boundaries
-- Architecture appropriate for problem and scale
+- Clear component/module boundaries (core-services vs e4h-services vs municipal-services)
+- Architecture appropriate for a multi-tenant, multi-service eGov platform
+- Multi-tenancy (tenantId) consistently enforced across controllers, services, and queries
 
 ### Git Discipline & Engineering Maturity
 
-- Branching strategy visible (main/dev/release)
+- Branching strategy visible (main/develop/release, per CODEOWNERS ownership)
 - Small, meaningful commits
 - Evidence of reviews and controlled merges
 
@@ -69,96 +72,97 @@ Use it to guide analysis.
   - Variables defined in the narrowest possible scope.
 
 - Separation of Concerns:
-  - Logic not mixed with I/O or UI code.
+  - Controller (web layer) not mixed with SQL/query-builder or Kafka producer logic
+  - Query builders isolated from repository/JdbcTemplate execution
 
 ### Resource Management & Memory Safety (CRITICAL)
 
 - Resource Cleanup:
 
-  - Are try-with-resources or finally blocks used for all I/O, Connections, and Streams?
+  - Are try-with-resources or finally blocks used for all JDBC Connections, PreparedStatements, ResultSets, and file/MultipartFile streams (e.g. egov-filestore uploads)?
 
 - Memory Leaks:
 
   - Look for static maps growing unbounded.
-  - Listeners not removed.
-  - ThreadLocal misuse (must be static and cleaned up).
+  - Listeners/Kafka consumers not properly closed.
+  - ThreadLocal misuse (must be static and cleaned up — check RequestInfo/tenant context holders).
 
 - Object Lifecycle:
-  - Are heavy objects (Connection Pools, etc.) reused properly?
-  - Are they recreated unnecessarily?
+  - Are heavy objects (DataSource/HikariCP pool, Kafka Producer, ObjectMapper) injected as singletons and reused?
+  - Are they recreated unnecessarily per request?
 
 ### Concurrency & Thread Safety
 
 - Thread Safety:
 
-  - Are non-thread-safe objects (SimpleDateFormat, ArrayList, etc.) shared between threads?
+  - Are non-thread-safe objects (SimpleDateFormat, ArrayList, etc.) shared between request threads or Kafka consumer threads?
 
 - Shared State:
 
-  - Is state correctly synchronized or immutable?
+  - Is state correctly synchronized or immutable across concurrent requests/consumers?
 
 - ThreadLocal Usage:
   - Are ThreadLocal variables static final?
-  - Is remove() guaranteed to run?
+  - Is remove() guaranteed to run (e.g. in a finally block or filter)?
 
 ### Failure Handling & Defensive Design
 
-- Errors not swallowed.
-- Stack traces preserved.
-- Atomicity maintained.
-- Retry/backoff where applicable.
+- Errors not swallowed (no empty catch blocks around JDBC/Kafka calls).
+- Stack traces preserved; CustomException used consistently with meaningful error codes.
+- Atomicity maintained (transaction boundaries around multi-table writes).
+- Retry/backoff for Kafka publish failures and inter-service calls (e.g. workflow, filestore, mdms).
 
 ### Runtime Observability
 
-- Structured, meaningful logs.
-- Correlation IDs present.
+- Structured, meaningful logs (trace/debug/info consistent with existing services).
+- Correlation IDs / RequestInfo propagated across service calls.
 - Correct log levels.
-- No secrets or PII in logs.
+- No secrets, tokens, or PII (patient/beneficiary data) in logs.
 
 ### Data Access & Persistence Safety
 
-- Connection pool used (HikariCP, Druid, etc.)
-- No DriverManager.getConnection in request paths.
-- Parameterized queries.
-- Transaction boundaries clearly defined.
+- Connection pool used (HikariCP via Spring Boot datasource) — no manual DriverManager.getConnection.
+- Parameterized queries via JdbcTemplate/PreparedStatement (no string-concatenated SQL) — check query-builder classes specifically.
+- Transaction boundaries clearly defined (@Transactional where multi-step writes occur).
+- Flyway migrations reviewed for backward compatibility (no destructive changes without a rollback path).
 
 ### Configuration & Secret Hygiene
 
-- No hardcoded secrets.
-- Externalized configuration.
-- .env ignored.
+- No hardcoded secrets, DB credentials, or Kafka broker URLs.
+- Externalized configuration (application.properties/yml, environment variables, Helm/K8s config).
+- .env and local secrets ignored via .gitignore.
 
 ### Testing Strategy & Confidence
 
-- Unit tests for core logic.
-- Integration tests for critical paths.
-- Tests executed in CI.
+- Unit tests for core service/business logic.
+- Integration tests for critical paths (search, create, update, Kafka consumers).
+- Tests executed in CI (.github workflows).
 
 ### Performance & Scale Readiness
 
 - Identify bottlenecks:
-  - N+1 queries
-  - Blocking calls
-  - Missing batching
-  - Missing caching
+  - N+1 queries across service-to-service calls (e.g. per-record lookups instead of batch/mdms bulk fetch)
+  - Blocking calls to other services on the request thread
+  - Missing pagination on `_search` endpoints (limit/offset/URLParams)
+  - Missing caching for reference/MDMS data
 
 ### Dependency & Supply-Chain Health
 
-- Maintained libraries.
-- Versions pinned.
-- Vulnerability awareness.
+- Maintained libraries (egov-core, egov-models versions).
+- Versions pinned in pom.xml.
+- Vulnerability awareness (no known-CVE dependencies).
 
 ### Project Structure & Formatting
 
-- Standard Java/Spring structure.
-- Consistent naming.
+- Standard Java/Spring Boot Maven structure, consistent with sibling services under e4h-services/core-services.
+- Consistent naming (controllers, services, repositories, query builders).
 - Consistent formatting.
 
 ================================================
 
 BEEHYV ENGINEERING PRINCIPLES
 
-Apply applicable BeeHyv_Engineering_Principles.pdf present in root folder.
+Apply applicable BeeHyv_Engineering_Principles.pdf.
 
 Call out violations explicitly.
 
@@ -175,7 +179,7 @@ REQUIRED OUTPUT FORMAT
    - List implementation bugs immediately.
    - Memory leaks
    - Concurrency issues
-   - Resource leaks
+   - Resource leaks (JDBC/Kafka/file streams)
 
 3. Checklist Scorecard
 
@@ -188,18 +192,19 @@ REQUIRED OUTPUT FORMAT
 REVIEW MINDSET
 
 - Hunt for bugs first.
-- Then review architecture.
+- Then review architecture (service boundaries, multi-tenancy).
 - Scrutinize static fields.
 - Scrutinize ThreadLocal usage.
-- Scrutinize Database Connections.
+- Scrutinize JDBC connections and Kafka producer/consumer lifecycle.
 
 Immediately flag:
 
 - new ThreadLocal<>() that is not static.
 - Missing ThreadLocal.remove().
-- DriverManager.getConnection() inside loops.
-- DriverManager.getConnection() in request paths.
+- DriverManager.getConnection() inside loops or request paths.
 - Missing connection pooling.
+- Kafka producers/consumers not closed or leaking threads.
+- `_search` endpoints missing tenantId filtering or pagination.
 
 Be direct.
 Be actionable.
