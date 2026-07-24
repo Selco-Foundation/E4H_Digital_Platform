@@ -1,5 +1,6 @@
 import io
 import json
+import math
 import os
 import tempfile
 from datetime import datetime, timedelta
@@ -12,10 +13,16 @@ from openpyxl.styles import Protection, Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
-from app.utils.excel_utils import autofit_columns
+from app.utils.excel_utils import (
+    FACILITY_IDENTIFIER_COLUMNS,
+    autofit_columns,
+    normalize_excel_integer_columns,
+    prepare_dataframe_for_excel_export,
+)
 from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
+    field_plan_facility_validation,
     collect_hfr_nin_errors_for_row,
     collect_anganwadi_poc_username_errors_for_row,
 )
@@ -33,6 +40,8 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
+    resolve_mapped_vendor_for_facility_row, build_field_plan_facility_bulk_entry, \
+    build_field_plan_facility_additional_details, build_field_plan_facility_additional_fields, \
     get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
     get_user_creation_payload_supervisors, \
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
@@ -42,6 +51,7 @@ from app.utils.boundary_service_client import BoundaryServiceClient
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
+from app.utils.icc_report_converter import validate_and_convert, ICCValidationError, SYSTEM_TYPE_TO_INTERNAL
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
@@ -109,6 +119,104 @@ DB_CONFIG = {
 }
 
 FACILITY_VENDOR_CODE_COLUMN = "Vendor Code (Mandatory)"
+
+
+def _bulk_create_facilities_for_ingestion(
+        df: pd.DataFrame,
+        facility_client: FacilityServiceClient,
+        org_client: Optional[OrganizationServiceClient],
+        request_info: RequestInfo,
+        facility_schema: List[Dict],
+        are_facilities_onm_ready: bool,
+        vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]],
+        hfr_nin_db_cache: Dict[str, bool],
+) -> None:
+    """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service)."""
+    pending_creates: List[tuple] = []
+
+    for index, row in df[df['status'] != 'success'].iterrows():
+        hfr_nin_errs = collect_hfr_nin_errors_for_row(
+            row, index, df, facility_client, hfr_nin_db_cache,
+        )
+        anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
+            row, index, df, facility_schema,
+        )
+        pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
+        if pre_errs:
+            df.at[index, 'status'] = 'failed'
+            df.at[index, 'error'] = '; '.join(pre_errs)
+            continue
+
+        pending_creates.append((index, row.copy()))
+
+    if not pending_creates:
+        return
+
+    logger.info("Processing %s facilities using bulk create API", len(pending_creates))
+    request_info_payload = request_info.model_dump(by_alias=True, exclude_none=True)
+
+    for chunk_start in range(0, len(pending_creates), BULK_INGEST_CHUNK_SIZE):
+        chunk = pending_creates[chunk_start:chunk_start + BULK_INGEST_CHUNK_SIZE]
+        bulk_payload = {
+            "RequestInfo": request_info_payload,
+            "facilities": [],
+        }
+        creation_meta: List[int] = []
+
+        for index, row_data in chunk:
+            vendor_mapping = resolve_mapped_vendor_for_facility_row(
+                org_client,
+                request_info,
+                row_data,
+                FACILITY_VENDOR_CODE_COLUMN,
+                vendor_mapping_cache,
+            )
+            single_payload = create_facility_payload(
+                request_info,
+                row_data,
+                are_facilities_onm_ready,
+                facility_schema,
+                mapped_vendor_name=vendor_mapping.get("mappedVendorName"),
+                mapped_vendor_user_name=vendor_mapping.get("mappedVendorUserName"),
+            )
+            facilities = single_payload.get("facilities", [])
+            if facilities:
+                bulk_payload["facilities"].append(facilities[0])
+                creation_meta.append(index)
+            else:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = 'Invalid facility payload'
+
+        if not bulk_payload["facilities"]:
+            continue
+
+        create_resp = None
+        try:
+            create_resp = facility_client.create_facility(bulk_payload)
+        except Exception as exc:
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = f'Exception during bulk create: {str(exc)}'
+            continue
+
+        if create_resp.status_code in (200, 201):
+            for row_idx in creation_meta:
+                df.at[row_idx, 'status'] = 'success'
+                df.at[row_idx, 'error'] = ''
+        elif create_resp.status_code == 400:
+            try:
+                error_data = create_resp.json()
+                error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
+            except Exception:
+                error_message = create_resp.text
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = error_message
+        else:
+            for index in creation_meta:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = f'{create_resp.status_code}: {create_resp.text}'
+
 
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -243,11 +351,17 @@ async def upload_boundaries_excel_sheet(
         writer = ExcelDataWriter(output_file_path, output_sheet="Boundary Data")
         writer.write_data(boundary_df)
 
-        return FileResponse(
+        error_count = int(
+            boundary_df["status"].astype(str).str.strip().str.lower().eq("fail").sum()
+        )
+
+        response = FileResponse(
             path=output_file_path,
             filename=output_filename,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        response.headers["X-Error-Count"] = str(error_count)
+        return response
 
     except Exception as e:
         logger.error(f"Error processing boundary data: {e}")
@@ -299,6 +413,7 @@ async def validate_facilities_excel_sheet(
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+        df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         # ----------------- Read Facility Column ----------------- #
         if 'Facility Id' not in df.columns:
@@ -422,7 +537,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -490,6 +606,7 @@ async def upload_facilities_excel_sheet(
         df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+        df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         if 'status' not in df.columns:
             df['status'] = ''
@@ -508,36 +625,20 @@ async def upload_facilities_excel_sheet(
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
+            org_client = OrganizationServiceClient(org_service_url) if org_service_url else None
+            vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]] = {}
             hfr_nin_db_cache: Dict[str, bool] = {}
-            for index, row in df[df['status'] != 'success'].iterrows():
-                hfr_nin_errs = collect_hfr_nin_errors_for_row(
-                    row, index, df, facility_client, hfr_nin_db_cache,
-                )
-                anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
-                    row, index, df, facility_schema,
-                )
-                pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
-                if pre_errs:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = '; '.join(pre_errs)
-                    continue
-                try:
-                    facility_data_payload = create_facility_payload(request_info, row, are_facilities_onm_ready, facility_schema)
-                    response = facility_client.create_facility(facility_data_payload)
-                    if response.status_code in (200, 201):
-                        df.at[index, 'status'] = 'success'
-                        df.at[index, 'error'] = ''
-                    elif response.status_code == 400:
-                        error_data = response.json()
-                        error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
-                        df.at[index, 'status'] = 'failed'
-                        df.at[index, 'error'] = error_message
-                    else:
-                        df.at[index, 'status'] = 'failed'
-                        df.at[index, 'error'] = f'{response.status_code}: {response.text}'
-                except Exception as e:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'Exception: {str(e)}'
+
+            _bulk_create_facilities_for_ingestion(
+                df=df,
+                facility_client=facility_client,
+                org_client=org_client,
+                request_info=request_info,
+                facility_schema=facility_schema,
+                are_facilities_onm_ready=are_facilities_onm_ready,
+                vendor_mapping_cache=vendor_mapping_cache,
+                hfr_nin_db_cache=hfr_nin_db_cache,
+            )
 
         writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)
         writer.write_data(df)
@@ -1340,6 +1441,270 @@ async def upload_facility_selection_excel_sheet(
             os.unlink(input_temp_file.name)
 
 
+@router.post('/icc-reports',
+             summary='Bulk-upload ICC report Excel files, validate each against its System Type, '
+                     'convert to JSON, and store them via field-planner in one call',
+             response_description='Returns the field-planner bulk template creation response')
+async def upload_icc_reports(
+        items: str = Form(
+            ...,
+            description='JSON array of metadata objects, one per file, paired positionally with '
+                        'icc_files: [{"systemType": "...", "totalSystemCapacity": "...", '
+                        '"fieldPlanId": "...", "tenantId": "in"}]'
+        ),
+        icc_files: List[UploadFile] = File(
+            ..., description="ICC Report Excel files (.xlsx), positionally paired with items"
+        ),
+        request_info: str = Form(default="")
+):
+    """
+    Accepts N metadata items and N Excel files, paired positionally (items[i] <-> icc_files[i]).
+    Validation is all-or-nothing: every item is validated first, and if ANY item fails
+    (structural mismatch, wrong System Type, missing field, count mismatch), the whole batch is
+    rejected with a 400 listing every failing index - nothing is converted twice and nothing is
+    forwarded to field-planner unless every item passes.
+    """
+    request_info_obj = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
+
+    try:
+        parsed_items = json.loads(items)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"`items` is not valid JSON: {e}")
+
+    if not isinstance(parsed_items, list) or len(parsed_items) == 0:
+        raise HTTPException(status_code=400, detail="`items` must be a non-empty JSON array")
+
+    if len(parsed_items) != len(icc_files):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Item count ({len(parsed_items)}) does not match file count ({len(icc_files)}); "
+                "items[i] and icc_files[i] must be paired positionally."
+            ),
+        )
+
+    required_keys = ("systemType", "totalSystemCapacity", "fieldPlanId")
+    field_errors = []
+    for idx, item in enumerate(parsed_items):
+        if not isinstance(item, dict):
+            field_errors.append({"index": idx, "error": "item must be a JSON object"})
+            continue
+        missing = [k for k in required_keys if not item.get(k)]
+        if missing:
+            field_errors.append({"index": idx, "error": f"missing required field(s): {', '.join(missing)}"})
+
+    if field_errors:
+        raise HTTPException(status_code=400, detail={"message": "Invalid items in batch", "errors": field_errors})
+
+    temp_files = []
+    converted = []
+    validation_errors = []
+
+    try:
+        for idx, (item, upload) in enumerate(zip(parsed_items, icc_files)):
+            temp_file, _ = await _save_upload_to_temp_file(upload, suffix=".xlsx")
+            temp_files.append((temp_file, upload))
+            try:
+                detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
+                    temp_file.name, item["systemType"],
+                    mdms_client=mdms_client, request_info=request_info_obj,
+                )
+                converted.append({
+                    "tenant_id": item.get("tenantId", "in"),
+                    "field_plan_id": item["fieldPlanId"],
+                    "system_type": item["systemType"],
+                    "total_capacity": item["totalSystemCapacity"],
+                    "template_data": icc_json,
+                })
+                logger.info(
+                    f"ICC report[{idx}] converted: systemType={item['systemType']} "
+                    f"(detected={detected_type}), keys={len(icc_json)}, "
+                    f"fallback_keys={len(fallback_fields)}, unmatched={len(unmatched_fields)}"
+                )
+            except ICCValidationError as e:
+                logger.warning(f"ICC report[{idx}] upload rejected: {e}")
+                validation_errors.append({"index": idx, "fileName": upload.filename, "error": str(e)})
+
+        if validation_errors:
+            logger.warning(
+                f"ICC bulk upload rejected: {len(validation_errors)} of {len(parsed_items)} item(s) failed validation"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail={"message": "One or more items failed validation; nothing was submitted", "errors": validation_errors},
+            )
+
+        if not fieldPlan_service_url:
+            raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+        files_payload = []
+        for temp_file, upload in temp_files:
+            with open(temp_file.name, "rb") as f:
+                files_payload.append((upload.filename or "icc_report.xlsx", f.read()))
+
+        field_plan_client = FieldPlanServiceClient(fieldPlan_service_url)
+        response = field_plan_client.create_field_plan_templates(request_info_obj, converted, files_payload)
+
+        if response.status_code in (200, 201, 202):
+            return JSONResponse(status_code=response.status_code, content=response.json())
+
+        logger.error(f"field-planner rejected the bulk template request: {response.status_code} - {response.text}")
+        raise HTTPException(
+            status_code=response.status_code if response.status_code >= 400 else 502,
+            detail=f"field-planner rejected the template batch: {response.text}",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing ICC report batch: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process ICC report batch: {str(e)}")
+    finally:
+        for temp_file, _ in temp_files:
+            if temp_file and os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
+
+
+@router.post('/icc-reports/_update',
+             summary='Bulk-update existing ICC report field plan templates, optionally replacing '
+                     'their Excel files, via field-planner in one call',
+             response_description='Returns the field-planner bulk template update response')
+async def update_icc_reports(
+        items: str = Form(
+            ...,
+            description='JSON array of metadata objects, one per template to update: '
+                        '[{"id": "...", "systemType": "...", "totalSystemCapacity": "...", '
+                        '"fieldPlanId": "...", "tenantId": "in"}]'
+        ),
+        icc_files: Optional[List[UploadFile]] = File(
+            default=None,
+            description="Optional ICC Report Excel files (.xlsx), positionally paired 1:1 with "
+                        "items. Omit entirely to update metadata only and keep every template's "
+                        "existing file - a partial list (fewer files than items) is rejected."
+        ),
+        request_info: str = Form(default="")
+):
+    """
+    Accepts N metadata items, each identifying an existing FieldPlanTemplate by "id", and either
+    zero or exactly N Excel files paired positionally (items[i] <-> icc_files[i]). Validation is
+    all-or-nothing: every item (and every file that was provided) is validated first, and if ANY
+    item fails, the whole batch is rejected with a 400 listing every failing index - nothing is
+    forwarded to field-planner unless every item passes.
+    """
+    request_info_obj = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
+
+    try:
+        parsed_items = json.loads(items)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"`items` is not valid JSON: {e}")
+
+    if not isinstance(parsed_items, list) or len(parsed_items) == 0:
+        raise HTTPException(status_code=400, detail="`items` must be a non-empty JSON array")
+
+    has_files = icc_files is not None and len(icc_files) > 0
+    if has_files and len(icc_files) != len(parsed_items):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Item count ({len(parsed_items)}) does not match file count ({len(icc_files)}); "
+                "provide exactly one file per item, or omit icc_files entirely to update "
+                "metadata only."
+            ),
+        )
+
+    required_keys = ("id", "systemType", "totalSystemCapacity", "fieldPlanId")
+    field_errors = []
+    for idx, item in enumerate(parsed_items):
+        if not isinstance(item, dict):
+            field_errors.append({"index": idx, "error": "item must be a JSON object"})
+            continue
+        missing = [k for k in required_keys if not item.get(k)]
+        if missing:
+            field_errors.append({"index": idx, "error": f"missing required field(s): {', '.join(missing)}"})
+
+    if field_errors:
+        raise HTTPException(status_code=400, detail={"message": "Invalid items in batch", "errors": field_errors})
+
+    temp_files = []
+    converted = []
+    validation_errors = []
+
+    try:
+        for idx, item in enumerate(parsed_items):
+            upload = icc_files[idx] if has_files else None
+            template_data = None
+            if upload is not None:
+                temp_file, _ = await _save_upload_to_temp_file(upload, suffix=".xlsx")
+                temp_files.append((temp_file, upload))
+                try:
+                    detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
+                        temp_file.name, item["systemType"],
+                        mdms_client=mdms_client, request_info=request_info_obj,
+                    )
+                    template_data = icc_json
+                    logger.info(
+                        f"ICC report[{idx}] (update, id={item['id']}) converted: "
+                        f"systemType={item['systemType']} (detected={detected_type}), "
+                        f"keys={len(icc_json)}, fallback_keys={len(fallback_fields)}, "
+                        f"unmatched={len(unmatched_fields)}"
+                    )
+                except ICCValidationError as e:
+                    logger.warning(f"ICC report[{idx}] update rejected: {e}")
+                    validation_errors.append({"index": idx, "fileName": upload.filename, "error": str(e)})
+                    continue
+
+            converted.append({
+                "id": item["id"],
+                "tenant_id": item.get("tenantId", "in"),
+                "field_plan_id": item["fieldPlanId"],
+                "system_type": item["systemType"],
+                "total_capacity": item["totalSystemCapacity"],
+                "template_data": template_data,
+            })
+
+        if validation_errors:
+            logger.warning(
+                f"ICC bulk update rejected: {len(validation_errors)} of {len(parsed_items)} item(s) failed validation"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail={"message": "One or more items failed validation; nothing was submitted", "errors": validation_errors},
+            )
+
+        if not fieldPlan_service_url:
+            raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+        files_payload = []
+        if has_files:
+            for temp_file, upload in temp_files:
+                with open(temp_file.name, "rb") as f:
+                    files_payload.append((upload.filename or "icc_report.xlsx", f.read()))
+
+        field_plan_client = FieldPlanServiceClient(fieldPlan_service_url)
+        response = field_plan_client.update_field_plan_templates(request_info_obj, converted, files_payload)
+
+        if response.status_code in (200, 201, 202):
+            return JSONResponse(status_code=response.status_code, content=response.json())
+
+        logger.error(f"field-planner rejected the bulk template update: {response.status_code} - {response.text}")
+        raise HTTPException(
+            status_code=response.status_code if response.status_code >= 400 else 502,
+            detail=f"field-planner rejected the template update batch: {response.text}",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing ICC report update batch: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process ICC report update batch: {str(e)}")
+    finally:
+        for temp_file, _ in temp_files:
+            if temp_file and os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
+
+
 def get_hrms_employee_info(codes: List[str], db_conn) -> Dict[str, str]:
     try:
         with db_conn.cursor() as cursor:
@@ -2028,7 +2393,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2115,7 +2481,7 @@ async def validate_facilities_excel_sheet(
             df['error'] = ''
 
         # ----------------- Run Validation ----------------- #
-        validation_errors = project_facility_validation(
+        validation_errors = field_plan_facility_validation(
             df,
             mdms_client,
             request_info_obj,
@@ -2156,7 +2522,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2433,7 +2800,8 @@ async def create_facilities_and_update_project(
             ws.delete_rows(2, ws.max_row - 1)
 
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2475,6 +2843,7 @@ async def create_fielplan_facilities(
 
     # parse
     request_info = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
 
     try:
         # ---------- save uploaded file ----------
@@ -2518,9 +2887,59 @@ async def create_fielplan_facilities(
                     return c
             return None
 
+        # Editable fields on an already-linked FieldPlanFacility can only be updated while the
+        # parent FieldPlan is still a Draft - matches field-planner's FieldPlannerConstants.DRAFT_STATUS.
+        DRAFT_FIELD_PLAN_STATUS = "DRAFT"
+
+        # Fields a user may update on an already-linked FieldPlanFacility (facilityType and the
+        # facilityId/fieldPlanId link itself stay immutable via this endpoint).
+        EDITABLE_ADDITIONAL_FIELD_KEYS = {
+            "systemType", "solarSolutionDesignType", "totalSystemCapacity",
+            "customSolarSolutionDesignType", "customTotalSystemCapacity",
+        }
+
+        def validate_custom_capacity_numeric(value):
+            """Same numeric-only rule used for create; returns an error message or None."""
+            value_str = str(value).strip() if value not in (None, "") else ""
+            if not value_str:
+                return None
+            try:
+                if not math.isfinite(float(value_str)):
+                    raise ValueError(value_str)
+            except ValueError:
+                return f"Error: Custom Total System Capacity '{value_str}' must be numeric"
+            return None
+
+        def flatten_additional_fields(additional_fields):
+            if not additional_fields:
+                return {}
+            return {
+                f.get("key"): f.get("value")
+                for f in additional_fields.get("fields") or []
+                if f.get("key")
+            }
+
         include_col = find_col("Included in Field Plan")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
+        facility_type_col = find_col("Type of HC")
+        system_type_col = find_col("System Type")
+        solution_design_type_col = find_col("Solution Design Type")
+        total_system_capacity_col = find_col("Total System Capacity")
+        custom_solution_design_col = find_col("Custom Solution Design Type")
+        custom_total_system_capacity_col = find_col("Custom Total System Capacity")
+
+        # MDMS schema for facilityType/systemType/solarSolutionDesignType/totalSystemCapacity
+        # code lookups (see build_field_plan_facility_additional_details) - falls back to raw
+        # Excel labels if the schema can't be fetched, same graceful-degradation pattern used
+        # elsewhere in this endpoint for other external service calls.
+        field_plan_facility_schema = []
+        try:
+            field_plan_facility_schema = mdms_client.get_column_definitions_with_metadata(
+                request_info, 'data-ingestion.FieldPlanFacilityIngestionSchema'
+            )
+        except Exception as e:
+            logger.warning(f"Could not fetch FieldPlanFacilityIngestionSchema for code lookup: {e}")
 
         # add result columns if missing
         if 'Field Plan Linking Status' not in df.columns:
@@ -2543,6 +2962,7 @@ async def create_fielplan_facilities(
                 # Get FieldPlan status
                 fieldplan_response = fieldplan_client.search_fieldPlan(request_info, fieldplan_id)
                 fieldplan_data = fieldplan_response.get("FieldPlans", [])
+                fieldplan_status = fieldplan_data[0].get("status") if fieldplan_data else None
 
                 fieldplan_assignment_response = fieldplan_activity_client.search_fieldplan_activity_assignment(request_info, fieldplan_id)
                 fieldplan_assignment_data = fieldplan_assignment_response.get("ActivitiesAssignments", [])
@@ -2556,6 +2976,7 @@ async def create_fielplan_facilities(
                             role_to_ids[code].append(item.get("assignedTo"))
 
                 pending_bulk_fieldplan_links = []
+                pending_bulk_fieldplan_updates = []
                 # iterate all rows — handle existing facility ids (linking/unlinking)
                 for index, row in df.iterrows():
                     try:
@@ -2579,8 +3000,67 @@ async def create_fielplan_facilities(
                             # attempt linking if requested
                             if facility_id in fieldplan_linked_facility_ids:
                                 if should_link:
-                                    # already linked → skip API
-                                    df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                    # already linked → check if the editable fields changed and
+                                    # need an update, otherwise no-op
+                                    fieldPlan_facility_data = next(
+                                        (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
+                                        None)
+                                    existing_values = flatten_additional_fields(
+                                        fieldPlan_facility_data.get("additionalFields") if fieldPlan_facility_data else None
+                                    )
+                                    row_values = build_field_plan_facility_additional_details(
+                                        row,
+                                        column_list=field_plan_facility_schema,
+                                        system_type_column=system_type_col,
+                                        total_system_capacity_column=total_system_capacity_col,
+                                        solution_design_type_column=solution_design_type_col,
+                                        custom_solution_design_column=custom_solution_design_col,
+                                        custom_total_system_capacity_column=custom_total_system_capacity_col,
+                                    ) or {}
+
+                                    # Only a key the Excel row actually fills in and that differs
+                                    # from the stored value counts as "changed" - a blank cell
+                                    # means "leave this field as-is", same semantics used at
+                                    # create time (blank optional fields are simply omitted).
+                                    changed_keys = {
+                                        key for key in EDITABLE_ADDITIONAL_FIELD_KEYS
+                                        if row_values.get(key) and row_values.get(key) != existing_values.get(key)
+                                    }
+
+                                    if not changed_keys:
+                                        df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                    elif fieldplan_status != DRAFT_FIELD_PLAN_STATUS:
+                                        df.at[index, 'Field Plan Linking Status'] = (
+                                            f"Error: Cannot update - FieldPlan status must be DRAFT "
+                                            f"(current status: {fieldplan_status})"
+                                        )
+                                    elif fieldPlan_facility_data is None or not fieldPlan_facility_data.get("id"):
+                                        df.at[index, 'Field Plan Linking Status'] = (
+                                            "Error: Cannot update - FieldPlanFacility record id not found"
+                                        )
+                                    else:
+                                        error = None
+                                        if "customTotalSystemCapacity" in changed_keys:
+                                            error = validate_custom_capacity_numeric(
+                                                row_values.get("customTotalSystemCapacity")
+                                            )
+                                        if error:
+                                            df.at[index, 'Field Plan Linking Status'] = error
+                                        else:
+                                            additional_fields = build_field_plan_facility_additional_fields(
+                                                {key: row_values.get(key) for key in changed_keys}
+                                            )
+                                            pending_bulk_fieldplan_updates.append(
+                                                (
+                                                    index,
+                                                    {
+                                                        "id": fieldPlan_facility_data["id"],
+                                                        "facilityId": facility_id,
+                                                        "fieldPlanId": fieldplan_id,
+                                                        "additionalFields": additional_fields,
+                                                    },
+                                                )
+                                            )
                                 else:
                                     # linked but Excel says No → unlink
                                     try:
@@ -2606,7 +3086,31 @@ async def create_fielplan_facilities(
                                         df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
                                 if should_link:
-                                    pending_bulk_fieldplan_links.append((index, facility_id))
+                                    custom_capacity_val = row.get(custom_total_system_capacity_col, None) \
+                                        if custom_total_system_capacity_col else None
+                                    custom_capacity_str = str(custom_capacity_val).strip() \
+                                        if pd.notna(custom_capacity_val) else ""
+                                    error = validate_custom_capacity_numeric(custom_capacity_str)
+                                    if error:
+                                        df.at[index, 'Field Plan Linking Status'] = error
+                                        continue
+
+                                    pending_bulk_fieldplan_links.append(
+                                        (
+                                            index,
+                                            build_field_plan_facility_bulk_entry(
+                                                row,
+                                                facility_id,
+                                                column_list=field_plan_facility_schema,
+                                                facility_type_column=facility_type_col,
+                                                system_type_column=system_type_col,
+                                                total_system_capacity_column=total_system_capacity_col,
+                                                solution_design_type_column=solution_design_type_col,
+                                                custom_solution_design_column=custom_solution_design_col,
+                                                custom_total_system_capacity_column=custom_total_system_capacity_col,
+                                            ),
+                                        )
+                                    )
                                 else:
                                     df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
 
@@ -2622,16 +3126,17 @@ async def create_fielplan_facilities(
                     chunk_size = BULK_INGEST_CHUNK_SIZE
                     for i in range(0, len(pending_bulk_fieldplan_links), chunk_size):
                         chunk = pending_bulk_fieldplan_links[i:i + chunk_size]
-                        facility_ids_chunk = [facility_id for _, facility_id in chunk]
+                        facilities_chunk = [entry for _, entry in chunk]
                         try:
                             fieldplan_resp = fieldplan_client.create_fieldPlan_facility_bulk(
                                 request_info=request_info,
                                 fieldPlan_id=fieldplan_id,
-                                facility_ids=facility_ids_chunk
+                                facilities=facilities_chunk,
                             )
 
                             if fieldplan_resp.status_code in (200, 201, 202):
-                                for row_idx, facility_id in chunk:
+                                for row_idx, entry in chunk:
+                                    facility_id = entry["facilityId"]
                                     df.at[row_idx, 'Field Plan Linking Status'] = "Linked"
                                     fieldplan_linked_facility_ids.add(facility_id)
 
@@ -2652,6 +3157,27 @@ async def create_fielplan_facilities(
                             else:
                                 for row_idx, _ in chunk:
                                     df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
+                        except Exception as bulk_exc:
+                            for row_idx, _ in chunk:
+                                df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+
+                if pending_bulk_fieldplan_updates:
+                    chunk_size = BULK_INGEST_CHUNK_SIZE
+                    for i in range(0, len(pending_bulk_fieldplan_updates), chunk_size):
+                        chunk = pending_bulk_fieldplan_updates[i:i + chunk_size]
+                        updates_chunk = [entry for _, entry in chunk]
+                        try:
+                            update_resp = fieldplan_client.update_fieldPlan_facility_bulk(
+                                request_info=request_info,
+                                updates=updates_chunk,
+                            )
+
+                            if update_resp.status_code in (200, 201, 202):
+                                for row_idx, _ in chunk:
+                                    df.at[row_idx, 'Field Plan Linking Status'] = "Updated"
+                            else:
+                                for row_idx, _ in chunk:
+                                    df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {update_resp.status_code} {update_resp.text}"
                         except Exception as bulk_exc:
                             for row_idx, _ in chunk:
                                 df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
@@ -2677,7 +3203,8 @@ async def create_fielplan_facilities(
             ws.delete_rows(2, ws.max_row - 1)
 
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2809,7 +3336,8 @@ async def validate_amc_configurations_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 

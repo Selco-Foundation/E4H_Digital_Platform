@@ -5,24 +5,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.core.URLParams;
-import org.egov.common.models.project.ProjectFacility;
-import org.egov.common.models.project.ProjectFacilityBulkResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.service.FieldPlannerFacilityService;
 import org.egov.field_planner.service.FieldPlannerService;
+import org.egov.field_planner.service.ICCReportService;
 import org.egov.field_planner.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -42,6 +44,7 @@ public class FieldPlannerApiController {
     private final FieldPlannerConfiguration fieldPlannerConfiguration;
 
     private final FieldPlannerService fieldPlannerService;
+    private final ICCReportService iccReportService;
 
     private final FieldPlannerFacilityService fieldPlannerFacilityService;
 
@@ -49,12 +52,13 @@ public class FieldPlannerApiController {
     public FieldPlannerApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                      Producer producer,
                                      FieldPlannerConfiguration fieldPlannerConfiguration,
-                                     FieldPlannerService fieldPlannerService, FieldPlannerFacilityService fieldPlannerFacilityService) {
+                                     FieldPlannerService fieldPlannerService, ICCReportService iccReportService, FieldPlannerFacilityService fieldPlannerFacilityService) {
         this.objectMapper = objectMapper;
         this.httpServletRequest = httpServletRequest;
         this.producer = producer;
         this.fieldPlannerConfiguration = fieldPlannerConfiguration;
         this.fieldPlannerService = fieldPlannerService;
+        this.iccReportService = iccReportService;
         this.fieldPlannerFacilityService = fieldPlannerFacilityService;
     }
 
@@ -144,6 +148,19 @@ public class FieldPlannerApiController {
                 .createResponseInfo(request.getRequestInfo(), true));
     }
 
+    @RequestMapping(value = "/facility/bulk/_update", method = RequestMethod.POST)
+    public ResponseEntity<ResponseInfo> fieldPlanFacilityV1BulkUpdatePost(@ApiParam(value = "Update editable fields (systemType, solarSolutionDesignType, totalSystemCapacity, customSolarSolutionDesignType, customTotalSystemCapacity) of already-linked FieldPlanFacilities - each item must carry its existing id.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
+        log.trace("Entering fieldPlanFacilityV1BulkUpdatePost endpoint");
+        log.info("Received bulk field plan facility update request, count: {}", request.getFieldPlanFacilities().size());
+        request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
+        log.debug("Pushing bulk update request to Kafka topic: {}", fieldPlannerConfiguration.getBulkUpdateFieldPlanFacilityTopic());
+        producer.push(fieldPlannerConfiguration.getBulkUpdateFieldPlanFacilityTopic(), request);
+        log.info("Bulk field plan facility update request pushed to Kafka successfully");
+        log.trace("Exiting fieldPlanFacilityV1BulkUpdatePost endpoint");
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
+                .createResponseInfo(request.getRequestInfo(), true));
+    }
+
     @RequestMapping(value = "/facility/_search", method = RequestMethod.POST)
     public ResponseEntity<FieldPlanFacilityBulkResponse> fieldPlanFacilityV2SearchPost(
             @Valid @ModelAttribute URLParams urlParams,
@@ -170,6 +187,34 @@ public class FieldPlannerApiController {
         log.info("Field plan facility search completed, found {} results out of {} total", 
                 searchResponse.getResponse().size(), searchResponse.getTotalCount());
         log.trace("Exiting fieldPlanFacilityV2SearchPost endpoint");
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @RequestMapping(value = "/facility/system_type_capacity/_search", method = RequestMethod.POST)
+    public ResponseEntity<SystemTypeCapacityResponse> searchFieldPlanFacilitySystemTypeCapacity(
+            @Valid @ModelAttribute URLParams urlParams,
+            @ApiParam(value = "Search field plan facilities by fieldPlanId and return the systemType/totalSystemCapacity combination from each facility's additionalDetails.", required = true) @Valid @RequestBody FieldPlanFacilitySearchRequest request
+    ) throws Exception {
+        log.trace("Entering searchFieldPlanFacilitySystemTypeCapacity endpoint");
+        log.info("Received field plan facility systemType/totalSystemCapacity search request for tenant: {}",
+                urlParams.getTenantId());
+
+        List<SystemTypeCapacity> systemTypeCapacities = fieldPlannerFacilityService.searchSystemTypeCapacity(
+                request,
+                urlParams.getLimit(),
+                urlParams.getOffset(),
+                urlParams.getTenantId(),
+                urlParams.getLastChangedSince(),
+                urlParams.getIncludeDeleted()
+        );
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        SystemTypeCapacityResponse response = SystemTypeCapacityResponse.builder()
+                .responseInfo(responseInfo)
+                .systemTypeCapacities(systemTypeCapacities)
+                .build();
+        log.info("Field plan facility systemType/totalSystemCapacity search completed, found {} results",
+                systemTypeCapacities.size());
+        log.trace("Exiting searchFieldPlanFacilitySystemTypeCapacity endpoint");
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -200,5 +245,23 @@ public class FieldPlannerApiController {
         log.trace("Exiting fieldPlanFacilityUnassignBulk endpoint");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
                 .createResponseInfo(request.getRequestInfo(), true));
+    }
+
+    @PostMapping(value = "/icc-report/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ICCReportUploadResponse> upload(@RequestPart("RequestInfo") RequestInfo requestInfo,
+            @RequestPart("systemType") String systemType, @RequestPart("totalSystemCapacity") String totalSystemCapacity,
+            @RequestPart("file") MultipartFile file) {
+        ICCReportUploadRequest request = ICCReportUploadRequest.builder().systemType(systemType).totalSystemCapacity(totalSystemCapacity).build();
+        return ResponseEntity.ok(iccReportService.upload(requestInfo, request, file)
+        );
+    }
+
+    @PostMapping("/icc-report/_search")
+    public ResponseEntity<IccTemplateResponse> search(@RequestBody IccTemplateSearchRequest request) {
+        List<ICCReportUploadResponse> templates = iccReportService.search(request);
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+
+        return ResponseEntity.ok(IccTemplateResponse.builder().responseInfo(responseInfo).iccTemplates(templates).build()
+        );
     }
 }

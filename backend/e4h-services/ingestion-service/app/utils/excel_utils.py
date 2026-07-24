@@ -1,5 +1,6 @@
-from typing import Dict, List, Union, Any, Optional
+from typing import Dict, List, Union, Any, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
 from app.utils.facility_validator import (
@@ -15,6 +16,90 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from app.core.logging import AppLogger
 
 logger = AppLogger().get_logger()
+
+FACILITY_IDENTIFIER_COLUMNS: Tuple[str, ...] = ("HFR ID", "NIN ID", "PoC Username")
+
+
+def _cast_whole_float_column_to_int(df: pd.DataFrame, col: str) -> None:
+    series = df[col]
+    non_null = series.dropna()
+    if non_null.empty:
+        return
+    if not np.all(np.equal(np.mod(non_null.to_numpy(), 1), 0)):
+        return
+    if series.isna().any():
+        df[col] = series.astype("Int64")
+    else:
+        df[col] = series.astype("int64")
+
+
+def _normalize_forced_integer_column(df: pd.DataFrame, col: str) -> None:
+    """Normalize a column so numeric values are stored as integers without decimals."""
+    original = df[col]
+    numeric = pd.to_numeric(original, errors="coerce")
+    original_as_str = original.astype(str).str.strip()
+    non_empty_mask = original.notna() & original_as_str.ne("")
+
+    if non_empty_mask.any() and numeric[non_empty_mask].notna().all():
+        df[col] = np.trunc(numeric).astype("Int64")
+        return
+
+    numeric_like_mask = numeric.notna()
+    if numeric_like_mask.any():
+        df.loc[numeric_like_mask, col] = np.trunc(numeric[numeric_like_mask]).astype("int64")
+
+
+def normalize_excel_integer_columns(
+    df: pd.DataFrame,
+    *,
+    force_columns: Optional[Tuple[str, ...]] = None,
+    convert_all_whole_float64: bool = True,
+) -> pd.DataFrame:
+    """
+    Normalize Excel-loaded numeric columns to integers without decimals.
+
+    - convert_all_whole_float64: convert any float64 column whose non-null values are whole numbers.
+    - force_columns: always normalize these columns (e.g. HFR ID, NIN ID, PoC Username), including
+      object-typed cells that look numeric.
+    """
+    forced = set(force_columns or ())
+
+    if convert_all_whole_float64:
+        for col in df.select_dtypes(include=["float64"]).columns:
+            if col not in forced:
+                _cast_whole_float_column_to_int(df, col)
+
+    for col in force_columns or ():
+        if col in df.columns:
+            _normalize_forced_integer_column(df, col)
+
+    return df
+
+
+def to_excel_cell_value(value: Any) -> Any:
+    """Convert pandas/numpy scalars to values openpyxl can write (pd.NA -> None)."""
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, np.generic):
+        if isinstance(value, np.floating):
+            if np.isnan(value):
+                return None
+            if float(value).is_integer():
+                return int(value)
+            return float(value)
+        return value.item()
+    return value
+
+
+def prepare_dataframe_for_excel_export(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy safe for openpyxl / dataframe_to_rows (no pd.NA)."""
+    return df.apply(lambda col: col.map(to_excel_cell_value))
+
 
 """
     Add dropdowns to Excel using hidden sheets for maximum compatibility.
@@ -43,6 +128,9 @@ def add_dropdowns_to_excel(
     ws = wb[sheet_name]
     header_row = 1
     max_row = ws.max_row + max_extra_rows  # extend range
+    # Guard against a header-only sheet (0 data rows) with no extra rows requested,
+    # which would otherwise produce an inverted range like "X2:X1" and crash below.
+    max_row = max(max_row, 2)
 
     dropdown_count = 0
 

@@ -2,6 +2,7 @@ package facility.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.web.models.BoundaryInfo;
 import facility.web.models.Facility;
@@ -14,7 +15,9 @@ import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -23,6 +26,8 @@ import java.util.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
+
+import static facility.service.FacilityService.CATEGORY_ANGANWADI;
 
 /**
  * Mapper service to transform Facility objects to Kibana index format
@@ -35,6 +40,12 @@ public class FacilityKibanaMapper {
     private final ServiceRequestRepository serviceRequestRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper mapper;
+    private final Configuration configs;
+
+    private static final String LOCALIZATION_MODULE = "rainmaker-in";
+    private static final String LOCALIZATION_LOCALE = "en_IN";
+    /** Boundary localizations are stored at national tenant (see ingestion-service / FacilityService). */
+    private static final String LOCALIZATION_TENANT_ID = "in";
 
     @Value("${egov.boundary.host}")
     private String boundaryHost;
@@ -80,6 +91,7 @@ public class FacilityKibanaMapper {
                 .phcName(null)
                 .phcType(facility.getFacilityType())
                 .tenantId(facility.getTenantId())
+                .facilityCategory(facility.getFacilityCategory())
                 // Used downstream as the health facility display name (see im-services-analytics)
                 .tenantIdLocalized(resolveTenantIdLocalized(facility))
                 .code(resolveFacilityCodeForIndex(facility))
@@ -124,10 +136,11 @@ public class FacilityKibanaMapper {
             districtCode = boundaryCodes.getDistrictCode();
             stateCode = boundaryCodes.getStateCode();
             countryCode = boundaryCodes.getCountryCode();
-            // Top-level state/district/block are human-readable labels (not full hierarchy codes)
-            builder.block(boundaryHierarchyCodeToDisplayLabel(blockCode))
-                   .district(boundaryHierarchyCodeToDisplayLabel(districtCode))
-                   .state(boundaryHierarchyCodeToDisplayLabel(stateCode));
+            // Top-level state/district/block are human-readable labels from localization (spaces preserved)
+            Map<String, String> boundaryLabels = fetchBoundaryDisplayLabels(requestInfo, stateCode, districtCode, blockCode);
+            builder.block(resolveBoundaryDisplayLabel(blockCode, boundaryLabels))
+                   .district(resolveBoundaryDisplayLabel(districtCode, boundaryLabels))
+                   .state(resolveBoundaryDisplayLabel(stateCode, boundaryLabels));
         }
         
         // Build boundary info from fetched hierarchy (use extracted values)
@@ -193,18 +206,43 @@ public class FacilityKibanaMapper {
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
         }
-        if (StringUtils.isNotBlank(facility.getMappedVendorName())) {
-            existingDoc.setMappedVendorName(facility.getMappedVendorName());
-            log.info("Updated Kibana field mappedVendorName for facilityId={}", facility.getFacilityId());
-        }
-        if (StringUtils.isNotBlank(facility.getMappedVendorUserName())) {
-            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
-            log.info("Updated Kibana field mappedVendorUserName for facilityId={}", facility.getFacilityId());
-        }
+        existingDoc.setMappedVendorName(facility.getMappedVendorName());
+        existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+        log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
+                facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
                 facility.getFacilityId(), facility.getTenantId());
 
+        return existingDoc;
+    }
+
+    /**
+     * Sets indexer {@link FacilityKibanaIndex#getCode()} to {@code code} (trimmed, non-blank).
+     * When an Elasticsearch document exists, only {@code code} and {@code lastModifiedTime} are changed.
+     * When no document exists, performs a full index mapping ({@link #toKibanaIndex(Facility, RequestInfo)}).
+     */
+    public FacilityKibanaIndex toKibanaIndexPatchCode(Facility facility, String code, RequestInfo requestInfo) {
+        if (facility == null || code == null || code.trim().isEmpty()) {
+            log.warn("Skipping Kibana code patch: facility null or code blank");
+            return null;
+        }
+        RequestInfo effectiveInfo = requestInfo != null ? requestInfo : new RequestInfo();
+        String trimmedCode = code.trim();
+
+        FacilityKibanaIndex existingDoc = fetchExistingKibanaIndex(facility.getFacilityId(), null);
+        if (existingDoc == null) {
+            log.info("No ES doc for facilityId={}; full index mapping with code={}", facility.getFacilityId(), trimmedCode);
+            FacilityKibanaIndex fullIndex = toKibanaIndex(facility, effectiveInfo);
+            if (fullIndex != null) {
+                fullIndex.setCode(trimmedCode);
+            }
+            return fullIndex;
+        }
+
+        existingDoc.setCode(trimmedCode);
+        existingDoc.setLastModifiedTime(System.currentTimeMillis());
+        log.info("Patched Kibana code for facilityId={} tenantId={}", facility.getFacilityId(), facility.getTenantId());
         return existingDoc;
     }
 
@@ -220,16 +258,151 @@ public class FacilityKibanaMapper {
     }
 
     private static String resolveFacilityCodeForIndex(Facility facility) {
-        String hfr = facility.getHfrId();
-        if (hfr != null && !hfr.isBlank()) {
-            return hfr;
+        String normalizedCategory = facility.getFacilityCategory() == null
+                ? ""
+                : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+
+        String code = "";
+        if (isAnganwadi) {
+            String username = facility.getFacilityPocUsername();
+            if (username != null && !username.isBlank()) {
+                code = username.trim();
+            }
+            else
+                code = facility.getBoundaryCode();
         }
-        return facility.getBoundaryCode();
+        else{
+            String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId().trim() : facility.getNinId();
+            if (username != null && !username.isBlank()) {
+                code = username.trim();
+            }
+            else
+                code = facility.getBoundaryCode();
+        }
+        return code;
     }
 
     /**
-     * The boundary relationship API returns hierarchical codes (e.g. {@code India_Nagaland_Zunheboto}).
-     * Indexed documents expect the display fragment (e.g. Nagaland, Zunheboto) like legacy rows.
+     * Resolves a human-readable boundary label via egov-localization ({@code Boundary_{code}}).
+     * Falls back to the last hierarchy segment when localization is missing or unavailable.
+     */
+    private String resolveBoundaryDisplayLabel(String boundaryCode, Map<String, String> labels) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return null;
+        }
+        String localizationCode = toLocalizationCode(boundaryCode);
+        if (labels != null) {
+            String localized = labels.get(localizationCode);
+            if (localized != null && !localized.isBlank()) {
+                return localized;
+            }
+        }
+        return boundaryHierarchyCodeToDisplayLabel(boundaryCode);
+    }
+
+    private Map<String, String> fetchBoundaryDisplayLabels(RequestInfo requestInfo, String... boundaryCodes) {
+        List<String> localizationCodes = new ArrayList<>();
+        for (String code : boundaryCodes) {
+            if (code != null && !code.isBlank()) {
+                localizationCodes.add(toLocalizationCode(code));
+            }
+        }
+        if (localizationCodes.isEmpty()) {
+            return Map.of();
+        }
+
+        String searchUrl = buildLocalizationSearchUrl();
+        if (searchUrl == null || searchUrl.isBlank()) {
+            log.warn("Localization search URL not configured; using code fragment fallback for boundaries");
+            return Map.of();
+        }
+
+        String url = UriComponentsBuilder.fromHttpUrl(searchUrl)
+                .queryParam("tenantId", LOCALIZATION_TENANT_ID)
+                .queryParam("module", LOCALIZATION_MODULE)
+                .queryParam("locale", LOCALIZATION_LOCALE)
+                .queryParam("codes", String.join(",", localizationCodes))
+                .build()
+                .toUriString();
+
+        Map<String, Object> body = new HashMap<>();
+        if (requestInfo != null) {
+            body.put("RequestInfo", requestInfo);
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url, HttpMethod.POST, new HttpEntity<>(body.isEmpty() ? null : body, headers), String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("Localization search returned no labels for codes={}", localizationCodes);
+                return Map.of();
+            }
+            return parseLocalizationMessages(response.getBody());
+        } catch (Exception e) {
+            log.warn("Localization search failed for boundary codes {}: {}", localizationCodes, e.getMessage());
+            return Map.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> parseLocalizationMessages(String responseBody) {
+        Map<String, String> result = new HashMap<>();
+        try {
+            Map<String, Object> root = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
+            Object messagesObj = root.get("messages");
+            if (!(messagesObj instanceof List)) {
+                return result;
+            }
+            for (Object messageObj : (List<?>) messagesObj) {
+                if (!(messageObj instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> message = (Map<String, Object>) messageObj;
+                String code = (String) message.get("code");
+                String text = (String) message.get("message");
+                if (code != null && !code.isBlank() && text != null && !text.isBlank()) {
+                    result.put(code, text);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse localization response: {}", e.getMessage());
+        }
+        return result;
+    }
+
+    private String buildLocalizationSearchUrl() {
+        String host = configs.getLocalizationHost();
+        String contextPath = configs.getLocalizationContextPath();
+        String searchEndpoint = configs.getLocalizationSearchEndpoint();
+        if (host == null || host.isBlank() || contextPath == null || contextPath.isBlank()
+                || searchEndpoint == null || searchEndpoint.isBlank()) {
+            return null;
+        }
+        return host + contextPath + searchEndpoint;
+    }
+
+    private static String toLocalizationCode(String boundaryCode) {
+        if (boundaryCode.startsWith("Boundary_")) {
+            return boundaryCode;
+        }
+        return "Boundary_" + boundaryCode;
+    }
+
+    /**
+     * Fallback when localization is unavailable: last segment of private static String boundaryHierarchyCodeToDisplayLabel(String boundaryCode) {
+     if (boundaryCode == null || boundaryCode.isBlank()) {
+     return null;
+     }
+     int i = boundaryCode.lastIndexOf('_');
+     if (i < 0) {
+     return boundaryCode;
+     }
+     return boundaryCode.substring(i + 1);
+     }the hierarchy code (spaces not restored).
      */
     private static String boundaryHierarchyCodeToDisplayLabel(String boundaryCode) {
         if (boundaryCode == null || boundaryCode.isBlank()) {
@@ -301,45 +474,111 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * Fetches boundary hierarchy from boundary service and extracts codes by boundary type
+     * Fetches boundary hierarchy from boundary service and extracts codes by boundary type.
+     * When the Facility relationship is not yet persisted (async Kafka create), falls back to the
+     * parent block code which is already present in boundary_relationship.
      */
     private BoundaryCodes fetchBoundaryHierarchy(Facility facility, RequestInfo requestInfo) {
         log.trace("Entering fetchBoundaryHierarchy method");
         if (facility.getBoundaryCode() == null || facility.getTenantId() == null) {
-            log.warn("Cannot fetch boundary hierarchy: boundaryCode or tenantId is null for facility {}", facility.getFacilityId());
+            log.warn("Cannot fetch boundary hierarchy: boundaryCode or tenantId is null");
             return null;
         }
         log.debug("Fetching boundary hierarchy for facility {} with boundaryCode: {}", facility.getFacilityId(), facility.getBoundaryCode());
 
         try {
-            // Boundary service expects a standard RequestInfo wrapper as body
-            Map<String, Object> requestBody =
-                    requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+            BoundaryCodes codes = fetchBoundaryHierarchyForCode(
+                    facility.getTenantId(),
+                    facility.getBoundaryCode(),
+                    "Facility",
+                    requestInfo
+            );
 
-            // Build URI with query parameters
-            String uri = UriComponentsBuilder.fromUriString(boundaryHost)
-                    .path(boundaryRelationshipSearchPath)
-                    .queryParam("tenantId", facility.getTenantId())
-                    .queryParam("includeParents", true)
-                    .queryParam("includeChildren", false)
-                    .queryParam("codes", facility.getBoundaryCode())
-                    .toUriString();
+            if (!hasParentHierarchy(codes)) {
+                String blockBoundaryCode = deriveBlockBoundaryCode(
+                        facility.getBoundaryCode(), facility.getFacilityId());
+                if (blockBoundaryCode != null) {
+                    log.info(
+                            "Parent hierarchy missing for facility {}; resolving via block boundary {}",
+                            facility.getFacilityId(), blockBoundaryCode
+                    );
+                    BoundaryCodes blockHierarchy = fetchBoundaryHierarchyForCode(
+                            facility.getTenantId(),
+                            blockBoundaryCode,
+                            "Block",
+                            requestInfo
+                    );
+                    codes = mergeBoundaryCodes(blockHierarchy, codes, facility);
+                }
+            } else if (codes.getFacilityCode() == null) {
+                codes.setFacilityCode(facility.getBoundaryCode());
+            }
 
-            // Call boundary service
-            Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
-            Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
-
-            // Parse response and extract codes
-            BoundaryCodes codes = parseBoundaryHierarchy(response);
-            log.debug("Successfully fetched boundary hierarchy for facility {}", facility.getFacilityId());
-            log.trace("Exiting fetchBoundaryHierarchy method");
             return codes;
-
         } catch (Exception e) {
-            log.error("Error fetching boundary hierarchy for facility {}: {}", 
-                     sanitizeForLog(facility.getFacilityId()), e.getMessage(), e);
+            log.error("Error fetching boundary hierarchy for facility {}: {}",
+                    facility.getFacilityId(), e.getMessage(), e);
             return null;
         }
+    }
+
+    private BoundaryCodes fetchBoundaryHierarchyForCode(
+            String tenantId,
+            String boundaryCode,
+            String boundaryType,
+            RequestInfo requestInfo
+    ) {
+        Map<String, Object> requestBody =
+                requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+
+        String uri = UriComponentsBuilder.fromUriString(boundaryHost)
+                .path(boundaryRelationshipSearchPath)
+                .queryParam("tenantId", tenantId)
+                .queryParam("hierarchyType", configs.getBoundaryHierarchyType())
+                .queryParam("boundaryType", boundaryType)
+                .queryParam("includeParents", true)
+                .queryParam("includeChildren", false)
+                .queryParam("codes", boundaryCode)
+                .toUriString();
+
+        Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
+        Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
+        return parseBoundaryHierarchy(response);
+    }
+
+    private static boolean hasParentHierarchy(BoundaryCodes codes) {
+        return codes != null && codes.getBlockCode() != null && !codes.getBlockCode().isBlank();
+    }
+
+    private static String deriveBlockBoundaryCode(String facilityBoundaryCode, String facilityId) {
+        if (facilityBoundaryCode == null || facilityId == null) {
+            return null;
+        }
+        String suffix = "_" + facilityId;
+        if (!facilityBoundaryCode.endsWith(suffix)) {
+            return null;
+        }
+        return facilityBoundaryCode.substring(0, facilityBoundaryCode.length() - suffix.length());
+    }
+
+    private static BoundaryCodes mergeBoundaryCodes(
+            BoundaryCodes fromBlock,
+            BoundaryCodes fromFacility,
+            Facility facility
+    ) {
+        BoundaryCodes merged = new BoundaryCodes();
+        if (fromBlock != null) {
+            merged.setCountryCode(fromBlock.getCountryCode());
+            merged.setStateCode(fromBlock.getStateCode());
+            merged.setDistrictCode(fromBlock.getDistrictCode());
+            merged.setBlockCode(fromBlock.getBlockCode());
+        }
+        if (fromFacility != null && fromFacility.getFacilityCode() != null) {
+            merged.setFacilityCode(fromFacility.getFacilityCode());
+        } else if (facility.getBoundaryCode() != null) {
+            merged.setFacilityCode(facility.getBoundaryCode());
+        }
+        return merged;
     }
 
     /**
@@ -518,10 +757,7 @@ public class FacilityKibanaMapper {
             // Build headers with authentication
             HttpEntity<Object> entity = new HttpEntity<>(searchQuery, buildHeaders());
 
-            log.debug("Executing Elasticsearch query to check facility existence for facility: {}", facilityId);
-            if (log.isTraceEnabled()) {
-                log.trace("Elasticsearch query: {}", searchQuery);
-            }
+            log.info("Executing Elasticsearch query to check facility existence: {}", searchQuery);
             @SuppressWarnings("unchecked")
             Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
 
@@ -632,7 +868,7 @@ public class FacilityKibanaMapper {
 
     @SuppressWarnings("unchecked")
     private FacilityKibanaIndex fetchExistingKibanaIndex(String facilityId, String tenantId) {
-        if (facilityId == null || tenantId == null) {
+        if (facilityId == null) {
             log.info("Skipping Kibana lookup: facilityId or tenantId is null (facilityId={}, tenantId={})",
                     facilityId, tenantId);
             return null;
@@ -640,13 +876,22 @@ public class FacilityKibanaMapper {
 
         log.info("Fetching existing Kibana document for facilityId={} tenantId={}", facilityId, tenantId);
         try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+
+            mustClauses.add(
+                    Map.of("term", Map.of("Data.facilityId.keyword", facilityId))
+            );
+
+            if (tenantId != null) {
+                mustClauses.add(
+                        Map.of("term", Map.of("Data.tenantId.keyword", tenantId))
+                );
+            }
+
             Map<String, Object> searchQuery = Map.of(
                     "query", Map.of(
                             "bool", Map.of(
-                                    "must", List.of(
-                                            Map.of("term", Map.of("Data.facilityId.keyword", facilityId)),
-                                            Map.of("term", Map.of("Data.tenantId.keyword", tenantId))
-                                    )
+                                    "must", mustClauses
                             )
                     ),
                     "size", 1
@@ -721,6 +966,49 @@ public class FacilityKibanaMapper {
             log.warn("Unable to fetch existing Kibana document for facility {} and tenant {}: {}",
                     facilityId, tenantId, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Deletes the Elasticsearch document(s) for a facility, matched by {@code Data.facilityId.keyword}
+     * (optionally scoped by tenant). Uses {@code _delete_by_query} so a missing document is a no-op.
+     *
+     * @return number of documents deleted, or {@code -1} when the delete call failed
+     */
+    @SuppressWarnings("unchecked")
+    public int deleteKibanaIndexByFacilityId(String facilityId, String tenantId) {
+        if (facilityId == null || facilityId.isBlank()) {
+            log.warn("Skipping Kibana delete: facilityId is null or blank");
+            return -1;
+        }
+
+        log.info("Deleting Kibana document(s) for facilityId={} tenantId={}", facilityId, tenantId);
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            Map<String, Object> deleteQuery = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses))
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_delete_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(deleteQuery, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> body = response != null ? response.getBody() : null;
+            int deleted = 0;
+            if (body != null && body.get("deleted") instanceof Number) {
+                deleted = ((Number) body.get("deleted")).intValue();
+            }
+            log.info("Deleted {} Kibana document(s) for facilityId={} tenantId={}", deleted, facilityId, tenantId);
+            return deleted;
+        } catch (Exception e) {
+            log.error("Unable to delete Kibana document for facility {} and tenant {}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
         }
     }
 }

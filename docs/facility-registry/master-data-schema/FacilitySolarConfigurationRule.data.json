@@ -1,0 +1,114 @@
+[
+  {
+    "facilityType": "SC",
+    "systemType": "DC_OFF_GRID",
+    "solutionDesignType": "OFF_GRID_DC_SYSTEM",
+    "capacityKwp": 0.25,
+    "active": true
+  },
+  {
+    "facilityType": "SC",
+    "systemType": "DC_OFF_GRID",
+    "solutionDesignType": "OFF_GRID_DC_SYSTEM",
+    "capacityKwp": 0.5,
+    "active": true
+  },
+  {
+    "facilityType": "SC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "NO_DELIVERY_NO_COLDCHAIN",
+    "capacityKwp": 1,
+    "active": true
+  },
+  {
+    "facilityType": "SC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "DELIVERY_ROOM_ONLY",
+    "capacityKwp": 2,
+    "active": true
+  },
+  {
+    "facilityType": "SC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "DELIVERY_ROOM_COLDCHAIN",
+    "capacityKwp": 3,
+    "active": true
+  },
+  {
+    "facilityType": "SC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "COLDCHAIN_ONLY",
+    "capacityKwp": 3,
+    "active": true
+  },
+  {
+    "facilityType": "PHC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "PHC_NO_DELIVERY_NO_COLDCHAIN_LAB",
+    "capacityKwp": 5,
+    "active": true
+  },
+  {
+    "facilityType": "PHC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "PHC_DELIVERY_ROOM",
+    "capacityKwp": 5,
+    "active": true
+  },
+  {
+    "facilityType": "PHC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "PHC_COLDCHAIN_LAB",
+    "capacityKwp": 5,
+    "active": true
+  },
+  {
+    "facilityType": "PHC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "PHC_DELIVERY_COLDCHAIN_LAB",
+    "capacityKwp": 6,
+    "active": true
+  },
+  {
+    "facilityType": "PHC",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "PHC_DELIVERY_COLDCHAIN_LAB_DENTAL_ADMIN",
+    "capacityKwp": 8,
+    "active": true
+  },
+  {
+    "facilityType": "PHC",
+    "systemType": "AC_HYBRID",
+    "solutionDesignType": "AC_HYBRID_SYSTEM",
+    "capacityKwp": 7,
+    "active": true
+  },
+  {
+    "facilityType": "PHC",
+    "systemType": "AC_HYBRID",
+    "solutionDesignType": "AC_HYBRID_SYSTEM",
+    "capacityKwp": 10,
+    "active": true
+  },
+  {
+    "facilityType": "ANGANWADI",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "LIGHT_FAN_EQUIPMENT",
+    "capacityKwp": 0.63,
+    "active": true
+  },
+  {
+    "facilityType": "ANGANWADI",
+    "systemType": "AC_OFF_GRID",
+    "solutionDesignType": "LIGHT_FAN_EQUIPMENT",
+    "capacityKwp": 1,
+    "active": true
+  },
+  {
+    "facilityType": "ANGANWADI",
+    "systemType": "DC_OFF_GRID",
+    "solutionDesignType": "ONLY_LIGHT_FAN",
+    "capacityKwp": 0.25,
+    "active": true
+  }
+]

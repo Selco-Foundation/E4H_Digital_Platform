@@ -25,10 +25,12 @@ import static facility.config.ServiceConstants.SYSTEM_USER;
 @Slf4j
 public class FacilityService {
     private static final String CATEGORY_HEALTH = "HEALTH";
-    private static final String CATEGORY_ANGANWADI = "ANGANWADI";
+    public static final String CATEGORY_ANGANWADI = "ANGANWADI";
     /** When category is HEALTH, MDMS-style rule: at least one of HFR ID or NIN ID must be present. */
     private static final String ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH =
             "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required.";
+    private static final String ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI =
+            "PoC Username is required when Facility Category is ANGANWADI.";
 
     private final FacilityRepository facilityRepository;
     private final JdbcTemplate jdbcTemplate;
@@ -47,12 +49,15 @@ public class FacilityService {
 
     private final HRMSUtils hrmsUtils;
     private final HRMSService hrmsService;
+    private final VendorOrganisationService vendorOrganisationService;
     private final RestTemplate restTemplate;
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
     private static final String LOCALIZATION_LOCALE = "en_IN";
     // Existing boundary localization upsert uses tenantId="in" (see ingestion-service / im-service migrations)
     private static final String LOCALIZATION_TENANT_ID = "in";
+    /** Tenant used for boundary entity and boundary_relationship (all facilities). */
+    private static final String BOUNDARY_TENANT_ID = "in";
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -70,6 +75,7 @@ public class FacilityService {
             FacilityRowMapperV2 facilityRowMapperV2,
             HRMSUtils hrmsUtils,
             HRMSService hrmsService,
+            VendorOrganisationService vendorOrganisationService,
             RestTemplate restTemplate) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -86,6 +92,7 @@ public class FacilityService {
         this.facilityRowMapperV2 = facilityRowMapperV2;
         this.hrmsUtils = hrmsUtils;
         this.hrmsService = hrmsService;
+        this.vendorOrganisationService = vendorOrganisationService;
         this.restTemplate = restTemplate;
     }
 
@@ -109,6 +116,19 @@ public class FacilityService {
         log.trace("Entering createFacility method");
         List<FacilityCreate> facilities = request.getFacilities();
         log.info("Processing facility create request for {} facilities", facilities.size());
+
+        // Normalize facility names (trim + collapse multiple spaces) before any validation
+        if (facilities != null) {
+            for (FacilityCreate fc : facilities) {
+                if (fc != null && fc.getFacilityName() != null) {
+                    fc.setFacilityName(
+                            fc.getFacilityName()
+                                    .trim()
+                                    .replaceAll("\\s+", " ")
+                    );
+                }
+            }
+        }
 
         // Group facility create requests by tenant ID for batch validation and processing
         Map<String, List<FacilityCreate>> facilitiesByTenant = facilities.stream()
@@ -139,7 +159,7 @@ public class FacilityService {
                         .facilityCategory(facilityCreate.getFacilityCategory())
                         .facilityType(facilityCreate.getFacilityType())
                         .facilitySubtype(facilityCreate.getFacilitySubtype())
-                        .facilityName(facilityCreate.getFacilityName())
+                        .facilityName(facilityCreate.getFacilityName()!=null ? facilityCreate.getFacilityName().trim() : facilityCreate.getFacilityName())
                         .facilityOwnership(facilityCreate.getFacilityOwnership())
                         .facilityPocName(facilityCreate.getFacilityPocName())
                         .facilityPocEmail(facilityCreate.getFacilityPocEmail())
@@ -202,6 +222,10 @@ public class FacilityService {
                 // Check uniqueness of facility name + boundaryCode
                 validateFacilityNameBoundaryCodeUnique(facility, tenantId);
 
+                validateFacilityPocUsernameUnique(
+                        facility.getFacilityCategory(), facility.getFacilityPocUsername(), tenantId, null
+                );
+
                 tenantFacilities.add(facility);
             }
 
@@ -261,8 +285,13 @@ public class FacilityService {
                     FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
                     facilityRepository.pushToKibana(kibanaIndex);
                 }
-                
+
                 validatedFacilities.add(facility);
+            }
+
+            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
+                vendorOrganisationService.assignFacilityJurisdictionsBulk(
+                        tenantFacilities, tenantId, request.getRequestInfo());
             }
         }
 
@@ -380,6 +409,44 @@ public class FacilityService {
         log.trace("Exiting validateHfrOrNinUniqueness method");
     }
 
+    /**
+     * Validates facility POC username: required for ANGANWADI, unique within tenant when provided.
+     * Throws CustomException if duplicate found.
+     */
+    private void validateFacilityPocUsernameUnique(
+            String facilityCategory, String facilityPocUsername, String tenantId, String excludeFacilityId
+    ) {
+        log.trace("Entering validateFacilityPocUsernameUnique method");
+        String normalizedCategory = facilityCategory == null ? "" : facilityCategory.trim().toUpperCase(Locale.ROOT);
+        if (CATEGORY_ANGANWADI.equals(normalizedCategory)
+                && (facilityPocUsername == null || facilityPocUsername.isBlank())) {
+            log.warn("Missing facility POC username for ANGANWADI facility in tenant {}", tenantId);
+            throw new IllegalArgumentException(ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI);
+        }
+        if (facilityPocUsername != null && !facilityPocUsername.isBlank()) {
+            String normalizedUsername = facilityPocUsername.trim();
+            log.debug("Checking uniqueness of facility POC username for tenant {}", tenantId);
+            boolean exists = facilityQueryDao.existsByFacilityPocUsername(
+                    tenantId, normalizedUsername, excludeFacilityId
+            );
+            if (exists) {
+                log.warn("Duplicate facility POC username found for tenant {}", tenantId);
+                throw new CustomException("FACILITY_DUPLICATE_POC_USERNAME",
+                        "A facility with the same POC username already exists in this tenant");
+            }
+            log.debug("Facility POC username is unique");
+        }
+        log.trace("Exiting validateFacilityPocUsernameUnique method");
+    }
+
+    private String extractVendorCode(Facility facility) {
+        if (facility.getFacilityDetails() == null) {
+            return null;
+        }
+        String vendorCode = facility.getFacilityDetails().getVendorCode();
+        return vendorCode != null ? vendorCode.trim() : null;
+    }
+
     private void validateCategoryBasedIdentifiers(String facilityCategory, String hfrId, String ninId) {
         String normalizedCategory = facilityCategory == null ? "" : facilityCategory.trim().toUpperCase(Locale.ROOT);
         if (CATEGORY_HEALTH.equals(normalizedCategory)) {
@@ -406,7 +473,7 @@ public class FacilityService {
     /**
      * Creates POC user as HRMS employee if not exists (checks by employee username / code in HRMS).
      * For {@code ANGANWADI} facilities, username is {@code facilityPocUsername} (HFR not required).
-     * Otherwise validates that HFR ID or NIN ID is present (one is always required), plus POC contact and POC name.
+     * Otherwise validates HFR ID (or NIN-backed flow), POC contact, and POC name before attempting creation.
      * Supports both direct fields (facilityPocName, facilityPocPhone, hfrId) and nested facilityDetails.
      *
      * @param facility The facility for which to create POC user
@@ -453,7 +520,7 @@ public class FacilityService {
                 : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
         boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
 
-        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR or NIN + contact + name)
+        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR + contact + name)
         if (isAnganwadi) {
             String pocUsername = facility.getFacilityPocUsername() == null
                     ? ""
@@ -469,20 +536,16 @@ public class FacilityService {
                         sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
                 return;
             }
-        } else {
-            String facilityIdentifier = resolveFacilityIdentifier(facility, facilityDetails);
-            if (facilityIdentifier == null || facilityIdentifier.isBlank()
-                    || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
-                    || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
-                log.warn("Cannot create POC user for facility {}: missing facility identifier (HFR or NIN ID), POC contact, or POC name. " +
-                        "HFR ID: {}, NIN ID: {}, POC Contact: {}, POC Name: {}",
-                        sanitizeForLog(facility.getFacilityId()),
-                        sanitizeForLog(facilityDetails.getHfrId()),
-                        sanitizeForLog(facilityDetails.getNinId()),
-                        sanitizeForLog(facilityDetails.getPocContact()),
-                        sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
-                return;
-            }
+        } else if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()
+                || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
+                || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
+                    "HFR ID: {}, POC Contact: {}, POC Name: {}",
+                    sanitizeForLog(facility.getFacilityId()),
+                    sanitizeForLog(facilityDetails.getHfrId()),
+                    sanitizeForLog(facilityDetails.getPocContact()),
+                    sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
+            return;
         }
 
         String username;
@@ -576,13 +639,22 @@ public class FacilityService {
         }
         catch(Exception e){}
 
+        // Normalize facility name (trim + collapse multiple spaces) before mapping
+        if (update.getFacilityName() != null) {
+            update.setFacilityName(
+                    update.getFacilityName()
+                            .trim()
+                            .replaceAll("\\s+", " ")
+            );
+        }
+
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
         facility.setFacilityCategory(update.getFacilityCategory());
         facility.setFacilityType(update.getFacilityType());
         facility.setFacilitySubtype(update.getFacilitySubtype());
-        facility.setFacilityName(update.getFacilityName());
+        facility.setFacilityName(update.getFacilityName()!=null ? update.getFacilityName().trim() : update.getFacilityName());
         facility.setAddress(update.getAddress());
         facility.setAdditionalDetails(update.getAdditionalDetails());
         facility.setBoundaryCode(update.getBoundaryCode());
@@ -626,6 +698,10 @@ public class FacilityService {
         String effectiveNinId = firstNonBlank(update.getNinId(), existingFacility.getNinId());
         validateCategoryBasedIdentifiers(effectiveCategory, effectiveHfrId, effectiveNinId);
 
+        validateFacilityPocUsernameUnique(
+                effectiveCategory, facility.getFacilityPocUsername(), update.getTenantId(), update.getFacilityId()
+        );
+
         // Validate with MDMS and boundary APIs
         log.info("Validating facility update against MDMS and boundaries");
         facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
@@ -659,7 +735,7 @@ public class FacilityService {
 
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
-        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendor(facility);
+        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendorUpdateInPayload(update);
         // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
             log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
@@ -671,6 +747,7 @@ public class FacilityService {
                     .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
                     .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
                     .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                    .facilityCategory(existingFacility.getFacilityCategory())
                     .facilityOwnership(existingFacility.getFacilityOwnership())
                     .facilityRegion(existingFacility.getFacilityRegion())
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
@@ -724,13 +801,14 @@ public class FacilityService {
                     .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
                     .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
                     .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                    .facilityCategory(existingFacility.getFacilityCategory()) // Not in update request, use existing
                     .facilityOwnership(existingFacility.getFacilityOwnership()) // Not in update request, use existing
                     .facilityRegion(existingFacility.getFacilityRegion()) // Not in update request, use existing
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
-                    .mappedVendorName(facility.getMappedVendorName() != null ? facility.getMappedVendorName() : existingFacility.getMappedVendorName())
-                    .mappedVendorUserName(facility.getMappedVendorUserName() != null ? facility.getMappedVendorUserName() : existingFacility.getMappedVendorUserName())
+                    .mappedVendorName(facility.getMappedVendorName())
+                    .mappedVendorUserName(facility.getMappedVendorUserName())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true) // Set from update request
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
@@ -748,6 +826,13 @@ public class FacilityService {
                     facilityForKibanaUpdate, request.getRequestInfo());
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
+        } else if (Boolean.FALSE.equals(update.getIsOnmReady())) {
+            // Facility marked as non ONM-ready: deactivate the HRMS POC user (if any) and
+            // remove the facility document from the Kibana/Elasticsearch index (if present).
+            log.info("Facility {} marked as non ONM-ready, deactivating POC user and removing Kibana index",
+                    sanitizeForLog(update.getFacilityId()));
+            deactivateFacilityPOCUser(request, existingFacility);
+            facilityKibanaMapper.deleteKibanaIndexByFacilityId(update.getFacilityId(), update.getTenantId());
         } else if (mappedVendorUpdated) {
             Facility facilityForKibanaUpdate = Facility.builder()
                     .facilityId(facility.getFacilityId())
@@ -793,47 +878,108 @@ public class FacilityService {
             log.warn("Facility {} not found for tenant {}", blockUpdate.getFacilityId(), blockUpdate.getTenantId());
             return null;
         }
-        String oldFacilityBoundaryCode = existingFacility.getBoundaryCode();
 
-        // Validate that requested target block exists in boundary service.
         boundaryValidator.validateBoundaries(
                 Set.of(blockUpdate.getNewBlockBoundaryCode()),
                 blockUpdate.getTenantId(),
                 request.getRequestInfo()
         );
 
-        String updatedFacilityBoundaryCode = blockUpdate.getNewBlockBoundaryCode() + "_" + blockUpdate.getFacilityId();
+        Facility updated = applyFacilityBlockBoundaryChange(
+                existingFacility,
+                blockUpdate.getFacilityId(),
+                blockUpdate.getTenantId(),
+                blockUpdate.getNewBlockBoundaryCode(),
+                request.getRequestInfo()
+        );
+        log.trace("Exiting updateFacilityBlockBoundary method");
+        return updated;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Facility updateFacilityDistrictBoundary(FacilityDistrictUpdateRequest request) {
+        log.trace("Entering updateFacilityDistrictBoundary method");
+        FacilityDistrictUpdate districtUpdate = request.getFacilityDistrictUpdate();
+        if (districtUpdate == null) {
+            throw new IllegalArgumentException("FacilityDistrictUpdate payload is required");
+        }
+        if (districtUpdate.getFacilityId() == null || districtUpdate.getFacilityId().isBlank()
+                || districtUpdate.getTenantId() == null || districtUpdate.getTenantId().isBlank()
+                || districtUpdate.getNewDistrictBoundaryCode() == null || districtUpdate.getNewDistrictBoundaryCode().isBlank()
+                || districtUpdate.getNewBlockBoundaryCode() == null || districtUpdate.getNewBlockBoundaryCode().isBlank()) {
+            throw new IllegalArgumentException("facility_id, tenant_id, new_district_boundary_code and new_block_boundary_code must be provided");
+        }
+
+        String districtPrefix = districtUpdate.getNewDistrictBoundaryCode() + "_";
+        if (!districtUpdate.getNewBlockBoundaryCode().startsWith(districtPrefix)) {
+            throw new IllegalArgumentException(
+                    "new_block_boundary_code must belong to new_district_boundary_code (expected prefix: " + districtPrefix + ")"
+            );
+        }
+
+        validateFacilityEditAuthorization(request.getRequestInfo());
+
+        Facility existingFacility = getFacilityFromDb(districtUpdate.getFacilityId(), districtUpdate.getTenantId());
+        if (existingFacility == null) {
+            log.warn("Facility {} not found for tenant {}", districtUpdate.getFacilityId(), districtUpdate.getTenantId());
+            return null;
+        }
+
+        boundaryValidator.validateBoundaries(
+                Set.of(districtUpdate.getNewDistrictBoundaryCode(), districtUpdate.getNewBlockBoundaryCode()),
+                districtUpdate.getTenantId(),
+                request.getRequestInfo()
+        );
+
+        Facility updated = applyFacilityBlockBoundaryChange(
+                existingFacility,
+                districtUpdate.getFacilityId(),
+                districtUpdate.getTenantId(),
+                districtUpdate.getNewBlockBoundaryCode(),
+                request.getRequestInfo()
+        );
+        log.trace("Exiting updateFacilityDistrictBoundary method");
+        return updated;
+    }
+
+    private Facility applyFacilityBlockBoundaryChange(
+            Facility existingFacility,
+            String facilityId,
+            String tenantId,
+            String newBlockBoundaryCode,
+            RequestInfo requestInfo) {
+        String oldFacilityBoundaryCode = existingFacility.getBoundaryCode();
+        String updatedFacilityBoundaryCode = newBlockBoundaryCode + "_" + facilityId;
         if (updatedFacilityBoundaryCode.equals(existingFacility.getBoundaryCode())) {
-            log.info("No boundary update needed for facility {} (boundary code unchanged)", blockUpdate.getFacilityId());
+            log.info("No boundary update needed for facility {} (boundary code unchanged)", facilityId);
             return existingFacility;
         }
 
-        ensureFacilityBoundaryExists(updatedFacilityBoundaryCode, blockUpdate.getNewBlockBoundaryCode(), blockUpdate.getTenantId(), request.getRequestInfo());
+        ensureFacilityBoundaryExists(updatedFacilityBoundaryCode, newBlockBoundaryCode, tenantId, requestInfo);
 
         int updatedRows = jdbcTemplate.update(
                 "UPDATE facility SET boundary_code = ? WHERE id = ? AND tenant_id = ?",
                 updatedFacilityBoundaryCode,
-                blockUpdate.getFacilityId(),
-                blockUpdate.getTenantId()
+                facilityId,
+                tenantId
         );
-        log.info("{} Rows updated for facility {} and tenant {}", updatedRows, blockUpdate.getFacilityId(), blockUpdate.getTenantId());
+        log.info("{} Rows updated for facility {} and tenant {}", updatedRows, facilityId, tenantId);
         if (updatedRows == 0) {
-            log.warn("No rows updated for facility {} and tenant {}", blockUpdate.getFacilityId(), blockUpdate.getTenantId());
+            log.warn("No rows updated for facility {} and tenant {}", facilityId, tenantId);
             return null;
         }
 
         existingFacility.setBoundaryCode(updatedFacilityBoundaryCode);
-        upsertFacilityBoundaryLocalizations(List.of(existingFacility), request.getRequestInfo());
-        cleanupOldFacilityBoundaryIfUnused(oldFacilityBoundaryCode, blockUpdate.getTenantId(), request.getRequestInfo());
+        upsertFacilityBoundaryLocalizations(List.of(existingFacility), requestInfo);
+        cleanupOldFacilityBoundaryIfUnused(oldFacilityBoundaryCode, tenantId, requestInfo);
         syncImIncidentBoundaryCodesForFacility(
-                blockUpdate.getTenantId(),
-                blockUpdate.getFacilityId(),
+                tenantId,
+                facilityId,
                 updatedFacilityBoundaryCode,
-                blockUpdate.getNewBlockBoundaryCode(),
-                request.getRequestInfo()
+                newBlockBoundaryCode,
+                requestInfo
         );
-        log.info("Updated boundary code for facility {} to {}", blockUpdate.getFacilityId(), updatedFacilityBoundaryCode);
-        log.trace("Exiting updateFacilityBlockBoundary method");
+        log.info("Updated boundary code for facility {} to {}", facilityId, updatedFacilityBoundaryCode);
         return existingFacility;
     }
 
@@ -1072,6 +1218,201 @@ public class FacilityService {
         log.trace("Exiting sanitizeForLog method");
         return result;
     }
+    /**
+     * One-off migration: when HFR is absent ({@code NULL} or blank), sets indexer {@code code} via Kafka:
+     * {@code nin_id} if present, otherwise {@code facility_poc_username} when both HFR and NIN are absent.
+     *
+     * @return short summary string for operators
+     */
+    public String syncKibanaFacilityCodeFromNinWhereHfrMissing() {
+        log.info("Starting Kibana code sync for facilities without HFR (nin or poc_username fallback)");
+        String sql = "SELECT fac.*, "
+                + "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                + "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                + "FROM facility fac "
+                + "WHERE (fac.hfr_id IS NULL OR TRIM(fac.hfr_id) = '') "
+                + "AND ("
+                + "  (fac.nin_id IS NOT NULL AND TRIM(fac.nin_id) <> '') "
+                + "  OR ("
+                + "    (fac.nin_id IS NULL OR TRIM(fac.nin_id) = '') "
+                + "    AND fac.facility_poc_username IS NOT NULL "
+                + "    AND TRIM(fac.facility_poc_username) <> ''"
+                + "  )"
+                + ")";
+
+        RequestInfo migrationRequestInfo = new RequestInfo();
+        List<Facility> facilities = jdbcTemplate.query(sql, facilityRowMapper.rowMapper);
+        int pushed = 0;
+        int failed = 0;
+        int fromNin = 0;
+        int fromPocUsername = 0;
+        for (Facility facility : facilities) {
+            try {
+                String code = resolveIndexerCodeForHfrMissingMigration(facility);
+                if (code == null) {
+                    continue;
+                }
+                if (hasNonBlankTrimmed(facility.getNinId())) {
+                    fromNin++;
+                } else {
+                    fromPocUsername++;
+                }
+                FacilityKibanaIndex patch = facilityKibanaMapper.toKibanaIndexPatchCode(
+                        facility,
+                        code,
+                        migrationRequestInfo);
+                if (patch != null) {
+                    facilityRepository.pushToKibana(patch);
+                    pushed++;
+                    log.debug("Queued Kibana code patch for facilityId {}", sanitizeForLog(facility.getFacilityId()));
+                }
+            } catch (Exception e) {
+                failed++;
+                log.error("Failed Kibana code sync for facilityId {} tenantId {}: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facility.getTenantId()),
+                        e.getMessage(),
+                        e);
+            }
+        }
+        String summary = String.format(
+                "Matched %d facilities (hfr absent; code from nin=%d, poc_username=%d); "
+                        + "queued to indexer=%d; errors=%d",
+                facilities.size(), fromNin, fromPocUsername, pushed, failed);
+        log.info("Completed Kibana code sync: {}", summary);
+        return summary;
+    }
+
+    /**
+     * Operator reindex: rebuilds full Kibana/Elasticsearch payloads (including boundary hierarchy)
+     * for existing facilities and pushes them to the indexer topic.
+     */
+    public FacilityKibanaReindexResponse reindexFacilitiesInKibana(FacilityKibanaReindexRequest request) {
+        if (!configs.isFacilityKibanaReindexEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility Kibana reindex is disabled. Set facility.kibana.reindex.enabled=true to run."
+            );
+        }
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+
+        boolean onmReadyOnly = request.getOnmReadyOnly() == null || Boolean.TRUE.equals(request.getOnmReadyOnly());
+        List<Facility> facilities = loadFacilitiesForKibanaReindex(
+                request.getTenantId(),
+                request.getFacilityIds(),
+                onmReadyOnly
+        );
+
+        log.info("Kibana reindex: tenantId={}, facilityIds={}, onmReadyOnly={}, scanned={}",
+                request.getTenantId(),
+                request.getFacilityIds() != null ? request.getFacilityIds().size() : 0,
+                onmReadyOnly,
+                facilities.size());
+
+        FacilityKibanaReindexResponse response = FacilityKibanaReindexResponse.builder()
+                .scanned(facilities.size())
+                .errors(new ArrayList<>())
+                .build();
+
+        for (Facility facility : facilities) {
+            if (facility.getBoundaryCode() == null || facility.getBoundaryCode().isBlank()) {
+                response.setSkipped(response.getSkipped() + 1);
+                log.warn("Skipping Kibana reindex for facility {}: boundary_code is blank", facility.getFacilityId());
+                continue;
+            }
+            try {
+                FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
+                if (kibanaIndex == null) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+                facilityRepository.pushToKibana(kibanaIndex);
+                response.setReindexed(response.getReindexed() + 1);
+                log.debug("Queued Kibana reindex for facilityId {}", sanitizeForLog(facility.getFacilityId()));
+            } catch (Exception e) {
+                response.setFailed(response.getFailed() + 1);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("Kibana reindex failed for facilityId {} tenantId {}: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facility.getTenantId()),
+                        message,
+                        e);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(facility.getFacilityId())
+                        .tenantId(facility.getTenantId())
+                        .boundaryCode(facility.getBoundaryCode())
+                        .message(message)
+                        .build());
+            }
+        }
+
+        log.info("Kibana reindex complete: scanned={}, reindexed={}, skipped={}, failed={}",
+                response.getScanned(), response.getReindexed(), response.getSkipped(), response.getFailed());
+        return response;
+    }
+
+    private List<Facility> loadFacilitiesForKibanaReindex(
+            String tenantId,
+            List<String> facilityIds,
+            boolean onmReadyOnly
+    ) {
+        StringBuilder query = new StringBuilder(
+                "SELECT fac.*, "
+                        + "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                        + "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                        + "FROM facility fac WHERE 1=1"
+        );
+        List<Object> params = new ArrayList<>();
+
+        if (onmReadyOnly) {
+            query.append(" AND fac.is_onm_ready = true");
+        }
+        if (tenantId != null && !tenantId.isBlank()) {
+            query.append(" AND fac.tenant_id = ?");
+            params.add(tenantId.trim());
+        }
+        if (facilityIds != null && !facilityIds.isEmpty()) {
+            List<String> distinctIds = facilityIds.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(id -> !id.isEmpty())
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!distinctIds.isEmpty()) {
+                query.append(" AND fac.id IN (")
+                        .append(distinctIds.stream().map(id -> "?").collect(Collectors.joining(", ")))
+                        .append(")");
+                params.addAll(distinctIds);
+            }
+        }
+
+        return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.rowMapper);
+    }
+
+    /**
+     * When HFR is missing: prefer {@code nin_id}, else {@code facility_poc_username}.
+     */
+    private String resolveIndexerCodeForHfrMissingMigration(Facility facility) {
+        if (facility == null) {
+            return null;
+        }
+        if (hasNonBlankTrimmed(facility.getHfrId())) {
+            return null;
+        }
+        if (hasNonBlankTrimmed(facility.getNinId())) {
+            return facility.getNinId().trim();
+        }
+        if (hasNonBlankTrimmed(facility.getFacilityPocUsername())) {
+            return facility.getFacilityPocUsername().trim();
+        }
+        return null;
+    }
+
+    private static boolean hasNonBlankTrimmed(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
     public void migrateFacilityData() {
         StringBuilder query = new StringBuilder(
                 "SELECT fac.*, " +
@@ -1232,6 +1573,72 @@ public class FacilityService {
         }
     }
 
+    /**
+     * Deactivates the HRMS POC user associated with a facility when the facility is marked as
+     * non ONM-ready. The username is resolved the same way it is created (POC username for ANGANWADI,
+     * otherwise HFR ID falling back to NIN ID). If no HRMS user exists, this is a no-op.
+     */
+    public void deactivateFacilityPOCUser(FacilityUpdateRequest request, Facility existingFacilityDetails) {
+        String normalizedCategory = existingFacilityDetails.getFacilityCategory() == null
+                ? ""
+                : existingFacilityDetails.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+        String username;
+        if (isAnganwadi) {
+            username = existingFacilityDetails.getFacilityPocUsername() != null && !existingFacilityDetails.getFacilityPocUsername().trim().isBlank()
+                    ? existingFacilityDetails.getFacilityPocUsername().trim() : "";
+        } else {
+            username = existingFacilityDetails.getHfrId() != null && !existingFacilityDetails.getHfrId().trim().isBlank()
+                    ? existingFacilityDetails.getHfrId().trim()
+                    : existingFacilityDetails.getNinId();
+        }
+
+        if (username == null || username.isBlank()) {
+            log.info("Skipping POC user deactivation for facility {}: no resolvable HRMS username",
+                    existingFacilityDetails.getFacilityId());
+            return;
+        }
+
+        try {
+            Employee employee = hrmsUtils.getUserByUsername(request, username);
+            if (employee == null || employee.getUser() == null) {
+                log.info("No HRMS POC user found for username {}, nothing to deactivate", username);
+                return;
+            }
+
+            boolean employeeInactive = Boolean.FALSE.equals(employee.getIsActive());
+            boolean userInactive = employee.getUser().getActive() == null || !employee.getUser().getActive();
+            if (employeeInactive && userInactive) {
+                log.info("HRMS POC user {} is already inactive for facility {}, skipping deactivation",
+                        username, existingFacilityDetails.getFacilityId());
+                return;
+            }
+
+            employee.getUser().setActive(false);
+            employee.setIsActive(false);
+            employee.setEmployeeStatus("INACTIVE");
+            employee.setReActivateEmployee(false);
+
+            EmployeeRequest employeeRequest = EmployeeRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .employees(List.of(employee))
+                    .build();
+            List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+            if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
+                log.info("Deactivated HRMS POC user {} for facility {}", username, existingFacilityDetails.getFacilityId());
+            } else {
+                log.warn("Failed to deactivate HRMS POC user {} for facility {}", username, existingFacilityDetails.getFacilityId());
+            }
+        } catch (CustomException e) {
+            // getUserByUsername raises EMPLOYEE_NOT_FOUND when no matching user exists
+            log.info("No HRMS POC user to deactivate for username {} (facility {}): {}",
+                    username, existingFacilityDetails.getFacilityId(), e.getMessage());
+        } catch (Exception e) {
+            log.error("Error deactivating HRMS POC user {} for facility {}: {}",
+                    username, existingFacilityDetails.getFacilityId(), e.getMessage(), e);
+        }
+    }
+
     private void validateFacilityEditAuthorization(RequestInfo requestInfo) {
         var userInfo = requestInfo != null ? requestInfo.getUserInfo() : null;
         if (userInfo == null || userInfo.getRoles() == null) {
@@ -1257,6 +1664,128 @@ public class FacilityService {
             return null;
         }
     }
+
+    /**
+     * Backfills missing boundary entities and SELCO Facility boundary-relationships for facilities that
+     * were persisted when relationship create failed (e.g. varchar length on code/parent).
+     */
+    public FacilityBoundaryBackfillResponse backfillMissingFacilityBoundaryRelationships(
+            FacilityBoundaryBackfillRequest request
+    ) {
+        if (!configs.isFacilityBoundaryBackfillEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility boundary backfill is disabled. Set facility.boundary.backfill.enabled=true to run."
+            );
+        }
+//        validateSystemUserAuthorization(request.getRequestInfo());
+
+        String hierarchyType = configs.getBoundaryHierarchyType();
+
+        List<FacilityBoundaryBackfillRow> rows = loadFacilitiesMissingBoundaryRelationship(hierarchyType);
+        log.info("Boundary backfill: boundaryTenantId={}, hierarchyType={}, scanned={}",
+                BOUNDARY_TENANT_ID, hierarchyType, rows.size());
+
+        FacilityBoundaryBackfillResponse response = FacilityBoundaryBackfillResponse.builder()
+                .scanned(rows.size())
+                .errors(new ArrayList<>())
+                .build();
+
+        if (rows.isEmpty()) {
+            return response;
+        }
+
+        List<FacilityBoundaryBackfillRow> validRows = new ArrayList<>();
+        for (FacilityBoundaryBackfillRow row : rows) {
+            String parent = deriveParentBlockBoundaryCode(row.boundaryCode(), row.facilityId());
+            if (parent == null || parent.isBlank()) {
+                response.setSkippedInvalid(response.getSkippedInvalid() + 1);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(row.facilityId())
+                        .tenantId(row.tenantId())
+                        .boundaryCode(row.boundaryCode())
+                        .message("boundary_code does not match expected pattern {blockCode}_" + row.facilityId())
+                        .build());
+                continue;
+            }
+            validRows.add(row);
+        }
+
+        List<FacilityBoundaryBackfillRow> toBackfill = new ArrayList<>(validRows);
+        response.setMissing(toBackfill.size());
+
+        for (FacilityBoundaryBackfillRow row : toBackfill) {
+            String parent = deriveParentBlockBoundaryCode(row.boundaryCode(), row.facilityId());
+            try {
+                ensureFacilityBoundaryExists(row.boundaryCode(), parent, BOUNDARY_TENANT_ID, request.getRequestInfo());
+                response.setCreated(response.getCreated() + 1);
+            } catch (Exception e) {
+                response.setFailed(response.getFailed() + 1);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("Boundary backfill failed for facility {}: {}", row.facilityId(), message, e);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(row.facilityId())
+                        .tenantId(row.tenantId())
+                        .boundaryCode(row.boundaryCode())
+                        .message(message)
+                        .build());
+            }
+        }
+
+        log.info("Boundary backfill complete: created={}, failed={}, skippedInvalid={}",
+                response.getCreated(), response.getFailed(), response.getSkippedInvalid());
+        return response;
+    }
+
+    /**
+     * Loads only facilities whose {@code boundary_code} has no matching row in {@code boundary_relationship}
+     * for the given hierarchy (typically SELCO). Requires facility and boundary-service tables in the same DB.
+     */
+    private List<FacilityBoundaryBackfillRow> loadFacilitiesMissingBoundaryRelationship(String hierarchyType) {
+        String sql =
+                "SELECT f.id, f.tenant_id, f.boundary_code FROM facility f " +
+                "WHERE f.boundary_code IS NOT NULL " +
+                "AND NOT EXISTS ( " +
+                "  SELECT 1 FROM boundary_relationship br " +
+                "  WHERE br.tenantid = ? " +
+                "    AND br.code = f.boundary_code " +
+                "    AND br.hierarchytype = ? " +
+                ") ORDER BY f.id DESC";
+        List<Object> params = List.of(BOUNDARY_TENANT_ID, hierarchyType);
+        return jdbcTemplate.query(
+                sql,
+                params.toArray(),
+                (rs, rowNum) -> new FacilityBoundaryBackfillRow(
+                        rs.getString("id"),
+                        rs.getString("tenant_id"),
+                        rs.getString("boundary_code")
+                )
+        );
+    }
+
+    private String deriveParentBlockBoundaryCode(String boundaryCode, String facilityId) {
+        if (boundaryCode == null || facilityId == null) {
+            return null;
+        }
+        String suffix = "_" + facilityId;
+        if (!boundaryCode.endsWith(suffix)) {
+            return null;
+        }
+        return boundaryCode.substring(0, boundaryCode.length() - suffix.length());
+    }
+
+    private void validateSystemUserAuthorization(RequestInfo requestInfo) {
+        var userInfo = requestInfo != null ? requestInfo.getUserInfo() : null;
+        if (userInfo == null || userInfo.getRoles() == null) {
+            throw new IllegalArgumentException("Only SYSTEM_USER role can run facility boundary backfill");
+        }
+        boolean isSystemUser = userInfo.getRoles().stream()
+                .anyMatch(role -> SYSTEM_USER.equalsIgnoreCase(role.getCode()));
+        if (!isSystemUser) {
+            throw new IllegalArgumentException("Only SYSTEM_USER role can run facility boundary backfill");
+        }
+    }
+
+    private record FacilityBoundaryBackfillRow(String facilityId, String tenantId, String boundaryCode) {}
 
     private void ensureFacilityBoundaryExists(String facilityBoundaryCode, String parentBlockBoundaryCode, String tenantId, RequestInfo requestInfo) {
         boolean boundaryExists = false;
