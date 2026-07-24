@@ -166,8 +166,8 @@ class BomRepository {
       final af = row.activityFacility;
       final projectNumber = af.fieldPlan?.project?.projectNumber?.toString();
       final poWoNumber = af.fieldPlan?.poWoNumber;
-      final projectDate = af.fieldPlan?.startDateTime ??
-          af.fieldPlan?.project?.startDateTime;
+      final projectDate =
+          af.fieldPlan?.startDateTime ?? af.fieldPlan?.project?.startDateTime;
       final enriched = enrichWithFacilityDetails(
         values: bomData,
         facility: af.facility,
@@ -188,6 +188,12 @@ class BomRepository {
         assetType: ASSET_TYPES.BATTERY.name.toLowerCase(),
         capacitySelector: (asset) => asset.batteryCapacity,
         includeBatteryType: true,
+      );
+      final inverterSummary = await _getAssetTypeBomSummary(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        assetType: ASSET_TYPES.INVERTER.name.toLowerCase(),
+        capacitySelector: (asset) => asset.inverterCapacity,
       );
       final panelSerialNumbers = await _getAssetSerialNumbers(
         isar: isar,
@@ -212,6 +218,34 @@ class BomRepository {
       _putIfNotBlank(
           enriched, 'solar_battery_capacity', batterySummary.capacity);
       _putIfNotBlank(enriched, 'solar_battery_qty', batterySummary.quantity);
+      _putInverterSummary(
+        enriched,
+        inverterSummary,
+        makeKey: 'inverter_make',
+        capacityKey: 'inverter_capacity',
+        quantityKey: 'inverter_qty',
+      );
+      _putInverterSummary(
+        enriched,
+        inverterSummary,
+        makeKey: 'solar_on_grid_pcu_inverter_make',
+        capacityKey: 'solar_on_grid_pcu_inverter_capacity',
+        quantityKey: 'solar_on_grid_pcu_inverter_qty',
+      );
+      _putInverterSummary(
+        enriched,
+        inverterSummary,
+        makeKey: 'solar_charge_controller_make',
+        capacityKey: 'solar_charge_controller_capacity',
+        quantityKey: 'solar_charge_controller_qty',
+      );
+      _putInverterSummary(
+        enriched,
+        inverterSummary,
+        makeKey: 'solar_hybrid_pcu_make',
+        capacityKey: 'solar_hybrid_pcu_capacity',
+        quantityKey: 'solar_hybrid_pcu_qty',
+      );
       _putIfNotEmpty(enriched, 'panel_serial_number', panelSerialNumbers);
       _putIfNotEmpty(enriched, 'battery_serial_number', batterySerialNumbers);
       _putIfNotEmpty(enriched, 'inverter_serial_number', inverterSerialNumbers);
@@ -253,6 +287,18 @@ class BomRepository {
           ? _firstNonBlank(assets.map((asset) => asset.batteryType))
           : null,
     );
+  }
+
+  void _putInverterSummary(
+    Map<String, dynamic> values,
+    _AssetTypeBomSummary summary, {
+    required String makeKey,
+    required String capacityKey,
+    required String quantityKey,
+  }) {
+    _putIfNotBlank(values, makeKey, summary.make);
+    _putIfNotBlank(values, capacityKey, summary.capacity);
+    _putIfNotBlank(values, quantityKey, summary.quantity);
   }
 
   Future<List<Map<String, dynamic>>> _getAssetSerialNumbers({
