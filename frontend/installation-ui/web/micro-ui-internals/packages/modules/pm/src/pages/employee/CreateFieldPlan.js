@@ -12,6 +12,7 @@ import useFieldPlan from "../../hooks/useFieldPlan";
 import { FieldPlanService } from "../../services/FieldPlan";
 import { PMService } from "../../services/PMService";
 import { ActivityService } from "../../services/Activity";
+import { IngestionService } from "../../services/Ingestion";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useActivityAssignment from "../../hooks/useActivityAssignment";
@@ -22,6 +23,83 @@ const PO_NUMBER_REGEX = /^PUR-ORD-\d{4}-\d{4}-\d{5}$/;
 
 const isValidPoNumber = (poNumber) => {
   return PO_NUMBER_REGEX.test(poNumber || "");
+};
+
+const getICCTemplates = (fieldPlan, fieldPlanData) => (
+  fieldPlan?.iccTemplates ||
+  fieldPlan?.additionalDetails?.iccTemplates ||
+  fieldPlan?.additionalDetails?.iccPrepopulationTemplates ||
+  fieldPlanData?.iccTemplates ||
+  []
+);
+
+const getICCPrepopulationRows = (data) => Array.isArray(data) ? data : data?.iccPrepopulationConfiguration || [];
+
+const isICCPrepopulationComplete = (data) => {
+  const rows = getUniqueICCPrepopulationRows(getICCPrepopulationRows(data));
+
+  return rows.length > 0 && rows.every((row) => row?.systemType && row?.totalSystemCapacity && row?.file);
+};
+
+const getSystemCapacityValue = (capacity) => {
+  const capacityValue = capacity?.code || capacity?.name || "";
+  const matchedCapacity = capacityValue.toString().match(/[\d.]+/);
+
+  if (!matchedCapacity?.[0]) {
+    return capacityValue;
+  }
+
+  const numericCapacity = Number(matchedCapacity[0]);
+  return Number.isNaN(numericCapacity) ? matchedCapacity[0] : numericCapacity.toString();
+};
+
+const normalizeICCValue = (value) => (value || "").toString().trim().toLowerCase();
+
+const getICCPrepopulationRowKey = (row = {}) => {
+  const systemTypeKey = normalizeICCValue(row.systemType?.name || row.systemType?.code).replace(/[\s_-]+/g, "");
+  const capacityKey = getSystemCapacityValue(row.totalSystemCapacity);
+
+  return systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "";
+};
+
+const getUniqueICCPrepopulationRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
+  const rowKey = getICCPrepopulationRowKey(row);
+  const existingRow = acc[rowKey];
+
+  if (!rowKey) {
+    acc[row.id || `empty-row-${Object.keys(acc).length}`] = row;
+    return acc;
+  }
+
+  if (!existingRow || (!existingRow.file && row.file)) {
+    acc[rowKey] = row;
+  }
+
+  return acc;
+}, {}));
+
+const getNewICCPrepopulationRows = (rows = []) => rows.filter((row) => row?.file && !row.file?.isSavedTemplate);
+
+const isScheduledFieldPlan = (status) => normalizeICCValue(status) === "scheduled";
+
+const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
+  const iccReportsData = new FormData();
+  const items = rows.map((row) => ({
+    id: row.template?.id || "",
+    systemType: row.systemType?.code,
+    totalSystemCapacity: getSystemCapacityValue(row.totalSystemCapacity),
+    fieldPlanId: fieldPlanId,
+    tenantId: tenantId,
+  }));
+
+  iccReportsData.append("items", JSON.stringify(items));
+  rows.forEach((row) => {
+    if (!row.file?.isSavedTemplate) {
+      iccReportsData.append("icc_files", row.file);
+    }
+  });
+
+  return iccReportsData;
 };
 
 const CreateFieldPlan = () => {
@@ -36,12 +114,16 @@ const CreateFieldPlan = () => {
   const { key, fieldPlanId } = Digit.Hooks.useQueryParams();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
+  const [toastQueue, setToastQueue] = useState([]);
   const [blockUI, setBlockUI] = useState(null);
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
   const [backAlert, setBackAlert] = useState(null);
   const [boundaryData, setBoundaryData] = useState(null);
+  const [hasSavedFacilityUpload, setHasSavedFacilityUpload] = useState(false);
+  const [facilityUploadStatusLoading, setFacilityUploadStatusLoading] = useState(false);
+  const [iccPrepopulationValidationAttempt, setICCPrepopulationValidationAttempt] = useState(0);
   const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
@@ -129,13 +211,69 @@ const CreateFieldPlan = () => {
 
   }, [createdFieldPlan?.id, currentKey])
 
-  useEffect(()=>{
-    if (toast) {
-      setTimeout(()=>{
-        setToast(null);
-      },2500)
+  useEffect(() => {
+    const selectedFieldPlanId = createdFieldPlan?.id || fieldPlanId;
+
+    if (!selectedFieldPlanId) {
+      setHasSavedFacilityUpload(false);
+      return;
     }
-  },[toast])
+
+    let isCurrentRequest = true;
+    const fetchFacilityUploadStatus = async () => {
+      setFacilityUploadStatusLoading(true);
+
+      try {
+        const capacities = await FieldPlanService.searchFieldPlanFacilitySystemTypeCapacities(selectedFieldPlanId);
+
+        if (isCurrentRequest) {
+          setHasSavedFacilityUpload(Boolean(capacities?.length));
+        }
+      } catch (error) {
+        console.error("Error fetching field plan facility upload status", error);
+
+        if (isCurrentRequest) {
+          setHasSavedFacilityUpload(false);
+        }
+      } finally {
+        if (isCurrentRequest) {
+          setFacilityUploadStatusLoading(false);
+        }
+      }
+    };
+
+    fetchFacilityUploadStatus();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [createdFieldPlan?.id, fieldPlanId]);
+
+  useEffect(() => {
+    if (currentKey === 2 && !file && persistedFormData?.facilityData?.uploadFacilityData) {
+      setFile(persistedFormData.facilityData.uploadFacilityData);
+    }
+  }, [currentKey, file, persistedFormData?.facilityData?.uploadFacilityData]);
+
+  const closeToast = useCallback(() => {
+    setToast(null);
+    setToastQueue([]);
+  }, []);
+
+  const showToastMessages = (messages, key = "error") => {
+    const formattedToasts = messages.filter(Boolean).map((message) => ({
+      key,
+      label: message,
+      translate: false,
+    }));
+
+    if (!formattedToasts.length) {
+      return;
+    }
+
+    setToast(formattedToasts[0]);
+    setToastQueue(formattedToasts.slice(1));
+  };
 
   useEffect(() => {
     if (fetchedBoundaryData && createdProject) {
@@ -308,6 +446,7 @@ const CreateFieldPlan = () => {
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
+          originalData: chosenFile,
           errorCodes: ["INVALID_DATA"]
         }
 
@@ -317,9 +456,11 @@ const CreateFieldPlan = () => {
           label: t("PM_TOAST_FACILITY_DATA_UPLOAD_SUCCESS"),
         })
         setInvalidDataError(null);
+        setHasSavedFacilityUpload(true);
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
+          originalData: chosenFile,
         }
       }
 
@@ -714,6 +855,37 @@ const CreateFieldPlan = () => {
         body: [
           {
             isMandatory: false,
+            key: "iccPrepopulationConfiguration",
+            withoutLabelFieldPair: true,
+            withoutLabel: true,
+            type: "component",
+            component: "PMICCPrepopulationConfiguration",
+            disable: false,
+            route: "icc-prepopulation-configuration",
+            customProps: {
+              name: "iccPrepopulationConfiguration",
+              t,
+              uploadFacilityData: persistedFormData?.facilityData?.uploadFacilityData,
+              iccTemplates: getICCTemplates(createdFieldPlan, fieldPlanData),
+              validationAttempt: iccPrepopulationValidationAttempt,
+              fieldPlanId: createdFieldPlan?.id || fieldPlanId,
+              fieldPlanStatus: createdFieldPlan?.status,
+              setToast,
+              setBlockUI,
+            },
+            nextRoute: "",
+            populators: {
+              name: "iccPrepopulationConfiguration",
+              error: "Required",
+            },
+          },
+        ],
+      },
+      {
+        key: "4",
+        body: [
+          {
+            isMandatory: false,
             key: "activityUserAssignment",
             withoutLabelFieldPair: true,
             withoutLabel: true,
@@ -739,7 +911,7 @@ const CreateFieldPlan = () => {
         ],
       },
     ],
-    [t, activityData, boundaryData, createdProject, createdFieldPlan, organizationData, file, invalidDataError]
+    [t, activityData, boundaryData, createdProject, createdFieldPlan, fieldPlanData, iccPrepopulationValidationAttempt, organizationData, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -761,6 +933,9 @@ const CreateFieldPlan = () => {
         setDefaultFormData(persistedFormData.facilityData);
         break;
       case 3:
+        setDefaultFormData(persistedFormData.iccPrepopulationConfiguration);
+        break;
+      case 4:
         setDefaultFormData(persistedFormData.activityDetails);
     }
   }, [persistedFormData, currentKey]);
@@ -934,6 +1109,15 @@ const CreateFieldPlan = () => {
     }
   }
 
+  const hasSuccessfulFacilityUpload = (data) => {
+    const uploadedFacilityData = data?.uploadFacilityData || file;
+    if (uploadedFacilityData) {
+      return !uploadedFacilityData?.errorCodes?.length;
+    }
+
+    return hasSavedFacilityUpload;
+  };
+
   const handleFormSubmit = async (data) => {
     switch (currentKey) {
       case 1:
@@ -946,10 +1130,75 @@ const CreateFieldPlan = () => {
         }
         break;
       case 2:
+        if (!hasSuccessfulFacilityUpload(data)) {
+          setToast({
+            key: "error",
+            label: "UPLOAD_VALID_FACILITY_DATA",
+          });
+          return;
+        }
+
         setPersistedFormData((prev) => ({ ...prev, facilityData: data }));
         setCurrentKey((prev) => prev + 1);
         break;
       case 3:
+        if (!isICCPrepopulationComplete(data)) {
+          setICCPrepopulationValidationAttempt((prev) => prev + 1);
+          setToast({
+            key: "error",
+            label: "CORE_COMMON_REQUIRED",
+          });
+          return;
+        }
+
+        setBlockUI(true);
+        try {
+          const rows = getUniqueICCPrepopulationRows(getICCPrepopulationRows(data));
+          const newRows = getNewICCPrepopulationRows(rows);
+
+          if (newRows.length) {
+            if (isScheduledFieldPlan(createdFieldPlan?.status)) {
+              setToast({
+                key: "error",
+                label: "PRE_FILLING_TEMPLATE_SCHEDULED_ERROR",
+              });
+              return;
+            }
+
+            const rowsToCreate = newRows.filter((row) => !row.template?.id);
+            const rowsToUpdate = newRows.filter((row) => row.template?.id);
+
+            if (rowsToCreate.length) {
+              const createReportsData = getICCReportsFormData(rowsToCreate, createdFieldPlan?.id || fieldPlanId, tenantId);
+              await IngestionService.uploadICCReports(createReportsData);
+            }
+
+            if (rowsToUpdate.length) {
+              const updateReportsData = getICCReportsFormData(rowsToUpdate, createdFieldPlan?.id || fieldPlanId, tenantId);
+              await IngestionService.upsertICCReports(updateReportsData);
+            }
+          }
+
+          setPersistedFormData((prev) => ({ ...prev, iccPrepopulationConfiguration: data }));
+          setCurrentKey((prev) => prev + 1);
+        } catch (error) {
+          console.error("Error uploading ICC reports", error);
+          const apiErrorMessages = CommonUtils.getApiErrorMessages(error);
+
+          if (apiErrorMessages?.length) {
+            showToastMessages(apiErrorMessages);
+            return;
+          }
+
+          setToast({
+            key: "error",
+            label: CommonUtils.getApiErrorMessage(error) || "CORE_COMMON_ERROR",
+          });
+        } finally {
+          setBlockUI(false);
+        }
+        break;
+      case 4:
         await saveActivityDetailsAndUpdateFieldPlan(data.activityUserAssignment);
     }
   };
@@ -959,7 +1208,7 @@ const CreateFieldPlan = () => {
   };
 
   const getNextActionLabel = () => {
-    if (currentKey === 1 || currentKey === 2) {
+    if (currentKey === 1 || currentKey === 2 || currentKey === 3) {
       return t("CORE_COMMON_NEXT");
     } else {
       return t("CORE_COMMON_SUBMIT");
@@ -970,7 +1219,7 @@ const CreateFieldPlan = () => {
     switch (currentKey) {
       case 1:
         return t("PM_CREATE_FIELD_PLAN_HEAD_FIELD_PLAN_DETAILS");
-      case 3:
+      case 4:
         return t("PM_CREATE_FIELD_PLAN_HEAD_ACTIVITY_DETAILS");
     }
   };
@@ -989,6 +1238,9 @@ const CreateFieldPlan = () => {
         setCurrentKey(key + 1);
         break;
       case 3:
+        setCurrentKey(key + 1);
+        break;
+      case 4:
         const savedActivityAssignments = getDefaultActivityAssignments();
         const currentActivityAssignments = getFormData("activityUserAssignment");
         if (CommonUtils.isNotEqual(savedActivityAssignments, currentActivityAssignments)) {
@@ -1040,6 +1292,9 @@ const CreateFieldPlan = () => {
         setCurrentKey((prev) => prev - 1);
         break;
       case 3:
+        setCurrentKey((prev) => prev - 1);
+        break;
+      case 4:
         const savedActivityAssignments = getDefaultActivityAssignments();
         const currentActivityAssignments = getFormData("activityUserAssignment");
         if (CommonUtils.isNotEqual(savedActivityAssignments, currentActivityAssignments)) {
@@ -1064,12 +1319,16 @@ const CreateFieldPlan = () => {
     switch (currentKey) {
       case 1:
         return persistedFormData.fieldPlanDetails;
+      case 2:
+        return persistedFormData.facilityData;
       case 3:
+        return persistedFormData.iccPrepopulationConfiguration;
+      case 4:
         return persistedFormData.activityDetails;
     }
   }
 
-  if (projectDataLoading || fieldPlanDataLoading || activityAssignmentDataLoading) {
+  if (projectDataLoading || fieldPlanDataLoading || activityAssignmentDataLoading || facilityUploadStatusLoading) {
     return <Loader />;
   }
 
@@ -1106,6 +1365,7 @@ const CreateFieldPlan = () => {
         customSteps={[
           "PM_CREATE_FIELD_PLAN_HEAD_FIELD_PLAN_DETAILS",
           "PM_CREATE_FIELD_PLAN_HEAD_FACILITY_DATA",
+          "ICC_PRE_POPULATION",
           "PM_CREATE_FIELD_PLAN_HEAD_ACTIVITY_DETAILS",
         ]}
         onStepClick={onStepClick}
@@ -1151,9 +1411,9 @@ const CreateFieldPlan = () => {
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          label={t(toast.label)}
+          label={toast.translate === false ? toast.label : t(toast.label)}
           isDleteBtn={true}
-          onClose={() => setToast(null)}
+          onClose={closeToast}
         />
       )}
       {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}

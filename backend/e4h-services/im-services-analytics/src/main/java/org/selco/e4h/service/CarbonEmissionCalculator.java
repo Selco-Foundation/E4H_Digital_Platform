@@ -65,14 +65,24 @@ public class CarbonEmissionCalculator {
                                                   int month,
                                                   int year,
                                                   Co2ReferenceBundle references) {
+        return solarKwhToTonnes(
+                prepareRmsActualSolarKwh(solarKwh, facility, month, year, references),
+                month, year, references);
+    }
+
+    /** Cap measured RMS solar kWh by sunshine ceiling; value stored on ES and used for tonnes. */
+    public double prepareRmsActualSolarKwh(double solarKwh,
+                                           Co2FacilityContext facility,
+                                           int month,
+                                           int year,
+                                           Co2ReferenceBundle references) {
         if (solarKwh <= 0) {
             return 0.0;
         }
-        solarKwh = capSolarKwhBySunshine(solarKwh, facility, month, year, references);
-        return solarKwhToTonnes(solarKwh, month, year, references);
+        return capSolarKwhBySunshine(solarKwh, facility, month, year, references);
     }
 
-    double estimatePart1PreRmsMonthlySolarKwh(Co2FacilityContext facility,
+    public double estimatePart1PreRmsMonthlySolarKwh(Co2FacilityContext facility,
                                               int month,
                                               int year,
                                               Co2ReferenceBundle references) {
@@ -85,7 +95,7 @@ public class CarbonEmissionCalculator {
         return estimateArchetypeMonthlySolarKwh(facility, month, year, references, baseFyStart, true);
     }
 
-    double estimatePart3ProjectionMonthlySolarKwh(Co2FacilityContext facility,
+    public double estimatePart3ProjectionMonthlySolarKwh(Co2FacilityContext facility,
                                                   int month,
                                                   int year,
                                                   Co2ReferenceBundle references) {
@@ -98,7 +108,7 @@ public class CarbonEmissionCalculator {
         return estimateArchetypeMonthlySolarKwh(facility, month, year, references, baseFyStart, false);
     }
 
-    double estimateNonRmsMonthlySolarKwh(Co2FacilityContext facility,
+    public double estimateNonRmsMonthlySolarKwh(Co2FacilityContext facility,
                                          int month,
                                          int year,
                                          Co2ReferenceBundle references) {

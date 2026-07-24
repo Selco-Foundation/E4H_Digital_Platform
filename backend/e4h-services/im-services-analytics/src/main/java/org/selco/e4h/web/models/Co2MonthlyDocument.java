@@ -20,12 +20,16 @@ public class Co2MonthlyDocument {
     private String hfrId;
     private String ninId;
     private String facilityType;
+    private String facilityCategory;
+    private String mappedVendorName;
+    private String mappedVendorUserName;
     private String facilityName;
     private String projectName;
     private String tenantId;
     private String solarInstallationDate;
     private String rmsInstallationDate;
     private Double solarSystemCapacity;
+    private double totalSolarEnergyGeneratedInKwh;
     private int month;
     private int year;
     private String financialYear;

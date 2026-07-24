@@ -297,4 +297,23 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Operator backfill: scans the health facility index and sets {@code projectName} on each document
+     * from the project service (partial update; other fields untouched).
+     * Requires {@code facility.project-name.backfill.enabled=true}.
+     */
+    @PostMapping("/_backfill-project-name")
+    public ResponseEntity<FacilityProjectNameBackfillResponse> backfillFacilityProjectNames(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Backfill request (optional tenantId filter; batchSize defaults to 500)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityProjectNameBackfillRequest request) {
+        log.info("Received facility projectName backfill request");
+        FacilityProjectNameBackfillResponse result = facilityService.backfillFacilityProjectNames(request);
+        log.info("projectName backfill finished: scanned={}, updated={}, skipped={}, failed={}",
+                result.getScanned(), result.getUpdated(), result.getSkipped(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
+
 }
