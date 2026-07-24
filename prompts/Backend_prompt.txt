@@ -1,0 +1,205 @@
+Enhanced BeeHyv Project Review Prompt
+
+Assume the system is production-bound or already running in production.
+
+================================================
+
+PROJECT CONTEXT (MANDATORY — FILL BEFORE REVIEW)
+
+The Shopify Data Downloader is designed to:
+
+- Download various business reports from Shopify stores via GraphQL API
+- Process reports in batches using AWS Batch
+- Store processed data in S3 as CSV files
+- Load data into Amazon Redshift for analytics
+- Handle OAuth token refresh automatically
+- Support retry mechanisms for failed downloads
+- Track all events for audit and monitoring
+
+Use README.md and codebase for more context.
+
+================================================
+
+REVIEW SCOPE
+
+Evaluate the project for:
+
+- Code Correctness & Memory Safety (CRITICAL)
+- Architecture & system boundaries
+- Production readiness
+- Safety, reliability, and maintainability
+- Testing maturity & Operational excellence
+- Engineering discipline & Anti-patterns
+
+Assume:
+
+- The reviewer must act as a Senior Java Engineer.
+- Multiple teams will maintain this.
+- Failure to close resources (connections, streams) is a critical blocker.
+
+================================================
+
+PROJECT REVIEW CHECKLIST (USE AS EVALUATION CRITERIA)
+
+Do NOT quote this checklist in the output.
+Use it to guide analysis.
+
+### Product Intent & Architecture Fit
+
+- System purpose clear from code and README
+- Clear component boundaries
+- Architecture appropriate for problem and scale
+
+### Git Discipline & Engineering Maturity
+
+- Branching strategy visible (main/dev/release)
+- Small, meaningful commits
+- Evidence of reviews and controlled merges
+
+### Code Health & Implementation Details
+
+- Detect Logic Bugs:
+
+  - Off-by-one errors
+  - Incorrect boolean logic
+  - State inconsistency
+
+- Variable Scope:
+
+  - Variables defined in the narrowest possible scope.
+
+- Separation of Concerns:
+  - Logic not mixed with I/O or UI code.
+
+### Resource Management & Memory Safety (CRITICAL)
+
+- Resource Cleanup:
+
+  - Are try-with-resources or finally blocks used for all I/O, Connections, and Streams?
+
+- Memory Leaks:
+
+  - Look for static maps growing unbounded.
+  - Listeners not removed.
+  - ThreadLocal misuse (must be static and cleaned up).
+
+- Object Lifecycle:
+  - Are heavy objects (Connection Pools, etc.) reused properly?
+  - Are they recreated unnecessarily?
+
+### Concurrency & Thread Safety
+
+- Thread Safety:
+
+  - Are non-thread-safe objects (SimpleDateFormat, ArrayList, etc.) shared between threads?
+
+- Shared State:
+
+  - Is state correctly synchronized or immutable?
+
+- ThreadLocal Usage:
+  - Are ThreadLocal variables static final?
+  - Is remove() guaranteed to run?
+
+### Failure Handling & Defensive Design
+
+- Errors not swallowed.
+- Stack traces preserved.
+- Atomicity maintained.
+- Retry/backoff where applicable.
+
+### Runtime Observability
+
+- Structured, meaningful logs.
+- Correlation IDs present.
+- Correct log levels.
+- No secrets or PII in logs.
+
+### Data Access & Persistence Safety
+
+- Connection pool used (HikariCP, Druid, etc.)
+- No DriverManager.getConnection in request paths.
+- Parameterized queries.
+- Transaction boundaries clearly defined.
+
+### Configuration & Secret Hygiene
+
+- No hardcoded secrets.
+- Externalized configuration.
+- .env ignored.
+
+### Testing Strategy & Confidence
+
+- Unit tests for core logic.
+- Integration tests for critical paths.
+- Tests executed in CI.
+
+### Performance & Scale Readiness
+
+- Identify bottlenecks:
+  - N+1 queries
+  - Blocking calls
+  - Missing batching
+  - Missing caching
+
+### Dependency & Supply-Chain Health
+
+- Maintained libraries.
+- Versions pinned.
+- Vulnerability awareness.
+
+### Project Structure & Formatting
+
+- Standard Java/Spring structure.
+- Consistent naming.
+- Consistent formatting.
+
+================================================
+
+BEEHYV ENGINEERING PRINCIPLES
+
+Apply applicable BeeHyv_Engineering_Principles.pdf present in root folder.
+
+Call out violations explicitly.
+
+================================================
+
+REQUIRED OUTPUT FORMAT
+
+1. Executive Summary
+
+   - Status: Production Ready / Needs Changes
+
+2. Critical Bug Report
+
+   - List implementation bugs immediately.
+   - Memory leaks
+   - Concurrency issues
+   - Resource leaks
+
+3. Checklist Scorecard
+
+4. Detailed Findings
+
+5. Refactoring Suggestions
+
+================================================
+
+REVIEW MINDSET
+
+- Hunt for bugs first.
+- Then review architecture.
+- Scrutinize static fields.
+- Scrutinize ThreadLocal usage.
+- Scrutinize Database Connections.
+
+Immediately flag:
+
+- new ThreadLocal<>() that is not static.
+- Missing ThreadLocal.remove().
+- DriverManager.getConnection() inside loops.
+- DriverManager.getConnection() in request paths.
+- Missing connection pooling.
+
+Be direct.
+Be actionable.

@@ -1,0 +1,195 @@
+Enhanced BeeHyv Flutter Project Review Prompt
+
+Assume the system is production-bound or already running in production.
+
+PROJECT CONTEXT (MANDATORY — FILL BEFORE REVIEW)
+
+Project name: SELCO
+Platforms: Android
+App type: Internal
+
+This Flutter application is designed to:
+Support E4H/SELCO asset installation and AMC field workflows.
+Let users log in, choose a role, and work as installation staff/supervisor or AMC user.
+Manage installation reports: select facility, enter asset counts/specifications, add asset details, scan QR/barcodes, upload asset photos, installation images, certificates, and handover documents.
+Support draft, inbox, approval, rejection, send-back, and submit-for-approval flows.
+Support AMC scheduled visit/report workflows, including facility selection, dynamic forms, OTP, media uploads, drafts, and inbox handling.
+Integrate with DIGIT/eGov services: OAuth login, MDMS configuration, localization, activity/workflow APIs, asset registry APIs, filestore uploads, role/action mapping, DIGIT UI/forms/scanner packages, location, notifications, and Firebase Analytics.
+Networking uses Dio through a shared DioClient.
+Auth uses OAuth password grant via user/oauth/token with a basic client authorization header. Access and refresh tokens are stored locally.
+API requests are enriched by an interceptor with DIGIT-style RequestInfo, including auth token, user info, timestamp, action, API ID, and message ID.
+The interceptor checks network/internet availability before requests.
+On 401, the app attempts refresh-token recovery and retries the failed request; repeated/invalid refresh failures trigger logout/session expiry.
+Offline behavior is cache-first/fallback in several places: MDMS/app config can fall back to stored data; activity/facility lists can fall back to Isar cache; unsent reports are stored as drafts.
+Sync behavior includes manual/home-triggered sync of unsent drafts and background execution for long-running submit/reject/send-back/scheduled-visit operations. Progress and failure state are tracked in local Isar job records.
+Data storage:
+Isar is the main local database, opened as E4H, with collections for localization, activity/facility workflows, unsubmitted drafts, asset counts, specifications, asset details, uploaded media, installation images, BOM docs, AMC docs/media/forms, scheduled visits, sync records, operation checkpoints, and submission jobs.
+FlutterSecureStorage stores sensitive/config data such as access token, access info, selected individual, app config, MDMS master data, form schemas, localization data, role actions, and cached form/config payloads.
+SharedPreferences is also used for lightweight app preferences such as first-launch and selected locale state.
+Background work:
+Uses flutter_background_service with Android foreground service support and flutter_local_notifications.
+Handles asset submission, rejection, send-back, and scheduled visit submission outside the immediate UI flow.
+Writes operation progress, status, retry/error details, and completion state to Isar.
+Requests Android notification permission and creates an “Asset Submission” notification channel.
+Analytics:
+Firebase is initialized on Android only.
+FirebaseAnalytics is used through AppLogger; app log events are sent as app_log analytics events with level/title/message metadata.
+
+Use README.md and the codebase for more context.
+
+REVIEW SCOPE
+
+Evaluate the project for:
+
+Code correctness & runtime safety (CRITICAL)
+Architecture & system boundaries
+Production readiness
+Safety, reliability, maintainability
+Testing maturity & operational excellence
+Engineering discipline & anti-patterns
+
+Assume:
+
+The reviewer must act as a Senior Flutter Engineer.
+Multiple teams will maintain this.
+Lifecycle leaks (missing dispose, uncancelled streams/timers, controllers not disposed) are critical blockers.
+Any async misuse that can crash or corrupt UI state is a critical blocker.
+
+PROJECT REVIEW CHECKLIST (USE AS EVALUATION CRITERIA)
+
+Do NOT quote this checklist in the output. Use it to guide analysis.
+
+Product Intent & Architecture Fit
+
+System purpose is clear from code + README.
+Clear module boundaries (features, domain, data, UI).
+Architecture matches scale (MVVM/Clean/DDD etc. used consistently).
+No “god” services, no UI owning business rules.
+
+Git Discipline & Engineering Maturity
+
+Branching strategy visible (main/dev/release).
+Small meaningful commits; clear messages.
+Evidence of PR review, controlled merges, CI checks.
+
+Code Health & Implementation Details
+
+Detect logic bugs: off-by-one pagination, incorrect bool logic, state inconsistency, improper caching invalidation.
+Variable scope narrow; no unnecessary globals.
+Separation of concerns: UI does not perform I/O directly; repositories/services own networking/storage.
+No duplicated logic across ViewModels/Controllers.
+
+Dart/Flutter Runtime Safety (CRITICAL)
+
+Null-safety correctness: no unsafe late usage without guarantees; avoid ! unless provably safe.
+Widget lifecycle safety:
+Resource disposal (CRITICAL):
+Stream hygiene:
+
+Concurrency, Isolates, and Async Correctness
+
+No blocking work on UI thread (heavy JSON parsing, crypto, compression, large DB ops).
+Proper use of isolates (compute/Isolate) for CPU-heavy work.
+Correct cancellation/timeout strategy for requests.
+Avoid race conditions between user actions, navigation, and async callbacks.
+
+State Management & Predictability
+
+State management approach is consistent (Riverpod/Bloc/Provider/MobX/Stacked/etc).
+No hidden mutable shared state across features.
+Clear ownership of state and side effects (networking, persistence, navigation).
+Avoid doing work inside build(); side effects live in init/VM layer.
+
+Networking & Data Safety
+
+HTTP client configured properly (timeouts, retries/backoff where appropriate, interceptors).
+Errors not swallowed; stack traces preserved.
+Token refresh strategy correct; avoids infinite retry loops.
+Request/response logging avoids secrets and PII.
+DTO ↔ domain mapping clear; validation at boundaries.
+Pagination correctness; dedupe; stable ordering; refresh behaviour sane.
+
+Persistence & Offline Readiness
+
+Storage choice matches needs (Drift/SQLite/Hive/SecureStorage/etc).
+Migrations are safe and tested.
+DB queries indexed where needed; no N+1-like patterns in persistence.
+Cache invalidation rules explicit; avoids stale/ghost data.
+Sync conflict strategy defined (last-write-wins, versioning, merge rules).
+
+Platform Channels, Plugins, and Native Boundaries
+
+Platform channel calls are safe, versioned, and error-handled.
+Background execution respects platform limits (Android foreground service rules, iOS background modes, BGTaskScheduler constraints).
+Permissions flow robust (denied/permanently denied paths).
+Deep links / intents / universal links are tested.
+
+Observability & Operational Excellence
+
+Structured logs with useful context (user/session/request ids where appropriate).
+Correct log levels; minimal noise; no secret leakage.
+Crash reporting present and meaningful (Sentry/Firebase Crashlytics/etc).
+Analytics events consistent, named cleanly, and privacy-aware.
+
+Configuration & Secret Hygiene
+
+No hardcoded secrets; API keys not in repo.
+Flavours/environments clean (dev/stage/prod), config externalised.
+.env / secrets ignored; secure storage used where needed.
+Build-time defines (--dart-define) used appropriately.
+
+UI Performance & UX Stability
+
+Avoid jank: limit rebuild scope; use const where possible; memoise expensive computations.
+Lists are virtualised (ListView.builder etc), images cached appropriately.
+No unnecessary repaints; animations smooth.
+Accessibility basics: text scaling, semantics, contrast (where applicable).
+
+Testing Strategy & Confidence
+
+Unit tests for core logic (mappers, services, repositories).
+Widget tests for key UI flows and regressions.
+Integration tests for critical paths (auth, checkout, sync, offline, navigation).
+Golden tests if UI fidelity matters.
+Tests run in CI; linting/formatting enforced.
+
+Dependency & Supply-Chain Health
+
+Versions pinned; minimal abandoned packages.
+Risky plugins reviewed (permissions, background, file access).
+Known vulnerabilities considered; avoids unmaintained forks.
+
+Project Structure & Formatting
+
+Follows Flutter conventions; consistent naming.
+Clear folder structure per feature/module.
+No dead code, unused assets, or stale flags.
+Consistent localisation and theming strategy.
+
+BEEHYV ENGINEERING PRINCIPLES
+
+Apply applicable BeeHyv_Engineering_Principles.pdf present in root folder. Call out violations explicitly.
+
+REQUIRED OUTPUT FORMAT
+
+Executive Summary (Status: Production Ready / Needs Changes)
+Critical Bug Report (list implementation bugs like lifecycle leaks, async hazards, crashers immediately)
+Checklist Scorecard
+Detailed Findings
+Refactoring Suggestions
+
+REVIEW MINDSET
+
+Hunt for bugs first, then review architecture.
+
+Scrutinise:
+
+dispose() omissions
+StreamSubscription leaks
+controllers/focus nodes not disposed
+timers not cancelled
+setState after await without mounted
+side effects inside build()
+unhandled exceptions / catch {} swallowing
+long CPU work on UI thread
+platform channel calls without guards

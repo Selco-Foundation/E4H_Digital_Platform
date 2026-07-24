@@ -1,0 +1,256 @@
+Enhanced BeeHyv React Frontend Review Prompt (AI-Aware, Production-Bound)
+
+Assume the application is production-bound or already running in production.
+
+================================================
+PROJECT CONTEXT (MANDATORY — FILL BEFORE REVIEW)
+
+Project Name: Selco Incident Management Frontend
+
+Domain / Product Area: Renewable Energy / Solar System Maintenance & Incident Management
+
+Primary Users:
+Health Facility Point of Contact (POC)
+Maintenance Vendors / Field Technicians
+Operations Team
+Support Administrators
+
+Primary Responsibilities:
+Raise incidents for issues with installed solar systems
+Capture issue details, affected assets, and supporting evidence
+Track incident lifecycle from creation to closure
+Execute workflow-based ticket actions
+Assign incidents to maintenance vendors
+Monitor SLA and maintenance progress
+Maintain communication between health facilities and maintenance teams
+View incident history and status updates
+
+Frontend Stack:
+React 17.0.2 (Hooks-based), react-router-dom 5.3.0
+State Management: Redux (per-module reducers combined in src/App.js)
+Data fetching: react-query 3.6.1; Forms: react-hook-form 6.15.8; i18n: react-i18next
+Authentication: Username & Password, OAuth-style password-grant token exchange (micro-ui-internals/packages/libraries/src/services/elements/Login.js), token persisted via Digit.SessionStorage/localStorage
+PWA: Enabled — manifest at public/pwa-assets/manifest.json, service worker at public/pwa-assets/service-worker.js, registered manually in src/index.js
+Build: Create React App (react-scripts 4.0.1)
+
+================================================
+REVIEW SCOPE
+
+Evaluate the project for:
+
+- Code correctness & state safety (CRITICAL)
+- Architecture & component boundaries
+- Production readiness
+- Maintainability & readability
+- React Query usage correctness
+- Authentication & authorization safety
+- PWA configuration correctness
+- Engineering discipline & AI-generated anti-patterns
+
+Assume:
+
+- Multiple teams will maintain this codebase
+- Code may be partially or fully AI-generated
+- UI correctness is business-critical (wrong UI = wrong audit action)
+
+================================================
+REACT PROJECT REVIEW CHECKLIST
+(USE AS EVALUATION CRITERIA — DO NOT QUOTE)
+
+---
+
+Application Architecture & Intent
+
+- App structure clearly communicates intent
+- Clear separation of:
+  - Pages
+  - Reusable components
+  - Domain logic
+  - API / query logic
+- No business logic buried inside UI components
+
+---
+
+Component Design & Reusability
+
+- No duplicated JSX structures across files
+- Common UI patterns extracted into reusable components
+- Components have single responsibility
+- No “God components” exceeding reasonable size
+- Props are meaningful and minimal
+
+---
+
+AI-GENERATED COMPONENT SMELLS (MANDATORY)
+Explicitly hunt for:
+
+- Repeated JSX with minor prop changes
+- Over-generic components (“CommonComponent”, “BaseComponent”)
+- Inline logic copied across components
+- Props drilling without justification
+- Components that look correct but lack edge-case handling
+
+---
+
+State Management (React Query)
+
+- React Query used only for server state
+- No duplication of server state into local component state
+- Correct query keys (stable, structured)
+- Proper usage of:
+  - enabled
+  - staleTime
+  - cacheTime
+  - invalidateQueries
+- No manual loading flags when React Query already provides them
+
+🚩 Red Flags:
+
+- useEffect used to fetch data instead of React Query
+- setState mirroring query data
+- Queries inside loops or conditional rendering
+
+---
+
+Authentication & Authorization
+
+- Auth logic centralized (not spread across components)
+- Tokens never stored in insecure locations
+- Token refresh handled correctly
+- No UI-level role checks without backend enforcement
+- Logout clears all sensitive state and caches
+
+🚩 Red Flags:
+
+- Access checks only in UI
+- Tokens read directly inside components
+- Auth logic duplicated across files
+
+---
+
+PWA Configuration (Offline Explicitly Disabled)
+
+- Service worker behavior clearly documented
+- No false offline indicators
+- No caching of sensitive API responses
+- Cache strategies explicitly defined or disabled
+- App fails gracefully when offline
+
+🚩 Red Flags:
+
+- Assumption that PWA implies offline support
+- API responses cached by default
+- Stale patient data visible offline
+
+---
+
+Side Effects & Hooks Usage
+
+- Hooks follow Rules of Hooks strictly
+- No hooks inside conditionals or loops
+- useEffect dependency arrays correct
+- Side effects not mixed with render logic
+
+🚩 AI Smell:
+
+- Overuse of useEffect for data orchestration
+- Large useEffect blocks doing multiple things
+
+---
+
+Higher-Order Functions & Composition
+
+- Repeated logic abstracted using:
+  - Custom hooks
+  - Higher-order components (HOC)
+  - Render props (where appropriate)
+- No unnecessary inheritance patterns
+- Prefer composition over prop drilling
+
+🚩 Red Flags:
+
+- Copy-pasted logic across components
+- No shared abstraction for repeated patterns
+
+---
+
+Readability & Code Clarity
+
+- Component files are readable top-to-bottom
+- Naming conveys intent (not implementation)
+- Conditional rendering is clear and minimal
+- No deeply nested JSX or ternaries
+- Utility functions extracted from render logic
+
+---
+
+Error Handling & UX Safety
+
+- Errors handled explicitly (not just console.log)
+- User-facing error states exist
+- Loading, empty, and error states covered
+- React Query error boundaries used where appropriate
+
+---
+
+Performance & Rendering Behavior
+
+- Avoid unnecessary re-renders
+- useMemo / useCallback used intentionally (not blindly)
+- Lists use stable keys
+- No expensive computations in render
+
+---
+
+Security & Data Leakage
+
+- No patient data logged
+- No sensitive data in localStorage/sessionStorage
+- No debug-only UI left enabled
+
+---
+
+Testing & Confidence
+
+- Unit tests for critical components
+- Tests for auth flows and protected routes
+- React Query mocked correctly in tests
+- No snapshot-only test reliance
+
+================================================
+AI CONFIDENCE PENALTY RULE
+
+If a React component:
+
+- Looks correct but lacks edge-case handling
+- Relies on implicit assumptions
+- Uses React Query but reimplements its features
+- Repeats logic instead of abstracting it
+
+Assume it is incorrect and flag it.
+
+================================================
+REQUIRED OUTPUT FORMAT
+
+1. Executive Summary (Status: Production Ready / Needs Changes)
+2. Critical Issues (Blocking)
+3. React Anti-Patterns Found
+4. Duplicated Components & Refactoring Opportunities
+5. State Management Findings (React Query)
+6. Authentication & PWA Findings
+7. Readability & Maintainability Suggestions
+8. Recommended Refactoring Strategy
+
+================================================
+REVIEW MINDSET
+
+Treat the UI as a critical system component.
+A wrong UI action can trigger irreversible backend workflows.
+
+Prefer:
+
+- Explicit over implicit
+- Composition over duplication
+- Declarative data flow over imperative logic
+
+Be direct, specific, and actionable.
