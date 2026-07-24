@@ -52,8 +52,13 @@ if (!user || !user.access_token || !user.info) {
   window.Digit.SessionStorage.set("Employee.tenantId", employeeTenantId);
 
   const jurisdictionBoundaries = getFromStorage("Jurisdiction.Boundaries");
+  const jurisdictionCurrentBoundary = getFromStorage("Jurisdiction.CurrentBoundary");
   if (jurisdictionBoundaries) {
     window.Digit.SessionStorage.set("Jurisdiction.Boundaries", jurisdictionBoundaries);
+  }
+  if (jurisdictionCurrentBoundary) {
+    window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", jurisdictionCurrentBoundary);
+  } else if (jurisdictionBoundaries) {
     window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", jurisdictionBoundaries);
   }
   // end

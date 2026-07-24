@@ -38,10 +38,14 @@ const initTokens = (stateCode) => {
     window.Digit.SessionStorage.set("User", { access_token: token, info: userType !== "CITIZEN" ? JSON.parse(employeeInfo) : citizenInfo });
 
     const jurisdictionBoundaries = window.localStorage.getItem("Jurisdiction.Boundaries");
+    const jurisdictionCurrentBoundary = window.localStorage.getItem("Jurisdiction.CurrentBoundary");
     if (jurisdictionBoundaries) {
-      const parsedJurisdictionBoundaries = JSON.parse(jurisdictionBoundaries);
-      window.Digit.SessionStorage.set("Jurisdiction.Boundaries", parsedJurisdictionBoundaries);
-      window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", parsedJurisdictionBoundaries);
+      window.Digit.SessionStorage.set("Jurisdiction.Boundaries", JSON.parse(jurisdictionBoundaries));
+    }
+    if (jurisdictionCurrentBoundary) {
+      window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", JSON.parse(jurisdictionCurrentBoundary));
+    } else if (jurisdictionBoundaries) {
+      window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", JSON.parse(jurisdictionBoundaries));
     }
   } else {
     // if (!window.Digit.SessionStorage.get("User")?.extraRoleInfo) window.Digit.SessionStorage.set("User", { access_token: token, info: citizenInfo });
