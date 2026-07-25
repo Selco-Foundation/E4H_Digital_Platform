@@ -35,14 +35,35 @@ public class FacilityRegistryClient {
         if (facilityIds == null || facilityIds.isEmpty()) {
             return List.of();
         }
-        String url = properties.getFacilityHost() + properties.getFacilityBulkSearchPath();
         Map<String, Object> criteria = new HashMap<>();
         criteria.put("tenantIds", List.of(tenantId));
         criteria.put("facilityIds", facilityIds);
         criteria.put("limit", Math.max(facilityIds.size(), 50));
         criteria.put("offset", 0);
         criteria.put("sendNonPaginatedResponse", true);
+        return search(requestInfo, tenantId, criteria).facilities();
+    }
 
+    /**
+     * Paginated active-facility search for CO2 batch (no facilityIds allowlist).
+     * Ordered by created_at ASC per LLD.
+     */
+    public FacilityPage searchFacilitiesPage(RequestInfo requestInfo,
+                                             String tenantId,
+                                             int offset,
+                                             int limit) {
+        Map<String, Object> criteria = new HashMap<>();
+        criteria.put("tenantIds", List.of(tenantId));
+        criteria.put("limit", Math.max(limit, 1));
+        criteria.put("offset", Math.max(offset, 0));
+        criteria.put("sendNonPaginatedResponse", false);
+        criteria.put("sortBy", "created_at");
+        criteria.put("sortOrder", "asc");
+        return search(requestInfo, tenantId, criteria);
+    }
+
+    private FacilityPage search(RequestInfo requestInfo, String tenantId, Map<String, Object> criteria) {
+        String url = properties.getFacilityHost() + properties.getFacilityBulkSearchPath();
         Map<String, Object> body = new HashMap<>();
         body.put("RequestInfo", requestInfo);
         body.put("Facility", criteria);
@@ -51,23 +72,32 @@ public class FacilityRegistryClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         try {
             String response = restTemplate.postForObject(url, new HttpEntity<>(body, headers), String.class);
-            return parseFacilities(response, tenantId);
+            return parseFacilityPage(response, tenantId);
         } catch (Exception e) {
-            log.error("Facility bulk search failed for {} ids", facilityIds.size(), e);
-            return List.of();
+            log.error("Facility bulk search failed tenantId={} offset={} limit={}",
+                    tenantId, criteria.get("offset"), criteria.get("limit"), e);
+            return FacilityPage.empty();
         }
     }
 
-    private List<Co2FacilityContext> parseFacilities(String response, String tenantId) {
+    public record FacilityPage(List<Co2FacilityContext> facilities, int totalCount) {
+        static FacilityPage empty() {
+            return new FacilityPage(List.of(), 0);
+        }
+    }
+
+    private FacilityPage parseFacilityPage(String response, String tenantId) {
         List<Co2FacilityContext> result = new ArrayList<>();
+        int totalCount = 0;
         try {
             JsonNode root = objectMapper.readTree(response);
+            totalCount = root.path("totalCount").asInt(0);
             JsonNode facilities = root.path("facilities");
             if (!facilities.isArray()) {
                 facilities = root.path("Facility");
             }
             if (!facilities.isArray()) {
-                return result;
+                return new FacilityPage(result, totalCount);
             }
             for (JsonNode f : facilities) {
                 Co2FacilityContext ctx = Co2FacilityContext.builder()
@@ -115,8 +145,9 @@ public class FacilityRegistryClient {
             }
         } catch (Exception e) {
             log.error("Failed to parse facility bulk search response", e);
+            return FacilityPage.empty();
         }
-        return result;
+        return new FacilityPage(result, totalCount > 0 ? totalCount : result.size());
     }
 
     private static String firstNonBlank(String... values) {
