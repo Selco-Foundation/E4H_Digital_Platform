@@ -31,6 +31,9 @@ public class Co2MonthlyIndexPayload {
     private String hfrId;
     private String ninId;
     private String facilityType;
+    private String facilityCategory;
+    private String mappedVendorName;
+    private String mappedVendorUserName;
     private String facilityName;
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private String projectName;
@@ -77,6 +80,9 @@ public class Co2MonthlyIndexPayload {
                 .hfrId(doc.getHfrId())
                 .ninId(doc.getNinId())
                 .facilityType(doc.getFacilityType())
+                .facilityCategory(doc.getFacilityCategory())
+                .mappedVendorName(doc.getMappedVendorName())
+                .mappedVendorUserName(doc.getMappedVendorUserName())
                 .facilityName(doc.getFacilityName())
                 .projectName(doc.getProjectName() != null ? doc.getProjectName() : "")
                 .tenantId(doc.getTenantId())
