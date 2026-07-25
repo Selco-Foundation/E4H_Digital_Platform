@@ -2198,7 +2198,7 @@ public class FacilityService {
 
     private String buildBulkSearchOrderBy(FacilityBulkSearchCriteria criteria) {
         String sortBy = criteria.getSortBy() != null ? criteria.getSortBy().trim().toLowerCase() : "updated_at";
-        String column = "created_at".equals(sortBy) ? "fac.created_at" : "fac.updated_at";
+        String column = ("created_at".equals(sortBy) || "createdat".equals(sortBy)) ? "fac.created_at" : "fac.updated_at";
         boolean asc = "asc".equalsIgnoreCase(criteria.getSortOrder());
         return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST ";
     }

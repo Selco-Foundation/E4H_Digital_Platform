@@ -12,9 +12,8 @@ flowchart TB
 
   subgraph analytics [im-services-analytics]
     Kafka --> Consumer[CarbonEmissionBatchService]
-    Consumer --> MDMS[MDMS: CO₂ facility allowlist]
+    Consumer --> Fac[Facility registry paginated bulk-search]
     Consumer --> Ref[GET /rms-service/v1/co2/reference]
-    Consumer --> Fac[Facility bulk search]
     Consumer --> Loc[Localization names]
     Consumer --> Proj[POST /project/v1/fetchProjectsByFacilities]
     Consumer --> Loop[For each facility × each lifecycle month]
@@ -28,12 +27,11 @@ flowchart TB
 
 | Step | Service                  | What happens                                                              |
 | ---- | ------------------------ | ------------------------------------------------------------------------- |
-| 1    | MDMS                     | List of `facilityId`s visible on the CO₂ dashboard                        |
-| 2    | health-facility-registry | Solar/RMS dates, kWp, state, type, boundary, geo                          |
-| 3    | rms-service              | GIF, archetypes, sunshine hours (reference API)                           |
-| 4    | project                  | `projectName` per facility (optional)                                     |
-| 5    | rms-service              | Monthly solar kWh from Elmeasure (RMS facilities only, up to batch month) |
-| 6    | im-services-analytics    | Compute tonnes per month → publish to actual or projection index          |
+| 1    | health-facility-registry | Paginated active facilities (`created_at` ASC); skip if no solar date/kWp |
+| 2    | rms-service              | GIF, archetypes, sunshine hours (reference API)                           |
+| 3    | project                  | `projectName` per facility (optional)                                     |
+| 4    | rms-service              | Monthly solar kWh from Elmeasure (RMS facilities only, up to batch month) |
+| 5    | im-services-analytics    | Compute tonnes per month → publish to actual or projection index          |
 
 
 **Important:** Calculations run on **calendar months** (Jan–Dec). Only **GIF** uses the **Indian financial year** (Apr–Mar).

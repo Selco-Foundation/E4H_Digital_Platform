@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.model.co2.MonthlyConsumptionData;
 import org.egov.rms.model.co2.MonthlyConsumptionRequest;
-import org.egov.rms.repository.CenterIdMappingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -23,7 +21,7 @@ import java.util.Optional;
 public class Co2ElmeasureConsumptionService {
 
     private final DashboardApiClient dashboardApiClient;
-    private final CenterIdMappingRepository centerIdMappingRepository;
+    private final CenterIdResolverService centerIdResolverService;
 
     public List<MonthlyConsumptionData> fetchMonthlyBatch(List<MonthlyConsumptionRequest> requests) {
         if (requests == null || requests.isEmpty()) {
@@ -50,8 +48,8 @@ public class Co2ElmeasureConsumptionService {
         for (MonthlyConsumptionRequest req : requests) {
             String centerId = resolveCenterId(req);
             if (!StringUtils.hasText(centerId)) {
-                log.warn("No centerId for facilityId={} hfrId={} ninId={}",
-                        req.getFacilityId(), req.getHfrId(), req.getNinId());
+                log.warn("No centerId for facilityId={} hfrId={} ninId={} facilityName={}",
+                        req.getFacilityId(), req.getHfrId(), req.getNinId(), req.getFacilityName());
                 results.add(empty(req, "CENTER_NOT_MAPPED"));
                 continue;
             }
@@ -172,33 +170,10 @@ public class Co2ElmeasureConsumptionService {
         return "error".equalsIgnoreCase(status) || "failed".equalsIgnoreCase(status);
     }
 
-    /**
-     * Resolve Elmeasure center: explicit centerId → hfr_id mapping → nin_id mapping.
-     * NIN is only used when HFR is missing or does not resolve (prod sites with null hfr_id).
-     */
     private String resolveCenterId(MonthlyConsumptionRequest req) {
-        if (StringUtils.hasText(req.getCenterId())) {
-            return req.getCenterId().trim();
-        }
-        if (StringUtils.hasText(req.getHfrId())) {
-            Optional<String> byHfr = centerIdMappingRepository.findCenterIdByHfrId(
-                    req.getHfrId().trim(),
-                    req.getFacilityName());
-            if (byHfr.isPresent()) {
-                return byHfr.get();
-            }
-        }
-        if (StringUtils.hasText(req.getNinId())) {
-            Optional<String> byNin = centerIdMappingRepository.findCenterIdByNinId(
-                    req.getNinId().trim(),
-                    req.getFacilityName());
-            if (byNin.isPresent()) {
-                log.info("Resolved facilityId={} via ninId={} (hfrId={}) to centerId={}",
-                        req.getFacilityId(), req.getNinId(), req.getHfrId(), byNin.get());
-                return byNin.get();
-            }
-        }
-        return null;
+        return centerIdResolverService
+                .resolveCenterId(req.getCenterId(), req.getHfrId(), req.getNinId(), req.getFacilityName())
+                .orElse(null);
     }
 
     private MonthlyConsumptionData empty(MonthlyConsumptionRequest req, String source) {
