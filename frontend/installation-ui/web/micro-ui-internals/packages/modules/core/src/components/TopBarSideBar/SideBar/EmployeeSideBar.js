@@ -168,10 +168,6 @@ const EmployeeSideBar = () => {
     navigationUrl: translationUrl,
     orderNumber: 3,
   };
-  const hasTranslateItem = sortedTransformedData.some((item) => item?.navigationUrl === translationUrl);
-  const inboxIndex = sortedTransformedData.findIndex((item) => item?.navigationUrl?.toLowerCase?.().includes("inbox"));
-  const homeIndex = sortedTransformedData.findIndex((item) => item?.label === t("Home") || item?.navigationUrl === `/${window?.contextPath}/employee`);
-  const sideNavItems = [...sortedTransformedData];
   const policyItem = {
     label: t("Privacy & Terms"),
     icon: { icon: "Description", width: "1.5rem", height: "1.5rem" },
@@ -191,13 +187,15 @@ const EmployeeSideBar = () => {
     ],
     orderNumber: 2,
   };
-  const hasPolicyItem = sideNavItems.some((item) => item?.children?.some((child) => child?.navigationUrl === policyRoutes.privacy || child?.navigationUrl === policyRoutes.terms));
-  if (!hasPolicyItem) {
-    sideNavItems.splice(homeIndex >= 0 ? homeIndex + 1 : 1, 0, policyItem);
-  }
-  if (!hasTranslateItem) {
-    sideNavItems.splice(inboxIndex >= 0 ? inboxIndex + 1 : sideNavItems.length, 0, translateItem);
-  }
+  const sideNavItems = sortedTransformedData.filter(
+    (item) =>
+      item?.navigationUrl !== translationUrl &&
+      !item?.children?.some((child) => child?.navigationUrl === policyRoutes.privacy || child?.navigationUrl === policyRoutes.terms)
+  );
+  const inboxItemIndex = sideNavItems.findIndex((item) => item?.navigationUrl?.toLowerCase?.().includes("inbox"));
+  const policyInsertIndex = inboxItemIndex >= 0 ? inboxItemIndex + 1 : sideNavItems.length;
+  sideNavItems.splice(policyInsertIndex, 0, policyItem);
+  sideNavItems.splice(policyInsertIndex + 1, 0, translateItem);
   const translateItemIndex = sideNavItems.findIndex((item) => item?.navigationUrl === translationUrl);
 
   if (isLoading) {

@@ -33,23 +33,39 @@ const TOUComponent = ({ onSelect, formData, control, formState, ...props }) => {
 
   return (
     <React.Fragment>
-      <div className="digit-privacy-checkbox digit-privacy-checkbox-align">
-        <CheckBox
-          label={t("ES_BY_CLICKING")}
-          checked={isChecked}
-          onChange={handleCheckboxChange}
-          id={"terms-of-use-component-check"}
-          disabled={hasStoredConsent}
-          disable={hasStoredConsent}
-        ></CheckBox>
-        <Button
-          label={t(`ES_TERMS_OF_USE`)}
-          variation={"link"}
-          size={"small"}
+      <div className="digit-privacy-checkbox digit-privacy-checkbox-align" style={{ alignItems: "center", display: "flex" }}>
+        <div style={{ flexShrink: 0, height: "24px", overflow: "hidden", position: "relative", width: "24px" }}>
+          <div style={{ left: 0, position: "absolute", top: "75%", transform: "translateY(-50%) scale(0.63)", transformOrigin: "left center" }}>
+            <CheckBox
+              label=""
+              checked={isChecked}
+              onChange={handleCheckboxChange}
+              id={"terms-of-use-component-check"}
+              disabled={hasStoredConsent}
+              disable={hasStoredConsent}
+            ></CheckBox>
+          </div>
+        </div>
+        <label htmlFor="terms-of-use-component-check" style={{ cursor: hasStoredConsent ? "default" : "pointer", lineHeight: "24px", margin: "0 0 0 0" }}>
+          {t("ES_BY_CLICKING")}
+        </label>
+        <button
+          type="button"
           onClick={onButtonClick}
-          // isSuffix={true}
-          style={{ marginBottom: "1.18rem", paddingLeft: "0.2rem" }}
-        ></Button>
+          style={{
+            background: "transparent",
+            border: 0,
+            color: "#d4351c",
+            cursor: "pointer",
+            font: "inherit",
+            lineHeight: "24px",
+            margin: 0,
+            padding: "0 0 0 0.2rem",
+            textDecoration: "underline",
+          }}
+        >
+          {t("ES_TERMS_OF_USE")}
+        </button>
       </div>
       {showPopUp && (
         <PopUp
