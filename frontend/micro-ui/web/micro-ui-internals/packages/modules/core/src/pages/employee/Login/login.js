@@ -393,6 +393,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       {activePolicyModal && (
         <PolicyConsentModal
           type={activePolicyModal}
+          module={"E4H"}
           tenantId={stateInfo?.code || "in"}
           onClose={() => setActivePolicyModal(null)}
           onAccept={handlePolicyModalAccept}
