@@ -15,7 +15,6 @@ from fuzzy-matching against an MDMS schema. See detect_system_type()'s docstring
 4 supported formats are told apart.
 """
 import json
-import math
 import os
 import re
 from collections import OrderedDict
@@ -676,18 +675,6 @@ def _is_mandatory_bom_column(keys, mandatory_prefixes):
     )
 
 
-def _requires_numeric_value(role, keys, mandatory_prefixes):
-    """Quantity must always be numeric wherever filled in. Capacity must be numeric only for
-    the mandatory BOM components (Solar Module, Solar Battery, Inverter/per-type equivalent) -
-    every other row's Capacity is a free-form spec (cable cross-section, wire gauge, etc.) and
-    may be alphanumeric."""
-    if role == "Quantity":
-        return True
-    if role == "Capacity":
-        return _is_mandatory_bom_column(keys, mandatory_prefixes)
-    return False
-
-
 def validate_bom_editable_fields_filled(wb, detected_type):
     """
     Validation 3 (BOM completeness): Make/Capacity/Quantity cells across the editable BOM tables
@@ -695,16 +682,16 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     Luminaries & Fans / Load Wiring) may be left blank, EXCEPT for the Solar Module, Solar Battery
     and Inverter (per-type equivalent) rows, whose Make/Capacity/Quantity are mandatory. Quantity
     must always be an actual number (not text, even numeric-looking text) wherever filled in.
-    Capacity must be numeric too, but only for the Solar Module/Solar Battery/Inverter rows -
-    every other row's Capacity is a free-form spec (cable cross-section, wire gauge, etc.) and may
-    be alphanumeric. SYSTEM FUNCTIONALITY PARAMETERS (and any other non-BOM section, e.g.
+    Capacity is a free-form spec for every row, including Solar Module/Solar Battery/Inverter
+    (cable cross-section, wire gauge, panel wattage written as text, etc.) and may be
+    alphanumeric. SYSTEM FUNCTIONALITY PARAMETERS (and any other non-BOM section, e.g.
     RMS/Header/Image/Annexure) is out of scope for this check, matching the same "out of scope"
     sections already excluded from template-key coverage elsewhere in this module.
 
     Blank mandatory fields are reported as one summary line per section with a per-role count
     (e.g. "2 Make, 2 Capacity, 2 Quantity missing") rather than one line per blank cell. Invalid
-    (non-blank but non-numeric) Capacity/Quantity values are rare and specific, so those stay
-    listed in full per-row detail.
+    (non-blank but non-numeric) Quantity values are rare and specific, so those stay listed in
+    full per-row detail.
 
     Raises ICCValidationError on any failure (blank-mandatory and/or invalid-number); returns
     nothing on success.
@@ -748,7 +735,7 @@ def validate_bom_editable_fields_filled(wb, detected_type):
                     if _is_mandatory_bom_column(keys, mandatory_prefixes):
                         section_counts = blank_counts_by_section.setdefault(section, {})
                         section_counts[role] = section_counts.get(role, 0) + 1
-                elif _requires_numeric_value(role, keys, mandatory_prefixes) and not _is_number_not_text(value):
+                elif role == "Quantity" and not _is_number_not_text(value):
                     invalid_numeric_errors.append(
                         f"{section} > '{label}' - {role} '{value}' must be a number, not text"
                     )
@@ -764,9 +751,8 @@ def validate_bom_editable_fields_filled(wb, detected_type):
 
     raise ICCValidationError(
         "The uploaded ICC report has invalid fields in the editable BOM tables "
-        "(Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in "
-        "and must be a number; every other row's Quantity must also be a number wherever "
-        "filled in):\n- "
+        "(Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in; "
+        "every row's Quantity must also be a number wherever filled in):\n- "
         + "\n- ".join(error_lines)
     )
 
@@ -932,116 +918,15 @@ def validate_bom_brand_names(data, detected_type, mdms_client, request_info):
         )
 
 
-# MDMS schema listing every registered capacity option, grouped by asset type (BATTERY/PANEL/
-# INVERTER) AND by systemType (the "system" field there uses the same phase-specific codes as
-# facility.SystemType, e.g. "AC_OFF_GRID_THREE_PHASE" - not the internal dc/ac_off/hybrid/
-# ac_on_grid keys used elsewhere in this module).
-ASSET_TYPE_SCHEMA_CODE = "asset-registry.AssetTypeSchema"
-
-_CAPACITY_MATCH_TOLERANCE = 0.001
-
-
-def _capacity_options_by_asset_type(mdms_client, request_info, requested_system_type):
-    """Returns {asset_type_code: {allowed capacity option strings}} for one systemType, read from
-    MDMS asset-registry.AssetTypeSchema's per-asset-type form_fields where key == "capacity" and
-    system == requested_system_type. Never raises - returns {} on any fetch/shape problem, same
-    graceful-degradation choice as _brand_names_by_asset_type."""
-    try:
-        records = mdms_client.fetch_mdms_records(request_info, ASSET_TYPE_SCHEMA_CODE)
-    except Exception:
-        return {}
-
-    asset_types = records[0].get("AssetType") or [] if records else []
-    options_by_asset_type = {}
-    for asset_type in asset_types:
-        if asset_type.get("active") is False:
-            continue
-        code = asset_type.get("code")
-        if not code:
-            continue
-        for field in asset_type.get("form_fields") or []:
-            if field.get("key") != "capacity" or field.get("system") != requested_system_type:
-                continue
-            options = field.get("options") or []
-            options_by_asset_type.setdefault(code, set()).update(str(o).strip() for o in options)
-    return options_by_asset_type
-
-
-def _capacity_matches_any_option(value, allowed_options):
-    """Numeric-tolerant match: "550" and "550.0" (or a real float 550.0 from openpyxl) are the
-    same capacity, so compare as numbers rather than exact text - same reasoning as the "45" vs
-    "45.0" totalCapacity fix on the field-planner side."""
-    value_str = str(value).strip()
-    if value_str in allowed_options:
-        return True
-    try:
-        value_num = float(value_str)
-    except (TypeError, ValueError):
-        return False
-    for option in allowed_options:
-        try:
-            if math.isclose(value_num, float(option), rel_tol=0, abs_tol=_CAPACITY_MATCH_TOLERANCE):
-                return True
-        except (TypeError, ValueError):
-            continue
-    return False
-
-
-def validate_bom_capacity_options(data, detected_type, requested_system_type, mdms_client, request_info):
-    """
-    Validation 5 (capacity options): the Capacity value recorded for the Solar Module (panel),
-    Solar Battery, and the system's inverter-equivalent component must be one of the allowed
-    values registered in MDMS asset-registry.AssetTypeSchema for that component's asset type and
-    the requested systemType - e.g. Solar Battery's Capacity for AC_OFF_GRID must be one of
-    "125", "150", "180", "200", "220".
-
-    Reuses BOM_BRAND_FIELDS_BY_TYPE's make-field -> asset_type mapping (same 3 components), just
-    deriving each field's paired "_capacity" key from its "_make" key.
-
-    Raises ICCValidationError listing every invalid Capacity value found; returns nothing on
-    success (including when the schema can't be fetched, or has no options registered for this
-    systemType/asset type combination - this check simply doesn't block in either case).
-    """
-    fields_by_role = BOM_BRAND_FIELDS_BY_TYPE.get(detected_type, {})
-    if not fields_by_role:
-        return
-
-    options_by_asset_type = _capacity_options_by_asset_type(mdms_client, request_info, requested_system_type)
-    if not options_by_asset_type:
-        return
-
-    errors = []
-    for make_key, asset_type in fields_by_role.items():
-        capacity_key = make_key.replace("_make", "_capacity")
-        value = data.get(capacity_key)
-        if value is None or str(value).strip() == "":
-            continue  # blank Capacity is already reported by Validation 3
-
-        allowed_options = options_by_asset_type.get(asset_type)
-        if not allowed_options:
-            continue  # no MDMS options registered for this asset type/systemType - nothing to check against
-
-        if not _capacity_matches_any_option(value, allowed_options):
-            errors.append(
-                f"'{value}' is not an allowed {asset_type.title()} capacity for systemType "
-                f"'{requested_system_type}' - expected one of: "
-                + ", ".join(sorted(allowed_options, key=lambda o: (len(o), o)))
-            )
-
-    if errors:
-        raise ICCValidationError(
-            "The uploaded ICC report has invalid capacity values in the editable BOM tables:\n- "
-            + "\n- ".join(errors)
-        )
-
-
 def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, request_info=None):
     """Single entry point for the /icc-reports endpoint: raises ICCValidationError on any
-    Validation 1/2/3/4/5 failure (nothing is saved in that case); otherwise returns
+    Validation 1/2/3/4 failure (nothing is saved in that case); otherwise returns
     (detected_type, data, fallback_fields, unmatched_fields).
 
-    mdms_client/request_info are optional: pass both to also run Validations 4/5 (brand names,
-    capacity options); omit either to skip them (e.g. for callers/tests without MDMS access).
+    mdms_client/request_info are optional: pass both to also run Validation 4 (brand names);
+    omit either to skip it (e.g. for callers/tests without MDMS access). There is no longer an
+    MDMS-backed capacity-options check - Capacity is a free-form field for every BOM row,
+    including Solar Module/Solar Battery/Inverter.
     """
     try:
         wb = load_workbook(xlsx_path, data_only=True)
@@ -1053,5 +938,4 @@ def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, req
     data, fallback_fields, unmatched_fields = convert_icc_report(wb, detected_type)
     if mdms_client is not None and request_info is not None:
         validate_bom_brand_names(data, detected_type, mdms_client, request_info)
-        validate_bom_capacity_options(data, detected_type, requested_system_type, mdms_client, request_info)
     return detected_type, data, fallback_fields, unmatched_fields
