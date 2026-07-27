@@ -1,32 +1,42 @@
 import { useQuery, useQueryClient } from "react-query";
-import { DUMMY_ASSESSMENT_PLANS } from "../utilities/AssessmentPlanData";
+import { AssessmentPlanService } from "../services/AssessmentPlan";
 
-// Dummy in-memory lookup until the Assessment Plan entity exists on the backend.
-const fetchAssessmentPlans = async (filter) => {
-  const assessmentPlans = filter.id?.length
-    ? DUMMY_ASSESSMENT_PLANS.filter((plan) => filter.id.includes(plan.id))
-    : DUMMY_ASSESSMENT_PLANS;
-
+const fetchAssessmentPlan = async (filter, limit, offset) => {
+  const response = await AssessmentPlanService.fetchAssessmentPlans(filter, limit, offset);
   return {
-    assessmentPlans: assessmentPlans.length ? assessmentPlans : [DUMMY_ASSESSMENT_PLANS[0]],
-    totalCount: assessmentPlans.length,
+    assessmentPlans: response?.AssessmentPlans,
+    totalCount: response?.TotalCount,
   };
 }
 
-const useAssessmentPlan = (queryFilter = {}) => {
+const useAssessmentPlan = (queryFilter = {}, limit = 10, offset = 0) => {
 
-  const { id } = queryFilter;
-  const filter = { id };
+  const { id, projectIds } = queryFilter;
+
+  const filter = {
+    AssessmentPlans: {}
+  };
+
+  if (id?.length) {
+    filter.AssessmentPlans.ids = id;
+  }
+
+  if (projectIds?.length) {
+    filter.AssessmentPlans.projectIds = projectIds;
+  }
 
   const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, error, data } = useQuery(
-    ["ASSESSMENT_PLAN", filter],
-    () => fetchAssessmentPlans(filter)
+    ["ASSESSMENT_PLAN", filter, limit, offset],
+    () => fetchAssessmentPlan(filter, limit, offset)
   );
 
   return {
     isLoading, isFetching, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["ASSESSMENT_PLAN"])
+    revalidate: async () => {
+      await queryClient.invalidateQueries(["ASSESSMENT_PLAN"]);
+      return queryClient.getQueryData(["ASSESSMENT_PLAN", filter, limit, offset]);
+    }
   };
 }
 
