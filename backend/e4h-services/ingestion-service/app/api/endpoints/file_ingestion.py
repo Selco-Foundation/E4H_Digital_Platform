@@ -2,7 +2,9 @@ import io
 import json
 import math
 import os
+import shutil
 import tempfile
+import zipfile
 from datetime import datetime, timedelta
 import uuid
 from typing import Optional, Dict, List, Set
@@ -92,6 +94,37 @@ async def _save_upload_to_temp_file(upload_file: UploadFile, suffix: str = ".xls
     finally:
         temp_file.close()
     return temp_file, total_bytes
+
+
+VALIDATION_ERRORS_SHEET = "Validation Errors"
+
+
+def _write_validation_errors_sheet(xlsx_path: str, error_message: str) -> int:
+    """Replaces the `VALIDATION_ERRORS_SHEET` sheet in the workbook at xlsx_path with one row per
+    line of error_message, and saves in place. A pre-existing sheet from an earlier failed attempt
+    is dropped first, so re-uploading a previously-annotated file always reflects only the latest
+    validation run, never a stale/appended mix of old and new errors. All other sheets/data are
+    untouched. Splitting on newline (rather than the "\n- " bullet marker Validations 3/4 use)
+    handles both the single-sentence messages from Validations 1/2 and the multi-line bulleted
+    messages from Validations 3/4 uniformly, with no special-casing.
+
+    Returns the number of distinct errors represented by error_message: the number of "- "-prefixed
+    bullet lines for a multi-line Validation 3/4 message, or 1 for a single-sentence Validation 1/2
+    message that has no bullets.
+    """
+    wb = load_workbook(xlsx_path)
+    if VALIDATION_ERRORS_SHEET in wb.sheetnames:
+        del wb[VALIDATION_ERRORS_SHEET]
+    ws = wb.create_sheet(VALIDATION_ERRORS_SHEET)
+    ws.append(["Validation Error"])
+    ws["A1"].font = Font(bold=True)
+    lines = error_message.strip().split("\n")
+    for line in lines:
+        ws.append([line])
+    wb.save(xlsx_path)
+    autofit_columns(xlsx_path, VALIDATION_ERRORS_SHEET)
+    bullet_count = sum(1 for line in lines if line.strip().startswith("- "))
+    return bullet_count if bullet_count else 1
 
 
 load_dotenv()
@@ -1455,6 +1488,7 @@ async def upload_facility_selection_excel_sheet(
                      'convert to JSON, and store them via field-planner in one call',
              response_description='Returns the field-planner bulk template creation response')
 async def upload_icc_reports(
+        background_tasks: BackgroundTasks,
         items: str = Form(
             ...,
             description='JSON array of metadata objects, one per file, paired positionally with '
@@ -1468,10 +1502,17 @@ async def upload_icc_reports(
 ):
     """
     Accepts N metadata items and N Excel files, paired positionally (items[i] <-> icc_files[i]).
-    Validation is all-or-nothing: every item is validated first, and if ANY item fails
-    (structural mismatch, wrong System Type, missing field, count mismatch), the whole batch is
-    rejected with a 400 listing every failing index - nothing is converted twice and nothing is
-    forwarded to field-planner unless every item passes.
+    Validation is all-or-nothing: every item is validated first, and if ANY item fails, nothing is
+    forwarded to field-planner. Request-level problems (malformed `items` JSON, missing required
+    field(s), wrong file extension, item/file count mismatch) are still reported as a plain JSON
+    400 with `{"message", "errors": [{"index", "error"}, ...]}`. But a per-file ICC validation
+    failure (structural mismatch, wrong System Type, BOM/brand problems) is instead returned the
+    same way `/fieldPlanfacilitiesValidateData` reports its row failures: a 200 response whose body
+    is a downloadable Excel attachment (the offending file, with a new "Validation Errors" sheet
+    appended listing every problem found in it) and an `X-Error-Count` header holding the total
+    number of individual errors across every failing file (not the file count), instead of an HTTP
+    error status. If more than one file in the batch fails, all of them (each annotated) are bundled
+    into a `.zip` attachment instead.
     """
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
@@ -1513,7 +1554,8 @@ async def upload_icc_reports(
 
     temp_files = []
     converted = []
-    validation_errors = []
+    failed_files = []  # [(annotated_temp_path, original_filename), ...]
+    total_error_count = 0
 
     try:
         for idx, (item, upload) in enumerate(zip(parsed_items, icc_files)):
@@ -1538,16 +1580,32 @@ async def upload_icc_reports(
                 )
             except ICCValidationError as e:
                 logger.warning(f"ICC report[{idx}] upload rejected: {e}")
-                validation_errors.append({"index": idx, "fileName": upload.filename, "error": str(e)})
+                total_error_count += _write_validation_errors_sheet(temp_file.name, str(e))
+                failed_files.append((temp_file.name, upload.filename or f"icc_report_{idx}.xlsx"))
 
-        if validation_errors:
+        if failed_files:
             logger.warning(
-                f"ICC bulk upload rejected: {len(validation_errors)} of {len(parsed_items)} item(s) failed validation"
+                f"ICC bulk upload rejected: {len(failed_files)} of {len(parsed_items)} item(s) failed validation"
             )
-            raise HTTPException(
-                status_code=400,
-                detail={"message": "One or more items failed validation; nothing was submitted", "errors": validation_errors},
-            )
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            if len(failed_files) == 1:
+                src_path, _ = failed_files[0]
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+                shutil.copyfile(src_path, output_path)
+                response_filename = f"icc_report_validation_errors_{timestamp}.xlsx"
+                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            else:
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".zip").name
+                with zipfile.ZipFile(output_path, "w") as zf:
+                    for src_path, filename in failed_files:
+                        zf.write(src_path, arcname=filename)
+                response_filename = f"icc_report_validation_errors_{timestamp}.zip"
+                media_type = "application/zip"
+
+            background_tasks.add_task(cleanup_temp_file, output_path)
+            response = FileResponse(path=output_path, filename=response_filename, media_type=media_type)
+            response.headers["X-Error-Count"] = str(total_error_count)
+            return response
 
         if not fieldPlan_service_url:
             raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
@@ -1585,6 +1643,7 @@ async def upload_icc_reports(
                      'their Excel files, via field-planner in one call',
              response_description='Returns the field-planner bulk template update response')
 async def update_icc_reports(
+        background_tasks: BackgroundTasks,
         items: str = Form(
             ...,
             description='JSON array of metadata objects, one per template to update: '
@@ -1603,8 +1662,17 @@ async def update_icc_reports(
     Accepts N metadata items, each identifying an existing FieldPlanTemplate by "id", and either
     zero or exactly N Excel files paired positionally (items[i] <-> icc_files[i]). Validation is
     all-or-nothing: every item (and every file that was provided) is validated first, and if ANY
-    item fails, the whole batch is rejected with a 400 listing every failing index - nothing is
-    forwarded to field-planner unless every item passes.
+    item fails, nothing is forwarded to field-planner. Request-level problems (malformed `items`
+    JSON, missing required field(s), wrong file extension, item/file count mismatch) are still
+    reported as a plain JSON 400 with `{"message", "errors": [{"index", "error"}, ...]}`. But a
+    per-file ICC validation failure (structural mismatch, wrong System Type, BOM/brand problems) is
+    instead returned the same way `/fieldPlanfacilitiesValidateData` reports its row failures: a
+    200 response whose body is a downloadable Excel attachment (the offending file, with a new
+    "Validation Errors" sheet appended listing every problem found in it) and an `X-Error-Count`
+    header holding the total number of individual errors across every failing file (not the file
+    count), instead of an HTTP error status. If more than one file in the batch fails, all of them
+    (each annotated) are bundled into a `.zip` attachment
+    instead.
     """
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
@@ -1648,7 +1716,8 @@ async def update_icc_reports(
 
     temp_files = []
     converted = []
-    validation_errors = []
+    failed_files = []  # [(annotated_temp_path, original_filename), ...]
+    total_error_count = 0
 
     try:
         for idx, item in enumerate(parsed_items):
@@ -1671,7 +1740,8 @@ async def update_icc_reports(
                     )
                 except ICCValidationError as e:
                     logger.warning(f"ICC report[{idx}] update rejected: {e}")
-                    validation_errors.append({"index": idx, "fileName": upload.filename, "error": str(e)})
+                    total_error_count += _write_validation_errors_sheet(temp_file.name, str(e))
+                    failed_files.append((temp_file.name, upload.filename or f"icc_report_{idx}.xlsx"))
                     continue
 
             converted.append({
@@ -1683,14 +1753,29 @@ async def update_icc_reports(
                 "template_data": template_data,
             })
 
-        if validation_errors:
+        if failed_files:
             logger.warning(
-                f"ICC bulk update rejected: {len(validation_errors)} of {len(parsed_items)} item(s) failed validation"
+                f"ICC bulk update rejected: {len(failed_files)} of {len(parsed_items)} item(s) failed validation"
             )
-            raise HTTPException(
-                status_code=400,
-                detail={"message": "One or more items failed validation; nothing was submitted", "errors": validation_errors},
-            )
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            if len(failed_files) == 1:
+                src_path, _ = failed_files[0]
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+                shutil.copyfile(src_path, output_path)
+                response_filename = f"icc_report_validation_errors_{timestamp}.xlsx"
+                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            else:
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".zip").name
+                with zipfile.ZipFile(output_path, "w") as zf:
+                    for src_path, filename in failed_files:
+                        zf.write(src_path, arcname=filename)
+                response_filename = f"icc_report_validation_errors_{timestamp}.zip"
+                media_type = "application/zip"
+
+            background_tasks.add_task(cleanup_temp_file, output_path)
+            response = FileResponse(path=output_path, filename=response_filename, media_type=media_type)
+            response.headers["X-Error-Count"] = str(total_error_count)
+            return response
 
         if not fieldPlan_service_url:
             raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
