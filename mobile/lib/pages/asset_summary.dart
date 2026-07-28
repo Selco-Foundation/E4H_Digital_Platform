@@ -600,7 +600,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: spacer3),
                       child: Text(
-                        '$capacity$capacityUnit',
+                        // Unit suffix commented out, not deleted: '$capacity$capacityUnit'
+                        capacity,
                         style: textTheme.bodyS.copyWith(
                           color: Theme.of(context).colorTheme.text.primary,
                         ),

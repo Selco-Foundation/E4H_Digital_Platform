@@ -310,23 +310,21 @@ class AssetRepository {
                     documentId: doc?.id.toString() ?? '',
                     activityFacilityId: activityFacilityId,
                     assetType: type,
-                    itemNumber:
-                        asset.assetDetails?.inverterCapacity?.toString() ?? '',
+                    itemNumber: asset.assetDetails?.inverterCapacity ?? '',
                     serialNumber: serial ?? '',
                     photoPath: doc.fileStore ?? '',
                     latitude: doc.geoLocation?.latitude?.toString() ?? '',
                     longitude: doc.geoLocation?.longitude?.toString() ?? '',
                     capacityUnit: asset.assetDetails?.capacityUnit ?? '',
-                    panelCapacity:
-                        asset.assetDetails?.panelCapacity?.toString() ?? '',
+                    panelCapacity: asset.assetDetails?.panelCapacity ?? '',
                     batteryCapacity:
-                        asset.assetDetails?.batteryCapacity?.toString() ?? '',
+                        asset.assetDetails?.batteryCapacity ?? '',
                     batteryVoltage:
                         asset.assetDetails?.batteryVoltage?.toString() ?? '',
                     batteryType: asset.assetDetails?.batteryType ?? '',
                     voltageUnit: asset.assetDetails?.voltageUnit ?? '',
                     inverterCapacity:
-                        asset.assetDetails?.inverterCapacity.toString() ?? '',
+                        asset.assetDetails?.inverterCapacity ?? '',
                     inverterCapacityUnit:
                         asset.assetDetails?.inverterCapacityUnit ?? '',
                   ),

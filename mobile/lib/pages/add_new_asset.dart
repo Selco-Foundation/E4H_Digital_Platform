@@ -409,7 +409,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     switch (assetType.toLowerCase()) {
       case 'battery':
         return a.batteryType?.isNotEmpty == true &&
-            a.batteryVoltage?.isNotEmpty == true &&
+            // Voltage input is hidden (see _batteryCapacity) — no longer required.
             a.batteryCapacity?.isNotEmpty == true;
       case 'panel':
         return a.panelCapacity?.isNotEmpty == true;
@@ -813,41 +813,35 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         ),
         if (assetType == 'inverter') ...[
           const SizedBox(height: spacer4),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: LabeledField(
-                  label: context.translate(i18.common.capacity),
-                  capitalizedFirstLetter: false,
-                  child: DigitTextFormInput(
-                    key: ValueKey(
-                        'inverter-cap-${_prefilledCapacityFor('inverter')}'),
-                    controller: TextEditingController(
-                      text: _prefilledCapacityFor('inverter'),
-                    ),
-                    isDisabled: true,
-                    readOnly: true,
-                    keyboardType: TextInputType.text,
-                  ),
-                ),
+          LabeledField(
+            label: context.translate(i18.common.capacity),
+            capitalizedFirstLetter: false,
+            child: DigitTextFormInput(
+              key: ValueKey(
+                  'inverter-cap-${_prefilledCapacityFor('inverter')}'),
+              controller: TextEditingController(
+                text: _prefilledCapacityFor('inverter'),
               ),
-              const SizedBox(width: spacer6),
-              Expanded(
-                flex: 1,
-                child: LabeledField(
-                  label: context.translate(i18.common.unit),
-                  capitalizedFirstLetter: false,
-                  child: DigitTextFormInput(
-                    controller: TextEditingController(text: assetCapacityUom),
-                    isDisabled: true,
-                    readOnly: true,
-                    keyboardType: TextInputType.text,
-                  ),
-                ),
-              ),
-            ],
+              isDisabled: true,
+              readOnly: true,
+              keyboardType: TextInputType.text,
+            ),
           ),
+          // Inverter capacity unit — commented out, not deleted. The
+          // capacity field above now spans the full row width in its place.
+          // Expanded(
+          //   flex: 1,
+          //   child: LabeledField(
+          //     label: context.translate(i18.common.unit),
+          //     capitalizedFirstLetter: false,
+          //     child: DigitTextFormInput(
+          //       controller: TextEditingController(text: assetCapacityUom),
+          //       isDisabled: true,
+          //       readOnly: true,
+          //       keyboardType: TextInputType.text,
+          //     ),
+          //   ),
+          // ),
         ],
       ],
     );
@@ -887,83 +881,78 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     });
                   }),
             ),
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: LabeledField(
-                    label: context.translate(i18.common.voltage),
-                    capitalizedFirstLetter: false,
-                    child: DigitDropdown(
-                      sentenceCaseEnabled: false,
-                      items: voltages
-                          .map((type) => DropdownItem(name: type, code: type))
-                          .toList(),
-                      selectedOption: DropdownItem(
-                        name: firstAsset.batteryVoltage ?? '',
-                        code: firstAsset.batteryVoltage ?? '',
-                      ),
-                      onSelect: (DropdownItem sel) {
-                        setState(() {
-                          for (var asset in assets) {
-                            asset.batteryVoltage = sel.code;
-                          }
-                        });
-                      },
-                    ),
-                  ),
+            // Battery voltage dropdown + its unit field — commented out, not deleted.
+            // Row(
+            //   children: [
+            //     Expanded(
+            //       flex: 3,
+            //       child: LabeledField(
+            //         label: context.translate(i18.common.voltage),
+            //         capitalizedFirstLetter: false,
+            //         child: DigitDropdown(
+            //           sentenceCaseEnabled: false,
+            //           items: voltages
+            //               .map((type) => DropdownItem(name: type, code: type))
+            //               .toList(),
+            //           selectedOption: DropdownItem(
+            //             name: firstAsset.batteryVoltage ?? '',
+            //             code: firstAsset.batteryVoltage ?? '',
+            //           ),
+            //           onSelect: (DropdownItem sel) {
+            //             setState(() {
+            //               for (var asset in assets) {
+            //                 asset.batteryVoltage = sel.code;
+            //               }
+            //             });
+            //           },
+            //         ),
+            //       ),
+            //     ),
+            //     const SizedBox(width: spacer6),
+            //     Expanded(
+            //       flex: 1,
+            //       child: LabeledField(
+            //         label: context.translate(i18.common.unit),
+            //         capitalizedFirstLetter: false,
+            //         child: DigitTextFormInput(
+            //           controller: TextEditingController(),
+            //           isDisabled: true,
+            //           initialValue: voltageUom,
+            //           keyboardType: TextInputType.text,
+            //         ),
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            LabeledField(
+              label: context.translate(i18.common.current),
+              capitalizedFirstLetter: false,
+              child: DigitTextFormInput(
+                key: ValueKey(
+                    'battery-cap-${_prefilledCapacityFor('battery')}'),
+                controller: TextEditingController(
+                  text: _prefilledCapacityFor('battery'),
                 ),
-                const SizedBox(width: spacer6),
-                Expanded(
-                  flex: 1,
-                  child: LabeledField(
-                    label: context.translate(i18.common.unit),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      controller: TextEditingController(),
-                      isDisabled: true,
-                      initialValue: voltageUom,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
-                ),
-              ],
+                isDisabled: true,
+                readOnly: true,
+                keyboardType: TextInputType.text,
+              ),
             ),
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: LabeledField(
-                    label: context.translate(i18.common.current),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      key: ValueKey(
-                          'battery-cap-${_prefilledCapacityFor('battery')}'),
-                      controller: TextEditingController(
-                        text: _prefilledCapacityFor('battery'),
-                      ),
-                      isDisabled: true,
-                      readOnly: true,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: spacer6),
-                Expanded(
-                  flex: 1,
-                  child: LabeledField(
-                    label: context.translate(i18.common.unit),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      controller: TextEditingController(),
-                      isDisabled: true,
-                      initialValue: assetCapacityUom,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // Current-field unit — commented out, not deleted. The Current
+            // field above now spans the full row width in its place.
+            // Expanded(
+            //   flex: 1,
+            //   child: LabeledField(
+            //     label: context.translate(i18.common.unit),
+            //     capitalizedFirstLetter: false,
+            //     child: DigitTextFormInput(
+            //       controller: TextEditingController(),
+            //       isDisabled: true,
+            //       initialValue: assetCapacityUom,
+            //       keyboardType: TextInputType.text,
+            //     ),
+            //   ),
+            // ),
           ],
         ),
         const SizedBox(height: spacer8),
@@ -982,41 +971,34 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               style: textTheme.headingXl
                   .copyWith(color: theme.colorTheme.primary.primary2),
             ),
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: LabeledField(
-                    label: context.translate(i18.common.voltage),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      key: ValueKey(
-                          'panel-cap-${_prefilledCapacityFor('panel')}'),
-                      controller: TextEditingController(
-                        text: _prefilledCapacityFor('panel'),
-                      ),
-                      isDisabled: true,
-                      readOnly: true,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
+            LabeledField(
+              label: context.translate(i18.common.voltage),
+              capitalizedFirstLetter: false,
+              child: DigitTextFormInput(
+                key: ValueKey('panel-cap-${_prefilledCapacityFor('panel')}'),
+                controller: TextEditingController(
+                  text: _prefilledCapacityFor('panel'),
                 ),
-                const SizedBox(width: spacer6),
-                Expanded(
-                  flex: 1,
-                  child: LabeledField(
-                    label: context.translate(i18.common.unit),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      controller: TextEditingController(),
-                      isDisabled: true,
-                      initialValue: assetCapacityUom,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
-                ),
-              ],
+                isDisabled: true,
+                readOnly: true,
+                keyboardType: TextInputType.text,
+              ),
             ),
+            // Panel capacity unit — commented out, not deleted. The
+            // capacity field above now spans the full row width in its place.
+            // Expanded(
+            //   flex: 1,
+            //   child: LabeledField(
+            //     label: context.translate(i18.common.unit),
+            //     capitalizedFirstLetter: false,
+            //     child: DigitTextFormInput(
+            //       controller: TextEditingController(),
+            //       isDisabled: true,
+            //       initialValue: assetCapacityUom,
+            //       keyboardType: TextInputType.text,
+            //     ),
+            //   ),
+            // ),
           ],
         ),
         const SizedBox(height: spacer8),

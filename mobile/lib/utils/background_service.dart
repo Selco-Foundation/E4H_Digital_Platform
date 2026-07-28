@@ -1667,13 +1667,13 @@ Future<void> _performSubmissionForActivityFacility({
               ? saved.capacityUnit
               : null,
           panelCapacity: type == ASSET_TYPES.PANEL.name.toLowerCase()
-              ? double.parse(saved.panelCapacity!)
+              ? saved.panelCapacity
               : null,
           batteryCapacity: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-              ? double.parse(saved.batteryCapacity!)
+              ? saved.batteryCapacity
               : null,
           batteryVoltage: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-              ? double.parse(saved.batteryVoltage!)
+              ? double.tryParse(saved.batteryVoltage ?? '')
               : null,
           batteryType: type == ASSET_TYPES.BATTERY.name.toLowerCase()
               ? saved.batteryType
@@ -1683,7 +1683,7 @@ Future<void> _performSubmissionForActivityFacility({
               ? saved.voltageUnit
               : null,
           inverterCapacity: type == ASSET_TYPES.INVERTER.name.toLowerCase()
-              ? double.parse(saved.inverterCapacity!)
+              ? saved.inverterCapacity
               : null,
           inverterCapacityUnit: type == ASSET_TYPES.INVERTER.name.toLowerCase()
               ? saved.inverterCapacityUnit
