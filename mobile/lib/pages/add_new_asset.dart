@@ -18,7 +18,6 @@ import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:recase/recase.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -622,13 +621,16 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       ),
                       const SizedBox(height: spacer4),
                       assetTypeState.maybeWhen(
-                          battery: () => _batteryCapacity(theme, textTheme,
-                              _assets, currentAssetType.titleCase),
+                          battery: () => _batteryCapacity(
+                              theme,
+                              textTheme,
+                              _assets,
+                              assetTypeDisplayName(currentAssetType)),
                           panel: () => _panelCapacity(
                                 theme,
                                 textTheme,
                                 _assets,
-                                currentAssetType.titleCase,
+                                assetTypeDisplayName(currentAssetType),
                               ),
                           orElse: () => const SizedBox()),
                       ...visibleAssets.asMap().entries.map((e) {
@@ -638,7 +640,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                             context: context,
                             theme: theme,
                             textTheme: textTheme,
-                            heading: currentAssetType.titleCase,
+                            heading: assetTypeDisplayName(currentAssetType),
                             index: e.key,
                             asset: e.value,
                             maxAsset: maxAssets,

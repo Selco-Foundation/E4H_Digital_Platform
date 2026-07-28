@@ -8,7 +8,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' show basename;
-import 'package:recase/recase.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
@@ -178,7 +177,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
       },
       child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
         builder: (ctx, state) {
-          assetType = assetType.titleCase;
+          final displayAssetType = assetTypeDisplayName(assetType);
 
           final isDisabled = _selectedImages.isEmpty;
 
@@ -262,12 +261,12 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       const SizedBox(height: spacer4),
                       DigitCard(children: [
                         Text(
-                          '$assetType ${context.translate(i18.common.images)}',
+                          '$displayAssetType ${context.translate(i18.common.images)}',
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
                         Text(
-                          '${context.translate(i18.mediaUpload.addAllImages)} $assetType',
+                          '${context.translate(i18.mediaUpload.addAllImages)} $displayAssetType',
                           style: textTheme.bodyL.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
@@ -294,10 +293,11 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       ]),
                       const SizedBox(height: spacer4),
                       DigitCard(children: [
-                        Row(
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
-                              '$assetType ${context.translate(i18.common.videos)}',
+                              '$displayAssetType ${context.translate(i18.common.videos)}',
                               style: textTheme.headingXl.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),

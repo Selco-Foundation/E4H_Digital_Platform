@@ -18,6 +18,7 @@ import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:recase/recase.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
@@ -360,6 +361,13 @@ enum REPORT_TYPES {
 enum USER_TYPES { SUPERVISOR, FIELD_STAFF, AMC }
 
 enum ASSET_TYPES { BATTERY, INVERTER, PANEL }
+
+String assetTypeDisplayName(String typeCode) {
+  if (typeCode.toLowerCase() == ASSET_TYPES.INVERTER.name.toLowerCase()) {
+    return 'Inverter / PCU';
+  }
+  return typeCode.titleCase;
+}
 
 enum FormOrigin { overallSummary, inboxSummary, submitForApproval, submitted }
 

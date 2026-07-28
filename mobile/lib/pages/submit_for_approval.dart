@@ -886,7 +886,8 @@ class RejectedEditAssetSummary extends StatelessWidget {
           );
         }
         return DigitCard(children: [
-          _oneCard(context, 'Inverter', inverter, commentsByType['Inverter']),
+          _oneCard(context, 'Inverter', inverter, commentsByType['Inverter'],
+              displayLabel: 'Inverter / PCU'),
           _oneCard(context, 'Battery', battery, commentsByType['Battery']),
           _oneCard(context, 'Panel', panel, commentsByType['Panel'],
               isLast: true),
@@ -897,7 +898,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
 
   Widget _oneCard(
       BuildContext ctx, String assetType, int count, List<Comment>? comments,
-      {bool isLast = false}) {
+      {bool isLast = false, String? displayLabel}) {
     final theme = Theme.of(ctx);
     final textTheme = theme.digitTextTheme(ctx);
     final hasComments = comments != null && comments.isNotEmpty;
@@ -925,10 +926,12 @@ class RejectedEditAssetSummary extends StatelessWidget {
         Align(
             alignment: Alignment.centerLeft,
             child: Text(
-                assetType.toLowerCase() !=
-                        ASSET_TYPES.BATTERY.name.toLowerCase()
-                    ? '${assetType}s'
-                    : ctx.translate(i18.assetCount.batteries),
+                assetType.toLowerCase() == ASSET_TYPES.BATTERY.name.toLowerCase()
+                    ? ctx.translate(i18.assetCount.batteries)
+                    : assetType.toLowerCase() ==
+                            ASSET_TYPES.INVERTER.name.toLowerCase()
+                        ? 'Inverter/PCUs'
+                        : '${displayLabel ?? assetType}s',
                 style: textTheme.headingS)),
         Center(child: Text('$count', style: textTheme.bodyL)),
       ]),
