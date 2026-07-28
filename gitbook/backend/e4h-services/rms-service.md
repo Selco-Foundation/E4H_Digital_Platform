@@ -7,8 +7,8 @@ The RMS service collects telemetry from RMS devices, applies anomaly detection r
 ## Source location
 
 - Service path: `backend/e4h-services/rms-service`
-- README: `backend/e4h-services/rms-service/README.md`
-- OpenAPI spec: `backend/e4h-services/rms-service/openapi.json`
+- README: [`backend/e4h-services/rms-service/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/rms-service/README.md)
+- OpenAPI spec: [`backend/e4h-services/rms-service/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/rms-service/openapi.json)
 - Testing docs: `backend/e4h-services/rms-service/README-TESTING.md`, `backend/e4h-services/rms-service/TESTING.md`
 - LLD docs: `backend/e4h-services/rms-service/RMS_District_MDMS_Gating_LLD.md`, `backend/e4h-services/rms-service/RMS_Ticket_Pause_LLD.md`
 

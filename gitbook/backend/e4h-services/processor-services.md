@@ -7,7 +7,7 @@ Kafka-driven background worker that transcodes uploaded videos into multi-qualit
 ## Source location
 
 - Service path: `backend/e4h-services/processor-services`
-- README: `backend/e4h-services/processor-services/README.md`
+- README: [`backend/e4h-services/processor-services/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/processor-services/README.md)
 - Build file: `backend/e4h-services/processor-services/pom.xml`
 
 ## Service dependencies

@@ -7,9 +7,9 @@ The asset registry service manages E4H asset data and installation workflow cont
 ## Source location
 
 - Service path: `backend/e4h-services/asset-registry`
-- README: `backend/e4h-services/asset-registry/README.md`
+- README: [`backend/e4h-services/asset-registry/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/asset-registry/README.md)
 - Build file: `backend/e4h-services/asset-registry/pom.xml`
-- OpenAPI spec: `backend/e4h-services/asset-registry/openapi.json`
+- OpenAPI spec: [`backend/e4h-services/asset-registry/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/asset-registry/openapi.json)
 
 ## Responsibilities
 
