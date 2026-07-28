@@ -1506,13 +1506,12 @@ async def upload_icc_reports(
     forwarded to field-planner. Request-level problems (malformed `items` JSON, missing required
     field(s), wrong file extension, item/file count mismatch) are still reported as a plain JSON
     400 with `{"message", "errors": [{"index", "error"}, ...]}`. But a per-file ICC validation
-    failure (structural mismatch, wrong System Type, BOM/brand problems) is instead returned the
-    same way `/fieldPlanfacilitiesValidateData` reports its row failures: a 200 response whose body
-    is a downloadable Excel attachment (the offending file, with a new "Validation Errors" sheet
-    appended listing every problem found in it) and an `X-Error-Count` header holding the total
-    number of individual errors across every failing file (not the file count), instead of an HTTP
-    error status. If more than one file in the batch fails, all of them (each annotated) are bundled
-    into a `.zip` attachment instead.
+    failure (structural mismatch, wrong System Type, BOM/brand problems) is instead returned as a
+    400 response whose body is a downloadable Excel attachment (the offending file, with a new
+    "Validation Errors" sheet appended listing every problem found in it) and an `X-Error-Count`
+    header holding the total number of individual errors across every failing file (not the file
+    count). If more than one file in the batch fails, all of them (each annotated) are bundled into
+    a `.zip` attachment instead.
     """
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
@@ -1603,7 +1602,9 @@ async def upload_icc_reports(
                 media_type = "application/zip"
 
             background_tasks.add_task(cleanup_temp_file, output_path)
-            response = FileResponse(path=output_path, filename=response_filename, media_type=media_type)
+            response = FileResponse(
+                path=output_path, filename=response_filename, media_type=media_type, status_code=400
+            )
             response.headers["X-Error-Count"] = str(total_error_count)
             return response
 
@@ -1666,12 +1667,11 @@ async def update_icc_reports(
     JSON, missing required field(s), wrong file extension, item/file count mismatch) are still
     reported as a plain JSON 400 with `{"message", "errors": [{"index", "error"}, ...]}`. But a
     per-file ICC validation failure (structural mismatch, wrong System Type, BOM/brand problems) is
-    instead returned the same way `/fieldPlanfacilitiesValidateData` reports its row failures: a
-    200 response whose body is a downloadable Excel attachment (the offending file, with a new
-    "Validation Errors" sheet appended listing every problem found in it) and an `X-Error-Count`
-    header holding the total number of individual errors across every failing file (not the file
-    count), instead of an HTTP error status. If more than one file in the batch fails, all of them
-    (each annotated) are bundled into a `.zip` attachment
+    instead returned as a 400 response whose body is a downloadable Excel attachment (the offending
+    file, with a new "Validation Errors" sheet appended listing every problem found in it) and an
+    `X-Error-Count` header holding the total number of individual errors across every failing file
+    (not the file count). If more than one file in the batch fails, all of them (each annotated) are
+    bundled into a `.zip` attachment
     instead.
     """
     request_info_obj = request_info_from_json(request_info)
@@ -1773,7 +1773,9 @@ async def update_icc_reports(
                 media_type = "application/zip"
 
             background_tasks.add_task(cleanup_temp_file, output_path)
-            response = FileResponse(path=output_path, filename=response_filename, media_type=media_type)
+            response = FileResponse(
+                path=output_path, filename=response_filename, media_type=media_type, status_code=400
+            )
             response.headers["X-Error-Count"] = str(total_error_count)
             return response
 
