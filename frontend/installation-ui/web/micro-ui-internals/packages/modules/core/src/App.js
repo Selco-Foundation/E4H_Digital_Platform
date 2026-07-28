@@ -11,6 +11,20 @@ import SignUpV2 from "./pages/employee/SignUp-v2";
 import LoginV2 from "./pages/employee/Login-v2";
 import TermsPrivacyPolicy from "./pages/TermsPrivacyPolicy";
 
+const normalizeBasePath = (path) => path?.replace(/^\/+|\/+$/g, "");
+
+const getBasePaths = () => {
+  return Array.from(
+    new Set(
+      [window?.contextPath, window?.globalPath, window?.globalConfigs?.getConfig?.("CONTEXT_PATH")]
+        .map(normalizeBasePath)
+        .filter(Boolean)
+    )
+  );
+};
+
+const getRoutePaths = (route) => getBasePaths().map((basePath) => `/${basePath}/${route}`);
+
 export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite, initData, defaultLanding = "citizen",allowedUserTypes=["citizen","employee"] }) => {
   const history = useHistory();
   const { pathname } = useLocation();
@@ -75,10 +89,10 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
   };
   return (
     <Switch>
-      <Route exact path={`/${window?.contextPath}/privacy-policy`}>
+      <Route exact path={getRoutePaths("privacy-policy")}>
         <TermsPrivacyPolicy stateCode={stateCode} type="privacy" />
       </Route>
-      <Route exact path={`/${window?.contextPath}/terms-of-use`}>
+      <Route exact path={getRoutePaths("terms-of-use")}>
         <TermsPrivacyPolicy stateCode={stateCode} type="terms" />
       </Route>
      {allowedUserTypes?.some(userType=>userType=="employee")&& <Route path={`/${window?.contextPath}/employee`}>
@@ -103,7 +117,7 @@ export const DigitAppWrapper = ({ stateCode, modules, appTenants, logoUrl, logoU
   const { stateInfo } = storeData || {};
   const userScreensExempted = ["user/error"];
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
-  const isPublicPolicyPage = ["privacy-policy", "terms-of-use"].some((url) => location?.pathname === `/${window?.globalPath}/${url}`);
+  const isPublicPolicyPage = ["privacy-policy", "terms-of-use"].some((url) => getRoutePaths(url).includes(location?.pathname));
   const userDetails = Digit.UserService.getUser();
   let CITIZEN = userDetails?.info?.type === "CITIZEN" || !window.location.pathname.split("/").includes("employee") ? true : false;
   const innerWidth = window.innerWidth;
@@ -121,10 +135,10 @@ export const DigitAppWrapper = ({ stateCode, modules, appTenants, logoUrl, logoU
       }
     >
       <Switch>
-        <Route exact path={`/${window?.globalPath}/privacy-policy`}>
+        <Route exact path={getRoutePaths("privacy-policy")}>
           <TermsPrivacyPolicy stateCode={stateCode} type="privacy" />
         </Route>
-        <Route exact path={`/${window?.globalPath}/terms-of-use`}>
+        <Route exact path={getRoutePaths("terms-of-use")}>
           <TermsPrivacyPolicy stateCode={stateCode} type="terms" />
         </Route>
         <Route exact path={`/${window?.globalPath}/user/invalid-url`}>
