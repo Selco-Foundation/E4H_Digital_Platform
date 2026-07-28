@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Redirect, Route, Switch, useHistory, useLocation } from "react-router-dom";
 import CitizenApp from "./pages/citizen";
 import EmployeeApp from "./pages/employee";
@@ -25,10 +25,25 @@ const getBasePaths = () => {
 
 const getRoutePaths = (route) => getBasePaths().map((basePath) => `/${basePath}/${route}`);
 
+const useMobileView = () => {
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMobileView(window.innerWidth <= 640);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return mobileView;
+};
+
 export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite, initData, defaultLanding = "citizen",allowedUserTypes=["citizen","employee"] }) => {
   const history = useHistory();
   const { pathname } = useLocation();
-  const innerWidth = window.innerWidth;
+  const mobileView = useMobileView();
   const cityDetails = Digit.ULBService.getCurrentUlb();
   const userDetails = Digit.UserService.getUser();
   const { data: storeData } = Digit.Hooks.useStore.getInitData();
@@ -68,7 +83,6 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
     option.func();
   };
 
-  const mobileView = innerWidth <= 640;
   let sourceUrl = `${window.location.origin}/citizen`;
   const commonProps = {
     stateInfo,
@@ -120,8 +134,7 @@ export const DigitAppWrapper = ({ stateCode, modules, appTenants, logoUrl, logoU
   const isPublicPolicyPage = ["privacy-policy", "terms-of-use"].some((url) => getRoutePaths(url).includes(location?.pathname));
   const userDetails = Digit.UserService.getUser();
   let CITIZEN = userDetails?.info?.type === "CITIZEN" || !window.location.pathname.split("/").includes("employee") ? true : false;
-  const innerWidth = window.innerWidth;
-  const mobileView = innerWidth <= 640;
+  const mobileView = useMobileView();
 
   return (
     <div
