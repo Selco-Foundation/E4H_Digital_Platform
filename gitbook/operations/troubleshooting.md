@@ -1,30 +1,34 @@
 # Troubleshooting
 
+## Troubleshooting
+
+### Troubleshooting
+
 Use this page as the first checklist when local setup, integration, or deployment behavior is unclear.
 
-## Backend
+#### Backend
 
-- Check the service-level `README.md` and `LOCALSETUP.md`.
-- Confirm required environment variables and external dependencies.
-- Verify API contracts under `docs`.
-- Check related workflow or cron manifests if behavior is scheduled or asynchronous.
+* Check the service-level `README.md` and `LOCALSETUP.md`.
+* Confirm required environment variables and external dependencies.
+* Verify API contracts under `docs`.
+* Check related workflow or cron manifests if behavior is scheduled or asynchronous.
 
-## Frontend
+#### Frontend
 
-- Confirm Yarn dependencies are installed in the correct app directory.
-- Check `.env` values for backend and asset endpoints.
-- Confirm `REACT_APP_USER_TYPE` is correct for the flow being tested.
-- Compare UI behavior with sequence diagrams under `docs/ui-sequence-diagrams` where available.
+* Confirm Yarn dependencies are installed in the correct app directory.
+* Check `.env` values for backend and asset endpoints.
+* Confirm `REACT_APP_USER_TYPE` is correct for the flow being tested.
+* Compare UI behavior with sequence diagrams under `docs/ui-sequence-diagrams` where available.
 
-## Mobile
+#### Mobile
 
-- Run dependency resolution from the `mobile` directory.
-- Confirm Flutter SDK and platform tooling are installed.
-- Validate backend endpoint and environment configuration.
-- Test cache-backed workflows on a device or emulator when changing field flows.
+* Run dependency resolution from the `mobile` directory.
+* Confirm Flutter SDK and platform tooling are installed.
+* Validate backend endpoint and environment configuration.
+* Test cache-backed workflows on a device or emulator when changing field flows.
 
-## Documentation
+#### Documentation
 
-- If a GitBook page does not appear, check `gitbook/SUMMARY.md`.
-- If GitBook sync fails, check `.gitbook.yaml` and the configured branch.
-- If a link breaks, verify the path relative to the GitBook page location.
+* If a GitBook page does not appear, check the sidebar structure.
+* If GitBook sync fails, check `.gitbook.yaml` and the configured branch.
+* If a link breaks, verify the path relative to the page location.

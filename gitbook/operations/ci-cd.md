@@ -1,28 +1,32 @@
 # CI/CD
 
+## CI/CD
+
+### CI/CD
+
 CI workflows live under `.github/workflows`.
 
-## Workflow coverage
+#### Workflow coverage
 
 The repository includes workflows for:
 
-- Backend services such as asset registry, boundary service, facility registry, field planner, HRMS, ID generation, IM services, inbox, ingestion service, project service, RMS service, vendor registry, and workflow v2.
-- Frontend builds for multiple UI variants and state-specific UIs.
-- Installation QC and workbench UI.
-- SonarCloud analysis.
+* Backend services such as asset registry, boundary service, facility registry, field planner, HRMS, ID generation, IM services, inbox, ingestion service, project service, RMS service, vendor registry, and workflow v2.
+* Frontend builds for multiple UI variants and state-specific UIs.
+* Installation QC and workbench UI.
+* SonarCloud analysis.
 
-## Build configuration
+#### Build configuration
 
 Shared build assets live under:
 
-- `build/build-config.yml`
-- `frontend/build/build-config.yml`
-- `build/maven`
-- `build/maven-java8`
-- `build/python`
-- `build/adhoc`
+* `build/build-config.yml`
+* `frontend/build/build-config.yml`
+* `build/maven`
+* `build/maven-java8`
+* `build/python`
+* `build/adhoc`
 
-## Documentation guidance
+#### Documentation guidance
 
 When adding a service or app pipeline:
 
