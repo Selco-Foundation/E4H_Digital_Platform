@@ -127,6 +127,19 @@ const formatAmcNumbers = (amcNumbers) => {
   return amcNumbers.join(", ");
 }
 
+const getVisitAmcNumber = (visitData) => {
+  const visitNumber = Number(visitData?.visitNumber);
+  const durationMonths = Number(visitData?.amcConfiguration?.durationMonths);
+  const visitFrequencyMonths = Number(visitData?.amcConfiguration?.visitFrequencyMonths);
+
+  if (!visitNumber || !durationMonths || !visitFrequencyMonths) return "-";
+
+  const totalVisits = durationMonths / visitFrequencyMonths;
+  if (!Number.isFinite(totalVisits) || totalVisits <= 0) return "-";
+
+  return `${visitNumber}/${totalVisits}`;
+}
+
 const fetchFacilityAmcSummary = async (facilityId) => {
   if (!facilityId) return {};
 
@@ -174,6 +187,7 @@ const fetchVisitDetails = async (filter, limit, offset) => {
       district: facility.additionalDetails?.boundary?.district,
       status: visitData?.status,
       ...facilityAmcSummary,
+      amcNumber: getVisitAmcNumber(visitData),
       assigned: visitData?.assignments?.[0]?.user?.name,
     },
     visitReport: format,
