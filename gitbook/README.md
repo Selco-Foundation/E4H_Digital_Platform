@@ -1,5 +1,7 @@
 # E4H Digital Platform
 
+![Primary Health Centre, Kasom Khullen, powered by a solar installation](.gitbook/assets/kasom-khullen-phc-solar-installation.jpeg)
+
 This GitBook documents the E4H Digital Platform repository for developers, implementation teams, operators, and product stakeholders.
 
 The platform supports Selco Foundation's Energy for Health program through backend services, web applications, a Flutter mobile application, data ingestion flows, registries, workflows, and operational automation.
