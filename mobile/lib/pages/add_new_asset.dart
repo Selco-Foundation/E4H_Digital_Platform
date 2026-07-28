@@ -927,7 +927,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             //   ],
             // ),
             LabeledField(
-              label: context.translate(i18.common.current),
+              label: context.translate(i18.common.capacity),
               capitalizedFirstLetter: false,
               child: DigitTextFormInput(
                 key: ValueKey(
@@ -974,7 +974,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   .copyWith(color: theme.colorTheme.primary.primary2),
             ),
             LabeledField(
-              label: context.translate(i18.common.voltage),
+              label: context.translate(i18.common.capacity),
               capitalizedFirstLetter: false,
               child: DigitTextFormInput(
                 key: ValueKey('panel-cap-${_prefilledCapacityFor('panel')}'),
