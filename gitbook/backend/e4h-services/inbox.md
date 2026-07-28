@@ -8,6 +8,7 @@ The inbox service aggregates workflow and service data so applications can displ
 
 - Service path: `backend/e4h-services/inbox`
 - README: `backend/e4h-services/inbox/README.md`
+- OpenAPI spec: `backend/e4h-services/inbox/openapi.json`
 - Local setup: `backend/e4h-services/inbox/LOCALSETUP.md`
 - Changelog: `backend/e4h-services/inbox/CHANGELOG.md`
 
@@ -29,7 +30,21 @@ The README lists:
 
 ## API surface
 
-- `_search`: searches inbox application data based on provided criteria.
+Base context path: `/inbox`. Two API generations exist side by side: v1 (`InboxController`) and v2
+(`InboxV2Controller`). The complete contract, including request/response schemas and examples, is in
+`backend/e4h-services/inbox/openapi.json`.
+
+### v1
+
+- `POST /v1/_search` — search inbox application data (workflow + module data) based on criteria.
+- `POST /v1/dss/_search` — aggregate metric data for DSS charts.
+- `POST /v1/elastic/_search` — placeholder Elasticsearch-backed search endpoint; not wired up, currently returns a null body.
+
+### v2
+
+- `POST /v2/_search` — generic ES + workflow-driven inbox search.
+- `POST /v2/project/_search` — inbox search returning project-module-shaped results.
+- `POST /v2/_getFields` — fetch a specific set of fields from the configured ES index for matching documents.
 
 ## Operational notes
 

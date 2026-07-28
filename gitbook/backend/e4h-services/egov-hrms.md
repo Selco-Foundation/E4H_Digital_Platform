@@ -2,12 +2,13 @@
 
 ## Purpose
 
-HRMS manages employees enrolled in the system and exposes APIs to create, update, and search employee records.
+HRMS manages employees enrolled onto the system, including their assignments, jurisdictions, service history, educational details, departmental tests, and (de)activation history. It is treated as a superset/companion of `egov-user`: every employee created through HRMS is also created as a user in `egov-user`, using the employee code as the login username.
 
 ## Source location
 
 - Service path: `backend/e4h-services/egov-hrms`
 - README: `backend/e4h-services/egov-hrms/README.md`
+- OpenAPI spec: `backend/e4h-services/egov-hrms/openapi.json`
 - Local setup: `backend/e4h-services/egov-hrms/LOCALSETUP.md`
 - Changelog: `backend/e4h-services/egov-hrms/CHANGELOG.md`
 
@@ -17,7 +18,7 @@ HRMS manages employees enrolled in the system and exposes APIs to create, update
 - Captures assignments, departments, designations, and reporting relationships.
 - Captures jurisdictions.
 - Captures service history and educational details.
-- Creates or links employee records with `egov-user`.
+- Creates a corresponding user in `egov-user` for every employee, using the employee code as the login username, and keeps that user in sync on employee updates.
 
 ## Dependencies
 
@@ -28,6 +29,8 @@ The README lists:
 - `egov-idgen`
 - `egov-mdms`
 - `egov-filestore`
+- `egov-boundary-service`
+- `egov-otp`
 
 ## Key domain concepts
 
@@ -36,6 +39,18 @@ The README lists:
 - Service history: professional experience records.
 - Educational details: degree and qualification information.
 - Departmental tests: additional employee qualification information.
+- Deactivation/reactivation: employee lifecycle is tracked via status flags plus deactivation/reactivation detail records, not row deletion.
+
+## API surface
+
+BasePath: `/egov-hrms/employees`
+
+- `POST /employees/_create` — Create one or more employees, each with an embedded `egov-user` account. Validates for duplicate mobile number/username, MDMS-driven codes (employee type, department, designation, role, qualification, stream, departmental test), and data-sanity rules (exactly one current assignment, non-overlapping assignment/service periods, dates not before date of birth) before persisting.
+- `POST /employees/_update` — Update one or more existing employees (each must include its existing `id`, `uuid`, and unchanged `code`). Previously-created jurisdictions, assignments, service history, education, departmental tests, documents, and deactivation details can only be appended to or modified, not removed. Deactivating requires deactivation details with an MDMS-validated reason and an effective date equal to the current date; reactivating requires reactivation details whose effective date falls between the prior deactivation and now. Also propagates changes to the corresponding `egov-user` account.
+- `POST /employees/_search` — Search employees by any combination of query parameters (codes, names, departments, designations, roles, ids, uuids, employee statuses/types, positions, phone, tenantId, boundary codes, etc.); the JSON body carries only a `RequestInfo`. An open search (no criteria) requires the caller's role to be in `open.search.enabled.roles`. CITIZEN-type users cannot search by `ids`; `asOnDate` requires `departments`+`designations`; `roles`, `phone`, or `names` require `tenantId`.
+- `POST /employees/_count` — Get the total employee count for a given `tenantId`. Unlike the other three endpoints, the JSON request body here is a bare `RequestInfo` object (its fields at the top level) rather than wrapped under a `RequestInfo` key.
+
+The full OpenAPI 3 spec, including request/response schemas, lives at `backend/e4h-services/egov-hrms/openapi.json`.
 
 ## Operational notes
 

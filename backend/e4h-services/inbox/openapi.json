@@ -1,0 +1,1457 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "eGov Inbox Service",
+    "version": "1.0.0",
+    "description": "Aggregates workflow (ProcessInstance) data with the underlying module/business object and (in V2) with Elasticsearch-indexed data to serve unified 'inbox' listings (pending applications, tasks, etc.) to eGov DIGIT front-ends.\n\nAuthentication: this service does not use an `Authorization` HTTP header. Every request body embeds a `RequestInfo` object whose `authToken` field carries the Bearer JWT issued by egov-user's OAuth login (`POST /user/oauth/token` or `POST /user/_login`). The platform resolves the caller's identity/roles from `RequestInfo.authToken` (and the accompanying `RequestInfo.userInfo`), not from a separate header. Clients must obtain this token via egov-user before calling any endpoint below.",
+    "contact": {
+      "name": "eGov DIGIT",
+      "url": "https://github.com/egovernments"
+    }
+  },
+  "servers": [
+    {
+      "url": "/inbox",
+      "description": "Inbox service context path (server.servlet.context-path=/inbox, server.port=9011)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Inbox V1",
+      "description": "Legacy /v1 endpoints backed by direct downstream module/workflow calls"
+    },
+    {
+      "name": "Inbox V2",
+      "description": "/v2 endpoints backed by the generic, Elasticsearch-driven inbox query engine (InboxServiceV2 / InboxQueryBuilder)"
+    }
+  ],
+  "paths": {
+    "/v1/_search": {
+      "post": {
+        "tags": ["Inbox V1"],
+        "summary": "Search the inbox (V1)",
+        "description": "Fetches the list of workflow ProcessInstances matching the given search/jurisdiction/module criteria, joins each with its corresponding business object (from the owning module service) and workflow state, and returns a paginated inbox listing. Backed by InboxService.fetchInboxData.",
+        "operationId": "searchInboxV1",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InboxRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "inbox-services",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_search",
+                  "did": "web",
+                  "key": null,
+                  "msgId": "search-inbox-1752739200000",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJyYWppdi5rdW1hciIsInVzZXJfbmFtZSI6InJhaml2Lmt1bWFyIn0.h3f5F6P9k1xK2vQ0mQnJ5T8bR7YV2nM9wJcQe1lZ8oA",
+                  "userInfo": {
+                    "uuid": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "userName": "rajiv.kumar",
+                    "name": "Rajiv Kumar",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9945511111",
+                    "emailId": "rajiv.kumar@egov.org.in",
+                    "tenantId": "pg.citya",
+                    "active": true,
+                    "roles": [
+                      { "code": "PT_COUNTER_EMPLOYEE", "name": "PT Counter Employee", "tenantId": "pg.citya" },
+                      { "code": "EMPLOYEE", "name": "Employee", "tenantId": "pg.citya" }
+                    ]
+                  },
+                  "correlationId": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e"
+                },
+                "inbox": {
+                  "tenantId": "pg.citya",
+                  "processSearchCriteria": {
+                    "tenantId": "pg.citya",
+                    "businessService": ["PT.CREATE"],
+                    "moduleName": "PT",
+                    "status": ["PENDINGFORAPPROVAL"],
+                    "assignee": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "offset": 0,
+                    "limit": 10
+                  },
+                  "moduleSearchCriteria": {
+                    "tenantId": "pg.citya"
+                  },
+                  "jurisdictionSearchCriteria": {
+                    "boundaryType": "Ward",
+                    "boundary": ["WARD_01"]
+                  },
+                  "offset": 0,
+                  "limit": 10
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inbox items found successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InboxResponse" },
+                "example": {
+                  "responseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200500,
+                    "resMsgId": "uief87324",
+                    "msgId": "search-inbox-1752739200000",
+                    "status": "successful"
+                  },
+                  "totalCount": 1,
+                  "nearingSlaCount": 0,
+                  "statusMap": [
+                    { "PENDINGFORAPPROVAL": 1 }
+                  ],
+                  "items": [
+                    {
+                      "ProcessInstance": {
+                        "id": "8b3619b9-1c1c-4e29-8a6d-3f9c2b6e4d21",
+                        "tenantId": "pg.citya",
+                        "businessService": "PT.CREATE",
+                        "businessId": "PT-2026-07-17-000123",
+                        "action": "APPROVE",
+                        "moduleName": "PT",
+                        "state": {
+                          "uuid": "9d8c7b6a-5e4f-4a3b-9c2d-1e0f8a7b6c5d",
+                          "tenantId": "pg.citya",
+                          "businessServiceId": "PT.CREATE",
+                          "sla": 259200000,
+                          "totalSlaRemaining": 86400000,
+                          "state": "PENDINGFORAPPROVAL",
+                          "applicationStatus": "PENDINGFORAPPROVAL",
+                          "docUploadRequired": false,
+                          "isStartState": false,
+                          "isTerminateState": false,
+                          "isStateUpdatable": true,
+                          "actions": []
+                        },
+                        "comment": "Verified and forwarded for approval",
+                        "documents": [],
+                        "assigner": {
+                          "uuid": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                          "userName": "rajiv.kumar",
+                          "name": "Rajiv Kumar",
+                          "mobileNumber": "9945511111",
+                          "type": "EMPLOYEE",
+                          "tenantId": "pg.citya"
+                        },
+                        "assignes": [
+                          {
+                            "uuid": "3fa1c2e5-2b1d-4a9e-8c7f-6a5b4c3d2e1f",
+                            "userName": "asha.rao",
+                            "name": "Asha Rao",
+                            "mobileNumber": "9945522222",
+                            "type": "EMPLOYEE",
+                            "tenantId": "pg.citya"
+                          }
+                        ],
+                        "nextActions": [],
+                        "stateSla": 259200000,
+                        "businesssServiceSla": 604800000,
+                        "previousStatus": "APPLIED",
+                        "auditDetails": {
+                          "createdBy": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                          "lastModifiedBy": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                          "createdTime": 1752652800000,
+                          "lastModifiedTime": 1752739200000
+                        },
+                        "rating": null,
+                        "assignee": {
+                          "uuid": "3fa1c2e5-2b1d-4a9e-8c7f-6a5b4c3d2e1f",
+                          "userName": "asha.rao",
+                          "name": "Asha Rao",
+                          "mobileNumber": "9945522222",
+                          "type": "EMPLOYEE",
+                          "tenantId": "pg.citya"
+                        },
+                        "escalated": false
+                      },
+                      "businessObject": {
+                        "acknowldgementNumber": "PT-2026-07-17-000123",
+                        "status": "PENDINGFORAPPROVAL",
+                        "tenantId": "pg.citya"
+                      },
+                      "serviceObject": {}
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid/missing search criteria",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200600,
+                    "resMsgId": "uief87325",
+                    "msgId": "search-inbox-1752739200000",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "MODULE_SEARCH_INVLAID",
+                      "message": "Bussiness Service is mandatory for module search",
+                      "description": "processSearchCriteria.businessService must be provided for a module level search",
+                      "params": ["processSearchCriteria.businessService"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing/invalid RequestInfo.authToken",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200600,
+                    "resMsgId": "uief87326",
+                    "msgId": "search-inbox-1752739200000",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INVALID_AUTH_TOKEN",
+                      "message": "Authentication failed, invalid or expired authToken",
+                      "description": "RequestInfo.authToken could not be validated against egov-user",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - caller role not permitted to access the requested module inbox",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200600,
+                    "resMsgId": "uief87327",
+                    "msgId": "search-inbox-1752739200000",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INVALID_MODULE",
+                      "message": "Module search is not allowed for the given tenant/module combination",
+                      "description": "The requesting user's roles do not permit inbox access to the given moduleName",
+                      "params": ["PT"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found - configured module search path could not be resolved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200600,
+                    "resMsgId": "uief87328",
+                    "msgId": "search-inbox-1752739200000",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INVALID_MODULE_SEARCH_PATH",
+                      "message": "Unable to resolve search path for the given business service",
+                      "description": "No entry found in service.search.mapping for the businessService supplied in processSearchCriteria",
+                      "params": ["PT.CREATE"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200600,
+                    "resMsgId": "uief87329",
+                    "msgId": "search-inbox-1752739200000",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "PARSING_ERROR",
+                      "message": "Failed to parse response of ProcessInstance",
+                      "description": "Downstream egov-workflow-v2 response could not be deserialized",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dss/_search": {
+      "post": {
+        "tags": ["Inbox V1"],
+        "summary": "Get aggregated DSS inbox metrics",
+        "description": "Returns aggregate counts (e.g. pending/nearing-SLA counts per module) used by the DSS/analytics dashboards, keyed by metric name. Backed by DSSInboxFilterService.getAggregateData.",
+        "operationId": "getDssInboxMetrics",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InboxMetricCriteria" },
+              "example": {
+                "tenantId": "pg.citya",
+                "module": "PT"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Aggregated metric values keyed by metric name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": { "type": "number", "format": "double" },
+                  "description": "Map of metric name to aggregate BigDecimal value"
+                },
+                "example": {
+                  "totalPendingApplications": 42,
+                  "nearingSlaApplications": 5
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid module/tenant combination",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200600,
+                    "resMsgId": "uief87330",
+                    "msgId": null,
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INVALID_MODULE_DATA",
+                      "message": "Unable to compute aggregate data for the given module",
+                      "description": "module field in the request did not match any configured DSS metric source",
+                      "params": ["module"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87331", "msgId": null, "status": "failed" },
+                  "Errors": [ { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed, invalid or expired authToken", "description": "No RequestInfo/authToken supplied", "params": [] } ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87332", "msgId": null, "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE", "message": "Module search is not allowed for the given tenant/module combination", "description": "Caller not permitted to view DSS metrics for this module", "params": ["PT"] } ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87333", "msgId": null, "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE_SEARCH_PATH", "message": "Unable to resolve search path for the given business service", "description": "No dashboard-analytics mapping found for module", "params": ["PT"] } ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87334", "msgId": null, "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE_DATA", "message": "Unable to compute aggregate data for the given module", "description": "Unexpected error while calling egov-dashboard-analytics getChartV2", "params": [] } ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/elastic/_search": {
+      "post": {
+        "tags": ["Inbox V1"],
+        "summary": "Elasticsearch-backed inbox search (V1, reserved/unimplemented)",
+        "description": "Endpoint reserved for direct Elasticsearch-backed inbox search using InboxElasticSearchCriteria. NOTE: in the current implementation InboxController.elasticSearch always returns HTTP 200 with a null body (the ElasticSearchService dependency is commented out) - the contract below documents the intended request/response shape.",
+        "operationId": "elasticSearchInboxV1",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InboxElasticSearchRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "inbox-services",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_search",
+                  "did": "web",
+                  "key": null,
+                  "msgId": "es-search-1752739200000",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJyYWppdi5rdW1hciJ9.k2R8mQnJ5T8bR7YV2nM9wJcQe1lZ8oA9h3f5F6P9k1x",
+                  "userInfo": {
+                    "uuid": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "userName": "rajiv.kumar",
+                    "name": "Rajiv Kumar",
+                    "type": "EMPLOYEE",
+                    "tenantId": "pg.citya",
+                    "roles": [ { "code": "EMPLOYEE", "name": "Employee", "tenantId": "pg.citya" } ]
+                  },
+                  "correlationId": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e"
+                },
+                "InboxElasticSearchCriteria": {
+                  "indexKey": "pt-services-index-v1",
+                  "tenantId": "pg.citya",
+                  "fromDate": 1750000000000,
+                  "toDate": 1752739200000,
+                  "offset": 0,
+                  "limit": 10,
+                  "sortOrder": "desc"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw Elasticsearch hits, as a free-form map (currently always null in this build)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "nullable": true
+                },
+                "example": null
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid search criteria",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87335", "msgId": "es-search-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "PARSING_ERROR", "message": "Failed to parse response of ProcessInstance", "description": "InboxElasticSearchCriteria could not be parsed/validated", "params": [] } ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87336", "msgId": "es-search-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed, invalid or expired authToken", "description": "RequestInfo.authToken missing or invalid", "params": [] } ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87337", "msgId": "es-search-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE", "message": "Module search is not allowed for the given tenant/module combination", "description": "Caller not permitted to query this indexKey", "params": ["pt-services-index-v1"] } ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found - index not configured",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87338", "msgId": "es-search-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE_SEARCH_PATH", "message": "Unable to resolve search path for the given business service", "description": "indexKey does not resolve to a configured Elasticsearch index", "params": ["pt-services-index-v1"] } ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87339", "msgId": "es-search-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "PARSING_ERROR", "message": "Failed to parse response of ProcessInstance", "description": "Unexpected error while querying Elasticsearch", "params": [] } ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/_search": {
+      "post": {
+        "tags": ["Inbox V2"],
+        "summary": "Search the inbox (V2, Elasticsearch-driven)",
+        "description": "Generic, module-configurable inbox search backed by InboxServiceV2/InboxQueryBuilder, which builds an Elasticsearch query from the configured InboxQueryConfiguration for the given module and returns matching ProcessInstance-joined items. On any server-side exception this endpoint returns HTTP 500 with an empty body.",
+        "operationId": "searchInboxV2",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InboxRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "inbox-services",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_search",
+                  "did": "web",
+                  "key": null,
+                  "msgId": "search-inbox-v2-1752739200000",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhc2hhLnJhbyJ9.9wJcQe1lZ8oA9h3f5F6P9k1xK2vQ0mQnJ5T8bR7YV2nM",
+                  "userInfo": {
+                    "uuid": "3fa1c2e5-2b1d-4a9e-8c7f-6a5b4c3d2e1f",
+                    "userName": "asha.rao",
+                    "name": "Asha Rao",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9945522222",
+                    "tenantId": "pg.citya",
+                    "roles": [ { "code": "PT_APPROVER", "name": "PT Approver", "tenantId": "pg.citya" } ]
+                  },
+                  "correlationId": "c2d3e4f5-a6b7-4c8d-9e0f-1a2b3c4d5e6f"
+                },
+                "inbox": {
+                  "tenantId": "pg.citya",
+                  "processSearchCriteria": {
+                    "tenantId": "pg.citya",
+                    "businessService": ["PT.CREATE"],
+                    "moduleName": "PT",
+                    "assignee": "3fa1c2e5-2b1d-4a9e-8c7f-6a5b4c3d2e1f",
+                    "offset": 0,
+                    "limit": 10
+                  },
+                  "moduleSearchCriteria": {},
+                  "offset": 0,
+                  "limit": 10
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inbox items found successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InboxResponse" },
+                "example": {
+                  "responseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200500,
+                    "resMsgId": "uief87340",
+                    "msgId": "search-inbox-v2-1752739200000",
+                    "status": "successful"
+                  },
+                  "totalCount": 1,
+                  "nearingSlaCount": 0,
+                  "statusMap": [ { "PENDINGFORAPPROVAL": 1 } ],
+                  "items": [
+                    {
+                      "ProcessInstance": {
+                        "id": "8b3619b9-1c1c-4e29-8a6d-3f9c2b6e4d21",
+                        "tenantId": "pg.citya",
+                        "businessService": "PT.CREATE",
+                        "businessId": "PT-2026-07-17-000123",
+                        "action": "APPROVE",
+                        "moduleName": "PT",
+                        "state": {
+                          "uuid": "9d8c7b6a-5e4f-4a3b-9c2d-1e0f8a7b6c5d",
+                          "tenantId": "pg.citya",
+                          "businessServiceId": "PT.CREATE",
+                          "state": "PENDINGFORAPPROVAL",
+                          "applicationStatus": "PENDINGFORAPPROVAL",
+                          "isStartState": false,
+                          "isTerminateState": false,
+                          "isStateUpdatable": true
+                        },
+                        "escalated": false
+                      },
+                      "businessObject": {
+                        "acknowldgementNumber": "PT-2026-07-17-000123",
+                        "status": "PENDINGFORAPPROVAL"
+                      },
+                      "serviceObject": {}
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid search criteria",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87341", "msgId": "search-inbox-v2-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_OPERATOR_DATA", "message": "Unsupported Operator", "description": "One of the configured SearchParam operators for this module is not supported by InboxQueryBuilder", "params": ["operator"] } ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87342", "msgId": "search-inbox-v2-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed, invalid or expired authToken", "description": "RequestInfo.authToken missing or invalid", "params": [] } ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87343", "msgId": "search-inbox-v2-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE", "message": "Module search is not allowed for the given tenant/module combination", "description": "Caller role does not permit access to this module's inbox", "params": ["PT"] } ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found - no InboxQueryConfiguration for module",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87344", "msgId": "search-inbox-v2-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE_SEARCH_PATH", "message": "Unable to resolve search path for the given business service", "description": "No InboxQueryConfiguration/index mapping registered for moduleName", "params": ["PT"] } ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error (controller catches all exceptions and returns an empty body with this status)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87345", "msgId": "search-inbox-v2-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "PARSING_ERROR", "message": "Failed to parse response of ProcessInstance", "description": "Unhandled exception while building/executing the Elasticsearch inbox query", "params": [] } ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/project/_search": {
+      "post": {
+        "tags": ["Inbox V2"],
+        "summary": "Search the project inbox (V2)",
+        "description": "Same query engine as /v2/_search, but joins ProcessInstance with Project module data instead of a generic business object. Backed by InboxServiceV2.getInboxResponseProject. On any server-side exception this endpoint returns HTTP 500 with an empty body.",
+        "operationId": "searchInboxProjectV2",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InboxRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "inbox-services",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_search",
+                  "did": "web",
+                  "key": null,
+                  "msgId": "search-project-inbox-1752739200000",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhc2hhLnJhbyJ9.k2R8mQnJ5T8bR7YV2nM9wJcQe1lZ8oA9h3f5F6P9k1x",
+                  "userInfo": {
+                    "uuid": "3fa1c2e5-2b1d-4a9e-8c7f-6a5b4c3d2e1f",
+                    "userName": "asha.rao",
+                    "name": "Asha Rao",
+                    "type": "EMPLOYEE",
+                    "tenantId": "pg.citya",
+                    "roles": [ { "code": "PROJECT_APPROVER", "name": "Project Approver", "tenantId": "pg.citya" } ]
+                  },
+                  "correlationId": "d3e4f5a6-b7c8-4d9e-0f1a-2b3c4d5e6f7a"
+                },
+                "inbox": {
+                  "tenantId": "pg.citya",
+                  "processSearchCriteria": {
+                    "tenantId": "pg.citya",
+                    "businessService": ["PROJECT_APPROVAL"],
+                    "moduleName": "PROJECT",
+                    "offset": 0,
+                    "limit": 10
+                  },
+                  "offset": 0,
+                  "limit": 10
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project inbox items found successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProjectResponse" },
+                "example": {
+                  "responseInfo": {
+                    "apiId": "inbox-services",
+                    "ver": "1.0",
+                    "ts": 1752739200500,
+                    "resMsgId": "uief87346",
+                    "msgId": "search-project-inbox-1752739200000",
+                    "status": "successful"
+                  },
+                  "totalCount": 1,
+                  "items": [
+                    {
+                      "ProcessInstance": {
+                        "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+                        "tenantId": "pg.citya",
+                        "businessService": "PROJECT_APPROVAL",
+                        "businessId": "PROJ-2026-07-17-000045",
+                        "action": "APPROVE",
+                        "moduleName": "PROJECT",
+                        "state": {
+                          "state": "PENDINGFORAPPROVAL",
+                          "applicationStatus": "PENDINGFORAPPROVAL",
+                          "isStartState": false,
+                          "isTerminateState": false,
+                          "isStateUpdatable": true
+                        },
+                        "escalated": false
+                      },
+                      "project": {
+                        "id": "PROJ-2026-07-17-000045",
+                        "name": "Ward 4 Drainage Improvement",
+                        "tenantId": "pg.citya"
+                      },
+                      "serviceObject": {}
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid search criteria",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87347", "msgId": "search-project-inbox-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_OPERATOR_DATA", "message": "Unsupported Operator", "description": "One of the configured SearchParam operators for the PROJECT module is not supported", "params": ["operator"] } ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87348", "msgId": "search-project-inbox-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed, invalid or expired authToken", "description": "RequestInfo.authToken missing or invalid", "params": [] } ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87349", "msgId": "search-project-inbox-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE", "message": "Module search is not allowed for the given tenant/module combination", "description": "Caller role does not permit access to the PROJECT inbox", "params": ["PROJECT"] } ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found - no InboxQueryConfiguration for module",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87350", "msgId": "search-project-inbox-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE_SEARCH_PATH", "message": "Unable to resolve search path for the given business service", "description": "No InboxQueryConfiguration/index mapping registered for PROJECT", "params": ["PROJECT"] } ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error (controller catches all exceptions and returns an empty body with this status)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87351", "msgId": "search-project-inbox-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "PARSING_ERROR", "message": "Failed to parse response of ProcessInstance", "description": "Unhandled exception while building/executing the project inbox query", "params": [] } ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/_getFields": {
+      "post": {
+        "tags": ["Inbox V2"],
+        "summary": "Fetch specific fields from the module's Elasticsearch index",
+        "description": "Given a moduleName/tenantId/moduleSearchCriteria, returns only the configured 'sourceFilterPathList' fields for each matching document from the corresponding Elasticsearch index. Backed by InboxServiceV2.getSpecificFieldsFromESIndex.",
+        "operationId": "searchInboxFieldsV2",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SearchRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "inbox-services",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_getFields",
+                  "did": "web",
+                  "key": null,
+                  "msgId": "get-fields-1752739200000",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhc2hhLnJhbyJ9.h3f5F6P9k1xK2vQ0mQnJ5T8bR7YV2nM9wJcQe1lZ8oA",
+                  "userInfo": {
+                    "uuid": "3fa1c2e5-2b1d-4a9e-8c7f-6a5b4c3d2e1f",
+                    "userName": "asha.rao",
+                    "name": "Asha Rao",
+                    "type": "EMPLOYEE",
+                    "tenantId": "pg.citya",
+                    "roles": [ { "code": "PT_APPROVER", "name": "PT Approver", "tenantId": "pg.citya" } ]
+                  },
+                  "correlationId": "e4f5a6b7-c8d9-4e0f-1a2b-3c4d5e6f7a8b"
+                },
+                "SearchCriteria": {
+                  "tenantId": "pg.citya",
+                  "moduleName": "PT",
+                  "moduleSearchCriteria": {
+                    "status": "PENDINGFORAPPROVAL"
+                  },
+                  "offset": 0,
+                  "limit": 10
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of documents, each reduced to the configured field list",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SearchResponse" },
+                "example": {
+                  "data": [
+                    {
+                      "fields": [
+                        { "key": "acknowldgementNumber", "value": "PT-2026-07-17-000123" },
+                        { "key": "status", "value": "PENDINGFORAPPROVAL" },
+                        { "key": "ownerName", "value": "Rajiv Kumar" }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid search criteria",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87352", "msgId": "get-fields-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_OPERATOR_DATA", "message": "Unsupported Operator", "description": "One of the configured SearchParam operators for this module is not supported by InboxQueryBuilder", "params": ["operator"] } ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87353", "msgId": "get-fields-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_AUTH_TOKEN", "message": "Authentication failed, invalid or expired authToken", "description": "RequestInfo.authToken missing or invalid", "params": [] } ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87354", "msgId": "get-fields-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE", "message": "Module search is not allowed for the given tenant/module combination", "description": "Caller role does not permit field-level access to this module's index", "params": ["PT"] } ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found - no InboxQueryConfiguration for module",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87355", "msgId": "get-fields-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "INVALID_MODULE_SEARCH_PATH", "message": "Unable to resolve search path for the given business service", "description": "No InboxQueryConfiguration/sourceFilterPathList registered for moduleName", "params": ["PT"] } ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "inbox-services", "ver": "1.0", "ts": 1752739200600, "resMsgId": "uief87356", "msgId": "get-fields-1752739200000", "status": "failed" },
+                  "Errors": [ { "code": "PARSING_ERROR", "message": "Failed to parse response of ProcessInstance", "description": "Unexpected error while querying the Elasticsearch index for the requested fields", "params": [] } ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RequestInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT request envelope metadata. Carries the caller's identity via authToken - there is no separate Authorization header.",
+        "required": ["apiId", "ver", "ts", "action", "msgId"],
+        "properties": {
+          "apiId": { "type": "string", "maxLength": 128, "example": "inbox-services" },
+          "ver": { "type": "string", "maxLength": 32, "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "description": "Epoch millis at which the request was created", "example": 1752739200000 },
+          "action": { "type": "string", "maxLength": 32, "example": "_search" },
+          "did": { "type": "string", "maxLength": 1024, "nullable": true, "example": "web" },
+          "key": { "type": "string", "maxLength": 256, "nullable": true },
+          "msgId": { "type": "string", "maxLength": 256, "example": "search-inbox-1752739200000" },
+          "requesterId": { "type": "string", "maxLength": 256, "nullable": true, "example": "" },
+          "authToken": {
+            "type": "string",
+            "nullable": true,
+            "description": "Bearer JWT access token obtained from egov-user's OAuth login (POST /user/oauth/token or POST /user/_login). This field is the authentication carrier for every API in this service - it is validated in lieu of an Authorization header.",
+            "example": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJyYWppdi5rdW1hciJ9.h3f5F6P9k1xK2vQ0mQnJ5T8bR7YV2nM9wJcQe1lZ8oA"
+          },
+          "userInfo": { "$ref": "#/components/schemas/UserInfo" },
+          "correlationId": { "type": "string", "nullable": true, "example": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e" }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "Authenticated user detail echoed in RequestInfo, resolved server-side from authToken.",
+        "required": ["uuid", "userName"],
+        "properties": {
+          "uuid": { "type": "string", "format": "uuid", "example": "7c9e6679-7425-40de-944b-e07fc1f90ae7" },
+          "userName": { "type": "string", "example": "rajiv.kumar" },
+          "name": { "type": "string", "example": "Rajiv Kumar" },
+          "type": { "type": "string", "example": "EMPLOYEE" },
+          "mobileNumber": { "type": "string", "example": "9945511111" },
+          "emailId": { "type": "string", "nullable": true, "example": "rajiv.kumar@egov.org.in" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "active": { "type": "boolean", "example": true },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UserRole" }
+          }
+        }
+      },
+      "UserRole": {
+        "type": "object",
+        "required": ["code", "name", "tenantId"],
+        "properties": {
+          "code": { "type": "string", "example": "EMPLOYEE" },
+          "name": { "type": "string", "example": "Employee" },
+          "tenantId": { "type": "string", "example": "pg.citya" }
+        }
+      },
+      "ResponseInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT response envelope metadata.",
+        "required": ["apiId", "ver", "ts", "status"],
+        "properties": {
+          "apiId": { "type": "string", "maxLength": 128, "example": "inbox-services" },
+          "ver": { "type": "string", "maxLength": 32, "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "example": 1752739200500 },
+          "resMsgId": { "type": "string", "nullable": true, "example": "uief87324" },
+          "msgId": { "type": "string", "maxLength": 256, "nullable": true, "example": "search-inbox-1752739200000" },
+          "status": { "type": "string", "enum": ["successful", "failed"], "example": "successful" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Error object returned as part of the response body whenever ResponseInfo.status is 'failed'.",
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Module specific error code. Real values used by this service are defined in org.egov.inbox.util.ErrorConstants (e.g. PARSING_ERROR, MODULE_SEARCH_INVLAID, INVALID_MODULE_SEARCH_PATH, INVALID_MODULE, INVALID_MODULE_DATA, INVALID_OPERATOR_DATA).",
+            "example": "MODULE_SEARCH_INVLAID"
+          },
+          "message": {
+            "type": "string",
+            "description": "English locale message of the error code.",
+            "example": "Bussiness Service is mandatory for module search"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional long description of the error to help clients take remedial action.",
+            "example": "processSearchCriteria.businessService must be provided for a module level search"
+          },
+          "params": {
+            "type": "array",
+            "nullable": true,
+            "items": { "type": "string" },
+            "description": "Replaceable fields referenced by the message (e.g. $1, $2).",
+            "example": ["processSearchCriteria.businessService"]
+          }
+        }
+      },
+      "ErrorRes": {
+        "type": "object",
+        "description": "Standard error envelope returned by every endpoint in this service whenever request processing fails.",
+        "required": ["ResponseInfo", "Errors"],
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "Errors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "AuditDetails": {
+        "type": "object",
+        "description": "Collection of audit related fields used by most models.",
+        "properties": {
+          "createdBy": { "type": "string", "nullable": true, "example": "7c9e6679-7425-40de-944b-e07fc1f90ae7" },
+          "lastModifiedBy": { "type": "string", "nullable": true, "example": "7c9e6679-7425-40de-944b-e07fc1f90ae7" },
+          "createdTime": { "type": "integer", "format": "int64", "nullable": true, "example": 1752652800000 },
+          "lastModifiedTime": { "type": "integer", "format": "int64", "nullable": true, "example": 1752739200000 }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "description": "Document attached during a workflow transition.",
+        "properties": {
+          "id": { "type": "string", "maxLength": 64, "nullable": true },
+          "documentType": { "type": "string", "nullable": true },
+          "fileStore": { "type": "string", "nullable": true },
+          "documentUid": { "type": "string", "maxLength": 64, "nullable": true },
+          "additionalDetails": { "nullable": true },
+          "tenantId": { "type": "string", "nullable": true },
+          "fileStoreId": { "type": "string", "nullable": true },
+          "auditDetails": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          }
+        }
+      },
+      "WorkflowUser": {
+        "type": "object",
+        "description": "Minimal user reference used inside workflow ProcessInstance (org.egov.common.contract.request.User) - the assigner/assignee/assignes of a workflow step.",
+        "properties": {
+          "uuid": { "type": "string", "format": "uuid", "example": "3fa1c2e5-2b1d-4a9e-8c7f-6a5b4c3d2e1f" },
+          "userName": { "type": "string", "example": "asha.rao" },
+          "name": { "type": "string", "example": "Asha Rao" },
+          "mobileNumber": { "type": "string", "nullable": true, "example": "9945522222" },
+          "emailId": { "type": "string", "nullable": true },
+          "type": { "type": "string", "example": "EMPLOYEE" },
+          "tenantId": { "type": "string", "example": "pg.citya" }
+        }
+      },
+      "Action": {
+        "type": "object",
+        "description": "A workflow transition option from the current state.",
+        "properties": {
+          "uuid": { "type": "string", "maxLength": 256, "nullable": true },
+          "tenantId": { "type": "string", "maxLength": 256, "nullable": true },
+          "currentState": { "type": "string", "maxLength": 256, "nullable": true },
+          "action": { "type": "string", "maxLength": 256, "nullable": true, "example": "APPROVE" },
+          "nextState": { "type": "string", "maxLength": 256, "nullable": true },
+          "roles": {
+            "type": "array",
+            "nullable": true,
+            "items": { "type": "string" }
+          },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "State": {
+        "type": "object",
+        "description": "Current workflow state of a ProcessInstance.",
+        "properties": {
+          "uuid": { "type": "string", "maxLength": 256, "nullable": true },
+          "tenantId": { "type": "string", "maxLength": 256, "nullable": true },
+          "businessServiceId": { "type": "string", "maxLength": 256, "nullable": true },
+          "sla": { "type": "integer", "format": "int64", "nullable": true },
+          "totalSlaRemaining": { "type": "integer", "format": "int64", "nullable": true },
+          "state": { "type": "string", "maxLength": 256, "nullable": true, "example": "PENDINGFORAPPROVAL" },
+          "applicationStatus": { "type": "string", "maxLength": 256, "nullable": true, "example": "PENDINGFORAPPROVAL" },
+          "docUploadRequired": { "type": "boolean", "nullable": true },
+          "isStartState": { "type": "boolean", "nullable": true },
+          "isTerminateState": { "type": "boolean", "nullable": true },
+          "isStateUpdatable": { "type": "boolean", "nullable": true },
+          "actions": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/Action" }
+          }
+        }
+      },
+      "ProcessInstance": {
+        "type": "object",
+        "description": "A single workflow instance/step for a business object, as returned by egov-workflow-v2.",
+        "required": ["tenantId", "businessService", "businessId", "action", "moduleName"],
+        "properties": {
+          "id": { "type": "string", "maxLength": 64, "nullable": true },
+          "tenantId": { "type": "string", "maxLength": 128, "example": "pg.citya" },
+          "businessService": { "type": "string", "maxLength": 128, "example": "PT.CREATE" },
+          "businessId": { "type": "string", "maxLength": 128, "example": "PT-2026-07-17-000123" },
+          "action": { "type": "string", "maxLength": 128, "example": "APPROVE" },
+          "moduleName": { "type": "string", "maxLength": 64, "example": "PT" },
+          "state": { "$ref": "#/components/schemas/State" },
+          "comment": { "type": "string", "nullable": true },
+          "documents": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/Document" }
+          },
+          "assigner": { "$ref": "#/components/schemas/WorkflowUser" },
+          "assignes": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/WorkflowUser" }
+          },
+          "nextActions": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/Action" }
+          },
+          "stateSla": { "type": "integer", "format": "int64", "nullable": true },
+          "businesssServiceSla": { "type": "integer", "format": "int64", "nullable": true },
+          "previousStatus": { "type": "string", "maxLength": 128, "nullable": true, "example": "APPLIED" },
+          "entity": { "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "rating": { "type": "integer", "nullable": true },
+          "assignee": { "$ref": "#/components/schemas/WorkflowUser" },
+          "escalated": { "type": "boolean", "example": false }
+        }
+      },
+      "ProcessInstanceSearchCriteria": {
+        "type": "object",
+        "description": "Criteria used to search workflow ProcessInstances.",
+        "required": ["businessService"],
+        "properties": {
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "status": {
+            "type": "array",
+            "nullable": true,
+            "items": { "type": "string" },
+            "example": ["PENDINGFORAPPROVAL"]
+          },
+          "businessIds": {
+            "type": "array",
+            "nullable": true,
+            "items": { "type": "string" }
+          },
+          "assignee": { "type": "string", "nullable": true, "example": "7c9e6679-7425-40de-944b-e07fc1f90ae7" },
+          "ids": {
+            "type": "array",
+            "nullable": true,
+            "items": { "type": "string" }
+          },
+          "history": { "type": "boolean", "default": false },
+          "fromDate": { "type": "integer", "format": "int64", "nullable": true },
+          "toDate": { "type": "integer", "format": "int64", "nullable": true },
+          "offset": { "type": "integer", "nullable": true, "example": 0 },
+          "limit": { "type": "integer", "nullable": true, "example": 10 },
+          "businessService": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["PT.CREATE"]
+          },
+          "moduleName": { "type": "string", "nullable": true, "example": "PT" }
+        }
+      },
+      "InboxSearchCriteria": {
+        "type": "object",
+        "description": "Top-level inbox search criteria combining workflow, module and jurisdiction filters (V1).",
+        "required": ["tenantId"],
+        "properties": {
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "processSearchCriteria": { "$ref": "#/components/schemas/ProcessInstanceSearchCriteria" },
+          "moduleSearchCriteria": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Free-form criteria passed through to the owning module's search API"
+          },
+          "jurisdictionSearchCriteria": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Free-form boundary/jurisdiction filter"
+          },
+          "offset": { "type": "integer", "nullable": true, "example": 0 },
+          "limit": { "type": "integer", "maximum": 300, "nullable": true, "example": 10 }
+        }
+      },
+      "InboxRequest": {
+        "type": "object",
+        "description": "Request wrapper used by /v1/_search, /v2/_search and /v2/project/_search.",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "inbox": { "$ref": "#/components/schemas/InboxSearchCriteria" }
+        }
+      },
+      "Inbox": {
+        "type": "object",
+        "description": "A single inbox result item joining the workflow ProcessInstance with its business/service object (V1 and V2 /_search).",
+        "properties": {
+          "ProcessInstance": { "$ref": "#/components/schemas/ProcessInstance" },
+          "businessObject": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "The module's own business object (e.g. Property, License) as a free-form map"
+          },
+          "serviceObject": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Related service object (e.g. FSM service/trip), as a free-form map"
+          }
+        }
+      },
+      "InboxResponse": {
+        "type": "object",
+        "description": "Response for /v1/_search and /v2/_search.",
+        "properties": {
+          "responseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "totalCount": { "type": "integer", "nullable": true, "example": 1 },
+          "nearingSlaCount": { "type": "integer", "nullable": true, "example": 0 },
+          "statusMap": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": { "type": "integer" }
+            },
+            "description": "List of single-entry maps of applicationStatus to count"
+          },
+          "items": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/Inbox" }
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "description": "A single project-inbox result item joining the workflow ProcessInstance with the Project module object (V2 /project/_search).",
+        "properties": {
+          "ProcessInstance": { "$ref": "#/components/schemas/ProcessInstance" },
+          "project": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "The Project module's own object, as a free-form map"
+          },
+          "serviceObject": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          }
+        }
+      },
+      "ProjectResponse": {
+        "type": "object",
+        "description": "Response for /v2/project/_search.",
+        "properties": {
+          "responseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "items": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/Project" }
+          },
+          "totalCount": { "type": "integer", "nullable": true, "example": 1 }
+        }
+      },
+      "InboxMetricCriteria": {
+        "type": "object",
+        "description": "Criteria for the DSS aggregate inbox metrics endpoint (/v1/dss/_search).",
+        "properties": {
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "module": { "type": "string", "example": "PT" }
+        }
+      },
+      "InboxElasticSearchCriteria": {
+        "type": "object",
+        "description": "Search criteria for the reserved Elasticsearch-backed V1 endpoint.",
+        "required": ["indexKey", "tenantId"],
+        "properties": {
+          "indexKey": { "type": "string", "example": "pt-services-index-v1" },
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "fromDate": { "type": "integer", "format": "int64", "example": 1750000000000 },
+          "toDate": { "type": "integer", "format": "int64", "example": 1752739200000 },
+          "offset": { "type": "integer", "nullable": true, "example": 0 },
+          "limit": { "type": "integer", "maximum": 300, "nullable": true, "example": 10 },
+          "sortOrder": { "type": "string", "nullable": true, "example": "desc" }
+        }
+      },
+      "InboxElasticSearchRequest": {
+        "type": "object",
+        "description": "Request wrapper for /v1/elastic/_search.",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "InboxElasticSearchCriteria": { "$ref": "#/components/schemas/InboxElasticSearchCriteria" }
+        }
+      },
+      "IndexSearchCriteria": {
+        "type": "object",
+        "description": "Search criteria for the generic V2 Elasticsearch query engine.",
+        "required": ["tenantId", "moduleName"],
+        "properties": {
+          "tenantId": { "type": "string", "example": "pg.citya" },
+          "moduleName": { "type": "string", "example": "PT" },
+          "moduleSearchCriteria": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "offset": { "type": "integer", "nullable": true, "example": 0 },
+          "limit": { "type": "integer", "maximum": 300, "nullable": true, "example": 10 }
+        }
+      },
+      "SearchRequest": {
+        "type": "object",
+        "description": "Request wrapper for /v2/_getFields.",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "SearchCriteria": { "$ref": "#/components/schemas/IndexSearchCriteria" }
+        }
+      },
+      "Field": {
+        "type": "object",
+        "description": "A single projected key/value field from an indexed document.",
+        "properties": {
+          "key": { "type": "string", "example": "acknowldgementNumber" },
+          "value": { "description": "Value of the field; type varies by field", "example": "PT-2026-07-17-000123" }
+        }
+      },
+      "Data": {
+        "type": "object",
+        "description": "One matching document, reduced to its projected fields.",
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Field" }
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "description": "Response for /v2/_getFields.",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Data" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@ The RMS service collects telemetry from RMS devices, applies anomaly detection r
 
 - Service path: `backend/e4h-services/rms-service`
 - README: `backend/e4h-services/rms-service/README.md`
+- OpenAPI spec: `backend/e4h-services/rms-service/openapi.json`
 - Testing docs: `backend/e4h-services/rms-service/README-TESTING.md`, `backend/e4h-services/rms-service/TESTING.md`
 - LLD docs: `backend/e4h-services/rms-service/RMS_District_MDMS_Gating_LLD.md`, `backend/e4h-services/rms-service/RMS_Ticket_Pause_LLD.md`
 
@@ -49,12 +50,29 @@ The README describes:
 
 ## API surface
 
-Documented endpoints include:
+All endpoints are served under the `/rms-service` context path. Full request/response schemas are in the OpenAPI spec at `backend/e4h-services/rms-service/openapi.json`.
 
-- `POST /rms-service/v1/trigger`: manually triggers RMS workflow execution.
-- `POST /rms-service/v1/mapping/sync`: syncs mapping data.
+RMS workflow:
 
-Check the service README and code for the full endpoint list.
+- `POST /rms-service/v1/trigger`: synchronously runs the full RMS workflow (collects facility telemetry, evaluates alert rules, creates IM-service tickets for tripped rules); also used as a CronJob target.
+- `POST /rms-service/v1/mapping/sync`: refreshes the center-id-to-HFR-id mapping table from the RMS mapping API, falling back to deriving mappings from the inverter-no-signal facility data collection endpoint if that call fails.
+- `POST /rms-service/v1/mapping/validate`: validates existing center-id-to-HFR-id mappings not revalidated within the configured window (default 7 days).
+
+Ticket status:
+
+- `POST /rms-service/v1/ticket/status/update`: webhook called by Saura eMitra on ticket status changes; marks matching `active_alerts` rows resolved on closed/resolved statuses (RESOLVED, CLOSEDAFTERRESOLUTION, REJECTED, CLOSEDAFTERREJECTION).
+
+Ticket pause:
+
+- `POST /rms-service/v1/ticket/pause`: pauses or resumes RMS auto-ticket creation for a facility; `action=PAUSE` requires a future `pausedUntil` timestamp, `action=RESUME` deactivates any active pause; publishes a pause/resume audit Kafka event on both paths.
+- `POST /rms-service/v1/ticket/pause/_search`: returns whether a facility currently has an active auto-ticket-creation pause and how many days remain.
+- `POST /rms-service/v1/ticket/paused_facility`: lists currently paused facilities under a boundary filter (most specific of boundaryCodes, block, district, state wins).
+- `POST /rms-service/v1/ticket/pause/_expire`: CronJob target that deactivates pauses whose `pausedUntil` has elapsed and publishes a RESUME audit event for each.
+
+CO2:
+
+- `POST /rms-service/v1/co2/consumption/monthly/batch`: resolves each requested facility/month/year to a Selco center id and fetches solar/grid kWh consumption for that month from the Selco Elmeasure dashboard graph API; unmapped facilities come back with null consumption and `source=CENTER_NOT_MAPPED`.
+- `GET /rms-service/v1/co2/reference`: returns grid intensity factors, archetype lookups, archetype properties, and state sunshine hours for a tenant, consumed by the im-services-analytics monthly CO2-emissions job.
 
 ## Configuration
 

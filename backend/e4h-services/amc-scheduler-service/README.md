@@ -1,171 +1,95 @@
-# Project
-
-### Project Service
-Project registry is a Health Campaign Service that facilitate management of project on the DIGIT platform. The functionality is exposed via REST API.
-
-### DB UML Diagram
-
-<img width="586" alt="Screenshot 2023-03-29 at 2 45 35 PM" src="https://user-images.githubusercontent.com/123379163/228487047-bd14b481-dc81-44b2-826d-975d212e7f36.png">
-
-
-### Service Dependencies
-- Idgen Service
-- Facility Service
-- Household Service
-- Product Service
-
-### Swagger API Contract
-Link to the swagger API contract yaml and editor link like below
-
-https://editor.swagger.io/?url=https://raw.githubusercontent.com/egovernments/health-campaign-services/v1.0.0/docs/health-api-specs/contracts/project.yml
-
-### Service Details
-
-#### API Details
-BasePath `/project`
-
-Project service APIs - contains create, update, delete and search end point
-
-* POST `/project/v1/_create` - Create Project, This API is used to create/add a new Project.
-
-* POST `/project/v1/_update` - Update Project, This API is used to update the details of an existing Project.
-
-* POST `/project/v1/_search` - Search Project, This API is used to search details of an existing Project.
-
-
-* POST `/project/beneficiary/v1/_create` - Create Project Beneficiary, This API is used to create/add a new beneficiary for Project.
-
-* POST `/project/beneficiary/v1/_update` - Update Project Beneficiary, This API is used to update beneficiary registration for Project.
-
-* POST `/project/beneficiary/v1/_search` - Search Project Beneficiary, This API is used to search beneficiary registration for Project.
-
-* POST `/project/beneficiary/v1/_delete` - Delete Project Beneficiary, This API is used to soft delete beneficiary registration for project.
-
-* POST `/project/beneficiary/v1/bulk/_create` - Create Project Beneficiaries, This API is used to create/add a new beneficiaries for Project.
-
-* POST `/project/beneficiary/v1/bulk/_update` - Update Project Beneficiaries, This API is used to update beneficiaries registration for project.
-
-* POST `/project/beneficiary/v1/bulk/_delete` - Delete Project Beneficiaries, This API is used to soft delete beneficiaries registration for project.
-
-
-* POST `/project/task/v1/_create` - Create Project Task, This API is used to create task for the project .
-
-* POST `/project/task/v1/_update` - Update Project Task, This API is used to update task request for Project.
-
-* POST `/project/task/v1/_search` - Search Project Task, This API is used to search task for Project.
-
-* POST `/project/task/v1/_delete` - Delete Project Task, This API is used to soft delete task for project.
-
-* POST `/project/task/v1/bulk/_create` - Create Project Tasks, This API is used to create tasks for the project in bulk.
-
-* POST `/project/task/v1/bulk/_update` - Update Project Tasks, This API is used to update task Request in bulk for a project.
-
-* POST `/project/task/v1/bulk/_delete` - Delete Project Tasks, This API is used to Soft delete tasks for a project.
-
-
-* POST `/project/staff/v1/_create` - Create Project Staff, This API is used to Link Staff users to Project for a certain time period .
-
-* POST `/project/staff/v1/_update` - Update Project Staff, This API is used to update Project Staff users.
-
-* POST `/project/staff/v1/_search` - Search Project Staff, This API is used to search Project Staff users.
-
-* POST `/project/staff/v1/_delete` - Delete Project Staff, This API is used to soft delete linkage of Project Staff users with project.
-
-* POST `/project/staff/v1/bulk/_create` - Create Project Staff in bulk, This API is used to Link bulk Staff users to Project for a certain time period .
-
-* POST `/project/staff/v1/bulk/_update` - Update Project Staff in bulk, This API is used to update Project Staff users using bulk payload .
-
-* POST `/project/staff/v1/bulk/_delete` - Delete Project Staff in bulk, This API is used to soft delete linkage of Project Staff users with project in bulk.
-
-
-* POST `/project/facility/v1/_create` - Create Project Facility, This API is used to Link Facility to Project.
-
-* POST `/project/facility/v1/_update` - Update Project Facility, This API is used to update Project Facilities.
-
-* POST `/project/facility/v1/_search` - Search Project Facility, This API is used to search Project Facilities.
-
-* POST `/project/facility/v1/_delete` - Delete Project Facility, This API is used to soft delete Project Facility.
-
-* POST `/project/facility/v1/bulk/_create` - Create Project Facilities, This API is used to link Facilities to Project.
-
-* POST `/project/facility/v1/bulk/_update` - Update Project Facilities, This API is used to update Project Facilities.
-
-* POST `/project/facility/v1/bulk/_delete` - Delete Project Facilities, This API is used to soft delete Project Facilities in bulk .
-
-
-* POST `/project/resource/v1/_create` - Create Project Resource, This API is used to Link Resources to Project.
-
-* POST `/project/resource/v1/_update` - Update Project Resource, This API is used to update Project Resource linkage.
-
-* POST `/project/resource/v1/_search` - Search Project Resource, This API is used to search Project Resources.
-
-* POST `/project/resource/v1/_delete` - Delete Project Resource, This API is used to delete Project Resource linkage.
-
-* POST `/project/resource/v1/bulk/_create` - Create Project Resources, This API is used to link Resources to Project.
-
-* POST `/project/resource/v1/bulk/_update` - Update Project Resources, This API is used to update Project Resource linkage in bulk.
-
-* POST `/project/resource/v1/bulk/_delete` - Delete Project Resources, This API is used to delete Project Resource linkage in bulk.
-
-
-### Kafka Consumers
-
-- save-project-staff-bulk-topic
-- update-project-staff-bulk-topic
-- delete-project-staff-bulk-topic
-
-- save-project-facility-bulk-topic
-- update-project-facility-bulk-topic
-- delete-project-facility-bulk-topic
-
-- project-beneficiary-consumer-bulk-create-topic
-- project-beneficiary-consumer-bulk-update-topic
-- project-beneficiary-consumer-bulk-delete-topic
-
-- save-project-task-bulk-topic
-- update-project-task-bulk-topic
-- delete-project-task-bulk-topic
-
-- save-project-resource-bulk-topic
-- update-project-resource-bulk-topic
-- delete-project-resource-bulk-topic
-
-### Kafka Producers
-
-- save-project-staff-topic
-- update-project-staff-topic
-- delete-project-staff-topic
-
-- save-project-facility-topic
-- update-project-facility-topic
-- delete-project-facility-topic
-
-- save-project-beneficiary-topic
-- update-project-beneficiary-topic
-- delete-project-beneficiary-topic
-
-- save-project-task-topic
-- update-project-task-topic
-- delete-project-task-topic
-
-- save-project-resource-topic
-- update-project-resource-topic
-- delete-project-resource-topic
-
-## Pre commit script
-
-[commit-msg](https://gist.github.com/jayantp-egov/14f55deb344f1648503c6be7e580fa12)
-
-## Updates 
-- Project Staff Search 
-  - `staffId`, and `projectId` now accepts a list of entities instead of single entity to search project staff
-- Project Task Search 
-  - `projectId`, `projectBeneficiaryId`, and `projectBeneficiaryClientReferenceId` now accepts list of entities instead of single entity to search project task 
-- Project Beneficiary Search 
-  - `projectId`, and  `beneficiaryId` now accepts a list of entities instead of single entity to search project beneficiary
-- Project Resource Search
-  - `projectId` now accepts a list of entities instead of single entity to search project resources
-## Usage
-- Start the service
-- Access the API endpoints for searching various project entities
-- Pass list parameters for the search fields mentioned in updates 
+# AMC Scheduler Service
+
+Manages Annual Maintenance Contract (AMC) configurations for facility assets and the scheduled maintenance visits generated from them. It tracks per-asset AMC coverage windows, generates recurring visit schedules against an AMC configuration, and drives each visit through a workflow (assignment, technician OTP verification, completion) integrated with `egov-workflow-v2`.
+
+## Service Dependencies
+
+- Idgen Service (`egov.idgen.host`)
+- MDMS Service (`egov.mdms.host`)
+- Facility Service (`egov.facility.host`)
+- Project Service (`egov.project.host`)
+- Household Service (`egov.household.host`)
+- Asset Registry (`egov.asset.host`)
+- Boundary Service (`egov.boundary.host`)
+- Workflow v2 (`egov.workflow.host`)
+- HRMS (`egov.hrms.host`)
+- Vendor Service (`egov.vendor.host`)
+- OTP Service (`egov.otp.host`)
+- Encryption Service, for facility POC phone decryption (`egov.enc.host`)
+
+## API Endpoints
+
+Base path: `/asset-amc` (`server.servlet.context-path`)
+
+### AMC Configuration — `/v1/configuration`
+- `POST /v1/configuration/_create` — Create a new AMC configuration (vendor + facility + asset types + duration/frequency).
+- `POST /v1/configuration/_update` — Update an existing AMC configuration.
+- `POST /v1/configuration/_search` — Search AMC configurations.
+
+### Asset AMC — `/v1/asset`
+- `POST /v1/asset/_create` — Link an asset to an AMC configuration and set its coverage window/status.
+- `POST /v1/asset/_update` — Update an asset-AMC record.
+- `POST /v1/asset/_search` — Search asset-AMC records.
+
+### Scheduled Visit — `/v1/visit`
+- `POST /v1/visit/_create` — Create scheduled visit(s).
+- `POST /v1/visit/configuration/_generate` — Generate the recurring set of scheduled visits for an AMC configuration.
+- `POST /v1/visit/_update` — Bulk update scheduled visits.
+- `POST /v1/visit/workflow/_update` — Submit a visit report and transition the visit through workflow.
+- `POST /v1/visit/_search` — Search scheduled visits; also enriches results with related workflow process instances and visit transactions.
+- `POST /v1/visit/_resend_otp` — Resend the technician completion OTP for a visit.
+
+## Events
+
+No `@KafkaListener` consumers are implemented — `FieldPlannerConsumer` exists in `org.egov.amc.consumer` but is an empty placeholder component with no listener methods. All persistence is published asynchronously through the common `Producer`/`GenericRepository` to:
+
+| Config key | Topic |
+|---|---|
+| `amc.configuration.create.topic` | `save-amc-configuration` |
+| `amc.configuration.update.topic` | `update-amc-configuration` |
+| `asset.amc.create.topic` | `save-asset-amc` |
+| `asset.amc.update.topic` | `update-asset-amc` |
+| `scheduled.visit.create.topic` | `save-scheduled-visit` |
+| `scheduled.visit.update.topic` | `update-scheduled-visit` |
+| `visit.management.transaction.kafka.create.topic` | `visit-transaction-create` |
+| `kafka.topics.notification.sms` | `egov.core.notification.sms` (OTP / completion SMS) |
+| `egov.kafka.notification.email.topic` | `egov.core.notification.email` |
+
+Persister mapping: `src/main/resources/amc-persister.yml`.
+
+## Configuration
+
+Key non-secret properties, all in `src/main/resources/application.properties`, most surfaced via `org.egov.amc.config.AMCServiceConfiguration`:
+
+- `server.servlet.context-path=/asset-amc`, `server.port=8095`
+- Flyway: `spring.flyway.locations=classpath:/db/migration/main`
+- MDMS: `egov.mdms.host`, `egov.mdms.search.endpoint`, `egov.mdms.master.name`, `egov.mdms.module.name`
+- Workflow: `egov.workflow.host`, `egov.workflow.transition.path`, `egov.workflow.search.path`, `egov.workflow.module.name`, `egov.workflow.business.service=AMC_VISIT`
+- OTP: `egov.otp.host`, `egov.otp.create.url`, `egov.otp.validate.url`, `egov.otp.bypass.validation`, `amc.otp.sms.message.template`
+- Search limits: `search.api.limit`, `project.default.offset`, `project.default.limit`, `project.search.max.limit`
+- Boundary: `egov.boundary.hierarchy.type=SELCO`
+
+## Database
+
+Flyway migrations: `src/main/resources/db/migration/main/` — currently `V20251114180100__amc_create_ddl.sql`, `V20251203180100__amc_update_ddl.sql`, `V20260424120000__add_facility_name_to_scheduled_visits.sql` (3 files; the prior platform assessment referenced "3 more" after the create DDL, but only 2 follow-on migrations exist today).
+
+Key tables:
+- `amc_configuration` — AMC terms per tenant/facility/project/vendor (unique on that tuple), duration & visit frequency, coverage window, status.
+- `amc_configuration_assignments` — users assigned to an AMC configuration.
+- `asset_amc` — per-asset AMC coverage linked to an `amc_configuration`, with status (ACTIVE/EXPIRED/UNDER_MAINTENANCE/INACTIVE) and legacy-asset flag.
+- `scheduled_visits` — generated visits per `amc_configuration`, unique per `(amc_configuration_id, visit_number)`, holds `visit_report` JSONB and status.
+- `scheduled_visit_assignments` — users assigned to a scheduled visit.
+- `visit_transaction` — workflow process-instance / visit-report history per visit.
+
+All tables use `created_by` / `created_time` / `last_modified_by` / `last_modified_time` audit columns. There is no `is_deleted` column on these tables — soft delete is not implemented at the DDL level. Primary keys are `VARCHAR`, not `UUID`.
+
+## Workflow
+
+`VisitWorkflowService` integrates scheduled visits with `egov-workflow-v2`:
+- `transitionWorkflow(...)` builds a `ProcessInstance` (business ID = visit ID, module = `egov.workflow.module.name`, business service = `egov.workflow.business.service` = `AMC_VISIT`) and posts it to `egov.workflow.host` + `egov.workflow.transition.path`.
+- `getProcessInstanceById(...)` queries `egov.workflow.search.path` for the process-instance history of a visit, used to enrich search results.
+- `ScheduledVisitController#updateScheduledVisit` (`POST /v1/visit/workflow/_update`) submits a visit report and drives the workflow transition; `POST /v1/visit/_search` enriches each result with its `ProcessInstance` history and linked `visit_transaction` rows.
+
+## Local Setup
+
+See [LOCALSETUP.md](./LOCALSETUP.md)

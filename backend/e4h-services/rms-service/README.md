@@ -226,3 +226,13 @@ The RMS service maintains a mapping table (`center_id_to_hfr_id_mapping`) that m
 - Center ID to HFR ID mapping is automatically maintained via scheduled jobs
 - Mappings are validated every 7 days to ensure they're still valid
 
+## Testing
+
+See [README-TESTING.md](README-TESTING.md) and [TESTING.md](TESTING.md) for manual testing procedures against the currently working RMS API endpoints.
+
+**Security note:** `RestTemplateSslUtils.restTemplateAcceptingAllCerts()` (in `src/main/java/org/egov/rms/service/RestTemplateSslUtils.java`) disables TLS certificate validation and hostname verification. It is still present in the current codebase and is actively used in `DashboardApiClient.java` and `CenterIdMappingService.java`, plus 7 call sites in `DataCollectorService.java` — flag this in any security review of this service.
+
+## Local Setup
+
+No `LOCALSETUP.md` exists for this service. Build and run with Maven (see [Development](#development) above); see [Testing](#testing) for manual test procedures.
+

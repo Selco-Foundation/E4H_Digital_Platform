@@ -10,6 +10,25 @@ The repository stores API specifications and data contracts under `docs`. This p
 | Facility registry | `docs/facility-registry/facility-v2-api.yaml` |
 | Project service | `docs/project-service/project-v1.api.yaml` |
 
+E4H service OpenAPI specs (see [E4H services](e4h-services.md) for per-service documentation):
+
+| Service | File |
+| --- | --- |
+| AMC Scheduler Service | `backend/e4h-services/amc-scheduler-service/openapi.json` |
+| Asset Registry | `backend/e4h-services/asset-registry/openapi.json` |
+| eGov HRMS | `backend/e4h-services/egov-hrms/openapi.json` |
+| Field Planner | `backend/e4h-services/field-planner/openapi.json` |
+| Field Planner Activity | `backend/e4h-services/field-planner-activity/openapi.json` |
+| IM Services | `backend/e4h-services/im-services/openapi.json` |
+| IM Services Analytics | `backend/e4h-services/im-services-analytics/openapi.json` |
+| Inbox | `backend/e4h-services/inbox/openapi.json` |
+| Ingestion Service | `backend/e4h-services/ingestion-service/openapi.json` |
+| Project Service | `backend/e4h-services/project/openapi.json` |
+| RMS Service | `backend/e4h-services/rms-service/openapi.json` |
+| Vendor Registry | `backend/e4h-services/vendor-registry/openapi.json` |
+
+Processor Services has no OpenAPI spec.
+
 ## JSON schemas
 
 | Area | Directory |

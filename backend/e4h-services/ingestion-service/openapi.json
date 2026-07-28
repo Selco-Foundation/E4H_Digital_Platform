@@ -1,0 +1,3904 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Ingestion Service",
+    "version": "1.0.0",
+    "description": "Bulk data-ingestion and Excel-template-generation service for the E4H (eGov DIGIT) platform. It reads/writes Excel workbooks to bulk-create and validate facilities, vendors, boundaries, projects, staff/supervisor assignments, AMC configurations, and legacy incident tickets, orchestrating calls to the platform's MDMS, facility, project, HRMS, organization, boundary, field-plan, field-plan-activity, AMC-scheduler, localization, and incident-management services.\n\n## Authentication & Authorization\n\nThis service does **not** use a bearer/`Authorization` header. Instead it follows the eGov DIGIT platform convention of embedding the caller's identity and JWT/authToken inside a `RequestInfo` object (see `RequestInfo` / `User` / `Role` schemas), which is:\n- submitted as a JSON-encoded **string** in a `request_info` field of the `multipart/form-data` body on most `/ingestion-service/ingest/*` and `/ingestion-service/template/*` endpoints (parsed server-side by `request_info_from_json`), or\n- submitted as the `RequestInfo` key of a JSON request body on the handful of endpoints that accept `application/json`.\n\nWhere an endpoint enforces authorization, it calls `get_authorized_request_info(request_info)` (`app/decorators/rbac_validator.py`), which:\n1. returns `401 Unauthorized` if `RequestInfo.userInfo` or `userInfo.roles` is missing/empty;\n2. returns `403 Forbidden` if none of `userInfo.roles[].name` matches a value of the `UserRole` enum (`app/core/user_role.py`) -- **currently the enum has a single member, `ADMIN`**, so in practice this check requires the caller to hold the `ADMIN` role;\n3. otherwise returns the (still fully caller-supplied) `RequestInfo` unchanged.\n\nOnly 4 of the endpoints documented below actually invoke this check at runtime (marked 'Authorization: ... requires ... ADMIN' in their description): `POST /ingestion-service/ingest/legacy_ticket_ingestion`, `POST /ingestion-service/template/facilityWithStaff`, `POST /ingestion-service/template/facilityWithSupervisors`, and `GET /ingestion-service/template/facilitySelection`. On every other endpoint the same `get_authorized_request_info` call exists in the source but is commented out (or was never added), so no role is currently enforced -- this is called out per-endpoint below."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Ingestion service root (routes are mounted under /ingestion-service/{ingest,template,health})"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Ingestion",
+      "description": "Bulk Excel upload/ingestion endpoints (mounted at /ingestion-service/ingest)."
+    },
+    {
+      "name": "Template",
+      "description": "Excel template-generation endpoints (mounted at /ingestion-service/template)."
+    },
+    {
+      "name": "Health",
+      "description": "Service health/liveness check (mounted at /ingestion-service/health)."
+    }
+  ],
+  "paths": {
+    "/ingestion-service/ingest/vendors": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process vendor Excel file with multiple sheets",
+        "description": "Parses an uploaded Excel workbook containing a vendor-data sheet and a boundary-code sheet, validates and creates vendor organizations via the organization service, and returns the workbook annotated with per-row `status`/`error` results. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadVendorsExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with a 'Vendor Output' sheet (status/error/vendor_id per row) and the original boundary sheet.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as vendor_validation_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=vendor_validation_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process vendor data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "vendor_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing vendor data and boundary codes"
+                  },
+                  "vendor_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing vendor data",
+                    "default": "Vendor Input"
+                  },
+                  "boundary_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing boundary codes",
+                    "default": "Boundary Code"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "vendor_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/boundaries": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process boundary Excel file",
+        "description": "Parses an uploaded Excel workbook containing boundary rows (Country/State/District/Block), validates and ingests them via the boundary/MDMS processing pipeline, and returns the workbook annotated with validation results and an `X-Error-Count` response header. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadBoundariesExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with boundary rows annotated with processing status.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as boundary_validation_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=boundary_validation_results_20260717_120000.xlsx"
+              },
+              "X-Error-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Number of rows that failed validation in the returned workbook.",
+                "example": 2
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process boundary data"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "boundary_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing boundary data"
+                  },
+                  "boundary_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing boundary data",
+                    "default": "Boundary Data"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "boundary_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/addFacilitiesValidateData": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Validate add-bulk-facility Excel file before processing",
+        "description": "Validates an uploaded facility Excel sheet (plus its boundary-code sheet) against the `data-ingestion.FacilityIngestionSchema` MDMS schema, resolves boundary codes via the localization service, confirms them against the boundary service, and checks that new facilities carry a registered vendor code. Returns the workbook with per-row PASSED/FAILED status and an `X-Error-Count` header. Does not create any facilities. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "validateAddFacilitiesExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with facility rows annotated PASSED/FAILED plus resolved Boundary Code column.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_validation_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_validation_results_20260717_120000.xlsx"
+              },
+              "X-Error-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Number of rows that failed validation in the returned workbook.",
+                "example": 2
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request -- missing sheet/column (e.g. boundary sheet, facility sheet, 'Facility Id' column, or the mandatory vendor-code column).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Boundary sheet 'BlockBoundaryCodes' not found"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Validation failed: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facility data"
+                  },
+                  "facility_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "FacilityIngestionTemplate"
+                  },
+                  "boundary_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing boundary data",
+                    "default": "BlockBoundaryCodes"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/facilities": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process facility Excel file",
+        "description": "Parses an uploaded facility Excel sheet, resolves boundary codes, and bulk-creates the facilities via the facility service (chunked in batches of 200), including vendor-jurisdiction mapping and HFR/NIN duplicate checks. Returns the workbook annotated with per-row status/error. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadFacilitiesExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with facilities annotated status=success/failed and error message per row.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_ingestion_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_ingestion_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process facility data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facility data"
+                  },
+                  "facility_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "FacilityIngestionTemplate"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  },
+                  "are_facilities_onm_ready": {
+                    "type": "boolean",
+                    "description": "Whether the ingested facilities should be marked O&M-ready",
+                    "example": false
+                  }
+                },
+                "required": [
+                  "facility_file",
+                  "are_facilities_onm_ready"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/workStreamWithFacilities": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process workstream with facilities excel file",
+        "description": "Given a Field-Plan project id, creates a linked 'Work Stream' project, links all of the field plan's facilities to it, creates (or reuses) an installation SPOC HRMS user, and assigns that user as project staff. Note: this endpoint has no file upload -- it operates purely on the given project id and SPOC contact fields. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadFacilitiesWithWorkstream",
+        "responses": {
+          "200": {
+            "description": "Work stream project created, facilities linked, and installation SPOC user/staff created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkStreamWithFacilitiesResponse"
+                },
+                "example": {
+                  "staff": [
+                    {
+                      "id": 1,
+                      "projectId": "wf-001",
+                      "userId": "u-1"
+                    }
+                  ],
+                  "user": {
+                    "uuid": "u-1",
+                    "user": {
+                      "name": "Jane Doe"
+                    }
+                  },
+                  "work_stream": {
+                    "id": "wf-001",
+                    "name": "FieldPlanA_work_stream"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process facility data: <underlying error> (also returned as a 500 JSONResponse with plain-string content when project/hrms service URLs are not configured: \"Connection failed with project service and hrms service.\")"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project_id_with_type_field_plan": {
+                    "type": "string",
+                    "description": "Project id of the project with type Field Plan",
+                    "default": "Project id of the project with type field plan"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  },
+                  "installation_spoc_user_name": {
+                    "type": "string",
+                    "description": "Name of the installation SPOC user to create",
+                    "default": ""
+                  },
+                  "installation_spoc_user_mobile_number": {
+                    "type": "string",
+                    "description": "Mobile number of the installation SPOC user",
+                    "default": ""
+                  },
+                  "installation_spoc_user_email": {
+                    "type": "string",
+                    "description": "Email of the installation SPOC user",
+                    "default": ""
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/facilityWithStaff": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process facility with staff Excel file",
+        "description": "For each row in the uploaded sheet, creates a 'Facility' project under the given work-stream project, finds-or-creates the corresponding HRMS staff user (checking for role mismatches on existing users), and assigns them as project staff. Returns the workbook annotated with status/error. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadFacilityWithStaffExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with facility/staff rows annotated status=success/failed/error and error message.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_with_staff_ingestion_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_with_staff_ingestion_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process facility data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_with_staff": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facility with staff data"
+                  },
+                  "facility_sheet": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "Facilities_Staff"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  },
+                  "work_stream_project_id": {
+                    "type": "string",
+                    "description": "Work stream project id the facilities/staff belong to",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_with_staff"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/facilityWithSupervisors": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process facility with supervisors Excel file",
+        "description": "For each row in the uploaded sheet, reuses (or creates) a 'Facility' project under the given work-stream project, finds-or-creates the corresponding HRMS supervisor user (checking for role mismatches), and assigns them as project staff. Returns the workbook annotated with status/error. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadFacilityWithSupervisorsExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with facility/supervisor rows annotated status=success/failed/error.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_with_supervisor_ingestion_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_with_supervisor_ingestion_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process facility data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_with_supervisors": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facility with supervisors data"
+                  },
+                  "facility_sheet": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "Facilities_Supervisors"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  },
+                  "work_stream_project_id": {
+                    "type": "string",
+                    "description": "Work stream project id the facilities/supervisors belong to",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_with_supervisors"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/facilityWithSupervisorUpdateWorkflowState": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process facility with supervisors Excel file, then advance the project workflow",
+        "description": "Same facility/staff-or-supervisor creation flow as /facilityWithSupervisors (row 'Role' column selects staff vs supervisor payload/expected roles), but additionally advances the work-stream project's workflow state (ASSIGN_FIELD_SUPERVISOR or ASSIGN_FIELD_STAFF) once staff assignment succeeds. Returns the workbook annotated with status/error. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadFacilityWithSupervisorsWorkflowStateExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with facility/supervisor rows annotated status=success/failed and workflow-update result.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_with_supervisor_ingestion_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_with_supervisor_ingestion_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process facility data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_with_supervisors": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facility with supervisors data"
+                  },
+                  "facility_sheet": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "Facilities_Supervisors"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  },
+                  "work_stream_project_id": {
+                    "type": "string",
+                    "description": "Work stream project id the facilities/supervisors belong to",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_with_supervisors"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/projects": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process project Excel file",
+        "description": "Creates a project per row of the uploaded Excel sheet via the project service. Rows of Project Type 'Field Plan' additionally search/validate an installation-SPOC HRMS user by email before completing. Successful rows send an SMS notification for Field Plan projects. Returns the workbook annotated with status/error/Project ID. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadProjectsExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with project rows annotated status/error/Project ID.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as project_ingestion_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=project_ingestion_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process project data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing project data"
+                  },
+                  "project_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing project data",
+                    "default": "Project Data"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "project_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/facilitySelection": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and process facility selection Excel file",
+        "description": "Reads a facility-selection Excel sheet and, for every row marked `Selection? = Yes`, links the given facility ('HC ID' column) to `project_id` via the project service. Returns the workbook annotated with status/error. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "uploadFacilitySelectionExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with facility-selection rows annotated status=success/failed and error message.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as project_facility_ingestion_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=project_facility_ingestion_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process facility selection data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_selection_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facility selection data"
+                  },
+                  "project_id": {
+                    "type": "string",
+                    "description": "Project id the selected facilities are linked to"
+                  },
+                  "facility_selection_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility selection data",
+                    "default": "Facility Selection Template"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_selection_file",
+                  "project_id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/legacy_ticket_ingestion": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Upload and ingest legacy tickets Excel file",
+        "description": "Migrates legacy support tickets into the Incident Management service: maps each row's (Issue Type, Sub Type) pair via an uploaded mapping sheet, resolves the reporting employee/tenant (special-cased for Mizoram, by username, vs. other states, by NIN/HFR id) from the HRMS DB and MDMS tenant/block masters, builds an incident payload per row, and submits it to the IM service. Returns the workbook annotated with status/error/ticket_id/employee_info. **Authorization:** this endpoint calls `get_authorized_request_info(RequestInfo)`, which requires `RequestInfo.userInfo.roles` to contain at least one role whose `name` equals `ADMIN` (the only member of the `UserRole` enum). Returns 401 if userInfo/roles are missing, 403 if no role matches.",
+        "operationId": "uploadLegacyTicketExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with legacy ticket rows annotated status/error/ticket_id/employee_info.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as legacy_ticket_ingestion_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=legacy_ticket_ingestion_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- RequestInfo.userInfo/roles missing or absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Unauthorized: User information or roles are missing"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- caller's RequestInfo.userInfo.roles does not include an allowed role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "User role(s) '[]' not authorized for this operation. Allowed roles: ['ADMIN']"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Unhandled exception (e.g. DB connection failure) -- not explicitly wrapped by this endpoint, surfaced as a generic FastAPI 500."
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "legacy_ticket_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing legacy tickets to migrate"
+                  },
+                  "legacy_ticket_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing legacy ticket data",
+                    "default": "Legacy Tickets"
+                  },
+                  "mapping_type_subtype_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file mapping legacy Issue/Sub Type to new Incident Type/Sub Type"
+                  },
+                  "mapping_type_subtype_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing the type/subtype mapping",
+                    "default": "Mapping Old_New_v1.0"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "legacy_ticket_file",
+                  "mapping_type_subtype_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/check_duplicates": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Check legacy tickets for duplicate open incidents",
+        "description": "For each row of the uploaded sheet, looks up the reporting employee's tenant by NIN/HFR id and queries the incidents DB directly for an existing open incident of the same (type, subtype) for that tenant, marking the row `status=duplicate` if found. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "checkDuplicateTickets",
+        "responses": {
+          "200": {
+            "description": "Workbook with rows annotated status=duplicate (or blank/error) via new status/error columns.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as <original uploaded filename>.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=<original uploaded filename>.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Error during duplicate check: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "legacy_ticket_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing legacy tickets to check for duplicates"
+                  },
+                  "legacy_ticket_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing legacy ticket data",
+                    "default": "Duplication Template"
+                  }
+                },
+                "required": [
+                  "legacy_ticket_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/flag_for_qc": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Send facilities back to pending approval (remove QC flag)",
+        "description": "For each row of the uploaded sheet, calls the project service's workflow-update API with action `REMOVE_FLAG` for the project identified by the row's `BusinessId`, using a hard-coded internal RequestInfo/service-account payload (not the caller-supplied one). **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "flagForQc",
+        "responses": {
+          "200": {
+            "description": "Workbook with rows annotated auditTrail='Sent back to pending approval' or an error column.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as <original uploaded filename>.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=<original uploaded filename>.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Error during facility status update: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facilities to flag"
+                  },
+                  "facility_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "Facilities"
+                  }
+                },
+                "required": [
+                  "facility_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/incidents/dataUpdate": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Update incidents data from Excel file",
+        "description": "For each row of the uploaded sheet, searches the Incident Management service for the incident matching 'Ticket No.'/'Tenant ID', then updates its `systemFunctional` field based on the row's 'Is the solar system working?' value. Returns the workbook annotated with status/error. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "updateIncidentsDataFromExcel",
+        "responses": {
+          "200": {
+            "description": "Workbook with incident rows annotated status=success/failed/skipped and error message.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as incident_data_update_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=incident_data_update_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to process incident updates: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "incidents_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing incidents to update"
+                  },
+                  "incidents_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing incident data",
+                    "default": "Incidents"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "Request info in JSON format",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "incidents_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/facilitiesValidateData": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Validate facility Excel file before processing (project-scoped)",
+        "description": "Validates an uploaded facility-mapping sheet against a specific project: confirms the uploaded boundary-code sheet exactly matches the project's own boundary/block codes, then validates facility rows against `data-ingestion.FacilityIngestionSchema`. Returns the workbook with PASSED/FAILED rows and an `X-Error-Count` header. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "validateFacilitiesExcelSheetForProject",
+        "responses": {
+          "200": {
+            "description": "Workbook with facility rows annotated PASSED/FAILED.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_validation_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_validation_results_20260717_120000.xlsx"
+              },
+              "X-Error-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Number of rows that failed validation in the returned workbook.",
+                "example": 2
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request -- missing sheet/column (project not found, boundary sheet or 'Facility Id' column missing), or a BoundaryCode mismatch between the upload and the project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HTTPErrorObjectDetail"
+                    }
+                  ]
+                },
+                "examples": {
+                  "boundary_mismatch": {
+                    "value": {
+                      "detail": {
+                        "error": "BoundaryCode mismatch",
+                        "missing": [
+                          "KA_BLR_YEL"
+                        ],
+                        "extra": []
+                      }
+                    }
+                  },
+                  "project_not_found": {
+                    "value": {
+                      "detail": "No project found for id proj-123"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Validation failed: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facility data"
+                  },
+                  "project_id": {
+                    "type": "string",
+                    "description": "Project ID whose boundary codes the upload must match"
+                  },
+                  "facility_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "FacilityMapping"
+                  },
+                  "boundary_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing boundary data",
+                    "default": "BoundaryCodes"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_file",
+                  "project_id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/fieldPlanfacilitiesValidateData": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Validate facility Excel file before processing (field-plan schema)",
+        "description": "Validates an uploaded facility-mapping sheet against `data-ingestion.FieldPlanFacilityIngestionSchema` (no project boundary-match check, unlike /facilitiesValidateData). Returns the workbook with PASSED/FAILED rows and an `X-Error-Count` header. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "validateFieldPlanFacilitiesExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with facility rows annotated PASSED/FAILED.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_validation_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_validation_results_20260717_120000.xlsx"
+              },
+              "X-Error-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Number of rows that failed validation in the returned workbook.",
+                "example": 2
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request -- boundary sheet, facility sheet, or 'Facility Id' column missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Boundary sheet 'BoundaryCodes' not found"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Validation failed: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing facility data"
+                  },
+                  "facility_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "FacilityMapping"
+                  },
+                  "boundary_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing boundary data",
+                    "default": "BoundaryCodes"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/createFacilityAndUpdateProject": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Create PASSED facilities from a validated Excel file and link them to a project",
+        "description": "Consumes the output of /facilitiesValidateData (every row must already be `status=PASSED`): bulk-creates any facility rows without an existing Facility Id via the facility service, then bulk-links (or unlinks) facilities to `project_id` according to each row's 'Include in Project' flag. Returns the workbook with added 'Facility Creation Status'/'Project Linking Status' columns. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "createFacilitiesAndUpdateProject",
+        "responses": {
+          "200": {
+            "description": "Workbook annotated with Facility Creation Status / Project Linking Status per row.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_creation_and_project_update_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_creation_and_project_update_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request -- sheet not found, missing status/error columns, or not all rows PASSED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Validation failed: Some rows are not marked as PASSED. Please upload a fully validated file."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to finalize facility data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Validated Excel file with PASSED/FAILED status"
+                  },
+                  "facility_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "FacilityMapping"
+                  },
+                  "project_id": {
+                    "type": "string",
+                    "description": "Project ID"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_file",
+                  "project_id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/createFieldPlanFacility": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Link/unlink PASSED facilities from a validated Excel file to a Field Plan",
+        "description": "Consumes the output of /fieldPlanfacilitiesValidateData (every row must already be `status=PASSED`): bulk-links (or unlinks) facilities to `fieldplan_id` per row's 'Included in Field Plan' flag, and, when the field plan is SCHEDULED, creates the corresponding facility activity assignments. Returns the workbook with an added 'Field Plan Linking Status' column. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "createFieldPlanFacilities",
+        "responses": {
+          "200": {
+            "description": "Workbook annotated with Field Plan Linking Status per row.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_fieldplan_update_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_fieldplan_update_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request -- sheet not found, missing status/error columns, or not all rows PASSED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Validation failed: Some rows are not marked as PASSED. Please upload a fully validated file."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Failed to finalize facility data: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "facility_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Validated Excel file with PASSED/FAILED status"
+                  },
+                  "facility_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing facility data",
+                    "default": "FacilityMapping"
+                  },
+                  "fieldplan_id": {
+                    "type": "string",
+                    "description": "FieldPlan ID"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "facility_file",
+                  "fieldplan_id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/amcConfigurationValidateData": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Validate AMC configuration Excel file before processing",
+        "description": "Validates that every row of the uploaded AMC-configuration sheet has both 'AMC-Frequency' and 'AMC-Duration' filled in. Returns the workbook with PASSED/FAILED rows and an `X-Error-Count` header. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "validateAmcConfigurationsExcelSheet",
+        "responses": {
+          "200": {
+            "description": "Workbook with AMC configuration rows annotated PASSED/FAILED.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as amc_configuration_validation_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=amc_configuration_validation_results_20260717_120000.xlsx"
+              },
+              "X-Error-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Number of rows that failed validation in the returned workbook.",
+                "example": 2
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request -- named sheet not found in workbook.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Sheet 'amc-configurations' not found"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amc_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing AMC configuration data"
+                  },
+                  "amc_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing AMC data",
+                    "default": "amc-configurations"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "amc_file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/ingest/amcConfigurationBulkIngest": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Bulk ingest AMC configuration template data",
+        "description": "Creates AMC (Annual Maintenance Contract) configurations in the AMC Scheduler service for every facility row in the uploaded, pre-validated sheet: resolves the single vendor whose user list contains an AMC_FIELD_STAFF role from `user_info_list`, bulk-looks-up facilities, converts the display frequency/duration values to months, and bulk-creates configurations in chunks of 400. Returns the workbook annotated with status/error. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "bulkIngestAmcConfigurations",
+        "responses": {
+          "200": {
+            "description": "Workbook with AMC configuration rows annotated status=success/failed/skipped and error message.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as amc_configuration_ingestion_results_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=amc_configuration_ingestion_results_20260717_120000.xlsx"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request -- invalid user_info_list JSON, no/multiple AMC_FIELD_STAFF vendors, sheet not found, or 'users' not a list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "No vendor with a user having the AMC_FIELD_STAFF role was found in user_info_list"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "AMC Scheduler Service is not configured / An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway -- an upstream eGov DIGIT service call failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Facility lookup failed: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amc_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Excel file containing AMC configuration data"
+                  },
+                  "amc_sheet_name": {
+                    "type": "string",
+                    "description": "Name of the sheet containing AMC data",
+                    "default": "amc-configurations"
+                  },
+                  "project_id": {
+                    "type": "string",
+                    "description": "Project ID the AMC configurations belong to"
+                  },
+                  "user_info_list": {
+                    "type": "string",
+                    "description": "JSON array (as a string) of vendor->users mappings, e.g. [{\"vendorId\": \"v-1\", \"vendor\": \"Acme Solar\", \"users\": [{\"uuid\": \"u-1\", \"name\": \"Jane\", \"tenantId\": \"in\", \"roles\": [{\"code\": \"AMC_FIELD_STAFF\"}]}]}]"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "amc_file",
+                  "project_id",
+                  "user_info_list"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/facilityIngestionTemplateWithData": {
+      "post": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate facility ingestion template Excel file with schema, existing data and boundary codes",
+        "description": "Fetches the `data-ingestion.FacilityIngestionSchema` column schema from MDMS, flattens the given `boundary_data` tree, bulk-fetches existing facilities for those boundary codes (and, if `project_id` is given, facilities already linked to that project) from the facility/project services, and generates a downloadable Excel template pre-filled with that data plus 200 blank appended rows. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "getFacilityIngestionTemplateWithData",
+        "responses": {
+          "200": {
+            "description": "Excel template pre-filled with facility schema columns, existing facility data, and boundary codes.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_ingestion_template_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_ingestion_template_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Template generation error: <underlying error> / An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway -- an upstream eGov DIGIT service call failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "External service error: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "RequestInfo": {
+                    "$ref": "#/components/schemas/RequestInfo"
+                  },
+                  "boundary_data": {
+                    "$ref": "#/components/schemas/BoundaryTreeNode",
+                    "description": "Nested boundary tree (country -> state -> district -> block)."
+                  },
+                  "project_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "If provided, facilities already linked to this project are marked include_in_project=Yes."
+                  }
+                },
+                "required": [
+                  "RequestInfo"
+                ]
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "Rainmaker",
+                  "ver": "1.0",
+                  "ts": 1700000000000,
+                  "action": "_create",
+                  "msgId": "20240617",
+                  "authToken": "f6a27ba4-bead-483d-b4d8-23d46c74d153",
+                  "userInfo": {
+                    "id": 178,
+                    "uuid": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+                    "userName": "admin",
+                    "name": "Admin User",
+                    "mobileNumber": "9911223345",
+                    "emailId": "admin@example.com",
+                    "type": "EMPLOYEE",
+                    "roles": [
+                      {
+                        "name": "ADMIN",
+                        "code": "ADMIN",
+                        "tenantId": "in"
+                      }
+                    ],
+                    "active": true,
+                    "tenantId": "in"
+                  }
+                },
+                "boundary_data": {
+                  "type": "country",
+                  "name": "India",
+                  "boundaryCode": "IN",
+                  "children": [
+                    {
+                      "type": "state",
+                      "name": "Karnataka",
+                      "boundaryCode": "KA",
+                      "children": [
+                        {
+                          "type": "district",
+                          "name": "Bangalore Urban",
+                          "boundaryCode": "KA_BLR",
+                          "children": [
+                            {
+                              "type": "block",
+                              "name": "Yelahanka",
+                              "boundaryCode": "KA_BLR_YEL",
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "project_id": "proj-123"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/boundaryIngestionTemplate": {
+      "post": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate empty boundary ingestion template Excel file",
+        "description": "Generates an empty Excel template (sheet 'Boundary Data') with the columns Country, State, District, Block for bulk boundary ingestion. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "getBoundaryIngestionTemplate",
+        "responses": {
+          "200": {
+            "description": "Empty Excel template with sheet 'Boundary Data' and columns Country/State/District/Block.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as boundary_ingestion_template_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=boundary_ingestion_template_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "RequestInfo": {
+                    "$ref": "#/components/schemas/RequestInfo"
+                  }
+                },
+                "required": []
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "Rainmaker",
+                  "ver": "1.0",
+                  "ts": 1700000000000,
+                  "action": "_create",
+                  "msgId": "20240617",
+                  "authToken": "f6a27ba4-bead-483d-b4d8-23d46c74d153",
+                  "userInfo": {
+                    "id": 178,
+                    "uuid": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+                    "userName": "admin",
+                    "name": "Admin User",
+                    "mobileNumber": "9911223345",
+                    "emailId": "admin@example.com",
+                    "type": "EMPLOYEE",
+                    "roles": [
+                      {
+                        "name": "ADMIN",
+                        "code": "ADMIN",
+                        "tenantId": "in"
+                      }
+                    ],
+                    "active": true,
+                    "tenantId": "in"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/fieldplanFacilityIngestionTemplate": {
+      "post": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate facility ingestion template Excel file for a Field Plan, with schema, existing data and boundary codes",
+        "description": "Fetches the `data-ingestion.FieldPlanFacilityIngestionSchema` column schema from MDMS, flattens `boundary_data`, and reconciles the project's currently linked facilities against the field plan's linked facilities (unlinking + deleting facility activities for facilities that fell out of the project). Generates a downloadable Excel template pre-filled with that data (no extra blank rows). **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "getFieldplanFacilityIngestionTemplate",
+        "responses": {
+          "200": {
+            "description": "Excel template pre-filled with facility schema columns, existing/fieldplan facility data, and boundary codes.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_ingestion_template_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_ingestion_template_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Template generation error: <underlying error> / An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway -- an upstream eGov DIGIT service call failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "External service error: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "RequestInfo": {
+                    "$ref": "#/components/schemas/RequestInfo"
+                  },
+                  "boundary_data": {
+                    "$ref": "#/components/schemas/BoundaryTreeNode"
+                  },
+                  "fieldplan_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "FieldPlan id used to mark include_in_fieldplan=Yes/No."
+                  },
+                  "project_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Project id the field plan's facilities are linked under."
+                  }
+                },
+                "required": [
+                  "RequestInfo"
+                ]
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "Rainmaker",
+                  "ver": "1.0",
+                  "ts": 1700000000000,
+                  "action": "_create",
+                  "msgId": "20240617",
+                  "authToken": "f6a27ba4-bead-483d-b4d8-23d46c74d153",
+                  "userInfo": {
+                    "id": 178,
+                    "uuid": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+                    "userName": "admin",
+                    "name": "Admin User",
+                    "mobileNumber": "9911223345",
+                    "emailId": "admin@example.com",
+                    "type": "EMPLOYEE",
+                    "roles": [
+                      {
+                        "name": "ADMIN",
+                        "code": "ADMIN",
+                        "tenantId": "in"
+                      }
+                    ],
+                    "active": true,
+                    "tenantId": "in"
+                  }
+                },
+                "boundary_data": {
+                  "type": "country",
+                  "name": "India",
+                  "boundaryCode": "IN",
+                  "children": []
+                },
+                "fieldplan_id": "fp-001",
+                "project_id": "proj-123"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/facilityIngestion": {
+      "post": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate facility ingestion template Excel file with schema and boundary codes",
+        "description": "Fetches the `data-ingestion.FacilityIngestionSchemaWithoutBoundaryCode` column schema from MDMS along with all boundaries and all vendor codes, and generates a blank downloadable Excel template (no existing facility rows). **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "getFacilityIngestionTemplate",
+        "responses": {
+          "200": {
+            "description": "Excel template with facility schema columns, boundary codes, and vendor codes.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_ingestion_template_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_ingestion_template_20260717_120000.xlsx"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Template generation error: <underlying error> / An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway -- an upstream eGov DIGIT service call failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "External service error: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/facilityWithStaff": {
+      "post": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate facility ingestion template with staff Excel file",
+        "description": "Fetches the facilities under project `parent_id` that are eligible for 'Staff' assignment and generates a downloadable Excel template (sheet 'Facilities_Staff') pre-filled with those facilities plus a Role dropdown column (Staff / Field Planner). **Authorization:** this endpoint calls `get_authorized_request_info(RequestInfo)`, which requires `RequestInfo.userInfo.roles` to contain at least one role whose `name` equals `ADMIN` (the only member of the `UserRole` enum). Returns 401 if userInfo/roles are missing, 403 if no role matches.",
+        "operationId": "getFacilityIngestionTemplateWithStaff",
+        "responses": {
+          "200": {
+            "description": "Excel template (sheet 'Facilities_Staff') pre-filled with facility rows and a Role dropdown.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_staff_template_proj-123_20260717_120000_000000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_staff_template_proj-123_20260717_120000_000000.xlsx"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- RequestInfo.userInfo/roles missing or absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Unauthorized: User information or roles are missing"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- caller's RequestInfo.userInfo.roles does not include an allowed role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "User role(s) '[]' not authorized for this operation. Allowed roles: ['ADMIN']"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Template generation error: <underlying error> / An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parent_id": {
+                    "type": "string",
+                    "description": "Parent project ID"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "Serialized RequestInfo JSON"
+                  }
+                },
+                "required": [
+                  "parent_id",
+                  "request_info"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/facilityWithSupervisors": {
+      "post": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate facility ingestion template with supervisors Excel file",
+        "description": "Fetches the facilities under project `parent_id` that are eligible for 'Supervisor' assignment and generates a downloadable Excel template (sheet 'Facilities_Supervisors') pre-filled with those facilities plus a Role dropdown column (Supervisor / Field Planner). **Authorization:** this endpoint calls `get_authorized_request_info(RequestInfo)`, which requires `RequestInfo.userInfo.roles` to contain at least one role whose `name` equals `ADMIN` (the only member of the `UserRole` enum). Returns 401 if userInfo/roles are missing, 403 if no role matches.",
+        "operationId": "getFacilityIngestionTemplateWithSupervisors",
+        "responses": {
+          "200": {
+            "description": "Excel template (sheet 'Facilities_Supervisors') pre-filled with facility rows and a Role dropdown.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_supervisors_template_proj-123_20260717_120000_000000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_supervisors_template_proj-123_20260717_120000_000000.xlsx"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- RequestInfo.userInfo/roles missing or absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Unauthorized: User information or roles are missing"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- caller's RequestInfo.userInfo.roles does not include an allowed role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "User role(s) '[]' not authorized for this operation. Allowed roles: ['ADMIN']"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Template generation error: <underlying error> / An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parent_id": {
+                    "type": "string",
+                    "description": "Parent project ID"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "Serialized RequestInfo JSON"
+                  }
+                },
+                "required": [
+                  "parent_id",
+                  "request_info"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/facilitySelection": {
+      "get": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate facility selection template Excel file",
+        "description": "Fetches the facility-selection MDMS schema, then intersects facilities found by `boundary_codes` with facilities already linked to `parent_project_id` (if given) and generates a downloadable Excel selection template. NOTE: implemented as an HTTP GET whose parameters are declared as FastAPI `Form(...)` fields (i.e. it expects `application/x-www-form-urlencoded`/multipart form data on a GET request, which is non-standard). **Authorization:** this endpoint calls `get_authorized_request_info(RequestInfo)`, which requires `RequestInfo.userInfo.roles` to contain at least one role whose `name` equals `ADMIN` (the only member of the `UserRole` enum). Returns 401 if userInfo/roles are missing, 403 if no role matches.",
+        "operationId": "getFacilitySelectionTemplate",
+        "responses": {
+          "200": {
+            "description": "Excel template pre-filled with the intersected/boundary facility selection data.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as facility_selection_template_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=facility_selection_template_20260717_120000.xlsx"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized -- RequestInfo.userInfo/roles missing or absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Unauthorized: User information or roles are missing"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden -- caller's RequestInfo.userInfo.roles does not include an allowed role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "User role(s) '[]' not authorized for this operation. Allowed roles: ['ADMIN']"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Template generation error: <underlying error>"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway -- an upstream eGov DIGIT service call failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "External service error: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parent_project_id": {
+                    "type": "string",
+                    "description": "Parent project ID used to intersect boundary facilities with project-linked facilities"
+                  },
+                  "boundary_codes": {
+                    "type": "string",
+                    "description": "Comma-separated list of boundary codes to search facilities under"
+                  },
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "boundary_codes"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/facilityQRGeneration": {
+      "post": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate QR codes for facility auto-login",
+        "description": "Looks up tenant/health-facility mappings for a fixed list of state tenants from MDMS, resolves each facility's HRMS employee login username from the HRMS Postgres DB directly, generates a QR-encoded auto-login URL image per facility (organized into state/district/block/facility folders), and returns a ZIP archive of the generated PNGs. **Note:** on failure this endpoint does not raise an HTTPException -- it returns HTTP 200 with a JSON body `{\"status\": \"error\", \"message\": \"<error>\"}` instead. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "getFacilityQrForAutologin",
+        "responses": {
+          "200": {
+            "description": "ZIP archive of generated facility login QR-code PNGs, OR (on internal failure) a JSON error body returned with HTTP 200.",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary ZIP content -- downloaded as facility_qr_codes.zip>"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacilityQRErrorResponse"
+                },
+                "example": {
+                  "status": "error",
+                  "message": "connection to server at ... failed"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request_info": {
+                    "type": "string",
+                    "description": "JSON-encoded RequestInfo payload",
+                    "default": ""
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/template/amcConfigurationTemplate": {
+      "post": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Generate AMC configuration ingestion template",
+        "description": "Flattens `boundary_data`, bulk-fetches facilities for those boundary codes (optionally filtered to those linked to `project_id`), prefetches any existing AMC Scheduler configurations for the project, and generates a downloadable Excel template (sheet 'amc-configurations' plus a locked 'BoundaryCodes' sheet) with AMC-Frequency/AMC-Duration dropdown columns -- pre-filled and locked for facilities that already have an AMC configuration. **Authorization:** no role check is enforced by this endpoint at runtime (the `get_authorized_request_info` call is either absent or commented out in the current code); any caller that can reach the service can invoke it. A `RequestInfo` payload is still accepted/parsed for downstream calls to other eGov DIGIT services.",
+        "operationId": "getAmcConfigurationTemplate",
+        "responses": {
+          "200": {
+            "description": "Excel template with sheets 'amc-configurations' (Facility Id, NIN/HFR ID, BoundaryCode, Health Facility Name, AMC-Frequency, AMC-Duration) and 'BoundaryCodes'.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "<binary XLSX content -- downloaded as amc_configuration_template_20260717_120000.xlsx>"
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=amc_configuration_template_20260717_120000.xlsx"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request -- boundary_data missing from payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "boundary_data is required"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error -- a required multipart/form field or file was missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "facility_file"
+                      ],
+                      "msg": "field required",
+                      "type": "value_error.missing"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error -- unhandled exception while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                },
+                "example": {
+                  "detail": "Facility service is not configured / An unexpected error occurred: <underlying error>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": null,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "RequestInfo": {
+                    "$ref": "#/components/schemas/RequestInfo"
+                  },
+                  "boundary_data": {
+                    "$ref": "#/components/schemas/BoundaryTreeNode"
+                  },
+                  "project_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "If provided, only facilities linked to this project are included and existing AMC configs are looked up."
+                  }
+                },
+                "required": [
+                  "RequestInfo",
+                  "boundary_data"
+                ]
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "Rainmaker",
+                  "ver": "1.0",
+                  "ts": 1700000000000,
+                  "action": "_create",
+                  "msgId": "20240617",
+                  "authToken": "f6a27ba4-bead-483d-b4d8-23d46c74d153",
+                  "userInfo": {
+                    "id": 178,
+                    "uuid": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+                    "userName": "admin",
+                    "name": "Admin User",
+                    "mobileNumber": "9911223345",
+                    "emailId": "admin@example.com",
+                    "type": "EMPLOYEE",
+                    "roles": [
+                      {
+                        "name": "ADMIN",
+                        "code": "ADMIN",
+                        "tenantId": "in"
+                      }
+                    ],
+                    "active": true,
+                    "tenantId": "in"
+                  }
+                },
+                "boundary_data": {
+                  "type": "country",
+                  "name": "India",
+                  "boundaryCode": "IN",
+                  "children": []
+                },
+                "project_id": "proj-123"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-service/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Service health check",
+        "description": "Liveness/readiness probe backed by the `fastapi_health` library, running a single always-true check function (`is_healthy`). Returns HTTP 200 with one boolean per registered check when all checks pass, or HTTP 503 if any check fails (not currently reachable since the sole check always returns True). No RequestInfo/authentication is required.",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "All health checks passed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheckResponse"
+                },
+                "example": {
+                  "is_healthy": true
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unhealthy -- at least one registered health check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheckResponse"
+                },
+                "example": {
+                  "is_healthy": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Role": {
+        "type": "object",
+        "description": "A single role assigned to a user, embedded inside RequestInfo.userInfo.roles. Authorization in this service is performed by scanning this list for a role whose `name` matches a value of the UserRole enum (currently only \"ADMIN\").",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "nullable": true,
+            "example": "ADMIN"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 50,
+            "nullable": true,
+            "example": "ADMIN"
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 256,
+            "nullable": true,
+            "example": "in"
+          }
+        },
+        "additionalProperties": true
+      },
+      "User": {
+        "type": "object",
+        "description": "userInfo embedded inside RequestInfo. Carries the identity and roles of the calling user; there is no separate Authorization header in this service.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 178
+          },
+          "userName": {
+            "type": "string",
+            "maxLength": 180,
+            "nullable": true,
+            "example": "admin"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 250,
+            "nullable": true,
+            "example": "Admin User"
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 50,
+            "nullable": true,
+            "example": "EMPLOYEE"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "maxLength": 150,
+            "nullable": true,
+            "example": "9911223345"
+          },
+          "emailId": {
+            "type": "string",
+            "maxLength": 300,
+            "nullable": true,
+            "example": "admin@example.com"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            },
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 256,
+            "nullable": true,
+            "example": "in"
+          },
+          "uuid": {
+            "type": "string",
+            "maxLength": 36,
+            "nullable": true,
+            "example": "72743f47-9f1a-47de-ac43-b12cde70afc1"
+          }
+        },
+        "additionalProperties": true
+      },
+      "PlainAccessRequest": {
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string",
+            "nullable": true
+          },
+          "plainRequestFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "RequestInfo": {
+        "type": "object",
+        "description": "The eGov DIGIT platform convention used across this service for both authentication context and authorization. There is no separate `Authorization` header: the caller's JWT/authToken and identity travel inside this object as `authToken` and `userInfo`. Endpoints that enforce RBAC call `get_authorized_request_info(request_info)` (see app/decorators/rbac_validator.py), which scans `userInfo.roles[].name` and requires at least one role matching the `UserRole` enum (app/core/user_role.py) -- currently only the single value `ADMIN`. On most multipart/form-data endpoints this object is submitted as a JSON-encoded string in a form field named `request_info` (parsed server-side via `request_info_from_json`); on JSON-body endpoints it is submitted as the `RequestInfo` key of the request body.",
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "nullable": true,
+            "example": "Rainmaker"
+          },
+          "ver": {
+            "type": "string",
+            "nullable": true,
+            "example": "1.0"
+          },
+          "ts": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1700000000000
+          },
+          "action": {
+            "type": "string",
+            "nullable": true,
+            "example": "_create"
+          },
+          "did": {
+            "type": "string",
+            "nullable": true
+          },
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "msgId": {
+            "type": "string",
+            "nullable": true,
+            "example": "20240617"
+          },
+          "authToken": {
+            "type": "string",
+            "nullable": true,
+            "example": "f6a27ba4-bead-483d-b4d8-23d46c74d153"
+          },
+          "correlationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "plainAccessRequest": {
+            "$ref": "#/components/schemas/PlainAccessRequest"
+          },
+          "userInfo": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "additionalProperties": true
+      },
+      "Boundary": {
+        "type": "object",
+        "description": "Flattened block-level boundary row produced by app.schemas.boundary.flatten_boundaries from a nested boundary_data tree.",
+        "properties": {
+          "country": {
+            "type": "string",
+            "example": "India"
+          },
+          "state": {
+            "type": "string",
+            "example": "Karnataka"
+          },
+          "district": {
+            "type": "string",
+            "example": "Bangalore Urban"
+          },
+          "block": {
+            "type": "string",
+            "example": "Yelahanka"
+          },
+          "code": {
+            "type": "string",
+            "example": "KA_BLR_YEL"
+          }
+        },
+        "required": [
+          "country",
+          "state",
+          "district",
+          "block",
+          "code"
+        ]
+      },
+      "BoundaryTreeNode": {
+        "type": "object",
+        "description": "A single node in the nested boundary_data tree accepted by template-generation endpoints (country -> state -> district -> block).",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "country",
+              "state",
+              "district",
+              "block"
+            ],
+            "example": "state"
+          },
+          "name": {
+            "type": "string",
+            "example": "Karnataka"
+          },
+          "boundaryCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "KA"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoundaryTreeNode"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "FilterType": {
+        "type": "string",
+        "description": "Enum used by MDMS-driven column definitions to describe how a column's allowed values are constrained.",
+        "enum": [
+          "ONE_OF",
+          "RANGE",
+          "REGEX"
+        ]
+      },
+      "MDMSDataSource": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "master": {
+            "type": "string",
+            "nullable": true
+          },
+          "module": {
+            "type": "string",
+            "nullable": true
+          },
+          "filterType": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MDMSColumn": {
+        "type": "object",
+        "description": "A single column definition returned by MDMS for a data-ingestion schema (e.g. data-ingestion.FacilityIngestionSchema).",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Health Facility Name"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "pattern": {
+            "type": "string",
+            "nullable": true
+          },
+          "mdmsSource": {
+            "$ref": "#/components/schemas/MDMSDataSource"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "FacilityIngestionSchemaResponse": {
+        "type": "object",
+        "description": "Column-definition schema fetched from MDMS (data-ingestion.FacilityIngestionSchema / FacilityIngestionSchemaWithoutBoundaryCode / FieldPlanFacilityIngestionSchema) and used to build ingestion/template Excel sheets.",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MDMSColumn"
+            }
+          }
+        }
+      },
+      "Vendor": {
+        "type": "object",
+        "description": "A single vendor row parsed from the uploaded vendor Excel sheet, before being submitted to the organization service.",
+        "properties": {
+          "country_boundary_code": {
+            "type": "string"
+          },
+          "vendor_name": {
+            "type": "string",
+            "example": "Acme Solar Pvt Ltd"
+          },
+          "vendor_type": {
+            "type": "string",
+            "example": "OEM"
+          },
+          "vendor_subtype": {
+            "type": "string",
+            "nullable": true
+          },
+          "identifier_type": {
+            "type": "string",
+            "example": "GSTIN"
+          },
+          "identifier_value": {
+            "type": "string",
+            "example": "29ABCDE1234F1Z5"
+          },
+          "hq_address": {
+            "type": "string"
+          },
+          "pincode": {
+            "type": "string",
+            "example": "560001"
+          },
+          "poc_phone": {
+            "type": "string",
+            "example": "9900112233"
+          },
+          "poc_name": {
+            "type": "string",
+            "example": "Jane Doe"
+          }
+        },
+        "required": [
+          "country_boundary_code",
+          "vendor_name",
+          "vendor_type",
+          "identifier_type",
+          "identifier_value",
+          "hq_address",
+          "pincode",
+          "poc_phone",
+          "poc_name"
+        ]
+      },
+      "HTTPError": {
+        "type": "object",
+        "description": "Standard error body raised via FastAPI's HTTPException(status_code, detail) in this service.",
+        "properties": {
+          "detail": {
+            "type": "string",
+            "example": "Failed to process facility data: <underlying error message>"
+          }
+        },
+        "required": [
+          "detail"
+        ]
+      },
+      "HTTPErrorObjectDetail": {
+        "type": "object",
+        "description": "Variant of the standard error body where `detail` is a structured object rather than a plain string (used e.g. by /facilitiesValidateData when uploaded boundary codes do not match the project's boundary codes).",
+        "properties": {
+          "detail": {
+            "type": "object",
+            "properties": {
+              "error": {
+                "type": "string",
+                "example": "BoundaryCode mismatch"
+              },
+              "missing": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extra": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "detail"
+        ]
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "loc": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          },
+          "msg": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ]
+      },
+      "HTTPValidationError": {
+        "type": "object",
+        "description": "FastAPI's default 422 body, produced automatically by Pydantic/FastAPI request validation (e.g. a missing required Form/File field).",
+        "properties": {
+          "detail": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            }
+          }
+        }
+      },
+      "HealthCheckResponse": {
+        "type": "object",
+        "description": "Response produced by the fastapi_health library's health() helper: one boolean per registered check function.",
+        "properties": {
+          "is_healthy": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "WorkStreamWithFacilitiesResponse": {
+        "type": "object",
+        "description": "Result of creating a 'Work Stream' project linked to a Field Plan project, linking its facilities, and creating/assigning an installation SPOC user.",
+        "properties": {
+          "staff": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "ProjectStaff records created for the installation SPOC."
+          },
+          "user": {
+            "type": "object",
+            "description": "The HRMS Employee object created for the installation SPOC."
+          },
+          "work_stream": {
+            "type": "object",
+            "description": "The newly created Work Stream Project object."
+          }
+        }
+      },
+      "FacilityQRErrorResponse": {
+        "type": "object",
+        "description": "This endpoint does not raise HTTPException on failure; instead it returns HTTP 200 with this error body.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "message": {
+            "type": "string",
+            "example": "connection to server failed"
+          }
+        }
+      }
+    }
+  }
+}
