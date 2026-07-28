@@ -63,6 +63,17 @@
 * [Master data](data-and-integrations/master-data.md)
 * [Ingestion](data-and-integrations/ingestion.md)
 
+## LLDs
+
+* [Admin functionality](LLDs/admin-functionality/admin-functionality-lld.md)
+* [Assessment module](LLDs/assessment/assessment-module-lld.md)
+* AMC scheduling
+  * [v1](LLDs/amc-scheduling/amc-lld-v1.md)
+  * [v2](LLDs/amc-scheduling/amc-lld-v2.md)
+* [Anganwadi](LLDs/anganwadi/anganwadi-lld.md)
+* [CO2 emission dashboard](LLDs/co2-emission-dashboard/co2-emission-dashboard-lld.md)
+* [Saura eMitra v3](LLDs/saura-emitra-v3/saura-emitra-v3-lld.md)
+
 ## Operations
 
 * [CI/CD](operations/ci-cd.md)
