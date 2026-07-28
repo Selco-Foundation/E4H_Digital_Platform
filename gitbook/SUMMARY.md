@@ -68,3 +68,4 @@
 * [CI/CD](operations/ci-cd.md)
 * [Deployment](operations/deployment.md)
 * [Troubleshooting](operations/troubleshooting.md)
+* [Licenses and dependencies](operations/licenses-and-dependencies.md)
