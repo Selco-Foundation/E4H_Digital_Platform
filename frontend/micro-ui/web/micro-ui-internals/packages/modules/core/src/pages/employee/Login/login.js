@@ -393,7 +393,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       {activePolicyModal && (
         <PolicyConsentModal
           type={activePolicyModal}
-          tenantId={stateInfo?.code || "in"}
+          module={"E4H"}
+          tenantId={Digit.ULBService.getCurrentTenantId() || Digit.ULBService.getStateId()}
           onClose={() => setActivePolicyModal(null)}
           onAccept={handlePolicyModalAccept}
           onReject={handlePolicyModalReject}

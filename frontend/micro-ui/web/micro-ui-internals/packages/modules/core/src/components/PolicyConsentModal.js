@@ -13,7 +13,7 @@ const POLICY_CONFIG = {
   },
 };
 
-const PolicyConsentModal = ({ type = "privacy", module = "HCM", tenantId, onClose, onAccept, onReject }) => {
+const PolicyConsentModal = ({ type = "privacy", module = "E4H", tenantId, onClose, onAccept, onReject }) => {
   const { t } = useTranslation();
   const policyConfig = POLICY_CONFIG[type] || POLICY_CONFIG.privacy;
   const moduleName = Digit.Utils.getConfigModuleName && Digit.Utils.getConfigModuleName();

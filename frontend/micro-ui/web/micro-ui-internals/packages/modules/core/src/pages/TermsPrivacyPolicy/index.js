@@ -13,10 +13,12 @@ const POLICY_CONFIG = {
   },
 };
 
-const TermsPrivacyPolicy = ({ stateCode, type = "privacy", module = "HCM" }) => {
+const TermsPrivacyPolicy = ({ stateCode, type = "privacy", module = "E4H" }) => {
   const { t } = useTranslation();
+  const tenantId = Digit.ULBService.getCurrentTenantId() || Digit.ULBService.getStateId() || stateCode;
+  const moduleName = "commonUiConfig";
   const policyConfig = POLICY_CONFIG[type] || POLICY_CONFIG.privacy;
-  const { data: documentData, isLoading } = usePolicyDocument({ type, module, moduleName: "commonUiConfig", tenantId: stateCode });
+  const { data: documentData, isLoading } = usePolicyDocument({ type, module, moduleName, tenantId });
 
   if (isLoading) {
     return <Loader page={true} />;
