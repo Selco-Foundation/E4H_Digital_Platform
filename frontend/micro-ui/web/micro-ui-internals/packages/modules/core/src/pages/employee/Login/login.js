@@ -21,6 +21,88 @@ const setEmployeeDetail = (userObject, token) => {
   localStorage.setItem("Employee.user-info", JSON.stringify(userObject));
 };
 
+const ConsentCheckbox = ({ id, checked, onChange, modalType, linkText, translateWithFallback, openPolicyModal }) => (
+  <label
+    htmlFor={id}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      marginBottom: "18px",
+      cursor: "pointer",
+    }}
+  >
+    <input
+      id={id}
+      type="checkbox"
+      checked={checked}
+      onChange={(event) => onChange(event.target.checked)}
+      style={{
+        cursor: "pointer",
+        height: "18px",
+        margin: 0,
+        width: "18px",
+      }}
+    />
+    <span>
+      {translateWithFallback("CORE_ACCEPT_TEXT", "By clicking, I accept the")}{" "}
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openPolicyModal(modalType);
+        }}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#d4351c",
+          cursor: "pointer",
+          padding: 0,
+          textDecoration: "underline",
+        }}
+      >
+        {translateWithFallback(linkText, linkText === "CORE_PRIVACY_POLICY" ? "Privacy Policy" : "Terms of Use")}
+      </button>
+    </span>
+  </label>
+);
+
+const ConsentAcceptance = ({ config }) => {
+  const {
+    shouldShowConsent,
+    privacyAccepted,
+    termsAccepted,
+    setPrivacyAccepted,
+    setTermsAccepted,
+    translateWithFallback,
+    openPolicyModal,
+  } = config?.consentProps || {};
+
+  return shouldShowConsent ? (
+    <div style={{ marginBottom: "6px" }}>
+      <ConsentCheckbox
+        id="privacy-policy-consent"
+        checked={privacyAccepted}
+        onChange={setPrivacyAccepted}
+        modalType="privacy"
+        linkText="CORE_PRIVACY_POLICY"
+        translateWithFallback={translateWithFallback}
+        openPolicyModal={openPolicyModal}
+      />
+      <ConsentCheckbox
+        id="terms-of-use-consent"
+        checked={termsAccepted}
+        onChange={setTermsAccepted}
+        modalType="terms"
+        linkText="CORE_TERMS_OF_USE"
+        translateWithFallback={translateWithFallback}
+        openPolicyModal={openPolicyModal}
+      />
+    </div>
+  ) : null;
+};
+
 const Login = ({ config: propsConfig, t, isDisabled }) => {
   const { data: cities, isLoading } = Digit.Hooks.useTenants();
   let sortedCities = [];
@@ -231,73 +313,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     setActivePolicyModal(null);
   };
 
-  const ConsentCheckbox = ({ id, checked, onChange, modalType, linkText }) => (
-    <label
-      htmlFor={id}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        marginBottom: "18px",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        style={{
-          cursor: "pointer",
-          height: "18px",
-          margin: 0,
-          width: "18px",
-        }}
-      />
-      <span>
-        {translateWithFallback("CORE_ACCEPT_TEXT", "By clicking, I accept the")}{" "}
-        <button
-          type="button"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setActivePolicyModal(modalType);
-          }}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#d4351c",
-            cursor: "pointer",
-            padding: 0,
-            textDecoration: "underline",
-          }}
-        >
-          {translateWithFallback(linkText, linkText === "CORE_PRIVACY_POLICY" ? "Privacy Policy" : "Terms of Use")}
-        </button>
-      </span>
-    </label>
-  );
-
-  const ConsentAcceptance = () =>
-    shouldShowConsent ? (
-      <div style={{ marginBottom: "6px" }}>
-        <ConsentCheckbox
-          id="privacy-policy-consent"
-          checked={privacyAccepted}
-          onChange={setPrivacyAccepted}
-          modalType="privacy"
-          linkText="CORE_PRIVACY_POLICY"
-        />
-        <ConsentCheckbox
-          id="terms-of-use-consent"
-          checked={termsAccepted}
-          onChange={setTermsAccepted}
-          modalType="terms"
-          linkText="CORE_TERMS_OF_USE"
-        />
-      </div>
-    ) : null;
-
   const [userId, password, city] = propsConfig.inputs;
   const config = [
     {
@@ -329,6 +344,15 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           component: ConsentAcceptance,
           withoutLabel: true,
           key: "consentAcceptance",
+          consentProps: {
+            shouldShowConsent,
+            privacyAccepted,
+            termsAccepted,
+            setPrivacyAccepted,
+            setTermsAccepted,
+            translateWithFallback,
+            openPolicyModal: setActivePolicyModal,
+          },
         },
       ],
     },

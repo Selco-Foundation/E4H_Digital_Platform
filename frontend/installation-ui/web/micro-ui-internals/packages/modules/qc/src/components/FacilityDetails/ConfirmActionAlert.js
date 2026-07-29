@@ -36,6 +36,7 @@ const ConfirmActionAlert = ({ t, alert, setAlert }) => {
         >
           <button
             type={"button"}
+            aria-label={t("CORE_COMMON_CLOSE")}
             style={{
               cursor: "pointer",
               position: "absolute",

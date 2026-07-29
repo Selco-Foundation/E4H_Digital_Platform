@@ -139,6 +139,7 @@ const TopBar = ({
             </React.Fragment>
           )}
         </div>
+        {showLanguageChange && <ChangeLanguage dropdown={true} />}
       </div>
     );
   }
