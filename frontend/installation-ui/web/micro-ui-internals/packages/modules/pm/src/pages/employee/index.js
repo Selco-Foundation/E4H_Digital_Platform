@@ -13,6 +13,9 @@ import CreateAMC from "./CreateAMC";
 import CreateAssessment from "./CreateAssessment";
 import AssessmentDetails from "./AssessmentDetails";
 import Translation from "./Translation";
+import FieldPlanList from "./FieldPlanList";
+import FieldPlanFacilities from "./FieldPlanFacilities";
+import FacilityDetails from "./FacilityDetails";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -64,6 +67,21 @@ const PMApp = () => {
     assessmentDetails: {
       content: pmStore?.workingAssessmentPlan?.name,
       internalLink: match.url + `/project/${pmStore?.workingProject?.id}/assessment/${pmStore?.workingAssessmentPlan?.id}/details`,
+      show: true,
+    },
+    fieldPlans: {
+      content: t("CS_COMMON_FIELD_PLANS"),
+      internalLink: match.url + `/field-plans`,
+      show: true,
+    },
+    fieldPlanFacilities: {
+      content: pmStore?.workingFieldPlan?.name,
+      internalLink: match.url + `/field-plans/${pmStore?.workingFieldPlan?.id}/facilities`,
+      show: true,
+    },
+    facilityDetails: {
+      content: pmStore?.workingFacility?.facilityName || pmStore?.workingFacility?.id,
+      internalLink: match.url + `/field-plans/${pmStore?.workingFieldPlan?.id}/facilities/${pmStore?.workingFacility?.id}/details`,
       show: true,
     },
     response: {
@@ -140,6 +158,27 @@ const PMApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.assessmentDetails]}
           />
           <AssessmentDetails t={t} />
+        </Route>
+        <Route path={`${path}/field-plans`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans]}
+          />
+          <FieldPlanList />
+        </Route>
+        <Route path={`${path}/field-plans/:fieldPlanId/facilities`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans, breadCrumbsConfig.fieldPlanFacilities]}
+          />
+          <FieldPlanFacilities />
+        </Route>
+        <Route path={`${path}/field-plans/:fieldPlanId/facilities/:facilityId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans, breadCrumbsConfig.fieldPlanFacilities, breadCrumbsConfig.facilityDetails]}
+          />
+          <FacilityDetails />
         </Route>
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb
