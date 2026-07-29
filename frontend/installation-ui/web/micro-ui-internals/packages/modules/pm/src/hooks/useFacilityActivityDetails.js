@@ -242,7 +242,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
   }
 }
 
-const useFacilityDetails = (facilityAssignmentId) => {
+const useFacilityActivityDetails = (facilityAssignmentId) => {
 
   const filter = {
     ActivityFacility: {
@@ -269,4 +269,4 @@ const useFacilityDetails = (facilityAssignmentId) => {
   }
 }
 
-export default useFacilityDetails;
+export default useFacilityActivityDetails;
