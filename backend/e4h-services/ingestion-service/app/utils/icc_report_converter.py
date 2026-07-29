@@ -843,7 +843,7 @@ BOM_BRAND_FIELDS_BY_TYPE = {
     "ac_on_grid": {
         "solar_module_make": "PANEL",
         "solar_battery_make": "BATTERY",
-        "inverter_make": "INVERTER",
+        "solar_on_grid_pcu_inverter_make": "INVERTER",
     },
 }
 
@@ -923,6 +923,14 @@ def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, req
     Validation 1/2/3/4 failure (nothing is saved in that case); otherwise returns
     (detected_type, data, fallback_fields, unmatched_fields).
 
+    Validations 1/2 (structural/System-Type mismatch) still fail fast - nothing downstream
+    (detected_type, BOM section layout) is meaningful without them. But Validations 3 (BOM
+    completeness/numeric Quantity) and 4 (brand names) are independent of each other - neither
+    needs the other to have passed - so both always run and their errors are combined into a
+    single ICCValidationError, instead of stopping at whichever one is checked first. This way a
+    file with both a bad Quantity and a bad brand name reports both in one upload attempt, rather
+    than only the first ever surfacing and the second only appearing after a re-upload.
+
     mdms_client/request_info are optional: pass both to also run Validation 4 (brand names);
     omit either to skip it (e.g. for callers/tests without MDMS access). There is no longer an
     MDMS-backed capacity-options check - Capacity is a free-form field for every BOM row,
@@ -934,8 +942,22 @@ def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, req
         raise ICCValidationError(f"Uploaded file is not a valid Excel (.xlsx) file: {exc}") from exc
 
     detected_type = validate_icc_report(wb, requested_system_type)
-    validate_bom_editable_fields_filled(wb, detected_type)
+
+    errors = []
+    try:
+        validate_bom_editable_fields_filled(wb, detected_type)
+    except ICCValidationError as exc:
+        errors.append(str(exc))
+
     data, fallback_fields, unmatched_fields = convert_icc_report(wb, detected_type)
+
     if mdms_client is not None and request_info is not None:
-        validate_bom_brand_names(data, detected_type, mdms_client, request_info)
+        try:
+            validate_bom_brand_names(data, detected_type, mdms_client, request_info)
+        except ICCValidationError as exc:
+            errors.append(str(exc))
+
+    if errors:
+        raise ICCValidationError("\n\n".join(errors))
+
     return detected_type, data, fallback_fields, unmatched_fields
