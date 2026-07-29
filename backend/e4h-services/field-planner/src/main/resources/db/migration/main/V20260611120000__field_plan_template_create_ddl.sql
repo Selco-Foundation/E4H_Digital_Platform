@@ -1,4 +1,4 @@
-CREATE TABLE field_plan_template (
+CREATE TABLE IF NOT EXISTS field_plan_template (
                                      id VARCHAR(64) PRIMARY KEY,
                                      field_plan_id VARCHAR(64) NOT NULL REFERENCES field_plans(id),
                                      system_type VARCHAR(100) NOT NULL,

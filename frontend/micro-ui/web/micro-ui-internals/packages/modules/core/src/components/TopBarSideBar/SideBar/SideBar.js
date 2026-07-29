@@ -90,6 +90,7 @@ const navigateToRespectiveURL = (history = {}, url = "") => {
 const Sidebar = ({ data }) => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { pathname } = useLocation();
   const [openItems, setOpenItems] = useState({});
   const [selectedParent, setSelectedParent] = useState(null);
   const [selectedChild, setSelectedChild] = useState(null);
@@ -142,6 +143,85 @@ const Sidebar = ({ data }) => {
   const handleOnCancel = () => {
     setShowDialog(false);
   }
+
+  const translateWithFallback = (key, fallback) => {
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
+
+  const policyParentKey = "privacyTerms";
+
+  const renderPolicyGroup = () => {
+    const policyLinks = [
+      {
+        labelKey: "CORE_PRIVACY_POLICY",
+        fallbackLabel: "Privacy Policy",
+        navigationURL: `/${window.contextPath}/privacy-policy`,
+      },
+      {
+        labelKey: "CORE_TERMS_OF_USE",
+        fallbackLabel: "Terms of Use",
+        navigationURL: `/${window.contextPath}/terms-of-use`,
+      },
+    ];
+    const isPolicyOpen = openItems[policyParentKey] || false;
+    const isPolicyActive = selectedParent === policyParentKey || policyLinks.some((policyLink) => pathname === policyLink.navigationURL);
+
+    return (
+      <div>
+        <div
+          className={`sidebar-link level-0 ${isPolicyActive ? "select-level" : ""}`}
+          style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}
+        >
+          <div
+            className={`actions ${isPolicyActive ? "default-0 active" : "default-0"}`}
+            onClick={() => {
+              toggleSidebar(policyParentKey);
+              setSelectedParent((prevItem) => (prevItem === policyParentKey ? null : policyParentKey));
+              setSelectedChild(null);
+              setSelectedChildLevelOne(null);
+            }}
+            style={{ display: "flex", flexDirection: "row", width: "100%" }}
+          >
+            <div className="link-icon">
+              <DocumentIconSolid />
+            </div>
+            <div>
+              <span> {translateWithFallback("CORE_PRIVACY_TERMS", "Privacy & Terms")} </span>
+            </div>
+            <div style={{ position: "relative", marginLeft: "auto" }} className="arrow">
+              {isPolicyOpen ? <ArrowVectorDown height="28px" width="28px" /> : <ArrowForward />}
+            </div>
+          </div>
+          {subNav && isPolicyOpen && (
+            <div style={{ width: "100%" }}>
+              {policyLinks.map((policyLink) => {
+                const label = translateWithFallback(policyLink.labelKey, policyLink.fallbackLabel);
+                return (
+                  <a
+                    key={policyLink.navigationURL}
+                    className={`dropdown-link new-dropdown-link ${pathname === policyLink.navigationURL ? "active" : ""} level-1`}
+                    onClick={() => {
+                      setSelectedParent(policyParentKey);
+                      setSelectedChild(policyLink.navigationURL);
+                      setSelectedChildLevelOne(null);
+                      history.push(policyLink.navigationURL);
+                    }}
+                    style={{ textDecoration: "none" }}
+                  >
+                    <div className="actions level-1">
+                      <span className="trimModuleName"> {label} </span>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   function extractLeftIcon(data = {}) {
     for (const key in data) {
       const item = data[key];
@@ -229,6 +309,7 @@ const Sidebar = ({ data }) => {
             const isChildActive = selectedChildLevelOne === trimModuleName;
             //we need to have a heirarchy such as parent -> child1 -> child2 to differentiate b/w different levels in the sidebar
             return (
+              <React.Fragment key={key}>
               <div>
                 <style>
 {
@@ -347,6 +428,8 @@ const Sidebar = ({ data }) => {
                 )}
               </div>
               </div>
+              {flag && level === 0 && index === 1 && renderPolicyGroup()}
+              </React.Fragment>
             );
           } else if (subItemKeys) {
             // If the item is a link, render it
@@ -366,6 +449,7 @@ const Sidebar = ({ data }) => {
             }
             const isChildActive = selectedChild === subItems.item.path;
             return (
+              <React.Fragment key={key}>
               <div>
               <style>
                 {
@@ -431,6 +515,8 @@ const Sidebar = ({ data }) => {
                 </div>
               </a>
               </div>
+              {flag && level === 0 && index === 1 && renderPolicyGroup()}
+              </React.Fragment>
             );
           }
         })}

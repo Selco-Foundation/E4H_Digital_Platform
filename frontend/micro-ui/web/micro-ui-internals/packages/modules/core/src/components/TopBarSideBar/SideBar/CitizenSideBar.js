@@ -93,6 +93,11 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
     toggleSidebar(false);
   };
 
+  const translateWithFallback = (key, fallback) => {
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
+
   const { isLoading, data } = Digit.Hooks.useAccessControl();
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const showProfilePage = () => {
@@ -125,6 +130,28 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
           onClick: showProfilePage,
         },
       },
+      ...(isEmployee
+        ? [
+            {
+              type: "dynamic",
+              moduleName: translateWithFallback("CORE_PRIVACY_TERMS", "Privacy & Terms"),
+              element: "PRIVACY_TERMS",
+              icon: "dynamic:description",
+              links: [
+                {
+                  label: translateWithFallback("CORE_PRIVACY_POLICY", "Privacy Policy"),
+                  navigationURL: `/${window.contextPath}/privacy-policy`,
+                  orderNumber: 1,
+                },
+                {
+                  label: translateWithFallback("CORE_TERMS_OF_USE", "Terms of Use"),
+                  navigationURL: `/${window.contextPath}/terms-of-use`,
+                  orderNumber: 2,
+                },
+              ],
+            },
+          ]
+        : []),
       {
         text: t("CORE_COMMON_LOGOUT"),
         element: "LOGOUT",
