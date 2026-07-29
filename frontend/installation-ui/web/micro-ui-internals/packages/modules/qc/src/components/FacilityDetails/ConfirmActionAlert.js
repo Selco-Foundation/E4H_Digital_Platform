@@ -6,7 +6,16 @@ const ConfirmActionAlert = ({ t, alert, setAlert }) => {
   if (!alert) return null;
   return (
     <PopUp>
+      <style>
+        {`
+          .qc-confirm-action-alert .submit-bar,
+          .qc-confirm-action-alert .jk-digit-primary-btn {
+            box-shadow: none;
+          }
+        `}
+      </style>
       <div
+        className="qc-confirm-action-alert"
         style={{
           backgroundColor: "white",
           position: "fixed",
