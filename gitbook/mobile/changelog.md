@@ -1,0 +1,207 @@
+# Mobile app changelog
+
+Derived from commit history on `mobile` (`origin/feature-mobile-3` branch — the `mobile` directory does not exist on `main`; this is the most complete granular history available for it), grouped by month.
+
+## 2025-11
+- Updated localization in overrall_asset_summary screen
+- Fixing coderabbit ai review
+- Coderabbit ai review changed Done to Error
+- Removed unnecessary comments
+- Fix coderabbit ai issues
+- Fixing coderabbitai issues
+- Added workflow auditDetail model
+- Removed all debugPrint from code
+- Created a patch for the dynamic form
+- Removed all prints from code
+- Removed .idea and _DS_Store
+- Removed prints in app_init used for debugging
+- Fixed bug of solution design pointing to brand
+- Code refactor
+- Fixed summary not loading after syncing
+- Truncated video names coming out
+- Fix incorrect counts bugs from documents type
+- Fixing custom upload api
+- Fixed incorrect warranty start date
+- Debug incorrect asset count
+
+## 2025-10
+- Fixed cache issue project not updating
+- Updated send back
+- Added bloc not ending/updating tasks on Ui bug
+- Fixed project values in another bom
+- Updated timeout
+- Removed section from DC MMS
+- Added retry attempts
+- Switch to using activityFacilityId in fetching assets
+- Added activityFacilityId to bom and asset
+- Changed mock models
+- Updated endpoints to activitiies
+- Updating models
+- Updated systems in bom forms
+- Fixed max count error
+- Updated forms_engine and scanner package and fixed background issue
+- Moved mdms to home screen
+- Added rejection of project to background job also
+- Updated asset submisison to background flow
+- Added background upload
+- Fixed images duplicating bug
+- Fixing bugs of multiple images appearing
+- Updated brand mdms
+- Fixed image bugs
+- Made rejection upload workflow documents also
+- Added duplicate error fallback when submitting asset
+- Added the bom forms, and added dc
+- Renaming bom files
+- Added more bom forms and made them dynamic
+- Updated bom jsons to 5
+- Added all 4 more boms
+- Added bom showing for others and initial bom not saving error
+- Added three phase system json
+- Made bom only for supervisor
+- Fixed rejection image not updated
+- Made pending approval bom non-editable
+- Added submitting image in rejection
+- Fixed error message underscore message
+- Added dynamic form pointing to another page bug
+- Completed pdf naming format
+- Fixed rejection reasons showing json in some payload
+- Fixed bom bugs
+- Completed first bom generation
+- Fixed bom upload, merge key_values and download pdf
+- Added bom download feature
+
+## 2025-09
+- Added prefilledcache logic to replace unsubmittedcache
+- Updated bom submission
+- Added bom submission
+- Fixed multiple asset disable button bug
+- Fixed bom form sectioning
+- Added scanner localization
+- Updated digit_scanner and digit_forms_engine package
+- Updated section field
+- Updated json mock
+- Removed bom button from home screen
+- Added new package and added additionalDetails as bom to workflow update
+- Updated new package for digit_forms_engine
+
+## 2025-08
+- Update dynamic_form_page
+- Added new E4H solar bom form json
+- Added forms_engine integrations
+- Added mock formconfig
+- Modified rejection color and size from review
+- Cleanup logs
+- Updated comment models with reasons
+- Added resume and submit for approval functions
+- Fixed localization for brand, systems, error messages
+- Fixed localization and first time dialog on home page
+- Caching project only when submitting
+- Removing logs
+- Updated workflow model to accept either map or array
+- Fixed project progress
+- Made dropdowns required when selecting asset
+- Added solution docs for displaying documents
+- Fixed multiple nested models to isar cache
+- Updated syncing from download
+- Cleanup
+- Fixed cache still showing bug
+- Added projects progress
+- Uncommented out dummy progress
+- Added refresh token logic
+- Added sync functionality and ui update
+
+## 2025-07
+- Removing comments
+- Added viewer pages for images, videos and pdfs
+- Enabled field staff to resubmit
+- Added loader when rejecting with reason
+- Working commit of group testing with submit_for_approval fix
+- Added submitted by supervisor to staff inbox
+- Fixed document issue for workflow
+- Added auditDetails to asset update
+- Fixed bug of when not all assets are uploaded by supervisors
+- Added logs to debug file not saving locally
+- Added backbutton fix to manifest
+- Fixed location/camera permission bug
+- Fixed backward compatibility issues
+- Fix document not uploading in some devices
+- Readded assetId when resyncing assets
+- Remove specification page for field staff
+- Fix camera crash bug
+- Fixed camera issue
+- Fixes from qa
+- Added search and filter to inbox screen
+- Added scanner localization
+- Fixed gradle bugs and :flutter_keyboard_visibility namespace issue
+- Added localization for welcome screens
+- Added overall summary completion report for supervisor
+- Fixed pdf document not in completion report
+- Added file to resubmit for  approval page
+- Fixed reportType and inboxType bloc bug
+- Fix navigation bug and cleanup asset creation/update
+- End to end demo with old project bug repopulating new project
+- Added asset-rejection
+- Refactored asset model
+- Added filestore images
+- Added search endpoint
+- Added counts events
+- Fixed asset creation and update
+
+## 2025-06
+- Added supervisor uploading completion report
+- Refactored asset upload and user type from login
+- Completed pre submit assets
+- Added reset otp error message
+- Added UserOtp Bloc
+- Added custom drawer
+- Added summary page proper to use saved data
+- Added image upload cache
+- Added asset_type details
+- Added capacity and type to be fetched from mdms_v2
+- Added brands from mdms v2
+- Added warranty from mdms v2
+- Getting specification details from mdmds-v2
+- Added system mdms model
+- Added select asset type from mdms -v2
+- Added asset type mdms v2
+
+## 2025-05
+- Added mdms v2 asset count
+- Implemented projects enpoints
+- Updated package name, app name and logos
+- Ready for presentation
+- Added all steppers
+- Added scanner page with the local cache
+- Implemented scanner page
+- Added scan page for one
+- Still fixing bug of count navigation
+- Code cleanup syncing starterPack
+- Added menu drawer
+- Added draft summary
+- Added draft screens
+- Completed inbox screens
+- Added inbox screens and bloc
+
+## 2025-04
+- Added inbox screen
+- Added bloc to control asset-type selecftion
+- Updated overall-asset summary
+- Added FileUploadWidget2
+- Added data_save_success screen
+- Added inverter summary page
+- Added upload screen
+- Updated pages from reviews
+- Updated health facility page from review
+- Added installation_report_home update from review
+- Update setup_new_password as reviewed
+- Updated otp page as reviewed
+- Completed forgot_password otp review
+- Completed login review
+- Implementing setup
+- Added add_new_asset ui
+- Added inverter details page
+- Added specification page
+- Added select_asset_type UI
+- Added select_health_facilty
+- Updated readme
+- Added mobile directory
