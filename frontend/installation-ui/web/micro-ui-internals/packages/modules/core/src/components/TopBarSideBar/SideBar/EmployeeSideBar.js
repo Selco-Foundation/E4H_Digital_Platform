@@ -14,6 +14,10 @@ const EmployeeSideBar = () => {
   const history = useHistory();
   const tenantId = Digit.ULBService.getStateId();
   const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "installation-qc";
+  const policyRoutes = {
+    privacy: `/${window?.contextPath}/privacy-policy`,
+    terms: `/${window?.contextPath}/terms-of-use`,
+  };
 
   function extractLeftIcon(data = {}) {
     for (const key in data) {
@@ -156,6 +160,43 @@ const EmployeeSideBar = () => {
 
   const transformedData = transformData(splitKeyValue(configEmployeeSideBar));
   const sortedTransformedData= sortDataByOrderNumber(transformedData);
+  const translateItem = {
+    label: t("Translate"),
+    icon: { icon: "Search", iconFill: "transparent", width: "1.5rem", height: "1.5rem" },
+    selectedIcon: { icon: "Search", iconFill: "transparent", width: "1.5rem", height: "1.5rem" },
+    navigationUrl: translationUrl,
+    orderNumber: 3,
+  };
+  const policyItem = {
+    label: t("Privacy & Terms"),
+    icon: { icon: "Description", width: "1.5rem", height: "1.5rem" },
+    children: [
+      {
+        label: t("ES_PRIVACY_POLICY"),
+        icon: { icon: "Description", width: "1.5rem", height: "1.5rem" },
+        navigationUrl: policyRoutes.privacy,
+        orderNumber: 1,
+      },
+      {
+        label: t("ES_TERMS_OF_USE"),
+        icon: { icon: "Description", width: "1.5rem", height: "1.5rem" },
+        navigationUrl: policyRoutes.terms,
+        orderNumber: 2,
+      },
+    ],
+    orderNumber: 2,
+  };
+  const sideNavItems = sortedTransformedData.filter(
+    (item) =>
+      item?.navigationUrl !== translationUrl &&
+      !item?.children?.some((child) => child?.navigationUrl === policyRoutes.privacy || child?.navigationUrl === policyRoutes.terms)
+  );
+  const inboxItemIndex = sideNavItems.findIndex((item) => item?.navigationUrl?.toLowerCase?.().includes("inbox"));
+  const policyInsertIndex = inboxItemIndex >= 0 ? inboxItemIndex + 1 : sideNavItems.length;
+  sideNavItems.splice(policyInsertIndex, 0, policyItem);
+  sideNavItems.splice(policyInsertIndex + 1, 0, translateItem);
+  const translateItemIndex = sideNavItems.findIndex((item) => item?.navigationUrl === translationUrl);
+
   if (isLoading) {
     return <Loader />;
   }
