@@ -15,7 +15,7 @@ import AssessmentDetails from "./AssessmentDetails";
 import Translation from "./Translation";
 import FieldPlanList from "./FieldPlanList";
 import FieldPlanFacilities from "./FieldPlanFacilities";
-import FacilityDetails from "./FacilityDetails";
+import FacilityActivityDetails from "./FacilityActivityDetails";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -79,7 +79,7 @@ const PMApp = () => {
       internalLink: match.url + `/field-plans/${pmStore?.workingFieldPlan?.id}/facilities`,
       show: true,
     },
-    facilityDetails: {
+    facilityActivityDetails: {
       content: pmStore?.workingFacility?.facilityName || pmStore?.workingFacility?.id,
       internalLink: match.url + `/field-plans/${pmStore?.workingFieldPlan?.id}/facilities/${pmStore?.workingFacility?.id}/details`,
       show: true,
@@ -176,9 +176,9 @@ const PMApp = () => {
         <Route path={`${path}/field-plans/:fieldPlanId/facilities/:facilityId/details`} exact={true}>
           <BreadCrumb
             spanStyle={{ color: "#0B0C0C" }}
-            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans, breadCrumbsConfig.fieldPlanFacilities, breadCrumbsConfig.facilityDetails]}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans, breadCrumbsConfig.fieldPlanFacilities, breadCrumbsConfig.facilityActivityDetails]}
           />
-          <FacilityDetails />
+          <FacilityActivityDetails />
         </Route>
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb

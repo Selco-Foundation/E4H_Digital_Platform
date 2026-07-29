@@ -3,12 +3,12 @@ import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
 import { Loader } from "@egovernments/digit-ui-react-components";
 import useFieldPlan from "../../hooks/useFieldPlan";
-import useFacilityDetails, { getAssetAggregation } from "../../hooks/useFacilityDetails";
+import useFacilityActivityDetails, { getAssetAggregation } from "../../hooks/useFacilityActivityDetails";
 import useAsset from "../../hooks/useAsset";
-import InfoCard from "../../components/FacilityDetails/InfoCard";
-import AuditTrail from "../../components/FacilityDetails/AuditTrail";
-import Summary from "../../components/FacilityDetails/Summary";
-import InstallationImageReviewCard from "../../components/FacilityDetails/InstallationImageReviewCard";
+import InfoCard from "../../components/FacilityActivityDetails/InfoCard";
+import AuditTrail from "../../components/FacilityActivityDetails/AuditTrail";
+import Summary from "../../components/FacilityActivityDetails/Summary";
+import InstallationImageReviewCard from "../../components/FacilityActivityDetails/InstallationImageReviewCard";
 import { populateWorkingFieldPlan, populateWorkingFacility } from "../../redux/actions";
 
 const sectionLoaderStyle = {
@@ -25,7 +25,7 @@ const sectionLoaderStyle = {
   fontWeight: "bold",
 };
 
-const FacilityDetails = () => {
+const FacilityActivityDetails = () => {
 
   const { t } = useTranslation();
   const tenantId = Digit.ULBService.getCurrentTenantId();
@@ -53,7 +53,7 @@ const FacilityDetails = () => {
     isLoading: facilityDataLoading,
     isFetching: facilityDataFetching,
     data: facilityData,
-  } = useFacilityDetails(facilityId);
+  } = useFacilityActivityDetails(facilityId);
 
   const { isLoading: assetDataLoading, data: assetData } = useAsset(facilityId);
 
@@ -246,4 +246,4 @@ const FacilityDetails = () => {
   );
 }
 
-export default FacilityDetails;
+export default FacilityActivityDetails;
