@@ -115,25 +115,26 @@ public class SemAnalyticsService {
                     .findFirst()
                     .orElse(null);
 
-            // primary_role + user_category: the USER_TYPE record whose system_roles the user holds.
-            // Records are sorted by descending count of system_roles so the most specific
-            // (largest system_roles set) record wins when the user matches more than one.
+            // primary_role + user_category, resolved from the action-derived system role (A):
+            //   1. Shortlist active USER_TYPE records whose system_roles contain A.
+            //   2. Sort that shortlist by descending count of system_roles (most specific first).
+            //   3. The first record whose system_roles are ALL held by the user wins.
             String primaryRole = null;
             String userCategory = null;
-            List<Map<String, Object>> sortedUserTypeRecords = userTypeRecords.stream()
-                    .sorted(Comparator.comparingInt(
-                            (Map<String, Object> record) -> asStringList(record.get("system_roles")).size()).reversed())
-                    .toList();
-            for (Map<String, Object> record : sortedUserTypeRecords) {
-                if (!isActive(record)) {
-                    continue;
-                }
-                List<String> systemRoles = asStringList(record.get("system_roles"));
-                boolean matches = systemRoles.stream().anyMatch(userRoleCodes::contains);
-                if (matches) {
-                    primaryRole = asString(record.get("program_role"));
-                    userCategory = asString(record.get("user_category"));
-                    break;
+            if (systemRole != null) {
+                List<Map<String, Object>> candidates = userTypeRecords.stream()
+                        .filter(this::isActive)
+                        .filter(record -> asStringList(record.get("system_roles")).contains(systemRole))
+                        .sorted(Comparator.comparingInt(
+                                (Map<String, Object> record) -> asStringList(record.get("system_roles")).size()).reversed())
+                        .toList();
+                for (Map<String, Object> record : candidates) {
+                    List<String> systemRoles = asStringList(record.get("system_roles"));
+                    if (userRoleCodes.containsAll(systemRoles)) {
+                        primaryRole = asString(record.get("program_role"));
+                        userCategory = asString(record.get("user_category"));
+                        break;
+                    }
                 }
             }
 
