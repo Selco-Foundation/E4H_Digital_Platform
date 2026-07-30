@@ -160,15 +160,8 @@ const EmployeeSideBar = () => {
 
   const transformedData = transformData(splitKeyValue(configEmployeeSideBar));
   const sortedTransformedData= sortDataByOrderNumber(transformedData);
-  const translateItem = {
-    label: t("Translate"),
-    icon: { icon: "Search", iconFill: "transparent", width: "1.5rem", height: "1.5rem" },
-    selectedIcon: { icon: "Search", iconFill: "transparent", width: "1.5rem", height: "1.5rem" },
-    navigationUrl: translationUrl,
-    orderNumber: 3,
-  };
   const policyItem = {
-    label: t("Privacy & Terms"),
+    label: t("ES_Privacy_&_Terms"),
     icon: { icon: "Description", width: "1.5rem", height: "1.5rem" },
     children: [
       {
@@ -187,15 +180,11 @@ const EmployeeSideBar = () => {
     orderNumber: 2,
   };
   const sideNavItems = sortedTransformedData.filter(
-    (item) =>
-      item?.navigationUrl !== translationUrl &&
-      !item?.children?.some((child) => child?.navigationUrl === policyRoutes.privacy || child?.navigationUrl === policyRoutes.terms)
+    (item) => !item?.children?.some((child) => child?.navigationUrl === policyRoutes.privacy || child?.navigationUrl === policyRoutes.terms)
   );
   const inboxItemIndex = sideNavItems.findIndex((item) => item?.navigationUrl?.toLowerCase?.().includes("inbox"));
   const policyInsertIndex = inboxItemIndex >= 0 ? inboxItemIndex + 1 : sideNavItems.length;
   sideNavItems.splice(policyInsertIndex, 0, policyItem);
-  sideNavItems.splice(policyInsertIndex + 1, 0, translateItem);
-  const translateItemIndex = sideNavItems.findIndex((item) => item?.navigationUrl === translationUrl);
 
   if (isLoading) {
     return <Loader />;
@@ -208,7 +197,7 @@ const EmployeeSideBar = () => {
   return (
     <MediaQuery minWidth={768}>
       <SideNav
-        items={sortedTransformedData}
+        items={sideNavItems}
         hideAccessbilityTools={true}
         onSelect={({ item, index, parentIndex }) => onItemSelect({ item, index, parentIndex })}
         theme={"dark"}
@@ -225,8 +214,6 @@ const EmployeeSideBar = () => {
 };
 
 export default EmployeeSideBar;
-
-
 
 
 
