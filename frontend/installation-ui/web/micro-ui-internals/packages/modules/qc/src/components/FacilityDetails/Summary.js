@@ -191,7 +191,7 @@ const Summary = ({
         ) : (
           <div style={{ padding: "20px" }}>
             <Section title={t(`QC_INSTALLATION_ASSET_COUNT`)}>
-              {AssetInfoItem(t("QC_INSTALLATION_INVERTERS") , count)}
+              {AssetInfoItem(t("QC_INSTALLATION_INVERTER") , count)}
             </Section>
 
             <Section title={t(`QC_INSTALLATION_${section}_SPECIFICATIONS`)}>
