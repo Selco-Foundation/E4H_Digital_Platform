@@ -26,6 +26,9 @@ const InfoCard = ({ t, facilityDetails }) => {
       {InfoCardItem(t("CS_BLOCK"), facilityDetails.block ? t(`Boundary_${facilityDetails.block}`) : "-")}
       {InfoCardItem(t("CS_HEALTH_FACILITY_TYPE"), facilityDetails.facilityType ? facilityDetails.facilityType : "-")}
       {InfoCardItem(t("CS_STATUS"), facilityDetails.status ? t(`CS_${facilityDetails.status}`) : "-")}
+      {InfoCardItem(t("AMC_NUMBER"), facilityDetails.amcNumber || "-")}
+      {InfoCardItem(t("AMC_COMPLETED_NUMBERS"), facilityDetails.completedAmcNumbers || "-")}
+      {InfoCardItem(t("AMC_LAPSED_NUMBERS"), facilityDetails.lapsedAmcNumbers || "-")}
     </div>
   );
 }

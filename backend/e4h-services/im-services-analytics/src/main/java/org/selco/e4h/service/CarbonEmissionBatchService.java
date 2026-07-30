@@ -40,12 +40,50 @@ public class CarbonEmissionBatchService {
         int currentYear = message.getYear();
         YearMonth current = YearMonth.of(currentYear, currentMonth);
 
-        log.info("CO2 batch start tenantId={} period={}-{}", tenantId, currentYear, currentMonth);
+        List<String> facilityIds = message.getFacilityIds();
+        boolean targeted = facilityIds != null && !facilityIds.isEmpty();
+        log.info("CO2 batch start tenantId={} period={}-{} mode={} requestedIds={}",
+                tenantId, currentYear, currentMonth,
+                targeted ? "facilityIds" : "fullRegistry",
+                targeted ? facilityIds.size() : 0);
 
         Co2ReferenceBundle references = referenceClient.fetchReferenceData(tenantId);
-        int scanned = processFromFacilityRegistry(requestInfo, tenantId, current, references);
+        int scanned = targeted
+                ? processFromFacilityIdList(requestInfo, tenantId, current, references, facilityIds)
+                : processFromFacilityRegistry(requestInfo, tenantId, current, references);
 
-        log.info("CO2 batch completed tenantId={} facilitiesScanned={}", tenantId, scanned);
+        log.info("CO2 batch completed tenantId={} facilitiesScanned={} mode={}",
+                tenantId, scanned, targeted ? "facilityIds" : "fullRegistry");
+    }
+
+    /**
+     * Process only the given facility IDs (bulk-search in pages of {@link CarbonEmissionProperties#getFacilityBatchSize()}).
+     */
+    private int processFromFacilityIdList(RequestInfo requestInfo,
+                                          String tenantId,
+                                          YearMonth current,
+                                          Co2ReferenceBundle references,
+                                          List<String> facilityIds) {
+        int batchSize = properties.getFacilityBatchSize();
+        int scanned = 0;
+
+        for (int i = 0; i < facilityIds.size(); i += batchSize) {
+            List<String> chunk = facilityIds.subList(i, Math.min(i + batchSize, facilityIds.size()));
+            List<Co2FacilityContext> facilities = facilityRegistryClient.bulkSearchByFacilityIds(
+                    requestInfo, tenantId, chunk);
+            if (facilities.isEmpty()) {
+                log.warn("No facilities returned from registry for tenantId={} chunkOffset={} chunkSize={}",
+                        tenantId, i, chunk.size());
+                continue;
+            }
+            if (facilities.size() < chunk.size()) {
+                log.warn("Registry returned fewer facilities than requested tenantId={} requested={} found={}",
+                        tenantId, chunk.size(), facilities.size());
+            }
+            processFacilityBatch(requestInfo, tenantId, facilities, current, references);
+            scanned += facilities.size();
+        }
+        return scanned;
     }
 
     /**
