@@ -66,17 +66,21 @@ const Summary = ({
 
   const AssetInfoItem = (title, value) => (
     <div style={{
-      width: "300px",
       display: "flex",
-      marginBottom: "10px"
+      marginBottom: "10px",
     }}>
       <div style={{
         fontWeight: "bold",
-        width: "50%"
+        width: "150px",
       }}>
         {title}
       </div>
-      <div>{value || t("CORE_COMMON_NOT_APPLICABLE")}</div>
+      <div style={{
+        width: "220px",
+        wordBreak: "break-word"
+      }}>
+        {value || t("CORE_COMMON_NOT_APPLICABLE")}
+      </div>
     </div>
   )
 
