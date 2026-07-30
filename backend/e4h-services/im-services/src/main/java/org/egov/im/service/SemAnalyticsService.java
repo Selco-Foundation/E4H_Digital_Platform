@@ -17,6 +17,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -115,9 +116,15 @@ public class SemAnalyticsService {
                     .orElse(null);
 
             // primary_role + user_category: the USER_TYPE record whose system_roles the user holds.
+            // Records are sorted by descending count of system_roles so the most specific
+            // (largest system_roles set) record wins when the user matches more than one.
             String primaryRole = null;
             String userCategory = null;
-            for (Map<String, Object> record : userTypeRecords) {
+            List<Map<String, Object>> sortedUserTypeRecords = userTypeRecords.stream()
+                    .sorted(Comparator.comparingInt(
+                            (Map<String, Object> record) -> asStringList(record.get("system_roles")).size()).reversed())
+                    .toList();
+            for (Map<String, Object> record : sortedUserTypeRecords) {
                 if (!isActive(record)) {
                     continue;
                 }
