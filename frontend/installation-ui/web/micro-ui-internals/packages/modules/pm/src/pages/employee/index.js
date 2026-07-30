@@ -16,6 +16,9 @@ import Translation from "./Translation";
 import FieldPlanList from "./FieldPlanList";
 import FieldPlanFacilities from "./FieldPlanFacilities";
 import FacilityActivityDetails from "./FacilityActivityDetails";
+import AMCConfigurations from "./AMCConfigurations";
+import AMCVisits from "./AMCVisits";
+import AMCVisitDetails from "./AMCVisitDetails";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -82,6 +85,21 @@ const PMApp = () => {
     facilityActivityDetails: {
       content: pmStore?.workingFacility?.facilityName || pmStore?.workingFacility?.id,
       internalLink: match.url + `/field-plans/${pmStore?.workingFieldPlan?.id}/facilities/${pmStore?.workingFacility?.id}/details`,
+      show: true,
+    },
+    amcConfigurations: {
+      content: t("PM_LABEL_AMCS"),
+      internalLink: match.url + `/amc-configurations`,
+      show: true,
+    },
+    amcConfigurationVisits: {
+      content: pmStore?.workingAMCConfiguration?.facilityName,
+      internalLink: match.url + `/amc-configurations/${pmStore?.workingAMCConfiguration?.id}/visits`,
+      show: true,
+    },
+    amcVisitDetails: {
+      content: pmStore?.workingAMCVisit?.facilityDetails?.facilityName,
+      internalLink: match.url + `/amc-configurations/${pmStore?.workingAMCConfiguration?.id}/visits/${pmStore?.workingAMCVisit?.id}/details`,
       show: true,
     },
     response: {
@@ -179,6 +197,27 @@ const PMApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans, breadCrumbsConfig.fieldPlanFacilities, breadCrumbsConfig.facilityActivityDetails]}
           />
           <FacilityActivityDetails />
+        </Route>
+        <Route path={`${path}/amc-configurations`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.amcConfigurations]}
+          />
+          <AMCConfigurations />
+        </Route>
+        <Route path={`${path}/amc-configurations/:configurationId/visits`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.amcConfigurations, breadCrumbsConfig.amcConfigurationVisits]}
+          />
+          <AMCVisits />
+        </Route>
+        <Route path={`${path}/amc-configurations/:configurationId/visits/:visitId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.amcConfigurations, breadCrumbsConfig.amcConfigurationVisits, breadCrumbsConfig.amcVisitDetails]}
+          />
+          <AMCVisitDetails />
         </Route>
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb
