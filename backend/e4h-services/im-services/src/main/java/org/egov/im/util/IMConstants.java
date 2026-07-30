@@ -34,6 +34,17 @@ public class IMConstants {
 
     public static final String MDMS_MODULE_NAME = "Incident";
 
+    // SEM user-analytics MDMS
+    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
+    public static final String MDMS_MASTER_SEM = "SEM";
+    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
+    public static final String SEM_JSONPATH = "$.MdmsRes." + USER_ANALYTICS_MODULE + "." + MDMS_MASTER_SEM;
+    public static final String USER_TYPE_JSONPATH = "$.MdmsRes." + USER_ANALYTICS_MODULE + "." + MDMS_MASTER_USER_TYPE;
+
+    // SEM event constants
+    public static final String SEM_APPLICATION = "SAURA_EMITRA";
+    public static final String SEM_ENTITY_TYPE = "TICKET";
+
     public static final String MDMS_SERVICEDEF_SEARCH = "$.MdmsRes.Incident.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')]";
 
     public static final String MDMS_DEPARTMENT_SEARCH = "$.MdmsRes.RAINMAKER-im.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')].department";
