@@ -25,6 +25,28 @@ export const VisitService = {
     });
   },
 
+  fetchAmcSummary: async (queryFilter, limit = 15, offset = 0) => {
+    const endpoint = "/asset-amc/v1/visit/amc-summary/_search";
+    const headers = {
+      "Content-Type": "application/json"
+    }
+    const params = {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+      offset,
+      limit,
+    }
+
+    return await Request({
+      url: endpoint,
+      data: queryFilter,
+      userService: true,
+      method: "POST",
+      auth: true,
+      params : params,
+      headers: headers,
+    });
+  },
+
   updateVisitWorkflow : async (visitId, action, workflowComment, documents = []) => {
     const endpoint = "/asset-amc/v1/visit/workflow/_update";
     const queryObj = {
