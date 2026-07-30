@@ -13,14 +13,13 @@ import '../blocs/user_type/user_type.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../router/app_router.dart';
 import '../utils/app_logger.dart';
-import '../utils/envConfig.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/role_login_resolver.dart';
 import '../utils/utils.dart';
 import '../widgets/navigation/navbar.dart';
 import '../widgets/privacy_policy/login_consent_checkbox.dart';
-import '../widgets/privacy_policy/policy_webview_dialog.dart';
+import '../widgets/privacy_policy/policy_dialog_launcher.dart';
 
 @RoutePage()
 class LoginPage extends StatefulWidget {
@@ -79,37 +78,6 @@ class _LoginPageState extends State<LoginPage> {
         stackTrace: stackTrace,
       );
     }
-  }
-
-  void _openPolicy({
-    required String title,
-    required String relativePath,
-  }) {
-    final uri = buildEnvironmentUrl(
-      envConfig.variables.baseUrl,
-      relativePath,
-    );
-
-    if (uri == null) {
-      context.showSnackBar(
-        SnackBar(
-          content: Text(
-            context.translate(i18.login.policyUrlNotConfigured),
-          ),
-          backgroundColor: const Light().alertError,
-        ),
-      );
-      return;
-    }
-
-    showDialog<void>(
-      context: context,
-      useSafeArea: false,
-      builder: (_) => PolicyWebViewDialog(
-        title: title,
-        uri: uri,
-      ),
-    );
   }
 
   @override
@@ -198,20 +166,9 @@ class _LoginPageState extends State<LoginPage> {
                             context.translate(i18.login.consentConnector),
                         termsAndConditionsText:
                             context.translate(i18.login.termsAndConditions),
-                        onPrivacyPolicyTap: () {
-                          _openPolicy(
-                            title: context.translate(i18.login.privacyPolicy),
-                            relativePath: envConfig.variables.privacyPolicyUrl,
-                          );
-                        },
-                        onTermsAndConditionsTap: () {
-                          _openPolicy(
-                            title:
-                                context.translate(i18.login.termsAndConditions),
-                            relativePath:
-                                envConfig.variables.termsAndConditionsUrl,
-                          );
-                        },
+                        onPrivacyPolicyTap: () => showPrivacyPolicy(context),
+                        onTermsAndConditionsTap: () =>
+                            showTermsAndConditions(context),
                       ),
                     BlocConsumer<AuthBloc, AuthState>(
                       listener: (context, state) {

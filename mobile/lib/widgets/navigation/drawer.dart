@@ -16,6 +16,7 @@ import '../../router/app_router.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import '../../utils/role_login_resolver.dart';
 import '../../utils/utils.dart';
+import '../privacy_policy/policy_dialog_launcher.dart';
 
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({super.key});
@@ -124,6 +125,26 @@ class CustomDrawer extends StatelessWidget {
                     }
                   }
                 },
+              ),
+              SidebarItem(
+                title: AppLocalizations.of(context).translate(
+                  i18.login.privacyPolicy,
+                ),
+                onPressed: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  showPrivacyPolicy(context);
+                },
+                icon: Icons.privacy_tip_outlined,
+              ),
+              SidebarItem(
+                title: AppLocalizations.of(context).translate(
+                  i18.login.termsAndConditions,
+                ),
+                onPressed: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  showTermsAndConditions(context);
+                },
+                icon: Icons.policy_outlined,
               ),
             ],
             logOutDigitButtonLabel: AppLocalizations.of(context)
