@@ -429,14 +429,14 @@ public class AmcConfigurationValidator {
             log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
             throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
-        if ((amcConfiguration.getIds()==null || amcConfiguration.getIds().isEmpty()) && (amcConfiguration.getProjectIds()==null || amcConfiguration.getProjectIds().isEmpty())
-                && (amcConfiguration.getStatuses()==null || amcConfiguration.getStatuses().isEmpty()) && (amcConfiguration.getVendorIds()==null || amcConfiguration.getVendorIds().isEmpty())
-                && (amcConfiguration.getFacilityIds()==null || amcConfiguration.getFacilityIds().isEmpty()) && (amcConfiguration.getAssignedUsers()==null || amcConfiguration.getAssignedUsers().isEmpty())
-                && (amcConfiguration.getConfigurationStartDate() == null || amcConfiguration.getConfigurationStartDate() == 0)
-                && (amcConfiguration.getConfigurationEndDate() == null || amcConfiguration.getConfigurationEndDate() == 0)) {
-            log.error("Any one amcConfiguration search field is required for AmcConfiguration Search");
-            throw new CustomException("AMC_CONFIGURATION_SEARCH_FIELDS", "Any one amc configuration search field is required");
-        }
+//        if ((amcConfiguration.getIds()==null || amcConfiguration.getIds().isEmpty()) && (amcConfiguration.getProjectIds()==null || amcConfiguration.getProjectIds().isEmpty())
+//                && (amcConfiguration.getStatuses()==null || amcConfiguration.getStatuses().isEmpty()) && (amcConfiguration.getVendorIds()==null || amcConfiguration.getVendorIds().isEmpty())
+//                && (amcConfiguration.getFacilityIds()==null || amcConfiguration.getFacilityIds().isEmpty()) && (amcConfiguration.getAssignedUsers()==null || amcConfiguration.getAssignedUsers().isEmpty())
+//                && (amcConfiguration.getConfigurationStartDate() == null || amcConfiguration.getConfigurationStartDate() == 0)
+//                && (amcConfiguration.getConfigurationEndDate() == null || amcConfiguration.getConfigurationEndDate() == 0)) {
+//            log.error("Any one amcConfiguration search field is required for AmcConfiguration Search");
+//            throw new CustomException("AMC_CONFIGURATION_SEARCH_FIELDS", "Any one amc configuration search field is required");
+//        }
 
         if (!amcConfiguration.getTenantId().equals(tenantId)) {
             log.error("Tenant Id must be same in URL param as well as AMC CONFIGURATION request body");
