@@ -57,7 +57,7 @@ serviceMaps:
 
             - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedTime
 
-        - query: INSERT INTO amc_configuration_assignments (id, tenant_id, amc_configuration_id, assigned_user, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?);
+        - query: INSERT INTO amc_configuration_assignments (id, tenant_id, amc_configuration_id, assigned_user, role, additional_details, poc_number, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           basePath: $.AmcConfigurations.*.assignments.*
           jsonMaps:
             - jsonPath: $.AmcConfigurations.*.assignments.*.id
@@ -67,6 +67,16 @@ serviceMaps:
             - jsonPath: $.AmcConfigurations[*][?({id} in @.assignments[*].id)].id
 
             - jsonPath: $.AmcConfigurations.*.assignments.*.assignedUser
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.role
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.pocNumber
 
             - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.createdBy
 
@@ -126,7 +136,7 @@ serviceMaps:
 
             - jsonPath: $.AmcConfigurations.*.id
 
-        - query: INSERT INTO amc_configuration_assignments (id, tenant_id, amc_configuration_id, assigned_user, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET assigned_user=?, lastModifiedBy=?, lastModifiedTime=?;
+        - query: INSERT INTO amc_configuration_assignments (id, tenant_id, amc_configuration_id, assigned_user, role, additional_details, poc_number, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET assigned_user=?, role=?, additional_details=?, poc_number=?, lastModifiedBy=?, lastModifiedTime=?;
           basePath: $.AmcConfigurations.*.assignments.*
           jsonMaps:
             - jsonPath: $.AmcConfigurations.*.assignments.*.id
@@ -137,6 +147,16 @@ serviceMaps:
 
             - jsonPath: $.AmcConfigurations.*.assignments.*.assignedUser
 
+            - jsonPath: $.AmcConfigurations.*.assignments.*.role
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.pocNumber
+
             - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.createdBy
 
             - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.createdTime
@@ -146,6 +166,16 @@ serviceMaps:
             - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedTime
 
             - jsonPath: $.AmcConfigurations.*.assignments.*.assignedUser
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.role
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.pocNumber
 
             - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedBy
 

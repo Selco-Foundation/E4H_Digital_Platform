@@ -36,6 +36,9 @@ public class AmcConfigurationQueryBuilder {
             "                'amcConfigurationId', aca.amc_configuration_id, " +
             "                'assignedUser', aca.assigned_user, " +
             "                'isActive', aca.is_active, " +
+            "                'role', aca.role, " +
+            "                'additionalDetails', aca.additional_details, " +
+            "                'pocNumber', aca.poc_number, " +
             "                'createdBy', aca.created_by, " +
             "                'createdTime', aca.created_time, " +
             "                'lastModifiedBy', aca.last_modified_by, " +

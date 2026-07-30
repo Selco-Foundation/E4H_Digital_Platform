@@ -3508,6 +3508,8 @@ async def bulk_ingest_amc_configurations(
                     "userName": user_name,
                     "name": user_name,
                     "tenantId": user_tenant_id,
+                    "role": vendor_mapping.get("role"),
+                    "pocNumber": vendor_mapping.get("pocNumber"),
                     "fullUser": user  # Store full user object for reference
                 })
 
@@ -3611,6 +3613,9 @@ async def bulk_ingest_amc_configurations(
             assignments_template.append({
                 "assignedUser": str(assigned_user_id),
                 "tenantId": assignment_tenant_id,
+                "role": user.get("role"),
+                "additionalDetails": None,
+                "pocNumber": user.get("pocNumber"),
             })
 
         now = datetime.now()
@@ -3679,7 +3684,10 @@ async def bulk_ingest_amc_configurations(
 
                     assignment = {
                         "assignedUser": str(assigned_user_id),
-                        "tenantId": assignment_tenant_id
+                        "tenantId": assignment_tenant_id,
+                        "role": user.get("role"),
+                        "additionalDetails": None,
+                        "pocNumber": user.get("pocNumber"),
                     }
                     assignments.append(assignment)
 
