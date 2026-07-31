@@ -11,6 +11,7 @@ import { useHistory } from "react-router-dom";
 import { PMService } from "../../services/PMService";
 import useOrganization from "../../hooks/useOrganization";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
+import { AMCService } from "../../services/AMC";
 
 const CreateAMC = () => {
 
@@ -33,6 +34,7 @@ const CreateAMC = () => {
   const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
+  const amcConfigurationId = new URLSearchParams(window.location.search).get("amcConfigurationId");
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -119,9 +121,44 @@ const CreateAMC = () => {
         }
       }
 
-      setPersistedFormData(formData);
+      setPersistedFormData((prev) => ({
+        ...formData,
+        geographyDetails: prev?.geographyDetails?.districts?.length ? prev.geographyDetails : formData.geographyDetails,
+      }));
     }
   }, [createdProject, getDefaultActivityAssignments]);
+
+  useEffect(() => {
+    const setSavedAMCGeographyDetails = async () => {
+      if (!amcConfigurationId || !fetchedBoundaryData) {
+        return;
+      }
+
+      const response = await AMCService.fetchAMCConfigurations({
+        searchCriteria: {
+          tenantId,
+          ids: [amcConfigurationId],
+        },
+      });
+
+      const savedGeographyDetails = response?.AmcConfigurations?.[0]?.geographyDetails;
+      if (!savedGeographyDetails) {
+        return;
+      }
+      const parsedGeographyDetails = typeof savedGeographyDetails === "string" ? JSON.parse(savedGeographyDetails) : savedGeographyDetails;
+
+      setPersistedFormData((prev) => ({
+        ...prev,
+        geographyDetails: {
+          state: fetchedBoundaryData.states.find((state) => state.code === parsedGeographyDetails.state),
+          districts: fetchedBoundaryData.districts.filter((district) => parsedGeographyDetails.districts?.includes(district.code)),
+          blocks: fetchedBoundaryData.blocks.filter((block) => parsedGeographyDetails.blocks?.includes(block.code)),
+        },
+      }));
+    };
+
+    setSavedAMCGeographyDetails();
+  }, [amcConfigurationId, fetchedBoundaryData, tenantId]);
 
   const handleFacilityDataDownload = useCallback(async () => {
 
