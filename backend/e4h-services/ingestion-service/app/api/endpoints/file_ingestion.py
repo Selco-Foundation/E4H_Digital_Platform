@@ -3508,8 +3508,10 @@ async def bulk_ingest_amc_configurations(
                     "userName": user_name,
                     "name": user_name,
                     "tenantId": user_tenant_id,
-                    "role": vendor_mapping.get("role"),
-                    "pocNumber": vendor_mapping.get("pocNumber"),
+                    # role/pocNumber live on the user object; fall back to the vendor_mapping level
+                    # for backward compatibility with older payload shapes.
+                    "role": user.get("role") or vendor_mapping.get("role"),
+                    "pocNumber": user.get("pocNumber") or vendor_mapping.get("pocNumber"),
                     "fullUser": user  # Store full user object for reference
                 })
 
