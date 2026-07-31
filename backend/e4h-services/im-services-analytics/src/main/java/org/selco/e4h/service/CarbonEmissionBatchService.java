@@ -25,7 +25,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CarbonEmissionBatchService {
 
-    private final CarbonEmissionMdmsClient mdmsClient;
     private final Co2ReferenceClient referenceClient;
     private final FacilityRegistryClient facilityRegistryClient;
     private final ProjectCo2Client projectCo2Client;
@@ -41,32 +40,112 @@ public class CarbonEmissionBatchService {
         int currentYear = message.getYear();
         YearMonth current = YearMonth.of(currentYear, currentMonth);
 
-        log.info("CO2 batch start tenantId={} period={}-{}", tenantId, currentYear, currentMonth);
-
-        List<String> facilityIds = mdmsClient.fetchVisibleFacilityIds(requestInfo, tenantId);
-        if (facilityIds.isEmpty()) {
-            log.warn("No CO2-visible facilities from MDMS for tenantId={}", tenantId);
-            return;
-        }
+        List<String> facilityIds = message.getFacilityIds();
+        boolean targeted = facilityIds != null && !facilityIds.isEmpty();
+        log.info("CO2 batch start tenantId={} period={}-{} mode={} requestedIds={}",
+                tenantId, currentYear, currentMonth,
+                targeted ? "facilityIds" : "fullRegistry",
+                targeted ? facilityIds.size() : 0);
 
         Co2ReferenceBundle references = referenceClient.fetchReferenceData(tenantId);
+        int scanned = targeted
+                ? processFromFacilityIdList(requestInfo, tenantId, current, references, facilityIds)
+                : processFromFacilityRegistry(requestInfo, tenantId, current, references);
+
+        log.info("CO2 batch completed tenantId={} facilitiesScanned={} mode={}",
+                tenantId, scanned, targeted ? "facilityIds" : "fullRegistry");
+    }
+
+    /**
+     * Process only the given facility IDs (bulk-search in pages of {@link CarbonEmissionProperties#getFacilityBatchSize()}).
+     */
+    private int processFromFacilityIdList(RequestInfo requestInfo,
+                                          String tenantId,
+                                          YearMonth current,
+                                          Co2ReferenceBundle references,
+                                          List<String> facilityIds) {
         int batchSize = properties.getFacilityBatchSize();
+        int scanned = 0;
 
         for (int i = 0; i < facilityIds.size(); i += batchSize) {
-            List<String> batchIds = facilityIds.subList(i, Math.min(i + batchSize, facilityIds.size()));
+            List<String> chunk = facilityIds.subList(i, Math.min(i + batchSize, facilityIds.size()));
             List<Co2FacilityContext> facilities = facilityRegistryClient.bulkSearchByFacilityIds(
-                    requestInfo, tenantId, batchIds);
-            co2LocalizationClient.enrichBoundaryLocalizedNames(requestInfo, tenantId, facilities);
-            Map<String, String> projectNames = projectCo2Client.fetchProjectNamesByFacility(
-                    requestInfo, tenantId, batchIds);
+                    requestInfo, tenantId, chunk);
+            if (facilities.isEmpty()) {
+                log.warn("No facilities returned from registry for tenantId={} chunkOffset={} chunkSize={}",
+                        tenantId, i, chunk.size());
+                continue;
+            }
+            if (facilities.size() < chunk.size()) {
+                log.warn("Registry returned fewer facilities than requested tenantId={} requested={} found={}",
+                        tenantId, chunk.size(), facilities.size());
+            }
+            processFacilityBatch(requestInfo, tenantId, facilities, current, references);
+            scanned += facilities.size();
+        }
+        return scanned;
+    }
 
-            for (Co2FacilityContext facility : facilities) {
-                facility.setProjectName(projectNames.getOrDefault(facility.getFacilityId(), ""));
-                processFacility(facility, current, references, List.of(facility));
+    /**
+     * Paginate all active facilities from the facility registry (ordered by created_at ASC).
+     * Facilities missing solarInstallationDate / solarSystemCapacityKwp are skipped in {@link #processFacility}.
+     */
+    private int processFromFacilityRegistry(RequestInfo requestInfo,
+                                            String tenantId,
+                                            YearMonth current,
+                                            Co2ReferenceBundle references) {
+        int batchSize = properties.getFacilityBatchSize();
+        int offset = 0;
+        int scanned = 0;
+        int totalCount = -1;
+
+        while (true) {
+            FacilityRegistryClient.FacilityPage page = facilityRegistryClient.searchFacilitiesPage(
+                    requestInfo, tenantId, offset, batchSize);
+            List<Co2FacilityContext> facilities = page.facilities();
+            if (facilities.isEmpty()) {
+                if (offset == 0) {
+                    log.warn("No active facilities from registry for tenantId={}", tenantId);
+                }
+                break;
+            }
+            if (totalCount < 0) {
+                totalCount = page.totalCount();
+                log.info("CO2 facility registry pagination tenantId={} totalCount={} pageSize={}",
+                        tenantId, totalCount, batchSize);
+            }
+
+            processFacilityBatch(requestInfo, tenantId, facilities, current, references);
+            scanned += facilities.size();
+            offset += facilities.size();
+
+            if (facilities.size() < batchSize || (totalCount > 0 && offset >= totalCount)) {
+                break;
             }
         }
+        return scanned;
+    }
 
-        log.info("CO2 batch completed tenantId={} facilities={}", tenantId, facilityIds.size());
+    private void processFacilityBatch(RequestInfo requestInfo,
+                                      String tenantId,
+                                      List<Co2FacilityContext> facilities,
+                                      YearMonth current,
+                                      Co2ReferenceBundle references) {
+        if (facilities.isEmpty()) {
+            return;
+        }
+        co2LocalizationClient.enrichBoundaryLocalizedNames(requestInfo, tenantId, facilities);
+        List<String> batchIds = facilities.stream()
+                .map(Co2FacilityContext::getFacilityId)
+                .filter(id -> id != null && !id.isBlank())
+                .toList();
+        Map<String, String> projectNames = projectCo2Client.fetchProjectNamesByFacility(
+                requestInfo, tenantId, batchIds);
+
+        for (Co2FacilityContext facility : facilities) {
+            facility.setProjectName(projectNames.getOrDefault(facility.getFacilityId(), ""));
+            processFacility(facility, current, references, List.of(facility));
+        }
     }
 
     private void processFacility(Co2FacilityContext facility,
@@ -241,6 +320,9 @@ public class CarbonEmissionBatchService {
                 .tenantId(f.getTenantId())
                 .facilityName(f.getFacilityName())
                 .facilityType(f.getFacilityType())
+                .facilityCategory(f.getFacilityCategory())
+                .mappedVendorName(f.getMappedVendorName())
+                .mappedVendorUserName(f.getMappedVendorUserName())
                 .state(localizedOrCode(f.getStateLocalized(), f.getState()))
                 .district(localizedOrCode(f.getDistrictLocalized(), f.getDistrict()))
                 .block(localizedOrCode(f.getBlockLocalized(), f.getBlock()))

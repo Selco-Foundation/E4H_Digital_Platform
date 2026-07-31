@@ -134,14 +134,72 @@ Analytics are generated from **business activities**, not UI navigation. Events 
 | Service                    | How event is created                               | Events published                                                                                                        |
 | -------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `im-services`              | Publishes to Kafka on successful ticket API action | Ticket Creation, Assignment, Vendor Responses, Updation, Resolution, Escalation, Approval, Tech PoC, State SPOC actions |
-| `project`                  | Publishes to Kafka on successful API action        | Project Created; Installation/AMC report submit / re-submit (as applicable)                                             |
-| `field-planner-activity`   | Publishes to Kafka on successful API action        | Field Plan Scheduled; Installation/AMC report Approved / Rejected (as applicable)                                       |
+| `project`                  | Publishes to Kafka on successful API action        | Project Created                                                                                                          |
+| `field-planner-activity`   | Publishes to Kafka on successful API action        | Field Plan Scheduled (tentative — see A6.4); Installation Report Submitted / Re-submitted / Approved / Rejected          |
+| `amc-scheduler-service`    | Publishes to Kafka on successful API action        | AMC Scheduled; AMC Report Submitted / Re-submitted / Approved / Rejected                                                 |
 | `health-facility-registry` | Publishes to Kafka on successful API action        | Facility Added; PoC Details Edited                                                                                      |
 | `boundary-service`         | Publishes to Kafka on successful API action        | Boundary Added                                                                                                          |
-| `amc-scheduler-service`    | Publishes to Kafka on successful API action        | AMC Scheduled                                                                                                           |
 
 
-Exact service ownership for Field Assist approve/reject/resubmit should be confirmed against the current Installation/AMC workflow services during implementation; the event catalog above is the requirement contract.
+**Confirmed against codebase (2026-07):** the Field Assist ownership split assumed above was incorrect and has been corrected. Installation report **submit and approve/reject are both owned by `field-planner-activity`** — `project` has no role in report workflow. AMC report **submit, re-submit, approve, and reject are all owned by `amc-scheduler-service`** — not `project` or `field-planner-activity`. `project` publishes only Project Created. Exact endpoints and rationale are in **A6.4** below.
+
+---
+
+## A6.4 APIs to Instrument (confirmed against codebase)
+
+The tables below give the exact backend API each service must hook to publish an activity event, and why that specific endpoint is the right instrumentation point.
+
+### `im-services` (`/im-services`)
+
+| Activity | API | Why tracked |
+| --- | --- | --- |
+| Ticket Creation | `POST /im-services/v2/request/_create` | Only entry point that creates a new ticket; success here means a CRM/vendor genuinely created a complaint — the seed event for all downstream ticket activity. |
+| Ticket Assignment, Vendor Response, Ticket Updation, Ticket Resolution, Escalation Raised, Approval Actions, Tech PoC Actions, State SPOC Actions | `POST /im-services/v2/request/_update` | Generic workflow-transition endpoint — every ticket status change (assign, resolve, escalate, approve, etc.) goes through this single API. There is no separate endpoint per activity, so `event_type` must be derived from the request's `workflow.action` field (e.g. `ASSIGN`, `RESOLVE`, `REJECT`, `APPROVE`, `SENDBACK`, `CLOSE`) combined with the actor's role (`COMPLAINT_FACILITATOR_1` = State SPOC, `COMPLAINT_FACILITATOR_2` = Tech PoC). The publisher needs an action→event_type mapping table, not a 1:1 endpoint mapping. |
+
+**Caveat:** Escalation Raised can also fire without a direct user API call — `NotificationConsumer.generateEscalationDemand` consumes the internal `im-auto-escalation` Kafka topic (auto-escalation from `egov-workflow-v2`) and invokes the same update logic. If auto-escalations should count toward activity metrics, the event must also be published from inside this consumer, not only from the REST controller.
+
+### `project` (`/project`)
+
+| Activity | API | Why tracked |
+| --- | --- | --- |
+| Project Created | `POST /project/v1/_create` | Sole creation point for a project entity — marks the start of a Management Hub project lifecycle. |
+
+`project` does **not** own Installation/AMC report submit or approve/reject — see `field-planner-activity` and `amc-scheduler-service` below.
+
+### `field-planner-activity` (`/activity`)
+
+| Activity | API | Why tracked |
+| --- | --- | --- |
+| Installation Report Submitted / Re-submitted | `POST /activity/v1/activities/workflow/update` (`workflow.action = SUBMIT_REPORT_A` / `SUBMIT_REPORT_B`) | The actual "field staff submitted an installation report" transaction — the field-level equivalent of ticket creation for Field Assist. |
+| Installation Report Approved / Rejected | Same endpoint (`action = APPROVE` / `REJECT_AND_ASSIGN_FOR_FIELD_QC` / `FLAG_FOR_QC`); bulk variant `POST /activity/v1/activities/bulk/workflow/update` | Captures reviewer decisions on submitted reports — needed for reviewer/QC champion scores and report-cycle-time metrics. The bulk endpoint must be instrumented too, or bulk-approved reports silently disappear from activity counts. |
+| Field Plan Scheduled | `POST /activity/v1/activities/_assign-activity` — **tentative, needs confirmation** | Assigns an installation/AMC activity to a facility/date, which matches "Field Plan Scheduled" conceptually. **Open item:** a separate, similarly-named `field-planner` service also exposes `POST /field-planner/v1/field-plans/_create` ("Create Field Plan" in the PM frontend). Confirm with the domain owner which of these two microservices is the intended business event before wiring this one up. |
+
+**Caveat:** Same generic-endpoint problem as `im-services` — submit and approve/reject share one URL, so the publisher must branch on `workflow.action`.
+
+### `amc-scheduler-service` (`/asset-amc`)
+
+| Activity | API | Why tracked |
+| --- | --- | --- |
+| AMC Scheduled | `POST /asset-amc/v1/configuration/_create` | Creation of an AMC configuration is the actual scheduling action (confirmed as the real call target via the ingestion-service's bulk-upload client). The subsequent `_generate` visit-generation call is cron/operator-triggered, not a discrete user action, so it should not be the instrumentation point. |
+| AMC Report Submitted / Re-submitted | `POST /asset-amc/v1/visit/workflow/_update` (`action = SUBMIT_VISIT_REPORT` / `SUBMIT_OTP`) | Field/AMC staff's report submission — the AMC equivalent of installation report submit. |
+| AMC Report Approved / Rejected | Same endpoint (`action = APPROVE` / `REJECT`) | Reviewer decision on the AMC visit report — needed for AMC reviewer champion scoring. |
+
+**Correction:** all four AMC report activities live entirely in `amc-scheduler-service`, not split between `project` and `field-planner-activity` as originally assumed.
+
+### `health-facility-registry` (`/facility-service`)
+
+| Activity | API | Why tracked |
+| --- | --- | --- |
+| Facility Added | `POST /facility-service/v2/facility/create` | Sole facility-creation entry point. |
+| PoC Details Edited | `POST /facility-service/v2/facility/update` | This endpoint handles any facility field edit (address, status, boundary, PoC name/phone/email, etc.) — there is no dedicated "edit PoC" API. To emit a distinct `poc_details_edited` event rather than a generic `facility_updated`, the publisher must diff the PoC fields (`facility_poc_name`/`username`/`phone`/`email`) between the pre- and post-update record inside this handler, and only publish when one of those specific fields actually changed. |
+
+### `boundary-service` (`/boundary-service`)
+
+| Activity | API | Why tracked |
+| --- | --- | --- |
+| Boundary Added | `POST /boundary-service/boundary/_create` | Creates the boundary node itself. |
+
+**Caveat:** in the real UI flow, adding a boundary is a two-call sequence — `_create` is immediately followed by `POST /boundary-service/boundary-relationships/_create` to link the new boundary into the hierarchy. Firing the event on `_create` alone is simplest and matches "Boundary Added" as a single conceptual action, but the boundary isn't actually usable until the relationship call also succeeds; if partial failures matter for data quality, consider publishing only after both calls succeed.
 
 ---
 

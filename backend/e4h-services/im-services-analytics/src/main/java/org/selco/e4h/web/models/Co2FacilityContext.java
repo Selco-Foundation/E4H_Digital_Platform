@@ -16,6 +16,9 @@ public class Co2FacilityContext {
     private String tenantId;
     private String facilityName;
     private String facilityType;
+    private String facilityCategory;
+    private String mappedVendorName;
+    private String mappedVendorUserName;
     private String state;
     private String district;
     private String block;

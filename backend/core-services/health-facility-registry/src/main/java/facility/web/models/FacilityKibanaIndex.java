@@ -78,7 +78,10 @@ public class FacilityKibanaIndex {
     
     @JsonProperty("mappedVendorName")
     private String mappedVendorName;
-    
+
+    @JsonProperty("projectName")
+    private String projectName;
+
     @JsonProperty("boundary")
     private BoundaryInfo boundary;
     

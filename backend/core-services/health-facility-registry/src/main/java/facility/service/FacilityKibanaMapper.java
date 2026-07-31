@@ -42,6 +42,7 @@ public class FacilityKibanaMapper {
     private final ObjectMapper mapper;
     private final Configuration configs;
     private final IncidentStatusDao incidentStatusDao;
+    private final FacilityProjectClient facilityProjectClient;
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
     private static final String LOCALIZATION_LOCALE = "en_IN";
@@ -157,6 +158,8 @@ public class FacilityKibanaMapper {
         }
 
         FacilityKibanaIndex result = builder.build();
+        // Populate the project name mapped to this facility so it lands in the index.
+        result.setProjectName(resolveProjectName(facility, requestInfo, null));
         // Log the full boundary object in the result
         if (result.getBoundary() != null) {
             log.info("Boundary in FacilityKibanaIndex: {}", result.getBoundary());
@@ -211,6 +214,9 @@ public class FacilityKibanaMapper {
         existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
         log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
                 facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
+        // Refresh projectName from the project service; keep the already-indexed value when the
+        // lookup yields nothing so it is never lost on a re-index.
+        existingDoc.setProjectName(resolveProjectName(facility, requestInfo, existingDoc.getProjectName()));
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
                 facility.getFacilityId(), facility.getTenantId());
@@ -242,9 +248,27 @@ public class FacilityKibanaMapper {
         }
 
         existingDoc.setCode(trimmedCode);
+        existingDoc.setProjectName(resolveProjectName(facility, effectiveInfo, existingDoc.getProjectName()));
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Patched Kibana code for facilityId={} tenantId={}", facility.getFacilityId(), facility.getTenantId());
         return existingDoc;
+    }
+
+    /**
+     * Resolves the project name for a facility from the project service. Falls back to
+     * {@code existingProjectName} (the value already in the index) when the lookup yields
+     * nothing, so an existing projectName is never lost on a full-document re-index.
+     */
+    private String resolveProjectName(Facility facility, RequestInfo requestInfo, String existingProjectName) {
+        if (facility == null || facility.getFacilityId() == null || facility.getFacilityId().isBlank()) {
+            return existingProjectName;
+        }
+        String fetched = facilityProjectClient.fetchProjectName(
+                requestInfo, facility.getTenantId(), facility.getFacilityId());
+        if (fetched != null && !fetched.isBlank()) {
+            return fetched;
+        }
+        return existingProjectName;
     }
 
     /**
@@ -961,6 +985,149 @@ public class FacilityKibanaMapper {
             return deleted;
         } catch (Exception e) {
             log.error("Unable to delete Kibana document for facility {} and tenant {}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
+        }
+    }
+
+    /** Lightweight view of an indexed facility, used by the projectName backfill. */
+    public static class IndexedFacilityRef {
+        private final String facilityId;
+        private final String tenantId;
+        private final String projectName;
+
+        public IndexedFacilityRef(String facilityId, String tenantId, String projectName) {
+            this.facilityId = facilityId;
+            this.tenantId = tenantId;
+            this.projectName = projectName;
+        }
+
+        public String getFacilityId() { return facilityId; }
+        public String getTenantId() { return tenantId; }
+        public String getProjectName() { return projectName; }
+    }
+
+    /**
+     * Scans every document in the health facility index (paginated via {@code search_after}) and
+     * returns a {@link IndexedFacilityRef} per document. Optionally filtered by tenant.
+     *
+     * @param tenantId when non-blank, only documents for this tenant are returned
+     * @param pageSize ES page size; defaults to 500 when non-positive
+     */
+    @SuppressWarnings("unchecked")
+    public List<IndexedFacilityRef> fetchAllIndexedFacilities(String tenantId, int pageSize) {
+        List<IndexedFacilityRef> all = new ArrayList<>();
+        int size = pageSize > 0 ? pageSize : 500;
+        String uri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH;
+        List<Object> searchAfter = null;
+
+        try {
+            while (true) {
+                Map<String, Object> query = new LinkedHashMap<>();
+                query.put("size", size);
+                if (tenantId != null && !tenantId.isBlank()) {
+                    query.put("query", Map.of("bool", Map.of("must", List.of(
+                            Map.of("term", Map.of("Data.tenantId.keyword", tenantId))))));
+                } else {
+                    query.put("query", Map.of("match_all", Map.of()));
+                }
+                query.put("sort", List.of(Map.of("Data.facilityId.keyword", Map.of("order", "asc"))));
+                if (searchAfter != null) {
+                    query.put("search_after", searchAfter);
+                }
+
+                HttpEntity<Object> entity = new HttpEntity<>(query, buildHeaders());
+                Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+                if (response == null) {
+                    break;
+                }
+                Object hitsObj = response.get("hits");
+                if (!(hitsObj instanceof Map)) {
+                    break;
+                }
+                Object hitListObj = ((Map<String, Object>) hitsObj).get("hits");
+                if (!(hitListObj instanceof List) || ((List<?>) hitListObj).isEmpty()) {
+                    break;
+                }
+
+                List<?> hitList = (List<?>) hitListObj;
+                for (Object hitObj : hitList) {
+                    if (!(hitObj instanceof Map)) {
+                        continue;
+                    }
+                    Map<String, Object> hit = (Map<String, Object>) hitObj;
+                    Object sortObj = hit.get("sort");
+                    if (sortObj instanceof List) {
+                        searchAfter = new ArrayList<>((List<Object>) sortObj);
+                    }
+                    Object sourceObj = hit.get("_source");
+                    if (!(sourceObj instanceof Map)) {
+                        continue;
+                    }
+                    Object dataObj = ((Map<String, Object>) sourceObj).get("Data");
+                    if (!(dataObj instanceof Map)) {
+                        continue;
+                    }
+                    Map<String, Object> data = (Map<String, Object>) dataObj;
+                    String facilityId = (String) data.get("facilityId");
+                    if (facilityId == null || facilityId.isBlank()) {
+                        continue;
+                    }
+                    all.add(new IndexedFacilityRef(
+                            facilityId,
+                            (String) data.get("tenantId"),
+                            (String) data.get("projectName")));
+                }
+
+                if (hitList.size() < size) {
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed while scanning health facility index for projectName backfill: {}", e.getMessage(), e);
+        }
+        log.info("Scanned {} indexed facilities (tenantId={})", all.size(), tenantId);
+        return all;
+    }
+
+    /**
+     * Sets {@code Data.projectName} on the indexed document(s) for a facility via
+     * {@code _update_by_query} (partial update — all other fields are left untouched).
+     *
+     * @return number of documents updated, or {@code -1} when the update call failed
+     */
+    @SuppressWarnings("unchecked")
+    public int updateProjectNameByFacilityId(String facilityId, String tenantId, String projectName) {
+        if (facilityId == null || facilityId.isBlank()) {
+            return -1;
+        }
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            Map<String, Object> body = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses)),
+                    "script", Map.of(
+                            "source", "ctx._source.Data.projectName = params.projectName",
+                            "lang", "painless",
+                            "params", Collections.singletonMap("projectName", projectName))
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_update_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(body, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> respBody = response != null ? response.getBody() : null;
+            int updated = 0;
+            if (respBody != null && respBody.get("updated") instanceof Number) {
+                updated = ((Number) respBody.get("updated")).intValue();
+            }
+            return updated;
+        } catch (Exception e) {
+            log.error("Unable to update projectName for facilityId={} tenantId={}: {}",
                     facilityId, tenantId, e.getMessage(), e);
             return -1;
         }

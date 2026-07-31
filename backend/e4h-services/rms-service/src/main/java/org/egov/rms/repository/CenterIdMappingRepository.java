@@ -189,6 +189,89 @@ public class CenterIdMappingRepository {
     private record CenterCandidate(String centerId, String facilityName) {
     }
 
+    /**
+     * Resolve center_id when registry has no HFR/NIN (e.g. Anganwadi): exact Elmeasure name,
+     * then best fuzzy match on active mapping rows.
+     */
+    public Optional<String> findCenterIdByFacilityName(String facilityName) {
+        if (facilityName == null || facilityName.isBlank()) {
+            return Optional.empty();
+        }
+        String trimmed = facilityName.trim();
+
+        String exactSql = "SELECT center_id, facility_name FROM center_id_to_hfr_id_mapping "
+                + "WHERE is_active = true AND LOWER(TRIM(facility_name)) = LOWER(TRIM(?))";
+        List<CenterCandidate> exact = jdbcTemplate.query(exactSql,
+                (rs, rowNum) -> new CenterCandidate(rs.getString("center_id"), rs.getString("facility_name")),
+                trimmed);
+        if (exact.size() == 1) {
+            return Optional.ofNullable(exact.get(0).centerId());
+        }
+        if (exact.size() > 1) {
+            return pickBestByName(trimmed, exact, "facilityName(exact)");
+        }
+
+        String needle = normalizeFacilityName(trimmed);
+        if (needle.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String token = firstSignificantToken(needle);
+        if (token.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String fuzzySql = "SELECT center_id, facility_name FROM center_id_to_hfr_id_mapping "
+                + "WHERE is_active = true AND LOWER(facility_name) LIKE ?";
+        List<CenterCandidate> fuzzy = jdbcTemplate.query(fuzzySql,
+                (rs, rowNum) -> new CenterCandidate(rs.getString("center_id"), rs.getString("facility_name")),
+                "%" + token + "%");
+        return pickBestByName(trimmed, fuzzy, "facilityName(fuzzy)");
+    }
+
+    private Optional<String> pickBestByName(String registryName,
+                                            List<CenterCandidate> candidates,
+                                            String lookupLabel) {
+        if (candidates.isEmpty()) {
+            return Optional.empty();
+        }
+        if (candidates.size() == 1) {
+            return Optional.ofNullable(candidates.get(0).centerId());
+        }
+
+        String needle = normalizeFacilityName(registryName);
+        CenterCandidate best = null;
+        int bestScore = 0;
+        for (CenterCandidate c : candidates) {
+            int score = nameMatchScore(needle, normalizeFacilityName(c.facilityName()));
+            if (score > bestScore) {
+                bestScore = score;
+                best = c;
+            }
+        }
+        if (best != null && bestScore > 0) {
+            log.info("Resolved {}='{}' to centerId={} elmeasureName='{}' score={}",
+                    lookupLabel, registryName, best.centerId(), best.facilityName(), bestScore);
+            return Optional.ofNullable(best.centerId());
+        }
+
+        log.warn("No name match for {}='{}' among {} centers — using first row centerId={}",
+                lookupLabel, registryName, candidates.size(), candidates.get(0).centerId());
+        return Optional.ofNullable(candidates.get(0).centerId());
+    }
+
+    static String firstSignificantToken(String normalizedName) {
+        if (normalizedName == null || normalizedName.isEmpty()) {
+            return "";
+        }
+        for (String part : normalizedName.split(" ")) {
+            if (part.length() >= 3) {
+                return part;
+            }
+        }
+        return normalizedName;
+    }
+
     public Optional<String> findHfrIdByCenterId(String centerId) {
         String sql = "SELECT hfr_id FROM center_id_to_hfr_id_mapping " +
                 "WHERE center_id = ? AND is_active = true";
