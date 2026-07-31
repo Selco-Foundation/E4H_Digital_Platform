@@ -24,4 +24,26 @@ export const AMCConfigurationService = {
     });
   },
 
+  fetchAMCAssets: async (queryFilter, limit, offset) => {
+    const endpoint = "/asset-amc/v1/asset/_search";
+    const params = {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+      offset,
+      limit,
+    }
+    const headers = {
+      "Content-Type": "application/json"
+    }
+
+    return await Request({
+      url: endpoint,
+      data: queryFilter,
+      userService: true,
+      method: "POST",
+      auth: true,
+      params: params,
+      headers: headers,
+    });
+  },
+
 }
