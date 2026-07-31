@@ -1,4 +1,4 @@
-import { POPULATE_RESPONSE, POPULATE_WORKING_FIELD_PLAN, POPULATE_WORKING_PROJECT, POPULATE_WORKING_ASSESSMENT_PLAN, POPULATE_WORKING_FACILITY, POPULATE_WORKING_AMC_CONFIGURATION, POPULATE_WORKING_AMC_VISIT } from "../../constants/ReduxActions";
+import { POPULATE_RESPONSE, POPULATE_WORKING_FIELD_PLAN, POPULATE_WORKING_PROJECT, POPULATE_WORKING_ASSESSMENT_PLAN, POPULATE_WORKING_FACILITY, POPULATE_WORKING_AMC_CONFIGURATION, POPULATE_WORKING_AMC_VISIT, POPULATE_WORKING_FACILITY_DETAILS } from "../../constants/ReduxActions";
 
 const populateResponsePage = (responseData) => (dispatch) => {
   dispatch({
@@ -49,6 +49,13 @@ const populateWorkingAMCVisit = (amcVisit) => (dispatch) => {
   })
 }
 
+const populateWorkingFacilityDetails = (facilityDetails) => (dispatch) => {
+  dispatch({
+    type: POPULATE_WORKING_FACILITY_DETAILS,
+    payload: facilityDetails,
+  })
+}
+
 export {
   populateResponsePage,
   populateWorkingProject,
@@ -56,5 +63,6 @@ export {
   populateWorkingAssessmentPlan,
   populateWorkingFacility,
   populateWorkingAMCConfiguration,
-  populateWorkingAMCVisit
+  populateWorkingAMCVisit,
+  populateWorkingFacilityDetails
 };
