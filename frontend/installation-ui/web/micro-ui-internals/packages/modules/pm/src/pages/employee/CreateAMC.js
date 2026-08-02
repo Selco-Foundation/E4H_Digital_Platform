@@ -10,14 +10,20 @@ import { populateResponsePage, populateWorkingProject } from "../../redux/action
 import { useHistory } from "react-router-dom";
 import { PMService } from "../../services/PMService";
 import useOrganization from "../../hooks/useOrganization";
+import useOrganizationUser from "../../hooks/useOrganizationUser";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 import { AMCService } from "../../services/AMC";
+
+const getCurrentStepFromURL = () => {
+  const key = parseInt(new URLSearchParams(window.location.search).get("key"), 10);
+  return [1, 2, 3].includes(key) ? key : 1;
+};
 
 const CreateAMC = () => {
 
   const { t } = useTranslation();
   const tenantId = Digit.ULBService.getStateId();
-  const [currentKey, setCurrentKey] = useState(1);
+  const [currentKey, setCurrentKey] = useState(getCurrentStepFromURL);
   const [persistedFormData, setPersistedFormData] = useState({});
   const [defaultFormData, setDefaultFormData] = useState({});
   const [createdProject, setCreatedProject] = useState(null);
@@ -31,11 +37,26 @@ const CreateAMC = () => {
   const [getFormData, setGetFormData] = useState(null);
   const [backAlert, setBackAlert] = useState(null);
   const [boundaryData, setBoundaryData] = useState(null);
+  const [savedAMCConfiguration, setSavedAMCConfiguration] = useState(null);
+  const [organizationIds, setOrganizationIds] = useState([""]);
   const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
   const amcConfigurationId = new URLSearchParams(window.location.search).get("amcConfigurationId");
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("key") === currentKey.toString()) {
+      return;
+    }
+
+    searchParams.set("key", currentKey.toString());
+    history.replace({
+      pathname: window.location.pathname,
+      search: searchParams.toString(),
+    });
+  }, [currentKey, history]);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -58,6 +79,10 @@ const CreateAMC = () => {
   });
 
   const { data: organizationData } = useOrganization();
+
+  const { data: organizationUserData } = useOrganizationUser({
+    organizationIds,
+  });
 
   useEffect(() => {
     const project = projectData?.projects?.[0];
@@ -124,6 +149,7 @@ const CreateAMC = () => {
       setPersistedFormData((prev) => ({
         ...formData,
         geographyDetails: prev?.geographyDetails?.districts?.length ? prev.geographyDetails : formData.geographyDetails,
+        activityDetails: prev?.activityDetails?.activityUserAssignment?.length ? prev.activityDetails : formData.activityDetails,
       }));
     }
   }, [createdProject, getDefaultActivityAssignments]);
@@ -141,24 +167,97 @@ const CreateAMC = () => {
         },
       });
 
-      const savedGeographyDetails = response?.AmcConfigurations?.[0]?.geographyDetails;
+      const savedConfiguration = response?.AmcConfigurations?.[0];
+      setSavedAMCConfiguration(savedConfiguration);
+
+      const assignmentOrganizationIds = savedConfiguration?.assignments
+        ?.map((assignment) => assignment?.organization?.id || assignment?.organisation?.id || assignment?.organizationId || assignment?.organisationId)
+        .filter(Boolean);
+      if (assignmentOrganizationIds?.length) {
+        setOrganizationIds([...new Set(assignmentOrganizationIds)]);
+      }
+
+      const savedGeographyDetails = savedConfiguration?.geographyDetails;
       if (!savedGeographyDetails) {
         return;
       }
       const parsedGeographyDetails = typeof savedGeographyDetails === "string" ? JSON.parse(savedGeographyDetails) : savedGeographyDetails;
+      const stateCode = parsedGeographyDetails?.state?.code || parsedGeographyDetails?.state;
+      const districtCodes = parsedGeographyDetails?.districts?.map((district) => district?.code || district) || [];
+      const blockCodes = parsedGeographyDetails?.blocks?.map((block) => block?.code || block) || [];
 
       setPersistedFormData((prev) => ({
         ...prev,
         geographyDetails: {
-          state: fetchedBoundaryData.states.find((state) => state.code === parsedGeographyDetails.state),
-          districts: fetchedBoundaryData.districts.filter((district) => parsedGeographyDetails.districts?.includes(district.code)),
-          blocks: fetchedBoundaryData.blocks.filter((block) => parsedGeographyDetails.blocks?.includes(block.code)),
+          state: fetchedBoundaryData.states.find((state) => state.code === stateCode),
+          districts: fetchedBoundaryData.districts.filter((district) => districtCodes.includes(district.code)),
+          blocks: fetchedBoundaryData.blocks.filter((block) => blockCodes.includes(block.code)),
         },
       }));
     };
 
     setSavedAMCGeographyDetails();
   }, [amcConfigurationId, fetchedBoundaryData, tenantId]);
+
+  useEffect(() => {
+    const assignments = savedAMCConfiguration?.assignments;
+    if (!assignments?.length || !activityData || !organizationData || !organizationUserData) {
+      return;
+    }
+
+    const amcActivity = activityData.find((activity) => activity.code?.toUpperCase() === "AMC");
+    if (!amcActivity) {
+      return;
+    }
+
+    const savedUsers = [...assignments]
+      .sort((a, b) => (a.auditDetails?.createdTime || 0) - (b.auditDetails?.createdTime || 0))
+      .map((assignment) => {
+        const assignmentOrganization = assignment.organization || assignment.organisation || {};
+        const assignmentOrganizationId = assignmentOrganization.id || assignment.organizationId || assignment.organisationId;
+        const assignedUserId = assignment.assignedUser || assignment.assignedTo || assignment.userId;
+        const assignedUser = organizationUserData.organizationUsers?.find((user) => (
+          user.uuid === assignedUserId ||
+          user.userId === assignedUserId ||
+          user.id === assignedUserId
+        ));
+        const organizationFromMaster = organizationData.organizations?.find((org) => org.id === assignmentOrganizationId);
+        const vendorFallback = savedAMCConfiguration?.vendor?.id === assignmentOrganizationId ? savedAMCConfiguration.vendor : null;
+        const organization = organizationFromMaster || vendorFallback || assignmentOrganization;
+        const organizationName = organization?.name || assignmentOrganizationId;
+
+        return {
+          id: assignment.id,
+          savedAssignment: assignment,
+          poNumber: { value: assignment.pocNumber || "", error: "", },
+          organization: {
+            value: assignmentOrganizationId ? { ...organization, id: organization.id || assignmentOrganizationId, name: organizationName } : null,
+            error: "",
+          },
+          role: { value: assignment.role || null, error: "", },
+          email: {
+            value: assignedUser ? {
+              ...assignedUser,
+              emailKey: `${assignedUser.name || ""}${assignedUser.name ? " " : ""}[${assignedUser.emailId || ""}]`,
+            } : null,
+            error: "",
+          },
+          isEmailSent: assignment.isEmailSent || false,
+        };
+      });
+
+    setPersistedFormData((prev) => ({
+      ...prev,
+      activityDetails: {
+        activityUserAssignment: [
+          {
+            activity: amcActivity,
+            users: savedUsers,
+          },
+        ],
+      },
+    }));
+  }, [activityData, organizationData, organizationUserData, savedAMCConfiguration]);
 
   const handleFacilityDataDownload = useCallback(async () => {
 
@@ -590,13 +689,15 @@ const CreateAMC = () => {
     if (key + 1 >= currentKey) return;
     switch (currentKey) {
       case 2:
-        const currentActivityAssignments = getFormData("activityUserAssignment");
-        setPersistedFormData((prevState) => ({
-          ...prevState,
-          activityDetails: {
-            activityUserAssignment: currentActivityAssignments,
-          },
-        }));
+        if (getFormData) {
+          const currentActivityAssignments = getFormData("activityUserAssignment");
+          setPersistedFormData((prevState) => ({
+            ...prevState,
+            activityDetails: {
+              activityUserAssignment: currentActivityAssignments,
+            },
+          }));
+        }
         setCurrentKey(key + 1);
         break;
       case 3:
@@ -614,13 +715,15 @@ const CreateAMC = () => {
         });
         break;
       case 2:
-        const currentActivityAssignments = getFormData("activityUserAssignment");
-        setPersistedFormData((prevState) => ({
-          ...prevState,
-          activityDetails: {
-            activityUserAssignment: currentActivityAssignments,
-          },
-        }));
+        if (getFormData) {
+          const currentActivityAssignments = getFormData("activityUserAssignment");
+          setPersistedFormData((prevState) => ({
+            ...prevState,
+            activityDetails: {
+              activityUserAssignment: currentActivityAssignments,
+            },
+          }));
+        }
         setCurrentKey((prev) => prev - 1);
         break;
       case 3:

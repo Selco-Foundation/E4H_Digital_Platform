@@ -1,5 +1,5 @@
-import React, {useEffect, useMemo, useState} from "react";
-import {Dropdown, CustomDropdown} from "@egovernments/digit-ui-react-components";
+import React, {useEffect, useState} from "react";
+import {CustomDropdown} from "@egovernments/digit-ui-react-components";
 
 const StateSelector = ({
   data = {},
@@ -14,6 +14,20 @@ const StateSelector = ({
   useEffect(() => {
     setValue(name, selectedState);
   }, [name, selectedState]);
+
+  useEffect(() => {
+    const state = data[name];
+    const displayState = state?.code
+      ? stateMenu.find((option) => option.code === state.code) || {
+        ...state,
+        name: state.name || t(`Boundary_${state.code}`),
+      }
+      : state;
+
+    if (displayState?.code !== selectedState?.code || displayState?.name !== selectedState?.name) {
+      setSelectedState(displayState);
+    }
+  }, [data, name, selectedState?.code, selectedState?.name, stateMenu, t]);
 
   useEffect(() => {
     if (boundaryData) {
