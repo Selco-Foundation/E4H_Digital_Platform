@@ -638,6 +638,7 @@ const CreateAMC = () => {
   }
 
   const buildUpdateAMCConfigurationRequest = (formData) => {
+    const geographyDetails = formatAMCGeographyDetailsForUpdate(formData.geographyDetails);
     const assignmentRows = formData?.activityDetails?.activityUserAssignment?.flatMap((activityAssignment) => (
       activityAssignment.users?.map((userEntry) => ({
         ...userEntry,
@@ -694,9 +695,10 @@ const CreateAMC = () => {
           facilityId: savedAMCConfiguration.facilityId || savedAMCConfiguration.facility?.id,
           projectId: savedAMCConfiguration.projectId || projectId,
           assignments,
+          geographyDetails,
           additionalDetails: {
             ...(savedAMCConfiguration.additionalDetails || {}),
-            geographyDetails: formatAMCGeographyDetailsForUpdate(formData.geographyDetails),
+            geographyDetails,
           },
           auditDetails: getAuditDetails(savedAMCConfiguration.auditDetails),
         },
