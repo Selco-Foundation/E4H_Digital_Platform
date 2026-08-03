@@ -131,6 +131,33 @@ def format_facility_data_for_template(
 
             formatted_rows.append(row)
 
+    elif type == "assessment_include":
+        for facility in facility_data:
+            row = {}
+            for c in compiled_cols:
+                val = get_nested_value(facility, c["path"])
+                if c["code_to_name"] and isinstance(val, str):
+                    val = c["code_to_name"].get(val, val)
+
+                if c["type"] in ("enum-yes-no", "boolean"):
+                    if isinstance(val, bool):
+                        val = "Yes" if val else "No"
+                    elif isinstance(val, str):
+                        val = "Yes" if val.strip().lower() in ("true", "yes", "1") else "No"
+                    else:
+                        val = ""
+                row[c["header"]] = val
+
+            include_column_name = None
+            for header in headers:
+                if "Include in Assessment Plan" in header:
+                    include_column_name = header
+                    break
+
+            if include_column_name:
+                row[include_column_name] = facility.get("include_in_assessment_plan", "")
+
+            formatted_rows.append(row)
 
     return formatted_rows
 

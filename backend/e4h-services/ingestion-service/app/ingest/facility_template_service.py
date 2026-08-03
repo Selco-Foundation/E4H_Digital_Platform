@@ -100,6 +100,10 @@ class FacilityTemplateService:
             always_locked_columns=[]
 
             for col in facility_schema:
+                column_code = col.get("code")
+                if type == "assessment_include" and column_code == "include_in_fieldplan":
+                    continue
+
                 mandatory_indicator = "(Mandatory)" if col.get("required") else ""
                 header_name = f"{col.get('name')} {mandatory_indicator}".strip()
                 output_list.append(header_name)
@@ -155,6 +159,15 @@ class FacilityTemplateService:
 
             # Debug: Log all columns before adding Include in Project
             logger.info(f"Columns from schema: {output_list}")
+
+            if type == "assessment_include":
+                include_column = "Include in Assessment Plan (Mandatory)"
+                if not any("Include in Assessment Plan" in col for col in output_list):
+                    output_list.append(include_column)
+                    dropdowns_map[include_column] = ["Yes", "No"]
+                    editable_columns.append(include_column)
+                    allow_blank_map[include_column] = True
+                    logger.info(f"Added assessment include column: {include_column}")
 
             # Check if "Include in Project" column already exists (with or without "(Mandatory)")
             existing_include_column = None
