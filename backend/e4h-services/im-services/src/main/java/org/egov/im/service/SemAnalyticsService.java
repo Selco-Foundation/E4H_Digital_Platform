@@ -10,6 +10,7 @@ import org.egov.im.producer.Producer;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.IncidentRequest;
+import org.egov.im.web.models.LocalizationResponse;
 import org.egov.im.web.models.UserAnalyticsEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.egov.im.util.IMConstants.NOTIFICATION_LOCALE;
 import static org.egov.im.util.IMConstants.SEM_APPLICATION;
 import static org.egov.im.util.IMConstants.SEM_ENTITY_TYPE;
 import static org.egov.im.util.IMConstants.SEM_JSONPATH;
@@ -46,12 +48,15 @@ public class SemAnalyticsService {
     private final IMConfiguration config;
     private final MDMSUtils mdmsUtils;
     private final Producer producer;
+    private final LocalizationService localizationService;
 
     @Autowired
-    public SemAnalyticsService(IMConfiguration config, MDMSUtils mdmsUtils, Producer producer) {
+    public SemAnalyticsService(IMConfiguration config, MDMSUtils mdmsUtils, Producer producer,
+                                LocalizationService localizationService) {
         this.config = config;
         this.mdmsUtils = mdmsUtils;
         this.producer = producer;
+        this.localizationService = localizationService;
     }
 
     /**
@@ -138,6 +143,8 @@ public class SemAnalyticsService {
                 }
             }
 
+            String state = resolveState(requestInfo, tenantId, incident.getIncidentId());
+
             UserAnalyticsEvent event = UserAnalyticsEvent.builder()
                     .eventId(UUID.randomUUID().toString())
                     .eventType(eventType)
@@ -147,7 +154,7 @@ public class SemAnalyticsService {
                     .systemRole(systemRole)
                     .primaryRole(primaryRole)
                     .userCategory(userCategory)
-                    .state(null)
+                    .state(state)
                     .module(null)
                     .entityId(incident.getIncidentId())
                     .entityType(SEM_ENTITY_TYPE)
@@ -158,6 +165,26 @@ public class SemAnalyticsService {
         } catch (Exception e) {
             log.error("SEM analytics: failed to publish event for incidentId={}",
                     request != null && request.getIncident() != null ? request.getIncident().getIncidentId() : null, e);
+        }
+    }
+
+    /**
+     * Resolves the localized state (tenant) name the same way it is resolved for the indexer
+     * in {@link LocalizationService#enrichLocalizedFieldsForIndexing}: derive the state-tenant
+     * from tenantId, look up {@code HEADER_TENANT_TENANTS_<STATETENANT>} in the {@code rainmaker-<stateTenant>}
+     * module, and return the localized message. Best-effort — returns null on any failure so it
+     * never blocks the rest of the analytics event.
+     */
+    private String resolveState(RequestInfo requestInfo, String tenantId, String incidentId) {
+        try {
+            String stateTenant = tenantId.split("\\.")[0];
+            String stateCode = "HEADER_TENANT_TENANTS_" + stateTenant.toUpperCase();
+            LocalizationResponse stateResponse = localizationService.getLocalizationMessages(
+                    requestInfo, stateTenant, "rainmaker-" + stateTenant, NOTIFICATION_LOCALE, stateCode);
+            return (stateResponse != null) ? stateResponse.getMessageByCode(stateCode) : null;
+        } catch (Exception e) {
+            log.warn("SEM analytics: failed to resolve localized state for incidentId={}", incidentId, e);
+            return null;
         }
     }
 
