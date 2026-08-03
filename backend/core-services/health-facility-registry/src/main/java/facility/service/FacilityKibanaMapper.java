@@ -474,6 +474,34 @@ public class FacilityKibanaMapper {
     }
 
     /**
+     * Returns the boundary-hierarchy State code for a facility (e.g. the code behind the
+     * {@code Boundary_<stateCode>} localization key), or null when it cannot be resolved.
+     * Exposed for FacilityAnalyticsService, which localizes it into the analytics event's
+     * {@code state} field the same way the Kibana index resolves its {@code state}.
+     */
+    public String resolveStateCode(Facility facility, RequestInfo requestInfo) {
+        if (facility == null) {
+            return null;
+        }
+        BoundaryCodes codes = fetchBoundaryHierarchy(facility, requestInfo);
+        return (codes != null) ? codes.getStateCode() : null;
+    }
+
+    /**
+     * Localizes a boundary code into its display label ({@code Boundary_<code>} in
+     * {@code rainmaker-in}, locale {@code en_IN}). Unlike the Kibana index path this does NOT
+     * fall back to a code-derived label — it returns null, matching im-services so both
+     * producers write identical strings into the shared analytics index.
+     */
+    public String localizeBoundaryCode(String boundaryCode, RequestInfo requestInfo) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return null;
+        }
+        String localized = fetchBoundaryDisplayLabels(requestInfo, boundaryCode).get(toLocalizationCode(boundaryCode));
+        return (localized != null && !localized.isBlank()) ? localized : null;
+    }
+
+    /**
      * Fetches boundary hierarchy from boundary service and extracts codes by boundary type.
      * When the Facility relationship is not yet persisted (async Kafka create), falls back to the
      * parent block code which is already present in boundary_relationship.

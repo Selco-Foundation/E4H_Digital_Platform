@@ -202,7 +202,7 @@ public class IMService {
         }
 
         // Publish SEM user-analytics event for the indexer.
-        semAnalyticsService.publishEvent(request);
+        semAnalyticsService.publishEvent(request, boundary);
 
         return request;
     }
@@ -386,7 +386,7 @@ public class IMService {
         }
 
         // Publish SEM user-analytics event for the indexer.
-        semAnalyticsService.publishEvent(request);
+        semAnalyticsService.publishEvent(request, boundary);
 
         return request;
     }

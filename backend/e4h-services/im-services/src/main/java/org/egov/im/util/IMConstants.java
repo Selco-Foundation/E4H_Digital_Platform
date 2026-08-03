@@ -45,6 +45,9 @@ public class IMConstants {
     public static final String SEM_APPLICATION = "SAURA_EMITRA";
     public static final String SEM_ENTITY_TYPE = "TICKET";
 
+    // Localization module holding the Boundary_* codes used to resolve the localized state name
+    public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
+
     public static final String MDMS_SERVICEDEF_SEARCH = "$.MdmsRes.Incident.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')]";
 
     public static final String MDMS_DEPARTMENT_SEARCH = "$.MdmsRes.RAINMAKER-im.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')].department";
