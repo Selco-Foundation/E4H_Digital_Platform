@@ -813,9 +813,10 @@ async def get_amc_configuration_template(
         payload: dict = Body(..., description="Payload containing RequestInfo, boundary_data")
 ):
     request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    tenant_id = request_info.user_info.tenant_id if request_info.user_info and request_info.user_info.tenant_id else "in"
 
     boundary_data = payload.get("boundary_data", {})
-    project_id = payload.get("project_id")  
+    project_id = payload.get("project_id")
 
     if not boundary_data:
         raise HTTPException(status_code=400, detail="boundary_data is required")
@@ -905,6 +906,7 @@ async def get_amc_configuration_template(
         )
 
         # Initialize AMC scheduler client and prefetch existing configs for this project once
+        # (one search call for the whole project, not one per facility - see the per-row lookup below).
         amc_client = None
         existing_amc_by_facility = {}
         if amc_scheduler_service_url and project_id:
@@ -912,7 +914,9 @@ async def get_amc_configuration_template(
             try:
                 all_existing_configs_resp = amc_client.search_amc_configurations(
                     request_info,
-                    project_id=project_id
+                    project_id=project_id,
+                    tenant_id=tenant_id,
+                    limit=2000,
                 )
                 all_existing_configs = all_existing_configs_resp.get("AmcConfigurations", [])
                 for config in all_existing_configs:
@@ -962,29 +966,17 @@ async def get_amc_configuration_template(
             frequency_value = ""
             duration_value = ""
 
-            # Read existing AMC configuration from prefetched map
-            if amc_client and project_id and facility_id:
-                try:
-                    existing_configs = amc_client.search_amc_configurations(
-                        request_info,
-                        facility_id=facility_id,
-                        project_id=project_id
-                    )
-                    # Check if any configurations exist
-                    configs = existing_configs.get("AmcConfigurations", [])
-                    if configs:
-                        # Use the first configuration found
-                        existing_config = configs[0]
-                        frequency_months = existing_config.get("frequency")
-                        duration_months = existing_config.get("duration")
+            # Read existing AMC configuration from the map prefetched once above (no per-facility call)
+            if facility_id:
+                existing_config = existing_amc_by_facility.get(facility_id)
+                if existing_config:
+                    frequency_months = existing_config.get("visitFrequencyMonths")
+                    duration_months = existing_config.get("durationMonths")
 
-                        frequency_value = convert_frequency_to_display(frequency_months)
-                        duration_value = convert_duration_to_display(duration_months)
-                        rows_with_existing_amc.append(idx)
-                        logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
-                except Exception as e:
-                    logger.warning(f"Error checking existing AMC config for facility {facility_id}: {e}")
-                    # Continue without existing config data
+                    frequency_value = convert_frequency_to_display(frequency_months)
+                    duration_value = convert_duration_to_display(duration_months)
+                    rows_with_existing_amc.append(idx)
+                    logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
 
             # Create one row per facility (asset types are handled internally during processing)
             rows.append({
