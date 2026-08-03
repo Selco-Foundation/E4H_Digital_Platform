@@ -9,9 +9,6 @@ import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.repository.AssessmentPlanRepository;
 import org.egov.field_planner.util.AssessmentConstants;
 import org.egov.field_planner.web.models.*;
-import org.egov.field_planner.config.FieldPlannerConfiguration;
-import org.egov.field_planner.service.FieldPlannerService;
-import org.egov.field_planner.service.ServiceRequestRepository;
 import org.egov.field_planner.web.models.ActivityAssignment;
 import org.egov.field_planner.web.models.ActivityAssignmentBulkRequest;
 import org.egov.field_planner.web.models.ActivityAssignmentResponse;
@@ -34,7 +31,6 @@ public class AssessmentPlanService {
     private final AssessmentProjectService projectService;
     private final FieldPlannerConfiguration configuration;
     private final ServiceRequestRepository serviceRequestRepository;
-    private final FieldPlannerService fieldPlannerService;
 
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
@@ -177,7 +173,7 @@ public class AssessmentPlanService {
                 return Collections.emptyList();
             }
             return assignmentResponse.getActivityAssignment().stream()
-                    .map(this::toAssessorAssignment)
+                    .map(assignment -> toAssessorAssignment(requestInfo, assignment))
                     .toList();
         } catch (Exception e) {
             log.warn("Failed to fetch assessors for plan {}", plan.getId(), e);
@@ -185,23 +181,30 @@ public class AssessmentPlanService {
         }
     }
 
-    private AssessorAssignment toAssessorAssignment(ActivityAssignment assignment) {
+    private AssessorAssignment toAssessorAssignment(RequestInfo requestInfo, ActivityAssignment assignment) {
         String roleCode = assignment.getRole() != null ? (String) assignment.getRole().get("code") : null;
-        return AssessorAssignment.builder()
+        AssessorAssignment assessor = AssessorAssignment.builder()
                 .role(roleCode)
                 .userId(assignment.getAssignedTo())
                 .pocNumber(assignment.getPocNumber())
                 .build();
+        if (StringUtils.isNotBlank(assignment.getAssignedTo())) {
+            Employee employee = getEmployeeByUserId(requestInfo, assignment.getAssignedTo());
+            if (employee != null && employee.getUser() != null) {
+                assessor.setEmail(employee.getUser().getEmailId());
+            }
+        }
+        return assessor;
     }
 
     private void assignAssessors(RequestInfo requestInfo, AssessmentPlan plan, List<AssessorAssignment> assessors) {
         validateAssessorRoles(assessors);
         List<ActivityAssignment> assignments = new ArrayList<>();
         for (AssessorAssignment assessor : assessors) {
-            Employee employee = findEmployeeByEmail(requestInfo, assessor.getEmail());
+            Employee employee = getEmployeeByUserId(requestInfo, assessor.getUserId());
             if (employee == null) {
                 throw new CustomException(AssessmentConstants.ASSESSMENT_ASSESSOR_NOT_FOUND,
-                        "Assessor not found for email: " + assessor.getEmail());
+                        "Assessor not found for userId: " + assessor.getUserId());
             }
             Map<String, Object> role = Map.of(
                     "code", assessor.getRole(),
@@ -212,7 +215,7 @@ public class AssessmentPlanService {
                     .fieldPlanId(plan.getId())
                     .activityId(AssessmentConstants.ASSESSMENT_ACTIVITY_ID)
                     .activityCode(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT)
-                    .assignedTo(employee.getUser().getUuid())
+                    .assignedTo(assessor.getUserId())
                     .assignedBy(requestInfo.getUserInfo().getUuid())
                     .role(role)
                     .pocNumber(assessor.getPocNumber())
@@ -220,7 +223,9 @@ public class AssessmentPlanService {
                     .endDate(plan.getEndDate())
                     .status("ACTIVE")
                     .build());
-            assessor.setUserId(employee.getUser().getUuid());
+            if (employee.getUser() != null) {
+                assessor.setEmail(employee.getUser().getEmailId());
+            }
         }
 
         ActivityAssignmentBulkRequest bulkRequest = ActivityAssignmentBulkRequest.builder()
@@ -236,9 +241,9 @@ public class AssessmentPlanService {
     private void validateAssessorRoles(List<AssessorAssignment> assessors) {
         Set<String> roles = new HashSet<>();
         for (AssessorAssignment assessor : assessors) {
-            if (StringUtils.isBlank(assessor.getRole()) || StringUtils.isBlank(assessor.getEmail())) {
+            if (StringUtils.isBlank(assessor.getRole()) || StringUtils.isBlank(assessor.getUserId())) {
                 throw new CustomException(AssessmentConstants.ASSESSMENT_ASSESSOR_ROLE_REQUIRED,
-                        "Both ENUMERATOR and FIELD_POC assessors are required");
+                        "Both ENUMERATOR and FIELD_POC assessors with userId are required");
             }
             roles.add(assessor.getRole());
         }
@@ -249,26 +254,24 @@ public class AssessmentPlanService {
         }
     }
 
-    private Employee findEmployeeByEmail(RequestInfo requestInfo, String email) {
-        try {
-            String url = configuration.getHrmsHost() + configuration.getHrmsSearchUrl()
-                    + "?tenantId=in&employees=0&limit=1&offset=0";
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("RequestInfo", requestInfo);
-            payload.put("Employee", Map.of("codes", List.of(email)));
-            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), payload);
-            var employeeResponse = mapper.convertValue(response, org.egov.field_planner.web.models.EmployeeResponse.class);
-            if (employeeResponse != null && employeeResponse.getEmployees() != null
-                    && !employeeResponse.getEmployees().isEmpty()) {
-                return employeeResponse.getEmployees().get(0);
-            }
-        } catch (Exception e) {
-            log.debug("HRMS lookup by email failed for {}, trying userName", email, e);
+    private Employee getEmployeeByUserId(RequestInfo requestInfo, String userId) {
+        if (StringUtils.isBlank(userId)) {
+            return null;
         }
         try {
-            return fieldPlannerService.getUserById(Map.of("RequestInfo", requestInfo), email);
-        } catch (Exception ex) {
-            log.warn("Assessor lookup failed for email {}", email, ex);
+            String url = configuration.getHrmsHost() + configuration.getHrmsSearchUrl()
+                    + "?tenantId=in&uuids=" + userId;
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("RequestInfo", requestInfo);
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), payload);
+            EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+            if (employeeResponse == null || employeeResponse.getEmployees() == null
+                    || employeeResponse.getEmployees().isEmpty()) {
+                return null;
+            }
+            return employeeResponse.getEmployees().get(0);
+        } catch (Exception e) {
+            log.debug("HRMS lookup failed for userId {}", userId, e);
             return null;
         }
     }
