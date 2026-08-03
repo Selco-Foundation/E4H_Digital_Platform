@@ -25,4 +25,25 @@ export const AMCService = {
     });
   },
 
+  updateAMCConfigurations: async (request) => {
+    const endpoint = "/asset-amc/v1/configuration/_update";
+    const tenantId = request?.AmcConfigurations?.[0]?.tenantId || Digit.ULBService.getCurrentTenantId();
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    const params = {
+      tenantId,
+    };
+
+    return await Request({
+      url: endpoint,
+      data: request,
+      userService: true,
+      method: "POST",
+      auth: true,
+      params,
+      headers,
+    });
+  },
+
 };

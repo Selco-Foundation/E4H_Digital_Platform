@@ -19,6 +19,30 @@ const getCurrentStepFromURL = () => {
   return [1, 2, 3].includes(key) ? key : 1;
 };
 
+const getUserIdentifier = (user = {}) => user.uuid || user.userId || user.id;
+
+const getAuditDetails = (savedAuditDetails) => {
+  const userUuid = Digit.UserService.getUser()?.info?.uuid;
+  const now = Date.now();
+
+  return savedAuditDetails ? {
+    ...savedAuditDetails,
+    lastModifiedBy: userUuid,
+    lastModifiedTime: now,
+  } : {
+    createdBy: userUuid,
+    createdTime: now,
+    lastModifiedBy: userUuid,
+    lastModifiedTime: now,
+  };
+};
+
+const formatAMCGeographyDetailsForUpdate = (geographyDetails = {}) => ({
+  state: geographyDetails?.state?.code || geographyDetails?.state,
+  districts: geographyDetails?.districts?.map((district) => district?.code || district) || [],
+  blocks: geographyDetails?.blocks?.map((block) => block?.code || block) || [],
+});
+
 const CreateAMC = () => {
 
   const { t } = useTranslation();
@@ -291,6 +315,14 @@ const CreateAMC = () => {
   }, [createdProject, persistedFormData, t])
 
   const handleFacilityDataUpload = useCallback(async (chosenFile) => {
+    if (amcConfigurationId) {
+      setFile({
+        name: chosenFile.name,
+        data: chosenFile,
+      });
+      setUploadedValidFile(true);
+      return;
+    }
 
     setBlockUI(true);
     let uploadedFile;
@@ -344,7 +376,7 @@ const CreateAMC = () => {
     }
 
     setFile(uploadedFile);
-  }, [createdProject, persistedFormData, t]);
+  }, [amcConfigurationId, createdProject, persistedFormData, t]);
 
   const validateActivityData = (activityData) => {
     let faultyData = false;
@@ -605,6 +637,73 @@ const CreateAMC = () => {
     return allRolesPresent;
   }
 
+  const buildUpdateAMCConfigurationRequest = (formData) => {
+    const assignmentRows = formData?.activityDetails?.activityUserAssignment?.flatMap((activityAssignment) => (
+      activityAssignment.users?.map((userEntry) => ({
+        ...userEntry,
+        activity: activityAssignment.activity,
+      })) || []
+    )) || [];
+    const assignments = assignmentRows
+      .filter((userEntry) => !userEntry.deleteAssignment && userEntry.email?.value)
+      .map((userEntry) => {
+        const savedAssignment = userEntry.savedAssignment || {};
+        const selectedUser = userEntry.email.value;
+        const selectedOrganization = userEntry.organization.value;
+        const selectedRole = userEntry.role.value;
+        const assignmentId = userEntry.id || savedAssignment.id || crypto.randomUUID();
+        const assignedUser = getUserIdentifier(selectedUser);
+        const auditDetails = getAuditDetails(savedAssignment.auditDetails);
+
+        return {
+          ...savedAssignment,
+          id: assignmentId,
+          tenantId: savedAssignment.tenantId || selectedUser.tenantId || savedAMCConfiguration.tenantId || tenantId,
+          amcConfigurationId: savedAMCConfiguration.id,
+          assignedUser: assignedUser?.toString(),
+          assignedTo: assignedUser,
+          assignedBy: Digit.UserService.getUser()?.info?.uuid,
+          projectId,
+          activityId: userEntry.activity?.code,
+          activityCode: userEntry.activity?.code,
+          pocNumber: userEntry.poNumber?.value || "",
+          poNumber: userEntry.poNumber?.value || "",
+          organizationId: selectedOrganization?.id,
+          organizationName: selectedOrganization?.name,
+          organization: selectedOrganization,
+          role: selectedRole,
+          roles: selectedRole ? [selectedRole] : [],
+          user: selectedUser,
+          userId: selectedUser.userId || selectedUser.id,
+          uuid: selectedUser.uuid,
+          userName: selectedUser.userName,
+          name: selectedUser.name,
+          mobileNumber: selectedUser.mobileNumber,
+          emailId: selectedUser.emailId,
+          isActive: true,
+          auditDetails,
+        };
+      });
+
+    return {
+      AmcConfigurations: [
+        {
+          ...savedAMCConfiguration,
+          tenantId: savedAMCConfiguration.tenantId || tenantId,
+          vendorId: savedAMCConfiguration.vendorId || savedAMCConfiguration.vendor?.id,
+          facilityId: savedAMCConfiguration.facilityId || savedAMCConfiguration.facility?.id,
+          projectId: savedAMCConfiguration.projectId || projectId,
+          assignments,
+          additionalDetails: {
+            ...(savedAMCConfiguration.additionalDetails || {}),
+            geographyDetails: formatAMCGeographyDetailsForUpdate(formData.geographyDetails),
+          },
+          auditDetails: getAuditDetails(savedAMCConfiguration.auditDetails),
+        },
+      ],
+    };
+  };
+
   const saveActivityDetails = (activityData) => {
 
     const { faultyData, validatedData } = validateActivityData(activityData);
@@ -644,7 +743,37 @@ const CreateAMC = () => {
         saveActivityDetails(data.activityUserAssignment);
         break;
       case 3:
-        if (!(file && uploadedValidFile)) {
+        if (amcConfigurationId) {
+          if (!savedAMCConfiguration?.id) {
+            setToast({
+              label: t("CORE_COMMON_SOMETHING_WENT_WRONG"),
+              key: "error"
+            });
+            return;
+          }
+
+          try {
+            setBlockUI(true);
+            await AMCService.updateAMCConfigurations(buildUpdateAMCConfigurationRequest(persistedFormData));
+            dispatch(
+              populateResponsePage({
+                response: {},
+                message: t("PM_COMMON_AMC_CREATED"),
+                secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
+                onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
+              })
+            );
+            history.push(`/${window?.contextPath}/employee/pm/response`);
+          } catch (error) {
+            console.error("Error updating AMC configuration", error);
+            setToast({
+              label: t("CORE_COMMON_SOMETHING_WENT_WRONG"),
+              key: "error"
+            })
+          } finally {
+            setBlockUI(false);
+          }
+        } else if (!(file && uploadedValidFile)) {
           setToast({
             label: t("PM_TOAST_FACILITY_UPLOAD_MANDATORY"),
             key: "error"
