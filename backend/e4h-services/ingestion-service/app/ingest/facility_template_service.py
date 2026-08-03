@@ -42,6 +42,20 @@ SOLAR_CAPACITY_DROPDOWN_FALLBACK = [
 ]
 SOLUTION_DESIGN_DROPDOWN_FALLBACK = ["Custom Solution Design"]
 
+
+def _skip_column_for_assessment_include(col: Dict[str, Any]) -> bool:
+    """Assessment include template uses only project facilities + Include in Assessment Plan."""
+    column_code = (col.get("code") or "").strip().lower()
+    col_name = (col.get("name") or "").strip().lower()
+    if column_code in {"include_in_fieldplan", "included_in_field_plan"}:
+        return True
+    if "include in field plan" in col_name or "included in field plan" in col_name:
+        return True
+    if "include in project" in col_name:
+        return True
+    return False
+
+
 class FacilityTemplateService:
 
     def get_all_boundaries(self, request_info: RequestInfo) -> List[Boundary]:
@@ -99,18 +113,21 @@ class FacilityTemplateService:
             allow_blank_map = {}
             always_locked_columns=[]
 
-            for col in facility_schema:
+            schema_for_template = facility_schema
+            if type == "assessment_include":
+                schema_for_template = [
+                    col for col in facility_schema
+                    if not _skip_column_for_assessment_include(col)
+                ]
+
+            for col in schema_for_template:
                 column_code = col.get("code")
-                if type == "assessment_include" and column_code == "include_in_fieldplan":
-                    continue
 
                 mandatory_indicator = "(Mandatory)" if col.get("required") else ""
                 header_name = f"{col.get('name')} {mandatory_indicator}".strip()
                 output_list.append(header_name)
 
                 allow_blank_map[header_name] = not col.get("required", False)
-
-                column_code = col.get("code")
 
                 # --- 1. MDMS Dropdowns ---
                 mdms_values = col.get("mdms_values")
@@ -169,33 +186,27 @@ class FacilityTemplateService:
                     allow_blank_map[include_column] = True
                     logger.info(f"Added assessment include column: {include_column}")
 
-            # Check if "Include in Project" column already exists (with or without "(Mandatory)")
-            existing_include_column = None
-            for col in output_list:
-                if "Include in Project" in col:
-                    existing_include_column = col
-                    break
+            if type != "assessment_include":
+                existing_include_column = None
+                for col in output_list:
+                    if "Include in Project" in col:
+                        existing_include_column = col
+                        break
 
-            if existing_include_column:
-                # Use the existing column
-                include_column = existing_include_column
-                dropdowns_map[include_column] = ["Yes", "No"]
-                editable_columns.append(include_column)
-                logger.info(f"Using existing column: {include_column}")
-            # else:
-                # Add new "Include in Project" column
-                # include_column = "Include in Project"
-                # output_list.append(include_column)
-                # dropdowns_map[include_column] = ["Yes", "No"]
-                # editable_columns.append(include_column)
-                # logger.info(f"Added new column: {include_column}")
+                if existing_include_column:
+                    include_column = existing_include_column
+                    dropdowns_map[include_column] = ["Yes", "No"]
+                    editable_columns.append(include_column)
+                    logger.info(f"Using existing column: {include_column}")
 
             logger.info(f"Final columns: {output_list}")
 
             # Add Existing Facilities Sheet (Optional)
             formatted_facilities = []
             if facility_data:
-                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list, type)
+                formatted_facilities = format_facility_data_for_template(
+                    facility_data, schema_for_template, output_list, type
+                )
 
             df_facility = pd.DataFrame(formatted_facilities, columns=output_list)
             facility_writer = create_excel_data_writer(

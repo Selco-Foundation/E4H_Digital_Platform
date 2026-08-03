@@ -54,6 +54,59 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD")
 }
 
+
+def _extract_facility_boundary_code(facility: dict) -> str:
+    for key in ("boundary_code", "boundaryCode"):
+        val = facility.get(key)
+        if val:
+            return str(val).strip()
+    for nested_key in ("facility_details", "facilityDetails", "address"):
+        nested = facility.get(nested_key)
+        if isinstance(nested, dict):
+            for key in ("boundary_code", "boundaryCode"):
+                val = nested.get(key)
+                if val:
+                    return str(val).strip()
+    return ""
+
+
+def _resolve_template_boundary_list(
+        facility_service: FacilityTemplateService,
+        request_info,
+        boundary_data: dict,
+        facilities: List[dict],
+) -> List[Boundary]:
+    """
+    BoundaryCodes sheet data. Uses request boundary_data when provided;
+    otherwise derives rows from project facility boundary codes, or falls back
+    to the boundary service catalog (same as facilityIngestion).
+    """
+    boundary_list = flatten_boundaries(boundary_data or {})
+    if boundary_list:
+        return boundary_list
+
+    facility_boundary_codes = {
+        _extract_facility_boundary_code(f) for f in facilities
+    }
+    facility_boundary_codes.discard("")
+
+    try:
+        all_boundaries = facility_service.get_all_boundaries(request_info)
+    except Exception as e:
+        logger.warning(f"Could not load boundaries for template: {e}")
+        return []
+
+    if facility_boundary_codes:
+        filtered = [b for b in all_boundaries if b.code in facility_boundary_codes]
+        if filtered:
+            logger.info(
+                f"Boundary sheet populated with {len(filtered)} rows from project facility boundary codes"
+            )
+            return filtered
+
+    logger.info(f"Boundary sheet populated with {len(all_boundaries)} rows from boundary service")
+    return all_boundaries
+
 @router.post('/facilityIngestionTemplateWithData',
             summary='Generate facility ingestion template Excel file with schema, already present data and boundary codes',
             response_description="Returns Excel template with facility schema, facility data and boundary codes")
@@ -1244,7 +1297,6 @@ async def get_assessment_plan_include_template(
         facility_schema = mdms_client.get_column_definitions_with_metadata(
             request_info, "data-ingestion.FieldPlanFacilityIngestionSchema"
         )
-        boundary_list: List[Boundary] = flatten_boundaries(boundary_data)
 
         project_facilities_response = project_client.search_project_facility(request_info, project_id)
         project_facilities = project_facilities_response.get("ProjectFacilities", []) or []
@@ -1267,9 +1319,17 @@ async def get_assessment_plan_include_template(
             }
             for pf in project_facilities:
                 fid = pf.get("facilityId")
+                if not fid:
+                    continue
                 facility = dict(facilities_by_id.get(fid, {}))
+                if not facility.get("facility_id") and not facility.get("facilityId"):
+                    facility["facility_id"] = fid
                 facility["include_in_assessment_plan"] = ""
                 all_facilities.append(facility)
+
+        boundary_list = _resolve_template_boundary_list(
+            facility_service, request_info, boundary_data, all_facilities
+        )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"

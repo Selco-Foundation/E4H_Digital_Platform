@@ -52,7 +52,8 @@ def format_facility_data_for_template(
         return "" if cur is None else cur
 
     compiled_cols = []
-    for col, header in zip(facility_schema, headers):
+    schema_headers = headers[: len(facility_schema)]
+    for col, header in zip(facility_schema, schema_headers):
         mdms_values = col.get("mdms_values") or []
         code_to_name = {mv.get("code"): mv.get("name") for mv in mdms_values if mv.get("code")}
         compiled_cols.append({
