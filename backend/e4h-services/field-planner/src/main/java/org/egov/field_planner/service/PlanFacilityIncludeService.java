@@ -58,10 +58,18 @@ public class PlanFacilityIncludeService {
         List<PlanFacility> created = new ArrayList<>();
         List<PlanFacilityIncludeError> errors = new ArrayList<>();
         List<PlanFacilityIncludeError> skipped = new ArrayList<>();
-        String userId = requestInfo.getUserInfo().getUuid();
+        String userId = requestInfo.getUserInfo() != null ? requestInfo.getUserInfo().getUuid() : "system";
 
         for (PlanFacilityIncludeItem item : items) {
             String facilityId = item.getFacilityId();
+            if (facilityId == null || facilityId.isBlank()) {
+                errors.add(PlanFacilityIncludeError.builder()
+                        .facilityId(facilityId)
+                        .code(AssessmentConstants.ASSESSMENT_FACILITY_NOT_ON_PROJECT)
+                        .message("Facility Id is required")
+                        .build());
+                continue;
+            }
             Optional<String> validationError = validateInclude(plan, facilityId, projectFacilityIds);
             if (validationError.isPresent()) {
                 String[] parts = validationError.get().split("\\|", 2);
@@ -94,7 +102,14 @@ public class PlanFacilityIncludeService {
                 );
             } catch (Exception e) {
                 log.error("Workflow CREATE failed for facility {} on plan {}", facilityId, planId, e);
-                throw new CustomException(AssessmentConstants.WORKFLOW_TRANSITION_FAILED, e.getMessage());
+                facilityRepository.deleteById(createdFacility.getPlanFacilityId());
+                errors.add(PlanFacilityIncludeError.builder()
+                        .facilityId(facilityId)
+                        .code(AssessmentConstants.WORKFLOW_TRANSITION_FAILED)
+                        .message(e.getMessage() != null ? e.getMessage()
+                                : "Workflow CREATE transition failed")
+                        .build());
+                continue;
             }
             created.add(createdFacility);
         }

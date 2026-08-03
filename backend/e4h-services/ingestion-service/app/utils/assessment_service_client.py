@@ -28,11 +28,18 @@ class AssessmentServiceClient:
             "tenantId": tenant_id,
             "facilities": facilities,
         }
-        logger.trace(
+        logger.info(
             f"Assessment bulk-create: plan_id={plan_id}, count={len(facilities)}"
         )
+        logger.debug(f"Assessment bulk-create payload facilities: {facilities}")
         response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
+        if not response.ok:
+            logger.error(
+                "Assessment bulk-create failed: status=%s body=%s",
+                response.status_code,
+                response.text,
+            )
+            response.raise_for_status()
         return response.json()
 
     def search_assessment_plan(

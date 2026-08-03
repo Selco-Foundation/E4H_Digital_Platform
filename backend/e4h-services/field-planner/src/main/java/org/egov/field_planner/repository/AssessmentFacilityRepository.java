@@ -53,7 +53,7 @@ public class AssessmentFacilityRepository {
                     id, tenant_id, facility_id, activity_id, field_plan_id, status,
                     phone_status, field_status, overall_status, assessment_completion_status,
                     scheduled_at, activated_at, created_time, last_modified_time, additional_details
-                ) VALUES (?, ?, ?, ?, ?, 'SCHEDULED', ?, NULL, ?, ?, ?, ?, ?, ?, ?::jsonb)
+                ) VALUES (?, ?, ?, ?, ?, 'SCHEDULED', ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
                 """,
                 id,
                 tenantId,
@@ -61,6 +61,7 @@ public class AssessmentFacilityRepository {
                 AssessmentConstants.ASSESSMENT_ACTIVITY_ID,
                 planId,
                 AssessmentConstants.PHONE_PENDING,
+                AssessmentConstants.FIELD_PENDING,
                 AssessmentConstants.OVERALL_PENDING,
                 AssessmentConstants.COMPLETION_ENROLLED,
                 now,
@@ -71,6 +72,10 @@ public class AssessmentFacilityRepository {
         );
 
         return findById(id).orElseThrow();
+    }
+
+    public void deleteById(String planFacilityId) {
+        jdbcTemplate.update("DELETE FROM facility_activities WHERE id = ?", planFacilityId);
     }
 
     public Optional<PlanFacility> findById(String planFacilityId) {

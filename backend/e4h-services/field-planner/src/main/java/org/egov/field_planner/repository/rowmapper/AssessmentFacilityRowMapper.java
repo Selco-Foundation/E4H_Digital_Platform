@@ -68,6 +68,9 @@ public class AssessmentFacilityRowMapper implements RowMapper<PlanFacility> {
         if (storedOutcome != null) {
             return storedOutcome;
         }
+        if (phaseStatus == null) {
+            return null;
+        }
         if (AssessmentConstants.REMOTE_DONE_STATUSES.contains(phaseStatus)
                 || AssessmentConstants.FIELD_QUALIFIED.equals(phaseStatus)
                 || AssessmentConstants.FIELD_NOT_QUALIFIED.equals(phaseStatus)) {
