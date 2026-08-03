@@ -8,6 +8,7 @@ import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.producer.Producer;
 import org.egov.im.util.MDMSUtils;
+import org.egov.im.web.models.Boundary;
 import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.LocalizationResponse;
@@ -27,6 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.egov.im.util.IMConstants.BOUNDARY_LOCALIZATION_MODULE;
 import static org.egov.im.util.IMConstants.NOTIFICATION_LOCALE;
 import static org.egov.im.util.IMConstants.SEM_APPLICATION;
 import static org.egov.im.util.IMConstants.SEM_ENTITY_TYPE;
@@ -63,7 +65,7 @@ public class SemAnalyticsService {
      * Publishes a SEM analytics event for the given incident request. Any failure here is
      * swallowed (logged) so it can never break the incident create/update flow.
      */
-    public void publishEvent(IncidentRequest request) {
+    public void publishEvent(IncidentRequest request, Boundary boundary) {
         try {
             if (request == null || request.getIncident() == null) {
                 return;
@@ -143,7 +145,7 @@ public class SemAnalyticsService {
                 }
             }
 
-            String state = resolveState(requestInfo, tenantId, incident.getIncidentId());
+            String state = resolveState(requestInfo, tenantId, boundary, incident.getIncidentId());
 
             UserAnalyticsEvent event = UserAnalyticsEvent.builder()
                     .eventId(UUID.randomUUID().toString())
@@ -169,19 +171,24 @@ public class SemAnalyticsService {
     }
 
     /**
-     * Resolves the localized state (tenant) name the same way it is resolved for the indexer
-     * in {@link LocalizationService#enrichLocalizedFieldsForIndexing}: derive the state-tenant
-     * from tenantId, look up {@code HEADER_TENANT_TENANTS_<STATETENANT>} in the {@code rainmaker-<stateTenant>}
-     * module, and return the localized message. Best-effort — returns null on any failure so it
-     * never blocks the rest of the analytics event.
+     * Resolves the localized state name exactly the way the indexer flow resolves it in
+     * {@link LocalizationService#enrichLocalizedFieldsForIndexing}: look up
+     * {@code Boundary_<boundary.stateCode>} in the {@code rainmaker-in} module and return the
+     * localized message. Best-effort — returns null on any failure so it never blocks the rest
+     * of the analytics event.
      */
-    private String resolveState(RequestInfo requestInfo, String tenantId, String incidentId) {
+    private String resolveState(RequestInfo requestInfo, String tenantId, Boundary boundary, String incidentId) {
         try {
+            if (boundary == null || boundary.getStateCode() == null) {
+                log.info("SEM analytics: no boundary stateCode available for incidentId={}, state will be null",
+                        incidentId);
+                return null;
+            }
             String stateTenant = tenantId.split("\\.")[0];
-            String stateCode = "HEADER_TENANT_TENANTS_" + stateTenant.toUpperCase();
-            LocalizationResponse stateResponse = localizationService.getLocalizationMessages(
-                    requestInfo, stateTenant, "rainmaker-" + stateTenant, NOTIFICATION_LOCALE, stateCode);
-            return (stateResponse != null) ? stateResponse.getMessageByCode(stateCode) : null;
+            String stateCode = "Boundary_" + boundary.getStateCode();
+            LocalizationResponse boundaryResponse = localizationService.getLocalizationMessages(
+                    requestInfo, stateTenant, BOUNDARY_LOCALIZATION_MODULE, NOTIFICATION_LOCALE, stateCode);
+            return (boundaryResponse != null) ? boundaryResponse.getMessageByCode(stateCode) : null;
         } catch (Exception e) {
             log.warn("SEM analytics: failed to resolve localized state for incidentId={}", incidentId, e);
             return null;
