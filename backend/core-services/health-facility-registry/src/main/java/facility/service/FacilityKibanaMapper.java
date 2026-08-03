@@ -474,20 +474,6 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * Returns the boundary-hierarchy State code for a facility (e.g. the code behind the
-     * {@code Boundary_<stateCode>} localization key), or null when it cannot be resolved.
-     * Exposed for FacilityAnalyticsService, which localizes it into the analytics event's
-     * {@code state} field the same way the Kibana index resolves its {@code state}.
-     */
-    public String resolveStateCode(Facility facility, RequestInfo requestInfo) {
-        if (facility == null) {
-            return null;
-        }
-        BoundaryCodes codes = fetchBoundaryHierarchy(facility, requestInfo);
-        return (codes != null) ? codes.getStateCode() : null;
-    }
-
-    /**
      * Localizes a boundary code into its display label ({@code Boundary_<code>} in
      * {@code rainmaker-in}, locale {@code en_IN}). Unlike the Kibana index path this does NOT
      * fall back to a code-derived label — it returns null, matching im-services so both
@@ -497,8 +483,14 @@ public class FacilityKibanaMapper {
         if (boundaryCode == null || boundaryCode.isBlank()) {
             return null;
         }
-        String localized = fetchBoundaryDisplayLabels(requestInfo, boundaryCode).get(toLocalizationCode(boundaryCode));
-        return (localized != null && !localized.isBlank()) ? localized : null;
+        String localizationCode = toLocalizationCode(boundaryCode);
+        String localized = fetchBoundaryDisplayLabels(requestInfo, boundaryCode).get(localizationCode);
+        if (localized == null || localized.isBlank()) {
+            log.warn("No localization for {} in module {} at tenant {}; returning null",
+                    localizationCode, LOCALIZATION_MODULE, LOCALIZATION_TENANT_ID);
+            return null;
+        }
+        return localized;
     }
 
     /**

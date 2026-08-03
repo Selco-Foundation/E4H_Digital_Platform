@@ -43,9 +43,10 @@ import static facility.config.ServiceConstants.USER_ANALYTICS_MODULE;
  * records are sorted by descending system_roles count (most specific first) and the first record
  * whose system_roles the user fully holds wins.
  * <p>
- * {@code state} follows SemAnalyticsService#resolveState — the boundary hierarchy's State code
- * localized as {@code Boundary_<stateCode>} in {@code rainmaker-in} — so both producers write
- * identical state strings into the shared index.
+ * {@code state} is localized as {@code Boundary_<stateCode>} in {@code rainmaker-in}, the same
+ * key SemAnalyticsService uses, so both producers write identical state strings into the shared
+ * index. The State code is parsed straight out of the facility's boundary code rather than
+ * fetched from the boundary service — see {@link #extractStateBoundaryCode}.
  * <p>
  * Every entry point is best-effort — any failure is logged and swallowed so analytics can never
  * break a facility create/update.
@@ -97,20 +98,27 @@ public class FacilityAnalyticsService {
             UserType userType = resolveUserType(requestInfo, tenantId, extractUserRoleCodes(user));
             String eventTime = Instant.now().toString();
 
-            // Facilities under the same block share a State, so resolve per block and reuse.
-            Map<String, String> stateByBlock = new HashMap<>();
+            // One localization call per distinct state, not per facility.
+            Map<String, String> stateNameByCode = new HashMap<>();
 
             for (Facility facility : facilities) {
                 if (facility.getFacilityId() == null) {
                     continue;
                 }
-                // Not computeIfAbsent: an unresolvable state is null, and we want to cache that
-                // too rather than retry the boundary lookup for every facility in the block.
-                String blockKey = blockCacheKey(facility);
-                if (!stateByBlock.containsKey(blockKey)) {
-                    stateByBlock.put(blockKey, resolveState(requestInfo, facility));
+                String stateBoundaryCode = extractStateBoundaryCode(facility.getBoundaryCode());
+                String state = null;
+                if (stateBoundaryCode == null) {
+                    log.info("Facility analytics: no state segment in boundaryCode={} for facilityId={}, "
+                            + "state will be null", facility.getBoundaryCode(), facility.getFacilityId());
+                } else {
+                    // Not computeIfAbsent: a failed localization is null, and we want to cache that
+                    // too rather than retry the lookup for every facility in the state.
+                    if (!stateNameByCode.containsKey(stateBoundaryCode)) {
+                        stateNameByCode.put(stateBoundaryCode,
+                                facilityKibanaMapper.localizeBoundaryCode(stateBoundaryCode, requestInfo));
+                    }
+                    state = stateNameByCode.get(stateBoundaryCode);
                 }
-                String state = stateByBlock.get(blockKey);
 
                 UserAnalyticsEvent event = UserAnalyticsEvent.builder()
                         .eventId(UUID.randomUUID().toString())
@@ -136,41 +144,32 @@ public class FacilityAnalyticsService {
     }
 
     /**
-     * Resolves the localized state name the same way {@code SemAnalyticsService#resolveState}
-     * does: take the boundary hierarchy's State code and look up {@code Boundary_<stateCode>} in
-     * the {@code rainmaker-in} module. Best-effort — returns null on any failure so it never
-     * blocks the rest of the analytics event.
+     * Derives the State-level boundary code from a facility boundary code, no boundary-service
+     * call needed. Facility boundary codes are hierarchy paths such as
+     * {@code India_ArunachalPradesh_PapumPare_Doimukh_<facilityId>}, so the State code is the
+     * {@code India_<State>} prefix — the same derivation
+     * {@code ProjectNameGenerationService#extractStateBoundaryCodeFromBoundary} uses.
+     * Returns null when the code carries no usable state segment.
      */
-    private String resolveState(RequestInfo requestInfo, Facility facility) {
-        try {
-            String stateCode = facilityKibanaMapper.resolveStateCode(facility, requestInfo);
-            if (stateCode == null || stateCode.isBlank()) {
-                log.info("Facility analytics: no boundary stateCode for facilityId={}, state will be null",
-                        facility.getFacilityId());
-                return null;
-            }
-            return facilityKibanaMapper.localizeBoundaryCode(stateCode, requestInfo);
-        } catch (Exception e) {
-            log.warn("Facility analytics: failed to resolve localized state for facilityId={}: {}",
-                    facility.getFacilityId(), e.getMessage());
+    private String extractStateBoundaryCode(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
             return null;
         }
-    }
-
-    /**
-     * Facility boundary codes are {@code <blockBoundaryCode>_<facilityId>}, so stripping the
-     * facility suffix groups facilities that share a State. Falls back to the facility's own
-     * boundary code (no sharing) when the suffix is absent.
-     */
-    private String blockCacheKey(Facility facility) {
-        String boundaryCode = facility.getBoundaryCode();
-        if (boundaryCode == null || boundaryCode.isBlank()) {
-            return "__NO_BOUNDARY__";
+        String[] parts = boundaryCode.split("_");
+        String countryPart = null;
+        String statePart;
+        if (parts.length >= 2 && "India".equalsIgnoreCase(parts[0])) {
+            countryPart = parts[0];
+            statePart = parts[1];
+        } else {
+            statePart = parts[0];
         }
-        String suffix = "_" + facility.getFacilityId();
-        return boundaryCode.endsWith(suffix)
-                ? boundaryCode.substring(0, boundaryCode.length() - suffix.length())
-                : boundaryCode;
+        // Placeholder states seen in imported data — treat as absent rather than localizing them.
+        if (statePart == null || statePart.isBlank()
+                || statePart.equalsIgnoreCase("nan") || statePart.equalsIgnoreCase("XYZ")) {
+            return null;
+        }
+        return (countryPart == null) ? statePart.trim() : countryPart.trim() + "_" + statePart.trim();
     }
 
     /**
