@@ -1,0 +1,238 @@
+package org.egov.field_planner.repository;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.egov.field_planner.repository.querybuilder.AssessmentQueryBuilder;
+import org.egov.field_planner.repository.rowmapper.AssessmentFacilityRowMapper;
+import org.egov.field_planner.repository.rowmapper.EligibleFacilityRowMapper;
+import org.egov.field_planner.util.AssessmentConstants;
+import org.egov.field_planner.web.models.EligibleFacility;
+import org.egov.field_planner.web.models.PlanFacility;
+import org.egov.field_planner.web.models.PlanFacilityFilters;
+import org.egov.field_planner.web.models.PlanFacilityIncludeItem;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+@Slf4j
+@Repository
+@RequiredArgsConstructor
+public class AssessmentFacilityRepository {
+
+    private final JdbcTemplate jdbcTemplate;
+    private final AssessmentQueryBuilder queryBuilder;
+    private final AssessmentFacilityRowMapper facilityRowMapper;
+    private final EligibleFacilityRowMapper eligibleFacilityRowMapper;
+    private final ObjectMapper objectMapper;
+
+    public PlanFacility insertFacility(String planId, String tenantId, String facilityId,
+                                         PlanFacilityIncludeItem metadata, String userId) {
+        String id = UUID.randomUUID().toString();
+        long now = System.currentTimeMillis();
+        Map<String, Object> additionalDetails = buildAdditionalDetails(metadata);
+        additionalDetails = org.egov.field_planner.util.AssessmentAdditionalDetailsHelper.appendAuditEvent(
+                additionalDetails,
+                org.egov.field_planner.web.models.AssessmentAuditEvent.builder()
+                        .event(AssessmentConstants.AUDIT_INCLUDED)
+                        .timestamp(now)
+                        .actor(userId)
+                        .assessmentPlanId(planId)
+                        .build()
+        );
+        String additionalDetailsJson = toJson(additionalDetails);
+
+        jdbcTemplate.update(
+                """
+                INSERT INTO facility_activities (
+                    id, tenant_id, facility_id, activity_id, field_plan_id, status,
+                    phone_status, field_status, overall_status, assessment_completion_status,
+                    scheduled_at, activated_at, created_time, last_modified_time, additional_details
+                ) VALUES (?, ?, ?, ?, ?, 'SCHEDULED', ?, NULL, ?, ?, ?, ?, ?, ?, ?::jsonb)
+                """,
+                id,
+                tenantId,
+                facilityId,
+                AssessmentConstants.ASSESSMENT_ACTIVITY_ID,
+                planId,
+                AssessmentConstants.PHONE_PENDING,
+                AssessmentConstants.OVERALL_PENDING,
+                AssessmentConstants.COMPLETION_ENROLLED,
+                now,
+                now,
+                now,
+                now,
+                additionalDetailsJson
+        );
+
+        return findById(id).orElseThrow();
+    }
+
+    public Optional<PlanFacility> findById(String planFacilityId) {
+        List<Object> params = new ArrayList<>();
+        params.add(AssessmentConstants.ASSESSMENT_ACTIVITY_ID);
+        params.add(planFacilityId);
+        List<PlanFacility> facilities = jdbcTemplate.query(
+                queryBuilder.getPlanFacilityByIdQuery(),
+                facilityRowMapper,
+                params.toArray()
+        );
+        return facilities.isEmpty() ? Optional.empty() : Optional.of(facilities.get(0));
+    }
+
+    public List<PlanFacility> searchByPlan(String planId, PlanFacilityFilters filters, int limit, int offset) {
+        List<Object> params = new ArrayList<>();
+        String query = queryBuilder.getPlanFacilitySearchQuery(params, planId, filters);
+        query += " LIMIT ? OFFSET ? ";
+        params.add(limit);
+        params.add(offset);
+        return jdbcTemplate.query(query, facilityRowMapper, params.toArray());
+    }
+
+    public int countByPlan(String planId, PlanFacilityFilters filters) {
+        List<Object> params = new ArrayList<>();
+        String query = queryBuilder.getPlanFacilityCountQuery(params, planId, filters);
+        Integer count = jdbcTemplate.queryForObject(query, Integer.class, params.toArray());
+        return count != null ? count : 0;
+    }
+
+    public List<PlanFacility> findQueueFacilities(List<String> planIds, String assessmentPhase) {
+        if (planIds == null || planIds.isEmpty()) {
+            return List.of();
+        }
+        List<Object> params = new ArrayList<>();
+        String query = queryBuilder.getSubmissionQueueQuery(params, planIds, assessmentPhase);
+        return jdbcTemplate.query(query, facilityRowMapper, params.toArray());
+    }
+
+    public List<EligibleFacility> findEligibleFacilities(String projectId, List<String> assessmentPlanIds) {
+        List<Object> params = new ArrayList<>();
+        String query = queryBuilder.getEligibleFacilitiesQuery(params, projectId, assessmentPlanIds);
+        return jdbcTemplate.query(query, eligibleFacilityRowMapper, params.toArray());
+    }
+
+    public void updateFacilityStatuses(String planFacilityId, String phoneStatus, String fieldStatus,
+                                        String overallStatus, String completionStatus,
+                                        Map<String, Object> additionalDetails, String userId) {
+        long now = System.currentTimeMillis();
+        jdbcTemplate.update(
+                """
+                UPDATE facility_activities
+                SET phone_status = COALESCE(?, phone_status),
+                    field_status = ?,
+                    overall_status = COALESCE(?, overall_status),
+                    assessment_completion_status = COALESCE(?, assessment_completion_status),
+                    additional_details = ?::jsonb,
+                    last_modified_by = ?,
+                    last_modified_time = ?
+                WHERE id = ?
+                """,
+                phoneStatus,
+                fieldStatus,
+                overallStatus,
+                completionStatus,
+                toJson(additionalDetails),
+                userId,
+                now,
+                planFacilityId
+        );
+    }
+
+    public void applyHandoff(String planFacilityId, String installationFieldPlanId,
+                              String fieldPlanFacilityId, Map<String, Object> additionalDetails, String userId) {
+        long now = System.currentTimeMillis();
+        jdbcTemplate.update(
+                """
+                UPDATE facility_activities
+                SET assessment_completion_status = ?,
+                    installation_field_plan_id = ?,
+                    field_plan_facility_id = ?,
+                    additional_details = ?::jsonb,
+                    last_modified_by = ?,
+                    last_modified_time = ?
+                WHERE id = ?
+                """,
+                AssessmentConstants.COMPLETION_MOVED_TO_FIELD_PLAN,
+                installationFieldPlanId,
+                fieldPlanFacilityId,
+                toJson(additionalDetails),
+                userId,
+                now,
+                planFacilityId
+        );
+    }
+
+    public List<PlanFacility> findByPlanId(String planId) {
+        List<Object> params = new ArrayList<>();
+        String query = queryBuilder.getAssessmentFacilitiesByPlanQuery(params, planId);
+        return jdbcTemplate.query(query, facilityRowMapper, params.toArray());
+    }
+
+    public Optional<String> findExistingOnPlan(String planId, String facilityId) {
+        List<String> ids = jdbcTemplate.query(
+                queryBuilder.getExistingOnPlanQuery(),
+                (rs, rowNum) -> rs.getString("id"),
+                planId,
+                facilityId,
+                AssessmentConstants.ASSESSMENT_ACTIVITY_ID
+        );
+        return ids.isEmpty() ? Optional.empty() : Optional.of(ids.get(0));
+    }
+
+    public int countPendingOverallForFacility(String facilityId) {
+        Integer count = jdbcTemplate.queryForObject(
+                queryBuilder.getPendingOverallCountQuery(),
+                Integer.class,
+                facilityId,
+                AssessmentConstants.ASSESSMENT_ACTIVITY_ID
+        );
+        return count != null ? count : 0;
+    }
+
+    public List<Map<String, Object>> findNonClosedSourcePlans(String facilityId, String targetPlanId) {
+        return jdbcTemplate.queryForList(
+                queryBuilder.getNonClosedSourcePlansQuery(),
+                facilityId,
+                AssessmentConstants.ASSESSMENT_ACTIVITY_ID,
+                targetPlanId
+        );
+    }
+
+    public boolean hasSameProjectEligibleActive(String facilityId, String projectId, String targetPlanId) {
+        List<String> ids = jdbcTemplate.query(
+                queryBuilder.getSameProjectEligibleActiveQuery(),
+                (rs, rowNum) -> rs.getString("id"),
+                facilityId,
+                AssessmentConstants.ASSESSMENT_ACTIVITY_ID,
+                projectId,
+                targetPlanId
+        );
+        return !ids.isEmpty();
+    }
+
+    private Map<String, Object> buildAdditionalDetails(PlanFacilityIncludeItem metadata) {
+        if (metadata == null) {
+            return Map.of();
+        }
+        return new java.util.HashMap<>(Map.of(
+                "facilityName", metadata.getFacilityName() != null ? metadata.getFacilityName() : "",
+                "facilityCategory", metadata.getFacilityCategory() != null ? metadata.getFacilityCategory() : "",
+                "facilityType", metadata.getFacilityType() != null ? metadata.getFacilityType() : "",
+                "district", metadata.getDistrict() != null ? metadata.getDistrict() : "",
+                "block", metadata.getBlock() != null ? metadata.getBlock() : ""
+        ));
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize JSON", e);
+        }
+    }
+}

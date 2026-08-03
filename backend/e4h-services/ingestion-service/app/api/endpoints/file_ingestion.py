@@ -51,6 +51,14 @@ from app.utils.boundary_service_client import BoundaryServiceClient
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
+from app.utils.assessment_service_client import AssessmentServiceClient
+from app.utils.assessment_fieldplan_handoff import (
+    extract_assessment_link_meta,
+    load_eligible_facility_map,
+    merge_assessment_validation_errors,
+    parse_assessment_plan_ids,
+    validate_assessment_handoff_rows,
+)
 from app.utils.icc_report_converter import validate_and_convert, ICCValidationError, SYSTEM_TYPE_TO_INTERNAL
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
@@ -2442,7 +2450,10 @@ async def validate_facilities_excel_sheet(
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
                                         description="Name of the sheet containing boundary data"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        project_id: str = Form(default="", description="Project ID (required for assessment handoff validation)"),
+        assessment_plan_ids: str = Form(default="", description="JSON array or comma-separated assessment plan IDs"),
+        tenant_id: str = Form(default="in"),
 ):
     temp_input_file = None
     request_info_obj = request_info_from_json(request_info)
@@ -2489,6 +2500,24 @@ async def validate_facilities_excel_sheet(
             boundary_data_df,
             'data-ingestion.FieldPlanFacilityIngestionSchema'
         )
+
+        parsed_assessment_plan_ids = parse_assessment_plan_ids(assessment_plan_ids)
+        if parsed_assessment_plan_ids:
+            if not project_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="project_id is required when assessment_plan_ids is provided",
+                )
+            assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+            eligible_map = load_eligible_facility_map(
+                assessment_client,
+                request_info_obj,
+                project_id,
+                tenant_id,
+                parsed_assessment_plan_ids,
+            )
+            assessment_errors = validate_assessment_handoff_rows(df, eligible_map)
+            validation_errors = merge_assessment_validation_errors(validation_errors, assessment_errors)
 
         # Mark rows based on validation results
         error_count = 0
@@ -2837,7 +2866,10 @@ async def create_fielplan_facilities(
         facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
         fieldplan_id: str = Form(description="FieldPlan ID"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        project_id: str = Form(default="", description="Project ID (required for assessment handoff apply)"),
+        assessment_plan_ids: str = Form(default="", description="JSON array or comma-separated assessment plan IDs"),
+        tenant_id: str = Form(default="in"),
 ):
     input_temp_file = None
 
@@ -2948,6 +2980,24 @@ async def create_fielplan_facilities(
         fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
         fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
 
+        parsed_assessment_plan_ids = parse_assessment_plan_ids(assessment_plan_ids)
+        assessment_client = None
+        eligible_map = {}
+        if parsed_assessment_plan_ids:
+            if not project_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="project_id is required when assessment_plan_ids is provided",
+                )
+            assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+            eligible_map = load_eligible_facility_map(
+                assessment_client,
+                request_info,
+                project_id,
+                tenant_id,
+                parsed_assessment_plan_ids,
+            )
+
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
         if fieldplan_id:
@@ -2976,6 +3026,7 @@ async def create_fielplan_facilities(
                             role_to_ids[code].append(item.get("assignedTo"))
 
                 pending_bulk_fieldplan_links = []
+                pending_assessment_handoffs = []
                 pending_bulk_fieldplan_updates = []
                 # iterate all rows — handle existing facility ids (linking/unlinking)
                 for index, row in df.iterrows():
@@ -3095,22 +3146,28 @@ async def create_fielplan_facilities(
                                         df.at[index, 'Field Plan Linking Status'] = error
                                         continue
 
-                                    pending_bulk_fieldplan_links.append(
-                                        (
-                                            index,
-                                            build_field_plan_facility_bulk_entry(
-                                                row,
-                                                facility_id,
-                                                column_list=field_plan_facility_schema,
-                                                facility_type_column=facility_type_col,
-                                                system_type_column=system_type_col,
-                                                total_system_capacity_column=total_system_capacity_col,
-                                                solution_design_type_column=solution_design_type_col,
-                                                custom_solution_design_column=custom_solution_design_col,
-                                                custom_total_system_capacity_column=custom_total_system_capacity_col,
-                                            ),
-                                        )
+                                    bulk_entry = build_field_plan_facility_bulk_entry(
+                                        row,
+                                        facility_id,
+                                        column_list=field_plan_facility_schema,
+                                        facility_type_column=facility_type_col,
+                                        system_type_column=system_type_col,
+                                        total_system_capacity_column=total_system_capacity_col,
+                                        solution_design_type_column=solution_design_type_col,
+                                        custom_solution_design_column=custom_solution_design_col,
+                                        custom_total_system_capacity_column=custom_total_system_capacity_col,
                                     )
+                                    plan_facility_id, _ = extract_assessment_link_meta(row, df)
+                                    if (
+                                        plan_facility_id
+                                        and parsed_assessment_plan_ids
+                                        and plan_facility_id in eligible_map
+                                    ):
+                                        pending_assessment_handoffs.append(
+                                            (index, bulk_entry, plan_facility_id)
+                                        )
+                                    else:
+                                        pending_bulk_fieldplan_links.append((index, bulk_entry))
                                 else:
                                     df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
 
@@ -3160,6 +3217,65 @@ async def create_fielplan_facilities(
                         except Exception as bulk_exc:
                             for row_idx, _ in chunk:
                                 df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+
+                if pending_assessment_handoffs and assessment_client:
+                    for row_idx, bulk_entry, plan_facility_id in pending_assessment_handoffs:
+                        facility_id = bulk_entry["facilityId"]
+                        try:
+                            create_resp = fieldplan_client.create_fieldPlan_facility(
+                                request_info=request_info,
+                                fieldPlan_id=fieldplan_id,
+                                facility_id=facility_id,
+                                source_plan_facility_id=plan_facility_id,
+                                additional_fields=bulk_entry.get("additionalFields"),
+                            )
+                            field_plan_facility = (
+                                create_resp.get("FieldPlanFacility")
+                                or create_resp.get("fieldPlanFacility")
+                                or {}
+                            )
+                            field_plan_facility_id = field_plan_facility.get("id")
+                            if not field_plan_facility_id:
+                                search_resp = fieldplan_client.search_fieldplan_facility(
+                                    request_info, fieldplan_id
+                                )
+                                for pf in search_resp.get("FieldPlanFacilities", []):
+                                    if pf.get("facilityId") == facility_id:
+                                        field_plan_facility_id = pf.get("id")
+                                        break
+                            if not field_plan_facility_id:
+                                raise ValueError("FieldPlanFacility id not returned after create")
+
+                            assessment_client.apply_facility_handoff(
+                                request_info=request_info,
+                                plan_facility_id=plan_facility_id,
+                                installation_field_plan_id=fieldplan_id,
+                                field_plan_facility_id=field_plan_facility_id,
+                            )
+                            df.at[row_idx, 'Field Plan Linking Status'] = "Linked + Assessment Handoff"
+                            fieldplan_linked_facility_ids.add(facility_id)
+
+                            if fieldplan_data:
+                                fieldplan = fieldplan_data[0]
+                                if fieldplan.get("status") == 'SCHEDULED':
+                                    try:
+                                        fieldplan_activity_client.create_facility_activity(
+                                            request_info=request_info,
+                                            fieldPlan=fieldplan,
+                                            roleToIds=role_to_ids,
+                                            facility_id=facility_id,
+                                        )
+                                    except Exception as activity_exc:
+                                        logger.error(
+                                            f"Error creating facility activity for {facility_id}: {activity_exc}",
+                                            exc_info=True,
+                                        )
+                        except Exception as handoff_exc:
+                            logger.error(
+                                f"Assessment handoff failed for planFacilityId={plan_facility_id}: {handoff_exc}",
+                                exc_info=True,
+                            )
+                            df.at[row_idx, 'Field Plan Linking Status'] = f"Handoff failed: {handoff_exc}"
 
                 if pending_bulk_fieldplan_updates:
                     chunk_size = BULK_INGEST_CHUNK_SIZE
@@ -3775,3 +3891,166 @@ async def bulk_ingest_amc_configurations(
         if output_temp_file and os.path.exists(output_temp_file.name):
             os.unlink(output_temp_file.name)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+def _read_assessment_include_sheet(file_path: str, sheet_name: str = "AssessmentInclude") -> pd.DataFrame:
+    wb = load_workbook(file_path, read_only=True)
+    if sheet_name not in wb.sheetnames:
+        sheet_name = wb.sheetnames[0]
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    df.columns = [str(c).strip() for c in df.columns]
+    return df.loc[:, ~df.columns.str.startswith("Unnamed")]
+
+
+def _find_assessment_include_col(df: pd.DataFrame) -> Optional[str]:
+    for col in df.columns:
+        if "include in assessment plan" in str(col).lower():
+            return col
+    return None
+
+
+@router.post(
+    '/assessmentPlanIncludeValidateData',
+    summary='Validate assessment plan facility include Excel before apply',
+    response_description='Returns validation summary with per-row errors',
+)
+async def validate_assessment_plan_include_data(
+        background_tasks: BackgroundTasks,
+        include_file: UploadFile = File(..., description="Assessment plan include Excel file"),
+        plan_id: str = Form(description="Assessment plan ID"),
+        project_id: str = Form(description="Project ID"),
+        tenant_id: str = Form(default="in"),
+        request_info: str = Form(default=""),
+):
+    request_info_obj = request_info_from_json(request_info)
+    temp_input_file = None
+    try:
+        temp_input_file, _ = await _save_upload_to_temp_file(include_file, suffix=".xlsx")
+        df = _read_assessment_include_sheet(temp_input_file.name)
+        include_col = _find_assessment_include_col(df)
+        if include_col is None:
+            raise HTTPException(status_code=400, detail="Include in Assessment Plan column not found")
+
+        project_client = ProjectServiceClient(project_service_url)
+        linked = project_client.search_project_facility(request_info_obj, project_id)
+        linked_ids = {
+            pf.get("facilityId") for pf in (linked.get("ProjectFacilities", []) or []) if pf.get("facilityId")
+        }
+
+        errors = []
+        valid_rows = 0
+        for idx, row in df.iterrows():
+            include_val = str(row.get(include_col, "")).strip().lower()
+            if include_val != "yes":
+                continue
+            facility_id = str(row.get("Facility Id", "")).strip()
+            if not facility_id or facility_id.lower() == "nan":
+                errors.append({
+                    "row": int(idx) + 2,
+                    "facilityId": facility_id,
+                    "code": "ASSESSMENT_FACILITY_NOT_ON_PROJECT",
+                    "message": "Facility Id is required for Yes rows",
+                })
+                continue
+            if facility_id not in linked_ids:
+                errors.append({
+                    "row": int(idx) + 2,
+                    "facilityId": facility_id,
+                    "code": "ASSESSMENT_FACILITY_NOT_ON_PROJECT",
+                    "message": "Facility is not linked to this project",
+                })
+                continue
+            valid_rows += 1
+
+        return JSONResponse({
+            "ResponseInfo": {"status": "successful"},
+            "validation": {
+                "totalRows": len(df),
+                "validRows": valid_rows,
+                "errorRows": len(errors),
+                "errors": errors,
+                "planId": plan_id,
+                "projectId": project_id,
+                "tenantId": tenant_id,
+            },
+        })
+    finally:
+        if temp_input_file and os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)
+
+
+@router.post(
+    '/assessmentPlanIncludeApply',
+    summary='Apply assessment plan facility include Excel (Yes rows only)',
+    response_description='Calls assessment internal bulk-create API',
+)
+async def apply_assessment_plan_include_data(
+        background_tasks: BackgroundTasks,
+        include_file: UploadFile = File(..., description="Assessment plan include Excel file"),
+        plan_id: str = Form(description="Assessment plan ID"),
+        project_id: str = Form(description="Project ID"),
+        tenant_id: str = Form(default="in"),
+        request_info: str = Form(default=""),
+):
+    if not fieldPlan_service_url:
+        raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+    request_info_obj = request_info_from_json(request_info)
+    assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+    temp_input_file = None
+    try:
+        temp_input_file, _ = await _save_upload_to_temp_file(include_file, suffix=".xlsx")
+        df = _read_assessment_include_sheet(temp_input_file.name)
+        include_col = _find_assessment_include_col(df)
+        if include_col is None:
+            raise HTTPException(status_code=400, detail="Include in Assessment Plan column not found")
+
+        facilities = []
+        skipped_count = 0
+        for _, row in df.iterrows():
+            include_val = str(row.get(include_col, "")).strip().lower()
+            if include_val != "yes":
+                skipped_count += 1
+                continue
+            facility_id = str(row.get("Facility Id", "")).strip()
+            if not facility_id or facility_id.lower() == "nan":
+                skipped_count += 1
+                continue
+            facilities.append({
+                "facilityId": facility_id,
+                "facilityName": str(row.get("Facility Name", "")).strip() if pd.notna(row.get("Facility Name")) else "",
+                "facilityCategory": str(row.get("Facility Category", "")).strip() if pd.notna(row.get("Facility Category")) else "",
+                "facilityType": str(row.get("Facility Type", "")).strip() if pd.notna(row.get("Facility Type")) else "",
+                "district": str(row.get("District", "")).strip() if pd.notna(row.get("District")) else "",
+                "block": str(row.get("Block", "")).strip() if pd.notna(row.get("Block")) else "",
+            })
+
+        if not facilities:
+            return JSONResponse({
+                "ResponseInfo": {"status": "successful"},
+                "result": {"includedCount": 0, "skippedCount": skipped_count, "planId": plan_id},
+            })
+
+        response = assessment_client.bulk_create_plan_facilities(
+            request_info_obj, plan_id, tenant_id, facilities
+        )
+        created = response.get("created", []) or []
+        api_errors = response.get("errors", []) or []
+        skipped_count += len(api_errors)
+
+        return JSONResponse({
+            "ResponseInfo": {"status": "successful"},
+            "result": {
+                "includedCount": len(created),
+                "skippedCount": skipped_count,
+                "planId": plan_id,
+                "errors": api_errors,
+            },
+        })
+    except requests.HTTPError as http_err:
+        logger.error(f"Assessment include apply failed: {http_err}", exc_info=True)
+        detail = http_err.response.text if http_err.response is not None else str(http_err)
+        raise HTTPException(status_code=http_err.response.status_code if http_err.response else 502, detail=detail)
+    finally:
+        if temp_input_file and os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)
