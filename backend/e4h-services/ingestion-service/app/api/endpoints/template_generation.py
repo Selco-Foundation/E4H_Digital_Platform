@@ -1283,6 +1283,9 @@ async def get_assessment_plan_include_template(
             dropdowns={
                 "Include in Assessment Plan (Yes/No)": ["Yes", "No"],
             },
+            allow_blank_map={
+                "Include in Assessment Plan (Yes/No)": True,
+            },
         )
         autofit_columns(file_path=output_file_path, sheet_name="AssessmentInclude")
 
