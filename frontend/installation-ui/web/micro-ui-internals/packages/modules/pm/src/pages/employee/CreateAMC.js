@@ -85,6 +85,12 @@ const CreateAMC = () => {
   });
 
   useEffect(() => {
+    if (organizationData?.organizations?.length && organizationIds.length === 1 && organizationIds[0] === "") {
+      setOrganizationIds(organizationData.organizations.map((organization) => organization.id));
+    }
+  }, [organizationData, organizationIds]);
+
+  useEffect(() => {
     const project = projectData?.projects?.[0];
     if (project) {
       dispatch(populateWorkingProject(project));
@@ -214,13 +220,13 @@ const CreateAMC = () => {
       .sort((a, b) => (a.auditDetails?.createdTime || 0) - (b.auditDetails?.createdTime || 0))
       .map((assignment) => {
         const assignmentOrganization = assignment.organization || assignment.organisation || {};
-        const assignmentOrganizationId = assignmentOrganization.id || assignment.organizationId || assignment.organisationId;
         const assignedUserId = assignment.assignedUser || assignment.assignedTo || assignment.userId;
         const assignedUser = organizationUserData.organizationUsers?.find((user) => (
-          user.uuid === assignedUserId ||
-          user.userId === assignedUserId ||
-          user.id === assignedUserId
+          user.uuid?.toString() === assignedUserId?.toString() ||
+          user.userId?.toString() === assignedUserId?.toString() ||
+          user.id?.toString() === assignedUserId?.toString()
         ));
+        const assignmentOrganizationId = assignmentOrganization.id || assignment.organizationId || assignment.organisationId || assignedUser?.organizationId;
         const organizationFromMaster = organizationData.organizations?.find((org) => org.id === assignmentOrganizationId);
         const vendorFallback = savedAMCConfiguration?.vendor?.id === assignmentOrganizationId ? savedAMCConfiguration.vendor : null;
         const organization = organizationFromMaster || vendorFallback || assignmentOrganization;
