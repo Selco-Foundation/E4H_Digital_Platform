@@ -1220,12 +1220,14 @@ async def get_amc_configuration_template(
 )
 async def get_assessment_plan_include_template(
         background_tasks: BackgroundTasks,
+        facility_service: FacilityTemplateService = Depends(),
         payload: dict = Body(..., description="Payload object"),
 ):
     request_info = request_info_from_json(payload.get("RequestInfo", {}))
     project_id = payload.get("projectId")
     plan_id = payload.get("planId")
     tenant_id = payload.get("tenantId", "in")
+    boundary_data = payload.get("boundary_data", {})
 
     if not project_id or not plan_id:
         raise HTTPException(status_code=400, detail="projectId and planId are required")
@@ -1234,18 +1236,24 @@ async def get_assessment_plan_include_template(
         f"Generating assessment plan include template: project_id={project_id}, plan_id={plan_id}"
     )
 
+    mdms_client = MDMSClient(mdms_url)
     project_client = ProjectServiceClient(project_service_url)
     facility_client = FacilityServiceClient(facility_service_url)
 
     try:
+        facility_schema = mdms_client.get_column_definitions_with_metadata(
+            request_info, "data-ingestion.FieldPlanFacilityIngestionSchema"
+        )
+        boundary_list: List[Boundary] = flatten_boundaries(boundary_data)
+
         project_facilities_response = project_client.search_project_facility(request_info, project_id)
         project_facilities = project_facilities_response.get("ProjectFacilities", []) or []
         facility_ids = [
             pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")
         ]
 
-        rows = []
-        if facility_ids:
+        all_facilities = []
+        if facility_ids and facility_client:
             bulk_result = facility_client.bulk_search_facility(
                 request_info=request_info,
                 tenant_ids=[tenant_id],
@@ -1259,35 +1267,23 @@ async def get_assessment_plan_include_template(
             }
             for pf in project_facilities:
                 fid = pf.get("facilityId")
-                facility = facilities_by_id.get(fid, {})
-                rows.append({
-                    "Facility Id": fid,
-                    "Facility Name": facility.get("facility_name") or facility.get("facilityName") or "",
-                    "Facility Category": facility.get("facility_category") or facility.get("facilityCategory") or "",
-                    "Facility Type": facility.get("facility_type") or facility.get("facilityType") or "",
-                    "District": facility.get("district") or "",
-                    "Block": facility.get("block") or "",
-                    "Include in Assessment Plan (Yes/No)": "",
-                })
+                facility = dict(facilities_by_id.get(fid, {}))
+                facility["include_in_assessment_plan"] = ""
+                all_facilities.append(facility)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"assessment_plan_include_{plan_id}_{timestamp}.xlsx"
+        output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
 
-        df = pd.DataFrame(rows)
-        df.to_excel(output_file_path, index=False, sheet_name="AssessmentInclude")
-
-        add_dropdowns_to_excel(
-            file_path=output_file_path,
-            sheet_name="AssessmentInclude",
-            dropdowns={
-                "Include in Assessment Plan (Yes/No)": ["Yes", "No"],
-            },
-            allow_blank_map={
-                "Include in Assessment Plan (Yes/No)": True,
-            },
+        facility_service.generate_template_file_with_data(
+            output_path=output_file_path,
+            facility_schema=facility_schema,
+            boundary_list=boundary_list,
+            facility_data=all_facilities,
+            type="assessment_include",
+            extra_append_rows=0,
+            optimize_for_performance=True,
         )
-        autofit_columns(file_path=output_file_path, sheet_name="AssessmentInclude")
 
         background_tasks.add_task(cleanup_temp_file, output_file_path)
         return FileResponse(

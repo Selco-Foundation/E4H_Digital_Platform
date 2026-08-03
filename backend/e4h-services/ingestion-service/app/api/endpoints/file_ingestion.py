@@ -3893,10 +3893,15 @@ async def bulk_ingest_amc_configurations(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
-def _read_assessment_include_sheet(file_path: str, sheet_name: str = "AssessmentInclude") -> pd.DataFrame:
+def _read_assessment_include_sheet(file_path: str, sheet_name: str = "FacilityMapping") -> pd.DataFrame:
     wb = load_workbook(file_path, read_only=True)
     if sheet_name not in wb.sheetnames:
-        sheet_name = wb.sheetnames[0]
+        for candidate in ("FacilityMapping", "AssessmentInclude"):
+            if candidate in wb.sheetnames:
+                sheet_name = candidate
+                break
+        else:
+            sheet_name = wb.sheetnames[0]
     df = pd.read_excel(file_path, sheet_name=sheet_name)
     df.columns = [str(c).strip() for c in df.columns]
     return df.loc[:, ~df.columns.str.startswith("Unnamed")]
@@ -3904,9 +3909,26 @@ def _read_assessment_include_sheet(file_path: str, sheet_name: str = "Assessment
 
 def _find_assessment_include_col(df: pd.DataFrame) -> Optional[str]:
     for col in df.columns:
-        if "include in assessment plan" in str(col).lower():
+        col_lower = str(col).lower()
+        if "include in assessment plan" in col_lower:
             return col
     return None
+
+
+def _find_assessment_facility_id_col(df: pd.DataFrame) -> Optional[str]:
+    for col in df.columns:
+        if "facility id" in str(col).lower():
+            return col
+    return None
+
+
+def _row_value(row, col: Optional[str]) -> str:
+    if not col:
+        return ""
+    val = row.get(col)
+    if pd.isna(val):
+        return ""
+    return str(val).strip()
 
 
 @router.post(
@@ -3931,6 +3953,10 @@ async def validate_assessment_plan_include_data(
         if include_col is None:
             raise HTTPException(status_code=400, detail="Include in Assessment Plan column not found")
 
+        facility_id_col = _find_assessment_facility_id_col(df)
+        if facility_id_col is None:
+            raise HTTPException(status_code=400, detail="Facility Id column not found")
+
         project_client = ProjectServiceClient(project_service_url)
         linked = project_client.search_project_facility(request_info_obj, project_id)
         linked_ids = {
@@ -3943,8 +3969,8 @@ async def validate_assessment_plan_include_data(
             include_val = str(row.get(include_col, "")).strip().lower()
             if include_val != "yes":
                 continue
-            facility_id = str(row.get("Facility Id", "")).strip()
-            if not facility_id or facility_id.lower() == "nan":
+            facility_id = _row_value(row, facility_id_col)
+            if not facility_id:
                 errors.append({
                     "row": int(idx) + 2,
                     "facilityId": facility_id,
@@ -4005,6 +4031,10 @@ async def apply_assessment_plan_include_data(
         if include_col is None:
             raise HTTPException(status_code=400, detail="Include in Assessment Plan column not found")
 
+        facility_id_col = _find_assessment_facility_id_col(df)
+        if facility_id_col is None:
+            raise HTTPException(status_code=400, detail="Facility Id column not found")
+
         facilities = []
         skipped_count = 0
         for _, row in df.iterrows():
@@ -4012,17 +4042,17 @@ async def apply_assessment_plan_include_data(
             if include_val != "yes":
                 skipped_count += 1
                 continue
-            facility_id = str(row.get("Facility Id", "")).strip()
-            if not facility_id or facility_id.lower() == "nan":
+            facility_id = _row_value(row, facility_id_col)
+            if not facility_id:
                 skipped_count += 1
                 continue
             facilities.append({
                 "facilityId": facility_id,
-                "facilityName": str(row.get("Facility Name", "")).strip() if pd.notna(row.get("Facility Name")) else "",
-                "facilityCategory": str(row.get("Facility Category", "")).strip() if pd.notna(row.get("Facility Category")) else "",
-                "facilityType": str(row.get("Facility Type", "")).strip() if pd.notna(row.get("Facility Type")) else "",
-                "district": str(row.get("District", "")).strip() if pd.notna(row.get("District")) else "",
-                "block": str(row.get("Block", "")).strip() if pd.notna(row.get("Block")) else "",
+                "facilityName": _row_value(row, next((c for c in df.columns if "health centre name" in str(c).lower() or "facility name" in str(c).lower()), None)),
+                "facilityCategory": _row_value(row, next((c for c in df.columns if "category of facility" in str(c).lower() or "facility category" in str(c).lower()), None)),
+                "facilityType": _row_value(row, next((c for c in df.columns if "type of hc" in str(c).lower() or "facility type" in str(c).lower()), None)),
+                "district": _row_value(row, next((c for c in df.columns if str(c).lower().strip() == "district"), None)),
+                "block": _row_value(row, next((c for c in df.columns if str(c).lower().strip() == "block"), None)),
             })
 
         if not facilities:
