@@ -916,7 +916,7 @@ async def get_amc_configuration_template(
                     request_info,
                     project_id=project_id,
                     tenant_id=tenant_id,
-                    limit=2000,
+                    limit=900,
                 )
                 all_existing_configs = all_existing_configs_resp.get("AmcConfigurations", [])
                 for config in all_existing_configs:
