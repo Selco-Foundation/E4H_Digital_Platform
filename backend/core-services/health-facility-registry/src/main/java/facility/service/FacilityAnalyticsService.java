@@ -1,5 +1,7 @@
 package facility.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.config.Configuration;
 import facility.kafka.Producer;
 import facility.util.MdmsUtil;
@@ -10,7 +12,14 @@ import net.minidev.json.JSONArray;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.Role;
 import org.egov.common.contract.request.User;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -55,17 +64,24 @@ import static facility.config.ServiceConstants.USER_ANALYTICS_MODULE;
 @Slf4j
 public class FacilityAnalyticsService {
 
+    /** Boundary localizations live in this module at the national tenant. */
+    private static final String LOCALIZATION_MODULE = "rainmaker-in";
+    private static final String LOCALIZATION_LOCALE = "en_IN";
+    private static final String LOCALIZATION_TENANT_ID = "in";
+
     private final Configuration configs;
     private final MdmsUtil mdmsUtil;
     private final Producer producer;
-    private final FacilityKibanaMapper facilityKibanaMapper;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper mapper;
 
     public FacilityAnalyticsService(Configuration configs, MdmsUtil mdmsUtil, Producer producer,
-                                    FacilityKibanaMapper facilityKibanaMapper) {
+                                    RestTemplate restTemplate, ObjectMapper mapper) {
         this.configs = configs;
         this.mdmsUtil = mdmsUtil;
         this.producer = producer;
-        this.facilityKibanaMapper = facilityKibanaMapper;
+        this.restTemplate = restTemplate;
+        this.mapper = mapper;
     }
 
     /**
@@ -115,7 +131,7 @@ public class FacilityAnalyticsService {
                     // too rather than retry the lookup for every facility in the state.
                     if (!stateNameByCode.containsKey(stateBoundaryCode)) {
                         stateNameByCode.put(stateBoundaryCode,
-                                facilityKibanaMapper.localizeBoundaryCode(stateBoundaryCode, requestInfo));
+                                localizeStateName(stateBoundaryCode, requestInfo));
                     }
                     state = stateNameByCode.get(stateBoundaryCode);
                 }
@@ -141,6 +157,104 @@ public class FacilityAnalyticsService {
         } catch (Exception e) {
             log.error("Facility analytics: failed to publish {} event(s) for tenant {}", eventType, tenantId, e);
         }
+    }
+
+    /**
+     * Looks up {@code Boundary_<stateBoundaryCode>} in {@code rainmaker-in} / {@code en_IN} at the
+     * national tenant and returns the localized state name, or null when it cannot be resolved.
+     * Best-effort — never throws.
+     */
+    private String localizeStateName(String stateBoundaryCode, RequestInfo requestInfo) {
+        String code = "Boundary_" + stateBoundaryCode;
+        try {
+            String searchUrl = buildLocalizationSearchUrl();
+            if (searchUrl == null) {
+                log.warn("Facility analytics: localization not configured; state will be null");
+                return null;
+            }
+
+            String url = UriComponentsBuilder.fromHttpUrl(searchUrl)
+                    .queryParam("tenantId", LOCALIZATION_TENANT_ID)
+                    .queryParam("module", LOCALIZATION_MODULE)
+                    .queryParam("locale", LOCALIZATION_LOCALE)
+                    .queryParam("codes", code)
+                    .build()
+                    .toUriString();
+
+            Map<String, Object> body = new HashMap<>();
+            if (requestInfo != null) {
+                body.put("RequestInfo", requestInfo);
+            }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url, HttpMethod.POST, new HttpEntity<>(body.isEmpty() ? null : body, headers), String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("Facility analytics: localization search returned no body for {}", code);
+                return null;
+            }
+
+            String message = extractMessage(response.getBody(), code);
+            if (message == null) {
+                log.warn("Facility analytics: no localization for {} in module {} at tenant {}",
+                        code, LOCALIZATION_MODULE, LOCALIZATION_TENANT_ID);
+            }
+            return message;
+        } catch (Exception e) {
+            log.warn("Facility analytics: localization lookup failed for {}: {}", code, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Builds the localization search URL without doubling the context path. Deployed environments
+     * (including prod) set {@code egov.localization.search.endpoint} to a full path that already
+     * contains {@code egov.localization.context.path}; concatenating both would produce
+     * {@code .../localization/messages/v1/localization/messages/v1/_search}, which the
+     * localization service rejects with a 400 NoResourceFoundException.
+     */
+    private String buildLocalizationSearchUrl() {
+        String host = configs.getLocalizationHost();
+        String endpoint = configs.getLocalizationSearchEndpoint();
+        if (host == null || host.isBlank() || endpoint == null || endpoint.isBlank()) {
+            return null;
+        }
+        String base = trimTrailingSlash(host.trim());
+        String contextPath = configs.getLocalizationContextPath();
+        if (contextPath == null || contextPath.isBlank()) {
+            return base + endpoint;
+        }
+        String trimmedContext = trimTrailingSlash(contextPath.trim());
+        // Endpoint already carries the context path (the deployed case) — don't add it twice.
+        return endpoint.startsWith(trimmedContext) ? base + endpoint : base + trimmedContext + endpoint;
+    }
+
+    private static String trimTrailingSlash(String value) {
+        return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractMessage(String responseBody, String code) {
+        try {
+            Map<String, Object> root = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
+            Object messages = root.get("messages");
+            if (!(messages instanceof List)) {
+                return null;
+            }
+            for (Object entry : (List<?>) messages) {
+                if (entry instanceof Map) {
+                    Map<String, Object> message = (Map<String, Object>) entry;
+                    if (code.equals(message.get("code"))) {
+                        String text = asString(message.get("message"));
+                        return (text != null && !text.isBlank()) ? text : null;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Facility analytics: failed to parse localization response: {}", e.getMessage());
+        }
+        return null;
     }
 
     /**

@@ -474,26 +474,6 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * Localizes a boundary code into its display label ({@code Boundary_<code>} in
-     * {@code rainmaker-in}, locale {@code en_IN}). Unlike the Kibana index path this does NOT
-     * fall back to a code-derived label — it returns null, matching im-services so both
-     * producers write identical strings into the shared analytics index.
-     */
-    public String localizeBoundaryCode(String boundaryCode, RequestInfo requestInfo) {
-        if (boundaryCode == null || boundaryCode.isBlank()) {
-            return null;
-        }
-        String localizationCode = toLocalizationCode(boundaryCode);
-        String localized = fetchBoundaryDisplayLabels(requestInfo, boundaryCode).get(localizationCode);
-        if (localized == null || localized.isBlank()) {
-            log.warn("No localization for {} in module {} at tenant {}; returning null",
-                    localizationCode, LOCALIZATION_MODULE, LOCALIZATION_TENANT_ID);
-            return null;
-        }
-        return localized;
-    }
-
-    /**
      * Fetches boundary hierarchy from boundary service and extracts codes by boundary type.
      * When the Facility relationship is not yet persisted (async Kafka create), falls back to the
      * parent block code which is already present in boundary_relationship.
