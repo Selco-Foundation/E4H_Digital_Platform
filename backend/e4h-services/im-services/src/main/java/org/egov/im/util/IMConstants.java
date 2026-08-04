@@ -45,6 +45,17 @@ public class IMConstants {
     public static final String SEM_APPLICATION = "SAURA_EMITRA";
     public static final String SEM_ENTITY_TYPE = "TICKET";
 
+    // Login user-analytics event constants
+    public static final String USER_LOGIN_EVENT_TYPE = "USER_LOGIN";
+    public static final String USER_LOGIN_ENTITY_TYPE = "USER";
+
+    /**
+     * Applications allowed to report a login. Kept as a regex so it can be used directly in the
+     * {@code @Pattern} on {@code UserRequest.application} — the caller declares which front-end the
+     * login came from, and the value is written to the shared user-analytics-report index as-is.
+     */
+    public static final String APPLICATION_PATTERN = "SAURA_EMITRA|FIELD_ASSIST|MANAGEMENT_HUB";
+
     // Localization module holding the Boundary_* codes used to resolve the localized state name
     public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
 
