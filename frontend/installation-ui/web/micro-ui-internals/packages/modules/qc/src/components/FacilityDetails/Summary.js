@@ -200,7 +200,7 @@ const Summary = ({
 
             <Section title={t(`QC_INSTALLATION_${section}_SPECIFICATIONS`)}>
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SYSTEM`), t(`QC_INSTALLATION_SYSTEM_${specifications.system}`))}
-              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), specifications.capacity)}
+              {section !== "BATTERY" && AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), specifications.capacity)}
             </Section>
 
             <Section title={t(`QC_INSTALLATION_${section}_DETAILS`)}>
@@ -210,16 +210,10 @@ const Summary = ({
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), t(`QC_INSTALLATION_BRAND_${details.brand}`))}
             </Section>
 
-            {section === "BATTERY" && (
-              <Section title={t(`QC_INSTALLATION_CAPACITY`)}>
-                {AssetInfoItem(t(`QC_INSTALLATION_ASSET_VOLTAGE`), specifications.voltage)}
-              </Section>
-            )}
-
             {items?.map((item, index) => (
               <Section key={index} title={`${t(`QC_INSTALLATION_${section}`)} ${index + 1}`}>
                 {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SERIAL_NUMBER`), item.serialNumber)}
-                {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), item.capacity)}
+                {section !== "BATTERY" && AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), item.capacity)}
                 {item.documents && item.documents.length > 0 && (
                   <div style={{display: "flex", gap: "10px"}}>
                     {AssetInfoItem(
