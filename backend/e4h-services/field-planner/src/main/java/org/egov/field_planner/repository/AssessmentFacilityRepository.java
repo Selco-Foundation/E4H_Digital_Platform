@@ -63,7 +63,7 @@ public class AssessmentFacilityRepository {
                 activityId,
                 planId,
                 AssessmentConstants.PHONE_PENDING,
-                AssessmentConstants.FIELD_PENDING,
+                null,
                 AssessmentConstants.OVERALL_PENDING,
                 AssessmentConstants.COMPLETION_ENROLLED,
                 now,
