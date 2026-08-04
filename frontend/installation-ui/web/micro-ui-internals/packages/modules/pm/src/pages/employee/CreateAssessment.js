@@ -14,7 +14,6 @@ import { PMService } from "../../services/PMService";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useAssessmentActivityAssignment from "../../hooks/useAssessmentActivityAssignment";
-import { AssessmentActivityService } from "../../services/AssessmentActivity";
 import CommonUtils from "../../utilities/CommonUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
@@ -199,7 +198,7 @@ const CreateAssessment = () => {
   };
 
   const getDefaultActivityAssignments = useCallback(() => {
-    const assignableActivities = activityData?.filter((activity) => activity?.code !== "AMC");
+    const assignableActivities = activityData?.filter((activity) => activity?.code === "ASSESSMENT");
 
     return assignableActivities
       ? assignableActivities
@@ -426,63 +425,41 @@ const CreateAssessment = () => {
     }
   }
 
-  const assignAssessmentActivityUsers = async (activityData) => {
-
-    const activityUserAssignmentsForCreate = [];
-    const activityUserAssignmentsForUpdate = [];
-    const activityUserAssignmentsForDelete = [];
+  const formatAssessorsForUpdate = (activityData) => {
+    const assessors = [];
 
     activityData.forEach((dataEntry) => {
       dataEntry.users.forEach((userEntry) => {
+
+        if (userEntry.deleteAssignment) {
+          return;
+        }
 
         if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key) || !userEntry[key].value))) {
           return;
         }
 
-        const activityUserAssignment = {
-          tenantId: Digit.ULBService.getCurrentTenantId(),
-          assignedTo: userEntry.email.value.uuid,
-          assignedBy: Digit.UserService.getUser()?.info?.uuid,
-          assessmentPlanId: createdAssessmentPlan?.id,
-          role: userEntry.role.value,
-          activityId: dataEntry.activity.code,
-        };
-
-        if (userEntry.deleteAssignment) {
-          activityUserAssignmentsForDelete.push({
-            ...userEntry.savedAssignment,
-            ...activityUserAssignment,
-            activityId: userEntry.savedAssignment?.activityId,
-            activityCode: dataEntry.activity.code,
-          });
-
-        } else if (userEntry.id) {
-          activityUserAssignmentsForUpdate.push({
-            ...userEntry.savedAssignment,
-            ...activityUserAssignment,
-            activityId: userEntry.savedAssignment?.activityId,
-            activityCode: dataEntry.activity.code,
-          });
-
-        } else {
-          activityUserAssignmentsForCreate.push(activityUserAssignment);
-        }
+        assessors.push({
+          role: userEntry.role.value?.code,
+          userId: userEntry.email.value?.userId,
+        });
       })
     });
 
-    if (activityUserAssignmentsForCreate.length) {
-      await AssessmentActivityService.createActivityAssignment(activityUserAssignmentsForCreate);
-    }
-    if (activityUserAssignmentsForUpdate.length) {
-      await AssessmentActivityService.updateActivityAssignment(activityUserAssignmentsForUpdate);
-    }
-    if (activityUserAssignmentsForDelete.length) {
-      await AssessmentActivityService.deleteActivityAssignment(activityUserAssignmentsForDelete);
-    }
+    return assessors;
+  }
 
-    if (activityUserAssignmentsForCreate.length || activityUserAssignmentsForUpdate.length || activityUserAssignmentsForDelete.length) {
-      await invalidateAssessmentActivityAssignmentData();
-    }
+  const assignAssessmentActivityUsers = async (activityData, planOverrides = {}) => {
+    const assessors = formatAssessorsForUpdate(activityData);
+
+    const assessmentPlanUpdateData = {
+      AssessmentPlans: [{ ...createdAssessmentPlan, ...planOverrides }],
+      assessors,
+      apiOperation: "UPDATE",
+    };
+
+    const [updatedAssessmentPlan] = await AssessmentPlanService.upsertAssessmentPlan(assessmentPlanUpdateData);
+    return updatedAssessmentPlan;
   }
 
   const handleActivityDataSave = async (activityData) => {
@@ -513,6 +490,7 @@ const CreateAssessment = () => {
       try {
         setBlockUI(true);
         await assignAssessmentActivityUsers(activityData);
+        await invalidateAssessmentPlanData();
         setToast({
           key: "success",
           label: t("PM_TOAST_ACTIVITY_DETAILS_SAVE_SUCCESS"),
@@ -715,7 +693,7 @@ const CreateAssessment = () => {
               name: "activityUserAssignment",
               onActivityDataSave: handleActivityDataSave,
               t,
-              activityData: activityData?.filter((activity) => activity?.code !== "AMC"),
+              activityData: activityData?.filter((activity) => activity?.code === "ASSESSMENT"),
               organizationData,
             },
             nextRoute: "",
@@ -872,18 +850,7 @@ const CreateAssessment = () => {
       const schedulingAssessmentPlan = createdAssessmentPlan?.status === "DRAFT";
 
       try {
-        await assignAssessmentActivityUsers(activityData);
-
-        if (schedulingAssessmentPlan) {
-          const assessmentPlanUpdateData = {
-            AssessmentPlans: [{
-              ...createdAssessmentPlan,
-              status: "SCHEDULED"
-            }],
-            apiOperation: "UPDATE"
-          };
-          await AssessmentPlanService.upsertAssessmentPlan(assessmentPlanUpdateData);
-        }
+        await assignAssessmentActivityUsers(activityData, schedulingAssessmentPlan ? { status: "SCHEDULED" } : {});
 
         const upsertedAssessmentPlanData = await invalidateAssessmentPlanData();
         const upsertedAssessmentPlan = upsertedAssessmentPlanData?.assessmentPlans?.[0];

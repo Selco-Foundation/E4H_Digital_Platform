@@ -1,8 +1,9 @@
 import { Request } from "@egovernments/digit-ui-libraries";
 
-// Plan create/search and facility-template download/upload hit real APIs (see PMService).
+// Plan create/search/update and facility-template download/upload hit real APIs (see PMService for the latter).
 // hasUploadedAssessmentFacilityData/markAssessmentFacilityDataUploaded remain session-local in-memory
 // tracking, since no backend status-check endpoint exists yet for whether a plan has facility data.
+// completeAssessmentPlan stays an optimistic client-side merge since no "complete" endpoint is defined.
 
 const uploadedAssessmentFacilityPlanIds = new Set();
 
@@ -67,14 +68,29 @@ export const AssessmentPlanService = {
 
   upsertAssessmentPlan: async (assessmentPlanData) => {
     const [assessmentPlan] = assessmentPlanData.AssessmentPlans;
+    const headers = { "Content-Type": "application/json" };
 
     if (assessmentPlanData.apiOperation === "UPDATE") {
-      // No backend update endpoint exists yet for assessment plans; merge and return optimistically.
-      return [withAssessmentPlanDefaults(assessmentPlan)];
+      const endpoint = "/field-planner/assessment/v1/plan/_update";
+      const data = { plan: assessmentPlan };
+      if (assessmentPlanData.assessors) {
+        data.assessors = assessmentPlanData.assessors;
+      }
+
+      const response = await Request({
+        url: endpoint,
+        data,
+        userService: true,
+        method: "POST",
+        auth: true,
+        headers,
+      });
+
+      const updatedAssessmentPlan = extractAssessmentPlan(response) || assessmentPlan;
+      return [withAssessmentPlanDefaults(updatedAssessmentPlan)];
     }
 
     const endpoint = "/field-planner/assessment/v1/plan/_create";
-    const headers = { "Content-Type": "application/json" };
 
     const response = await Request({
       url: endpoint,
