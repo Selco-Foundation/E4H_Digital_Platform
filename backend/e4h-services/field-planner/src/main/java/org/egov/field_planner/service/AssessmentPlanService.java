@@ -9,6 +9,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.repository.AssessmentPlanRepository;
 import org.egov.field_planner.util.AssessmentConstants;
+import org.egov.field_planner.util.AssessmentGeographyHelper;
 import org.egov.field_planner.web.models.*;
 import org.egov.field_planner.web.models.ActivityAssignment;
 import org.egov.field_planner.web.models.ActivityAssignmentBulkRequest;
@@ -41,6 +42,8 @@ public class AssessmentPlanService {
         AssessmentPlan plan = request.getPlan();
         RequestInfo requestInfo = request.getRequestInfo();
         validateDateRange(plan);
+        validateGeography(plan);
+        AssessmentGeographyHelper.syncPlanGeography(plan);
         projectService.validateProjectExists(requestInfo, plan.getTenantId(), plan.getProjectId());
 
         if (planRepository.existsByName(plan.getTenantId(), plan.getProjectId(), plan.getName())) {
@@ -93,6 +96,13 @@ public class AssessmentPlanService {
                         "Assessment plan not found: " + incoming.getId()));
 
         validateDateRange(incoming);
+        if (incoming.getGeographyDetails() != null && !incoming.getGeographyDetails().isEmpty()) {
+            validateGeography(incoming);
+            existing.setGeographyDetails(incoming.getGeographyDetails());
+        } else if (StringUtils.isNotBlank(incoming.getState())) {
+            existing.setState(incoming.getState());
+        }
+        AssessmentGeographyHelper.syncPlanGeography(existing);
         if (StringUtils.isNotBlank(incoming.getName())
                 && !incoming.getName().equalsIgnoreCase(existing.getName())
                 && planRepository.existsByName(existing.getTenantId(), existing.getProjectId(), incoming.getName())) {
@@ -103,9 +113,6 @@ public class AssessmentPlanService {
         existing.setName(incoming.getName());
         existing.setStartDate(incoming.getStartDate());
         existing.setEndDate(incoming.getEndDate());
-        if (StringUtils.isNotBlank(incoming.getState())) {
-            existing.setState(incoming.getState());
-        }
 
         planRepository.updatePlan(existing, request.getRequestInfo().getUserInfo().getUuid());
 
@@ -141,6 +148,10 @@ public class AssessmentPlanService {
             throw new CustomException(AssessmentConstants.ASSESSMENT_INVALID_DATE_RANGE,
                     "endDate must be after startDate");
         }
+    }
+
+    private void validateGeography(AssessmentPlan plan) {
+        AssessmentGeographyHelper.validateGeography(plan);
     }
 
     private void enrichPlanSummary(AssessmentPlan plan) {

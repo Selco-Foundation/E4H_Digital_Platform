@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.field_planner.repository.querybuilder.AssessmentQueryBuilder;
 import org.egov.field_planner.repository.rowmapper.AssessmentPlanRowMapper;
 import org.egov.field_planner.util.AssessmentConstants;
+import org.egov.field_planner.util.AssessmentGeographyHelper;
 import org.egov.field_planner.web.models.AssessmentPlan;
 import org.egov.field_planner.web.models.AssessmentPlanMetrics;
 import org.egov.field_planner.web.models.AssessmentPlanSearchCriteria;
@@ -29,7 +30,7 @@ public class AssessmentPlanRepository {
 
     public void insertPlan(AssessmentPlan plan, String userId) {
         long now = System.currentTimeMillis();
-        String geographyScope = toJson(Map.of("state", plan.getState() != null ? plan.getState() : ""));
+        String geographyScope = toJson(AssessmentGeographyHelper.resolveGeographyScope(plan));
         String selectedActivities = toJson(List.of(Map.of("code", AssessmentConstants.ACTIVITY_CODE_ASSESSMENT)));
 
         jdbcTemplate.update(
@@ -60,38 +61,21 @@ public class AssessmentPlanRepository {
 
     public void updatePlan(AssessmentPlan plan, String userId) {
         long now = System.currentTimeMillis();
-        String geographyScope = plan.getState() != null
-                ? toJson(Map.of("state", plan.getState()))
-                : null;
+        String geographyScope = toJson(AssessmentGeographyHelper.resolveGeographyScope(plan));
 
-        if (geographyScope != null) {
-            jdbcTemplate.update(
-                    """
-                    UPDATE field_plans SET name = ?, start_date = ?, end_date = ?, geography_scope = ?::jsonb,
-                    last_modified_by = ?, last_modified_time = ? WHERE id = ? AND plan_type = 'ASSESSMENT'
-                    """,
-                    plan.getName(),
-                    plan.getStartDate(),
-                    plan.getEndDate(),
-                    geographyScope,
-                    userId,
-                    now,
-                    plan.getId()
-            );
-        } else {
-            jdbcTemplate.update(
-                    """
-                    UPDATE field_plans SET name = ?, start_date = ?, end_date = ?,
-                    last_modified_by = ?, last_modified_time = ? WHERE id = ? AND plan_type = 'ASSESSMENT'
-                    """,
-                    plan.getName(),
-                    plan.getStartDate(),
-                    plan.getEndDate(),
-                    userId,
-                    now,
-                    plan.getId()
-            );
-        }
+        jdbcTemplate.update(
+                """
+                UPDATE field_plans SET name = ?, start_date = ?, end_date = ?, geography_scope = ?::jsonb,
+                last_modified_by = ?, last_modified_time = ? WHERE id = ? AND plan_type = 'ASSESSMENT'
+                """,
+                plan.getName(),
+                plan.getStartDate(),
+                plan.getEndDate(),
+                geographyScope,
+                userId,
+                now,
+                plan.getId()
+        );
     }
 
     public void updatePlanStatus(String planId, String status, String userId) {
