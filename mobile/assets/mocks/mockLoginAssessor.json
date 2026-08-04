@@ -1,0 +1,40 @@
+{
+  "access_token": "mock-assessor-access-token",
+  "token_type": "bearer",
+  "refresh_token": "mock-assessor-refresh-token",
+  "expires_in": 604799,
+  "scope": "read write",
+  "ResponseInfo": {
+    "api_id": "",
+    "ver": "",
+    "ts": "",
+    "res_msg_id": "",
+    "msg_id": "",
+    "status": "Mock access token generated successfully"
+  },
+  "UserRequest": {
+    "id": 9001,
+    "uuid": "00000000-0000-4000-8000-000000009001",
+    "userName": "1234567895",
+    "name": "Remote Assessor",
+    "mobileNumber": "1234567895",
+    "emailId": null,
+    "locale": "en_IN",
+    "type": "EMPLOYEE",
+    "roles": [
+      {
+        "name": "Employee",
+        "code": "EMPLOYEE",
+        "tenantId": "in"
+      },
+      {
+        "name": "Remote Assessor",
+        "code": "ENUMERATOR",
+        "tenantId": "in"
+      }
+    ],
+    "active": true,
+    "tenantId": "in",
+    "permanentCity": "All"
+  }
+}

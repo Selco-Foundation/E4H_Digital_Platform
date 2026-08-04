@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 
 import '../data/api_interceptors.dart';
 import '../data/network_manager.dart';
@@ -16,8 +17,22 @@ import '../utils/envConfig.dart';
 
 class AuthRepository {
   AuthRepository();
+
+  static const _mockAssessorUsername = '1234567895';
+  static const _mockAssessorPassword = 'Beehyv@123';
+
+  bool _isMockAssessorSession = false;
+
   Future<ResponseModel> validateLogin(LoginModel body) async {
     final formData = body.toJson();
+
+    _isMockAssessorSession = false;
+    if (envConfig.variables.envType == EnvType.dev &&
+        body.username == _mockAssessorUsername &&
+        body.password == _mockAssessorPassword) {
+      _isMockAssessorSession = true;
+      return _loadMockAssessorAuth();
+    }
 
     final authClient = Dio();
     authClient.options.baseUrl = envConfig.variables.baseUrl;
@@ -66,6 +81,7 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    _isMockAssessorSession = false;
     final secureStore = SecureStore();
     await secureStore.deleteAccessToken();
     await secureStore.deleteAccessInfo();
@@ -152,6 +168,10 @@ class AuthRepository {
   Future<RoleActionsWrapperModel> searchRoleActions(
     Map<String, dynamic> body,
   ) async {
+    if (_isMockAssessorSession) {
+      return const RoleActionsWrapperModel();
+    }
+
     String url = envConfig.variables.actionMapApiPath;
     final client = DioClient().dio;
 
@@ -160,6 +180,17 @@ class AuthRepository {
       return RoleActionsWrapperModel.fromJson(json.decode(response.toString()));
     } catch (_) {
       rethrow;
+    }
+  }
+
+  Future<ResponseModel> _loadMockAssessorAuth() async {
+    try {
+      final jsonString =
+          await rootBundle.loadString('assets/mocks/mockLoginAssessor.json');
+      return ResponseModel.fromJson(json.decode(jsonString));
+    } catch (error) {
+      _isMockAssessorSession = false;
+      throw Exception('Failed to load mock assessor login: $error');
     }
   }
 }

@@ -215,6 +215,15 @@ class _LoginPageState extends State<LoginPage> {
                               return;
                             }
 
+                            if (directUserType == USER_TYPES.ASSESSOR) {
+                              context.router.replace(
+                                const AuthenticatedRouteWrapper(
+                                  children: [AssessmentHomeRoute()],
+                                ),
+                              );
+                              return;
+                            }
+
                             context.router.replace(
                               const AuthenticatedRouteWrapper(),
                             );

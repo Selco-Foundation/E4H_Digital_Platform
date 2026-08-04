@@ -6,6 +6,7 @@ const installationReportPartAEditorRoleCode =
     'INSTALLATION_REPORT_PART_A_EDITOR';
 const installationReportPartBEditorRoleCode =
     'INSTALLATION_REPORT_PART_B_EDITOR';
+const assessorRoleCode = 'ENUMERATOR';
 
 enum RoleSelectionOption { staff, supervisor, amc }
 
@@ -72,6 +73,11 @@ class RoleLoginResolver {
     final hasAmc = codes.contains(amcFieldStaffRoleCode);
     final hasPartA = codes.contains(installationReportPartAEditorRoleCode);
     final hasPartB = codes.contains(installationReportPartBEditorRoleCode);
+    final hasAssessor = codes.contains(assessorRoleCode);
+
+    if (hasAssessor) {
+      return const RoleLoginResolution.direct(USER_TYPES.ASSESSOR);
+    }
 
     if (hasAmc && (hasPartA || hasPartB)) {
       if (hasPartB) {

@@ -358,7 +358,7 @@ enum REPORT_TYPES {
   ADD_MORE
 }
 
-enum USER_TYPES { SUPERVISOR, FIELD_STAFF, AMC }
+enum USER_TYPES { SUPERVISOR, FIELD_STAFF, AMC, ASSESSOR }
 
 enum ASSET_TYPES { BATTERY, INVERTER, PANEL }
 
@@ -502,19 +502,34 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
         'sectionDescription': prop['sectionDescription'],
         'hidden': prop['hidden'],
         'readOnly': prop['readOnly'],
+        'displayOnly': prop['displayOnly'],
         'deleteFlag': prop['deleteFlag'],
         'isMultiSelect': prop['isMultiSelect'],
         'includeInForm': prop['includeInForm'],
         'includeInSummary': prop['includeInSummary'],
         'systemDate': prop['systemDate'],
+        'charCount': prop['charCount'],
+        'startDate': prop['startDate'],
+        'endDate': prop['endDate'],
+        'minValue': prop['minValue'],
+        'maxValue': prop['maxValue'],
+        'minLength': prop['minLength'],
+        'maxLength': prop['maxLength'],
         'tooltip': prop['tooltip'],
         'helpText': prop['helpText'],
+        'prefixText': prop['prefixText'],
         'infoText': prop['infoText'],
         'innerLabel': prop['innerLabel'],
         'suffixText': prop['suffixText'],
         'errorMessage': prop['errorMessage'],
         'enums': prop['enums'],
         'validations': prop['validations'],
+        'displayBehavior': prop['displayBehavior'],
+        'conditions': prop['conditions'],
+        'navigateTo': prop['navigateTo'],
+        'visibilityCondition': prop['visibilityCondition'],
+        'conditionalNavigateTo': prop['conditionalNavigateTo'],
+        'autoFillCondition': prop['autoFillCondition'],
         'fieldName': key,
       };
     }
@@ -526,6 +541,9 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
       'order': page['order'],
       'actionLabel': page['actionLabel'],
       'description': page['description'],
+      'navigateTo': page['navigateTo'],
+      'visibilityCondition': page['visibilityCondition'],
+      'conditionalNavigateTo': page['conditionalNavigateTo'],
       'properties': propsMap,
     };
   }

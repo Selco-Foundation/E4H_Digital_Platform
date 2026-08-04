@@ -75,6 +75,8 @@ class CustomDrawer extends StatelessWidget {
 
                   if (userType == USER_TYPES.AMC) {
                     context.router.replaceAll([const AmcHomeRoute()]);
+                  } else if (userType == USER_TYPES.ASSESSOR) {
+                    context.router.replaceAll([const AssessmentHomeRoute()]);
                   } else {
                     context.router.replaceAll([const HomeRoute()]);
                   }

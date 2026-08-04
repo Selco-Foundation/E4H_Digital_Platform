@@ -83,6 +83,51 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AmcSelectFacilityPage(),
       );
     },
+    AssessmentDraftRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssessmentDraftPage(),
+      );
+    },
+    AssessmentDynamicFormRoute.name: (routeData) {
+      final args = routeData.argsAs<AssessmentDynamicFormRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AssessmentDynamicFormPage(
+          key: args.key,
+          pageName: args.pageName,
+          schemaName: args.schemaName,
+        ),
+      );
+    },
+    AssessmentHomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssessmentHomePage(),
+      );
+    },
+    AssessmentSelectFacilityRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssessmentSelectFacilityPage(),
+      );
+    },
+    AssessmentSubmissionSuccessRoute.name: (routeData) {
+      final args = routeData.argsAs<AssessmentSubmissionSuccessRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AssessmentSubmissionSuccessPage(
+          key: args.key,
+          schemaName: args.schemaName,
+        ),
+      );
+    },
+    AssessmentWorkHomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssessmentWorkHomePage(),
+      );
+    },
     AssetCountRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -531,6 +576,146 @@ class AmcSelectFacilityRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'AmcSelectFacilityRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssessmentDraftPage]
+class AssessmentDraftRoute extends PageRouteInfo<void> {
+  const AssessmentDraftRoute({List<PageRouteInfo>? children})
+      : super(
+          AssessmentDraftRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentDraftRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssessmentDynamicFormPage]
+class AssessmentDynamicFormRoute
+    extends PageRouteInfo<AssessmentDynamicFormRouteArgs> {
+  AssessmentDynamicFormRoute({
+    Key? key,
+    required String pageName,
+    required String schemaName,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AssessmentDynamicFormRoute.name,
+          args: AssessmentDynamicFormRouteArgs(
+            key: key,
+            pageName: pageName,
+            schemaName: schemaName,
+          ),
+          rawPathParams: {'pageName': pageName},
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentDynamicFormRoute';
+
+  static const PageInfo<AssessmentDynamicFormRouteArgs> page =
+      PageInfo<AssessmentDynamicFormRouteArgs>(name);
+}
+
+class AssessmentDynamicFormRouteArgs {
+  const AssessmentDynamicFormRouteArgs({
+    this.key,
+    required this.pageName,
+    required this.schemaName,
+  });
+
+  final Key? key;
+
+  final String pageName;
+
+  final String schemaName;
+
+  @override
+  String toString() {
+    return 'AssessmentDynamicFormRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName}';
+  }
+}
+
+/// generated route for
+/// [AssessmentHomePage]
+class AssessmentHomeRoute extends PageRouteInfo<void> {
+  const AssessmentHomeRoute({List<PageRouteInfo>? children})
+      : super(
+          AssessmentHomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentHomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssessmentSelectFacilityPage]
+class AssessmentSelectFacilityRoute extends PageRouteInfo<void> {
+  const AssessmentSelectFacilityRoute({List<PageRouteInfo>? children})
+      : super(
+          AssessmentSelectFacilityRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentSelectFacilityRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssessmentSubmissionSuccessPage]
+class AssessmentSubmissionSuccessRoute
+    extends PageRouteInfo<AssessmentSubmissionSuccessRouteArgs> {
+  AssessmentSubmissionSuccessRoute({
+    Key? key,
+    required String schemaName,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AssessmentSubmissionSuccessRoute.name,
+          args: AssessmentSubmissionSuccessRouteArgs(
+            key: key,
+            schemaName: schemaName,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentSubmissionSuccessRoute';
+
+  static const PageInfo<AssessmentSubmissionSuccessRouteArgs> page =
+      PageInfo<AssessmentSubmissionSuccessRouteArgs>(name);
+}
+
+class AssessmentSubmissionSuccessRouteArgs {
+  const AssessmentSubmissionSuccessRouteArgs({
+    this.key,
+    required this.schemaName,
+  });
+
+  final Key? key;
+
+  final String schemaName;
+
+  @override
+  String toString() {
+    return 'AssessmentSubmissionSuccessRouteArgs{key: $key, schemaName: $schemaName}';
+  }
+}
+
+/// generated route for
+/// [AssessmentWorkHomePage]
+class AssessmentWorkHomeRoute extends PageRouteInfo<void> {
+  const AssessmentWorkHomeRoute({List<PageRouteInfo>? children})
+      : super(
+          AssessmentWorkHomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentWorkHomeRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
