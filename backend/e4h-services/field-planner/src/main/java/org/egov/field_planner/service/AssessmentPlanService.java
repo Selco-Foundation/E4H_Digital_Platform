@@ -1,5 +1,6 @@
 package org.egov.field_planner.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -201,11 +202,6 @@ public class AssessmentPlanService {
         validateAssessorRoles(assessors);
         List<ActivityAssignment> assignments = new ArrayList<>();
         for (AssessorAssignment assessor : assessors) {
-            Employee employee = getEmployeeByUserId(requestInfo, assessor.getUserId());
-            if (employee == null) {
-                throw new CustomException(AssessmentConstants.ASSESSMENT_ASSESSOR_NOT_FOUND,
-                        "Assessor not found for userId: " + assessor.getUserId());
-            }
             Map<String, Object> role = Map.of(
                     "code", assessor.getRole(),
                     "name", assessor.getRole()
@@ -223,7 +219,8 @@ public class AssessmentPlanService {
                     .endDate(plan.getEndDate())
                     .status("ACTIVE")
                     .build());
-            if (employee.getUser() != null) {
+            Employee employee = getEmployeeByUserId(requestInfo, assessor.getUserId());
+            if (employee != null && employee.getUser() != null) {
                 assessor.setEmail(employee.getUser().getEmailId());
             }
         }
@@ -263,15 +260,16 @@ public class AssessmentPlanService {
                     + "?tenantId=in&uuids=" + userId;
             Map<String, Object> payload = new HashMap<>();
             payload.put("RequestInfo", requestInfo);
-            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), payload);
-            EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+            EmployeeResponse employeeResponse = serviceRequestRepository.fetchResult(
+                    new StringBuilder(url), payload, new TypeReference<EmployeeResponse>() {});
             if (employeeResponse == null || employeeResponse.getEmployees() == null
                     || employeeResponse.getEmployees().isEmpty()) {
+                log.warn("HRMS returned no employee for userId {}", userId);
                 return null;
             }
             return employeeResponse.getEmployees().get(0);
         } catch (Exception e) {
-            log.debug("HRMS lookup failed for userId {}", userId, e);
+            log.warn("HRMS lookup failed for userId {}: {}", userId, e.getMessage());
             return null;
         }
     }
