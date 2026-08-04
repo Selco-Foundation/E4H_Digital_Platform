@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { TextInput, LinkLabel, DownloadIcon, SearchIcon } from "@egovernments/digit-ui-react-components";
+import { Button, TextInput, LinkLabel, DownloadIcon, SearchIcon } from "@egovernments/digit-ui-react-components";
 
-const SearchAction = ({ t, projectQueryFilter, selectedFacilityIds, onSearch, onDownload }) => {
+const SearchAction = ({ t, projectQueryFilter, selectedFacilityIds, bulkActions, onSearch, onDownload }) => {
 
   const [textToSearch, setTextToSearch] = useState(projectQueryFilter.facilitySearch?.name || "");
 
@@ -47,9 +47,30 @@ const SearchAction = ({ t, projectQueryFilter, selectedFacilityIds, onSearch, on
         minWidth: "fit-content",
       }}
     >
-      {selectedFacilityIds?.length > 0 ? (
-        <div style={{ fontSize: "16px", fontWeight: "bold", color: "#004d66" }}>
-          {selectedFacilityIds.length} {t("PM_ASSESSMENT_FACILITIES_SELECTED")}
+      {selectedFacilityIds?.length > 0 && bulkActions?.length ? (
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {bulkActions.map((action) => (
+            <Button
+              key={action.key}
+              variation={"secondary"}
+              label={action.label}
+              isDisabled={action.disabled}
+              onButtonClick={action.onClick}
+              style={{
+                border: "none",
+                padding: "8px 20px",
+                cursor: action.disabled ? "default" : "pointer",
+                fontWeight: "bold",
+                fontSize: "16px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "40px",
+                color: "white",
+                backgroundColor: action.disabled ? "#D6D5D4" : action.backgroundColor,
+              }}
+            />
+          ))}
         </div>
       ) : (
         <form

@@ -97,4 +97,14 @@ export const AssessmentPlanService = {
 
   hasUploadedAssessmentFacilityData: async (assessmentPlanId) => uploadedAssessmentFacilityPlanIds.has(assessmentPlanId),
 
+  completeAssessmentPlan: async (assessmentPlanId) => {
+    const index = DUMMY_ASSESSMENT_PLANS.findIndex((plan) => plan.id === assessmentPlanId);
+    if (index === -1) {
+      return null;
+    }
+
+    DUMMY_ASSESSMENT_PLANS[index] = { ...DUMMY_ASSESSMENT_PLANS[index], status: "COMPLETED" };
+    return DUMMY_ASSESSMENT_PLANS[index];
+  },
+
 };
