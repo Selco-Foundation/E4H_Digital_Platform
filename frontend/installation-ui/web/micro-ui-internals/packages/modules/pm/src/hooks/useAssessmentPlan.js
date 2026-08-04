@@ -14,15 +14,17 @@ const useAssessmentPlan = (queryFilter = {}, limit = 10, offset = 0) => {
   const { id, projectIds } = queryFilter;
 
   const filter = {
-    AssessmentPlans: {}
+    criteria: {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+    }
   };
 
   if (id?.length) {
-    filter.AssessmentPlans.ids = id;
+    filter.criteria.ids = id;
   }
 
   if (projectIds?.length) {
-    filter.AssessmentPlans.projectIds = projectIds;
+    filter.criteria.projectId = projectIds[0];
   }
 
   const queryClient = useQueryClient();

@@ -329,7 +329,7 @@ const AssessmentDetails = () => {
   const handleCompletePlan = async () => {
     setActionLoading(true);
     try {
-      const updatedPlan = await AssessmentPlanService.completeAssessmentPlan(assessmentPlan.id);
+      const updatedPlan = await AssessmentPlanService.completeAssessmentPlan(assessmentPlan);
       if (updatedPlan) {
         setAssessmentPlan(updatedPlan);
         dispatch(populateWorkingAssessmentPlan(updatedPlan));

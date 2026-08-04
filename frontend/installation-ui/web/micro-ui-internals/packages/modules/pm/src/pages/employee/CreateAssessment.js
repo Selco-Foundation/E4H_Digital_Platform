@@ -256,8 +256,8 @@ const CreateAssessment = () => {
           districts: boundaryData.districts.filter((district) => createdAssessmentPlan.geographyDetails?.districts?.includes(district.code)),
           blocks: boundaryData.blocks.filter((block) => createdAssessmentPlan.geographyDetails?.blocks?.includes(block.code)),
           assessmentDuration: {
-            startDate: createdAssessmentPlan.startDate,
-            endDate: createdAssessmentPlan.endDate,
+            startDate: formatDate(createdAssessmentPlan.startDate),
+            endDate: formatDate(createdAssessmentPlan.endDate),
           },
         },
         activityDetails: {
@@ -755,8 +755,8 @@ const CreateAssessment = () => {
     return {
       ...createdAssessmentPlan,
       name: data.assessmentName,
-      startDate: data.assessmentDuration.startDate,
-      endDate: data.assessmentDuration.endDate,
+      startDate: (new Date(data.assessmentDuration.startDate)).getTime(),
+      endDate: (new Date(data.assessmentDuration.endDate)).getTime(),
       geographyDetails: {
         state: data.state.code,
         districts: data.districts.map((district) => district.code),
@@ -770,8 +770,8 @@ const CreateAssessment = () => {
       tenantId,
       name: data.assessmentName,
       projectId: createdProject?.id,
-      startDate: data.assessmentDuration.startDate,
-      endDate: data.assessmentDuration.endDate,
+      startDate: (new Date(data.assessmentDuration.startDate)).getTime(),
+      endDate: (new Date(data.assessmentDuration.endDate)).getTime(),
       geographyDetails: {
         state: data.state.code,
         districts: data.districts.map((district) => district.code),

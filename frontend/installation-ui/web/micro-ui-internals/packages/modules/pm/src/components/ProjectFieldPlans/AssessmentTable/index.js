@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { Table } from "@egovernments/digit-ui-react-components";
+import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { DUMMY_ASSESSMENT_PLANS } from "../../../utilities/AssessmentPlanData";
+import useAssessmentPlan from "../../../hooks/useAssessmentPlan";
 import { populateWorkingAssessmentPlan } from "../../../redux/actions";
 
 const AssessmentTable = ({ t, projectId }) => {
@@ -10,6 +10,12 @@ const AssessmentTable = ({ t, projectId }) => {
   const dispatch = useDispatch();
   const [pageSize, setPageSize] = useState(10);
   const [pageOffset, setPageOffset] = useState(0);
+
+  const { isLoading: assessmentPlanDataLoading, data: assessmentPlanData } = useAssessmentPlan({
+    projectIds: [projectId],
+  });
+
+  const placeHolderAssessmentPlans = [{}, {}];
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -103,11 +109,15 @@ const AssessmentTable = ({ t, projectId }) => {
     setPageOffset(pageOffset - pageSize);
   };
 
+  if (assessmentPlanDataLoading) {
+    return <Loader />;
+  }
+
   return (
     <div style={{ borderRadius: "6px", overflow: "hidden", boxShadow: "0px 0px 4px 0 rgba(0, 0, 0, 0.2)" }}>
       <Table
         t={t}
-        data={DUMMY_ASSESSMENT_PLANS}
+        data={assessmentPlanData?.assessmentPlans?.length ? assessmentPlanData.assessmentPlans : placeHolderAssessmentPlans}
         columns={columns}
         customTableWrapperClassName={"project-details-table"}
         getCellProps={() => {
@@ -122,7 +132,7 @@ const AssessmentTable = ({ t, projectId }) => {
         onNextPage={onNextPage}
         onPrevPage={onPrevPage}
         currentPage={Math.floor(pageOffset / pageSize)}
-        totalRecords={DUMMY_ASSESSMENT_PLANS.length}
+        totalRecords={assessmentPlanData?.totalCount || placeHolderAssessmentPlans.length}
         onPageSizeChange={onPageSizeChange}
         pageSizeLimit={pageSize}
       />

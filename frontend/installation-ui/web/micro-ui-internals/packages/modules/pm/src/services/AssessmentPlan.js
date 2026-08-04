@@ -1,8 +1,8 @@
-import { DUMMY_ASSESSMENT_PLANS } from "../utilities/AssessmentPlanData";
+import { Request } from "@egovernments/digit-ui-libraries";
 
-// Dummy in-memory persistence and facility-template handling until the Assessment Plan entity exists on the backend.
+// Facility-template handling remains dummy/in-memory until those endpoints exist on the backend.
+// Plan create/search hit the real assessment-plan APIs below.
 
-let nextAssessmentPlanId = DUMMY_ASSESSMENT_PLANS.length + 1;
 const uploadedAssessmentFacilityPlanIds = new Set();
 
 const DEFAULT_ASSESSMENT_SUMMARY = {
@@ -13,23 +13,54 @@ const DEFAULT_ASSESSMENT_SUMMARY = {
   notEligibleCount: 0,
 };
 
+const withAssessmentPlanDefaults = (assessmentPlan) => ({
+  ...assessmentPlan,
+  status: assessmentPlan?.status || "DRAFT",
+  numberOfFacilities: assessmentPlan?.numberOfFacilities || 0,
+  summary: assessmentPlan?.summary || DEFAULT_ASSESSMENT_SUMMARY,
+});
+
+const extractAssessmentPlans = (response) => {
+  const plans = response?.plans ||
+    response?.Plans ||
+    response?.assessmentPlans ||
+    response?.AssessmentPlans ||
+    response?.data?.plans ||
+    response?.data?.Plans ||
+    [];
+
+  return Array.isArray(plans) ? plans : [plans];
+};
+
+const extractAssessmentPlan = (response) => (
+  response?.plan ||
+  response?.Plan ||
+  response?.assessmentPlan ||
+  response?.AssessmentPlan ||
+  extractAssessmentPlans(response)?.[0]
+);
+
 export const AssessmentPlanService = {
 
   fetchAssessmentPlans: async (queryFilter, limit = 10, offset = 0) => {
-    const ids = queryFilter?.AssessmentPlans?.ids;
-    const projectIds = queryFilter?.AssessmentPlans?.projectIds;
+    const endpoint = "/field-planner/assessment/v1/plan/_search";
+    const headers = { "Content-Type": "application/json" };
 
-    let assessmentPlans = DUMMY_ASSESSMENT_PLANS;
-    if (ids?.length) {
-      assessmentPlans = assessmentPlans.filter((plan) => ids.includes(plan.id));
-    }
-    if (projectIds?.length) {
-      assessmentPlans = assessmentPlans.filter((plan) => projectIds.includes(plan.projectId));
-    }
+    const response = await Request({
+      url: endpoint,
+      data: { criteria: queryFilter?.criteria || {} },
+      userService: true,
+      method: "POST",
+      auth: true,
+      params: { offset, limit },
+      headers,
+    });
+
+    const assessmentPlans = extractAssessmentPlans(response).filter(Boolean).map(withAssessmentPlanDefaults);
 
     return {
-      AssessmentPlans: assessmentPlans.slice(offset, offset + limit),
-      TotalCount: assessmentPlans.length,
+      AssessmentPlans: assessmentPlans,
+      TotalCount: response?.totalCount ?? response?.TotalCount ?? assessmentPlans.length,
     };
   },
 
@@ -37,22 +68,24 @@ export const AssessmentPlanService = {
     const [assessmentPlan] = assessmentPlanData.AssessmentPlans;
 
     if (assessmentPlanData.apiOperation === "UPDATE") {
-      const index = DUMMY_ASSESSMENT_PLANS.findIndex((plan) => plan.id === assessmentPlan.id);
-      if (index !== -1) {
-        DUMMY_ASSESSMENT_PLANS[index] = { ...DUMMY_ASSESSMENT_PLANS[index], ...assessmentPlan };
-        return [DUMMY_ASSESSMENT_PLANS[index]];
-      }
+      // No backend update endpoint exists yet for assessment plans; merge and return optimistically.
+      return [withAssessmentPlanDefaults(assessmentPlan)];
     }
 
-    const createdAssessmentPlan = {
-      ...assessmentPlan,
-      id: String(nextAssessmentPlanId++),
-      status: "DRAFT",
-      numberOfFacilities: assessmentPlan.numberOfFacilities || 0,
-      summary: assessmentPlan.summary || DEFAULT_ASSESSMENT_SUMMARY,
-    };
-    DUMMY_ASSESSMENT_PLANS.push(createdAssessmentPlan);
-    return [createdAssessmentPlan];
+    const endpoint = "/field-planner/assessment/v1/plan/_create";
+    const headers = { "Content-Type": "application/json" };
+
+    const response = await Request({
+      url: endpoint,
+      data: { plan: assessmentPlan },
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers,
+    });
+
+    const createdAssessmentPlan = extractAssessmentPlan(response) || assessmentPlan;
+    return [withAssessmentPlanDefaults(createdAssessmentPlan)];
   },
 
   downloadAssessmentFacilityDataTemplate: async (assessmentPlanId, boundaryData, t) => {
@@ -97,14 +130,9 @@ export const AssessmentPlanService = {
 
   hasUploadedAssessmentFacilityData: async (assessmentPlanId) => uploadedAssessmentFacilityPlanIds.has(assessmentPlanId),
 
-  completeAssessmentPlan: async (assessmentPlanId) => {
-    const index = DUMMY_ASSESSMENT_PLANS.findIndex((plan) => plan.id === assessmentPlanId);
-    if (index === -1) {
-      return null;
-    }
-
-    DUMMY_ASSESSMENT_PLANS[index] = { ...DUMMY_ASSESSMENT_PLANS[index], status: "COMPLETED" };
-    return DUMMY_ASSESSMENT_PLANS[index];
+  completeAssessmentPlan: async (assessmentPlan) => {
+    // No backend "complete" endpoint exists yet for assessment plans; merge and return optimistically.
+    return withAssessmentPlanDefaults({ ...assessmentPlan, status: "COMPLETED" });
   },
 
 };
