@@ -49,6 +49,7 @@ public class ScheduledVisitService {
     private final MDMSUtils mdmsUtils;
     private BoundaryUtil boundaryUtil;
     private final FacilityPocPhoneUtil facilityPocPhoneUtil;
+    private final AmcAnalyticsService amcAnalyticsService;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -58,7 +59,7 @@ public class ScheduledVisitService {
     public ScheduledVisitService(
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
             Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil,
-            FacilityPocPhoneUtil facilityPocPhoneUtil) {
+            FacilityPocPhoneUtil facilityPocPhoneUtil, AmcAnalyticsService amcAnalyticsService) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
         this.producer = producer;
@@ -72,6 +73,7 @@ public class ScheduledVisitService {
         this.mdmsUtils = mdmsUtils;
         this.boundaryUtil = boundaryUtil;
         this.facilityPocPhoneUtil = facilityPocPhoneUtil;
+        this.amcAnalyticsService = amcAnalyticsService;
     }
 
     public ScheduledVisitRequest createScheduledVisit(ScheduledVisitRequest request) {
@@ -260,6 +262,10 @@ public class ScheduledVisitService {
             throw new CustomException("GENERATE_VISIT_ERROR", "The Visit ID: "+ request.getVisitId() +" is not found");
 
         ScheduledVisit existingVisit = scheduledVisitsList.get(0);
+        // Captured before the transition overwrites it below: analytics needs the pre-transition
+        // status to tell a first report submission (out of SCHEDULED) from a re-submission
+        // (out of REJECTED).
+        String priorStatus = existingVisit.getStatus();
 
         // Step 2: if action is SUBMIT_VISIT_REPORT, check if send OTP is successful or not
         log.debug("Processing workflow action: {}", request.getWorkflow().getAction());
@@ -395,6 +401,10 @@ public class ScheduledVisitService {
         // 7. Perform enriched update using standard handler
         handleUpdateScheduledVisit(enrichedRequest, updatedScheduledVisit, existingVisit);
         log.info("Successfully updated visit workflow for visitId: {}, new status: {}", updatedScheduledVisit.getId(), updatedScheduledVisit.getStatus());
+
+        // 8. Publish the user-analytics event - best-effort, never breaks the workflow update.
+        amcAnalyticsService.publishVisitWorkflowEvent(existingVisit, request.getWorkflow().getAction(), priorStatus,
+                request.getRequestInfo());
 
         return List.of(updatedScheduledVisit);
     }

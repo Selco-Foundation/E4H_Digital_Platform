@@ -162,6 +162,20 @@ public class AMCServiceConfiguration {
     @Value("${amc.otp.sms.message.template:Your OTP for scheduled visit verification is {otp}.}")
     private String otpSmsTemplate;
 
+    // Shared user-analytics topic -> user-analytics-report index (also produced by im-services SEM,
+    // health-facility-registry and boundary-service).
+    @Value("${amc.kafka.user.analytics.topic:user-analytics-event}")
+    private String userAnalyticsTopic;
+
+    @Value("${egov.localization.host:}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path:}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.search.endpoint:}")
+    private String localizationSearchEndpoint;
+
     public String getFacilityBulkSearchPath() {
         return facilityBulkSearchUrl;
     }
