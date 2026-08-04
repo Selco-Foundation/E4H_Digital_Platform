@@ -319,7 +319,7 @@ const CreateAssessment = () => {
     setBlockUI(true);
     let uploadedFile;
     try {
-      const response = await AssessmentPlanService.uploadAssessmentFacilityDataTemplate(chosenFile, createdAssessmentPlan.id);
+      const response = await PMService.uploadAssessmentPlanFacilityDataTemplate(chosenFile, createdProject.id, createdAssessmentPlan.id);
       setBlockUI(false);
 
       if (response.errorCode === "INVALID_TEMPLATE") {
@@ -347,6 +347,7 @@ const CreateAssessment = () => {
         })
         setInvalidDataError(null);
         setHasSavedFacilityUpload(true);
+        AssessmentPlanService.markAssessmentFacilityDataUploaded(createdAssessmentPlan.id);
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,

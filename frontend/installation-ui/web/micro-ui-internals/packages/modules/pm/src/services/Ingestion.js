@@ -119,6 +119,36 @@ export const IngestionService = {
     });
   },
 
+  validateAssessmentPlanFacilityData: async (filledFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/assessmentPlanIncludeValidateData";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : filledFacilityData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    })
+  },
+
+  uploadAssessmentPlanFacilityData : async (validatedFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/assessmentPlanIncludeApply";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : validatedFacilityData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    });
+  },
+
   uploadICCReports : async (iccReportsData) => {
     const endpoint = "/ingestion-service/ingest/icc-reports";
 

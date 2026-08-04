@@ -1,7 +1,8 @@
 import { Request } from "@egovernments/digit-ui-libraries";
 
-// Facility-template upload remains dummy/in-memory until that endpoint exists on the backend.
-// Plan create/search and the facility-template download hit real APIs (see PMService for the download).
+// Plan create/search and facility-template download/upload hit real APIs (see PMService).
+// hasUploadedAssessmentFacilityData/markAssessmentFacilityDataUploaded remain session-local in-memory
+// tracking, since no backend status-check endpoint exists yet for whether a plan has facility data.
 
 const uploadedAssessmentFacilityPlanIds = new Set();
 
@@ -88,17 +89,8 @@ export const AssessmentPlanService = {
     return [withAssessmentPlanDefaults(createdAssessmentPlan)];
   },
 
-  uploadAssessmentFacilityDataTemplate: async (file, assessmentPlanId) => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
+  markAssessmentFacilityDataUploaded: (assessmentPlanId) => {
     uploadedAssessmentFacilityPlanIds.add(assessmentPlanId);
-
-    return {
-      file: {
-        name: file.name,
-        data: file,
-      },
-    };
   },
 
   hasUploadedAssessmentFacilityData: async (assessmentPlanId) => uploadedAssessmentFacilityPlanIds.has(assessmentPlanId),
