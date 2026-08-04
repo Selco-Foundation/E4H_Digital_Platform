@@ -45,6 +45,7 @@ public final class AssessmentConstants {
 
     public static final String ROLE_ENUMERATOR = "ENUMERATOR";
     public static final String ROLE_FIELD_POC = "FIELD_POC";
+    public static final String ROLE_SYSTEM_USER = "SYSTEM_USER";
     public static final String ACTOR_SYSTEM = "SYSTEM";
 
     public static final String WF_ACTION_CREATE = "CREATE";

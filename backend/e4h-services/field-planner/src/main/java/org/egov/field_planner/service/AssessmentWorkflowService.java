@@ -3,6 +3,8 @@ package org.egov.field_planner.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.request.Role;
+import org.egov.common.contract.request.User;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.util.AssessmentConstants;
 import org.egov.field_planner.web.models.ProcessInstance;
@@ -56,5 +58,32 @@ public class AssessmentWorkflowService {
                     "Empty response from workflow transition for action: " + action);
         }
         return wfResponse.getProcessInstances().get(0);
+    }
+
+    public ProcessInstance transitionSystemWorkflow(String businessId, String tenantId, String action,
+                                                      RequestInfo requestInfo, String comment) {
+        return transitionWorkflow(businessId, tenantId, action, systemRequestInfo(requestInfo, tenantId), comment);
+    }
+
+    private RequestInfo systemRequestInfo(RequestInfo requestInfo, String tenantId) {
+        User systemUser = User.builder()
+                .uuid(AssessmentConstants.ACTOR_SYSTEM)
+                .userName("system")
+                .name("System")
+                .type("SYSTEM")
+                .tenantId(tenantId)
+                .roles(List.of(
+                        Role.builder()
+                                .name("System User")
+                                .code(AssessmentConstants.ROLE_SYSTEM_USER)
+                                .tenantId(tenantId)
+                                .build()
+                ))
+                .build();
+        return RequestInfo.builder()
+                .apiId(requestInfo != null ? requestInfo.getApiId() : null)
+                .authToken(requestInfo != null ? requestInfo.getAuthToken() : null)
+                .userInfo(systemUser)
+                .build();
     }
 }

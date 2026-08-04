@@ -187,7 +187,7 @@ public class AssessmentSubmissionService {
                 overallStatus = AssessmentConstants.OVERALL_ELIGIBLE;
                 completionStatus = AssessmentConstants.COMPLETION_ELIGIBLE;
                 autoEligible = true;
-                workflowService.transitionWorkflow(facility.getPlanFacilityId(), tenantId,
+                workflowService.transitionSystemWorkflow(facility.getPlanFacilityId(), tenantId,
                         AssessmentConstants.WF_ACTION_AUTO_ELIGIBLE, request.getRequestInfo(), null);
                 additionalDetails = AssessmentAdditionalDetailsHelper.appendAuditEvent(
                         additionalDetails,
@@ -202,7 +202,7 @@ public class AssessmentSubmissionService {
                 overallStatus = AssessmentConstants.OVERALL_NOT_ELIGIBLE;
                 completionStatus = AssessmentConstants.COMPLETION_NOT_ELIGIBLE;
                 autoNotEligible = true;
-                workflowService.transitionWorkflow(facility.getPlanFacilityId(), tenantId,
+                workflowService.transitionSystemWorkflow(facility.getPlanFacilityId(), tenantId,
                         AssessmentConstants.WF_ACTION_AUTO_NOT_ELIGIBLE, request.getRequestInfo(), null);
                 additionalDetails = AssessmentAdditionalDetailsHelper.appendAuditEvent(
                         additionalDetails,
