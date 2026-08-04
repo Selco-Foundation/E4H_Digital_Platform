@@ -10,6 +10,7 @@ import { populateResponsePage, populateWorkingAssessmentPlan, populateWorkingPro
 import { useHistory } from "react-router-dom";
 import useAssessmentPlan from "../../hooks/useAssessmentPlan";
 import { AssessmentPlanService } from "../../services/AssessmentPlan";
+import { PMService } from "../../services/PMService";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useAssessmentActivityAssignment from "../../hooks/useAssessmentActivityAssignment";
@@ -292,7 +293,7 @@ const CreateAssessment = () => {
         districts: boundaryData.districts.filter((district) => createdAssessmentPlan.geographyDetails.districts.includes(district.code)),
         blocks: boundaryData.blocks.filter((block) => createdAssessmentPlan.geographyDetails.blocks.includes(block.code)),
       }
-      await AssessmentPlanService.downloadAssessmentFacilityDataTemplate(createdAssessmentPlan.id, geographyDetails, t);
+      await PMService.downloadAssessmentPlanFacilityDataTemplate(createdProject.id, createdAssessmentPlan.id, geographyDetails, t);
 
       setBlockUI(false);
       setToast({
