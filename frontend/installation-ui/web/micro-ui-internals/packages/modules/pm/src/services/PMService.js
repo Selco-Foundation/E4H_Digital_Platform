@@ -280,6 +280,15 @@ export const PMService = {
     }
   },
 
+  downloadAssessmentPlanFacilityDataTemplate: async (projectId, planId, boundaryData, t) => {
+    return await IngestionService.downloadAssessmentFacilityDataTemplate({
+      boundary_data: formatBoundaryData(boundaryData, t),
+      planId: planId,
+      projectId: projectId,
+      tenantId: "in",
+    });
+  },
+
   downloadAMCFacilityDataTemplate: async (projectId, amcFormData, t) => {
 
     const boundaryData = amcFormData.geographyDetails;

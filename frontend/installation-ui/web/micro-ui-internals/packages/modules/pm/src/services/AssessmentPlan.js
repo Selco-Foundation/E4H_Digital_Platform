@@ -1,7 +1,7 @@
 import { Request } from "@egovernments/digit-ui-libraries";
 
-// Facility-template handling remains dummy/in-memory until those endpoints exist on the backend.
-// Plan create/search hit the real assessment-plan APIs below.
+// Facility-template upload remains dummy/in-memory until that endpoint exists on the backend.
+// Plan create/search and the facility-template download hit real APIs (see PMService for the download).
 
 const uploadedAssessmentFacilityPlanIds = new Set();
 
@@ -86,33 +86,6 @@ export const AssessmentPlanService = {
 
     const createdAssessmentPlan = extractAssessmentPlan(response) || assessmentPlan;
     return [withAssessmentPlanDefaults(createdAssessmentPlan)];
-  },
-
-  downloadAssessmentFacilityDataTemplate: async (assessmentPlanId, boundaryData, t) => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
-    const rows = [["Facility Name", "Facility Type", "District", "Block"]];
-    boundaryData.districts.forEach((district) => {
-      boundaryData.blocks
-        .filter((block) => block.districtCode === district.code)
-        .forEach((block) => {
-          rows.push(["", "", t(`Boundary_${district.code}`), t(`Boundary_${block.code}`)]);
-        });
-    });
-
-    const csvContent = rows
-      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const downloadUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = `assessment-facility-template-${assessmentPlanId}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(downloadUrl);
   },
 
   uploadAssessmentFacilityDataTemplate: async (file, assessmentPlanId) => {

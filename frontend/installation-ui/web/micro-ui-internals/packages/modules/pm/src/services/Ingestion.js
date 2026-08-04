@@ -100,6 +100,25 @@ export const IngestionService = {
     });
   },
 
+  downloadAssessmentFacilityDataTemplate : async (requestData) => {
+    const endpoint = "/ingestion-service/template/assessmentPlanIncludeTemplate";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    await CustomRequest({
+      url : endpoint,
+      data : requestData,
+      userService : true,
+      method : "POST",
+      auth : true,
+      headers : headers,
+      fileDownload: true,
+      responseType: "blob",
+      defaultFilename: "download.xlsx"
+    });
+  },
+
   uploadICCReports : async (iccReportsData) => {
     const endpoint = "/ingestion-service/ingest/icc-reports";
 
