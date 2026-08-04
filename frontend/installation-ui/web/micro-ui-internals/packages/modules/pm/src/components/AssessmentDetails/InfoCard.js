@@ -1,8 +1,6 @@
 import React from "react";
 
-const InfoCard = ({ t, selectedAssessmentPlan }) => {
-
-  const { summary } = selectedAssessmentPlan;
+const InfoCard = ({ t, summary }) => {
 
   const StatCard = (label, value, valueColor) => (
     <div

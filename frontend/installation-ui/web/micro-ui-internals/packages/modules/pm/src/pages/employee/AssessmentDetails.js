@@ -1,23 +1,33 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Loader, Table } from "@egovernments/digit-ui-react-components";
+import { Loader, Table, Toast } from "@egovernments/digit-ui-react-components";
 import { useDispatch } from "react-redux";
 import { useHistory, useLocation } from "react-router-dom";
 import Filter from "../../components/AssessmentDetails/Filter";
 import InfoCard from "../../components/AssessmentDetails/InfoCard";
 import SearchAction from "../../components/AssessmentDetails/SearchAction";
+import FacilityDetailsModal from "../../components/AssessmentDetails/FacilityDetailsModal";
+import ConfirmActionModal from "../../components/AssessmentDetails/ConfirmActionModal";
+import ReasonRequiredModal from "../../components/AssessmentDetails/ReasonRequiredModal";
+import CompleteAssessmentPlanModal from "../../components/AssessmentDetails/CompleteAssessmentPlanModal";
 import CustomCheckBox from "../../components/Custom/CustomCheckBox";
 import useAssessmentPlan from "../../hooks/useAssessmentPlan";
 import useAssessmentFacility from "../../hooks/useAssessmentFacility";
 import useProject from "../../hooks/useProject";
 import { populateWorkingAssessmentPlan, populateWorkingProject } from "../../redux/actions";
+import { AssessmentFacilityService } from "../../services/AssessmentFacility";
+import { AssessmentPlanService } from "../../services/AssessmentPlan";
+import { canAssignForOnSiteAssessment, isUnanimousOverride } from "../../utilities/AssessmentPlanData";
 import {useTranslation} from "react-i18next";
 
 const STATUS_BADGE_STYLES = {
   QUALIFIED: { backgroundColor: "#E7F6EC", color: "#1B8354" },
   ELIGIBLE: { backgroundColor: "#E7F6EC", color: "#1B8354" },
   PENDING: { backgroundColor: "#FFF4DE", color: "#B4790E" },
+  PENDING_WRONG_NUMBER: { backgroundColor: "#FFF4DE", color: "#B4790E" },
+  PENDING_NO_ANSWER: { backgroundColor: "#FFF4DE", color: "#B4790E" },
   NOT_INITIATED: { backgroundColor: "#F1F1F1", color: "#6B7280" },
   NOT_ELIGIBLE: { backgroundColor: "#FDEAEA", color: "#B91900" },
+  NOT_QUALIFIED: { backgroundColor: "#FDEAEA", color: "#B91900" },
 };
 
 const AssessmentDetails = () => {
@@ -28,6 +38,11 @@ const AssessmentDetails = () => {
   const [assessmentPlan, setAssessmentPlan] = useState({});
   const [selectedFacilityIds, setSelectedFacilityIds] = useState([]);
   const [fetchedData, setData] = useState([]);
+  const [facilityDetailsModal, setFacilityDetailsModal] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [completePlanModalOpen, setCompletePlanModalOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast] = useState(null);
   const history = useHistory();
   const location = useLocation();
   const url = window.location.href;
@@ -45,10 +60,12 @@ const AssessmentDetails = () => {
     }
   })() || {
     facilityFilter: {
+      category: null,
       district: null,
       facilityType: null,
       remoteStatus: null,
       onSiteStatus: null,
+      result: null,
     },
     facilitySearch: {
       name: ""
@@ -80,6 +97,7 @@ const AssessmentDetails = () => {
     isLoading,
     isFetching: facilityDataFetching,
     data: facilityData,
+    revalidate: revalidateFacilities,
   } = useAssessmentFacility(projectQueryFilter, pageSize, pageOffset);
 
   useEffect(() => {
@@ -122,6 +140,15 @@ const AssessmentDetails = () => {
       dispatch(populateWorkingProject(project));
     }
   }, [projectData])
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast])
+
+  const planCompleted = assessmentPlan?.status === "COMPLETED";
 
   const onPageSizeChange = (e) => {
     setPageSize(parseInt(e.target.value));
@@ -227,6 +254,120 @@ const AssessmentDetails = () => {
     }
   };
 
+  // Per the InfoCard's plan-wide metrics, an "assign for on-site" candidate is a facility whose
+  // remote assessment has reached a final state but hasn't yet been resolved (i.e. its result is
+  // still pending). When the header "select all" checkbox is used we judge enablement from these
+  // aggregate counts rather than iterating every selected row.
+  const canBulkAssignOnSite = () => {
+    if (planCompleted || !selectedFacilityIds.length) return false;
+
+    if (mainCheck) {
+      const summary = facilityData?.summary;
+      if (!summary) return false;
+      const unresolvedCount = summary.totalFacilities - summary.eligibleCount - summary.notEligibleCount;
+      return summary.remoteAssessmentsCompleted > 0 && unresolvedCount > 0;
+    }
+
+    const selectedFacilities = fetchedData.filter((facility) => selectedFacilityIds.includes(facility.id));
+    return selectedFacilities.length > 0 && selectedFacilities.every((facility) => canAssignForOnSiteAssessment(facility));
+  };
+
+  const canBulkMarkResult = () => !planCompleted && selectedFacilityIds.length > 0;
+
+  const openAssignOnSiteConfirm = (facilityIds) => {
+    setPendingAction({ type: "ASSIGN_ONSITE", facilityIds });
+  };
+
+  const openMarkEligibleConfirm = (facilityIds) => {
+    const selectedFacilities = fetchedData.filter((facility) => facilityIds.includes(facility.id));
+    const hasOverride = selectedFacilities.some((facility) => isUnanimousOverride(facility, "ELIGIBLE"));
+    setPendingAction({ type: hasOverride ? "MARK_ELIGIBLE_OVERRIDE" : "MARK_ELIGIBLE", facilityIds });
+  };
+
+  const openMarkNotEligibleConfirm = (facilityIds) => {
+    setPendingAction({ type: "MARK_NOT_ELIGIBLE", facilityIds });
+  };
+
+  const closePendingAction = () => setPendingAction(null);
+
+  const handleConfirmPendingAction = async (reason, remarks) => {
+    if (!pendingAction) return;
+
+    setActionLoading(true);
+    try {
+      if (pendingAction.type === "ASSIGN_ONSITE") {
+        await AssessmentFacilityService.assignForOnSiteAssessment(pendingAction.facilityIds);
+      } else if (pendingAction.type === "MARK_ELIGIBLE") {
+        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "ELIGIBLE");
+      } else if (pendingAction.type === "MARK_ELIGIBLE_OVERRIDE") {
+        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "ELIGIBLE", reason, remarks);
+      } else if (pendingAction.type === "MARK_NOT_ELIGIBLE") {
+        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "NOT_ELIGIBLE", reason, remarks);
+      }
+
+      await revalidateFacilities();
+      setSelectedFacilityIds([]);
+      setMainCheck(false);
+      setPendingAction(null);
+      setFacilityDetailsModal(null);
+      setToast({ key: "success", label: t("PM_ASSESSMENT_ACTION_SUCCESS") });
+    } catch (error) {
+      console.error("Error updating assessment facility", error);
+      setToast({ key: "error", label: t("PM_ASSESSMENT_ACTION_ERROR") });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const canCompletePlan = () => {
+    if (planCompleted) return false;
+    const summary = facilityData?.summary;
+    if (!summary?.totalFacilities) return false;
+    return (summary.eligibleCount + summary.notEligibleCount) === summary.totalFacilities;
+  };
+
+  const handleCompletePlan = async () => {
+    setActionLoading(true);
+    try {
+      const updatedPlan = await AssessmentPlanService.completeAssessmentPlan(assessmentPlan.id);
+      if (updatedPlan) {
+        setAssessmentPlan(updatedPlan);
+        dispatch(populateWorkingAssessmentPlan(updatedPlan));
+      }
+      setCompletePlanModalOpen(false);
+      setToast({ key: "success", label: t("PM_ASSESSMENT_COMPLETE_PLAN_SUCCESS") });
+    } catch (error) {
+      console.error("Error completing assessment plan", error);
+      setToast({ key: "error", label: t("PM_ASSESSMENT_COMPLETE_PLAN_ERROR") });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const bulkActions = [
+    {
+      key: "assign-onsite",
+      label: t("PM_ASSESSMENT_ACTION_ASSIGN_ONSITE"),
+      backgroundColor: "#0B4B66",
+      disabled: !canBulkAssignOnSite(),
+      onClick: () => openAssignOnSiteConfirm(selectedFacilityIds),
+    },
+    {
+      key: "mark-eligible",
+      label: t("PM_ASSESSMENT_ACTION_MARK_ELIGIBLE"),
+      backgroundColor: "#1B8354",
+      disabled: !canBulkMarkResult(),
+      onClick: () => openMarkEligibleConfirm(selectedFacilityIds),
+    },
+    {
+      key: "mark-not-eligible",
+      label: t("PM_ASSESSMENT_ACTION_MARK_NOT_ELIGIBLE"),
+      backgroundColor: "#B91900",
+      disabled: !canBulkMarkResult(),
+      onClick: () => openMarkNotEligibleConfirm(selectedFacilityIds),
+    },
+  ];
+
   const columns = [
     {
       id: "selection",
@@ -252,7 +393,13 @@ const AssessmentDetails = () => {
     {
       Header: t("PM_ASSESSMENT_FACILITY_NAME"),
       Cell: ({ row }) => (
-        <span style={{ fontWeight: 700, color: "#0B0C0C" }}>{row.original["name"]}</span>
+        <span
+          className="link"
+          style={{ fontWeight: 700, color: "#C84C0E", cursor: "pointer" }}
+          onClick={() => setFacilityDetailsModal(row.original)}
+        >
+          {row.original["name"]}
+        </span>
       ),
     },
     {
@@ -332,13 +479,48 @@ const AssessmentDetails = () => {
     );
   }
 
+  const getConfirmModalProps = () => {
+    const count = pendingAction?.facilityIds?.length || 0;
+
+    if (pendingAction?.type === "ASSIGN_ONSITE") {
+      return {
+        title: t("PM_ASSESSMENT_CONFIRM_ONSITE_TITLE"),
+        description: t("PM_ASSESSMENT_CONFIRM_ONSITE_DESC"),
+        message: `${t("PM_ASSESSMENT_CONFIRM_ACTION_MESSAGE_PREFIX")} ${count} ${t("PM_ASSESSMENT_FACILITIES_UNIT")} ${t("PM_ASSESSMENT_CONFIRM_ACTION_MESSAGE_TO")} '${t("PM_ASSESSMENT_FACILITY_STATUS_PENDING")}'.`,
+        confirmLabel: t("PM_ASSESSMENT_ACTION_ASSIGN_ONSITE"),
+        confirmColor: "#0B4B66",
+      };
+    }
+
+    if (pendingAction?.type === "MARK_ELIGIBLE") {
+      return {
+        title: t("PM_ASSESSMENT_CONFIRM_RESULT_TITLE"),
+        description: t("PM_ASSESSMENT_CONFIRM_ELIGIBLE_DESC"),
+        message: `${t("PM_ASSESSMENT_CONFIRM_ACTION_MESSAGE_PREFIX")} ${count} ${t("PM_ASSESSMENT_FACILITIES_UNIT")} ${t("PM_ASSESSMENT_CONFIRM_ACTION_MESSAGE_TO")} '${t("PM_ASSESSMENT_FACILITY_STATUS_ELIGIBLE")}'.`,
+        confirmLabel: t("PM_ASSESSMENT_ACTION_MARK_ELIGIBLE"),
+        confirmColor: "#1B8354",
+      };
+    }
+
+    return null;
+  };
+
+  const getReasonModalDescription = () => {
+    if (pendingAction?.type === "MARK_ELIGIBLE_OVERRIDE") {
+      return t("PM_ASSESSMENT_OVERRIDE_ELIGIBLE_DESC");
+    }
+    return t("PM_ASSESSMENT_MARK_NOT_ELIGIBLE_DESC");
+  };
+
   if (projectDataLoading || assessmentPlanDataLoading) {
     return <Loader />;
   }
 
+  const confirmModalProps = getConfirmModalProps();
+
   return (
     <div style={{ marginTop: "20px", padding: "0px 10px", overflow: "auto" }}>
-      {(!isLoading && facilityDataFetching) && (
+      {(actionLoading || (!isLoading && facilityDataFetching)) && (
         <div
           style={{
             display: "flex",
@@ -372,7 +554,8 @@ const AssessmentDetails = () => {
           </button>
           <button
             type="button"
-            disabled
+            disabled={!canCompletePlan()}
+            onClick={() => setCompletePlanModalOpen(true)}
             style={{
               height: "40px",
               padding: "0px 20px",
@@ -381,16 +564,16 @@ const AssessmentDetails = () => {
               fontFamily: "Roboto",
               border: "none",
               borderRadius: "4px",
-              backgroundColor: "#D6D5D4",
-              color: "#6B7280",
-              cursor: "default",
+              backgroundColor: canCompletePlan() ? "#0B4B66" : "#D6D5D4",
+              color: canCompletePlan() ? "white" : "#6B7280",
+              cursor: canCompletePlan() ? "pointer" : "default",
             }}
           >
             {t("PM_ACTION_PROCEED_ASSESSMENT_PLAN_CREATION")}
           </button>
         </div>
       </div>
-      <InfoCard t={t} selectedAssessmentPlan={assessmentPlan} />
+      <InfoCard t={t} summary={facilityData?.summary} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ minWidth: "300px" }}>
           <Filter
@@ -405,6 +588,7 @@ const AssessmentDetails = () => {
               t={t}
               projectQueryFilter={projectQueryFilter}
               selectedFacilityIds={selectedFacilityIds}
+              bulkActions={planCompleted ? [] : bulkActions}
               onSearch={handleFilterChange}
               onDownload={handleDownload}
             />
@@ -412,6 +596,63 @@ const AssessmentDetails = () => {
           {renderFacilities()}
         </div>
       </div>
+
+      {facilityDetailsModal && (
+        <FacilityDetailsModal
+          t={t}
+          facility={facilityDetailsModal}
+          planCompleted={planCompleted}
+          canAssignOnSite={canAssignForOnSiteAssessment(facilityDetailsModal)}
+          onClose={() => setFacilityDetailsModal(null)}
+          onAssignOnSite={() => openAssignOnSiteConfirm([facilityDetailsModal.id])}
+          onMarkEligible={() => openMarkEligibleConfirm([facilityDetailsModal.id])}
+          onMarkNotEligible={() => openMarkNotEligibleConfirm([facilityDetailsModal.id])}
+        />
+      )}
+
+      {confirmModalProps && (
+        <ConfirmActionModal
+          t={t}
+          title={confirmModalProps.title}
+          description={confirmModalProps.description}
+          message={confirmModalProps.message}
+          confirmLabel={confirmModalProps.confirmLabel}
+          confirmColor={confirmModalProps.confirmColor}
+          loading={actionLoading}
+          onConfirm={() => handleConfirmPendingAction()}
+          onClose={closePendingAction}
+        />
+      )}
+
+      {(pendingAction?.type === "MARK_ELIGIBLE_OVERRIDE" || pendingAction?.type === "MARK_NOT_ELIGIBLE") && (
+        <ReasonRequiredModal
+          t={t}
+          description={getReasonModalDescription()}
+          loading={actionLoading}
+          onConfirm={(reason, remarks) => handleConfirmPendingAction(reason, remarks)}
+          onClose={closePendingAction}
+        />
+      )}
+
+      {completePlanModalOpen && (
+        <CompleteAssessmentPlanModal
+          t={t}
+          loading={actionLoading}
+          onConfirm={handleCompletePlan}
+          onClose={() => setCompletePlanModalOpen(false)}
+        />
+      )}
+
+      {toast && (
+        <Toast
+          error={toast.key === "error"}
+          warning={toast.key === "warning"}
+          style={toast.key === "error" ? { backgroundColor: "#B91900" } : {}}
+          label={toast.label}
+          isDleteBtn={true}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };
