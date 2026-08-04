@@ -206,6 +206,14 @@ public class AssessmentPlanService {
                     "code", assessor.getRole(),
                     "name", assessor.getRole()
             );
+            Employee employee = getEmployeeByUserId(requestInfo, assessor.getUserId());
+            String pocNumber = assessor.getPocNumber();
+            if (employee != null && employee.getUser() != null) {
+                assessor.setEmail(employee.getUser().getEmailId());
+                if (StringUtils.isBlank(pocNumber)) {
+                    pocNumber = employee.getUser().getMobileNumber();
+                }
+            }
             assignments.add(ActivityAssignment.builder()
                     .tenantId(plan.getTenantId())
                     .fieldPlanId(plan.getId())
@@ -214,15 +222,11 @@ public class AssessmentPlanService {
                     .assignedTo(assessor.getUserId())
                     .assignedBy(requestInfo.getUserInfo().getUuid())
                     .role(role)
-                    .pocNumber(assessor.getPocNumber())
+                    .pocNumber(pocNumber)
                     .startDate(plan.getStartDate())
                     .endDate(plan.getEndDate())
                     .status("ACTIVE")
                     .build());
-            Employee employee = getEmployeeByUserId(requestInfo, assessor.getUserId());
-            if (employee != null && employee.getUser() != null) {
-                assessor.setEmail(employee.getUser().getEmailId());
-            }
         }
 
         ActivityAssignmentBulkRequest bulkRequest = ActivityAssignmentBulkRequest.builder()
