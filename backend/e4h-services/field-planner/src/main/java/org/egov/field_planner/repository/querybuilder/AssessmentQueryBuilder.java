@@ -2,6 +2,7 @@ package org.egov.field_planner.repository.querybuilder;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.egov.field_planner.util.AssessmentConstants;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -10,6 +11,10 @@ import java.util.List;
 @Component
 @Slf4j
 public class AssessmentQueryBuilder {
+
+    private static final String ASSESSMENT_ACTIVITY_JOIN =
+            " INNER JOIN activities act ON act.id = fa.activity_id "
+                    + "AND act.code = ? AND act.is_active = true ";
 
     public static final String ASSESSMENT_PLAN_SELECT =
             "SELECT fp.id, fp.tenant_id, fp.name, fp.project_id, fp.health_facility_number, "
@@ -27,16 +32,9 @@ public class AssessmentQueryBuilder {
                     + "fa.installation_field_plan_id, fa.field_plan_facility_id, fa.additional_details, "
                     + "fa.last_modified_time, fp.project_id, fp.status AS plan_status "
                     + "FROM facility_activities fa "
+                    + ASSESSMENT_ACTIVITY_JOIN
                     + "JOIN field_plans fp ON fp.id = fa.field_plan_id "
-                    + "WHERE fa.activity_id = ? ";
-
-    private static void addClauseIfRequired(List<Object> values, StringBuilder query) {
-        if (values.isEmpty()) {
-            query.append(" AND ");
-        } else {
-            query.append(" AND ");
-        }
-    }
+                    + "WHERE fp.plan_type = 'ASSESSMENT' ";
 
     public String getAssessmentPlanSearchQuery(List<Object> params, String tenantId, String projectId, List<String> ids) {
         StringBuilder query = new StringBuilder(ASSESSMENT_PLAN_SELECT);
@@ -83,7 +81,7 @@ public class AssessmentQueryBuilder {
 
     public String getAssessmentFacilitiesByPlanQuery(List<Object> params, String planId) {
         StringBuilder query = new StringBuilder(ASSESSMENT_FACILITY_SELECT);
-        params.add(AssessmentConstantsHolder.ACTIVITY_ID);
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         query.append(" AND fa.field_plan_id = ? ");
         params.add(planId);
         return query.toString();
@@ -91,7 +89,7 @@ public class AssessmentQueryBuilder {
 
     public String getAssessmentFacilitiesByFacilityIdsQuery(List<Object> params, List<String> facilityIds) {
         StringBuilder query = new StringBuilder(ASSESSMENT_FACILITY_SELECT);
-        params.add(AssessmentConstantsHolder.ACTIVITY_ID);
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         query.append(" AND fa.facility_id IN (")
                 .append(String.join(",", facilityIds.stream().map(id -> "?").toList()))
                 .append(") ");
@@ -99,11 +97,20 @@ public class AssessmentQueryBuilder {
         return query.toString();
     }
 
-    public String getPlanFacilityCountByPlanQuery() {
-        return "SELECT COUNT(*) FROM facility_activities WHERE field_plan_id = ? AND activity_id = ?";
+    public String getPlanFacilityCountByPlanQuery(List<Object> params, String planId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(planId);
+        return """
+                SELECT COUNT(*) FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
+                WHERE fa.field_plan_id = ?
+                """;
     }
 
-    public String getPlanMetricsQuery() {
+    public String getPlanMetricsQuery(List<Object> params, String planId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(planId);
         return """
                 SELECT
                     COUNT(*) AS total,
@@ -113,36 +120,54 @@ public class AssessmentQueryBuilder {
                     COUNT(*) FILTER (WHERE overall_status = 'ELIGIBLE') AS eligible,
                     COUNT(*) FILTER (WHERE overall_status = 'NOT_ELIGIBLE') AS not_eligible,
                     COUNT(*) FILTER (WHERE overall_status = 'PENDING') AS result_pending
-                FROM facility_activities
-                WHERE field_plan_id = ? AND activity_id = ?
+                FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
+                WHERE fa.field_plan_id = ?
                 """;
     }
 
-    public String getPendingOverallCountQuery() {
+    public String getPendingOverallCountQuery(List<Object> params, String facilityId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(facilityId);
         return """
                 SELECT COUNT(*) FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
                 JOIN field_plans fp ON fp.id = fa.field_plan_id
-                WHERE fa.facility_id = ? AND fa.activity_id = ?
+                WHERE fa.facility_id = ?
                 AND fa.overall_status = 'PENDING' AND fp.plan_type = 'ASSESSMENT'
                 """;
     }
 
-    public String getNonClosedSourcePlansQuery() {
+    public String getNonClosedSourcePlansQuery(List<Object> params, String facilityId, String targetPlanId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(facilityId);
+        params.add(targetPlanId);
         return """
                 SELECT DISTINCT fp.id, fp.name, fp.status
                 FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
                 JOIN field_plans fp ON fp.id = fa.field_plan_id
-                WHERE fa.facility_id = ? AND fa.activity_id = ?
+                WHERE fa.facility_id = ?
                 AND fp.plan_type = 'ASSESSMENT' AND fp.status <> 'CLOSED'
                 AND fa.field_plan_id <> ?
                 """;
     }
 
-    public String getSameProjectEligibleActiveQuery() {
+    public String getSameProjectEligibleActiveQuery(List<Object> params, String facilityId,
+                                                     String projectId, String targetPlanId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(facilityId);
+        params.add(projectId);
+        params.add(targetPlanId);
         return """
                 SELECT fa.id FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
                 JOIN field_plans fp ON fp.id = fa.field_plan_id
-                WHERE fa.facility_id = ? AND fa.activity_id = ?
+                WHERE fa.facility_id = ?
                 AND fp.project_id = ? AND fp.plan_type = 'ASSESSMENT'
                 AND fa.overall_status = 'ELIGIBLE'
                 AND fa.assessment_completion_status = 'ELIGIBLE'
@@ -151,22 +176,29 @@ public class AssessmentQueryBuilder {
                 """;
     }
 
-    public String getExistingOnPlanQuery() {
+    public String getExistingOnPlanQuery(List<Object> params, String planId, String facilityId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(planId);
+        params.add(facilityId);
         return """
-                SELECT id FROM facility_activities
-                WHERE field_plan_id = ? AND facility_id = ? AND activity_id = ?
+                SELECT fa.id FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
+                WHERE fa.field_plan_id = ? AND fa.facility_id = ?
                 LIMIT 1
                 """;
     }
 
-    public String getPlanFacilityByIdQuery() {
+    public String getPlanFacilityByIdQuery(List<Object> params, String planFacilityId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(planFacilityId);
         return ASSESSMENT_FACILITY_SELECT + " AND fa.id = ? ";
     }
 
     public String getPlanFacilitySearchQuery(List<Object> params, String planId,
                                               org.egov.field_planner.web.models.PlanFacilityFilters filters) {
         StringBuilder query = new StringBuilder(ASSESSMENT_FACILITY_SELECT);
-        params.add(AssessmentConstantsHolder.ACTIVITY_ID);
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         query.append(" AND fa.field_plan_id = ? ");
         params.add(planId);
         appendFacilityFilters(params, query, filters);
@@ -177,8 +209,13 @@ public class AssessmentQueryBuilder {
     public String getPlanFacilityCountQuery(List<Object> params, String planId,
                                              org.egov.field_planner.web.models.PlanFacilityFilters filters) {
         StringBuilder query = new StringBuilder(
-                "SELECT COUNT(*) FROM facility_activities fa WHERE fa.activity_id = ? AND fa.field_plan_id = ? ");
-        params.add(AssessmentConstantsHolder.ACTIVITY_ID);
+                """
+                SELECT COUNT(*) FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
+                WHERE fa.field_plan_id = ?
+                """);
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         params.add(planId);
         appendFacilityFilters(params, query, filters);
         return query.toString();
@@ -186,7 +223,7 @@ public class AssessmentQueryBuilder {
 
     public String getSubmissionQueueQuery(List<Object> params, List<String> planIds, String assessmentPhase) {
         StringBuilder query = new StringBuilder(ASSESSMENT_FACILITY_SELECT);
-        params.add(AssessmentConstantsHolder.ACTIVITY_ID);
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         query.append(" AND fa.field_plan_id IN (")
                 .append(String.join(",", planIds.stream().map(id -> "?").toList()))
                 .append(") ");
@@ -209,13 +246,15 @@ public class AssessmentQueryBuilder {
                        fa.installation_field_plan_id, fa.field_plan_facility_id, fa.additional_details,
                        fa.last_modified_time, fp.project_id AS project_id, fp.status AS plan_status, fp.name AS plan_name
                 FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
                 JOIN field_plans fp ON fp.id = fa.field_plan_id
-                WHERE fa.activity_id = ? AND fp.plan_type = 'ASSESSMENT'
+                WHERE fp.plan_type = 'ASSESSMENT'
                 AND fp.project_id = ? AND fp.status = 'CLOSED'
                 AND fa.assessment_completion_status = 'ELIGIBLE'
                 AND fa.installation_field_plan_id IS NULL
                 """);
-        params.add(AssessmentConstantsHolder.ACTIVITY_ID);
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         params.add(projectId);
         if (!CollectionUtils.isEmpty(assessmentPlanIds)) {
             query.append(" AND fa.field_plan_id IN (")
@@ -260,10 +299,5 @@ public class AssessmentQueryBuilder {
             query.append(" AND fa.additional_details ->> 'facilityType' = ? ");
             params.add(filters.getFacilityType());
         }
-    }
-
-    /** Holds activity id to avoid circular dependency on constants in static SQL helpers. */
-    static final class AssessmentConstantsHolder {
-        static final String ACTIVITY_ID = "00000000-0000-4000-8000-000000000001";
     }
 }

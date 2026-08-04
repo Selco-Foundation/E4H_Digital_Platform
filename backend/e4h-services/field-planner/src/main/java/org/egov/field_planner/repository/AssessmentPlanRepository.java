@@ -162,8 +162,9 @@ public class AssessmentPlanRepository {
     }
 
     public AssessmentPlanMetrics getMetrics(String planId) {
+        List<Object> params = new ArrayList<>();
         return jdbcTemplate.queryForObject(
-                queryBuilder.getPlanMetricsQuery(),
+                queryBuilder.getPlanMetricsQuery(params, planId),
                 (rs, rowNum) -> AssessmentPlanMetrics.builder()
                         .remoteAssessmentTotal(rs.getLong("total"))
                         .remoteAssessmentDone(rs.getLong("remote_done"))
@@ -173,17 +174,16 @@ public class AssessmentPlanRepository {
                         .notEligible(rs.getLong("not_eligible"))
                         .resultPending(rs.getLong("result_pending"))
                         .build(),
-                planId,
-                AssessmentConstants.ASSESSMENT_ACTIVITY_ID
+                params.toArray()
         );
     }
 
     public int countFacilitiesOnPlan(String planId) {
+        List<Object> params = new ArrayList<>();
         Integer count = jdbcTemplate.queryForObject(
-                queryBuilder.getPlanFacilityCountByPlanQuery(),
+                queryBuilder.getPlanFacilityCountByPlanQuery(params, planId),
                 Integer.class,
-                planId,
-                AssessmentConstants.ASSESSMENT_ACTIVITY_ID
+                params.toArray()
         );
         return count != null ? count : 0;
     }

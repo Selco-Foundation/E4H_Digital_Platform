@@ -217,7 +217,7 @@ public class AssessmentPlanService {
             assignments.add(ActivityAssignment.builder()
                     .tenantId(plan.getTenantId())
                     .fieldPlanId(plan.getId())
-                    .activityId(AssessmentConstants.ASSESSMENT_ACTIVITY_ID)
+                    .activityId(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT)
                     .activityCode(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT)
                     .assignedTo(assessor.getUserId())
                     .assignedBy(requestInfo.getUserInfo().getUuid())

@@ -7,6 +7,7 @@ import org.egov.field_planner.repository.querybuilder.AssessmentQueryBuilder;
 import org.egov.field_planner.repository.rowmapper.AssessmentFacilityRowMapper;
 import org.egov.field_planner.repository.rowmapper.EligibleFacilityRowMapper;
 import org.egov.field_planner.util.AssessmentConstants;
+import org.egov.tracer.model.CustomException;
 import org.egov.field_planner.web.models.EligibleFacility;
 import org.egov.field_planner.web.models.PlanFacility;
 import org.egov.field_planner.web.models.PlanFacilityFilters;
@@ -35,6 +36,7 @@ public class AssessmentFacilityRepository {
                                          PlanFacilityIncludeItem metadata, String userId) {
         String id = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
+        String activityId = resolveAssessmentActivityId(tenantId);
         Map<String, Object> additionalDetails = buildAdditionalDetails(metadata);
         additionalDetails = org.egov.field_planner.util.AssessmentAdditionalDetailsHelper.appendAuditEvent(
                 additionalDetails,
@@ -58,7 +60,7 @@ public class AssessmentFacilityRepository {
                 id,
                 tenantId,
                 facilityId,
-                AssessmentConstants.ASSESSMENT_ACTIVITY_ID,
+                activityId,
                 planId,
                 AssessmentConstants.PHONE_PENDING,
                 AssessmentConstants.FIELD_PENDING,
@@ -80,13 +82,8 @@ public class AssessmentFacilityRepository {
 
     public Optional<PlanFacility> findById(String planFacilityId) {
         List<Object> params = new ArrayList<>();
-        params.add(AssessmentConstants.ASSESSMENT_ACTIVITY_ID);
-        params.add(planFacilityId);
-        List<PlanFacility> facilities = jdbcTemplate.query(
-                queryBuilder.getPlanFacilityByIdQuery(),
-                facilityRowMapper,
-                params.toArray()
-        );
+        String query = queryBuilder.getPlanFacilityByIdQuery(params, planFacilityId);
+        List<PlanFacility> facilities = jdbcTemplate.query(query, facilityRowMapper, params.toArray());
         return facilities.isEmpty() ? Optional.empty() : Optional.of(facilities.get(0));
     }
 
@@ -179,45 +176,62 @@ public class AssessmentFacilityRepository {
     }
 
     public Optional<String> findExistingOnPlan(String planId, String facilityId) {
+        List<Object> params = new ArrayList<>();
         List<String> ids = jdbcTemplate.query(
-                queryBuilder.getExistingOnPlanQuery(),
+                queryBuilder.getExistingOnPlanQuery(params, planId, facilityId),
                 (rs, rowNum) -> rs.getString("id"),
-                planId,
-                facilityId,
-                AssessmentConstants.ASSESSMENT_ACTIVITY_ID
+                params.toArray()
         );
         return ids.isEmpty() ? Optional.empty() : Optional.of(ids.get(0));
     }
 
     public int countPendingOverallForFacility(String facilityId) {
+        List<Object> params = new ArrayList<>();
         Integer count = jdbcTemplate.queryForObject(
-                queryBuilder.getPendingOverallCountQuery(),
+                queryBuilder.getPendingOverallCountQuery(params, facilityId),
                 Integer.class,
-                facilityId,
-                AssessmentConstants.ASSESSMENT_ACTIVITY_ID
+                params.toArray()
         );
         return count != null ? count : 0;
     }
 
     public List<Map<String, Object>> findNonClosedSourcePlans(String facilityId, String targetPlanId) {
+        List<Object> params = new ArrayList<>();
         return jdbcTemplate.queryForList(
-                queryBuilder.getNonClosedSourcePlansQuery(),
-                facilityId,
-                AssessmentConstants.ASSESSMENT_ACTIVITY_ID,
-                targetPlanId
+                queryBuilder.getNonClosedSourcePlansQuery(params, facilityId, targetPlanId),
+                params.toArray()
         );
     }
 
     public boolean hasSameProjectEligibleActive(String facilityId, String projectId, String targetPlanId) {
+        List<Object> params = new ArrayList<>();
         List<String> ids = jdbcTemplate.query(
-                queryBuilder.getSameProjectEligibleActiveQuery(),
+                queryBuilder.getSameProjectEligibleActiveQuery(params, facilityId, projectId, targetPlanId),
                 (rs, rowNum) -> rs.getString("id"),
-                facilityId,
-                AssessmentConstants.ASSESSMENT_ACTIVITY_ID,
-                projectId,
-                targetPlanId
+                params.toArray()
         );
         return !ids.isEmpty();
+    }
+
+    private String resolveAssessmentActivityId(String tenantId) {
+        String resolvedTenantId = tenantId.contains(".") ? tenantId.substring(0, tenantId.indexOf('.')) : tenantId;
+        List<String> ids = jdbcTemplate.query(
+                """
+                SELECT id FROM activities
+                WHERE tenant_id = ? AND code = ? AND is_active = true
+                LIMIT 1
+                """,
+                (rs, rowNum) -> rs.getString("id"),
+                resolvedTenantId,
+                AssessmentConstants.ACTIVITY_CODE_ASSESSMENT
+        );
+        if (ids.isEmpty()) {
+            throw new CustomException(
+                    AssessmentConstants.ASSESSMENT_ACTIVITY_NOT_FOUND,
+                    "Activity not found for tenant " + tenantId + " and code "
+                            + AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        }
+        return ids.get(0);
     }
 
     private Map<String, Object> buildAdditionalDetails(PlanFacilityIncludeItem metadata) {

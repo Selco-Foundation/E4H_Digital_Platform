@@ -10,7 +10,6 @@ public final class AssessmentConstants {
 
     public static final String PLAN_TYPE_ASSESSMENT = "ASSESSMENT";
     public static final String ACTIVITY_CODE_ASSESSMENT = "ASSESSMENT";
-    public static final String ASSESSMENT_ACTIVITY_ID = "00000000-0000-4000-8000-000000000001";
 
     public static final String PLAN_STATUS_ACTIVE = "ACTIVE";
     public static final String PLAN_STATUS_CLOSED = "CLOSED";
@@ -87,6 +86,7 @@ public final class AssessmentConstants {
     public static final String ASSESSMENT_FACILITY_ELIGIBLE_ACTIVE = "ASSESSMENT_FACILITY_ELIGIBLE_ACTIVE";
     public static final String ASSESSMENT_PLAN_NOT_COMPLETE = "ASSESSMENT_PLAN_NOT_COMPLETE";
     public static final String ASSESSMENT_FACILITY_ONGOING = "ASSESSMENT_FACILITY_ONGOING";
+    public static final String ASSESSMENT_ACTIVITY_NOT_FOUND = "ASSESSMENT_ACTIVITY_NOT_FOUND";
     public static final String ASSESSMENT_ASSESSOR_NOT_FOUND = "ASSESSMENT_ASSESSOR_NOT_FOUND";
     public static final String ASSESSMENT_ASSESSOR_ROLE_REQUIRED = "ASSESSMENT_ASSESSOR_ROLE_REQUIRED";
     public static final String WORKFLOW_TRANSITION_FAILED = "WORKFLOW_TRANSITION_FAILED";
