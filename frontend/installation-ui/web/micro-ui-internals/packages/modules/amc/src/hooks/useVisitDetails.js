@@ -2,6 +2,7 @@ import {useQuery, useQueryClient} from "react-query";
 import { AMCService } from "../services/AMC";
 import { FilestoreService } from "../services/Filestore";
 import {VisitService} from "../services/VisitService";
+import {getFacilityGeography} from "../utilities/GeographyUtils";
 
 const generateAuditTrail = (processInstances) => {
   const auditTrail = [];
@@ -128,6 +129,7 @@ const fetchVisitDetails = async (filter, limit, offset) => {
   const visitData = visitsResponse?.ScheduledVisits?.[0];
 
   const facility = visitData?.facility || {};
+  const geography = getFacilityGeography(facility);
   const auditTrail = generateAuditTrail(visitData.processInstances);
   const { reportDocumentAggregation, workflowDocuments } = await getDocumentAggregation(visitData.processInstances);
   const mdmsConfigResponse = await Digit.MDMSService.getMultipleTypes(Digit.ULBService.getCurrentTenantId(), "AMC", ["FormConfig"]);
@@ -141,8 +143,10 @@ const fetchVisitDetails = async (filter, limit, offset) => {
       facilityName: facility.facility_name,
       facilityId: facility.id,
       facilityType: facility.facility_type,
-      block: facility.additionalDetails?.boundary?.block,
-      district: facility.additionalDetails?.boundary?.district,
+      // Use normalized location fields in visit details.
+      state: geography.state,
+      block: geography.block,
+      district: geography.district,
       status: visitData?.status,
       assigned: visitData?.assignments?.[0]?.user?.name,
     },
