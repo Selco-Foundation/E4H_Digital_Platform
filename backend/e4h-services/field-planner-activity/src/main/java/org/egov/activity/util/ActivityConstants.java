@@ -40,5 +40,21 @@ public class ActivityConstants {
     public static final String INSTALLATION_REPORT_PART_B_EDITOR = "INSTALLATION_REPORT_PART_B_EDITOR";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
+    // User-analytics event (shared user-analytics-report index, see ActivityAnalyticsService)
+    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
+    public static final String MDMS_MASTER_FIELD_PLANNER = "FIELD_PLANNER";
+    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
+    public static final String MDMS_RESPONSE = "MdmsRes";
+    /**
+     * Fallback when a FIELD_PLANNER record does not declare an application. Report submissions come
+     * from Field Assist; the QC review actions carry MANAGEMENT_HUB on their own MDMS records.
+     */
+    public static final String ANALYTICS_APPLICATION_DEFAULT = "FIELD_ASSIST";
+    /** Always FIELD_PLANNER, to separate these events from the FACILITY/BOUNDARY/AMC/PROJECT ones. */
+    public static final String ANALYTICS_MODULE_FIELD_PLANNER = "FIELD_PLANNER";
+    public static final String ANALYTICS_ENTITY_TYPE_ACTIVITY_FACILITY = "ACTIVITY_FACILITY";
+    public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
+    public static final String LOCALIZATION_LOCALE = "en_IN";
+    public static final String LOCALIZATION_TENANT_ID = "in";
 
 }
