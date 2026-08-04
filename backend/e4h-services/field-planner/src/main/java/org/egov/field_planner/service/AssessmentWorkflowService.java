@@ -14,6 +14,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -66,24 +67,35 @@ public class AssessmentWorkflowService {
     }
 
     private RequestInfo systemRequestInfo(RequestInfo requestInfo, String tenantId) {
-        User systemUser = User.builder()
-                .uuid(AssessmentConstants.ACTOR_SYSTEM)
-                .userName("system")
-                .name("System")
-                .type("SYSTEM")
-                .tenantId(tenantId)
-                .roles(List.of(
-                        Role.builder()
-                                .name("System User")
-                                .code(AssessmentConstants.ROLE_SYSTEM_USER)
-                                .tenantId(tenantId)
-                                .build()
-                ))
+        if (requestInfo == null || requestInfo.getUserInfo() == null) {
+            throw new CustomException(AssessmentConstants.WORKFLOW_TRANSITION_FAILED,
+                    "RequestInfo with userInfo is required for system workflow transition");
+        }
+        User user = requestInfo.getUserInfo();
+        List<Role> roles = user.getRoles() != null ? new ArrayList<>(user.getRoles()) : new ArrayList<>();
+        boolean hasSystemUser = roles.stream()
+                .anyMatch(role -> AssessmentConstants.ROLE_SYSTEM_USER.equals(role.getCode()));
+        if (!hasSystemUser) {
+            roles.add(Role.builder()
+                    .name("System User")
+                    .code(AssessmentConstants.ROLE_SYSTEM_USER)
+                    .tenantId(tenantId)
+                    .build());
+        }
+        User workflowUser = User.builder()
+                .uuid(user.getUuid())
+                .userName(user.getUserName())
+                .name(user.getName())
+                .type(user.getType())
+                .tenantId(user.getTenantId() != null ? user.getTenantId() : tenantId)
+                .mobileNumber(user.getMobileNumber())
+                .emailId(user.getEmailId())
+                .roles(roles)
                 .build();
         return RequestInfo.builder()
-                .apiId(requestInfo != null ? requestInfo.getApiId() : null)
-                .authToken(requestInfo != null ? requestInfo.getAuthToken() : null)
-                .userInfo(systemUser)
+                .apiId(requestInfo.getApiId())
+                .authToken(requestInfo.getAuthToken())
+                .userInfo(workflowUser)
                 .build();
     }
 }
