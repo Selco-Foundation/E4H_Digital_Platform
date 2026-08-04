@@ -28,7 +28,7 @@ public class ScheduledVisitSearchCriteria {
     private List<String> districts;   // boundary code strings
     private List<String> blocks;      // boundary code strings
     private Boolean delayed;
-    private Boolean rejected;
+//    private Boolean rejected;
     @JsonProperty("sort_direction")
     private String sortDirection;
     private Boolean includeExpired;

@@ -241,7 +241,7 @@ public class ScheduledVisitQueryBuilder {
         // Delayed/Rejected are mutually-OR'd status filters (a visit is either overdue-but-still-
         // actionable, or terminally rejected, never both) - combined via one parenthesized OR-group,
         // itself ANDed with every other filter category above/below.
-        if (Boolean.TRUE.equals(criteria.getDelayed()) || Boolean.TRUE.equals(criteria.getRejected())) {
+        if (Boolean.TRUE.equals(criteria.getDelayed())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" (");
             boolean firstBranch = true;
@@ -256,10 +256,10 @@ public class ScheduledVisitQueryBuilder {
                 preparedStmtList.add(nowMillis);
                 firstBranch = false;
             }
-            if (Boolean.TRUE.equals(criteria.getRejected())) {
-                if (!firstBranch) queryBuilder.append(" OR ");
-                queryBuilder.append(" sv.status = 'EXPIRED' ");
-            }
+//            if (Boolean.TRUE.equals(criteria.getRejected())) {
+//                if (!firstBranch) queryBuilder.append(" OR ");
+//                queryBuilder.append(" sv.status = 'EXPIRED' ");
+//            }
             queryBuilder.append(") ");
         }
 
