@@ -4,6 +4,7 @@ import { Toast } from "@egovernments/digit-ui-react-components";
 import { clearRejectionReasons } from "../../redux/actions";
 import { ActivityService } from "../../services/Activity";
 import CommonUtils from "../../utilities/CommonUtils";
+import ConfirmActionAlert from "./ConfirmActionAlert";
 
 const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }) => {
 
@@ -11,6 +12,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const [toast, setToast] = useState(null);
+  const [confirmAlert, setConfirmAlert] = useState(null);
 
   useEffect(()=>{
     if(toast){
@@ -137,6 +139,33 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
     }
   }
 
+  const confirmApprove = () => {
+    setConfirmAlert({
+      messageKey: "QC_CONFIRM_APPROVE_INSTALLATION_REPORT",
+      messageParams: { facilityName: selectedFacility?.facilityName },
+      irreversible: true,
+      confirmAction: handleApprove,
+    });
+  }
+
+  const confirmReject = () => {
+    setConfirmAlert({
+      messageKey: "QC_CONFIRM_REJECT_INSTALLATION_REPORT",
+      messageParams: { facilityName: selectedFacility?.facilityName },
+      irreversible: true,
+      confirmAction: handleReject,
+    });
+  }
+
+  const confirmFlagForQC = () => {
+    setConfirmAlert({
+      messageKey: "QC_CONFIRM_FLAG_FOR_QC_INSTALLATION_REPORT",
+      messageParams: { facilityName: selectedFacility?.facilityName },
+      irreversible: true,
+      confirmAction: handleFlagForQC,
+    });
+  }
+
   const showRejectActions = Object.values(rejectionReasons).some(reasons => reasons.length > 0);
 
   return (
@@ -155,7 +184,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
       {showRejectActions ? (
         <div style={{display: 'flex', gap: '12px'}}>
           <button
-            onClick={handleFlagForQC}
+            onClick={confirmFlagForQC}
             style={{
               backgroundColor: "white",
               color: '#C1440E',
@@ -170,7 +199,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
             {t("QC_ACTION_FLAG_FOR_QC")}
           </button>
           <button
-            onClick={handleReject}
+            onClick={confirmReject}
             style={{
               backgroundColor: '#C1440E',
               color: '#fff',
@@ -187,7 +216,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
         </div>
       ) : (
         <button
-          onClick={handleApprove}
+          onClick={confirmApprove}
           style={{
             backgroundColor: '#C1440E',
             color: '#fff',
@@ -215,6 +244,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
           isDleteBtn={true}
         />
       )}
+      <ConfirmActionAlert t={t} alert={confirmAlert} setAlert={setConfirmAlert} />
     </div>
   );
 };
