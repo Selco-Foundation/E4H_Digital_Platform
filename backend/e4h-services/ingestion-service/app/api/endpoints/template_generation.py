@@ -22,6 +22,11 @@ from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_
     lock_excel_columns
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
+from app.utils.assessment_service_client import AssessmentServiceClient
+from app.utils.assessment_fieldplan_handoff import (
+    build_assessment_fieldplan_template_rows,
+    parse_assessment_plan_ids,
+)
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
@@ -48,6 +53,59 @@ DB_CONFIG = {
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD")
 }
+
+
+def _extract_facility_boundary_code(facility: dict) -> str:
+    for key in ("boundary_code", "boundaryCode"):
+        val = facility.get(key)
+        if val:
+            return str(val).strip()
+    for nested_key in ("facility_details", "facilityDetails", "address"):
+        nested = facility.get(nested_key)
+        if isinstance(nested, dict):
+            for key in ("boundary_code", "boundaryCode"):
+                val = nested.get(key)
+                if val:
+                    return str(val).strip()
+    return ""
+
+
+def _resolve_template_boundary_list(
+        facility_service: FacilityTemplateService,
+        request_info,
+        boundary_data: dict,
+        facilities: List[dict],
+) -> List[Boundary]:
+    """
+    BoundaryCodes sheet data. Uses request boundary_data when provided;
+    otherwise derives rows from project facility boundary codes, or falls back
+    to the boundary service catalog (same as facilityIngestion).
+    """
+    boundary_list = flatten_boundaries(boundary_data or {})
+    if boundary_list:
+        return boundary_list
+
+    facility_boundary_codes = {
+        _extract_facility_boundary_code(f) for f in facilities
+    }
+    facility_boundary_codes.discard("")
+
+    try:
+        all_boundaries = facility_service.get_all_boundaries(request_info)
+    except Exception as e:
+        logger.warning(f"Could not load boundaries for template: {e}")
+        return []
+
+    if facility_boundary_codes:
+        filtered = [b for b in all_boundaries if b.code in facility_boundary_codes]
+        if filtered:
+            logger.info(
+                f"Boundary sheet populated with {len(filtered)} rows from project facility boundary codes"
+            )
+            return filtered
+
+    logger.info(f"Boundary sheet populated with {len(all_boundaries)} rows from boundary service")
+    return all_boundaries
 
 @router.post('/facilityIngestionTemplateWithData',
             summary='Generate facility ingestion template Excel file with schema, already present data and boundary codes',
@@ -299,6 +357,90 @@ async def get_facility_ingestion_template_with_data(
     boundary_data = payload.get("boundary_data", {})
     fieldplan_id = payload.get("fieldplan_id")
     project_id = payload.get("project_id")
+    tenant_id = payload.get("tenantId", "in")
+    assessment_plan_ids = parse_assessment_plan_ids(
+        payload.get("assessmentPlanIds") or payload.get("assessment_plan_ids")
+    )
+
+    if assessment_plan_ids:
+        if not project_id or not fieldplan_id:
+            raise HTTPException(
+                status_code=400,
+                detail="project_id and fieldplan_id are required when assessmentPlanIds is provided",
+            )
+        logger.info(
+            f"Generating assessment-eligible field plan template: project_id={project_id}, "
+            f"fieldplan_id={fieldplan_id}, assessment_plan_ids={assessment_plan_ids}"
+        )
+        assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+        facility_client = FacilityServiceClient(facility_service_url)
+        try:
+            eligible_response = assessment_client.search_eligible_facilities(
+                request_info=request_info,
+                project_id=project_id,
+                tenant_id=tenant_id,
+                assessment_plan_ids=assessment_plan_ids,
+            )
+            eligible_facilities = eligible_response.get("facilities") or []
+            facility_ids = [
+                f.get("facilityId") for f in eligible_facilities if f.get("facilityId")
+            ]
+            facilities_by_id = {}
+            if facility_ids:
+                bulk_result = facility_client.bulk_search_facility(
+                    request_info=request_info,
+                    tenant_ids=[tenant_id],
+                    facility_ids=facility_ids,
+                    limit=max(len(facility_ids), 50),
+                    send_non_paginated_response=True,
+                )
+                facilities_by_id = {
+                    f.get("facility_id") or f.get("facilityId"): f
+                    for f in (bulk_result.get("facilities") or [])
+                }
+
+            rows = build_assessment_fieldplan_template_rows(eligible_facilities, facilities_by_id)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_filename = f"assessment_fieldplan_{fieldplan_id}_{timestamp}.xlsx"
+            output_file_path = create_temp_file(suffix=".xlsx")
+            df = pd.DataFrame(rows)
+            df.to_excel(output_file_path, index=False, sheet_name="FacilityMapping")
+
+            dropdowns = {"Included in Field Plan (Mandatory)": ["Yes", "No"]}
+            try:
+                mdms_client = MDMSClient(mdms_url)
+                schema = mdms_client.get_column_definitions_with_metadata(
+                    request_info, "data-ingestion.FieldPlanFacilityIngestionSchema"
+                )
+                for col in schema:
+                    if col.get("code") == "solar_solution_design_type":
+                        options = [
+                            opt.get("name") for opt in col.get("options", []) if opt.get("name")
+                        ]
+                        if options:
+                            dropdowns["Solution Design Type (Mandatory)"] = options
+                        break
+            except Exception as schema_err:
+                logger.warning(f"Could not load solution design dropdown from MDMS: {schema_err}")
+
+            add_dropdowns_to_excel(
+                file_path=output_file_path,
+                sheet_name="FacilityMapping",
+                dropdowns=dropdowns,
+            )
+            autofit_columns(file_path=output_file_path, sheet_name="FacilityMapping")
+            background_tasks.add_task(cleanup_temp_file, output_file_path)
+            return FileResponse(
+                path=output_file_path,
+                filename=output_filename,
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error generating assessment field plan template: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
+
     mdms_client = MDMSClient(mdms_url)
     fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
     try:
@@ -1114,3 +1256,163 @@ async def get_amc_configuration_template(
         logger.error(f"Unhandled error in get_amc_configuration_template: {e}")
         cleanup_temp_file(output_file_path)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.post(
+    '/assessmentPlanIncludeTemplate',
+    summary='Generate assessment plan facility include Excel template',
+    response_description='Returns Excel template with project-linked facilities and Include Yes/No column',
+)
+async def get_assessment_plan_include_template(
+        background_tasks: BackgroundTasks,
+        facility_service: FacilityTemplateService = Depends(),
+        payload: dict = Body(..., description="Payload object"),
+):
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    project_id = payload.get("projectId")
+    plan_id = payload.get("planId")
+    tenant_id = payload.get("tenantId", "in")
+    boundary_data = payload.get("boundary_data", {})
+
+    if not project_id or not plan_id:
+        raise HTTPException(status_code=400, detail="projectId and planId are required")
+
+    logger.info(
+        f"Generating assessment plan include template: project_id={project_id}, plan_id={plan_id}"
+    )
+
+    mdms_client = MDMSClient(mdms_url)
+    project_client = ProjectServiceClient(project_service_url)
+    facility_client = FacilityServiceClient(facility_service_url)
+
+    try:
+        facility_schema = mdms_client.get_column_definitions_with_metadata(
+            request_info, "data-ingestion.FieldPlanFacilityIngestionSchema"
+        )
+
+        project_facilities_response = project_client.search_project_facility(request_info, project_id)
+        project_facilities = project_facilities_response.get("ProjectFacilities", []) or []
+        facility_ids = [
+            pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")
+        ]
+
+        all_facilities = []
+        if facility_ids and facility_client:
+            bulk_result = facility_client.bulk_search_facility(
+                request_info=request_info,
+                tenant_ids=[tenant_id],
+                facility_ids=facility_ids,
+                limit=max(len(facility_ids), 50),
+                send_non_paginated_response=True,
+            )
+            facilities_by_id = {
+                f.get("facility_id") or f.get("facilityId"): f
+                for f in (bulk_result.get("facilities", []) or [])
+            }
+            for pf in project_facilities:
+                fid = pf.get("facilityId")
+                if not fid:
+                    continue
+                facility = dict(facilities_by_id.get(fid, {}))
+                if not facility.get("facility_id") and not facility.get("facilityId"):
+                    facility["facility_id"] = fid
+                facility["include_in_assessment_plan"] = ""
+                all_facilities.append(facility)
+
+        boundary_list = _resolve_template_boundary_list(
+            facility_service, request_info, boundary_data, all_facilities
+        )
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
+        output_file_path = create_temp_file(suffix=".xlsx")
+
+        facility_service.generate_template_file_with_data(
+            output_path=output_file_path,
+            facility_schema=facility_schema,
+            boundary_list=boundary_list,
+            facility_data=all_facilities,
+            type="assessment_include",
+            extra_append_rows=0,
+            optimize_for_performance=True,
+        )
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating assessment plan include template: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    '/assessmentPlanFacilityExport',
+    summary='Export assessment plan facility grid to Excel',
+    response_description='Returns read-only Excel export of plan facilities',
+)
+async def export_assessment_plan_facilities(
+        background_tasks: BackgroundTasks,
+        payload: dict = Body(..., description="Payload object"),
+):
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    plan_id = payload.get("planId")
+    filters = payload.get("filters") or {}
+
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="planId is required")
+
+    logger.info(f"Exporting assessment plan facilities: plan_id={plan_id}")
+    assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+
+    try:
+        search_result = assessment_client.search_plan_facilities(
+            request_info=request_info,
+            plan_id=plan_id,
+            filters=filters,
+            export_all=True,
+            include_response_summary=True,
+        )
+        facilities = search_result.get("facilities", []) or []
+
+        rows = []
+        for facility in facilities:
+            rows.append({
+                "Plan Facility Id": facility.get("planFacilityId", ""),
+                "Facility Id": facility.get("facilityId", ""),
+                "Facility Name": facility.get("facilityName", ""),
+                "Category": facility.get("facilityCategory", ""),
+                "Type": facility.get("facilityType", ""),
+                "District": facility.get("district", ""),
+                "Block": facility.get("block", ""),
+                "Remote Status": facility.get("phoneStatus", ""),
+                "On-site Status": facility.get("fieldStatus", ""),
+                "Assessment Result": facility.get("overallStatus", ""),
+                "Completion Status": facility.get("assessmentCompletionStatus", ""),
+                "Phone Response Summary": "; ".join(facility.get("phoneResponseSummary") or []),
+                "Field Response Summary": "; ".join(facility.get("fieldResponseSummary") or []),
+            })
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"assessment_plan_facilities_{plan_id}_{timestamp}.xlsx"
+        output_file_path = create_temp_file(suffix=".xlsx")
+
+        df = pd.DataFrame(rows)
+        df.to_excel(output_file_path, index=False, sheet_name="PlanFacilities")
+        autofit_columns(file_path=output_file_path, sheet_name="PlanFacilities")
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting assessment plan facilities: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

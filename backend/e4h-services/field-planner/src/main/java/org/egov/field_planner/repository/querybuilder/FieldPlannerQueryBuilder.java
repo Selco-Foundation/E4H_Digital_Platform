@@ -7,6 +7,7 @@ import org.egov.common.models.core.URLParams;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
+import org.egov.field_planner.util.FieldPlannerConstants;
 import org.egov.field_planner.web.models.FieldPlanSearchRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -100,6 +101,7 @@ public class FieldPlannerQueryBuilder {
             queryBuilder.append(" tenant_id like ? ");
             preparedStmtList.add(fieldPlan.getTenantId() + '%');
         }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
         queryBuilder.append("ORDER BY created_time DESC LIMIT 1;");
 
         log.trace("Exiting getHighestFielPlanNameQuery method");
@@ -115,6 +117,7 @@ public class FieldPlannerQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(query);
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
 
 //        if (criteria.getFromDate() != null && criteria.getFromDate() != 0) {
@@ -185,6 +188,12 @@ public class FieldPlannerQueryBuilder {
             preparedStmtList.add(lastChangedSince);
         }
         log.trace("Exiting extracted method");
+    }
+
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" fp.plan_type = ? ");
+        preparedStmtList.add(FieldPlannerConstants.PLAN_TYPE_FIELD_PLAN);
     }
 
     private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {

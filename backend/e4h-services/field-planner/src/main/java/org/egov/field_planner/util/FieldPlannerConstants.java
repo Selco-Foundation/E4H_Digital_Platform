@@ -29,5 +29,6 @@ public class FieldPlannerConstants {
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
+    public static final String PLAN_TYPE_FIELD_PLAN = "FIELD_PLAN";
 
 }
