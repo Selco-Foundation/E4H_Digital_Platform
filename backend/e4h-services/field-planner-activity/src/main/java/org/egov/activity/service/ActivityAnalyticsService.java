@@ -5,8 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.util.MDMSUtils;
+import org.egov.activity.validator.ActivityValidator;
+import org.egov.activity.web.models.ActivityAssignment;
 import org.egov.activity.web.models.ActivityFacility;
 import org.egov.activity.web.models.Facility;
+import org.egov.activity.web.models.FieldPlan;
 import org.egov.activity.web.models.UserAnalyticsEvent;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.Role;
@@ -35,9 +38,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.egov.activity.util.ActivityConstants.ANALYTICS_APPLICATION_DEFAULT;
+import static org.egov.activity.util.ActivityConstants.ANALYTICS_APPLICATION_MANAGEMENT_HUB;
+import static org.egov.activity.util.ActivityConstants.ANALYTICS_ENTITY_TYPE_ACTIVITY_ASSIGNMENT;
 import static org.egov.activity.util.ActivityConstants.ANALYTICS_ENTITY_TYPE_ACTIVITY_FACILITY;
+import static org.egov.activity.util.ActivityConstants.ANALYTICS_EVENT_ACTIVITY_ASSIGNED;
 import static org.egov.activity.util.ActivityConstants.ANALYTICS_MODULE_FIELD_PLANNER;
 import static org.egov.activity.util.ActivityConstants.BOUNDARY_LOCALIZATION_MODULE;
+import static org.egov.activity.util.ActivityConstants.GEOGRAPHY_DETAILS_STATE;
 import static org.egov.activity.util.ActivityConstants.LOCALIZATION_LOCALE;
 import static org.egov.activity.util.ActivityConstants.LOCALIZATION_TENANT_ID;
 import static org.egov.activity.util.ActivityConstants.MDMS_MASTER_FIELD_PLANNER;
@@ -51,12 +58,17 @@ import static org.egov.activity.util.ActivityConstants.TENANTID;
  * by boundary-service, the AMC events emitted by amc-scheduler-service and the project events
  * emitted by project. All events from this producer carry {@code module = FIELD_PLANNER}.
  * <p>
- * One entry point: {@link #publishWorkflowEvent}, called once per successful
- * {@code /activity/v1/activities/workflow/update} transition. The bulk endpoint
- * {@code /activity/v1/activities/bulk/workflow/update} loops over that same method, so
- * bulk-approved reports are counted too rather than silently disappearing — that loop shares one
- * {@link AnalyticsContext} so a bulk approval of N reports still costs one MDMS call and one
- * localization call per state, not N of each.
+ * Two entry points:
+ * <ul>
+ *   <li>{@link #publishWorkflowEvent}, called once per successful
+ *   {@code /activity/v1/activities/workflow/update} transition. The bulk endpoint
+ *   {@code /activity/v1/activities/bulk/workflow/update} loops over that same method, so
+ *   bulk-approved reports are counted too rather than silently disappearing — that loop shares one
+ *   {@link AnalyticsContext} so a bulk approval of N reports still costs one MDMS call and one
+ *   localization call per state, not N of each.</li>
+ *   <li>{@link #publishAssignmentEvents}, called once per staffing row created by
+ *   {@code /activity/v1/activities/_assign-activity}.</li>
+ * </ul>
  * <p>
  * The event type comes from the {@code USER_ANALYTICS.FIELD_PLANNER} master by matching the
  * request's workflow action, mirroring {@code SemAnalyticsService} and {@code AmcAnalyticsService}.
@@ -94,14 +106,21 @@ public class ActivityAnalyticsService {
     private final Producer producer;
     private final RestTemplate restTemplate;
     private final ObjectMapper mapper;
+    /**
+     * Only for {@link ActivityValidator#getFieldPlanById}: an assignment carries a fieldPlanId but
+     * not the plan itself, and the plan is where the state boundary code lives.
+     */
+    private final ActivityValidator activityValidator;
 
     public ActivityAnalyticsService(ActivityConfiguration configs, MDMSUtils mdmsUtils, Producer producer,
-                                    RestTemplate restTemplate, @Qualifier("objectMapper") ObjectMapper mapper) {
+                                    RestTemplate restTemplate, @Qualifier("objectMapper") ObjectMapper mapper,
+                                    ActivityValidator activityValidator) {
         this.configs = configs;
         this.mdmsUtils = mdmsUtils;
         this.producer = producer;
         this.restTemplate = restTemplate;
         this.mapper = mapper;
+        this.activityValidator = activityValidator;
     }
 
     /**
@@ -195,6 +214,111 @@ public class ActivityAnalyticsService {
     }
 
     /**
+     * Publishes one ACTIVITY_ASSIGNED event per staffing row created by
+     * {@code /activity/v1/activities/_assign-activity} — that endpoint is how a Management Hub user
+     * puts a field staff member, field supervisor or QC reviewer on a field plan, and one call
+     * carries the whole roster, so staffing a plan with three people yields three events, each with
+     * its own assignment id as {@code entity_id}.
+     * <p>
+     * There is no workflow action here to look up in the FIELD_PLANNER master, so {@code event_type}
+     * is fixed and the role fields come from the plain USER_TYPE best-match against the acting
+     * user's roles, the way {@code ProjectAnalyticsService} resolves them. Note these describe the
+     * <em>assigner</em>, not the person being assigned — the roster row itself is the entity.
+     * <p>
+     * Best-effort per assignment: a failure on one row is logged and the rest still publish.
+     *
+     * @param assignments the assignments as enriched on create, i.e. with their ids set
+     */
+    public void publishAssignmentEvents(RequestInfo requestInfo, List<ActivityAssignment> assignments) {
+        if (assignments == null || assignments.isEmpty()) {
+            return;
+        }
+        // One memo for the whole roster: the MDMS masters, the field plan and its localized state
+        // are each resolved once even though a staffing call creates several assignments.
+        AnalyticsContext ctx = new AnalyticsContext();
+        User user = (requestInfo != null) ? requestInfo.getUserInfo() : null;
+        Set<String> userRoleCodes = extractUserRoleCodes(user);
+        String eventTime = Instant.now().toString();
+        int published = 0;
+
+        for (ActivityAssignment assignment : assignments) {
+            if (assignment == null || assignment.getId() == null) {
+                continue;
+            }
+            try {
+                String tenantId = (assignment.getTenantId() != null) ? assignment.getTenantId() : TENANTID;
+                List<Map<String, Object>> userTypeRecords = ctx.masters(requestInfo, tenantId, mdmsUtils)
+                        .getOrDefault(MDMS_MASTER_USER_TYPE, Collections.emptyList());
+                UserType userType = resolveUserTypeByUserRoles(userTypeRecords, userRoleCodes);
+
+                UserAnalyticsEvent event = UserAnalyticsEvent.builder()
+                        .eventId(UUID.randomUUID().toString())
+                        .eventType(ANALYTICS_EVENT_ACTIVITY_ASSIGNED)
+                        .eventTime(eventTime)
+                        .application(ANALYTICS_APPLICATION_MANAGEMENT_HUB)
+                        .user(user)
+                        .systemRole(userType.systemRole)
+                        .primaryRole(userType.primaryRole)
+                        .userCategory(userType.userCategory)
+                        .state(resolveAssignmentState(assignment, requestInfo, tenantId, ctx))
+                        .module(ANALYTICS_MODULE_FIELD_PLANNER)
+                        .entityId(assignment.getId())
+                        .entityType(ANALYTICS_ENTITY_TYPE_ACTIVITY_ASSIGNMENT)
+                        .build();
+                producer.push(configs.getUserAnalyticsTopic(), event);
+                published++;
+            } catch (Exception e) {
+                log.error("Activity analytics: failed to publish {} event for activityAssignmentId={}",
+                        ANALYTICS_EVENT_ACTIVITY_ASSIGNED, assignment.getId(), e);
+            }
+        }
+        log.info("Activity analytics: published {} {} event(s)", published, ANALYTICS_EVENT_ACTIVITY_ASSIGNED);
+    }
+
+    /**
+     * Localized state for an assignment, taken from its field plan's
+     * {@code geographyDetails.state} — a boundary code such as {@code India_Karnataka}. The
+     * assign-activity payload carries only a fieldPlanId, so the plan is fetched from field-planner
+     * unless the caller already inlined it; both the fetch and the localization are memoized, and a
+     * whole roster names one plan, so this costs one call per request.
+     */
+    private String resolveAssignmentState(ActivityAssignment assignment, RequestInfo requestInfo, String tenantId,
+                                          AnalyticsContext context) {
+        String stateBoundaryCode = geographyStateCode(assignment.getFieldPlan());
+        String fieldPlanId = assignment.getFieldPlanId();
+        if (stateBoundaryCode == null && fieldPlanId != null) {
+            // Not computeIfAbsent: a plan we could not fetch maps to null, and that needs caching
+            // too rather than re-fetching it for every assignment in the roster.
+            if (!context.planStateCodeById.containsKey(fieldPlanId)) {
+                context.planStateCodeById.put(fieldPlanId, fetchPlanStateCode(requestInfo, fieldPlanId, tenantId));
+            }
+            stateBoundaryCode = context.planStateCodeById.get(fieldPlanId);
+        }
+        return resolveState(stateBoundaryCode, requestInfo, context, assignment.getId());
+    }
+
+    /**
+     * The plan's state boundary code from field-planner, or null if it cannot be fetched. Swallows
+     * its own failures rather than letting them reach the caller's catch, so an unreachable
+     * field-planner costs the event its state dimension instead of costing us the event.
+     */
+    private String fetchPlanStateCode(RequestInfo requestInfo, String fieldPlanId, String tenantId) {
+        try {
+            return geographyStateCode(activityValidator.getFieldPlanById(requestInfo, fieldPlanId, tenantId));
+        } catch (Exception e) {
+            log.warn("Activity analytics: could not fetch fieldPlanId={} for state, state will be null: {}",
+                    fieldPlanId, e.getMessage());
+            return null;
+        }
+    }
+
+    /** The state boundary code out of a field plan's geographyDetails, or null when absent. */
+    private String geographyStateCode(FieldPlan fieldPlan) {
+        Map<String, Object> geographyDetails = (fieldPlan != null) ? fieldPlan.getGeographyDetails() : null;
+        return (geographyDetails != null) ? asString(geographyDetails.get(GEOGRAPHY_DETAILS_STATE)) : null;
+    }
+
+    /**
      * Finds the USER_ANALYTICS.FIELD_PLANNER record for a workflow action. Among the active records
      * naming the action, one that lists {@code priorStatus} in its {@code prior_status} wins;
      * otherwise the record with no {@code prior_status} is the fallback. That is how one action
@@ -267,15 +391,46 @@ public class ActivityAnalyticsService {
     }
 
     /**
-     * Resolves the localized state name for a facility boundary code, memoizing per state code in
-     * the context so a bulk workflow update costs one localization call per distinct state.
+     * primary_role / user_category / system_role for a flow with no workflow action to key off:
+     * shortlist active USER_TYPE records whose system_roles the user fully holds, most specific
+     * (largest system_roles) first, and take the first. Same lookup {@code ProjectAnalyticsService}
+     * uses; {@link #resolveUserTypeBySystemRole} is the action-driven variant.
+     */
+    private UserType resolveUserTypeByUserRoles(List<Map<String, Object>> userTypeRecords, Set<String> userRoleCodes) {
+        UserType result = new UserType();
+        if (userRoleCodes.isEmpty()) {
+            return result;
+        }
+        List<Map<String, Object>> candidates = userTypeRecords.stream()
+                .filter(this::isActive)
+                .filter(record -> !asStringList(record.get("system_roles")).isEmpty())
+                .filter(record -> userRoleCodes.containsAll(asStringList(record.get("system_roles"))))
+                .sorted(Comparator.comparingInt(
+                        (Map<String, Object> record) -> asStringList(record.get("system_roles")).size()).reversed())
+                .toList();
+        if (candidates.isEmpty()) {
+            log.info("Activity analytics: no {} match for roles {}", MDMS_MASTER_USER_TYPE, userRoleCodes);
+            return result;
+        }
+        Map<String, Object> match = candidates.get(0);
+        List<String> systemRoles = asStringList(match.get("system_roles"));
+        // system_role: the matched record's role the user actually holds, in the user's role order.
+        result.systemRole = userRoleCodes.stream().filter(systemRoles::contains).findFirst().orElse(null);
+        result.primaryRole = asString(match.get("program_role"));
+        result.userCategory = asString(match.get("user_category"));
+        return result;
+    }
+
+    /**
+     * Resolves the localized state name for a boundary code, memoizing per state code in the
+     * context so a bulk workflow update costs one localization call per distinct state.
      */
     private String resolveState(String boundaryCode, RequestInfo requestInfo, AnalyticsContext context,
-                                String activityFacilityId) {
+                                String entityId) {
         String stateBoundaryCode = extractStateBoundaryCode(boundaryCode);
         if (stateBoundaryCode == null) {
-            log.info("Activity analytics: no state segment in boundaryCode={} for activityFacilityId={}, "
-                    + "state will be null", boundaryCode, activityFacilityId);
+            log.info("Activity analytics: no state segment in boundaryCode={} for entityId={}, "
+                    + "state will be null", boundaryCode, entityId);
             return null;
         }
         // Not computeIfAbsent: a failed localization is null, and we want to cache that too rather
@@ -459,6 +614,8 @@ public class ActivityAnalyticsService {
     public static class AnalyticsContext {
         private final Map<String, Map<String, List<Map<String, Object>>>> mastersByTenant = new HashMap<>();
         private final Map<String, String> stateNameByCode = new HashMap<>();
+        /** State boundary code per field plan id, so one staffing roster fetches its plan once. */
+        private final Map<String, String> planStateCodeById = new HashMap<>();
         private final Set<String> loggedSkips = new LinkedHashSet<>();
 
         private Map<String, List<Map<String, Object>>> masters(RequestInfo requestInfo, String tenantId,
@@ -486,8 +643,13 @@ public class ActivityAnalyticsService {
         }
     }
 
-    /** The two role-derived fields resolved together from a single USER_TYPE record. */
+    /**
+     * The role-derived fields resolved together from a single USER_TYPE record. systemRole is only
+     * filled by {@link #resolveUserTypeByUserRoles}; the workflow path derives it from the matched
+     * action's action_roles instead.
+     */
     private static class UserType {
+        private String systemRole;
         private String primaryRole;
         private String userCategory;
     }
