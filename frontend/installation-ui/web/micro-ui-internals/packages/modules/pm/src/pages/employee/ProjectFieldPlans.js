@@ -159,8 +159,8 @@ const ProjectFieldPlans = () => {
   const amcColumns = useMemo(
     () => [
       {
-        id: "fieldPlanName",
-        Header: () => GetHead(t("FIELD_PLAN_NAME")),
+        id: "amcPlanName",
+        Header: () => GetHead(t("AMC_PLAN_NAME")),
         Cell: ({ row }) => (
           <Link
             to={`/${window.contextPath}/employee/pm/project/${projectId}/amc/create?amcConfigurationId=${row.original["id"]}&key=1`}
