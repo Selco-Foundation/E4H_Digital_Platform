@@ -576,6 +576,7 @@ public class FieldPlannerService {
     //   - solar_charge_controller_*: DC_OFF_GRID template (no dedicated inverter - CCU serves that role)
     private static final List<String[]> INVERTER_KEY_CANDIDATES = List.of(
             new String[]{"inverter_capacity", "inverter_make"},
+            new String[]{"solar_on_grid_pcu_inverter_capacity", "solar_on_grid_pcu_inverter_make"},
             new String[]{"solar_hybrid_pcu_capacity", "solar_hybrid_pcu_make"},
             new String[]{"solar_charge_controller_capacity", "solar_charge_controller_make"}
     );
