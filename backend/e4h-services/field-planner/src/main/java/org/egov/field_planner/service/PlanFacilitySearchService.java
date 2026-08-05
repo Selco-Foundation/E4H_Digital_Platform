@@ -1,6 +1,7 @@
 package org.egov.field_planner.service;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.field_planner.repository.AssessmentFacilityRepository;
 import org.egov.field_planner.repository.AssessmentSubmissionRepository;
 import org.egov.field_planner.util.AssessmentAdditionalDetailsHelper;
@@ -24,18 +25,25 @@ public class PlanFacilitySearchService {
     private final AssessmentFacilityMetadataService facilityMetadataService;
 
     public PlanFacilitySearchResponse search(PlanFacilitySearchRequest request, int limit, int offset) {
-        boolean exportAll = Boolean.TRUE.equals(request.getExportAll());
-        boolean includeSummary = Boolean.TRUE.equals(request.getIncludeResponseSummary());
+        PlanFacilitySearchCriteria criteria = request.getCriteria();
+        String planId = criteria.getPlanId();
+        if (StringUtils.isBlank(planId)) {
+            throw new org.egov.tracer.model.CustomException(
+                    AssessmentConstants.ASSESSMENT_PLAN_NOT_FOUND, "planId is required");
+        }
+        PlanFacilityFilters filters = criteria.getFilters();
+        boolean exportAll = Boolean.TRUE.equals(criteria.getExportAll());
+        boolean includeSummary = Boolean.TRUE.equals(criteria.getIncludeResponseSummary());
         int effectiveLimit = exportAll ? Math.max(limit, 10000) : limit;
         int effectiveOffset = exportAll ? 0 : offset;
 
         List<PlanFacility> facilities = facilityRepository.searchByPlan(
-                request.getPlanId(), request.getFilters(), effectiveLimit, effectiveOffset);
+                planId, filters, effectiveLimit, effectiveOffset);
         facilities.forEach(f -> {
             facilityMetadataService.enrichDisplayFields(f);
             enrichFacility(f, includeSummary, request.getRequestInfo());
         });
-        int total = facilityRepository.countByPlan(request.getPlanId(), request.getFilters());
+        int total = facilityRepository.countByPlan(planId, filters);
 
         return PlanFacilitySearchResponse.builder()
                 .facilities(facilities)
