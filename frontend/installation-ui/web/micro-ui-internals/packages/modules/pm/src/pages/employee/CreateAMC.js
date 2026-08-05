@@ -8,6 +8,7 @@ import { Stepper } from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
 import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
 import { useHistory } from "react-router-dom";
+import { useQueryClient } from "react-query";
 import { PMService } from "../../services/PMService";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
@@ -68,6 +69,7 @@ const CreateAMC = () => {
   const projectId = url.split("project/")[1].split("/")[0];
   const amcConfigurationId = new URLSearchParams(window.location.search).get("amcConfigurationId");
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -356,6 +358,7 @@ const CreateAMC = () => {
         })
         setInvalidDataError(null);
         setUploadedValidFile(true);
+        await queryClient.invalidateQueries(["AMC_CONFIGURATION"]);
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
@@ -376,7 +379,7 @@ const CreateAMC = () => {
     }
 
     setFile(uploadedFile);
-  }, [amcConfigurationId, createdProject, persistedFormData, t]);
+  }, [amcConfigurationId, createdProject, persistedFormData, queryClient, t]);
 
   const validateActivityData = (activityData) => {
     let faultyData = false;
@@ -757,6 +760,7 @@ const CreateAMC = () => {
           try {
             setBlockUI(true);
             await AMCService.updateAMCConfigurations(buildUpdateAMCConfigurationRequest(persistedFormData));
+            await queryClient.invalidateQueries(["AMC_CONFIGURATION"]);
             dispatch(
               populateResponsePage({
                 response: {},
