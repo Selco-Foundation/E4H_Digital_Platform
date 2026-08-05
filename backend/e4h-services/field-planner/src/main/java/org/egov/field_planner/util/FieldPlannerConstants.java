@@ -31,4 +31,28 @@ public class FieldPlannerConstants {
 
     public static final String PLAN_TYPE_FIELD_PLAN = "FIELD_PLAN";
 
+    // User-analytics event (shared user-analytics-report index, see FieldPlannerAnalyticsService)
+    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
+    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
+    /** Field plans are authored in the Management Hub, not in Field Assist. */
+    public static final String ANALYTICS_APPLICATION = "MANAGEMENT_HUB";
+    /** Always FIELD_PLANNER, to separate these events from the FACILITY/BOUNDARY/AMC/PROJECT ones. */
+    public static final String ANALYTICS_MODULE_FIELD_PLANNER = "FIELD_PLANNER";
+    public static final String ANALYTICS_ENTITY_TYPE_FIELD_PLAN = "FIELD_PLAN";
+    public static final String ANALYTICS_ENTITY_TYPE_ICC_REPORT = "ICC_REPORT";
+    public static final String ANALYTICS_EVENT_FIELD_PLAN_CREATE = "FIELD_PLAN_CREATE";
+    /**
+     * An update that moves the plan into SCHEDULED — the point the plan actually goes live. Plain
+     * edits are deliberately not tracked; a plan is edited any number of times while in DRAFT and
+     * those edits are not business events.
+     */
+    public static final String ANALYTICS_EVENT_FIELD_PLAN_SCHEDULED = "FIELD_PLAN_SCHEDULED";
+    public static final String ANALYTICS_EVENT_ICC_REPORT_UPLOAD = "ICC_REPORT_UPLOAD";
+    public static final String SCHEDULED_STATUS = "SCHEDULED";
+    /** Key holding the field plan's state boundary code inside FieldPlan.geographyDetails. */
+    public static final String GEOGRAPHY_DETAILS_STATE = "state";
+    public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
+    public static final String LOCALIZATION_LOCALE = "en_IN";
+    public static final String LOCALIZATION_TENANT_ID = "in";
+
 }
