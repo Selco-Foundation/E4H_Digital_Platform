@@ -848,6 +848,7 @@ const CreateAssessment = () => {
         break;
       case 3:
         await saveActivityDetailsAndUpdateAssessmentPlan(data.activityUserAssignment);
+        break;
     }
   };
 

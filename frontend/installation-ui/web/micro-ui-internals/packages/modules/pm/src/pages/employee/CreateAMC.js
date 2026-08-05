@@ -806,6 +806,7 @@ const CreateAMC = () => {
           );
           history.push(`/${window?.contextPath}/employee/pm/response`);
         }
+        break;
     }
   };
 
