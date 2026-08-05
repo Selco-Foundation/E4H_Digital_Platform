@@ -13,7 +13,6 @@ import { AssessmentPlanService } from "../../services/AssessmentPlan";
 import { PMService } from "../../services/PMService";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
-import useAssessmentActivityAssignment from "../../hooks/useAssessmentActivityAssignment";
 import CommonUtils from "../../utilities/CommonUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
@@ -76,14 +75,6 @@ const CreateAssessment = () => {
   const { data: organizationUserData } = useOrganizationUser({
     organizationIds,
   });
-
-  const {
-    isLoading: assessmentActivityAssignmentDataLoading,
-    data: assessmentActivityAssignmentData,
-    revalidate: invalidateAssessmentActivityAssignmentData
-  } = useAssessmentActivityAssignment({
-    assessmentPlanIds: [assessmentId],
-  })
 
   useEffect(() => {
     if (createdAssessmentPlan?.id && key) {
@@ -206,26 +197,26 @@ const CreateAssessment = () => {
           activity: activity,
           users: [
             ...(
-              assessmentActivityAssignmentData?.activityAssignments?.filter((assignment) => assignment.activityCode === activity.code)?.length
-                ? assessmentActivityAssignmentData.activityAssignments
-                  .filter((assignment) => assignment.activityCode === activity.code)
-                  .sort((a, b) => a.auditDetails.createdTime - b.auditDetails.createdTime)
-                  .map((assignment) => ({
-                    id: assignment.id,
-                    savedAssignment: assignment,
+              createdAssessmentPlan?.assessors?.length
+                ? createdAssessmentPlan.assessors.map((assessor) => {
+                  const assignedUser = organizationUserData?.organizationUsers?.filter((user) => user.userId === assessor.userId)?.[0];
+
+                  return {
                     organization: {
-                      value: organizationData?.organizations?.filter((organization) => (
-                        organization?.id === organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0]?.organizationId
-                      ))?.[0],
+                      value: organizationData?.organizations?.filter((organization) => organization?.id === assignedUser?.organizationId)?.[0],
                       error: "",
                     },
-                    role: { value: assignment.role, error: "", },
+                    role: {
+                      value: activity.roles?.filter((role) => role?.code === assessor.role)?.[0],
+                      error: "",
+                    },
                     email: {
-                      value: organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0],
+                      value: assignedUser,
                       error: "",
                     },
-                    isEmailSent: assignment.isEmailSent,
-                  }))
+                    isEmailSent: false,
+                  };
+                })
                 : [
                   {
                     organization: { value: null, error: "", },
@@ -238,7 +229,7 @@ const CreateAssessment = () => {
           ],
         }))
       : null
-  }, [activityData, assessmentActivityAssignmentData, organizationData, organizationUserData])
+  }, [activityData, createdAssessmentPlan, organizationData, organizationUserData])
 
   useEffect(() => {
     if (createdAssessmentPlan?.id && boundaryData) {
@@ -967,7 +958,7 @@ const CreateAssessment = () => {
     }
   }
 
-  if (projectDataLoading || assessmentPlanDataLoading || assessmentActivityAssignmentDataLoading || facilityUploadStatusLoading) {
+  if (projectDataLoading || assessmentPlanDataLoading || facilityUploadStatusLoading) {
     return <Loader />;
   }
 
