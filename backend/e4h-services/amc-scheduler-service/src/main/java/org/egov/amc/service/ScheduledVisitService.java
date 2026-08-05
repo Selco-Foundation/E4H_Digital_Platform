@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.egov.amc.util.AmcConstants.*;
 
@@ -627,6 +628,68 @@ public class ScheduledVisitService {
             }
         }
         return amcConfigurationList;
+    }
+
+    /**
+     * Builds an AMC visit summary (current visit number vs total planned visits, completed and lapsed
+     * visit numbers) per requested facilityId.
+     */
+    public List<FacilityAmcSummary> getFacilityAmcSummary(ScheduledVisitSearchRequest request, String tenantId) {
+        if (request.getSearchCriteria() == null
+                || request.getSearchCriteria().getFacilityIds() == null
+                || request.getSearchCriteria().getFacilityIds().isEmpty()) {
+            throw new CustomException("AMC_SUMMARY_ERROR", "facilityIds is mandatory for AMC summary search");
+        }
+        scheduledVisitsValidator.validateSearchScheduledVisitRequest(request, amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(), tenantId);
+
+        List<String> facilityIds = request.getSearchCriteria().getFacilityIds();
+        List<ScheduledVisit> scheduledVisits = scheduledVisitsRepository.getScheduledVisit(
+                request, amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(), tenantId, false, null);
+
+        Map<String, List<ScheduledVisit>> visitsByFacility = scheduledVisits.stream()
+                .collect(Collectors.groupingBy(ScheduledVisit::getFacilityId));
+
+        List<FacilityAmcSummary> summaries = new ArrayList<>();
+        for (String facilityId : facilityIds) {
+            List<ScheduledVisit> visits = visitsByFacility.getOrDefault(facilityId, Collections.emptyList());
+
+            List<Integer> completedAmcNumbers = visits.stream()
+                    .filter(v -> APPROVED_STATUS.equalsIgnoreCase(v.getStatus()))
+                    .map(ScheduledVisit::getVisitNumber)
+                    .sorted()
+                    .toList();
+
+            List<Integer> lapsedAmcNumbers = visits.stream()
+                    .filter(v -> EXPIRED_STATUS.equalsIgnoreCase(v.getStatus()))
+                    .map(ScheduledVisit::getVisitNumber)
+                    .sorted()
+                    .toList();
+
+            ScheduledVisit scheduledVisit = visits.stream()
+                    .filter(v -> SCHEDULED_STATUS.equalsIgnoreCase(v.getStatus()))
+                    .findFirst()
+                    .orElse(null);
+
+            Integer currentVisitNumber = scheduledVisit != null ? scheduledVisit.getVisitNumber() : 0;
+            AmcConfiguration amcConfiguration = scheduledVisit != null
+                    ? scheduledVisit.getAmcConfiguration()
+                    : visits.stream().map(ScheduledVisit::getAmcConfiguration).filter(Objects::nonNull).findFirst().orElse(null);
+
+            int totalVisits = 0;
+            if (amcConfiguration != null && amcConfiguration.getDurationMonths() != null
+                    && amcConfiguration.getVisitFrequencyMonths() != null && amcConfiguration.getVisitFrequencyMonths() != 0) {
+                totalVisits = amcConfiguration.getDurationMonths() / amcConfiguration.getVisitFrequencyMonths();
+            }
+
+            summaries.add(FacilityAmcSummary.builder()
+                    .facilityId(facilityId)
+                    .amcNumber(currentVisitNumber + "/" + totalVisits)
+                    .completedAmcNumbers(completedAmcNumbers)
+                    .lapsedAmcNumbers(lapsedAmcNumbers)
+                    .build());
+        }
+
+        return summaries;
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {

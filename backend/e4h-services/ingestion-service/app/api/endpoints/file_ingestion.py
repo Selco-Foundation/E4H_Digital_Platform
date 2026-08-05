@@ -2,7 +2,9 @@ import io
 import json
 import math
 import os
+import shutil
 import tempfile
+import zipfile
 from datetime import datetime, timedelta
 import uuid
 from typing import Optional, Dict, List, Set
@@ -41,6 +43,7 @@ from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     resolve_mapped_vendor_for_facility_row, build_field_plan_facility_bulk_entry, \
+    build_field_plan_facility_additional_details, build_field_plan_facility_additional_fields, \
     get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
     get_user_creation_payload_supervisors, \
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
@@ -65,6 +68,15 @@ from dotenv import load_dotenv
 from collections import defaultdict
 
 
+ALLOWED_EXCEL_EXTENSIONS = {"xlsx", "xls"}
+
+
+def _has_allowed_excel_extension(filename: Optional[str]) -> bool:
+    if not filename or "." not in filename:
+        return False
+    return filename.rsplit(".", 1)[-1].strip().lower() in ALLOWED_EXCEL_EXTENSIONS
+
+
 async def _save_upload_to_temp_file(upload_file: UploadFile, suffix: str = ".xlsx", chunk_size: int = 1024 * 1024):
     """
     Persist an UploadFile to disk in chunks to avoid loading
@@ -82,6 +94,37 @@ async def _save_upload_to_temp_file(upload_file: UploadFile, suffix: str = ".xls
     finally:
         temp_file.close()
     return temp_file, total_bytes
+
+
+VALIDATION_ERRORS_SHEET = "Validation Errors"
+
+
+def _write_validation_errors_sheet(xlsx_path: str, error_message: str) -> int:
+    """Replaces the `VALIDATION_ERRORS_SHEET` sheet in the workbook at xlsx_path with one row per
+    line of error_message, and saves in place. A pre-existing sheet from an earlier failed attempt
+    is dropped first, so re-uploading a previously-annotated file always reflects only the latest
+    validation run, never a stale/appended mix of old and new errors. All other sheets/data are
+    untouched. Splitting on newline (rather than the "\n- " bullet marker Validations 3/4 use)
+    handles both the single-sentence messages from Validations 1/2 and the multi-line bulleted
+    messages from Validations 3/4 uniformly, with no special-casing.
+
+    Returns the number of distinct errors represented by error_message: the number of "- "-prefixed
+    bullet lines for a multi-line Validation 3/4 message, or 1 for a single-sentence Validation 1/2
+    message that has no bullets.
+    """
+    wb = load_workbook(xlsx_path)
+    if VALIDATION_ERRORS_SHEET in wb.sheetnames:
+        del wb[VALIDATION_ERRORS_SHEET]
+    ws = wb.create_sheet(VALIDATION_ERRORS_SHEET)
+    ws.append(["Validation Error"])
+    ws["A1"].font = Font(bold=True)
+    lines = error_message.strip().split("\n")
+    for line in lines:
+        ws.append([line])
+    wb.save(xlsx_path)
+    autofit_columns(xlsx_path, VALIDATION_ERRORS_SHEET)
+    bullet_count = sum(1 for line in lines if line.strip().startswith("- "))
+    return bullet_count if bullet_count else 1
 
 
 load_dotenv()
@@ -1445,6 +1488,7 @@ async def upload_facility_selection_excel_sheet(
                      'convert to JSON, and store them via field-planner in one call',
              response_description='Returns the field-planner bulk template creation response')
 async def upload_icc_reports(
+        background_tasks: BackgroundTasks,
         items: str = Form(
             ...,
             description='JSON array of metadata objects, one per file, paired positionally with '
@@ -1458,10 +1502,17 @@ async def upload_icc_reports(
 ):
     """
     Accepts N metadata items and N Excel files, paired positionally (items[i] <-> icc_files[i]).
-    Validation is all-or-nothing: every item is validated first, and if ANY item fails
-    (structural mismatch, wrong System Type, missing field, count mismatch), the whole batch is
-    rejected with a 400 listing every failing index - nothing is converted twice and nothing is
-    forwarded to field-planner unless every item passes.
+    Validation is all-or-nothing: every item is validated first, and if ANY item fails, nothing is
+    forwarded to field-planner. Request-level problems (malformed `items` JSON, missing required
+    field(s), wrong file extension, item/file count mismatch) are still reported as a plain JSON
+    400 with `{"message", "errors": [{"index", "error"}, ...]}`. But a per-file ICC validation
+    failure (structural mismatch, wrong System Type, BOM/brand problems) is instead returned the
+    same way `/fieldPlanfacilitiesValidateData` reports its row failures: a 200 response whose body
+    is a downloadable Excel attachment (the offending file, with a new "Validation Errors" sheet
+    appended listing every problem found in it) and an `X-Error-Count` header holding the total
+    number of individual errors across every failing file (not the file count), instead of an HTTP
+    error status. If more than one file in the batch fails, all of them (each annotated) are bundled
+    into a `.zip` attachment instead.
     """
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
@@ -1492,13 +1543,19 @@ async def upload_icc_reports(
         missing = [k for k in required_keys if not item.get(k)]
         if missing:
             field_errors.append({"index": idx, "error": f"missing required field(s): {', '.join(missing)}"})
+        if not _has_allowed_excel_extension(icc_files[idx].filename):
+            field_errors.append({
+                "index": idx,
+                "error": f"'{icc_files[idx].filename}' is not an Excel file (.xlsx/.xls required)",
+            })
 
     if field_errors:
         raise HTTPException(status_code=400, detail={"message": "Invalid items in batch", "errors": field_errors})
 
     temp_files = []
     converted = []
-    validation_errors = []
+    failed_files = []  # [(annotated_temp_path, original_filename), ...]
+    total_error_count = 0
 
     try:
         for idx, (item, upload) in enumerate(zip(parsed_items, icc_files)):
@@ -1523,16 +1580,32 @@ async def upload_icc_reports(
                 )
             except ICCValidationError as e:
                 logger.warning(f"ICC report[{idx}] upload rejected: {e}")
-                validation_errors.append({"index": idx, "fileName": upload.filename, "error": str(e)})
+                total_error_count += _write_validation_errors_sheet(temp_file.name, str(e))
+                failed_files.append((temp_file.name, upload.filename or f"icc_report_{idx}.xlsx"))
 
-        if validation_errors:
+        if failed_files:
             logger.warning(
-                f"ICC bulk upload rejected: {len(validation_errors)} of {len(parsed_items)} item(s) failed validation"
+                f"ICC bulk upload rejected: {len(failed_files)} of {len(parsed_items)} item(s) failed validation"
             )
-            raise HTTPException(
-                status_code=400,
-                detail={"message": "One or more items failed validation; nothing was submitted", "errors": validation_errors},
-            )
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            if len(failed_files) == 1:
+                src_path, _ = failed_files[0]
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+                shutil.copyfile(src_path, output_path)
+                response_filename = f"icc_report_validation_errors_{timestamp}.xlsx"
+                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            else:
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".zip").name
+                with zipfile.ZipFile(output_path, "w") as zf:
+                    for src_path, filename in failed_files:
+                        zf.write(src_path, arcname=filename)
+                response_filename = f"icc_report_validation_errors_{timestamp}.zip"
+                media_type = "application/zip"
+
+            background_tasks.add_task(cleanup_temp_file, output_path)
+            response = FileResponse(path=output_path, filename=response_filename, media_type=media_type)
+            response.headers["X-Error-Count"] = str(total_error_count)
+            return response
 
         if not fieldPlan_service_url:
             raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
@@ -1570,6 +1643,7 @@ async def upload_icc_reports(
                      'their Excel files, via field-planner in one call',
              response_description='Returns the field-planner bulk template update response')
 async def update_icc_reports(
+        background_tasks: BackgroundTasks,
         items: str = Form(
             ...,
             description='JSON array of metadata objects, one per template to update: '
@@ -1588,8 +1662,17 @@ async def update_icc_reports(
     Accepts N metadata items, each identifying an existing FieldPlanTemplate by "id", and either
     zero or exactly N Excel files paired positionally (items[i] <-> icc_files[i]). Validation is
     all-or-nothing: every item (and every file that was provided) is validated first, and if ANY
-    item fails, the whole batch is rejected with a 400 listing every failing index - nothing is
-    forwarded to field-planner unless every item passes.
+    item fails, nothing is forwarded to field-planner. Request-level problems (malformed `items`
+    JSON, missing required field(s), wrong file extension, item/file count mismatch) are still
+    reported as a plain JSON 400 with `{"message", "errors": [{"index", "error"}, ...]}`. But a
+    per-file ICC validation failure (structural mismatch, wrong System Type, BOM/brand problems) is
+    instead returned the same way `/fieldPlanfacilitiesValidateData` reports its row failures: a
+    200 response whose body is a downloadable Excel attachment (the offending file, with a new
+    "Validation Errors" sheet appended listing every problem found in it) and an `X-Error-Count`
+    header holding the total number of individual errors across every failing file (not the file
+    count), instead of an HTTP error status. If more than one file in the batch fails, all of them
+    (each annotated) are bundled into a `.zip` attachment
+    instead.
     """
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
@@ -1622,13 +1705,19 @@ async def update_icc_reports(
         missing = [k for k in required_keys if not item.get(k)]
         if missing:
             field_errors.append({"index": idx, "error": f"missing required field(s): {', '.join(missing)}"})
+        if has_files and not _has_allowed_excel_extension(icc_files[idx].filename):
+            field_errors.append({
+                "index": idx,
+                "error": f"'{icc_files[idx].filename}' is not an Excel file (.xlsx/.xls required)",
+            })
 
     if field_errors:
         raise HTTPException(status_code=400, detail={"message": "Invalid items in batch", "errors": field_errors})
 
     temp_files = []
     converted = []
-    validation_errors = []
+    failed_files = []  # [(annotated_temp_path, original_filename), ...]
+    total_error_count = 0
 
     try:
         for idx, item in enumerate(parsed_items):
@@ -1651,7 +1740,8 @@ async def update_icc_reports(
                     )
                 except ICCValidationError as e:
                     logger.warning(f"ICC report[{idx}] update rejected: {e}")
-                    validation_errors.append({"index": idx, "fileName": upload.filename, "error": str(e)})
+                    total_error_count += _write_validation_errors_sheet(temp_file.name, str(e))
+                    failed_files.append((temp_file.name, upload.filename or f"icc_report_{idx}.xlsx"))
                     continue
 
             converted.append({
@@ -1663,14 +1753,29 @@ async def update_icc_reports(
                 "template_data": template_data,
             })
 
-        if validation_errors:
+        if failed_files:
             logger.warning(
-                f"ICC bulk update rejected: {len(validation_errors)} of {len(parsed_items)} item(s) failed validation"
+                f"ICC bulk update rejected: {len(failed_files)} of {len(parsed_items)} item(s) failed validation"
             )
-            raise HTTPException(
-                status_code=400,
-                detail={"message": "One or more items failed validation; nothing was submitted", "errors": validation_errors},
-            )
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            if len(failed_files) == 1:
+                src_path, _ = failed_files[0]
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+                shutil.copyfile(src_path, output_path)
+                response_filename = f"icc_report_validation_errors_{timestamp}.xlsx"
+                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            else:
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".zip").name
+                with zipfile.ZipFile(output_path, "w") as zf:
+                    for src_path, filename in failed_files:
+                        zf.write(src_path, arcname=filename)
+                response_filename = f"icc_report_validation_errors_{timestamp}.zip"
+                media_type = "application/zip"
+
+            background_tasks.add_task(cleanup_temp_file, output_path)
+            response = FileResponse(path=output_path, filename=response_filename, media_type=media_type)
+            response.headers["X-Error-Count"] = str(total_error_count)
+            return response
 
         if not fieldPlan_service_url:
             raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
@@ -2886,6 +2991,38 @@ async def create_fielplan_facilities(
                     return c
             return None
 
+        # Editable fields on an already-linked FieldPlanFacility can only be updated while the
+        # parent FieldPlan is still a Draft - matches field-planner's FieldPlannerConstants.DRAFT_STATUS.
+        DRAFT_FIELD_PLAN_STATUS = "DRAFT"
+
+        # Fields a user may update on an already-linked FieldPlanFacility (facilityType and the
+        # facilityId/fieldPlanId link itself stay immutable via this endpoint).
+        EDITABLE_ADDITIONAL_FIELD_KEYS = {
+            "systemType", "solarSolutionDesignType", "totalSystemCapacity",
+            "customSolarSolutionDesignType", "customTotalSystemCapacity",
+        }
+
+        def validate_custom_capacity_numeric(value):
+            """Same numeric-only rule used for create; returns an error message or None."""
+            value_str = str(value).strip() if value not in (None, "") else ""
+            if not value_str:
+                return None
+            try:
+                if not math.isfinite(float(value_str)):
+                    raise ValueError(value_str)
+            except ValueError:
+                return f"Error: Custom Total System Capacity '{value_str}' must be numeric"
+            return None
+
+        def flatten_additional_fields(additional_fields):
+            if not additional_fields:
+                return {}
+            return {
+                f.get("key"): f.get("value")
+                for f in additional_fields.get("fields") or []
+                if f.get("key")
+            }
+
         include_col = find_col("Included in Field Plan")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
@@ -2929,6 +3066,7 @@ async def create_fielplan_facilities(
                 # Get FieldPlan status
                 fieldplan_response = fieldplan_client.search_fieldPlan(request_info, fieldplan_id)
                 fieldplan_data = fieldplan_response.get("FieldPlans", [])
+                fieldplan_status = fieldplan_data[0].get("status") if fieldplan_data else None
 
                 fieldplan_assignment_response = fieldplan_activity_client.search_fieldplan_activity_assignment(request_info, fieldplan_id)
                 fieldplan_assignment_data = fieldplan_assignment_response.get("ActivitiesAssignments", [])
@@ -2942,6 +3080,7 @@ async def create_fielplan_facilities(
                             role_to_ids[code].append(item.get("assignedTo"))
 
                 pending_bulk_fieldplan_links = []
+                pending_bulk_fieldplan_updates = []
                 # iterate all rows — handle existing facility ids (linking/unlinking)
                 for index, row in df.iterrows():
                     try:
@@ -2965,8 +3104,67 @@ async def create_fielplan_facilities(
                             # attempt linking if requested
                             if facility_id in fieldplan_linked_facility_ids:
                                 if should_link:
-                                    # already linked → skip API
-                                    df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                    # already linked → check if the editable fields changed and
+                                    # need an update, otherwise no-op
+                                    fieldPlan_facility_data = next(
+                                        (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
+                                        None)
+                                    existing_values = flatten_additional_fields(
+                                        fieldPlan_facility_data.get("additionalFields") if fieldPlan_facility_data else None
+                                    )
+                                    row_values = build_field_plan_facility_additional_details(
+                                        row,
+                                        column_list=field_plan_facility_schema,
+                                        system_type_column=system_type_col,
+                                        total_system_capacity_column=total_system_capacity_col,
+                                        solution_design_type_column=solution_design_type_col,
+                                        custom_solution_design_column=custom_solution_design_col,
+                                        custom_total_system_capacity_column=custom_total_system_capacity_col,
+                                    ) or {}
+
+                                    # Only a key the Excel row actually fills in and that differs
+                                    # from the stored value counts as "changed" - a blank cell
+                                    # means "leave this field as-is", same semantics used at
+                                    # create time (blank optional fields are simply omitted).
+                                    changed_keys = {
+                                        key for key in EDITABLE_ADDITIONAL_FIELD_KEYS
+                                        if row_values.get(key) and row_values.get(key) != existing_values.get(key)
+                                    }
+
+                                    if not changed_keys:
+                                        df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                    elif fieldplan_status != DRAFT_FIELD_PLAN_STATUS:
+                                        df.at[index, 'Field Plan Linking Status'] = (
+                                            f"Error: Cannot update - FieldPlan status must be DRAFT "
+                                            f"(current status: {fieldplan_status})"
+                                        )
+                                    elif fieldPlan_facility_data is None or not fieldPlan_facility_data.get("id"):
+                                        df.at[index, 'Field Plan Linking Status'] = (
+                                            "Error: Cannot update - FieldPlanFacility record id not found"
+                                        )
+                                    else:
+                                        error = None
+                                        if "customTotalSystemCapacity" in changed_keys:
+                                            error = validate_custom_capacity_numeric(
+                                                row_values.get("customTotalSystemCapacity")
+                                            )
+                                        if error:
+                                            df.at[index, 'Field Plan Linking Status'] = error
+                                        else:
+                                            additional_fields = build_field_plan_facility_additional_fields(
+                                                {key: row_values.get(key) for key in changed_keys}
+                                            )
+                                            pending_bulk_fieldplan_updates.append(
+                                                (
+                                                    index,
+                                                    {
+                                                        "id": fieldPlan_facility_data["id"],
+                                                        "facilityId": facility_id,
+                                                        "fieldPlanId": fieldplan_id,
+                                                        "additionalFields": additional_fields,
+                                                    },
+                                                )
+                                            )
                                 else:
                                     # linked but Excel says No → unlink
                                     try:
@@ -2996,15 +3194,10 @@ async def create_fielplan_facilities(
                                         if custom_total_system_capacity_col else None
                                     custom_capacity_str = str(custom_capacity_val).strip() \
                                         if pd.notna(custom_capacity_val) else ""
-                                    if custom_capacity_str:
-                                        try:
-                                            if not math.isfinite(float(custom_capacity_str)):
-                                                raise ValueError(custom_capacity_str)
-                                        except ValueError:
-                                            df.at[index, 'Field Plan Linking Status'] = (
-                                                f"Error: Custom Total System Capacity '{custom_capacity_str}' must be numeric"
-                                            )
-                                            continue
+                                    error = validate_custom_capacity_numeric(custom_capacity_str)
+                                    if error:
+                                        df.at[index, 'Field Plan Linking Status'] = error
+                                        continue
 
                                     pending_bulk_fieldplan_links.append(
                                         (
@@ -3068,6 +3261,27 @@ async def create_fielplan_facilities(
                             else:
                                 for row_idx, _ in chunk:
                                     df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
+                        except Exception as bulk_exc:
+                            for row_idx, _ in chunk:
+                                df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+
+                if pending_bulk_fieldplan_updates:
+                    chunk_size = BULK_INGEST_CHUNK_SIZE
+                    for i in range(0, len(pending_bulk_fieldplan_updates), chunk_size):
+                        chunk = pending_bulk_fieldplan_updates[i:i + chunk_size]
+                        updates_chunk = [entry for _, entry in chunk]
+                        try:
+                            update_resp = fieldplan_client.update_fieldPlan_facility_bulk(
+                                request_info=request_info,
+                                updates=updates_chunk,
+                            )
+
+                            if update_resp.status_code in (200, 201, 202):
+                                for row_idx, _ in chunk:
+                                    df.at[row_idx, 'Field Plan Linking Status'] = "Updated"
+                            else:
+                                for row_idx, _ in chunk:
+                                    df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {update_resp.status_code} {update_resp.text}"
                         except Exception as bulk_exc:
                             for row_idx, _ in chunk:
                                 df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"

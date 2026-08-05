@@ -148,6 +148,19 @@ public class FieldPlannerApiController {
                 .createResponseInfo(request.getRequestInfo(), true));
     }
 
+    @RequestMapping(value = "/facility/bulk/_update", method = RequestMethod.POST)
+    public ResponseEntity<ResponseInfo> fieldPlanFacilityV1BulkUpdatePost(@ApiParam(value = "Update editable fields (systemType, solarSolutionDesignType, totalSystemCapacity, customSolarSolutionDesignType, customTotalSystemCapacity) of already-linked FieldPlanFacilities - each item must carry its existing id.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
+        log.trace("Entering fieldPlanFacilityV1BulkUpdatePost endpoint");
+        log.info("Received bulk field plan facility update request, count: {}", request.getFieldPlanFacilities().size());
+        request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
+        log.debug("Pushing bulk update request to Kafka topic: {}", fieldPlannerConfiguration.getBulkUpdateFieldPlanFacilityTopic());
+        producer.push(fieldPlannerConfiguration.getBulkUpdateFieldPlanFacilityTopic(), request);
+        log.info("Bulk field plan facility update request pushed to Kafka successfully");
+        log.trace("Exiting fieldPlanFacilityV1BulkUpdatePost endpoint");
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
+                .createResponseInfo(request.getRequestInfo(), true));
+    }
+
     @RequestMapping(value = "/facility/_search", method = RequestMethod.POST)
     public ResponseEntity<FieldPlanFacilityBulkResponse> fieldPlanFacilityV2SearchPost(
             @Valid @ModelAttribute URLParams urlParams,
