@@ -33,8 +33,8 @@ const TopBarSideBar = ({
     setShowDialog(false);
   };
 
-  const handleSidebar = () => {
-    toggleSidebar(!isSidebarOpen);
+  const handleSidebar = (open) => {
+    toggleSidebar(typeof open === "boolean" ? open : !isSidebarOpen);
   };
   const userProfile = () => {
     CITIZEN ? history.push(`/${window?.contextPath}/citizen/user/profile`) : history.push(`/${window?.contextPath}/employee/user/profile`);

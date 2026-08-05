@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { CheckBox, PopUp, Button } from "@egovernments/digit-ui-components";
+import React, {useEffect, useState} from "react";
+import {useTranslation} from "react-i18next";
+import {Button, CheckBox, PopUp} from "@egovernments/digit-ui-components";
 import { CONSENT_COOKIE_KEYS, getConsentCookie } from "../utilities/consentCookies";
 import PolicyDocumentContent from "./PolicyDocumentContent";
 import usePolicyDocument from "../hooks/usePolicyDocument";
 
-const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) => {
+const TOUComponent = ({ onSelect, formData, control, formState, ...props }) => {
   const { t } = useTranslation();
   const tenantId = Digit.ULBService.getCurrentTenantId();
-  const hasStoredConsent = getConsentCookie(CONSENT_COOKIE_KEYS.privacy);
+  const hasStoredConsent = getConsentCookie(CONSENT_COOKIE_KEYS.terms);
   const [isChecked, setIsChecked] = useState(hasStoredConsent);
   const [showPopUp, setShowPopUp] = useState(false);
   const moduleName=Digit.Utils.getConfigModuleName();
 
-  const { data: privacy } = usePolicyDocument({ type: "privacy", module: props?.props?.module, moduleName, tenantId });
+  const { data: privacy } = usePolicyDocument({ type: "terms", module: props?.props?.module, moduleName, tenantId });
   const handleCheckboxChange = (event) => {
     if (hasStoredConsent) {
       return;
@@ -21,7 +21,7 @@ const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) 
     setIsChecked(event.target.checked);
   };
   useEffect(() => {
-    onSelect("check", isChecked);
+    onSelect("touCheck", isChecked);
   }, [isChecked]);
   const onButtonClick = () => {
     setShowPopUp(true);
@@ -33,20 +33,20 @@ const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) 
 
   return (
     <React.Fragment>
-      <div className="digit-privacy-checkbox digit-privacy-checkbox-align" style={{ alignItems: "center", display: "flex", marginBottom: "-1rem" }}>
+      <div className="digit-privacy-checkbox digit-privacy-checkbox-align" style={{ alignItems: "center", display: "flex" }}>
         <div style={{ flexShrink: 0, height: "24px", overflow: "hidden", position: "relative", width: "24px" }}>
           <div style={{ left: 0, position: "absolute", top: "75%", transform: "translateY(-50%) scale(0.63)", transformOrigin: "left center" }}>
             <CheckBox
               label=""
               checked={isChecked}
               onChange={handleCheckboxChange}
-              id={"privacy-component-check"}
+              id={"terms-of-use-component-check"}
               disabled={hasStoredConsent}
               disable={hasStoredConsent}
             ></CheckBox>
           </div>
         </div>
-        <label htmlFor="privacy-component-check" style={{ cursor: hasStoredConsent ? "default" : "pointer", lineHeight: "24px", margin: "0 0 0 0" }}>
+        <label htmlFor="terms-of-use-component-check" style={{ cursor: hasStoredConsent ? "default" : "pointer", lineHeight: "24px", margin: "0 0 0 0" }}>
           {t("ES_BY_CLICKING")}
         </label>
         <button
@@ -64,7 +64,7 @@ const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) 
             textDecoration: "underline",
           }}
         >
-          {t("ES_PRIVACY_POLICY")}
+          {t("ES_TERMS_OF_USE")}
         </button>
       </div>
       {showPopUp && (
@@ -117,4 +117,4 @@ const PrivacyComponent = ({ onSelect, formData, control, formState, ...props }) 
   );
 };
 
-export default PrivacyComponent;
+export default TOUComponent;

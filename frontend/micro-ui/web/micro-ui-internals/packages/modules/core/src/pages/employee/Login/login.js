@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import Background from "../../../components/Background";
 import Header from "../../../components/Header";
+import PolicyConsentModal from "../../../components/PolicyConsentModal";
+import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
 
 const setEmployeeDetail = (userObject, token) => {
@@ -19,6 +21,88 @@ const setEmployeeDetail = (userObject, token) => {
   localStorage.setItem("Employee.user-info", JSON.stringify(userObject));
 };
 
+const ConsentCheckbox = ({ id, checked, onChange, modalType, linkText, translateWithFallback, openPolicyModal }) => (
+  <label
+    htmlFor={id}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      marginBottom: "18px",
+      cursor: "pointer",
+    }}
+  >
+    <input
+      id={id}
+      type="checkbox"
+      checked={checked}
+      onChange={(event) => onChange(event.target.checked)}
+      style={{
+        cursor: "pointer",
+        height: "18px",
+        margin: 0,
+        width: "18px",
+      }}
+    />
+    <span>
+      {translateWithFallback("CORE_ACCEPT_TEXT", "By clicking, I accept the")}{" "}
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openPolicyModal(modalType);
+        }}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#d4351c",
+          cursor: "pointer",
+          padding: 0,
+          textDecoration: "underline",
+        }}
+      >
+        {translateWithFallback(linkText, linkText === "CORE_PRIVACY_POLICY" ? "Privacy Policy" : "Terms of Use")}
+      </button>
+    </span>
+  </label>
+);
+
+const ConsentAcceptance = ({ config }) => {
+  const {
+    shouldShowConsent,
+    privacyAccepted,
+    termsAccepted,
+    setPrivacyAccepted,
+    setTermsAccepted,
+    translateWithFallback,
+    openPolicyModal,
+  } = config?.consentProps || {};
+
+  return shouldShowConsent ? (
+    <div style={{ marginBottom: "6px" }}>
+      <ConsentCheckbox
+        id="privacy-policy-consent"
+        checked={privacyAccepted}
+        onChange={setPrivacyAccepted}
+        modalType="privacy"
+        linkText="CORE_PRIVACY_POLICY"
+        translateWithFallback={translateWithFallback}
+        openPolicyModal={openPolicyModal}
+      />
+      <ConsentCheckbox
+        id="terms-of-use-consent"
+        checked={termsAccepted}
+        onChange={setTermsAccepted}
+        modalType="terms"
+        linkText="CORE_TERMS_OF_USE"
+        translateWithFallback={translateWithFallback}
+        openPolicyModal={openPolicyModal}
+      />
+    </div>
+  ) : null;
+};
+
 const Login = ({ config: propsConfig, t, isDisabled }) => {
   const { data: cities, isLoading } = Digit.Hooks.useTenants();
   let sortedCities = [];
@@ -31,11 +115,21 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const [showToast, setShowToast] = useState(null);
   const [popup, setPopup] = useState(false);
   const [disable, setDisable] = useState(false);
+  const [hasStoredConsent, setHasStoredConsent] = useState(hasAcceptedRequiredConsents());
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [activePolicyModal, setActivePolicyModal] = useState(null);
 
   const history = useHistory();
   const location = useLocation();
   const isMobile = window.Digit.Utils.browser.isMobile();
   const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+  const shouldShowConsent = !hasStoredConsent;
+  const isConsentAccepted = privacyAccepted && termsAccepted;
+  const translateWithFallback = (key, fallback) => {
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
 
   const getSelectedLanguage = () => {
     const fromPrelogin = sessionStorage.getItem("prelogin_language");
@@ -134,6 +228,12 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   }, [user, history, location.search]);
 
   const onLogin = async (data) => {
+    if (shouldShowConsent && !isConsentAccepted) {
+      setShowToast("CORE_ACCEPT_PRIVACY_TERMS");
+      setTimeout(closeToast, 5000);
+      return;
+    }
+
     setDisable(true);
     const requestData = {
       ...data,
@@ -143,6 +243,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     delete requestData.city;
     try {
       const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
+      if (shouldShowConsent) {
+        rememberRequiredConsents();
+        setHasStoredConsent(true);
+      }
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
 
       setUser({ info, ...tokens });
@@ -192,6 +296,26 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     history.push(`/${window.contextPath}/employee/user/forgot-password`);
   };
 
+  const handlePolicyModalAccept = () => {
+    if (activePolicyModal === "privacy") {
+      setPrivacyAccepted(true);
+    }
+    if (activePolicyModal === "terms") {
+      setTermsAccepted(true);
+    }
+    setActivePolicyModal(null);
+  };
+
+  const handlePolicyModalReject = () => {
+    if (activePolicyModal === "privacy") {
+      setPrivacyAccepted(false);
+    }
+    if (activePolicyModal === "terms") {
+      setTermsAccepted(false);
+    }
+    setActivePolicyModal(null);
+  };
+
   const [userId, password, city] = propsConfig.inputs;
   const config = [
     {
@@ -217,7 +341,22 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
             },
           },
           isMandatory: true,
-        }
+        },
+        {
+          type: "component",
+          component: ConsentAcceptance,
+          withoutLabel: true,
+          key: "consentAcceptance",
+          consentProps: {
+            shouldShowConsent,
+            privacyAccepted,
+            termsAccepted,
+            setPrivacyAccepted,
+            setTermsAccepted,
+            translateWithFallback,
+            openPolicyModal: setActivePolicyModal,
+          },
+        },
       ],
     },
   ];
@@ -232,7 +371,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       <div style={{ backgroundColor: "white" }}>
         <FormComposer
           onSubmit={onLogin}
-          isDisabled={isDisabled || disable}
+          isDisabled={isDisabled || disable || (shouldShowConsent && !isConsentAccepted)}
           noBoxShadow
           inline
           submitInForm
@@ -278,6 +417,16 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         </div>
       </div>
       {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}
+      {activePolicyModal && (
+        <PolicyConsentModal
+          type={activePolicyModal}
+          module={"E4H"}
+          tenantId={Digit.ULBService.getCurrentTenantId() || Digit.ULBService.getStateId()}
+          onClose={() => setActivePolicyModal(null)}
+          onAccept={handlePolicyModalAccept}
+          onReject={handlePolicyModalReject}
+        />
+      )}
       <div className="employee-login-home-footer" style={{ backgroundColor: "unset" }}>
         <img
           alt="Powered by DIGIT"
