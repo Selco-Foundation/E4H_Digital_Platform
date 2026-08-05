@@ -879,15 +879,6 @@ const CreateAssessment = () => {
     }
   }
 
-  const hasSuccessfulFacilityUpload = (data) => {
-    const uploadedFacilityData = data?.uploadFacilityData || file;
-    if (uploadedFacilityData) {
-      return !uploadedFacilityData?.errorCodes?.length;
-    }
-
-    return hasSavedFacilityUpload;
-  };
-
   const handleFormSubmit = async (data) => {
     switch (currentKey) {
       case 1:
@@ -900,14 +891,6 @@ const CreateAssessment = () => {
         }
         break;
       case 2:
-        if (!hasSuccessfulFacilityUpload(data)) {
-          setToast({
-            key: "error",
-            label: t("PM_TOAST_FACILITY_DATA_UPLOAD_REQUIRED"),
-          });
-          return;
-        }
-
         setPersistedFormData((prev) => ({ ...prev, facilityData: data }));
         setCurrentKey((prev) => prev + 1);
         break;
