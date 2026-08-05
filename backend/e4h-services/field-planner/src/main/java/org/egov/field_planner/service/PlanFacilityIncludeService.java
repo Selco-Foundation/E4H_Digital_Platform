@@ -22,6 +22,7 @@ public class PlanFacilityIncludeService {
     private final AssessmentFacilityRepository facilityRepository;
     private final AssessmentProjectService projectService;
     private final AssessmentWorkflowService workflowService;
+    private final AssessmentFacilityMetadataService facilityMetadataService;
 
     @Transactional
     public PlanFacilityBulkIncludeResponse bulkInclude(PlanFacilityBulkIncludeRequest request) {
@@ -89,6 +90,8 @@ public class PlanFacilityIncludeService {
                         .build());
                 continue;
             }
+
+            facilityMetadataService.enrichIncludeItem(item);
 
             PlanFacility createdFacility = facilityRepository.insertFacility(
                     planId, tenantId, facilityId, item, userId);

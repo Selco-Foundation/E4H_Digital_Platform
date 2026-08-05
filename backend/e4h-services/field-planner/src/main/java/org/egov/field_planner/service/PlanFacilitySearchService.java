@@ -21,6 +21,7 @@ public class PlanFacilitySearchService {
     private final AllowedActionsService allowedActionsService;
     private final OutcomeEngineService outcomeEngineService;
     private final AssessmentMdmsService mdmsService;
+    private final AssessmentFacilityMetadataService facilityMetadataService;
 
     public PlanFacilitySearchResponse search(PlanFacilitySearchRequest request, int limit, int offset) {
         boolean exportAll = Boolean.TRUE.equals(request.getExportAll());
@@ -30,7 +31,10 @@ public class PlanFacilitySearchService {
 
         List<PlanFacility> facilities = facilityRepository.searchByPlan(
                 request.getPlanId(), request.getFilters(), effectiveLimit, effectiveOffset);
-        facilities.forEach(f -> enrichFacility(f, includeSummary, request.getRequestInfo()));
+        facilities.forEach(f -> {
+            facilityMetadataService.enrichDisplayFields(f);
+            enrichFacility(f, includeSummary, request.getRequestInfo());
+        });
         int total = facilityRepository.countByPlan(request.getPlanId(), request.getFilters());
 
         return PlanFacilitySearchResponse.builder()
@@ -44,6 +48,8 @@ public class PlanFacilitySearchService {
                 .orElseThrow(() -> new org.egov.tracer.model.CustomException(
                         AssessmentConstants.ASSESSMENT_PLAN_FACILITY_NOT_FOUND,
                         "Plan facility not found: " + request.getPlanFacilityId()));
+
+        facilityMetadataService.enrichDisplayFields(facility);
 
         List<AssessmentSubmission> submissions = submissionRepository.findByPlanFacilityId(facility.getPlanFacilityId());
         AllowedActions actions = allowedActionsService.compute(facility);
