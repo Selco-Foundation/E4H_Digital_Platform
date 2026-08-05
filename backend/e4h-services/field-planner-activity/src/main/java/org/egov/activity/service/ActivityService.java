@@ -195,6 +195,10 @@ public class ActivityService {
             log.debug("Pushing activity assignments to topic: {}", activityConfiguration.getCreateActivityAssignmentTopic());
             producer.push(activityConfiguration.getCreateActivityAssignmentTopic(), request);
             log.info("Successfully created {} activity assignments", assignmentCount);
+
+            // One analytics event per staffing row, after the persister push so a failed create
+            // publishes nothing (best-effort, never throws).
+            activityAnalyticsService.publishAssignmentEvents(request.getRequestInfo(), activityAssignments);
         } catch (Exception exception) {
             log.error("Error occurred while creating activity assignments, count: {}", assignmentCount, exception);
         }
