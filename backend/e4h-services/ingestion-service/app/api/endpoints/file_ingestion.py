@@ -3429,6 +3429,7 @@ async def bulk_ingest_amc_configurations(
         amc_sheet_name: str = Form(default="amc-configurations", description="Name of the sheet containing AMC data"),
         project_id: str = Form(..., description="Project ID"),
         user_info_list: str = Form(..., description="JSON array of user info objects with vendor mapping"),
+        geography_details: str = Form(..., description="JSON object with state, districts and blocks for the AMC configurations being created"),
         request_info: str = Form(default="")
 ):
     input_temp_file = None
@@ -3446,6 +3447,14 @@ async def bulk_ingest_amc_configurations(
                 raise HTTPException(status_code=400, detail="user_info_list must be a JSON array")
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=400, detail=f"Invalid JSON in user_info_list: {str(e)}")
+
+        # Parse geography details (state/districts/blocks) - same scope applied to every AMC configuration in this batch
+        try:
+            geography_details_data = json.loads(geography_details)
+            if not isinstance(geography_details_data, dict):
+                raise HTTPException(status_code=400, detail="geography_details must be a JSON object")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON in geography_details: {str(e)}")
 
         amc_vendor_id = get_vendor_id_for_amc_field_staff(user_info_data)
 
@@ -3499,6 +3508,10 @@ async def bulk_ingest_amc_configurations(
                     "userName": user_name,
                     "name": user_name,
                     "tenantId": user_tenant_id,
+                    # role/pocNumber live on the user object; fall back to the vendor_mapping level
+                    # for backward compatibility with older payload shapes.
+                    "role": user.get("role") or vendor_mapping.get("role"),
+                    "pocNumber": user.get("pocNumber") or vendor_mapping.get("pocNumber"),
                     "fullUser": user  # Store full user object for reference
                 })
 
@@ -3602,6 +3615,9 @@ async def bulk_ingest_amc_configurations(
             assignments_template.append({
                 "assignedUser": str(assigned_user_id),
                 "tenantId": assignment_tenant_id,
+                "role": user.get("role"),
+                "additionalDetails": None,
+                "pocNumber": user.get("pocNumber"),
             })
 
         now = datetime.now()
@@ -3670,7 +3686,10 @@ async def bulk_ingest_amc_configurations(
 
                     assignment = {
                         "assignedUser": str(assigned_user_id),
-                        "tenantId": assignment_tenant_id
+                        "tenantId": assignment_tenant_id,
+                        "role": user.get("role"),
+                        "additionalDetails": None,
+                        "pocNumber": user.get("pocNumber"),
                     }
                     assignments.append(assignment)
 
@@ -3704,7 +3723,9 @@ async def bulk_ingest_amc_configurations(
                     "configurationStartDate": configuration_start_date,
                     "configurationEndDate": configuration_end_date,
                     "assetTypes": asset_types_formatted,
-                    "assignments": assignments
+                    "assignments": assignments,
+                    # Same state/districts/blocks scope for every AMC configuration in this batch, same as field plan
+                    "geographyDetails": geography_details_data
                 })
                 row_indexes_for_configs.append(index)
             except Exception as e:

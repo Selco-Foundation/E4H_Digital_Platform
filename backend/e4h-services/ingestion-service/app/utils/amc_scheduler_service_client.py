@@ -22,11 +22,12 @@ class AMCSchedulerServiceClient:
         headers: Dict[str, str],
         json: Any,
         timeout: tuple,
+        params: Optional[Dict[str, Any]] = None,
     ):
         """Use caller-provided Session for connection reuse, or one-off requests.post."""
         if session is not None:
-            return session.post(url, headers=headers, json=json, timeout=timeout)
-        return requests.post(url, headers=headers, json=json, timeout=timeout)
+            return session.post(url, headers=headers, json=json, params=params, timeout=timeout)
+        return requests.post(url, headers=headers, json=json, params=params, timeout=timeout)
 
     def create_amc_configuration(
         self,
@@ -135,36 +136,46 @@ class AMCSchedulerServiceClient:
         self,
         request_info: RequestInfo,
         facility_id: str = None,
+        facility_ids: Optional[List[str]] = None,
         project_id: str = None,
         vendor: str = None,
+        tenant_id: str = "in",
+        limit: int = 1000,
+        offset: int = 0,
         session: Optional[requests.Session] = None,
     ) -> Dict[str, Any]:
         """
-        Search for existing AMC configurations
+        Search for existing AMC configurations. tenantId is mandatory on the AmcConfigurationSearchCriteria
+        contract, and facilityId/projectId/vendor filters are list-typed (facilityIds/projectIds/vendorIds),
+        not singular strings.
         """
-        logger.trace(f"Searching AMC configurations: facility_id={facility_id}, project_id={project_id}, vendor={vendor}")
-        
+        resolved_facility_ids = facility_ids if facility_ids else ([facility_id] if facility_id else None)
+        logger.trace(
+            f"Searching AMC configurations: facility_ids={resolved_facility_ids}, project_id={project_id}, vendor={vendor}"
+        )
+
         url = f"{self.amc_scheduler_service_url}/asset-amc/v1/configuration/_search"
         headers = {
             "Content-Type": "application/json"
         }
-        
-        search_criteria = {}
-        if facility_id:
-            search_criteria["facilityId"] = facility_id
+
+        search_criteria = {"tenantId": tenant_id}
+        if resolved_facility_ids:
+            search_criteria["facilityIds"] = resolved_facility_ids
         if project_id:
-            search_criteria["projectId"] = project_id
+            search_criteria["projectIds"] = [project_id]
         if vendor:
-            search_criteria["vendor"] = vendor
-        
+            search_criteria["vendorIds"] = [vendor]
+
         payload = {
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "AmcConfiguration": search_criteria
+            "searchCriteria": search_criteria,
         }
-        
+        params = {"tenantId": tenant_id, "limit": limit, "offset": offset}
+
         try:
             response = self._post(
-                session, url, headers=headers, json=payload, timeout=_AMC_HTTP_TIMEOUT
+                session, url, headers=headers, json=payload, params=params, timeout=_AMC_HTTP_TIMEOUT
             )
             response.raise_for_status()
             result = response.json()
