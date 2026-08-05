@@ -31,10 +31,10 @@ const InfoCard = ({ t, summary }) => {
       }}
     >
       {StatCard(t("PM_ASSESSMENT_TOTAL_FACILITIES"), summary?.totalFacilities || 0)}
-      {StatCard(t("PM_ASSESSMENT_REMOTE_ASSESSMENTS"), `${summary?.remoteAssessmentsCompleted || 0} / ${summary?.totalFacilities || 0}`)}
-      {StatCard(t("PM_ASSESSMENT_ONSITE_ASSESSMENTS"), `${summary?.onSiteAssessmentsCompleted || 0} / ${summary?.totalFacilities || 0}`)}
-      {StatCard(t("PM_ASSESSMENT_ELIGIBLE"), summary?.eligibleCount || 0, "#1B8354")}
-      {StatCard(t("PM_ASSESSMENT_NOT_ELIGIBLE"), summary?.notEligibleCount || 0, "#B91900")}
+      {StatCard(t("PM_ASSESSMENT_REMOTE_ASSESSMENTS"), `${summary?.remoteAssessmentDone || 0} / ${summary?.remoteAssessmentTotal || 0}`)}
+      {StatCard(t("PM_ASSESSMENT_ONSITE_ASSESSMENTS"), `${summary?.onSiteAssessmentDone || 0} / ${summary?.onSiteAssessmentAssigned || 0}`)}
+      {StatCard(t("PM_ASSESSMENT_ELIGIBLE"), summary?.eligible || 0, "#1B8354")}
+      {StatCard(t("PM_ASSESSMENT_NOT_ELIGIBLE"), summary?.notEligible || 0, "#B91900")}
     </div>
   );
 };
