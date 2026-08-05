@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:digit_scanner/blocs/app_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../model/assessment/assessment_mode.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../pages/add_new_asset.dart';
 import '../pages/amc_draft.dart';

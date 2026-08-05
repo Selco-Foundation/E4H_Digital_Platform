@@ -4,8 +4,12 @@ import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/powered_by_digit.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/auth/authbloc.dart';
+import '../model/assessment/assessment_mode.dart';
 import '../router/app_router.dart';
+import '../utils/role_login_resolver.dart';
 import '../widgets/cards/report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -17,6 +21,13 @@ class AssessmentWorkHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
+    final roleCodes = context.read<AuthBloc>().state.maybeWhen(
+          authenticated: (_, __, userRequest) =>
+              userRequest?.roles.map((role) => role.code).toSet() ?? const {},
+          orElse: () => const <String?>{},
+        );
+    final hasRemoteAssessment = roleCodes.contains(assessorRoleCode);
+    final hasOnSiteAssessment = roleCodes.contains(fieldPocRoleCode);
 
     return Scaffold(
       body: ScrollableContent(
@@ -44,15 +55,30 @@ class AssessmentWorkHomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: spacer4),
-                ReportCard(
-                  onPress: () => context.router.push(
-                    const AssessmentSelectFacilityRoute(),
+                if (hasRemoteAssessment)
+                  ReportCard(
+                    onPress: () => context.router.push(
+                      AssessmentSelectFacilityRoute(
+                        assessmentMode: AssessmentMode.remote,
+                      ),
+                    ),
+                    icon: Icons.phone_in_talk_outlined,
+                    heading: 'New Remote Assessment',
+                    description:
+                        'View assigned facilities and resume remote assessments in progress.',
                   ),
-                  icon: Icons.add_box_outlined,
-                  heading: 'New Assessments',
-                  description:
-                      'View assigned facilities and resume assessments in progress.',
-                ),
+                if (hasOnSiteAssessment)
+                  ReportCard(
+                    onPress: () => context.router.push(
+                      AssessmentSelectFacilityRoute(
+                        assessmentMode: AssessmentMode.onSite,
+                      ),
+                    ),
+                    icon: Icons.location_on_outlined,
+                    heading: 'New On-site Assessment',
+                    description:
+                        'View assigned facilities and resume on-site assessments in progress.',
+                  ),
                 ReportCard(
                   onPress: () => context.router.push(
                     const AssessmentDraftRoute(),

@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
+import '../blocs/auth/authbloc.dart';
 import '../repositories/assessment_mock_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
@@ -42,18 +43,28 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
   bool _isSubmitting = false;
   String? _loadError;
 
-  static final Map<String, dynamic> _dummyDefaults = {
-    'assessorName': 'Remote Assessor',
-    'callDate': DateTime.now(),
-    'facilityName': 'Digar Kashipur',
-    'facilityType': 'Health Facility',
-    'facilityAddress': 'Cedharban, Cachar, Assam',
-    'facilityCode': 'HF-0001',
-    'facilityInChargeName': 'Facility In-charge',
-    'facilityInChargeContact': '9876543210',
-    'alternateContactName': 'Alternative Contact',
-    'alternateContactNumber': '9876543211',
-  };
+  Map<String, dynamic> _initialDefaults() {
+    final user = context.read<AuthBloc>().state.maybeWhen(
+          authenticated: (_, __, userRequest) => userRequest,
+          orElse: () => null,
+        );
+    final assessorName = user?.name?.trim().isNotEmpty == true
+        ? user!.name!.trim()
+        : (user?.userName ?? '');
+
+    return {
+      'assessorName': assessorName,
+      'callDate': DateTime.now(),
+      'facilityName': 'Digar Kashipur',
+      'facilityType': 'Health Facility',
+      'facilityAddress': 'Cedharban, Cachar, Assam',
+      'facilityCode': 'HF-0001',
+      'facilityInChargeName': 'Facility In-charge',
+      'facilityInChargeContact': '9876543210',
+      'alternateContactName': 'Alternative Contact',
+      'alternateContactNumber': '9876543211',
+    };
+  }
 
   @override
   void initState() {
@@ -225,7 +236,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
           final pageDefaults = subsetForPage(
             schema,
             widget.pageName,
-            _dummyDefaults,
+            _initialDefaults(),
           );
 
           return ReactiveFormBuilder(

@@ -45,25 +45,31 @@ class ReportCard extends StatelessWidget {
                       size: spacer8,
                     ),
                     const SizedBox(width: spacer2),
-                    Text(
-                      heading,
-                      style: textTheme.headingL.copyWith(
-                        color: const DigitColors().light.primary2,
+                    Expanded(
+                      child: Text(
+                        heading,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.headingL.copyWith(
+                          color: const DigitColors().light.primary2,
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     if (badgeCount! > 0)
-                      badges.Badge(
-                        badgeStyle: badges.BadgeStyle(
-                          shape: badges.BadgeShape.square,
-                          badgeColor: theme.colorTheme.alert.error,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: spacer3, vertical: spacer1),
-                          borderRadius: BorderRadius.circular(20),
+                      Padding(
+                        padding: const EdgeInsets.only(left: spacer2),
+                        child: badges.Badge(
+                          badgeStyle: badges.BadgeStyle(
+                            shape: badges.BadgeShape.square,
+                            badgeColor: theme.colorTheme.alert.error,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: spacer3, vertical: spacer1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          badgeContent: Text("$badgeCount",
+                              style: textTheme.bodyS.copyWith(
+                                  color: theme.colorTheme.paper.primary)),
                         ),
-                        badgeContent: Text("$badgeCount",
-                            style: textTheme.bodyS.copyWith(
-                                color: theme.colorTheme.paper.primary)),
                       ),
                   ],
                 ),

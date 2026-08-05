@@ -7,8 +7,9 @@ const installationReportPartAEditorRoleCode =
 const installationReportPartBEditorRoleCode =
     'INSTALLATION_REPORT_PART_B_EDITOR';
 const assessorRoleCode = 'ENUMERATOR';
+const fieldPocRoleCode = 'FIELD_POC';
 
-enum RoleSelectionOption { staff, supervisor, amc }
+enum RoleSelectionOption { staff, supervisor, amc, assessment }
 
 extension RoleSelectionOptionX on RoleSelectionOption {
   String get label {
@@ -19,6 +20,8 @@ extension RoleSelectionOptionX on RoleSelectionOption {
         return 'Supervisor';
       case RoleSelectionOption.amc:
         return 'AMC';
+      case RoleSelectionOption.assessment:
+        return 'Assessment';
     }
   }
 
@@ -30,10 +33,26 @@ extension RoleSelectionOptionX on RoleSelectionOption {
         return USER_TYPES.SUPERVISOR.name.toLowerCase();
       case RoleSelectionOption.amc:
         return USER_TYPES.AMC.name.toLowerCase();
+      case RoleSelectionOption.assessment:
+        return USER_TYPES.ASSESSOR.name.toLowerCase();
     }
   }
 
   bool get isAmc => this == RoleSelectionOption.amc;
+
+  bool get isAssessment => this == RoleSelectionOption.assessment;
+
+  String get moduleLabel {
+    switch (this) {
+      case RoleSelectionOption.staff:
+      case RoleSelectionOption.supervisor:
+        return 'Installation';
+      case RoleSelectionOption.amc:
+        return 'AMC';
+      case RoleSelectionOption.assessment:
+        return 'Assessment';
+    }
+  }
 }
 
 class RoleLoginResolution {
@@ -73,31 +92,37 @@ class RoleLoginResolver {
     final hasAmc = codes.contains(amcFieldStaffRoleCode);
     final hasPartA = codes.contains(installationReportPartAEditorRoleCode);
     final hasPartB = codes.contains(installationReportPartBEditorRoleCode);
-    final hasAssessor = codes.contains(assessorRoleCode);
+    final hasAssessment =
+        codes.contains(assessorRoleCode) || codes.contains(fieldPocRoleCode);
 
-    if (hasAssessor) {
-      return const RoleLoginResolution.direct(USER_TYPES.ASSESSOR);
+    final moduleOptions = <RoleSelectionOption>[];
+    if (hasPartA || hasPartB) {
+      moduleOptions.add(
+        hasPartB ? RoleSelectionOption.supervisor : RoleSelectionOption.staff,
+      );
     }
-
-    if (hasAmc && (hasPartA || hasPartB)) {
-      if (hasPartB) {
-        return const RoleLoginResolution.selection([
-          RoleSelectionOption.supervisor,
-          RoleSelectionOption.amc,
-        ]);
-      }
-
-      return const RoleLoginResolution.selection([
-        RoleSelectionOption.staff,
-        RoleSelectionOption.amc,
-      ]);
-    }
-
     if (hasAmc) {
-      return const RoleLoginResolution.direct(USER_TYPES.AMC);
+      moduleOptions.add(RoleSelectionOption.amc);
     }
-    if (hasPartB) {
-      return const RoleLoginResolution.direct(USER_TYPES.SUPERVISOR);
+    if (hasAssessment) {
+      moduleOptions.add(RoleSelectionOption.assessment);
+    }
+
+    if (moduleOptions.length > 1) {
+      return RoleLoginResolution.selection(moduleOptions);
+    }
+
+    if (moduleOptions.length == 1) {
+      switch (moduleOptions.single) {
+        case RoleSelectionOption.staff:
+          return const RoleLoginResolution.direct(USER_TYPES.FIELD_STAFF);
+        case RoleSelectionOption.supervisor:
+          return const RoleLoginResolution.direct(USER_TYPES.SUPERVISOR);
+        case RoleSelectionOption.amc:
+          return const RoleLoginResolution.direct(USER_TYPES.AMC);
+        case RoleSelectionOption.assessment:
+          return const RoleLoginResolution.direct(USER_TYPES.ASSESSOR);
+      }
     }
 
     return const RoleLoginResolution.direct(USER_TYPES.FIELD_STAFF);

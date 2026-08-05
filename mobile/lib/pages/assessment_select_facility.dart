@@ -7,14 +7,19 @@ import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/user_type/user_type.dart';
+import '../model/assessment/assessment_mode.dart';
 import '../router/app_router.dart';
 import '../widgets/cards/assessment_facility_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
 class AssessmentSelectFacilityPage extends StatelessWidget {
-  const AssessmentSelectFacilityPage({super.key});
+  final AssessmentMode assessmentMode;
+
+  const AssessmentSelectFacilityPage({
+    super.key,
+    required this.assessmentMode,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -67,37 +72,28 @@ class AssessmentSelectFacilityPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: spacer4),
-                BlocBuilder<UserTypeBloc, UserTypeState>(
-                  builder: (context, userTypeState) {
-                    final isRemoteAssessor = userTypeState.maybeWhen(
-                      assessor: () => true,
-                      orElse: () => false,
-                    );
-
-                    return AssessmentFacilityCard(
-                      facilityName: 'Digar Kashipur',
-                      status: 'Scheduled',
-                      state: 'Assam',
-                      district: 'Cachar',
-                      block: 'Cedharban',
-                      isRemoteAssessor: isRemoteAssessor,
-                      onStartAssessment: () {
-                        const schemaName = 'Assessment.HF_PHONE';
-                        context.read<FormsBloc>().add(
-                              const FormsEvent.clearForm(
-                                schemaKey: schemaName,
-                              ),
-                            );
-                        context.router.push(
-                          AssessmentDynamicFormRoute(
-                            pageName: 'assessorFacilityDetails',
-                            schemaName: schemaName,
+                AssessmentFacilityCard(
+                  facilityName: 'Digar Kashipur',
+                  status: 'Scheduled',
+                  state: 'Assam',
+                  district: 'Cachar',
+                  block: 'Cedharban',
+                  isRemoteAssessor: assessmentMode == AssessmentMode.remote,
+                  onStartAssessment: () {
+                    const schemaName = 'Assessment.HF_PHONE';
+                    context.read<FormsBloc>().add(
+                          const FormsEvent.clearForm(
+                            schemaKey: schemaName,
                           ),
                         );
-                      },
-                      onUpdateStatus: () {},
+                    context.router.push(
+                      AssessmentDynamicFormRoute(
+                        pageName: 'assessorFacilityDetails',
+                        schemaName: schemaName,
+                      ),
                     );
                   },
+                  onUpdateStatus: () {},
                 ),
               ],
             ),

@@ -107,9 +107,13 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     AssessmentSelectFacilityRoute.name: (routeData) {
+      final args = routeData.argsAs<AssessmentSelectFacilityRouteArgs>();
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const AssessmentSelectFacilityPage(),
+        child: AssessmentSelectFacilityPage(
+          key: args.key,
+          assessmentMode: args.assessmentMode,
+        ),
       );
     },
     AssessmentSubmissionSuccessRoute.name: (routeData) {
@@ -655,16 +659,41 @@ class AssessmentHomeRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [AssessmentSelectFacilityPage]
-class AssessmentSelectFacilityRoute extends PageRouteInfo<void> {
-  const AssessmentSelectFacilityRoute({List<PageRouteInfo>? children})
-      : super(
+class AssessmentSelectFacilityRoute
+    extends PageRouteInfo<AssessmentSelectFacilityRouteArgs> {
+  AssessmentSelectFacilityRoute({
+    Key? key,
+    required AssessmentMode assessmentMode,
+    List<PageRouteInfo>? children,
+  }) : super(
           AssessmentSelectFacilityRoute.name,
+          args: AssessmentSelectFacilityRouteArgs(
+            key: key,
+            assessmentMode: assessmentMode,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'AssessmentSelectFacilityRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<AssessmentSelectFacilityRouteArgs> page =
+      PageInfo<AssessmentSelectFacilityRouteArgs>(name);
+}
+
+class AssessmentSelectFacilityRouteArgs {
+  const AssessmentSelectFacilityRouteArgs({
+    this.key,
+    required this.assessmentMode,
+  });
+
+  final Key? key;
+
+  final AssessmentMode assessmentMode;
+
+  @override
+  String toString() {
+    return 'AssessmentSelectFacilityRouteArgs{key: $key, assessmentMode: $assessmentMode}';
+  }
 }
 
 /// generated route for
