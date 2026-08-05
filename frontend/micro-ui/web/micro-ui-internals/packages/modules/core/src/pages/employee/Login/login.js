@@ -176,6 +176,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       try {
         await Digit.UserService.userLoginReport({
           User: user.info,
+          application: window.contextPath === "installation-qc" ? "MANAGEMENT_HUB" : "SAURA_EMITRA",
         });
       } catch (err) {
         console.error("Login report failed", err);

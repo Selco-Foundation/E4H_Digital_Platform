@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BackLink, Loader, Toast } from "@egovernments/digit-ui-components";
 import { FormComposerV2 } from "@egovernments/digit-ui-react-components";
+import Axios from "axios";
 import { useTranslation } from "react-i18next";
 import { useHistory, useLocation, useRouteMatch } from "react-router-dom";
 import ImageComponent from "../../../components/ImageComponent";
@@ -19,6 +20,36 @@ const setEmployeeDetail = (userObject, token) => {
   localStorage.setItem("Employee.token", token);
   localStorage.setItem("user-info", JSON.stringify(userObject));
   localStorage.setItem("Employee.user-info", JSON.stringify(userObject));
+};
+
+const reportUserLogin = async (user) => {
+  const ts = Date.now();
+  const language = Digit.StoreData?.getCurrentLanguage?.() || Digit.Utils.getDefaultLanguage?.() || "en_IN";
+  const requestInfo = {
+    apiId: "Rainmaker",
+    ver: ".01",
+    ts,
+    action: "_report",
+    did: "1",
+    key: "",
+    msgId: `${ts}|${language}`,
+    authToken: user?.access_token,
+    userInfo: user?.info,
+  };
+
+  await Axios({
+    method: "POST",
+    url: "/im-services/user/login/_report",
+    headers: {
+      "Content-Type": "application/json",
+      "auth-token": user?.access_token || null,
+    },
+    data: {
+      RequestInfo: requestInfo,
+      User: user?.info,
+      application: "MANAGEMENT_HUB",
+    },
+  });
 };
 
 const Otp = ({ isLogin = false }) => {
@@ -77,32 +108,46 @@ const Otp = ({ isLogin = false }) => {
 
   useEffect(() => {
     if (!user) return;
-    Digit.SessionStorage.set("citizen.userRequestObject", user);
-    const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
-    if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
-    Digit.UserService.setUser(user);
-    setEmployeeDetail(user?.info, user?.access_token);
+    let cancelled = false;
 
-    const getRedirectPathOtpLogin = (locationPathname, user, MdmsRes, RoleLandingUrl) => {
-      const userRole = user?.info?.roles?.[0]?.code;
-      const isSuperUser = userRole === "SUPERUSER";
-      const contextPath = window?.contextPath;
+    (async () => {
+      Digit.SessionStorage.set("citizen.userRequestObject", user);
+      const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
+      if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
+      Digit.UserService.setUser(user);
+      setEmployeeDetail(user?.info, user?.access_token);
 
-      switch (true) {
-        case locationPathname === "/sandbox-ui/user/otp" && isSuperUser:
-          return `/${contextPath}/employee/sandbox/landing`;
-        case isSuperUser && MdmsRes?.[0]?.rolesForLandingPage?.includes("SUPERUSER"):
-          return `/${contextPath}${RoleLandingUrl}`;
-        default:
-          return `/${contextPath}/employee`;
+      try {
+        await reportUserLogin(user);
+      } catch (err) {
+        console.error("Login report failed", err);
       }
+
+      const getRedirectPathOtpLogin = (locationPathname, user, MdmsRes, RoleLandingUrl) => {
+        const userRole = user?.info?.roles?.[0]?.code;
+        const isSuperUser = userRole === "SUPERUSER";
+        const contextPath = window?.contextPath;
+
+        switch (true) {
+          case locationPathname === "/sandbox-ui/user/otp" && isSuperUser:
+            return `/${contextPath}/employee/sandbox/landing`;
+          case isSuperUser && MdmsRes?.[0]?.rolesForLandingPage?.includes("SUPERUSER"):
+            return `/${contextPath}${RoleLandingUrl}`;
+          default:
+            return `/${contextPath}/employee`;
+        }
+      };
+      const redirectPathOtpLogin = getRedirectPathOtpLogin(location.pathname, user, MdmsRes, RoleLandingUrl);
+
+      if (cancelled) return;
+      if (isLogin) history.push(redirectPathOtpLogin);
+      else history.push({ pathname: `/${window?.globalPath}/user/setup`, state: { tenant } });
+    })().catch((err) => console.error("otp login effect failed", err));
+
+    return () => {
+      cancelled = true;
     };
-    const redirectPathOtpLogin = getRedirectPathOtpLogin(location.pathname, user, MdmsRes, RoleLandingUrl);
-
-    if (isLogin) history.push(redirectPathOtpLogin);
-    else history.push({ pathname: `/${window?.globalPath}/user/setup`, state: { tenant } });
-
-  }, [user]);
+  }, [user, history, isLogin, location.pathname, MdmsRes, RoleLandingUrl, tenant]);
 
   const onSubmit = async (formData) => {
     const requestData = { username: email, password: formData?.OtpComponent?.otp, tenantId: tenant, userType: "EMPLOYEE" };

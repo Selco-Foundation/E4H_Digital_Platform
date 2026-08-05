@@ -1,3 +1,4 @@
+import Axios from "axios";
 import Urls from "../../atoms/urls";
 import { Request, ServiceRequest } from "../../atoms/Utils/Request";
 import { Storage } from "../../atoms/Utils/Storage";
@@ -142,13 +143,33 @@ export const UserService = {
       data: data.pageSize ? { tenantId, ...data } : { tenantId, ...data, pageSize: "100" },
     });
   },
-  userLoginReport: async (authResponse) => {
-    return ServiceRequest({
-      serviceName: "userLoginReport",
-      url: Urls.UserLoginReport,
+  userLoginReport: async ({ User, application = "SAURA_EMITRA" }) => {
+    const ts = Date.now();
+    const authToken = Digit.UserService.getUser()?.access_token || null;
+    const language = Digit.StoreData.getCurrentLanguage?.() || "en_IN";
+
+    const response = await Axios({
       method: "POST",
-      auth: true,
-      data: authResponse,
+      url: Urls.UserLoginReport,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      data: {
+        RequestInfo: {
+          apiId: "Rainmaker",
+          ver: ".01",
+          ts,
+          action: "_report",
+          did: "1",
+          key: "",
+          msgId: `${ts}|${language}`,
+          authToken,
+          userInfo: User,
+        },
+        User,
+        application,
+      },
     });
+    return response?.data || {};
   },
 };
