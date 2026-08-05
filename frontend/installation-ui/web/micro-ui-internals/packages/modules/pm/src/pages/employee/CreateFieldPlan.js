@@ -1216,6 +1216,7 @@ const CreateFieldPlan = () => {
         break;
       case 4:
         await saveActivityDetailsAndUpdateFieldPlan(data.activityUserAssignment);
+        break;
     }
   };
 

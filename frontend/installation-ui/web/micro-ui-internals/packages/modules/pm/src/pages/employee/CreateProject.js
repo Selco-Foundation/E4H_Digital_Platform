@@ -619,6 +619,7 @@ const CreateProject = () => {
         break;
       case 3:
         await handleCompleteProjectCreation();
+        break;
     }
   }
 
