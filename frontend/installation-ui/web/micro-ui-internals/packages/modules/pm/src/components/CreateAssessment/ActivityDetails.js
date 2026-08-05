@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SubmitBar, Table } from "@egovernments/digit-ui-react-components";
+import { Table } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "../OrganizationUserDropdown";
@@ -11,7 +11,7 @@ const ActivityDetails = ({
   props
 }) => {
 
-  const { t, name, onActivityDataSave, activityData, organizationData } = props;
+  const { t, name, activityData, organizationData } = props;
   const [activityAssignmentData, setActivityAssignmentData] = useState(data[name] || []);
   const [organizationOptions, setOrganizationOptions] = useState([]);
 
@@ -105,10 +105,6 @@ const ActivityDetails = ({
         }),
       };
     }));
-  }
-
-  const handleActivityDataSave = () => {
-    onActivityDataSave(activityAssignmentData);
   }
 
   const GetHead = (value) => (
@@ -386,23 +382,6 @@ const ActivityDetails = ({
         isPaginationRequired={false}
         styles={{minWidth: "300px", overflow: "auto"}}
       />
-      <div
-        style={{
-          padding: "20px 0px",
-          display: "flex",
-          justifyContent: "end",
-          gap: "10px",
-        }}
-      >
-        <SubmitBar
-          label={t("CORE_COMMON_SAVE")}
-          style={{
-            width: "220px",
-            maxWidth: "50%",
-          }}
-          onSubmit={handleActivityDataSave}
-        />
-      </div>
     </div>
   );
 }
