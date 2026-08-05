@@ -462,53 +462,6 @@ const CreateAssessment = () => {
     return updatedAssessmentPlan;
   }
 
-  const handleActivityDataSave = async (activityData) => {
-
-    const { faultyData, emptyData, validatedData } = validateActivityData(activityData);
-
-    if (faultyData) {
-      setPersistedFormData((prevState) => ({
-        ...prevState,
-        activityDetails: {
-          activityUserAssignment: validatedData,
-        },
-      }));
-
-    } else if (emptyData) {
-      setToast({
-        key: "error",
-        label: t("PM_TOAST_ACTIVITY_DETAILS_EMPTY_SAVE_WARNING"),
-      })
-      setPersistedFormData((prevState) => ({
-        ...prevState,
-        activityDetails: {
-          activityUserAssignment: validatedData,
-        },
-      }));
-
-    } else {
-      try {
-        setBlockUI(true);
-        await assignAssessmentActivityUsers(activityData);
-        await invalidateAssessmentPlanData();
-        setToast({
-          key: "success",
-          label: t("PM_TOAST_ACTIVITY_DETAILS_SAVE_SUCCESS"),
-        })
-
-      } catch (error) {
-        console.error("Error assigning users for assessment plan activities", error);
-        setToast({
-          key: "error",
-          label: CommonUtils.getApiErrorMessage(error) || t("PM_TOAST_ACTIVITY_DETAILS_SAVE_ERROR"),
-        })
-
-      } finally {
-        setBlockUI(false);
-      }
-    }
-  }
-
   const config = useMemo(
     () => [
       {
@@ -691,7 +644,6 @@ const CreateAssessment = () => {
             route: "activity-details",
             customProps: {
               name: "activityUserAssignment",
-              onActivityDataSave: handleActivityDataSave,
               t,
               activityData: activityData?.filter((activity) => activity?.code === "ASSESSMENT"),
               organizationData,
