@@ -117,7 +117,7 @@ public class FieldPlannerQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(query);
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
-        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder, criteria);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
 
 //        if (criteria.getFromDate() != null && criteria.getFromDate() != 0) {
@@ -194,6 +194,18 @@ public class FieldPlannerQueryBuilder {
         addClauseIfRequired(preparedStmtList, queryBuilder);
         queryBuilder.append(" fp.plan_type = ? ");
         preparedStmtList.add(FieldPlannerConstants.PLAN_TYPE_FIELD_PLAN);
+    }
+
+    /**
+     * List/search queries stay scoped to FIELD_PLAN. ID lookups skip plan_type so internal callers
+     * (e.g. activity assignment for assessment plans) can resolve any row in field_plans.
+     */
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder,
+                                        FieldPlanSearchCriteria criteria) {
+        if (!CollectionUtils.isEmpty(criteria.getIds())) {
+            return;
+        }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
     }
 
     private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {
