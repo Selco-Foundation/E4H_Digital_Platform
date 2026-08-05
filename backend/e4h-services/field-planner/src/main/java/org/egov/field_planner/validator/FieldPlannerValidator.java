@@ -212,6 +212,7 @@ public class FieldPlannerValidator {
         if (project == null || fieldPlan == null) {
             log.error("Project or FieldPlan is null");
             errorMap.put("FIELDPLAN", "Project or FieldPlan is null");
+            return;
         }
 
         Long projectStart = project.getStartDate();
@@ -226,6 +227,10 @@ public class FieldPlannerValidator {
         if (fieldStart == null || fieldEnd == null) {
             log.error("FieldPlan dates are not mandatory");
             errorMap.put("FIELDPLAN", "FieldPlan dates are not mandatory");
+        }
+
+        if (projectStart == null || projectEnd == null || fieldStart == null || fieldEnd == null) {
+            return;
         }
 
         if (fieldStart < projectStart) {
