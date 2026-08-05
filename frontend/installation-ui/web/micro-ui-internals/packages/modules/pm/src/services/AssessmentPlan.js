@@ -66,6 +66,33 @@ export const AssessmentPlanService = {
     };
   },
 
+  fetchAssessmentPlanDetail: async (planId) => {
+    const endpoint = "/field-planner/assessment/v1/plan/_detail";
+    const headers = { "Content-Type": "application/json" };
+
+    const response = await Request({
+      url: endpoint,
+      data: { planId },
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers,
+    });
+
+    const assessmentPlan = response?.plan || response?.Plan || response;
+    const metrics = assessmentPlan?.metrics || {};
+
+    return {
+      totalFacilities: assessmentPlan?.healthFacilityCount ?? 0,
+      remoteAssessmentDone: metrics?.remoteAssessmentDone ?? 0,
+      remoteAssessmentTotal: metrics?.remoteAssessmentTotal ?? 0,
+      onSiteAssessmentDone: metrics?.onSiteAssessmentDone ?? 0,
+      onSiteAssessmentAssigned: metrics?.onSiteAssessmentAssigned ?? 0,
+      eligible: metrics?.eligible ?? 0,
+      notEligible: metrics?.notEligible ?? 0,
+    };
+  },
+
   upsertAssessmentPlan: async (assessmentPlanData) => {
     const [assessmentPlan] = assessmentPlanData.AssessmentPlans;
     const headers = { "Content-Type": "application/json" };

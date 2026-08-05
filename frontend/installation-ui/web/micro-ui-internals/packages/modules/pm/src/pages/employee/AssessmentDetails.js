@@ -11,6 +11,7 @@ import ReasonRequiredModal from "../../components/AssessmentDetails/ReasonRequir
 import CompleteAssessmentPlanModal from "../../components/AssessmentDetails/CompleteAssessmentPlanModal";
 import CustomCheckBox from "../../components/Custom/CustomCheckBox";
 import useAssessmentPlan from "../../hooks/useAssessmentPlan";
+import useAssessmentPlanDetail from "../../hooks/useAssessmentPlanDetail";
 import useAssessmentFacility from "../../hooks/useAssessmentFacility";
 import useProject from "../../hooks/useProject";
 import { populateWorkingAssessmentPlan, populateWorkingProject } from "../../redux/actions";
@@ -98,7 +99,13 @@ const AssessmentDetails = () => {
     isFetching: facilityDataFetching,
     data: facilityData,
     revalidate: revalidateFacilities,
-  } = useAssessmentFacility(projectQueryFilter, pageSize, pageOffset);
+  } = useAssessmentFacility(assessmentId, projectQueryFilter, pageSize, pageOffset);
+
+  const {
+    isLoading: planDetailLoading,
+    data: planDetailData,
+    revalidate: revalidatePlanDetail,
+  } = useAssessmentPlanDetail(assessmentId);
 
   useEffect(() => {
     history.replace({
@@ -262,10 +269,10 @@ const AssessmentDetails = () => {
     if (planCompleted || !selectedFacilityIds.length) return false;
 
     if (mainCheck) {
-      const summary = facilityData?.summary;
+      const summary = planDetailData;
       if (!summary) return false;
-      const unresolvedCount = summary.totalFacilities - summary.eligibleCount - summary.notEligibleCount;
-      return summary.remoteAssessmentsCompleted > 0 && unresolvedCount > 0;
+      const unresolvedCount = summary.totalFacilities - summary.eligible - summary.notEligible;
+      return summary.remoteAssessmentDone > 0 && unresolvedCount > 0;
     }
 
     const selectedFacilities = fetchedData.filter((facility) => selectedFacilityIds.includes(facility.id));
@@ -306,6 +313,7 @@ const AssessmentDetails = () => {
       }
 
       await revalidateFacilities();
+      await revalidatePlanDetail();
       setSelectedFacilityIds([]);
       setMainCheck(false);
       setPendingAction(null);
@@ -321,9 +329,9 @@ const AssessmentDetails = () => {
 
   const canCompletePlan = () => {
     if (planCompleted) return false;
-    const summary = facilityData?.summary;
+    const summary = planDetailData;
     if (!summary?.totalFacilities) return false;
-    return (summary.eligibleCount + summary.notEligibleCount) === summary.totalFacilities;
+    return (summary.eligible + summary.notEligible) === summary.totalFacilities;
   };
 
   const handleCompletePlan = async () => {
@@ -512,7 +520,7 @@ const AssessmentDetails = () => {
     return t("PM_ASSESSMENT_MARK_NOT_ELIGIBLE_DESC");
   };
 
-  if (projectDataLoading || assessmentPlanDataLoading) {
+  if (projectDataLoading || assessmentPlanDataLoading || planDetailLoading) {
     return <Loader />;
   }
 
@@ -573,7 +581,7 @@ const AssessmentDetails = () => {
           </button>
         </div>
       </div>
-      <InfoCard t={t} summary={facilityData?.summary} />
+      <InfoCard t={t} summary={planDetailData} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ minWidth: "300px" }}>
           <Filter
