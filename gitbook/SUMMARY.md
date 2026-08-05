@@ -1,4 +1,4 @@
-# Summary
+# Table of contents
 
 * [E4H Digital Platform](README.md)
 
@@ -83,7 +83,7 @@
 
 * [Admin functionality](LLDs/admin-functionality/admin-functionality-lld.md)
 * [Assessment module](LLDs/assessment/assessment-module-lld.md)
-* AMC scheduling
+* [AMC scheduling](llds/amc-scheduling/README.md)
   * [v1](LLDs/amc-scheduling/amc-lld-v1.md)
   * [v2](LLDs/amc-scheduling/amc-lld-v2.md)
 * [Anganwadi](LLDs/anganwadi/anganwadi-lld.md)

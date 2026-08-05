@@ -1,15 +1,15 @@
+---
+description: information on the CI/CD setup
+---
+
 # CI/CD
-
-## CI/CD
-
-### CI/CD
 
 Two pipelines, two repos:
 
-| Pipeline | Repo | Does |
-| --- | --- | --- |
-| 1. Image build | `E4H_Digital_Platform/.github/workflows/` | Builds a Docker image per app, pushes to Docker Hub |
-| 2. Cluster deployment | [DIGIT-DevOps](https://github.com/Selco-Foundation/DIGIT-DevOps) `.github/workflows/Dev.yaml`, `Prod.yaml` | Applies Helmfile releases to the target cluster |
+| Pipeline              | Repo                                                                                                       | Does                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 1. Image build        | `E4H_Digital_Platform/.github/workflows/`                                                                  | Builds a Docker image per app, pushes to Docker Hub |
+| 2. Cluster deployment | [DIGIT-DevOps](https://github.com/Selco-Foundation/DIGIT-DevOps) `.github/workflows/Dev.yaml`, `Prod.yaml` | Applies Helmfile releases to the target cluster     |
 
 Pipeline 1 builds/pushes the image; Pipeline 2 applies the Helmfile release to deploy it to dev. `Prod.yaml` is separate and manually run. Helm/Helmfile mechanics are covered in [Deployment](deployment.md).
 
@@ -31,13 +31,13 @@ GHA layer caching (and the Maven cache, for backend services) is enabled on thes
 4. Log in to Docker Hub.
 5. Build and push with `docker/build-push-action`, GHA layer caching. Tag: **`selcohub/<app>:<VERSION>-<commit_hash>`**.
 
-| | Backend — ref: `amc-service.yaml` | Frontend — ref: `digit-ui.yaml` |
-| --- | --- | --- |
-| Path filter | `backend/e4h-services/amc-scheduler-service/**` | `frontend/micro-ui/**` |
-| Extra setup | JDK 17 (Temurin) + Maven cache (`~/.m2`, keyed by `pom.xml`) | None — build runs inside the Dockerfile |
-| Build | `mvn package` before the Docker step | N/A |
-| Dockerfile | shared `build/maven/Dockerfile`, `build-args: JAR_FILE=<jar path>` | `frontend/micro-ui/web/docker/testfile/Dockerfile`, `build-args: WORK_DIR=frontend/micro-ui/`, `GA_MEASUREMENT_ID` (resolved from branch/tag: dev/staging/prod measurement ID) |
-| Extras | Some services also build a companion DB image (`selcohub/<service>-db:...`) | State UIs add `build-args: PUBLIC_PATH=/<state>/` and push `selcohub/<state>-ui:...` |
+|             | Backend — ref: `amc-service.yaml`                                           | Frontend — ref: `digit-ui.yaml`                                                                                                                                                |
+| ----------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Path filter | `backend/e4h-services/amc-scheduler-service/**`                             | `frontend/micro-ui/**`                                                                                                                                                         |
+| Extra setup | JDK 17 (Temurin) + Maven cache (`~/.m2`, keyed by `pom.xml`)                | None — build runs inside the Dockerfile                                                                                                                                        |
+| Build       | `mvn package` before the Docker step                                        | N/A                                                                                                                                                                            |
+| Dockerfile  | shared `build/maven/Dockerfile`, `build-args: JAR_FILE=<jar path>`          | `frontend/micro-ui/web/docker/testfile/Dockerfile`, `build-args: WORK_DIR=frontend/micro-ui/`, `GA_MEASUREMENT_ID` (resolved from branch/tag: dev/staging/prod measurement ID) |
+| Extras      | Some services also build a companion DB image (`selcohub/<service>-db:...`) | State UIs add `build-args: PUBLIC_PATH=/<state>/` and push `selcohub/<state>-ui:...`                                                                                           |
 
 `sonarcloud.yml` is the exception — static analysis only, no build/push step.
 
@@ -63,12 +63,12 @@ GHA layer caching (and the Maven cache, for backend services) is enabled on thes
 
 **Maintenance point:** the manifest filename and every `--set` flag are hardcoded. New release → add the manifest **and** update the filename in the `yq` step. New service → add its `--set` flag(s) too.
 
-| Secret / variable | Used for |
-| --- | --- |
-| `DOCKER_USERNAME` / `DOCKER_PASSWORD` | Docker Hub login |
-| `AWS_REGION`, `CLUSTER_NAME_PROD`/dev equivalent | EKS targeting |
-| IAM role (Prod) or `AWS_ACCESS_KEY_ID`+`SECRET` (Dev) | AWS auth for deployment |
-| `PUBLIC_KMS_KEY_PROD`/dev equivalent | Decrypting `sops` secrets |
+| Secret / variable                                     | Used for                  |
+| ----------------------------------------------------- | ------------------------- |
+| `DOCKER_USERNAME` / `DOCKER_PASSWORD`                 | Docker Hub login          |
+| `AWS_REGION`, `CLUSTER_NAME_PROD`/dev equivalent      | EKS targeting             |
+| IAM role (Prod) or `AWS_ACCESS_KEY_ID`+`SECRET` (Dev) | AWS auth for deployment   |
+| `PUBLIC_KMS_KEY_PROD`/dev equivalent                  | Decrypting `sops` secrets |
 
 #### End-to-end flow
 
