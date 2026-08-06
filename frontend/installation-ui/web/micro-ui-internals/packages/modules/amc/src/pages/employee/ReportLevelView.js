@@ -212,14 +212,6 @@ const ReportLevelView = ({ t }) => {
         }}>
           {t("AMC_NO_REPORTS_FOUND")}
         </div>
-        <div style={{
-          color: "#505A5F",
-          fontSize: "16px",
-          maxWidth: "520px",
-          lineHeight: "24px",
-        }}>
-          {t("AMC_REPORT_LEVEL_EMPTY_DESC")}
-        </div>
       </div>
     );
   };
