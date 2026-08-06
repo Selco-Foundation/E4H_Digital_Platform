@@ -270,8 +270,11 @@ const AssessmentDetails = () => {
 
   const canBulkMarkResult = () => !planCompleted && selectedFacilityIds.length > 0;
 
-  const openAssignOnSiteConfirm = (facilityIds) => {
-    setPendingAction({ type: "ASSIGN_ONSITE", facilityIds });
+  // "FACILITY_MODAL" identifies actions triggered from a single facility's detail view, which
+  // hit the singular decision-update API instead of the bulk one, regardless of how many rows
+  // happen to be checked in the table.
+  const openAssignOnSiteConfirm = (facilityIds, source = "BULK") => {
+    setPendingAction({ type: "ASSIGN_ONSITE", facilityIds, source });
   };
 
   // Mark Eligible/Mark Not Eligible run through a strict validation order: a blocking modal if
@@ -279,7 +282,7 @@ const AssessmentDetails = () => {
   // facility's on-site assessment is pending/not-initiated, then (only once every selected
   // facility has finalised both assessments) either a single shared reason prompt when every
   // facility needs one, a "not supported" notice when only some do, or a plain confirmation.
-  const openMarkResultConfirm = (facilityIds, targetResult) => {
+  const openMarkResultConfirm = (facilityIds, targetResult, source = "BULK") => {
     const selectedFacilities = fetchedData.filter((facility) => facilityIds.includes(facility.id));
     const scenario = evaluateMarkResultScenario(selectedFacilities, targetResult);
 
@@ -297,12 +300,13 @@ const AssessmentDetails = () => {
       type: scenario === "REASON_REQUIRED" ? "MARK_RESULT_REASON_REQUIRED" : scenario,
       targetResult,
       facilityIds,
+      source,
     });
   };
 
-  const openMarkEligibleConfirm = (facilityIds) => openMarkResultConfirm(facilityIds, "ELIGIBLE");
+  const openMarkEligibleConfirm = (facilityIds, source) => openMarkResultConfirm(facilityIds, "ELIGIBLE", source);
 
-  const openMarkNotEligibleConfirm = (facilityIds) => openMarkResultConfirm(facilityIds, "NOT_ELIGIBLE");
+  const openMarkNotEligibleConfirm = (facilityIds, source) => openMarkResultConfirm(facilityIds, "NOT_ELIGIBLE", source);
 
   const closePendingAction = () => setPendingAction(null);
 
@@ -311,15 +315,16 @@ const AssessmentDetails = () => {
 
     setActionLoading(true);
     try {
-      const decisions = pendingAction.type === "ASSIGN_ONSITE"
-        ? pendingAction.facilityIds.map((facilityId) => ({ planFacilityId: facilityId, assignForField: true }))
-        : pendingAction.facilityIds.map((facilityId) => ({
-          planFacilityId: facilityId,
-          overallStatus: pendingAction.targetResult,
-          ...(reason ? { remarks: reason } : {}),
-        }));
+      const decisionFields = pendingAction.type === "ASSIGN_ONSITE"
+        ? { assignForField: true }
+        : { overallStatus: pendingAction.targetResult, ...(reason ? { remarks: reason } : {}) };
 
-      await AssessmentFacilityService.bulkUpdateFacilityDecisions(assessmentId, decisions);
+      if (pendingAction.source === "FACILITY_MODAL") {
+        await AssessmentFacilityService.updateFacilityDecision(assessmentPlan, pendingAction.facilityIds[0], decisionFields);
+      } else {
+        const decisions = pendingAction.facilityIds.map((facilityId) => ({ planFacilityId: facilityId, ...decisionFields }));
+        await AssessmentFacilityService.bulkUpdateFacilityDecisions(assessmentId, decisions);
+      }
 
       await revalidateFacilities();
       await revalidatePlanDetail();
@@ -670,9 +675,9 @@ const AssessmentDetails = () => {
           planCompleted={planCompleted}
           canAssignOnSite={canAssignForOnSiteAssessment(facilityDetailsModal)}
           onClose={() => setFacilityDetailsModal(null)}
-          onAssignOnSite={() => openAssignOnSiteConfirm([facilityDetailsModal.id])}
-          onMarkEligible={() => openMarkEligibleConfirm([facilityDetailsModal.id])}
-          onMarkNotEligible={() => openMarkNotEligibleConfirm([facilityDetailsModal.id])}
+          onAssignOnSite={() => openAssignOnSiteConfirm([facilityDetailsModal.id], "FACILITY_MODAL")}
+          onMarkEligible={() => openMarkEligibleConfirm([facilityDetailsModal.id], "FACILITY_MODAL")}
+          onMarkNotEligible={() => openMarkNotEligibleConfirm([facilityDetailsModal.id], "FACILITY_MODAL")}
         />
       )}
 

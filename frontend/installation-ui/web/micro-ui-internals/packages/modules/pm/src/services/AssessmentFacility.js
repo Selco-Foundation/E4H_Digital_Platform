@@ -61,4 +61,19 @@ export const AssessmentFacilityService = {
     });
   },
 
+  // decisionFields: { overallStatus: "ELIGIBLE"|"NOT_ELIGIBLE", remarks? } or { assignForField: true }
+  updateFacilityDecision: async (plan, planFacilityId, decisionFields) => {
+    const endpoint = "/field-planner/assessment/v1/plan/facility/decision/_update";
+    const headers = { "Content-Type": "application/json" };
+
+    return await Request({
+      url: endpoint,
+      data: { plan, planFacilityId, ...decisionFields },
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers,
+    });
+  },
+
 };
