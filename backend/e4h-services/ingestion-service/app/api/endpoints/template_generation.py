@@ -1398,7 +1398,7 @@ async def export_assessment_plan_facilities(
             })
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"assessment_plan_facilities_{plan_id}_{timestamp}.xlsx"
+        output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
 
         df = pd.DataFrame(rows)

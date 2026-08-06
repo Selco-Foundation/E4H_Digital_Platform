@@ -1,7 +1,6 @@
 package org.egov.field_planner.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.annotation.Generated;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -58,6 +57,5 @@ public class Facility {
     private Boolean isActive = null;
 
     @JsonProperty("boundaryCode")
-    @JsonAlias("boundary_code")
     private String boundaryCode = null;
 }

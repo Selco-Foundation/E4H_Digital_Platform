@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -68,6 +69,9 @@ public class AssessmentPlanService {
 
         List<AssessmentPlan> plans = planRepository.search(criteria, limit, offset);
         plans.forEach(this::enrichPlanSummary);
+        if (request.getRequestInfo() != null && !plans.isEmpty()) {
+            enrichAssessors(request.getRequestInfo(), plans);
+        }
         int total = planRepository.count(criteria);
 
         return AssessmentPlanResponse.builder()
@@ -118,8 +122,8 @@ public class AssessmentPlanService {
 
         if (request.getAssessors() != null && !request.getAssessors().isEmpty()) {
             assignAssessors(request.getRequestInfo(), existing, request.getAssessors());
-            existing.setAssessors(request.getAssessors());
         }
+        existing.setAssessors(getAssessors(request.getRequestInfo(), existing));
 
         return existing;
     }
@@ -166,11 +170,39 @@ public class AssessmentPlanService {
                 metrics.getRemoteAssessmentTotal() > 0 && metrics.getResultPending() == 0);
     }
 
+    private void enrichAssessors(RequestInfo requestInfo, List<AssessmentPlan> plans) {
+        Map<String, List<AssessorAssignment>> assessorsByPlanId = fetchAssessorsByPlanIds(requestInfo, plans);
+        for (AssessmentPlan plan : plans) {
+            plan.setAssessors(assessorsByPlanId.getOrDefault(plan.getId(), Collections.emptyList()));
+        }
+    }
+
     private List<AssessorAssignment> getAssessors(RequestInfo requestInfo, AssessmentPlan plan) {
+        return fetchAssessorsByPlanIds(requestInfo, List.of(plan))
+                .getOrDefault(plan.getId(), Collections.emptyList());
+    }
+
+    private Map<String, List<AssessorAssignment>> fetchAssessorsByPlanIds(RequestInfo requestInfo,
+                                                                          List<AssessmentPlan> plans) {
+        List<String> planIds = plans.stream()
+                .map(AssessmentPlan::getId)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .toList();
+        if (planIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        String tenantId = plans.stream()
+                .map(AssessmentPlan::getTenantId)
+                .filter(StringUtils::isNotBlank)
+                .findFirst()
+                .orElse(null);
+
         try {
             ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder()
-                    .fieldPlanId(List.of(plan.getId()))
-                    .tenantId(plan.getTenantId())
+                    .fieldPlanId(planIds)
+                    .tenantId(tenantId)
                     .build();
             ActivityAssignmentSearchRequest searchRequest = ActivityAssignmentSearchRequest.builder()
                     .criteria(criteria)
@@ -178,18 +210,20 @@ public class AssessmentPlanService {
                     .build();
             String url = configuration.getFieldPlanActivityServiceHost()
                     + configuration.getFieldPlanActivitySearchUrl()
-                    + "?tenantId=" + plan.getTenantId() + "&offset=0&limit=100";
+                    + "?tenantId=" + tenantId + "&offset=0&limit=" + Math.max(100, planIds.size() * 4);
             Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
             ActivityAssignmentResponse assignmentResponse = mapper.convertValue(response, ActivityAssignmentResponse.class);
             if (assignmentResponse == null || assignmentResponse.getActivityAssignment() == null) {
-                return Collections.emptyList();
+                return Collections.emptyMap();
             }
             return assignmentResponse.getActivityAssignment().stream()
-                    .map(assignment -> toAssessorAssignment(requestInfo, assignment))
-                    .toList();
+                    .filter(assignment -> StringUtils.isNotBlank(assignment.getFieldPlanId()))
+                    .collect(Collectors.groupingBy(
+                            ActivityAssignment::getFieldPlanId,
+                            Collectors.mapping(assignment -> toAssessorAssignment(requestInfo, assignment), Collectors.toList())));
         } catch (Exception e) {
-            log.warn("Failed to fetch assessors for plan {}", plan.getId(), e);
-            return Collections.emptyList();
+            log.warn("Failed to fetch assessors for plans {}", planIds, e);
+            return Collections.emptyMap();
         }
     }
 

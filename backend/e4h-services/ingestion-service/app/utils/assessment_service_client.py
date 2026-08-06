@@ -92,10 +92,12 @@ class AssessmentServiceClient:
         headers = {"Content-Type": "application/json"}
         payload = {
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "planId": plan_id,
-            "filters": filters or {},
-            "exportAll": export_all,
-            "includeResponseSummary": include_response_summary,
+            "criteria": {
+                "planId": plan_id,
+                "filters": filters or {},
+                "exportAll": export_all,
+                "includeResponseSummary": include_response_summary,
+            },
         }
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
