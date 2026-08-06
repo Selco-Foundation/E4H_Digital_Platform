@@ -49,6 +49,7 @@ public class ScheduledVisitService {
     private final MDMSUtils mdmsUtils;
     private BoundaryUtil boundaryUtil;
     private final FacilityPocPhoneUtil facilityPocPhoneUtil;
+    private final AmcVisitReportPdfService amcVisitReportPdfService;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -58,7 +59,7 @@ public class ScheduledVisitService {
     public ScheduledVisitService(
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
             Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil,
-            FacilityPocPhoneUtil facilityPocPhoneUtil) {
+            FacilityPocPhoneUtil facilityPocPhoneUtil, AmcVisitReportPdfService amcVisitReportPdfService) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
         this.producer = producer;
@@ -68,6 +69,7 @@ public class ScheduledVisitService {
             this.amcConfigurationServiceUtil = scheduledVisitsServiceUtil;
         this.amcConfigurationService = amcConfigurationService;
         this.workflowService = workflowService;
+        this.amcVisitReportPdfService = amcVisitReportPdfService;
         this.jdbcTemplate = jdbcTemplate;
         this.mdmsUtils = mdmsUtils;
         this.boundaryUtil = boundaryUtil;
@@ -299,6 +301,8 @@ public class ScheduledVisitService {
             }
             else
                 log.warn("Cannot send OTP - employee or mobile number not found for user ID: {}", request.getRequestInfo().getUserInfo().getUuid());
+
+            attachAmcInstallationFormDocument(request, existingVisit, facility);
         }
 
         // if action is SUBMIT_OTP, check if OTP verification is working fine or not
@@ -397,6 +401,25 @@ public class ScheduledVisitService {
         log.info("Successfully updated visit workflow for visitId: {}, new status: {}", updatedScheduledVisit.getId(), updatedScheduledVisit.getStatus());
 
         return List.of(updatedScheduledVisit);
+    }
+
+    private void attachAmcInstallationFormDocument(VisitReportSubmissionRequest request, ScheduledVisit existingVisit, Facility facility) {
+        log.trace("Entering attachAmcInstallationFormDocument method for visitId: {}", existingVisit.getId());
+        String fileStoreId = amcVisitReportPdfService.generateAmcVisitReportPdf(request, existingVisit, facility);
+        GeoLocation geoLocation = amcVisitReportPdfService.resolveGeoLocation(request.getVisitReport());
+
+        Document pdfDocument = Document.builder()
+                .documentType("AMC_INSTALLATION_FORM")
+                .fileStoreId(fileStoreId)
+                .documentUid("AMC-FORM-" + existingVisit.getId() + "-" + System.currentTimeMillis())
+                .geoLocation(geoLocation)
+                .build();
+
+        List<Document> documents = request.getWorkflow().getDocuments();
+        documents = (documents == null) ? new ArrayList<>() : new ArrayList<>(documents);
+        documents.add(pdfDocument);
+        request.getWorkflow().setDocuments(documents);
+        log.info("AMC installation form document attached to workflow for visitId: {}", existingVisit.getId());
     }
 
     private void handleTransactions(VisitReportSubmissionRequest request, ProcessInstance updatedWorkflow) {
