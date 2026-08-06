@@ -1,5 +1,6 @@
 package org.egov.im.util;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.mdms.model.MasterDetail;
 import org.egov.mdms.model.MdmsCriteria;
@@ -19,6 +20,7 @@ import static org.egov.im.util.IMConstants.MDMS_MODULE_NAME;
 import static org.egov.im.util.IMConstants.MDMS_SERVICEDEF;
 import static org.egov.im.util.IMConstants.USER_ANALYTICS_MODULE;
 
+@Slf4j
 @Component
 public class MDMSUtils {
 
