@@ -55,4 +55,14 @@ public class UserAnalyticsConstants {
 
     public static final String XLSX_CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    //.................................. Report mail ......................................//
+
+    /** HRMS role whose holders are mailed the workbook whenever the report is generated. */
+    public static final String REPORT_RECIPIENT_ROLE = "USER_ANALYTICS_REPORT";
+
+    /** Tenant the report mail is raised under; every module now lives under the {@code in} tenant. */
+    public static final String REPORT_MAIL_TENANT_ID = "in";
+
+    public static final String REPORT_MAIL_TEMPLATE_PATH = "templates/user_analytics_report_email.html";
 }
