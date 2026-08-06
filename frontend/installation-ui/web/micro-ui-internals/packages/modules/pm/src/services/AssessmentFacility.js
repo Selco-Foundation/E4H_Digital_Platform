@@ -58,20 +58,13 @@ export const AssessmentFacilityService = {
     return DUMMY_ASSESSMENT_FACILITIES.filter((facility) => facilityIds.includes(facility.id));
   },
 
-  markAssessmentResult: async (facilityIds, result, reason, remarks) => {
+  markAssessmentResult: async (facilityIds, result, reason) => {
     DUMMY_ASSESSMENT_FACILITIES.forEach((facility) => {
       if (!facilityIds.includes(facility.id)) return;
 
       facility.result = result;
       facility.resultSource = "MANUAL";
-
-      if (result === "NOT_ELIGIBLE") {
-        facility.notEligibleReason = reason || null;
-        facility.notEligibleRemarks = remarks || null;
-      } else {
-        facility.notEligibleReason = null;
-        facility.notEligibleRemarks = null;
-      }
+      facility.notEligibleReason = result === "NOT_ELIGIBLE" ? (reason || null) : null;
     });
 
     return DUMMY_ASSESSMENT_FACILITIES.filter((facility) => facilityIds.includes(facility.id));

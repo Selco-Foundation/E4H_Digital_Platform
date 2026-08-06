@@ -90,7 +90,6 @@ const FacilityDetailsModal = ({
         {facility.result === "NOT_ELIGIBLE" && facility.notEligibleReason && (
           <div style={{ marginTop: "4px", marginBottom: "8px" }}>
             {InfoItem(t("PM_ASSESSMENT_NOT_ELIGIBLE_REASON"), facility.notEligibleReason)}
-            {facility.notEligibleRemarks && InfoItem(t("PM_ASSESSMENT_REMARKS_LABEL"), facility.notEligibleRemarks)}
           </div>
         )}
 
