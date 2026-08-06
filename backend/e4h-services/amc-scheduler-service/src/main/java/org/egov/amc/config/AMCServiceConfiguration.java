@@ -51,6 +51,12 @@ public class AMCServiceConfiguration {
     @Value("${egov.otp.bypass.validation}")
     private boolean byPassOtpValidation;
 
+    @Value("${egov.pdf.host}")
+    private String pdfServiceHost;
+
+    @Value("${egov.createandsave.pdf.url}")
+    private String pdfServiceCreateUrl;
+
     @Value("${egov.facility.host}")
     private String facilityServiceHost;
 
