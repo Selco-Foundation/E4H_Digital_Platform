@@ -52,6 +52,7 @@ public class FacilityService {
     private final HRMSService hrmsService;
     private final VendorOrganisationService vendorOrganisationService;
     private final RestTemplate restTemplate;
+    private final FacilityAnalyticsService facilityAnalyticsService;
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
     private static final String LOCALIZATION_LOCALE = "en_IN";
@@ -78,7 +79,8 @@ public class FacilityService {
             HRMSUtils hrmsUtils,
             HRMSService hrmsService,
             VendorOrganisationService vendorOrganisationService,
-            RestTemplate restTemplate) {
+            RestTemplate restTemplate,
+            FacilityAnalyticsService facilityAnalyticsService) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.facilityRowMapper = facilityRowMapper;
@@ -97,6 +99,7 @@ public class FacilityService {
         this.hrmsService = hrmsService;
         this.vendorOrganisationService = vendorOrganisationService;
         this.restTemplate = restTemplate;
+        this.facilityAnalyticsService = facilityAnalyticsService;
     }
 
     /**
@@ -300,6 +303,8 @@ public class FacilityService {
         }
 
         log.info("Successfully created {} facilities", validatedFacilities.size());
+        // One FACILITY_CREATE analytics event per created facility (best-effort, never throws).
+        facilityAnalyticsService.publishCreateEvents(request.getRequestInfo(), validatedFacilities);
         log.trace("Exiting createFacility method");
         return validatedFacilities;
     }
@@ -980,6 +985,14 @@ public class FacilityService {
         }
         
         log.info("Successfully updated facility {}", update.getFacilityId());
+        // FACILITY_UPDATE analytics event (best-effort, never throws). Built separately rather
+        // than reusing `facility`: boundaryCode is read-only on the update payload, so the state
+        // lookup needs the persisted one, and `facility` is the API response.
+        facilityAnalyticsService.publishUpdateEvent(request.getRequestInfo(), Facility.builder()
+                .facilityId(update.getFacilityId())
+                .tenantId(update.getTenantId())
+                .boundaryCode(firstNonBlank(facility.getBoundaryCode(), existingFacility.getBoundaryCode()))
+                .build());
         log.trace("Exiting updateFacility method");
         return facility;
     }

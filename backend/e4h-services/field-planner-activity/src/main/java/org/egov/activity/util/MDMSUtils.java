@@ -15,9 +15,11 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import static org.egov.activity.util.ActivityConstants.*;
 
@@ -94,6 +96,70 @@ public class MDMSUtils {
 
     public StringBuilder getMdmsSearchUrl() {
         return new StringBuilder().append(config.getMdmsHost()).append(config.getMdmsEndPoint());
+    }
+
+    /**
+     * Fetches the two USER_ANALYTICS masters the analytics flow needs — FIELD_PLANNER for the
+     * action -> event_type mapping and USER_TYPE for the role fields — in a single MDMS call, keyed
+     * by master name. Returns an empty map when the call fails: the analytics caller is best-effort
+     * and must never break the workflow transition it hangs off, so this does not throw the way
+     * {@link #mDMSCall} does.
+     * <p>
+     * The tenant is reduced to its state prefix, as MDMS masters are state-level.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, List<Map<String, Object>>> fetchUserAnalyticsMasters(RequestInfo requestInfo, String tenantId) {
+        try {
+            List<MasterDetail> masterDetails = new ArrayList<>();
+            masterDetails.add(MasterDetail.builder().name(MDMS_MASTER_FIELD_PLANNER).build());
+            masterDetails.add(MasterDetail.builder().name(MDMS_MASTER_USER_TYPE).build());
+
+            ModuleDetail moduleDetail = ModuleDetail.builder().masterDetails(masterDetails)
+                    .moduleName(USER_ANALYTICS_MODULE).build();
+            MdmsCriteria mdmsCriteria = MdmsCriteria.builder()
+                    .tenantId(tenantId.split("\\.")[0])
+                    .moduleDetails(Collections.singletonList(moduleDetail))
+                    .build();
+            MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder()
+                    .mdmsCriteria(mdmsCriteria)
+                    .requestInfo(requestInfo)
+                    .build();
+
+            Map<String, Object> response = serviceRequestRepository.fetchResult(
+                    getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            Object mdmsRes = (response == null) ? null : response.get(MDMS_RESPONSE);
+            if (!(mdmsRes instanceof Map)) {
+                return Collections.emptyMap();
+            }
+            Object module = ((Map<String, Object>) mdmsRes).get(USER_ANALYTICS_MODULE);
+            if (!(module instanceof Map)) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, List<Map<String, Object>>> masters = new LinkedHashMap<>();
+            for (String masterName : List.of(MDMS_MASTER_FIELD_PLANNER, MDMS_MASTER_USER_TYPE)) {
+                masters.put(masterName, asRecordList(((Map<String, Object>) module).get(masterName)));
+            }
+            return masters;
+        } catch (Exception e) {
+            log.warn("Failed to fetch MDMS masters {}.{}/{} for tenant {}: {}", USER_ANALYTICS_MODULE,
+                    MDMS_MASTER_FIELD_PLANNER, MDMS_MASTER_USER_TYPE, tenantId, e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> asRecordList(Object master) {
+        if (!(master instanceof List)) {
+            return Collections.emptyList();
+        }
+        List<Map<String, Object>> records = new ArrayList<>();
+        for (Object entry : (List<?>) master) {
+            if (entry instanceof Map) {
+                records.add((Map<String, Object>) entry);
+            }
+        }
+        return records;
     }
 
     private ModuleDetail getTenantModuleRequestData() {
