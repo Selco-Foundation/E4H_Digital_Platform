@@ -28,7 +28,7 @@ export const DUMMY_ASSESSMENT_FACILITIES = [
   { id: "10", name: "SC Jharia", facilityType: "Sub Center", category: "GOVERNMENT", district: "Dhanbad", block: "Jharia", remoteStatus: "QUALIFIED", onSiteStatus: "QUALIFIED", result: "NOT_ELIGIBLE", resultSource: "AUTO", notEligibleReason: null, notEligibleRemarks: null },
 ];
 
-export const REMOTE_ASSESSMENT_STATUS_CODES = ["QUALIFIED", "NOT_QUALIFIED", "PENDING", "PENDING_WRONG_NUMBER", "PENDING_NO_ANSWER"];
+export const REMOTE_ASSESSMENT_STATUS_CODES = ["NOT_INITIATED", "QUALIFIED", "NOT_QUALIFIED", "PENDING", "PENDING_WRONG_NUMBER", "PENDING_NO_ANSWER"];
 
 export const ONSITE_ASSESSMENT_STATUS_CODES = ["NOT_INITIATED", "PENDING", "QUALIFIED", "NOT_QUALIFIED"];
 
@@ -38,22 +38,23 @@ export const ASSESSMENT_FACILITY_CATEGORY_CODES = ["GOVERNMENT", "PRIVATE"];
 
 export const ASSESSMENT_NOT_ELIGIBLE_REASON_CODES = ["FACILITY_NOT_OPERATIONAL", "DOES_NOT_MEET_CRITERIA", "INSUFFICIENT_INFRASTRUCTURE", "DUPLICATE_ENTRY", "OTHER"];
 
+export const REMOTE_PENDING_STATUS_CODES = ["PENDING", "PENDING_WRONG_NUMBER", "PENDING_NO_ANSWER", "NOT_INITIATED"];
+
 const isFinalRemoteStatus = (status) => status === "QUALIFIED" || status === "NOT_QUALIFIED";
-const isFinalOnSiteStatus = (status) => status === "QUALIFIED" || status === "NOT_QUALIFIED";
+const isFinalResult = (result) => result === "ELIGIBLE" || result === "NOT_ELIGIBLE";
 
 // The "Assign for On-site Assessment" action is only valid once the remote assessment has
-// reached a final state, on-site assessment hasn't been started yet, and no manual/auto
-// assessment result has already been recorded for the facility.
+// reached a final state (Qualified or Not Qualified), the on-site assessment hasn't been
+// started yet, and the facility hasn't already been marked Eligible/Not Eligible.
 export const canAssignForOnSiteAssessment = (facility) => (
   isFinalRemoteStatus(facility?.remoteStatus) &&
   facility?.onSiteStatus === "NOT_INITIATED" &&
-  facility?.result === "PENDING"
+  !isFinalResult(facility?.result)
 );
 
-// Marking a facility Not Eligible always requires a reason. Marking a facility Eligible only
-// requires a reason when it overrides a unanimous "not qualified" agreement between the two
-// assessments; likewise marking Not Eligible while both assessments unanimously agree
-// "qualified" is also an override, even though that case already always shows the reason modal.
+// A reason is only required when the selected result overrides a unanimous opposite agreement
+// between the two assessments: marking Not Eligible while both assessments qualified the
+// facility, or marking Eligible while both assessments found it not qualified.
 export const isUnanimousOverride = (facility, targetResult) => {
   if (targetResult === "NOT_ELIGIBLE") {
     return facility?.remoteStatus === "QUALIFIED" && facility?.onSiteStatus === "QUALIFIED";
@@ -64,13 +65,36 @@ export const isUnanimousOverride = (facility, targetResult) => {
   return false;
 };
 
-export const computeAssessmentSummary = (facilities = []) => ({
-  totalFacilities: facilities.length,
-  remoteAssessmentsCompleted: facilities.filter((facility) => isFinalRemoteStatus(facility?.remoteStatus)).length,
-  onSiteAssessmentsCompleted: facilities.filter((facility) => isFinalOnSiteStatus(facility?.onSiteStatus)).length,
-  eligibleCount: facilities.filter((facility) => facility?.result === "ELIGIBLE").length,
-  notEligibleCount: facilities.filter((facility) => facility?.result === "NOT_ELIGIBLE").length,
-});
+// Evaluates the Mark Eligible/Mark Not Eligible validation scenarios, in strict priority order,
+// for the given selection of facilities and the result the user is trying to apply.
+// Returns one of: "BLOCK_REMOTE_PENDING", "WARN_ONSITE_PENDING", "WARN_ONSITE_NOT_INITIATED",
+// "REASON_REQUIRED", "BULK_NOT_SUPPORTED", or "PROCEED".
+export const evaluateMarkResultScenario = (facilities, targetResult) => {
+  if (facilities.some((facility) => REMOTE_PENDING_STATUS_CODES.includes(facility?.remoteStatus))) {
+    return "BLOCK_REMOTE_PENDING";
+  }
+
+  if (facilities.some((facility) => isFinalRemoteStatus(facility?.remoteStatus) && facility?.onSiteStatus === "PENDING")) {
+    return "WARN_ONSITE_PENDING";
+  }
+
+  if (facilities.some((facility) => isFinalRemoteStatus(facility?.remoteStatus) && facility?.onSiteStatus === "NOT_INITIATED")) {
+    return "WARN_ONSITE_NOT_INITIATED";
+  }
+
+  // Every facility now has a finalised remote and on-site outcome.
+  const overrideFacilities = facilities.filter((facility) => isUnanimousOverride(facility, targetResult));
+
+  if (overrideFacilities.length === 0) {
+    return "PROCEED";
+  }
+
+  if (overrideFacilities.length === facilities.length) {
+    return "REASON_REQUIRED";
+  }
+
+  return "BULK_NOT_SUPPORTED";
+};
 
 const REMOTE_ASSESSMENT_QUESTIONS = [
   "Is the facility functional?",

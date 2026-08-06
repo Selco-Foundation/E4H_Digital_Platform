@@ -3,7 +3,7 @@ import { Button, PopUp } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 
-const ConfirmActionModal = ({ t, title, description, message, confirmLabel, confirmColor = "#0B4B66", loading, onConfirm, onClose }) => {
+const ConfirmActionModal = ({ t, title, description, message, confirmLabel, confirmColor = "#0B4B66", singleAction, loading, onConfirm, onClose }) => {
 
   return (
     <PopUp>
@@ -55,20 +55,22 @@ const ConfirmActionModal = ({ t, title, description, message, confirmLabel, conf
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-          <Button
-            variation={"secondary"}
-            label={t("CORE_COMMON_CANCEL")}
-            onButtonClick={onClose}
-            isDisabled={loading}
-            style={{
-              backgroundColor: "white",
-              border: "1px solid #D6D5D4",
-              color: "#0B0C0C",
-              padding: "10px 24px",
-              fontWeight: "500",
-              fontSize: "16px",
-            }}
-          />
+          {!singleAction && (
+            <Button
+              variation={"secondary"}
+              label={t("CORE_COMMON_CANCEL")}
+              onButtonClick={onClose}
+              isDisabled={loading}
+              style={{
+                backgroundColor: "white",
+                border: "1px solid #D6D5D4",
+                color: "#0B0C0C",
+                padding: "10px 24px",
+                fontWeight: "500",
+                fontSize: "16px",
+              }}
+            />
+          )}
           <Button
             variation={"primary"}
             label={confirmLabel || t("CORE_COMMON_CONFIRM")}
