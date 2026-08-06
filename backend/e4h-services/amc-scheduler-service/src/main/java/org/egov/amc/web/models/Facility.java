@@ -83,4 +83,7 @@ public class Facility {
 
     @JsonProperty("nin_id")
     private String ninId = null;
+
+    @JsonProperty("address")
+    private FacilityAddress address = null;
 }
