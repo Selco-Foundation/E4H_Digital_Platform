@@ -83,7 +83,7 @@ const ReasonRequiredModal = ({ t, description, loading, onConfirm, onClose }) =>
             variation={"primary"}
             label={t("CORE_COMMON_CONFIRM")}
             onButtonClick={handleConfirm}
-            isDisabled={loading}
+            isDisabled={loading || !reason.trim()}
             style={{
               backgroundColor: "#B91900",
               border: "none",

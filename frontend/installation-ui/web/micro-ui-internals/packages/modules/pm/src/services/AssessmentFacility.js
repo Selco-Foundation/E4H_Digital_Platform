@@ -1,14 +1,12 @@
 import { Request } from "@egovernments/digit-ui-libraries";
-import { DUMMY_ASSESSMENT_FACILITIES, canAssignForOnSiteAssessment } from "../utilities/AssessmentPlanData";
 
-// Facility search hits the real API below. The bulk-action mutations remain dummy/in-memory
-// until the corresponding backend endpoints exist.
+// Facility search and the bulk decision update below hit real APIs.
 
 const mapAssessmentFacility = (facility) => ({
   ...facility,
   name: facility?.facilityName,
-  remoteStatus: facility?.phoneStatus,
-  onSiteStatus: facility?.fieldStatus,
+  remoteStatus: facility?.phoneStatus || "NOT_INITIATED",
+  onSiteStatus: facility?.fieldStatus || "NOT_INITIATED",
   result: facility?.overallStatus,
 });
 
@@ -48,26 +46,19 @@ export const AssessmentFacilityService = {
     };
   },
 
-  assignForOnSiteAssessment: async (facilityIds) => {
-    DUMMY_ASSESSMENT_FACILITIES.forEach((facility) => {
-      if (facilityIds.includes(facility.id) && canAssignForOnSiteAssessment(facility)) {
-        facility.onSiteStatus = "PENDING";
-      }
+  // decisions: [{ planFacilityId, overallStatus: "ELIGIBLE"|"NOT_ELIGIBLE", remarks? }, { planFacilityId, assignForField: true }, ...]
+  bulkUpdateFacilityDecisions: async (planId, decisions) => {
+    const endpoint = "/field-planner/assessment/v1/plan/facility/decision/_bulk-update";
+    const headers = { "Content-Type": "application/json" };
+
+    return await Request({
+      url: endpoint,
+      data: { planId, decisions },
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers,
     });
-
-    return DUMMY_ASSESSMENT_FACILITIES.filter((facility) => facilityIds.includes(facility.id));
-  },
-
-  markAssessmentResult: async (facilityIds, result, reason) => {
-    DUMMY_ASSESSMENT_FACILITIES.forEach((facility) => {
-      if (!facilityIds.includes(facility.id)) return;
-
-      facility.result = result;
-      facility.resultSource = "MANUAL";
-      facility.notEligibleReason = result === "NOT_ELIGIBLE" ? (reason || null) : null;
-    });
-
-    return DUMMY_ASSESSMENT_FACILITIES.filter((facility) => facilityIds.includes(facility.id));
   },
 
 };

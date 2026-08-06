@@ -17,7 +17,7 @@ import useProject from "../../hooks/useProject";
 import { populateWorkingAssessmentPlan, populateWorkingProject } from "../../redux/actions";
 import { AssessmentFacilityService } from "../../services/AssessmentFacility";
 import { AssessmentPlanService } from "../../services/AssessmentPlan";
-import { canAssignForOnSiteAssessment, isUnanimousOverride } from "../../utilities/AssessmentPlanData";
+import { canAssignForOnSiteAssessment, evaluateMarkResultScenario } from "../../utilities/AssessmentPlanData";
 import {useTranslation} from "react-i18next";
 
 const STATUS_BADGE_STYLES = {
@@ -261,19 +261,8 @@ const AssessmentDetails = () => {
     }
   };
 
-  // Per the InfoCard's plan-wide metrics, an "assign for on-site" candidate is a facility whose
-  // remote assessment has reached a final state but hasn't yet been resolved (i.e. its result is
-  // still pending). When the header "select all" checkbox is used we judge enablement from these
-  // aggregate counts rather than iterating every selected row.
   const canBulkAssignOnSite = () => {
     if (planCompleted || !selectedFacilityIds.length) return false;
-
-    if (mainCheck) {
-      const summary = planDetailData;
-      if (!summary) return false;
-      const unresolvedCount = summary.totalFacilities - summary.eligible - summary.notEligible;
-      return summary.remoteAssessmentDone > 0 && unresolvedCount > 0;
-    }
 
     const selectedFacilities = fetchedData.filter((facility) => selectedFacilityIds.includes(facility.id));
     return selectedFacilities.length > 0 && selectedFacilities.every((facility) => canAssignForOnSiteAssessment(facility));
@@ -285,15 +274,35 @@ const AssessmentDetails = () => {
     setPendingAction({ type: "ASSIGN_ONSITE", facilityIds });
   };
 
-  const openMarkEligibleConfirm = (facilityIds) => {
+  // Mark Eligible/Mark Not Eligible run through a strict validation order: a blocking modal if
+  // any selected facility still has a pending remote assessment, then warnings if any selected
+  // facility's on-site assessment is pending/not-initiated, then (only once every selected
+  // facility has finalised both assessments) either a single shared reason prompt when every
+  // facility needs one, a "not supported" notice when only some do, or a plain confirmation.
+  const openMarkResultConfirm = (facilityIds, targetResult) => {
     const selectedFacilities = fetchedData.filter((facility) => facilityIds.includes(facility.id));
-    const hasOverride = selectedFacilities.some((facility) => isUnanimousOverride(facility, "ELIGIBLE"));
-    setPendingAction({ type: hasOverride ? "MARK_ELIGIBLE_OVERRIDE" : "MARK_ELIGIBLE", facilityIds });
+    const scenario = evaluateMarkResultScenario(selectedFacilities, targetResult);
+
+    if (scenario === "BLOCK_REMOTE_PENDING") {
+      setPendingAction({ type: "BLOCK_REMOTE_PENDING" });
+      return;
+    }
+
+    if (scenario === "BULK_NOT_SUPPORTED") {
+      setPendingAction({ type: "BULK_ACTION_NOT_SUPPORTED" });
+      return;
+    }
+
+    setPendingAction({
+      type: scenario === "REASON_REQUIRED" ? "MARK_RESULT_REASON_REQUIRED" : scenario,
+      targetResult,
+      facilityIds,
+    });
   };
 
-  const openMarkNotEligibleConfirm = (facilityIds) => {
-    setPendingAction({ type: "MARK_NOT_ELIGIBLE", facilityIds });
-  };
+  const openMarkEligibleConfirm = (facilityIds) => openMarkResultConfirm(facilityIds, "ELIGIBLE");
+
+  const openMarkNotEligibleConfirm = (facilityIds) => openMarkResultConfirm(facilityIds, "NOT_ELIGIBLE");
 
   const closePendingAction = () => setPendingAction(null);
 
@@ -302,15 +311,15 @@ const AssessmentDetails = () => {
 
     setActionLoading(true);
     try {
-      if (pendingAction.type === "ASSIGN_ONSITE") {
-        await AssessmentFacilityService.assignForOnSiteAssessment(pendingAction.facilityIds);
-      } else if (pendingAction.type === "MARK_ELIGIBLE") {
-        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "ELIGIBLE");
-      } else if (pendingAction.type === "MARK_ELIGIBLE_OVERRIDE") {
-        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "ELIGIBLE", reason);
-      } else if (pendingAction.type === "MARK_NOT_ELIGIBLE") {
-        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "NOT_ELIGIBLE", reason);
-      }
+      const decisions = pendingAction.type === "ASSIGN_ONSITE"
+        ? pendingAction.facilityIds.map((facilityId) => ({ planFacilityId: facilityId, assignForField: true }))
+        : pendingAction.facilityIds.map((facilityId) => ({
+          planFacilityId: facilityId,
+          overallStatus: pendingAction.targetResult,
+          ...(reason ? { remarks: reason } : {}),
+        }));
+
+      await AssessmentFacilityService.bulkUpdateFacilityDecisions(assessmentId, decisions);
 
       await revalidateFacilities();
       await revalidatePlanDetail();
@@ -500,7 +509,47 @@ const AssessmentDetails = () => {
       };
     }
 
-    if (pendingAction?.type === "MARK_ELIGIBLE") {
+    if (pendingAction?.type === "BLOCK_REMOTE_PENDING") {
+      return {
+        title: t("PM_ASSESSMENT_BLOCK_REMOTE_PENDING_TITLE"),
+        description: t("PM_ASSESSMENT_BLOCK_REMOTE_PENDING_DESC"),
+        confirmLabel: t("CORE_COMMON_DISMISS"),
+        confirmColor: "#0B4B66",
+        singleAction: true,
+        informational: true,
+      };
+    }
+
+    if (pendingAction?.type === "BULK_ACTION_NOT_SUPPORTED") {
+      return {
+        title: t("PM_ASSESSMENT_BULK_NOT_SUPPORTED_TITLE"),
+        description: t("PM_ASSESSMENT_BULK_NOT_SUPPORTED_DESC"),
+        confirmLabel: t("CORE_COMMON_OK"),
+        confirmColor: "#0B4B66",
+        singleAction: true,
+        informational: true,
+      };
+    }
+
+    if (pendingAction?.type === "WARN_ONSITE_PENDING") {
+      return {
+        title: t("PM_ASSESSMENT_WARN_ONSITE_PENDING_TITLE"),
+        description: t("PM_ASSESSMENT_WARN_ONSITE_PENDING_DESC"),
+        confirmLabel: t("CORE_COMMON_CONFIRM"),
+        confirmColor: pendingAction.targetResult === "NOT_ELIGIBLE" ? "#B91900" : "#1B8354",
+      };
+    }
+
+    if (pendingAction?.type === "WARN_ONSITE_NOT_INITIATED") {
+      return {
+        title: t("PM_ASSESSMENT_WARN_ONSITE_NOT_INITIATED_TITLE"),
+        description: t("PM_ASSESSMENT_WARN_ONSITE_NOT_INITIATED_DESC"),
+        confirmLabel: t("CORE_COMMON_CONFIRM"),
+        confirmColor: pendingAction.targetResult === "NOT_ELIGIBLE" ? "#B91900" : "#1B8354",
+      };
+    }
+
+    if (pendingAction?.type === "PROCEED" && pendingAction?.targetResult === "ELIGIBLE") {
       return {
         title: t("PM_ASSESSMENT_CONFIRM_RESULT_TITLE"),
         description: t("PM_ASSESSMENT_CONFIRM_ELIGIBLE_DESC"),
@@ -510,15 +559,24 @@ const AssessmentDetails = () => {
       };
     }
 
+    if (pendingAction?.type === "PROCEED" && pendingAction?.targetResult === "NOT_ELIGIBLE") {
+      return {
+        title: t("PM_ASSESSMENT_CONFIRM_RESULT_TITLE"),
+        description: t("PM_ASSESSMENT_MARK_NOT_ELIGIBLE_DESC"),
+        message: `${t("PM_ASSESSMENT_CONFIRM_ACTION_MESSAGE_PREFIX")} ${count} ${t("PM_ASSESSMENT_FACILITIES_UNIT")} ${t("PM_ASSESSMENT_CONFIRM_ACTION_MESSAGE_TO")} '${t("PM_ASSESSMENT_FACILITY_STATUS_NOT_ELIGIBLE")}'.`,
+        confirmLabel: t("PM_ASSESSMENT_ACTION_MARK_NOT_ELIGIBLE"),
+        confirmColor: "#B91900",
+      };
+    }
+
     return null;
   };
 
-  const getReasonModalDescription = () => {
-    if (pendingAction?.type === "MARK_ELIGIBLE_OVERRIDE") {
-      return t("PM_ASSESSMENT_OVERRIDE_ELIGIBLE_DESC");
-    }
-    return t("PM_ASSESSMENT_MARK_NOT_ELIGIBLE_DESC");
-  };
+  const getReasonModalDescription = () => (
+    pendingAction?.targetResult === "ELIGIBLE"
+      ? t("PM_ASSESSMENT_REASON_REQUIRED_ELIGIBLE_DESC")
+      : t("PM_ASSESSMENT_REASON_REQUIRED_NOT_ELIGIBLE_DESC")
+  );
 
   if (projectDataLoading || assessmentPlanDataLoading || planDetailLoading) {
     return <Loader />;
@@ -626,13 +684,14 @@ const AssessmentDetails = () => {
           message={confirmModalProps.message}
           confirmLabel={confirmModalProps.confirmLabel}
           confirmColor={confirmModalProps.confirmColor}
+          singleAction={confirmModalProps.singleAction}
           loading={actionLoading}
-          onConfirm={() => handleConfirmPendingAction()}
+          onConfirm={() => (confirmModalProps.informational ? closePendingAction() : handleConfirmPendingAction())}
           onClose={closePendingAction}
         />
       )}
 
-      {(pendingAction?.type === "MARK_ELIGIBLE_OVERRIDE" || pendingAction?.type === "MARK_NOT_ELIGIBLE") && (
+      {pendingAction?.type === "MARK_RESULT_REASON_REQUIRED" && (
         <ReasonRequiredModal
           t={t}
           description={getReasonModalDescription()}
