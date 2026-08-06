@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -271,33 +272,70 @@ public class AssessmentQueryBuilder {
         if (filters == null) {
             return;
         }
-        if (StringUtils.isNotBlank(filters.getPhoneStatus())) {
-            query.append(" AND fa.phone_status = ? ");
-            params.add(filters.getPhoneStatus());
+        appendColumnInFilter(params, query, "fa.phone_status", filters.getResolvedPhoneStatuses());
+        appendFieldStatusFilter(params, query, filters);
+        appendColumnInFilter(params, query, "fa.overall_status", filters.getResolvedOverallStatuses());
+        appendJsonFieldInFilter(params, query, "district", filters.getResolvedDistricts());
+        appendJsonFieldInFilter(params, query, "block", filters.getResolvedBlocks());
+        appendJsonFieldInFilter(params, query, "facilityCategory", filters.getResolvedFacilityCategories());
+        appendJsonFieldInFilter(params, query, "facilityType", filters.getResolvedFacilityTypes());
+    }
+
+    private void appendFieldStatusFilter(List<Object> params, StringBuilder query,
+                                         org.egov.field_planner.web.models.PlanFacilityFilters filters) {
+        boolean includeNotInitiated = filters.includesNotInitiatedFieldStatus();
+        List<String> concreteStatuses = filters.getResolvedConcreteFieldStatuses();
+        if (!includeNotInitiated && concreteStatuses.isEmpty()) {
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getFieldStatus())) {
-            if ("NULL".equalsIgnoreCase(filters.getFieldStatus())) {
-                query.append(" AND fa.field_status IS NULL ");
-            } else {
-                query.append(" AND fa.field_status = ? ");
-                params.add(filters.getFieldStatus());
-            }
+        if (includeNotInitiated && concreteStatuses.isEmpty()) {
+            query.append(" AND fa.field_status IS NULL ");
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getOverallStatus())) {
-            query.append(" AND fa.overall_status = ? ");
-            params.add(filters.getOverallStatus());
+        if (includeNotInitiated) {
+            query.append(" AND (fa.field_status IS NULL OR fa.field_status IN (")
+                    .append(placeholders(concreteStatuses.size()))
+                    .append(")) ");
+            params.addAll(concreteStatuses);
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getDistrict())) {
-            query.append(" AND fa.additional_details ->> 'district' = ? ");
-            params.add(filters.getDistrict());
+        appendColumnInFilter(params, query, "fa.field_status", concreteStatuses);
+    }
+
+    private void appendColumnInFilter(List<Object> params, StringBuilder query, String column, List<String> values) {
+        if (CollectionUtils.isEmpty(values)) {
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getFacilityCategory())) {
-            query.append(" AND fa.additional_details ->> 'facilityCategory' = ? ");
-            params.add(filters.getFacilityCategory());
+        if (values.size() == 1) {
+            query.append(" AND ").append(column).append(" = ? ");
+            params.add(values.get(0));
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getFacilityType())) {
-            query.append(" AND fa.additional_details ->> 'facilityType' = ? ");
-            params.add(filters.getFacilityType());
+        query.append(" AND ").append(column).append(" IN (")
+                .append(placeholders(values.size()))
+                .append(") ");
+        params.addAll(values);
+    }
+
+    private void appendJsonFieldInFilter(List<Object> params, StringBuilder query, String jsonKey, List<String> values) {
+        if (CollectionUtils.isEmpty(values)) {
+            return;
         }
+        String expression = "fa.additional_details ->> '" + jsonKey + "'";
+        if (values.size() == 1) {
+            query.append(" AND ").append(expression).append(" = ? ");
+            params.add(values.get(0));
+            return;
+        }
+        query.append(" AND ").append(expression).append(" IN (")
+                .append(placeholders(values.size()))
+                .append(") ");
+        params.addAll(values);
+    }
+
+    private String placeholders(int count) {
+        return java.util.stream.IntStream.range(0, count)
+                .mapToObj(i -> "?")
+                .collect(Collectors.joining(","));
     }
 }
