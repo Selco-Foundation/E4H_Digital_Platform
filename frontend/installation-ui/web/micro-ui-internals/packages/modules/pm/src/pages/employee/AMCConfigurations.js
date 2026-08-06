@@ -36,6 +36,14 @@ const AMCConfigurations = () => {
     </span>
   );
 
+  const GetConfiguration = (durationMonths, visitFrequencyMonths) => (
+    <div>
+      <span>{t("AMC_DURATION_MONTHS")}: {durationMonths ?? "-"}</span>
+      <br/>
+      <span>{t("AMC_VISIT_FREQUENCY_MONTHS")}: {visitFrequencyMonths ?? "-"}</span>
+    </div>
+  );
+
   const GetAssetTypeList = (assetTypes) => (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
       {assetTypes?.map((assetType, index) => (
@@ -85,24 +93,14 @@ const AMCConfigurations = () => {
         Cell: ({ row }) => GetAssetTypeList(row.original["assetTypes"]),
       },
       {
-        id: "durationMonths",
-        Header: () => GetHead(t("AMC_DURATION_MONTHS")),
-        Cell: ({ row }) => GetCell(row.original["durationMonths"] ?? "-"),
-      },
-      {
-        id: "visitFrequencyMonths",
-        Header: () => GetHead(t("AMC_VISIT_FREQUENCY_MONTHS")),
-        Cell: ({ row }) => GetCell(row.original["visitFrequencyMonths"] ?? "-"),
-      },
-      {
         id: "configurationStartDate",
         Header: () => GetHead(t("AMC_CONFIGURATION_START_DATE")),
         Cell: ({ row }) => GetCell(row.original["configurationStartDate"] ? formatDate(row.original["configurationStartDate"]) : "-"),
       },
       {
-        id: "configurationEndDate",
-        Header: () => GetHead(t("AMC_CONFIGURATION_END_DATE")),
-        Cell: ({ row }) => GetCell(row.original["configurationEndDate"] ? formatDate(row.original["configurationEndDate"]) : "-"),
+        id: "configuration",
+        Header: () => GetHead(t("AMC_CONFIGURATION")),
+        Cell: ({ row }) => GetConfiguration(row.original["durationMonths"], row.original["visitFrequencyMonths"]),
       },
       {
         id: "status",
