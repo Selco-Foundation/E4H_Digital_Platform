@@ -38,7 +38,6 @@ import static org.egov.field_planner.util.FieldPlannerConstants.ANALYTICS_APPLIC
 import static org.egov.field_planner.util.FieldPlannerConstants.ANALYTICS_ENTITY_TYPE_FIELD_PLAN;
 import static org.egov.field_planner.util.FieldPlannerConstants.ANALYTICS_ENTITY_TYPE_ICC_REPORT;
 import static org.egov.field_planner.util.FieldPlannerConstants.ANALYTICS_EVENT_FIELD_PLAN_CREATE;
-import static org.egov.field_planner.util.FieldPlannerConstants.ANALYTICS_EVENT_FIELD_PLAN_SCHEDULED;
 import static org.egov.field_planner.util.FieldPlannerConstants.ANALYTICS_EVENT_ICC_REPORT_UPLOAD;
 import static org.egov.field_planner.util.FieldPlannerConstants.ANALYTICS_MODULE_FIELD_PLANNER;
 import static org.egov.field_planner.util.FieldPlannerConstants.BOUNDARY_LOCALIZATION_MODULE;
@@ -63,10 +62,11 @@ import static org.egov.field_planner.util.FieldPlannerConstants.USER_ANALYTICS_M
  * <p>Three entry points, one per instrumented endpoint:
  * <ul>
  *   <li>{@link #publishCreateEvents} — one FIELD_PLAN_CREATE per plan in {@code /field-plan/v1/_create}.</li>
- *   <li>{@link #publishScheduledEvent} — one FIELD_PLAN_SCHEDULED for the
+ *   <li>{@link #publishScheduledEvent} — one FIELD_PLAN_CREATE for the
  *   {@code /field-plan/v1/_update} call that moves a plan into SCHEDULED, the point staffing and
- *   facilities are locked in and the activities are created downstream. Ordinary edits publish
- *   nothing: a plan is edited repeatedly while in DRAFT, but it goes live exactly once.</li>
+ *   facilities are locked in and the activities are created downstream. Same event type as the
+ *   create, so both land under one type in the report. Ordinary edits publish nothing: a plan is
+ *   edited repeatedly while in DRAFT, but it goes live exactly once.</li>
  *   <li>{@link #publishIccReportUploadEvent} — one ICC_REPORT_UPLOAD per
  *   {@code /field-plan/v1/icc-report/upload}.</li>
  * </ul>
@@ -144,9 +144,10 @@ public class FieldPlannerAnalyticsService {
     }
 
     /**
-     * Publishes one FIELD_PLAN_SCHEDULED event for the update that moves a plan into SCHEDULED, and
+     * Publishes one FIELD_PLAN_CREATE event for the update that moves a plan into SCHEDULED, and
      * nothing at all for any other update. A plan is edited repeatedly while in DRAFT and those
-     * edits are not business events; going live happens exactly once and is.
+     * edits are not business events; going live happens exactly once and is. The event type matches
+     * the one the create endpoint emits so the report counts both under a single type.
      * <p>
      * Called from the update flow rather than the controller, so a request that matches no plan in
      * the DB — or one that never reaches the persister push — publishes nothing either.
@@ -183,14 +184,14 @@ public class FieldPlannerAnalyticsService {
                 stateBoundaryCode = geographyStateCode(fieldPlanFromDB);
             }
 
-            publish(requestInfo, ANALYTICS_EVENT_FIELD_PLAN_SCHEDULED, fieldPlanId,
+            publish(requestInfo, ANALYTICS_EVENT_FIELD_PLAN_CREATE, fieldPlanId,
                     ANALYTICS_ENTITY_TYPE_FIELD_PLAN, userType,
                     resolveState(stateBoundaryCode, requestInfo, new HashMap<>(), fieldPlanId));
             log.info("Field planner analytics: published {} event for fieldPlanId={} (priorStatus={})",
-                    ANALYTICS_EVENT_FIELD_PLAN_SCHEDULED, fieldPlanId, priorStatus);
+                    ANALYTICS_EVENT_FIELD_PLAN_CREATE, fieldPlanId, priorStatus);
         } catch (Exception e) {
             log.error("Field planner analytics: failed to publish {} event for fieldPlanId={}",
-                    ANALYTICS_EVENT_FIELD_PLAN_SCHEDULED, fieldPlanId, e);
+                    ANALYTICS_EVENT_FIELD_PLAN_CREATE, fieldPlanId, e);
         }
     }
 

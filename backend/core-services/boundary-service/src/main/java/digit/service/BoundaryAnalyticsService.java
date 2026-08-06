@@ -51,6 +51,10 @@ import static digit.constants.BoundaryConstants.USER_ANALYTICS_MODULE;
  * records are sorted by descending system_roles count (most specific first) and the first record
  * whose system_roles the user fully holds wins.
  * <p>
+ * Facility boundaries are left out of the count: they are created by health-facility-registry behind
+ * a facility create, which publishes its own event, so a call carrying only those publishes nothing
+ * — see {@link #isFacilityBoundaryCode}.
+ * <p>
  * {@code state} is localized as {@code Boundary_<stateCode>} in {@code rainmaker-in}, the same key
  * SemAnalyticsService and FacilityAnalyticsService use, so all producers write identical state
  * strings into the shared index. The State code is parsed straight out of the boundary code rather
@@ -67,6 +71,9 @@ public class BoundaryAnalyticsService {
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
     private static final String LOCALIZATION_LOCALE = "en_IN";
     private static final String LOCALIZATION_TENANT_ID = "in";
+
+    /** Leading token of the facility id that health-facility-registry appends to a facility boundary code. */
+    private static final String FACILITY_BOUNDARY_CODE_PREFIX = "FAC/";
 
     private final ApplicationProperties configs;
     private final MDMSUtils mdmsUtils;
@@ -101,6 +108,20 @@ public class BoundaryAnalyticsService {
             if (boundaries.isEmpty()) {
                 return;
             }
+
+            // Facility boundaries are created by health-facility-registry as a side effect of a
+            // facility create, not by an operator managing the boundary hierarchy — and that facility
+            // create already publishes its own event onto this topic. Counting them here would double
+            // count the same action, so they are dropped before the event is built.
+            List<Boundary> reportableBoundaries = boundaries.stream()
+                    .filter(boundary -> !isFacilityBoundaryCode(boundary.getCode()))
+                    .toList();
+            if (reportableBoundaries.isEmpty()) {
+                log.info("Boundary analytics: all {} boundaries in create request are Facility boundaries, "
+                        + "skipping event", boundaries.size());
+                return;
+            }
+            boundaries = reportableBoundaries;
 
             tenantId = boundaries.stream()
                     .map(Boundary::getTenantId)
@@ -289,6 +310,22 @@ public class BoundaryAnalyticsService {
             return null;
         }
         return (countryPart == null) ? statePart.trim() : countryPart.trim() + "_" + statePart.trim();
+    }
+
+    /**
+     * Tells a Facility boundary from an administrative one by its code. The create request carries no
+     * boundaryType — that only arrives on the follow-up {@code /boundary-relationships/_create} — so
+     * the type is read off the code instead: health-facility-registry appends the generated facility
+     * id to the parent block code, giving {@code India_Assam_Kamrup_Amingaon_FAC/2025/0045}. Matching
+     * the last segment against the {@code FAC/} prefix is the same check
+     * {@code IMUtils#extractFacilityCode} uses.
+     */
+    private boolean isFacilityBoundaryCode(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return false;
+        }
+        String[] parts = boundaryCode.split("_");
+        return parts[parts.length - 1].startsWith(FACILITY_BOUNDARY_CODE_PREFIX);
     }
 
     /**
