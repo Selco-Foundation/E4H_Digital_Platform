@@ -45,7 +45,24 @@ const AuditTrail = ({t, auditTrail}) => {
       borderBottom: "none",
       minWidth: "900px",
       boxSizing: "border-box"
-    }}>
+    }} className="amc-audit-trail">
+      <style>
+        {`
+          .amc-audit-trail .checkpoint > h2,
+          .amc-audit-trail .checkpoint-done > h2 {
+            flex: 0 0 24px;
+            min-width: 24px;
+            max-width: 24px;
+            box-sizing: border-box;
+          }
+
+          .amc-audit-trail .checkpoint > header,
+          .amc-audit-trail .checkpoint-done > header {
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+        `}
+      </style>
       <h2 style={{ fontWeight: "bold", fontSize: "18px", marginBottom: 20 }}>
         {t("AUDIT_TRAIL")}
       </h2>

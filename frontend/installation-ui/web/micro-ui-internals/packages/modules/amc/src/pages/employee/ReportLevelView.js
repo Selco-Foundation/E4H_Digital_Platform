@@ -245,7 +245,6 @@ const ReportLevelView = ({ t }) => {
         <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>
           <div style={{
             padding: "20px",
-            borderBottom: "1px solid #D6D5D4",
           }}>
             <div style={{
               fontSize: "20px",
