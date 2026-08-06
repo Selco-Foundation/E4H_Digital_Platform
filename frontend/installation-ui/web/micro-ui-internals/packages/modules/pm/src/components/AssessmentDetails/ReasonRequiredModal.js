@@ -1,23 +1,19 @@
 import React, { useState } from "react";
-import { Button, Dropdown, PopUp, TextArea } from "@egovernments/digit-ui-react-components";
+import { Button, PopUp, TextArea } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
-import { ASSESSMENT_NOT_ELIGIBLE_REASON_CODES } from "../../utilities/AssessmentPlanData";
 
 const ReasonRequiredModal = ({ t, description, loading, onConfirm, onClose }) => {
 
-  const [reason, setReason] = useState(null);
-  const [remarks, setRemarks] = useState("");
+  const [reason, setReason] = useState("");
   const [error, setError] = useState("");
 
-  const reasonMenu = ASSESSMENT_NOT_ELIGIBLE_REASON_CODES.map((code) => ({ code, name: t(`PM_ASSESSMENT_NOT_ELIGIBLE_REASON_${code}`) }));
-
   const handleConfirm = () => {
-    if (!reason?.code) {
+    if (!reason.trim()) {
       setError(t("CORE_COMMON_REQUIRED"));
       return;
     }
 
-    onConfirm(reason.name, remarks);
+    onConfirm(reason);
   };
 
   return (
@@ -52,36 +48,20 @@ const ReasonRequiredModal = ({ t, description, loading, onConfirm, onClose }) =>
           {description}
         </p>
 
-        <div style={{ marginBottom: "16px" }}>
+        <div style={{ marginBottom: "24px" }}>
           <div style={{ fontWeight: "500", fontSize: "14px", marginBottom: "6px" }}>
             {t("PM_ASSESSMENT_REASON_LABEL")} <span style={{ color: "#B91900" }}>*</span>
           </div>
-          <div className={"custom-dropdown"}>
-            <Dropdown
-              t={t}
-              option={reasonMenu}
-              selected={reason || { name: "", code: "" }}
-              select={(value) => {
-                setReason(value);
-                setError("");
-              }}
-              optionKey={"name"}
-            />
-          </div>
-          {error && <div style={{ color: "#B91900", fontSize: "13px", marginTop: "4px" }}>{error}</div>}
-        </div>
-
-        <div style={{ marginBottom: "24px" }}>
-          <div style={{ fontWeight: "500", fontSize: "14px", marginBottom: "6px" }}>
-            {t("PM_ASSESSMENT_REMARKS_LABEL")}
-          </div>
           <TextArea
-            name={"remarks"}
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            placeholder={t("PM_ASSESSMENT_REMARKS_PLACEHOLDER")}
+            name={"reason"}
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              setError("");
+            }}
             style={{ fontFamily: "Roboto", width: "100%" }}
           />
+          {error && <div style={{ color: "#B91900", fontSize: "13px", marginTop: "4px" }}>{error}</div>}
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>

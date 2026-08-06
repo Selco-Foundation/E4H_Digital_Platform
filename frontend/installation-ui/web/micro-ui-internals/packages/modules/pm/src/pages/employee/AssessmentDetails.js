@@ -297,7 +297,7 @@ const AssessmentDetails = () => {
 
   const closePendingAction = () => setPendingAction(null);
 
-  const handleConfirmPendingAction = async (reason, remarks) => {
+  const handleConfirmPendingAction = async (reason) => {
     if (!pendingAction) return;
 
     setActionLoading(true);
@@ -307,9 +307,9 @@ const AssessmentDetails = () => {
       } else if (pendingAction.type === "MARK_ELIGIBLE") {
         await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "ELIGIBLE");
       } else if (pendingAction.type === "MARK_ELIGIBLE_OVERRIDE") {
-        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "ELIGIBLE", reason, remarks);
+        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "ELIGIBLE", reason);
       } else if (pendingAction.type === "MARK_NOT_ELIGIBLE") {
-        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "NOT_ELIGIBLE", reason, remarks);
+        await AssessmentFacilityService.markAssessmentResult(pendingAction.facilityIds, "NOT_ELIGIBLE", reason);
       }
 
       await revalidateFacilities();
@@ -637,7 +637,7 @@ const AssessmentDetails = () => {
           t={t}
           description={getReasonModalDescription()}
           loading={actionLoading}
-          onConfirm={(reason, remarks) => handleConfirmPendingAction(reason, remarks)}
+          onConfirm={(reason) => handleConfirmPendingAction(reason)}
           onClose={closePendingAction}
         />
       )}
