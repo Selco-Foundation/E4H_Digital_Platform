@@ -5,20 +5,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.util.CommonUtility;
-import org.selco.e4h.web.models.Attachment;
+import org.selco.e4h.util.StorageUtil;
+import org.selco.e4h.web.models.ProcessingContext;
 import org.selco.e4h.web.models.User;
 import org.selco.e4h.web.models.UserAnalyticsReport;
+import org.selco.e4h.web.models.storage.StorageResponse;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -35,9 +40,10 @@ import static org.selco.e4h.util.UserAnalyticsConstants.XLSX_CONTENT_TYPE;
  * Mails the generated user-analytics workbook to every holder of the
  * {@link org.selco.e4h.util.UserAnalyticsConstants#REPORT_RECIPIENT_ROLE} role in HRMS.
  * <p>
- * The workbook rides along as a base64 attachment on the {@code egov.core.notification.email}
- * payload rather than as a filestore download button, which is how the escalation mails link their
- * CSVs. Recipients of this report are expected to open the sheet, not follow a link.
+ * The workbook is uploaded to filestore and then referenced from the
+ * {@code egov.core.notification.email} payload, which is how egov-notification-mail attaches files —
+ * it downloads them itself and has no base64 path. Unlike the escalation mails, which merely link
+ * their CSVs from a download button, this one arrives with the sheet attached.
  */
 @Slf4j
 @Service
@@ -46,6 +52,7 @@ public class UserAnalyticsMailService {
 
     private final UserService userService;
     private final CommonUtility commonUtility;
+    private final StorageUtil storageUtil;
     private final ConsumerConfiguration consumerConfiguration;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -70,22 +77,31 @@ public class UserAnalyticsMailService {
                 return;
             }
 
-            Attachment attachment = buildAttachment(workbook, fileName);
+            // egov-notification-mail fetches the attachment from filestore itself, so the workbook has
+            // to be stored before the mail is raised. Without an id there is nothing to attach and the
+            // mail's only purpose is the sheet, so bail rather than send an empty-handed one.
+            String fileStoreId = uploadWorkbook(requestInfo, workbook, fileName);
+            if (fileStoreId == null) {
+                log.error("User analytics: workbook upload to filestore failed, report not mailed to {} recipients",
+                        recipients.size());
+                return;
+            }
+
             String subject = buildSubject(report);
 
             int sent = 0;
             for (User recipient : recipients) {
                 try {
                     String body = buildBody(report, recipient.getName());
-                    publish(recipient.getEmailId(), subject, body, attachment);
+                    publish(recipient.getEmailId(), subject, body, fileStoreId, fileName);
                     sent++;
                 } catch (Exception e) {
                     log.error("User analytics: failed to publish report mail for {}", recipient.getEmailId(), e);
                 }
             }
 
-            log.info("User analytics: published report mail to {}/{} recipients, attachment {} ({} bytes)",
-                    sent, recipients.size(), fileName, workbook.length);
+            log.info("User analytics: published report mail to {}/{} recipients, attachment {} ({} bytes, fileStoreId {})",
+                    sent, recipients.size(), fileName, workbook.length, fileStoreId);
 
         } catch (Exception e) {
             log.error("User analytics: error mailing the weekly report", e);
@@ -113,13 +129,83 @@ public class UserAnalyticsMailService {
         return new ArrayList<>(byEmail.values());
     }
 
-    private Attachment buildAttachment(byte[] workbook, String fileName) {
-        return Attachment.builder()
-                .fileName(fileName)
-                .contentType(XLSX_CONTENT_TYPE)
-                .base64Content(Base64.getEncoder().encodeToString(workbook))
-                .fileSize((long) workbook.length)
-                .build();
+    /**
+     * Store the workbook under the same tenant the mail is raised for — egov-notification-mail
+     * downloads it with {@code ?tenantId=<email.tenantId>&fileStoreId=<key>}, so the two must agree
+     * or the attachment 404s.
+     *
+     * @return the filestore id, or null if the upload failed
+     */
+    private String uploadWorkbook(RequestInfo requestInfo, byte[] workbook, String fileName) {
+        try {
+            ProcessingContext context = ProcessingContext.builder()
+                    .tenantId(REPORT_MAIL_TENANT_ID)
+                    .module("UserAnalytics")
+                    .tag("user-analytics-report")
+                    .requestInfo(commonUtility.convertRequestInfoToJson(requestInfo))
+                    .build();
+
+            StorageResponse response = storageUtil.uploadToFileStorage(
+                    Arrays.asList(workbookMultipartFile(workbook, fileName)), context);
+
+            if (response == null || response.getFiles() == null || response.getFiles().isEmpty()) {
+                log.error("User analytics: filestore returned no file for {}", fileName);
+                return null;
+            }
+
+            String fileStoreId = response.getFiles().get(0).getFileStoreId();
+            log.info("User analytics: uploaded {} to filestore, fileStoreId {}", fileName, fileStoreId);
+            return fileStoreId;
+
+        } catch (Exception e) {
+            log.error("User analytics: error uploading {} to filestore", fileName, e);
+            return null;
+        }
+    }
+
+    /** Minimal binary-safe {@link MultipartFile} over the in-memory workbook. */
+    private MultipartFile workbookMultipartFile(byte[] workbook, String fileName) {
+        return new MultipartFile() {
+            @Override
+            public String getName() {
+                return "file";
+            }
+
+            @Override
+            public String getOriginalFilename() {
+                return fileName;
+            }
+
+            @Override
+            public String getContentType() {
+                return XLSX_CONTENT_TYPE;
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return workbook.length == 0;
+            }
+
+            @Override
+            public long getSize() {
+                return workbook.length;
+            }
+
+            @Override
+            public byte[] getBytes() {
+                return workbook;
+            }
+
+            @Override
+            public InputStream getInputStream() {
+                return new ByteArrayInputStream(workbook);
+            }
+
+            @Override
+            public void transferTo(java.io.File dest) throws IOException {
+                Files.write(dest.toPath(), workbook);
+            }
+        };
     }
 
     private String buildSubject(UserAnalyticsReport report) {
@@ -180,16 +266,25 @@ public class UserAnalyticsMailService {
 
     /**
      * Publish on the shared egov-notification-mail contract, matching the payload
-     * {@code EscalationController.sendEmailViaKafka} raises, plus an {@code attachments} list.
+     * {@code EscalationController.sendEmailViaKafka} raises, plus the attachment.
+     * <p>
+     * Attachments go in {@code fileStoreId}, a map keyed by <em>filestore id</em> whose value is the
+     * <em>name the attachment is presented under</em> — that ordering looks backwards but is what
+     * egov-notification-mail's {@code ExternalEmailService} reads: it builds the download URL from
+     * the key and calls {@code addAttachment(entry.getValue(), file)}. The service also rejects the
+     * message outright if {@code tenantId} is null while this map is non-empty.
      */
-    private void publish(String emailId, String subject, String body, Attachment attachment) {
+    private void publish(String emailId, String subject, String body, String fileStoreId, String fileName) {
+        Map<String, String> attachments = new HashMap<>();
+        attachments.put(fileStoreId, fileName);
+
         Map<String, Object> email = new HashMap<>();
         email.put("emailTo", new HashSet<>(Arrays.asList(emailId)));
         email.put("subject", subject);
         email.put("body", body);
         email.put("isHTML", true);
         email.put("tenantId", REPORT_MAIL_TENANT_ID);
-        email.put("attachments", Arrays.asList(attachment));
+        email.put("fileStoreId", attachments);
 
         Map<String, Object> emailRequest = new HashMap<>();
         emailRequest.put("requestInfo", new HashMap<>());
