@@ -1,9 +1,8 @@
 import { Request } from "@egovernments/digit-ui-libraries";
 
-// Plan create/search/update and facility-template download/upload hit real APIs (see PMService for the latter).
+// Plan create/search/update/complete and facility-template download/upload hit real APIs (see PMService for the latter).
 // hasUploadedAssessmentFacilityData/markAssessmentFacilityDataUploaded remain session-local in-memory
 // tracking, since no backend status-check endpoint exists yet for whether a plan has facility data.
-// completeAssessmentPlan stays an optimistic client-side merge since no "complete" endpoint is defined.
 
 const uploadedAssessmentFacilityPlanIds = new Set();
 
@@ -139,8 +138,23 @@ export const AssessmentPlanService = {
   hasUploadedAssessmentFacilityData: async (assessmentPlanId) => uploadedAssessmentFacilityPlanIds.has(assessmentPlanId),
 
   completeAssessmentPlan: async (assessmentPlan) => {
-    // No backend "complete" endpoint exists yet for assessment plans; merge and return optimistically.
-    return withAssessmentPlanDefaults({ ...assessmentPlan, status: "COMPLETED" });
+    const endpoint = "/field-planner/assessment/v1/plan/_mark-complete";
+    const headers = { "Content-Type": "application/json" };
+
+    const response = await Request({
+      url: endpoint,
+      data: {
+        planId: assessmentPlan?.id,
+        tenantId: assessmentPlan?.tenantId || Digit.ULBService.getStateId(),
+      },
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers,
+    });
+
+    const updatedAssessmentPlan = extractAssessmentPlan(response) || { ...assessmentPlan, status: "COMPLETED" };
+    return withAssessmentPlanDefaults(updatedAssessmentPlan);
   },
 
 };
