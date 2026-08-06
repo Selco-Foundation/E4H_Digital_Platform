@@ -125,17 +125,17 @@ public class FieldPlannerFacilityService {
             log.trace("Exiting search method");
             return SearchResponse.<FieldPlanFacility>builder().response(fieldPlanFacilities).build();
         }
-        log.debug("Searching field plan facility using criteria, limit: {}, offset: {}", limit, offset);
-        SearchResponse<FieldPlanFacility> result = fieldPlanFacilityRepository.findWithCount(request.getCriteria(),
+        log.info("searching project facility using criteria");
+        return fieldPlanFacilityRepository.findWithCount(request.getCriteria(),
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
     }
 
     public List<SystemTypeCapacity> searchSystemTypeCapacity(FieldPlanFacilitySearchRequest request,
-                                                               Integer limit,
-                                                               Integer offset,
-                                                               String tenantId,
-                                                               Long lastChangedSince,
-                                                               Boolean includeDeleted) throws Exception {
+                                                             Integer limit,
+                                                             Integer offset,
+                                                             String tenantId,
+                                                             Long lastChangedSince,
+                                                             Boolean includeDeleted) throws Exception {
         log.trace("Entering searchSystemTypeCapacity method for field plan facility");
         log.info("Received request to search systemType/totalSystemCapacity for field plan facility, tenant: {}", tenantId);
 
@@ -209,63 +209,12 @@ public class FieldPlannerFacilityService {
             if (!fieldPlanFacilities.isEmpty()) {
                 log.debug("Processing {} field plan facilities for unassign", fieldPlanFacilities.size());
                 for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
+                    log.info("processing {} valid entities", fieldPlanFacilities.size());
                     fieldPlannerEnrichment.enrichFieldPlanFacilityRequestOnDelete(fieldPlanFacility, request.getRequestInfo());
                 }
                 log.debug("Field plan facilities enriched, pushing to Kafka");
                 producer.push(fieldPlannerConfiguration.getDeleteFieldPlanFacilityTopic(), fieldPlanFacilities);
-                log.info("Successfully unassigned {} field plan facilities", fieldPlanFacilities.size());
-            } else {
-                log.warn("Empty field plan facility list in unassign request");
-            }
-        } catch (Exception exception) {
-            log.error("Error occurred while unassigning field plan facilities", exception);
-        }
-
-        log.trace("Exiting unassignBulk method");
-        return fieldPlanFacilities;
-    }
-
-    // Fields a user may edit on an already-linked FieldPlanFacility - facilityType and the
-    // facilityId/fieldPlanId link itself stay immutable via this path.
-    private static final Set<String> UPDATABLE_ADDITIONAL_FIELD_KEYS = Set.of(
-            "systemType", "solarSolutionDesignType", "totalSystemCapacity",
-            "customSolarSolutionDesignType", "customTotalSystemCapacity"
-    );
-
-    public List<FieldPlanFacility> updateBulk(FieldPlanFacilityBulkRequest request, boolean isBulk) {
-        log.info("received request to update bulk fieldplan facility");
-        List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
-
-        List<String> ids = fieldPlanFacilities.stream().map(FieldPlanFacility::getId).toList();
-        List<FieldPlanFacility> existingFacilities = fieldPlanFacilityRepository.findById(ids, false);
-        Map<String, FieldPlanFacility> existingById = existingFacilities.stream()
-                .collect(Collectors.toMap(FieldPlanFacility::getId, f -> f));
-
-        Map<String, String> errorMap = new HashMap<>();
-        AtomicInteger counter = new AtomicInteger(1);
-        for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities) {
-            if (fieldPlanFacility.getId() == null || !existingById.containsKey(fieldPlanFacility.getId())) {
-                errorMap.put("INVALID_FIELDPLAN_FACILITY_ID" + counter.getAndIncrement(),
-                        "FieldPlanFacility does not exist: " + fieldPlanFacility.getId());
-            }
-        }
-        if (!errorMap.isEmpty()) {
-            throw new CustomException(errorMap);
-        }
-
-        try {
-            if (!fieldPlanFacilities.isEmpty()) {
-                for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities) {
-                    FieldPlanFacility fieldPlanFacilityFromDb = existingById.get(fieldPlanFacility.getId());
-                    mergeUpdatableAdditionalFields(fieldPlanFacility, fieldPlanFacilityFromDb);
-                    fieldPlanFacility.setFacilityId(fieldPlanFacilityFromDb.getFacilityId());
-                    fieldPlanFacility.setFieldPlanId(fieldPlanFacilityFromDb.getFieldPlanId());
-                    fieldPlanFacility.setTenantId(fieldPlanFacilityFromDb.getTenantId());
-                    fieldPlanFacility.setIsDeleted(fieldPlanFacilityFromDb.getIsDeleted());
-                    fieldPlannerEnrichment.enrichFieldPlanFacilityRequestOnUpdate(fieldPlanFacility, fieldPlanFacilityFromDb, request.getRequestInfo());
-                }
-                producer.push(fieldPlannerConfiguration.getUpdateFieldPlanFacilityTopic(), fieldPlanFacilities);
-                log.info("successfully pushed fieldplan facility update");
+                log.info("successfully created project facility");
             }
         } catch (Exception exception) {
             log.error("error occurred while updating fieldplan facility: {}", ExceptionUtils.getStackTrace(exception));
@@ -399,7 +348,7 @@ public class FieldPlannerFacilityService {
                     }
 
                 } catch (Exception e) {
-                    log.error("Error while fetching facility list for facility ID: {}", facility.getFacilityId(), e);
+                    log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
                     throw new CustomException("FACILITY_ERROR", "error while calling facility service");
                 }
             }
