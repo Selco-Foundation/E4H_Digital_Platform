@@ -70,7 +70,7 @@ const AssessmentTable = ({ t, projectId }) => {
       {
         id: "activities",
         Header: () => GetHead(t("ACTIVITIES")),
-        Cell: () => GetAssessmentBadge(),
+        Cell: ({ row }) => (row.original?.id ? GetAssessmentBadge() : null),
       },
       {
         id: "startDate",
