@@ -123,7 +123,7 @@ public class AmcVisitReportPdfService {
         data.put("health_facility_type", facility.getFacilityType());
         data.put("vendor_name", amcConfiguration.getVendor() != null ? amcConfiguration.getVendor().getName() : null);
         data.put("project_number", amcConfiguration.getProject() != null ? amcConfiguration.getProject().getProjectNumber() : null);
-        data.put("project_date", existingVisit.getAmcConfiguration().getProject().getStartDate());
+        data.put("project_date", formatEpochMillisAsDate(existingVisit.getAmcConfiguration().getConfigurationStartDate()));
         data.put("project_state", boundary != null ? boundary.getState() : null);
         data.put("project_district", boundary != null ? boundary.getDistrict() : null);
         data.put("project_block", boundary != null ? boundary.getBlock() : null);
