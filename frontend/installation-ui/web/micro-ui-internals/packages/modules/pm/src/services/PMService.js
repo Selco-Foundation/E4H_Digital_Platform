@@ -289,6 +289,13 @@ export const PMService = {
     });
   },
 
+  downloadAssessmentPlanFacilityExport: async (planId, filters) => {
+    return await IngestionService.downloadAssessmentFacilityExport({
+      planId: planId,
+      filters: filters || {},
+    });
+  },
+
   uploadAssessmentPlanFacilityDataTemplate: async (file, projectId, planId) => {
 
     const extractBlobFile = (response) => {

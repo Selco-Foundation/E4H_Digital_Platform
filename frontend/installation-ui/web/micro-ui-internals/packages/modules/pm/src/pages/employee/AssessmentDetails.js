@@ -17,6 +17,7 @@ import useProject from "../../hooks/useProject";
 import { populateWorkingAssessmentPlan, populateWorkingProject } from "../../redux/actions";
 import { AssessmentFacilityService } from "../../services/AssessmentFacility";
 import { AssessmentPlanService } from "../../services/AssessmentPlan";
+import { PMService } from "../../services/PMService";
 import { canAssignForOnSiteAssessment, evaluateMarkResultScenario } from "../../utilities/AssessmentPlanData";
 import {useTranslation} from "react-i18next";
 
@@ -182,43 +183,16 @@ const AssessmentDetails = () => {
     history.push(`/${window.contextPath}/employee/pm/project/${projectId}/assessment/create?assessmentId=${assessmentPlan.id}`);
   };
 
-  const handleDownload = () => {
-    const rowsToExport = selectedFacilityIds.length
-      ? fetchedData.filter((facility) => selectedFacilityIds.includes(facility.id))
-      : fetchedData;
-
-    const header = [
-      t("PM_ASSESSMENT_FACILITY_NAME"),
-      t("PM_ASSESSMENT_FACILITY_TYPE"),
-      t("CS_DISTRICT"),
-      t("CS_BLOCK"),
-      t("PM_ASSESSMENT_REMOTE_STATUS"),
-      t("PM_ASSESSMENT_ONSITE_STATUS"),
-      t("PM_ASSESSMENT_RESULT"),
-    ];
-    const rows = rowsToExport.map((facility) => [
-      facility.name,
-      facility.facilityType,
-      facility.district,
-      facility.block,
-      t(`PM_ASSESSMENT_FACILITY_STATUS_${facility.remoteStatus}`),
-      t(`PM_ASSESSMENT_FACILITY_STATUS_${facility.onSiteStatus}`),
-      t(`PM_ASSESSMENT_FACILITY_STATUS_${facility.result}`),
-    ]);
-
-    const csvContent = [header, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const downloadUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = `${assessmentPlan.name}-facilities.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(downloadUrl);
+  const handleDownload = async () => {
+    setActionLoading(true);
+    try {
+      await PMService.downloadAssessmentPlanFacilityExport(assessmentId, projectQueryFilter.facilityFilterQuery);
+    } catch (error) {
+      console.error("Error exporting assessment plan facilities", error);
+      setToast({ key: "error", label: t("PM_ASSESSMENT_ACTION_ERROR") });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const GetCell = (value) => <span className="cell-text" style={{ color: "#000000" }}>{value}</span>;

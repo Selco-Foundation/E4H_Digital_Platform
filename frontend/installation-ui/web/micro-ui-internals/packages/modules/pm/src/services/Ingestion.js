@@ -119,6 +119,25 @@ export const IngestionService = {
     });
   },
 
+  downloadAssessmentFacilityExport : async (requestData) => {
+    const endpoint = "/ingestion-service/template/assessmentPlanFacilityExport";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    await CustomRequest({
+      url : endpoint,
+      data : requestData,
+      userService : true,
+      method : "POST",
+      auth : true,
+      headers : headers,
+      fileDownload: true,
+      responseType: "blob",
+      defaultFilename: "download.xlsx"
+    });
+  },
+
   validateAssessmentPlanFacilityData: async (filledFacilityData) => {
     const endpoint = "/ingestion-service/ingest/assessmentPlanIncludeValidateData";
 
