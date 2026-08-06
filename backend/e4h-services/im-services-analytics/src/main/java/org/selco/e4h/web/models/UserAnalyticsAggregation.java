@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,11 +31,22 @@ public class UserAnalyticsAggregation {
     /** {@code primary_role} -> counts. Documents with a null role fall under {@code UNKNOWN}. */
     private Map<String, UserAnalyticsMetrics> byRole;
 
+    /**
+     * {@code primary_role} -> its most active users, highest activity first. Only populated for the
+     * reported week; the previous week is aggregated purely to compute growth.
+     */
+    private Map<String, List<ChampionUser>> championsByRole;
+
+    /** Application -> its most active users, highest activity first. */
+    private Map<String, List<ChampionUser>> championsByApplication;
+
     public static UserAnalyticsAggregation empty() {
         return UserAnalyticsAggregation.builder()
                 .overall(UserAnalyticsMetrics.empty())
                 .byState(Collections.emptyMap())
                 .byRole(Collections.emptyMap())
+                .championsByRole(Collections.emptyMap())
+                .championsByApplication(Collections.emptyMap())
                 .build();
     }
 
