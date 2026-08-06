@@ -20,24 +20,24 @@ mixin _$AmcOtpEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String visitId) resend,
-    required TResult Function(String visitId, String schemaCode, int version,
-            String otp, ScheduledVisit? scheduledVisit)
+    required TResult Function(
+            String visitId, String schemaCode, int version, String otp)
         submit,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String visitId)? resend,
-    TResult? Function(String visitId, String schemaCode, int version,
-            String otp, ScheduledVisit? scheduledVisit)?
+    TResult? Function(
+            String visitId, String schemaCode, int version, String otp)?
         submit,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String visitId)? resend,
-    TResult Function(String visitId, String schemaCode, int version, String otp,
-            ScheduledVisit? scheduledVisit)?
+    TResult Function(
+            String visitId, String schemaCode, int version, String otp)?
         submit,
     required TResult orElse(),
   }) =>
@@ -168,8 +168,8 @@ class _$AmcOtpEventResendImpl implements AmcOtpEventResend {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String visitId) resend,
-    required TResult Function(String visitId, String schemaCode, int version,
-            String otp, ScheduledVisit? scheduledVisit)
+    required TResult Function(
+            String visitId, String schemaCode, int version, String otp)
         submit,
   }) {
     return resend(visitId);
@@ -179,8 +179,8 @@ class _$AmcOtpEventResendImpl implements AmcOtpEventResend {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String visitId)? resend,
-    TResult? Function(String visitId, String schemaCode, int version,
-            String otp, ScheduledVisit? scheduledVisit)?
+    TResult? Function(
+            String visitId, String schemaCode, int version, String otp)?
         submit,
   }) {
     return resend?.call(visitId);
@@ -190,8 +190,8 @@ class _$AmcOtpEventResendImpl implements AmcOtpEventResend {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String visitId)? resend,
-    TResult Function(String visitId, String schemaCode, int version, String otp,
-            ScheduledVisit? scheduledVisit)?
+    TResult Function(
+            String visitId, String schemaCode, int version, String otp)?
         submit,
     required TResult orElse(),
   }) {
@@ -253,14 +253,7 @@ abstract class _$$AmcOtpEventSubmitImplCopyWith<$Res>
       __$$AmcOtpEventSubmitImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {String visitId,
-      String schemaCode,
-      int version,
-      String otp,
-      ScheduledVisit? scheduledVisit});
-
-  $ScheduledVisitCopyWith<$Res>? get scheduledVisit;
+  $Res call({String visitId, String schemaCode, int version, String otp});
 }
 
 /// @nodoc
@@ -278,7 +271,6 @@ class __$$AmcOtpEventSubmitImplCopyWithImpl<$Res>
     Object? schemaCode = null,
     Object? version = null,
     Object? otp = null,
-    Object? scheduledVisit = freezed,
   }) {
     return _then(_$AmcOtpEventSubmitImpl(
       visitId: null == visitId
@@ -297,23 +289,7 @@ class __$$AmcOtpEventSubmitImplCopyWithImpl<$Res>
           ? _value.otp
           : otp // ignore: cast_nullable_to_non_nullable
               as String,
-      scheduledVisit: freezed == scheduledVisit
-          ? _value.scheduledVisit
-          : scheduledVisit // ignore: cast_nullable_to_non_nullable
-              as ScheduledVisit?,
     ));
-  }
-
-  @override
-  @pragma('vm:prefer-inline')
-  $ScheduledVisitCopyWith<$Res>? get scheduledVisit {
-    if (_value.scheduledVisit == null) {
-      return null;
-    }
-
-    return $ScheduledVisitCopyWith<$Res>(_value.scheduledVisit!, (value) {
-      return _then(_value.copyWith(scheduledVisit: value));
-    });
   }
 }
 
@@ -324,8 +300,7 @@ class _$AmcOtpEventSubmitImpl implements AmcOtpEventSubmit {
       {required this.visitId,
       required this.schemaCode,
       required this.version,
-      required this.otp,
-      this.scheduledVisit});
+      required this.otp});
 
   @override
   final String visitId;
@@ -335,12 +310,10 @@ class _$AmcOtpEventSubmitImpl implements AmcOtpEventSubmit {
   final int version;
   @override
   final String otp;
-  @override
-  final ScheduledVisit? scheduledVisit;
 
   @override
   String toString() {
-    return 'AmcOtpEvent.submit(visitId: $visitId, schemaCode: $schemaCode, version: $version, otp: $otp, scheduledVisit: $scheduledVisit)';
+    return 'AmcOtpEvent.submit(visitId: $visitId, schemaCode: $schemaCode, version: $version, otp: $otp)';
   }
 
   @override
@@ -352,14 +325,12 @@ class _$AmcOtpEventSubmitImpl implements AmcOtpEventSubmit {
             (identical(other.schemaCode, schemaCode) ||
                 other.schemaCode == schemaCode) &&
             (identical(other.version, version) || other.version == version) &&
-            (identical(other.otp, otp) || other.otp == otp) &&
-            (identical(other.scheduledVisit, scheduledVisit) ||
-                other.scheduledVisit == scheduledVisit));
+            (identical(other.otp, otp) || other.otp == otp));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType, visitId, schemaCode, version, otp, scheduledVisit);
+  int get hashCode =>
+      Object.hash(runtimeType, visitId, schemaCode, version, otp);
 
   @JsonKey(ignore: true)
   @override
@@ -372,35 +343,35 @@ class _$AmcOtpEventSubmitImpl implements AmcOtpEventSubmit {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String visitId) resend,
-    required TResult Function(String visitId, String schemaCode, int version,
-            String otp, ScheduledVisit? scheduledVisit)
+    required TResult Function(
+            String visitId, String schemaCode, int version, String otp)
         submit,
   }) {
-    return submit(visitId, schemaCode, version, otp, scheduledVisit);
+    return submit(visitId, schemaCode, version, otp);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String visitId)? resend,
-    TResult? Function(String visitId, String schemaCode, int version,
-            String otp, ScheduledVisit? scheduledVisit)?
+    TResult? Function(
+            String visitId, String schemaCode, int version, String otp)?
         submit,
   }) {
-    return submit?.call(visitId, schemaCode, version, otp, scheduledVisit);
+    return submit?.call(visitId, schemaCode, version, otp);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String visitId)? resend,
-    TResult Function(String visitId, String schemaCode, int version, String otp,
-            ScheduledVisit? scheduledVisit)?
+    TResult Function(
+            String visitId, String schemaCode, int version, String otp)?
         submit,
     required TResult orElse(),
   }) {
     if (submit != null) {
-      return submit(visitId, schemaCode, version, otp, scheduledVisit);
+      return submit(visitId, schemaCode, version, otp);
     }
     return orElse();
   }
@@ -442,15 +413,13 @@ abstract class AmcOtpEventSubmit implements AmcOtpEvent {
       {required final String visitId,
       required final String schemaCode,
       required final int version,
-      required final String otp,
-      final ScheduledVisit? scheduledVisit}) = _$AmcOtpEventSubmitImpl;
+      required final String otp}) = _$AmcOtpEventSubmitImpl;
 
   @override
   String get visitId;
   String get schemaCode;
   int get version;
   String get otp;
-  ScheduledVisit? get scheduledVisit;
   @override
   @JsonKey(ignore: true)
   _$$AmcOtpEventSubmitImplCopyWith<_$AmcOtpEventSubmitImpl> get copyWith =>

@@ -126,8 +126,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                             visitId: _currentScheduledVisitId!,
                             schemaCode: "12345678",
                             version: 1,
-                            otp: otp,
-                            scheduledVisit: scheduledVisit));
+                            otp: otp));
                       },
                     );
                   },

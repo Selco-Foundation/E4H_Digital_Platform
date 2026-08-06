@@ -9,7 +9,6 @@ import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_amc_doc.dart';
 import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
-import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
@@ -84,7 +83,6 @@ class Constants {
           CacheAmcMediaUploadSchema,
           CacheScheduleVisitFormValuesSchema,
           CachePrefilledScheduledVisitSchema,
-          CacheAmcInstallationFormSchema,
         ],
         name: 'E4H',
         inspector: true,

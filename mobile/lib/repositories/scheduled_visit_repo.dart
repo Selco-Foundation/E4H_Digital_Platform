@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
-import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_prefilled_scheduled_visit.dart';
 import '../data/nosql/cache_scheduled_visit.dart';
@@ -68,7 +67,6 @@ class ScheduledVisitRemoteRepository {
     String? otp,
     String? status,
     Map<String, dynamic>? responses,
-    List<Document>? workflowDocuments,
     List<Document>? visitDocuments,
   }) async {
     const path = 'asset-amc/v1/visit/workflow/_update';
@@ -79,10 +77,6 @@ class ScheduledVisitRemoteRepository {
         'workflow': {
           'action': status ?? 'SUBMIT_VISIT_REPORT',
           'comment': 'Submit Visit Report Action',
-          if (workflowDocuments != null) ...{
-            'documents':
-                workflowDocuments.map((d) => d.toJsonForWorkflow()).toList(),
-          },
           'additionalDetails': <String, dynamic>{},
         },
         'visitReport': {
@@ -285,55 +279,6 @@ class ScheduledVisitRepository {
       total += await col.where().statusEqualTo(status).count();
     }
     return total;
-  }
-
-  Future<void> upsertCacheAmcInstallationForm(
-    Isar isar,
-    CacheAmcInstallationForm entry,
-  ) async {
-    await isar.writeTxn(() async {
-      final existing = await isar.cacheAmcInstallationForms
-          .where()
-          .scheduledVisitIdEqualTo(entry.scheduledVisitId)
-          .filter()
-          .userTypeEqualTo(entry.userType)
-          .findFirst();
-
-      if (existing != null) {
-        existing.filePath = entry.filePath;
-        existing.latitude = entry.latitude;
-        existing.longitude = entry.longitude;
-        existing.updatedAt = DateTime.now();
-
-        await isar.cacheAmcInstallationForms.put(existing);
-      } else {
-        await isar.cacheAmcInstallationForms.put(entry);
-      }
-    });
-  }
-
-  Future<void> deleteInstallationForm(
-      {required String scheduledVisitId}) async {
-    final col = _isar.cacheAmcInstallationForms;
-    final row =
-        await col.where().scheduledVisitIdEqualTo(scheduledVisitId).findFirst();
-    if (row != null) {
-      await _isar.writeTxn(() async {
-        await col.delete(row.id);
-      });
-    }
-  }
-
-  Future<CacheAmcInstallationForm?> getCacheAmcInstallationForm({
-    required String scheduledVisitId,
-    required String userType,
-  }) async {
-    return _isar.cacheAmcInstallationForms
-        .where()
-        .scheduledVisitIdEqualTo(scheduledVisitId)
-        .filter()
-        .userTypeEqualTo(userType)
-        .findFirst();
   }
 
   Future<void> deleteAmcMediaUploads({required String scheduledVisitId}) async {

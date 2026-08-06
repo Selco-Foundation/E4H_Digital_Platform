@@ -10,7 +10,6 @@ import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
-import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_asset_handover_document.dart';
@@ -2080,14 +2079,6 @@ Future<void> _performScheduleVisitSubmission({
   }
 
   final responses = jsonDecode(form.dataJson) as Map<String, dynamic>;
-  final amcFormRepo = AmcDynamicFormRepository();
-
-  final pdfFileStoreId = await amcFormRepo.generateFormPdf(
-      isar: isar, scheduledVisitId: scheduledVisitId, userType: userType);
-
-  if (pdfFileStoreId == null || pdfFileStoreId.isEmpty) {
-    throw Exception('Failed to generate AMC PDF');
-  }
 
   final cachedMedia = await isar.cacheAmcMediaUploads
       .where()
@@ -2117,48 +2108,17 @@ Future<void> _performScheduleVisitSubmission({
     );
   }
 
-  final workflowDocuments = <Document>[];
-
-  final String? mediaLat =
-      cachedMedia.isNotEmpty ? cachedMedia.first.latitude : null;
-  final String? mediaLon =
-      cachedMedia.isNotEmpty ? cachedMedia.first.longitude : null;
-
-  workflowDocuments.add(
-    Document(
-      documentType: 'AMC_INSTALLATION_FORM',
-      fileStore: pdfFileStoreId,
-      documentUid:
-          'AMC-FORM-$scheduledVisitId-${DateTime.now().millisecondsSinceEpoch}',
-      geoLocation: GeoLocation(
-        latitude: mediaLat,
-        longitude: mediaLon,
-      ),
-    ),
-  );
-
   final remote = ScheduledVisitRemoteRepository();
   await remote.updateVisitWorkflow(
     visitId: scheduledVisitId,
     schemaCode: "12345678",
     version: 1,
     responses: responses,
-    workflowDocuments: workflowDocuments,
     visitDocuments: visitDocuments,
   );
 
   await PrefilledScheduledVisitRepository(isar)
       .addOrTouch(scheduledVisitId: scheduledVisitId, userType: userType);
-  final installationForm = workflowDocuments.first;
-  await ScheduledVisitRepository(isar).upsertCacheAmcInstallationForm(
-      isar,
-      new CacheAmcInstallationForm(
-        scheduledVisitId: scheduledVisitId,
-        filePath: installationForm.fileStore ?? '',
-        latitude: installationForm.geoLocation?.latitude ?? '',
-        longitude: installationForm.geoLocation?.longitude ?? '',
-        userType: userType,
-      ));
 }
 
 class PlainError implements Exception {

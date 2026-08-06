@@ -11,12 +11,10 @@ import '../data/nosql/cache_amc_doc.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
-import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../model/activity_facility/activity_facility.dart';
 import '../model/document/document.dart';
-import '../model/scheduled_visit/scheduled_visit.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart' as env;
 import '../utils/utils.dart';
@@ -51,28 +49,6 @@ Map<String, dynamic> enrichWithFacilityDetails({
   return enriched;
 }
 
-Map<String, dynamic> enrichAmcPdfValues({
-  required Map<String, dynamic> formValues,
-  ScheduledVisit? scheduledVisit,
-}) {
-  final configuration = scheduledVisit?.amcConfiguration;
-  final project = configuration?.project;
-  final enriched = enrichWithFacilityDetails(
-    values: formValues,
-    facility: scheduledVisit?.facility ?? configuration?.facility,
-    projectNumber: project?['projectNumber']?.toString(),
-    projectDate: _dateTimeFromProjectValue(project?['startDate']),
-  );
-
-  enriched['amc_number'] = formatAmcNumber(
-    scheduledVisit?.visitNumber,
-    configuration?.durationMonths,
-    configuration?.visitFrequencyMonths,
-  );
-
-  return enriched;
-}
-
 void _putIfNotBlank(
   Map<String, dynamic> values,
   String key,
@@ -93,18 +69,6 @@ String? _formatProjectDate(DateTime? date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
   return '$year-$month-$day';
-}
-
-DateTime? _dateTimeFromProjectValue(Object? value) {
-  if (value is int) {
-    return DateTime.fromMillisecondsSinceEpoch(value);
-  }
-  if (value is String) {
-    final epoch = int.tryParse(value);
-    if (epoch != null) return DateTime.fromMillisecondsSinceEpoch(epoch);
-    return DateTime.tryParse(value);
-  }
-  return null;
 }
 
 String? _formatFacilityAddress(FacilityAddress? address) {
@@ -1087,32 +1051,7 @@ class BomRepository {
 }
 
 class AmcDynamicFormRepository {
-  final Dio _dio = DioClient().dio;
-
   AmcDynamicFormRepository();
-
-  Future<Map<String, dynamic>> enrichWithScheduledVisitContext({
-    required Isar isar,
-    required String scheduledVisitId,
-    required Map<String, dynamic> formValues,
-  }) async {
-    ScheduledVisit? scheduledVisit;
-
-    try {
-      final cachedVisit = await isar.cacheScheduledVisits
-          .where()
-          .scheduledVisitIdEqualTo(scheduledVisitId)
-          .findFirst();
-      scheduledVisit = cachedVisit?.toModel();
-    } catch (_) {
-      scheduledVisit = null;
-    }
-
-    return enrichAmcPdfValues(
-      formValues: formValues,
-      scheduledVisit: scheduledVisit,
-    );
-  }
 
   Future<void> saveLocal({
     required Isar isar,
@@ -1239,87 +1178,6 @@ class AmcDynamicFormRepository {
         }
       }
     });
-  }
-
-  Future<String> generateFormPdf({
-    required Isar isar,
-    required String scheduledVisitId,
-    required String userType,
-  }) async {
-    try {
-      final entryKey = '$scheduledVisitId::$userType';
-      final rec = await isar.cacheScheduleVisitFormValues
-          .where()
-          .entryKeyEqualTo(entryKey)
-          .findFirst();
-      if (rec == null) {
-        throw Exception("No Form values found for scheduled visit");
-      }
-      final Map<String, dynamic> bomData =
-          jsonDecode(rec.dataJson) as Map<String, dynamic>;
-      final enrichedBomData = await enrichWithScheduledVisitContext(
-        isar: isar,
-        scheduledVisitId: scheduledVisitId,
-        formValues: bomData,
-      );
-
-      final tenantId = env.envConfig.variables.tenantId;
-      final body = {
-        "amc": enrichedBomData,
-      };
-
-      final path = "pdf-service/v1/_create?key=amc-report&tenantId=$tenantId";
-
-      final response = await _dio.post(path, data: body);
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception("Generate Form PDF failed: ${response.statusCode}");
-      }
-
-      String? filestoreId = _extractFilestoreId(response.data);
-
-      if (filestoreId == null || filestoreId.isEmpty) {
-        throw Exception("filestoreId missing in response");
-      }
-
-      return filestoreId;
-    } catch (e) {
-      AppLogger.instance
-          .error(title: "Failed to generate BOM PDF", message: "error $e");
-      throw Exception("Failed to generate BOM PDF filestoreId");
-    }
-  }
-
-  String? _extractFilestoreId(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      // New shape: filestoreIds: ["id1", ...]
-      final ids = data["filestoreIds"];
-      if (ids is List && ids.isNotEmpty) {
-        final first = ids.first;
-        if (first is String) return first;
-      }
-
-      // Old shape: filestoreId: "id1"
-      final single = data["filestoreId"];
-      if (single is String && single.isNotEmpty) {
-        return single;
-      }
-
-      return null;
-    }
-
-    if (data is List && data.isNotEmpty) {
-      // If backend now returns an array at top-level, use first element
-      return _extractFilestoreId(data.first);
-    }
-
-    if (data is String && data.trim().isNotEmpty) {
-      // If Dio gives you a raw JSON string
-      final parsed = jsonDecode(data);
-      return _extractFilestoreId(parsed);
-    }
-
-    return null;
   }
 
   Future<void> mergeKvForEntryKey({
