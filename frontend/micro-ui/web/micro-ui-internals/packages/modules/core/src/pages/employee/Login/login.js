@@ -1,4 +1,5 @@
 import { BackButton, Dropdown, FormComposer, Loader, Toast } from "@selco/digit-ui-react-components";
+import Axios from "axios";
 import PropTypes from "prop-types";
 import React, { useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
@@ -19,6 +20,35 @@ const setEmployeeDetail = (userObject, token) => {
   localStorage.setItem("Employee.token", token);
   localStorage.setItem("user-info", JSON.stringify(userObject));
   localStorage.setItem("Employee.user-info", JSON.stringify(userObject));
+};
+
+const reportUserLogin = async (user) => {
+  const ts = Date.now();
+  const language = Digit.StoreData?.getCurrentLanguage?.() || "en_IN";
+
+  await Axios({
+    method: "POST",
+    url: "/im-services/user/login/_report",
+    headers: {
+      "Content-Type": "application/json",
+      "auth-token": user?.access_token || null,
+    },
+    data: {
+      RequestInfo: {
+        apiId: "Rainmaker",
+        ver: ".01",
+        ts,
+        action: "_report",
+        did: "1",
+        key: "",
+        msgId: `${ts}|${language}`,
+        authToken: user?.access_token,
+        userInfo: user?.info,
+      },
+      User: user?.info,
+      application: window.contextPath === "installation-qc" ? "MANAGEMENT_HUB" : "SAURA_EMITRA",
+    },
+  });
 };
 
 const ConsentCheckbox = ({ id, checked, onChange, modalType, linkText, translateWithFallback, openPolicyModal }) => (
@@ -174,10 +204,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       let redirectPath = `/${window.contextPath}/employee`;
 
       try {
-        await Digit.UserService.userLoginReport({
-          User: user.info,
-          application: window.contextPath === "installation-qc" ? "MANAGEMENT_HUB" : "SAURA_EMITRA",
-        });
+        await reportUserLogin(user);
       } catch (err) {
         console.error("Login report failed", err);
       }
