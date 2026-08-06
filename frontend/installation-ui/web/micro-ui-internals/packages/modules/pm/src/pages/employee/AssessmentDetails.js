@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { useHistory, useLocation } from "react-router-dom";
 import Filter from "../../components/AssessmentDetails/Filter";
 import InfoCard from "../../components/AssessmentDetails/InfoCard";
-import SearchAction from "../../components/AssessmentDetails/SearchAction";
+import FacilityActionBar from "../../components/AssessmentDetails/FacilityActionBar";
 import FacilityDetailsModal from "../../components/AssessmentDetails/FacilityDetailsModal";
 import ConfirmActionModal from "../../components/AssessmentDetails/ConfirmActionModal";
 import ReasonRequiredModal from "../../components/AssessmentDetails/ReasonRequiredModal";
@@ -657,12 +657,10 @@ const AssessmentDetails = () => {
         </div>
         <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>
           <div style={{ padding: "20px" }}>
-            <SearchAction
+            <FacilityActionBar
               t={t}
-              projectQueryFilter={projectQueryFilter}
               selectedFacilityIds={selectedFacilityIds}
               bulkActions={planCompleted ? [] : bulkActions}
-              onSearch={handleFilterChange}
               onDownload={handleDownload}
             />
           </div>
