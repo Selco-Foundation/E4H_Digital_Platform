@@ -10,6 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -24,6 +27,7 @@ public class AmcVisitReportPdfService {
     private static final String AMC_PDF_KEY = "amc-report";
     private static final String IMG1_DOCUMENT_TYPE = "img1";
     private static final String INSTALLATION_IMAGE_1_DOCUMENT_TYPE = "INSTALLATION_IMAGE-1";
+    private static final DateTimeFormatter REPORT_DATE_FORMATTER = DateTimeFormatter.ofPattern("MM-dd-yyyy");
 
     private final ServiceRequestRepository requestRepository;
     private final AMCServiceConfiguration config;
@@ -112,14 +116,14 @@ public class AmcVisitReportPdfService {
         data.put("tenantId", existingVisit.getTenantId());
         data.put("amc_number", existingVisit.getVisitNumber() + "/" + totalVisits);
         data.put("location_captured", geoLocation != null ? "Yes" : "No");
-        data.put("actual_scheduled_amc_date", existingVisit.getActualVisitDate());
-        data.put("actual_submission_amc_date", System.currentTimeMillis());
+        data.put("actual_scheduled_amc_date", formatEpochMillisAsDate(existingVisit.getActualVisitDate()));
+        data.put("actual_submission_amc_date", formatEpochMillisAsDate(System.currentTimeMillis()));
         data.put("health_facility_name", facility.getFacilityName());
         data.put("health_facility_address", facility.getAddress() != null ? facility.getAddress().getAddressLine1() : null);
         data.put("health_facility_type", facility.getFacilityType());
         data.put("vendor_name", amcConfiguration.getVendor() != null ? amcConfiguration.getVendor().getName() : null);
         data.put("project_number", amcConfiguration.getProject() != null ? amcConfiguration.getProject().getProjectNumber() : null);
-        data.put("project_date", null);
+        data.put("project_date", existingVisit.getAmcConfiguration().getProject().getStartDate());
         data.put("project_state", boundary != null ? boundary.getState() : null);
         data.put("project_district", boundary != null ? boundary.getDistrict() : null);
         data.put("project_block", boundary != null ? boundary.getBlock() : null);
@@ -146,6 +150,13 @@ public class AmcVisitReportPdfService {
             throw new CustomException("AMC_PDF_GENERATION_FAILED", "AMC configuration not found: " + amcConfigurationId);
         }
         return list.get(0);
+    }
+
+    private String formatEpochMillisAsDate(Long epochMillis) {
+        if (epochMillis == null) {
+            return null;
+        }
+        return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(REPORT_DATE_FORMATTER);
     }
 
     private Boundary resolveBoundary(String boundaryCode) {
