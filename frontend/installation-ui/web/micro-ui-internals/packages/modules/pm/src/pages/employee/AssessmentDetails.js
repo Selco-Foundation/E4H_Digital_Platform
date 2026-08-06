@@ -61,12 +61,13 @@ const AssessmentDetails = () => {
     }
   })() || {
     facilityFilter: {
-      category: null,
-      district: null,
-      facilityType: null,
-      remoteStatus: null,
-      onSiteStatus: null,
-      result: null,
+      category: [],
+      facilityType: [],
+      district: [],
+      block: [],
+      remoteStatus: [],
+      onSiteStatus: [],
+      result: [],
     },
     facilitySearch: {
       name: ""
@@ -649,6 +650,7 @@ const AssessmentDetails = () => {
         <div style={{ minWidth: "300px" }}>
           <Filter
             t={t}
+            assessmentPlan={assessmentPlan}
             projectQueryFilter={projectQueryFilter}
             onFilterChange={handleFilterChange}
           />

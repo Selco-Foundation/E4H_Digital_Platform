@@ -1,108 +1,174 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Dropdown } from "@egovernments/digit-ui-react-components";
+import React, { useMemo } from "react";
+import { Dropdown, RemoveableTag } from "@egovernments/digit-ui-react-components";
 import RefreshButton from "../RefreshButton";
 import CustomFilterIcon from "../Custom/CustomFilterIcon";
+import useBoundary from "../../hooks/useBoundary";
 import {
-  DUMMY_ASSESSMENT_FACILITIES,
-  ASSESSMENT_FACILITY_CATEGORY_CODES,
   REMOTE_ASSESSMENT_STATUS_CODES,
   ONSITE_ASSESSMENT_STATUS_CODES,
   ASSESSMENT_RESULT_CODES,
 } from "../../utilities/AssessmentPlanData";
 
 const EMPTY_FILTER = {
-  category: null,
-  district: null,
-  facilityType: null,
-  remoteStatus: null,
-  onSiteStatus: null,
-  result: null,
+  category: [],
+  facilityType: [],
+  district: [],
+  block: [],
+  remoteStatus: [],
+  onSiteStatus: [],
+  result: [],
 };
 
-const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
+// A filter persisted in the URL from before this filter's keys became array-based (or with a
+// key simply missing) would otherwise leave a null/undefined value here instead of [].
+const normalizeFilter = (filter) => ({
+  category: filter?.category || [],
+  facilityType: filter?.facilityType || [],
+  district: filter?.district || [],
+  block: filter?.block || [],
+  remoteStatus: filter?.remoteStatus || [],
+  onSiteStatus: filter?.onSiteStatus || [],
+  result: filter?.result || [],
+});
 
-  const [currentFilter, setCurrentFilter] = useState(projectQueryFilter.facilityFilter || EMPTY_FILTER);
+const Filter = ({ t, onFilterChange, projectQueryFilter, assessmentPlan }) => {
 
-  const categoryMenu = useMemo(
-    () => ASSESSMENT_FACILITY_CATEGORY_CODES.map((code) => ({ code, name: t(`PM_ASSESSMENT_FACILITY_CATEGORY_${code}`) })),
-    [t]
+  const currentFilter = normalizeFilter(projectQueryFilter.facilityFilter);
+  const tenantId = Digit.ULBService.getStateId();
+
+  const { data: mdmsData } = Digit.Hooks.useCustomMDMS(
+    tenantId,
+    "facility",
+    [{ name: "FacilityCategory" }, { name: "FacilityType" }],
+    { select: (data) => data, enabled: !!tenantId }
   );
 
-  const districtMenu = useMemo(
-    () => Array.from(new Set(DUMMY_ASSESSMENT_FACILITIES.map((facility) => facility.district))).map((district) => ({ code: district, name: district })),
-    []
+  const categoryOptions = mdmsData?.facility?.FacilityCategory || [];
+  const facilityTypeOptions = mdmsData?.facility?.FacilityType || [];
+
+  const { data: boundaryData } = useBoundary("State");
+
+  // Restrict the pickable districts/blocks to the assessment plan's own geography, the same way
+  // CreateAssessment.js scopes its boundary selectors to the project's geography.
+  const planDistrictCodes = assessmentPlan?.geographyDetails?.districts || [];
+  const planBlockCodes = assessmentPlan?.geographyDetails?.blocks || [];
+
+  const districtOptions = useMemo(
+    () => (boundaryData?.districts || [])
+      .filter((district) => planDistrictCodes.includes(district.code))
+      .map((district) => ({ ...district, name: t(`Boundary_${district.code}`) })),
+    [boundaryData, planDistrictCodes, t]
   );
 
-  const facilityTypeMenu = useMemo(
-    () => Array.from(new Set(DUMMY_ASSESSMENT_FACILITIES.map((facility) => facility.facilityType))).map((facilityType) => ({ code: facilityType, name: facilityType })),
-    []
+  const blockOptions = useMemo(
+    () => (boundaryData?.blocks || [])
+      .filter((block) => planBlockCodes.includes(block.code))
+      .map((block) => ({ ...block, name: t(`Boundary_${block.code}`) })),
+    [boundaryData, planBlockCodes, t]
   );
 
-  const remoteStatusMenu = useMemo(
+  const remoteStatusOptions = useMemo(
     () => REMOTE_ASSESSMENT_STATUS_CODES.map((code) => ({ code, name: t(`PM_ASSESSMENT_FACILITY_STATUS_${code}`) })),
     [t]
   );
 
-  const onSiteStatusMenu = useMemo(
+  const onSiteStatusOptions = useMemo(
     () => ONSITE_ASSESSMENT_STATUS_CODES.map((code) => ({ code, name: t(`PM_ASSESSMENT_FACILITY_STATUS_${code}`) })),
     [t]
   );
 
-  const resultMenu = useMemo(
+  const resultOptions = useMemo(
     () => ASSESSMENT_RESULT_CODES.map((code) => ({ code, name: t(`PM_ASSESSMENT_FACILITY_STATUS_${code}`) })),
     [t]
   );
 
-  useEffect(() => {
+  const selectedCategoryCodes = currentFilter.category.map((category) => category.code);
+  const facilityTypeMenu = selectedCategoryCodes.length
+    ? facilityTypeOptions.filter((facilityType) => selectedCategoryCodes.includes(facilityType.facilityCategory))
+    : facilityTypeOptions;
+
+  const selectedDistrictCodes = currentFilter.district.map((district) => district.code);
+  const blockMenu = selectedDistrictCodes.length
+    ? blockOptions.filter((block) => selectedDistrictCodes.includes(block.districtCode))
+    : blockOptions;
+
+  const emitFilterChange = (nextFilter) => {
     const facilityFilterQuery = {};
 
-    if (currentFilter.category?.code) {
-      facilityFilterQuery.category = [currentFilter.category.code];
-    }
-
-    if (currentFilter.district?.code) {
-      facilityFilterQuery.district = [currentFilter.district.code];
-    }
-
-    if (currentFilter.facilityType?.code) {
-      facilityFilterQuery.facilityType = [currentFilter.facilityType.code];
-    }
-
-    if (currentFilter.remoteStatus?.code) {
-      facilityFilterQuery.remoteStatus = [currentFilter.remoteStatus.code];
-    }
-
-    if (currentFilter.onSiteStatus?.code) {
-      facilityFilterQuery.onSiteStatus = [currentFilter.onSiteStatus.code];
-    }
-
-    if (currentFilter.result?.code) {
-      facilityFilterQuery.result = [currentFilter.result.code];
-    }
+    if (nextFilter.category.length) facilityFilterQuery.facilityCategories = nextFilter.category.map((item) => item.code);
+    if (nextFilter.facilityType.length) facilityFilterQuery.facilityTypes = nextFilter.facilityType.map((item) => item.code);
+    if (nextFilter.district.length) facilityFilterQuery.districts = nextFilter.district.map((item) => item.code);
+    if (nextFilter.block.length) facilityFilterQuery.blocks = nextFilter.block.map((item) => item.code);
+    if (nextFilter.remoteStatus.length) facilityFilterQuery.phoneStatuses = nextFilter.remoteStatus.map((item) => item.code);
+    if (nextFilter.onSiteStatus.length) facilityFilterQuery.fieldStatuses = nextFilter.onSiteStatus.map((item) => item.code);
+    if (nextFilter.result.length) facilityFilterQuery.overallStatuses = nextFilter.result.map((item) => item.code);
 
     onFilterChange({
-      facilityFilter: {
-        ...currentFilter
-      },
-      facilityFilterQuery
-    });
-  }, [currentFilter]);
-
-  const handleChange = (key) => (value) => {
-    setCurrentFilter({
-      ...currentFilter,
-      [key]: value,
+      facilityFilter: nextFilter,
+      facilityFilterQuery,
     });
   };
 
-  const onClearAll = () => {
-    setCurrentFilter(EMPTY_FILTER);
-  }
+  const handleAdd = (key) => (value) => {
+    if (!value?.code || currentFilter[key].some((item) => item.code === value.code)) return;
+    emitFilterChange({ ...currentFilter, [key]: [...currentFilter[key], value] });
+  };
 
-  const GetSelectOptions = (label, options, selected, select) => (
+  const handleRemove = (key) => (index) => {
+    const afterRemove = currentFilter[key].filter((_, i) => i !== index);
+
+    if (key === "category") {
+      const remainingCategoryCodes = afterRemove.map((item) => item.code);
+      const validFacilityTypeCodes = (remainingCategoryCodes.length
+        ? facilityTypeOptions.filter((facilityType) => remainingCategoryCodes.includes(facilityType.facilityCategory))
+        : facilityTypeOptions
+      ).map((facilityType) => facilityType.code);
+
+      emitFilterChange({
+        ...currentFilter,
+        category: afterRemove,
+        facilityType: currentFilter.facilityType.filter((facilityType) => validFacilityTypeCodes.includes(facilityType.code)),
+      });
+      return;
+    }
+
+    if (key === "district") {
+      const remainingDistrictCodes = afterRemove.map((item) => item.code);
+      const validBlockCodes = (remainingDistrictCodes.length
+        ? blockOptions.filter((block) => remainingDistrictCodes.includes(block.districtCode))
+        : blockOptions
+      ).map((block) => block.code);
+
+      emitFilterChange({
+        ...currentFilter,
+        district: afterRemove,
+        block: currentFilter.block.filter((block) => validBlockCodes.includes(block.code)),
+      });
+      return;
+    }
+
+    emitFilterChange({ ...currentFilter, [key]: afterRemove });
+  };
+
+  const onClearAll = () => {
+    emitFilterChange(EMPTY_FILTER);
+  };
+
+  const GetSelectOptions = (label, options, key) => (
     <div className={"custom-dropdown"} style={{ marginBottom: "15px" }}>
       <div className="filter-label">{label}</div>
-      <Dropdown t={t} option={options} selected={selected || { name: "", code: "" }} select={select} optionKey={"name"} />
+      <Dropdown
+        t={t}
+        option={options}
+        selected={{ name: "", code: "" }}
+        select={handleAdd(key)}
+        optionKey={"name"}
+      />
+      <div className="tag-container">
+        {currentFilter[key].map((value, index) => (
+          <RemoveableTag key={value.code} text={value.name} onClick={() => handleRemove(key)(index)} />
+        ))}
+      </div>
     </div>
   );
 
@@ -146,12 +212,13 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
             <RefreshButton fill={"#C84C0E"} />
           </button>
         </div>
-        {GetSelectOptions(t("PM_ASSESSMENT_CATEGORY"), categoryMenu, currentFilter.category, handleChange("category"))}
-        {GetSelectOptions(t("CS_DISTRICT"), districtMenu, currentFilter.district, handleChange("district"))}
-        {GetSelectOptions(t("PM_ASSESSMENT_FACILITY_TYPE"), facilityTypeMenu, currentFilter.facilityType, handleChange("facilityType"))}
-        {GetSelectOptions(t("PM_ASSESSMENT_REMOTE_STATUS"), remoteStatusMenu, currentFilter.remoteStatus, handleChange("remoteStatus"))}
-        {GetSelectOptions(t("PM_ASSESSMENT_ONSITE_STATUS"), onSiteStatusMenu, currentFilter.onSiteStatus, handleChange("onSiteStatus"))}
-        {GetSelectOptions(t("PM_ASSESSMENT_RESULT"), resultMenu, currentFilter.result, handleChange("result"))}
+        {GetSelectOptions(t("PM_ASSESSMENT_CATEGORY"), categoryOptions, "category")}
+        {GetSelectOptions(t("PM_ASSESSMENT_FACILITY_TYPE"), facilityTypeMenu, "facilityType")}
+        {GetSelectOptions(t("CS_DISTRICT"), districtOptions, "district")}
+        {GetSelectOptions(t("CS_BLOCK"), blockMenu, "block")}
+        {GetSelectOptions(t("PM_ASSESSMENT_REMOTE_STATUS"), remoteStatusOptions, "remoteStatus")}
+        {GetSelectOptions(t("PM_ASSESSMENT_ONSITE_STATUS"), onSiteStatusOptions, "onSiteStatus")}
+        {GetSelectOptions(t("PM_ASSESSMENT_RESULT"), resultOptions, "result")}
       </div>
     </div>
   );
