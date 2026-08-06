@@ -1,5 +1,4 @@
 import { BackLink, Loader, FormComposerV2, Toast } from "@egovernments/digit-ui-components";
-import Axios from "axios";
 import PropTypes from "prop-types";
 import React, { useEffect, useMemo, useState } from "react";
 import { useHistory } from "react-router-dom";
@@ -23,36 +22,6 @@ const setEmployeeDetail = (userObject, token) => {
   localStorage.setItem("Employee.token", token);
   localStorage.setItem("user-info", JSON.stringify(userObject));
   localStorage.setItem("Employee.user-info", JSON.stringify(userObject));
-};
-
-const reportUserLogin = async (user) => {
-  const ts = Date.now();
-  const language = Digit.StoreData?.getCurrentLanguage?.() || Digit.Utils.getDefaultLanguage?.() || "en_IN";
-  const requestInfo = {
-    apiId: "Rainmaker",
-    ver: ".01",
-    ts,
-    action: "_report",
-    did: "1",
-    key: "",
-    msgId: `${ts}|${language}`,
-    authToken: user?.access_token,
-    userInfo: user?.info,
-  };
-
-  await Axios({
-    method: "POST",
-    url: "/im-services/user/login/_report",
-    headers: {
-      "Content-Type": "application/json",
-      "auth-token": user?.access_token || null,
-    },
-    data: {
-      RequestInfo: requestInfo,
-      User: user?.info,
-      application: "MANAGEMENT_HUB",
-    },
-  });
 };
 
 const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
@@ -81,7 +50,10 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
       let redirectPath = `/${window?.contextPath}/employee`;
 
       try {
-        await reportUserLogin(user);
+        await Digit.UserService.userLoginReport({
+          User: user?.info,
+          application: Digit.UserService.getLoginReportApplication?.(),
+        });
       } catch (err) {
         console.error("Login report failed", err);
       }

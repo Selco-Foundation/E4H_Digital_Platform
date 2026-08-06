@@ -18,6 +18,58 @@ import { UICustomizations } from "./UICustomizations";
 
 var Digit = window.Digit || {};
 
+const getLoginReportApplication = () => {
+  const contextPath = window?.contextPath?.replace(/^\/+/, "")?.split("/")?.[0];
+  const applicationByContext = {
+    "installation-qc": "MANAGEMENT_HUB",
+    "digit-ui": "SAURA_EMITRA",
+    app: "FIELD_ASSIST",
+  };
+
+  return applicationByContext[contextPath] || "SAURA_EMITRA";
+};
+
+const initUserLoginReport = () => {
+  window.Digit.UserService.getLoginReportApplication = getLoginReportApplication;
+
+  if (window.Digit?.UserService?.userLoginReport) return;
+
+  window.Digit.UserService.userLoginReport = async ({ User, application = getLoginReportApplication() }) => {
+    const ts = Date.now();
+    const authToken = window.Digit.UserService.getUser()?.access_token || null;
+    const language = window.Digit.StoreData?.getCurrentLanguage?.() || "en_IN";
+
+    const response = await fetch("/im-services/user/login/_report", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        RequestInfo: {
+          apiId: "Rainmaker",
+          ver: ".01",
+          ts,
+          action: "_report",
+          did: "1",
+          key: "",
+          msgId: `${ts}|${language}`,
+          authToken,
+          userInfo: User,
+        },
+        User,
+        application,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Login report failed with status ${response.status}`);
+    }
+
+    const responseText = await response.text();
+    return responseText ? JSON.parse(responseText) : {};
+  };
+};
+
 // Lazy load DigitUI
 const DigitUI = React.lazy(() =>
   import("@selco/digit-ui-module-core").then((mod) => ({
@@ -81,6 +133,7 @@ const initDigitUI = () => {
     QC: {},
     commonUiConfig: UICustomizations,
   };
+  initUserLoginReport();
 
   window?.Digit.ComponentRegistryService.setupRegistry({
     ...overrideComponents,

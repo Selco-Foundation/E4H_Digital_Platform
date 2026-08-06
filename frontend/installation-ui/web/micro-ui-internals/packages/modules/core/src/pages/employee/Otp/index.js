@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BackLink, Loader, Toast } from "@egovernments/digit-ui-components";
 import { FormComposerV2 } from "@egovernments/digit-ui-react-components";
-import Axios from "axios";
 import { useTranslation } from "react-i18next";
 import { useHistory, useLocation, useRouteMatch } from "react-router-dom";
 import ImageComponent from "../../../components/ImageComponent";
@@ -20,36 +19,6 @@ const setEmployeeDetail = (userObject, token) => {
   localStorage.setItem("Employee.token", token);
   localStorage.setItem("user-info", JSON.stringify(userObject));
   localStorage.setItem("Employee.user-info", JSON.stringify(userObject));
-};
-
-const reportUserLogin = async (user) => {
-  const ts = Date.now();
-  const language = Digit.StoreData?.getCurrentLanguage?.() || Digit.Utils.getDefaultLanguage?.() || "en_IN";
-  const requestInfo = {
-    apiId: "Rainmaker",
-    ver: ".01",
-    ts,
-    action: "_report",
-    did: "1",
-    key: "",
-    msgId: `${ts}|${language}`,
-    authToken: user?.access_token,
-    userInfo: user?.info,
-  };
-
-  await Axios({
-    method: "POST",
-    url: "/im-services/user/login/_report",
-    headers: {
-      "Content-Type": "application/json",
-      "auth-token": user?.access_token || null,
-    },
-    data: {
-      RequestInfo: requestInfo,
-      User: user?.info,
-      application: "MANAGEMENT_HUB",
-    },
-  });
 };
 
 const Otp = ({ isLogin = false }) => {
@@ -118,7 +87,10 @@ const Otp = ({ isLogin = false }) => {
       setEmployeeDetail(user?.info, user?.access_token);
 
       try {
-        await reportUserLogin(user);
+        await Digit.UserService.userLoginReport({
+          User: user?.info,
+          application: Digit.UserService.getLoginReportApplication?.(),
+        });
       } catch (err) {
         console.error("Login report failed", err);
       }
