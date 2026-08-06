@@ -36,5 +36,18 @@ public class AmcConstants {
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
+    // User-analytics event (shared user-analytics-report index, see AmcAnalyticsService)
+    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
+    public static final String MDMS_MASTER_AMC = "AMC";
+    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
+    public static final String ANALYTICS_APPLICATION = "MANAGEMENT_HUB";
+    public static final String ANALYTICS_MODULE_AMC = "AMC";
+    public static final String ANALYTICS_ENTITY_TYPE_AMC_CONFIGURATION = "AMC_CONFIGURATION";
+    public static final String ANALYTICS_ENTITY_TYPE_AMC_VISIT = "AMC_VISIT";
+    public static final String ANALYTICS_EVENT_AMC_SCHEDULED = "AMC_SCHEDULED";
+    // Boundary localizations live in this module at the national tenant.
+    public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
+    public static final String LOCALIZATION_LOCALE = "en_IN";
+    public static final String LOCALIZATION_TENANT_ID = "in";
 
 }

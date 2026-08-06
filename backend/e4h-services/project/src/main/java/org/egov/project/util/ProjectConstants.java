@@ -31,5 +31,12 @@ public class ProjectConstants {
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
+    // User-analytics event (shared user-analytics-report index, see ProjectAnalyticsService)
+    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
+    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
+    public static final String ANALYTICS_APPLICATION = "MANAGEMENT_HUB";
+    public static final String ANALYTICS_ENTITY_TYPE_PROJECT = "PROJECT";
+    public static final String ANALYTICS_EVENT_PROJECT_CREATE = "PROJECT_CREATE";
+
 
 }
