@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Redirect, Route, Switch, useHistory, useLocation } from "react-router-dom";
 import CitizenApp from "./pages/citizen";
 import EmployeeApp from "./pages/employee";
@@ -9,11 +9,41 @@ import CustomErrorComponent from "./components/CustomErrorComponent";
 import DummyLoaderScreen from "./components/DummyLoader";
 import SignUpV2 from "./pages/employee/SignUp-v2";
 import LoginV2 from "./pages/employee/Login-v2";
+import TermsPrivacyPolicy from "./pages/TermsPrivacyPolicy";
+
+const normalizeBasePath = (path) => path?.replace(/^\/+|\/+$/g, "");
+
+const getBasePaths = () => {
+  return Array.from(
+    new Set(
+      [window?.contextPath, window?.globalPath, window?.globalConfigs?.getConfig?.("CONTEXT_PATH")]
+        .map(normalizeBasePath)
+        .filter(Boolean)
+    )
+  );
+};
+
+const getRoutePaths = (route) => getBasePaths().map((basePath) => `/${basePath}/${route}`);
+
+const useMobileView = () => {
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMobileView(window.innerWidth <= 640);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return mobileView;
+};
 
 export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite, initData, defaultLanding = "citizen",allowedUserTypes=["citizen","employee"] }) => {
   const history = useHistory();
   const { pathname } = useLocation();
-  const innerWidth = window.innerWidth;
+  const mobileView = useMobileView();
   const cityDetails = Digit.ULBService.getCurrentUlb();
   const userDetails = Digit.UserService.getUser();
   const { data: storeData } = Digit.Hooks.useStore.getInitData();
@@ -53,7 +83,6 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
     option.func();
   };
 
-  const mobileView = innerWidth <= 640;
   let sourceUrl = `${window.location.origin}/citizen`;
   const commonProps = {
     stateInfo,
@@ -74,6 +103,12 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
   };
   return (
     <Switch>
+      <Route exact path={getRoutePaths("privacy-policy")}>
+        <TermsPrivacyPolicy stateCode={stateCode} type="privacy" />
+      </Route>
+      <Route exact path={getRoutePaths("terms-of-use")}>
+        <TermsPrivacyPolicy stateCode={stateCode} type="terms" />
+      </Route>
      {allowedUserTypes?.some(userType=>userType=="employee")&& <Route path={`/${window?.contextPath}/employee`}>
         <EmployeeApp {...commonProps} />
       </Route>}
@@ -96,19 +131,29 @@ export const DigitAppWrapper = ({ stateCode, modules, appTenants, logoUrl, logoU
   const { stateInfo } = storeData || {};
   const userScreensExempted = ["user/error"];
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
+  const isPublicPolicyPage = ["privacy-policy", "terms-of-use"].some((url) => getRoutePaths(url).includes(location?.pathname));
   const userDetails = Digit.UserService.getUser();
   let CITIZEN = userDetails?.info?.type === "CITIZEN" || !window.location.pathname.split("/").includes("employee") ? true : false;
-  const innerWidth = window.innerWidth;
-  const mobileView = innerWidth <= 640;
+  const mobileView = useMobileView();
 
   return (
     <div
-      className={isUserProfile ? "grounded-container" : "loginContainer"}
+      className={isPublicPolicyPage ? "" : isUserProfile ? "grounded-container" : "loginContainer"}
       style={
-        isUserProfile ? { padding: 0, paddingTop: CITIZEN ? "0" : mobileView && !CITIZEN ? "3rem" : "80px", marginLeft: CITIZEN || mobileView ? "0" : "40px" } : { "--banner-url": `url(${stateInfo?.bannerUrl})`, padding: "0px" }
+        isPublicPolicyPage
+          ? { padding: "0px" }
+          : isUserProfile
+          ? { padding: 0, paddingTop: CITIZEN ? "0" : mobileView && !CITIZEN ? "3rem" : "80px", marginLeft: CITIZEN || mobileView ? "0" : "40px" }
+          : { "--banner-url": `url(${stateInfo?.bannerUrl})`, padding: "0px" }
       }
     >
       <Switch>
+        <Route exact path={getRoutePaths("privacy-policy")}>
+          <TermsPrivacyPolicy stateCode={stateCode} type="privacy" />
+        </Route>
+        <Route exact path={getRoutePaths("terms-of-use")}>
+          <TermsPrivacyPolicy stateCode={stateCode} type="terms" />
+        </Route>
         <Route exact path={`/${window?.globalPath}/user/invalid-url`}>
           <CustomErrorComponent />
         </Route>
