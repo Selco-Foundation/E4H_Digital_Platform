@@ -131,6 +131,9 @@ public class IMConfiguration {
     @Value("${im.kafka.save.topic.indexer}")
     private String saveTopicIndexer;
 
+    @Value("${im.kafka.user.analytics.topic}")
+    private String userAnalyticsTopic;
+
     @Value("${im.default.offset}")
     private Integer defaultOffset;
 
