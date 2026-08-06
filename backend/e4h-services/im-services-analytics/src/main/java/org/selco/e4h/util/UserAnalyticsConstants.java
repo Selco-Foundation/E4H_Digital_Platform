@@ -35,11 +35,23 @@ public class UserAnalyticsConstants {
     public static final String AGG_BY_STATE = "by_state";
     public static final String AGG_BY_ROLE = "by_role";
 
+    public static final String AGG_CHAMPIONS_BY_ROLE = "champions_by_role";
+    public static final String AGG_CHAMPIONS_BY_APPLICATION = "champions_by_application";
+    /** The role / application {@code terms} nested inside a champions filter. */
+    public static final String AGG_BY_GROUP = "by_group";
+    public static final String AGG_TOP_USERS = "top_users";
+    public static final String AGG_USER_DETAILS = "user_details";
+
+    /** {@code _source} paths the champion {@code top_hits} pulls the user's identity from. */
+    public static final String USER_NAME_SOURCE_PATH = "Data.user.name";
+    public static final String USER_USERNAME_SOURCE_PATH = "Data.user.userName";
+
     //.................................. Excel report .....................................//
 
     public static final String SHEET_SUMMARY = "Summary";
     public static final String SHEET_BY_STATE = "By State";
     public static final String SHEET_BY_ROLE = "By Role";
+    public static final String SHEET_CHAMPIONS = "Top Champions";
 
     public static final String XLSX_CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

@@ -46,21 +46,28 @@ public class UserAnalyticsReportService {
 
     /**
      * @param weekStartDate ISO date of the Monday the week starts on; when null or blank the last
-     *                      completed week is reported
+     *                      completed week is reported. The week in progress is allowed, and is
+     *                      flagged as partial on the report.
      * @throws CustomException if the date is unparseable, is not a Monday, or names a week that has
-     *                         not finished yet
+     *                         not started yet
      */
     public UserAnalyticsReport buildReport(String weekStartDate) {
         ZoneId zone = resolveZone();
-        LocalDate weekStart = resolveWeekStart(weekStartDate, zone);
+        LocalDate currentWeekStart = LocalDate.now(zone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate weekStart = resolveWeekStart(weekStartDate, currentWeekStart);
         LocalDate previousWeekStart = weekStart.minusWeeks(1);
+        boolean partialWeek = weekStart.isEqual(currentWeekStart);
 
-        UserAnalyticsAggregation current = repository.aggregate(startOf(weekStart, zone), startOf(weekStart.plusWeeks(1), zone));
-        UserAnalyticsAggregation previous = repository.aggregate(startOf(previousWeekStart, zone), startOf(weekStart, zone));
+        // Champions are only ranked for the reported week; the previous week exists solely for growth.
+        UserAnalyticsAggregation current = repository.aggregate(
+                startOf(weekStart, zone), startOf(weekStart.plusWeeks(1), zone), true);
+        UserAnalyticsAggregation previous = repository.aggregate(
+                startOf(previousWeekStart, zone), startOf(weekStart, zone), false);
 
         Set<String> applications = resolveApplications(current, previous);
-        log.info("User analytics: week {} had {} active users and {} logins across applications {}",
-                weekStart, current.getOverall().getActiveUsersTotal(), current.getOverall().getLoginsTotal(),
+        log.info("User analytics: week {}{} had {} active users and {} logins across applications {}",
+                weekStart, partialWeek ? " (in progress)" : "",
+                current.getOverall().getActiveUsersTotal(), current.getOverall().getLoginsTotal(),
                 applications);
 
         return UserAnalyticsReport.builder()
@@ -69,6 +76,9 @@ public class UserAnalyticsReportService {
                 .previousWeekStartDate(previousWeekStart)
                 .previousWeekEndDate(weekStart.minusDays(1))
                 .zone(zone.getId())
+                .partialWeek(partialWeek)
+                .championsByRole(current.getChampionsByRole())
+                .championsByApplication(current.getChampionsByApplication())
                 .applications(new ArrayList<>(applications))
                 .overall(UserAnalyticsBucket.of(OVERALL, current.getOverall(), previous.getOverall(), applications))
                 .byState(buildDimension(current.getByState().keySet(), previous.getByState().keySet(),
@@ -118,8 +128,7 @@ public class UserAnalyticsReportService {
         return applications;
     }
 
-    private LocalDate resolveWeekStart(String weekStartDate, ZoneId zone) {
-        LocalDate currentWeekStart = LocalDate.now(zone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    private LocalDate resolveWeekStart(String weekStartDate, LocalDate currentWeekStart) {
         if (weekStartDate == null || weekStartDate.isBlank()) {
             LocalDate lastCompletedWeekStart = currentWeekStart.minusWeeks(1);
             log.info("User analytics: no weekStartDate given, reporting the last completed week starting {}",
@@ -140,10 +149,14 @@ public class UserAnalyticsReportService {
                             + weekStart.getDayOfWeek() + ". The nearest Monday is "
                             + weekStart.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
         }
-        if (!weekStart.isBefore(currentWeekStart)) {
+        if (weekStart.isAfter(currentWeekStart)) {
             throw new CustomException("INVALID_WEEK_START_DATE",
-                    "weekStartDate " + weekStart + " is not a completed week; the latest reportable week starts "
-                            + currentWeekStart.minusWeeks(1));
+                    "weekStartDate " + weekStart + " is in the future; the latest reportable week starts "
+                            + currentWeekStart);
+        }
+        if (weekStart.isEqual(currentWeekStart)) {
+            log.info("User analytics: reporting the week in progress starting {}; counts cover only the days "
+                    + "elapsed so far and growth against the full previous week will read low", weekStart);
         }
         return weekStart;
     }
