@@ -54,7 +54,7 @@ public class AssetConverterUtil {
 
         batteryDetails.setTotalCapacity(getDoubleValue(map.get("totalCapacity")));
         batteryDetails.setBatteryVoltage(getDoubleValue(map.get("batteryVoltage")));
-        batteryDetails.setBatteryCapacity(getDoubleValue(map.get("batteryCapacity")));
+        batteryDetails.setBatteryCapacity((String)(map.get("batteryCapacity")));
 
         batteryDetails.setTotalCapacityUOM((String) map.get("totalCapacityUOM"));
         batteryDetails.setVoltageUnit((String) map.get("voltageUnit"));
@@ -75,7 +75,7 @@ public class AssetConverterUtil {
 
         PanelDetails panelDetails = new PanelDetails();
         panelDetails.setTotalCapacity(getDoubleValue(map.get("totalCapacity")));
-        panelDetails.setPanelCapacity(getDoubleValue(map.get("panelCapacity")));
+        panelDetails.setPanelCapacity((String)(map.get("panelCapacity")));
 
         panelDetails.setTotalCapacityUnit((String) map.get("totalCapacityUnit"));
         panelDetails.setCapacityUnit((String) map.get("capacityUnit"));

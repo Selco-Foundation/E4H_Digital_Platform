@@ -13,6 +13,11 @@ public class AmcConstants {
     public static final String MASTER_ACTIVITIES = "Activities";
     //location
     public static final String DRAFT_STATUS = "DRAFT";
+    public static final String SCHEDULED_STATUS = "SCHEDULED";
+    public static final String EXPIRED_STATUS = "EXPIRED";
+    public static final String APPROVED_STATUS = "APPROVED";
+    public static final String SCHEDULE_ACTION = "SCHEDULE";
+    public static final String EXPIRE_ACTION = "EXPIRE";
     public static final String MASTER_ATTENDANCE_SESSION = "AttendanceSessions";
     public static final String CODE = "code";
     public static final String PROJECT_TYPE_FIELDPLAN = "FieldPlan";
