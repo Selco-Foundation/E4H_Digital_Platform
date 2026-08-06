@@ -40,13 +40,12 @@ public class FieldPlannerConstants {
     public static final String ANALYTICS_MODULE_FIELD_PLANNER = "FIELD_PLANNER";
     public static final String ANALYTICS_ENTITY_TYPE_FIELD_PLAN = "FIELD_PLAN";
     public static final String ANALYTICS_ENTITY_TYPE_ICC_REPORT = "ICC_REPORT";
-    public static final String ANALYTICS_EVENT_FIELD_PLAN_CREATE = "FIELD_PLAN_CREATE";
     /**
-     * An update that moves the plan into SCHEDULED — the point the plan actually goes live. Plain
-     * edits are deliberately not tracked; a plan is edited any number of times while in DRAFT and
-     * those edits are not business events.
+     * Carried by both the create and the update that moves a plan into SCHEDULED — analytics reports
+     * on the two together, so they share one event type. Plain edits are deliberately not tracked; a
+     * plan is edited any number of times while in DRAFT and those edits are not business events.
      */
-    public static final String ANALYTICS_EVENT_FIELD_PLAN_SCHEDULED = "FIELD_PLAN_SCHEDULED";
+    public static final String ANALYTICS_EVENT_FIELD_PLAN_CREATE = "FIELD_PLAN_CREATE";
     public static final String ANALYTICS_EVENT_ICC_REPORT_UPLOAD = "ICC_REPORT_UPLOAD";
     public static final String SCHEDULED_STATUS = "SCHEDULED";
     /** Key holding the field plan's state boundary code inside FieldPlan.geographyDetails. */
