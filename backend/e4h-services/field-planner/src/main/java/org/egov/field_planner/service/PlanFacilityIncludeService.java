@@ -91,7 +91,7 @@ public class PlanFacilityIncludeService {
                 continue;
             }
 
-            facilityMetadataService.enrichIncludeItem(item);
+            facilityMetadataService.enrichIncludeItem(item, requestInfo, tenantId);
 
             PlanFacility createdFacility = facilityRepository.insertFacility(
                     planId, tenantId, facilityId, item, userId);
