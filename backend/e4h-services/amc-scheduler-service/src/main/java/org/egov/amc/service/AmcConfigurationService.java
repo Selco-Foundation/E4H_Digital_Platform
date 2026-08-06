@@ -351,7 +351,7 @@ public class AmcConfigurationService {
             amcConfiguration.setTotalVisits(totalVisit);
 
             // Enrich amc configuration with completed visit
-            Integer count = getCompletedVisits(amcConfiguration);
+            Integer count = getCompletedVisits(requestInfo, amcConfiguration);
             amcConfiguration.setCompletedVisits(count);
 
             // Enrich amc configuration with linked assets amc
@@ -360,9 +360,9 @@ public class AmcConfigurationService {
         }
     }
 
-    private Integer getCompletedVisits(AmcConfiguration amcConfiguration) {
+    private Integer getCompletedVisits(RequestInfo requestInfo, AmcConfiguration amcConfiguration) {
         ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder().facilityIds(List.of(amcConfiguration.getFacilityId())).statuses(List.of("APPROVED")).build();
-        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder().searchCriteria(searchCriteria).build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder().RequestInfo(requestInfo).searchCriteria(searchCriteria).build();
         Integer count = scheduledVisitRepository.getScheduledVisitCount(searchRequest, amcConfiguration.getTenantId(), null, null);
         return count;
     }
