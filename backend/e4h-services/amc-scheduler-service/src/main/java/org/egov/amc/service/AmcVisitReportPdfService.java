@@ -25,7 +25,7 @@ import java.util.Objects;
 public class AmcVisitReportPdfService {
 
     private static final String AMC_PDF_KEY = "amc-report";
-    private static final String IMG1_DOCUMENT_TYPE = "img1";
+    private static final String IMG1_DOCUMENT_TYPE = "image";
     private static final String INSTALLATION_IMAGE_1_DOCUMENT_TYPE = "INSTALLATION_IMAGE-1";
     private static final DateTimeFormatter REPORT_DATE_FORMATTER = DateTimeFormatter.ofPattern("MM-dd-yyyy");
 
