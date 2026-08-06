@@ -32,18 +32,21 @@ public class PlanFacilitySearchService {
                     AssessmentConstants.ASSESSMENT_PLAN_NOT_FOUND, "planId is required");
         }
         PlanFacilityFilters filters = criteria.getFilters();
+        PlanFacilityFilters effectiveFilters = facilityMetadataService.expandFilters(
+                filters, request.getRequestInfo(), request.getRequestInfo().getUserInfo().getTenantId());
         boolean exportAll = Boolean.TRUE.equals(criteria.getExportAll());
         boolean includeSummary = Boolean.TRUE.equals(criteria.getIncludeResponseSummary());
         int effectiveLimit = exportAll ? Math.max(limit, 10000) : limit;
         int effectiveOffset = exportAll ? 0 : offset;
 
         List<PlanFacility> facilities = facilityRepository.searchByPlan(
-                planId, filters, effectiveLimit, effectiveOffset);
+                planId, effectiveFilters, effectiveLimit, effectiveOffset);
+        String tenantId = request.getRequestInfo().getUserInfo().getTenantId();
         facilities.forEach(f -> {
-            facilityMetadataService.enrichDisplayFields(f);
+            facilityMetadataService.enrichDisplayFields(f, request.getRequestInfo(), tenantId);
             enrichFacility(f, includeSummary, request.getRequestInfo());
         });
-        int total = facilityRepository.countByPlan(planId, filters);
+        int total = facilityRepository.countByPlan(planId, effectiveFilters);
 
         return PlanFacilitySearchResponse.builder()
                 .facilities(facilities)
@@ -57,7 +60,8 @@ public class PlanFacilitySearchService {
                         AssessmentConstants.ASSESSMENT_PLAN_FACILITY_NOT_FOUND,
                         "Plan facility not found: " + request.getPlanFacilityId()));
 
-        facilityMetadataService.enrichDisplayFields(facility);
+        facilityMetadataService.enrichDisplayFields(facility, request.getRequestInfo(),
+                request.getRequestInfo().getUserInfo().getTenantId());
 
         List<AssessmentSubmission> submissions = submissionRepository.findByPlanFacilityId(facility.getPlanFacilityId());
         AllowedActions actions = allowedActionsService.compute(facility);

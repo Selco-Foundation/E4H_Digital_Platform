@@ -238,13 +238,20 @@ public class AssessmentFacilityRepository {
         if (metadata == null) {
             return Map.of();
         }
-        return new java.util.HashMap<>(Map.of(
-                "facilityName", metadata.getFacilityName() != null ? metadata.getFacilityName() : "",
-                "facilityCategory", metadata.getFacilityCategory() != null ? metadata.getFacilityCategory() : "",
-                "facilityType", metadata.getFacilityType() != null ? metadata.getFacilityType() : "",
-                "district", metadata.getDistrict() != null ? metadata.getDistrict() : "",
-                "block", metadata.getBlock() != null ? metadata.getBlock() : ""
-        ));
+        // facilityCategory, facilityType, district, and block are stored as codes (not display names).
+        java.util.HashMap<String, Object> details = new java.util.HashMap<>();
+        putIfPresent(details, "facilityName", metadata.getFacilityName());
+        putIfPresent(details, "facilityCategory", metadata.getFacilityCategory());
+        putIfPresent(details, "facilityType", metadata.getFacilityType());
+        putIfPresent(details, "district", metadata.getDistrict());
+        putIfPresent(details, "block", metadata.getBlock());
+        return details;
+    }
+
+    private void putIfPresent(java.util.HashMap<String, Object> details, String key, String value) {
+        if (value != null) {
+            details.put(key, value);
+        }
     }
 
     private String toJson(Object value) {
