@@ -272,55 +272,6 @@ public class FieldPlannerFacilityService {
         return fieldPlanFacilities;
     }
 
-    // Fields a user may edit on an already-linked FieldPlanFacility - facilityType and the
-    // facilityId/fieldPlanId link itself stay immutable via this path.
-    private static final Set<String> UPDATABLE_ADDITIONAL_FIELD_KEYS = Set.of(
-            "systemType", "solarSolutionDesignType", "totalSystemCapacity",
-            "customSolarSolutionDesignType", "customTotalSystemCapacity"
-    );
-
-    public List<FieldPlanFacility> updateBulk(FieldPlanFacilityBulkRequest request, boolean isBulk) {
-        log.info("received request to update bulk fieldplan facility");
-        List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
-
-        List<String> ids = fieldPlanFacilities.stream().map(FieldPlanFacility::getId).toList();
-        List<FieldPlanFacility> existingFacilities = fieldPlanFacilityRepository.findById(ids, false);
-        Map<String, FieldPlanFacility> existingById = existingFacilities.stream()
-                .collect(Collectors.toMap(FieldPlanFacility::getId, f -> f));
-
-        Map<String, String> errorMap = new HashMap<>();
-        AtomicInteger counter = new AtomicInteger(1);
-        for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities) {
-            if (fieldPlanFacility.getId() == null || !existingById.containsKey(fieldPlanFacility.getId())) {
-                errorMap.put("INVALID_FIELDPLAN_FACILITY_ID" + counter.getAndIncrement(),
-                        "FieldPlanFacility does not exist: " + fieldPlanFacility.getId());
-            }
-        }
-        if (!errorMap.isEmpty()) {
-            throw new CustomException(errorMap);
-        }
-
-        try {
-            if (!fieldPlanFacilities.isEmpty()) {
-                for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities) {
-                    FieldPlanFacility fieldPlanFacilityFromDb = existingById.get(fieldPlanFacility.getId());
-                    mergeUpdatableAdditionalFields(fieldPlanFacility, fieldPlanFacilityFromDb);
-                    fieldPlanFacility.setFacilityId(fieldPlanFacilityFromDb.getFacilityId());
-                    fieldPlanFacility.setFieldPlanId(fieldPlanFacilityFromDb.getFieldPlanId());
-                    fieldPlanFacility.setTenantId(fieldPlanFacilityFromDb.getTenantId());
-                    fieldPlanFacility.setIsDeleted(fieldPlanFacilityFromDb.getIsDeleted());
-                    fieldPlannerEnrichment.enrichFieldPlanFacilityRequestOnUpdate(fieldPlanFacility, fieldPlanFacilityFromDb, request.getRequestInfo());
-                }
-                producer.push(fieldPlannerConfiguration.getUpdateFieldPlanFacilityTopic(), fieldPlanFacilities);
-                log.info("successfully pushed fieldplan facility update");
-            }
-        } catch (Exception exception) {
-            log.error("error occurred while updating fieldplan facility: {}", ExceptionUtils.getStackTrace(exception));
-        }
-
-        return fieldPlanFacilities;
-    }
-
     /**
      * Overlays only the user-editable keys (systemType, solarSolutionDesignType,
      * totalSystemCapacity, customSolarSolutionDesignType, customTotalSystemCapacity) from the
