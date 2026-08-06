@@ -46,8 +46,21 @@ const formatAMCConfigurations = (amcConfigurations = []) => {
 };
 
 const fetchAMCConfigurations = async (filter, limit, offset) => {
-  const response = await AMCService.fetchAMCConfigurations(filter, 100, 0);
-  const formattedAMCConfigurations = formatAMCConfigurations(response?.AmcConfigurations);
+  const allAMCConfigurations = [];
+  const pageLimit = limit || 10;
+  let nextOffset = 0;
+  let hasMoreRecords = true;
+
+  while (hasMoreRecords) {
+    const response = await AMCService.fetchAMCConfigurations(filter, pageLimit, nextOffset);
+    const amcConfigurations = response?.AmcConfigurations || [];
+
+    allAMCConfigurations.push(...amcConfigurations);
+    nextOffset += amcConfigurations.length;
+    hasMoreRecords = amcConfigurations.length === pageLimit;
+  }
+
+  const formattedAMCConfigurations = formatAMCConfigurations(allAMCConfigurations);
   const paginatedAMCConfigurations = formattedAMCConfigurations.slice(offset, offset + limit);
 
   return {

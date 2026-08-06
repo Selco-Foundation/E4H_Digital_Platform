@@ -33,6 +33,12 @@ const hasSubmittedReport = (visit) => {
   return !!getSubmittedOnTimestamp(visit) || SUBMITTED_STATUSES.includes(visit?.status);
 };
 
+const getEpochMilliseconds = (date) => {
+  if (!date) return 0;
+  const epochMilliseconds = new Date(date).getTime();
+  return Number.isNaN(epochMilliseconds) ? 0 : epochMilliseconds;
+};
+
 const getAssignedVendor = (visit, vendorByConfigurationId) => {
   return (
     visit?.amcConfiguration?.vendor?.name ||
@@ -53,10 +59,10 @@ const sortReportLevelVisits = (visits = []) => {
     }
 
     if (firstSubmitted) {
-      return (getSubmittedOnTimestamp(second) || 0) - (getSubmittedOnTimestamp(first) || 0);
+      return getEpochMilliseconds(getSubmittedOnTimestamp(second)) - getEpochMilliseconds(getSubmittedOnTimestamp(first));
     }
 
-    return (first?.scheduledDate || 0) - (second?.scheduledDate || 0);
+    return getEpochMilliseconds(first?.scheduledDate) - getEpochMilliseconds(second?.scheduledDate);
   });
 };
 
@@ -143,6 +149,18 @@ const applySearchableFilters = (visits, filters = {}) => {
   });
 };
 
+const hasSearchableFilters = (filters = {}) => {
+  return ["state", "district", "block", "vendor"].some((key) => filters?.[key]?.code);
+};
+
+const getFilterWithVisitIds = (filter, visitIds) => ({
+  ...filter,
+  searchCriteria: {
+    ...filter.searchCriteria,
+    ids: visitIds,
+  },
+});
+
 // Visit search has vendor id; configuration search gives vendor name.
 const fetchVendorByConfigurationId = async (visits = []) => {
   const amcConfigurationIds = [...new Set(visits.map((visit) => visit?.amcConfigurationId).filter(Boolean))];
@@ -172,18 +190,53 @@ const fetchVendorByConfigurationId = async (visits = []) => {
   }, {});
 };
 
+const fetchAllScheduledVisits = async (filter) => {
+  const firstResponse = await VisitService.fetchVisits(filter, REPORT_LEVEL_FETCH_LIMIT, 0);
+  const allVisits = [...(firstResponse?.ScheduledVisits || [])];
+  const totalCount = firstResponse?.TotalCount !== undefined && firstResponse?.TotalCount !== null ? firstResponse.TotalCount : allVisits.length;
+  const requests = [];
+
+  for (let nextOffset = REPORT_LEVEL_FETCH_LIMIT; nextOffset < totalCount; nextOffset += REPORT_LEVEL_FETCH_LIMIT) {
+    requests.push(VisitService.fetchVisits(filter, REPORT_LEVEL_FETCH_LIMIT, nextOffset));
+  }
+
+  const responses = await Promise.all(requests);
+  responses.forEach((response) => {
+    allVisits.push(...(response?.ScheduledVisits || []));
+  });
+
+  return allVisits;
+};
+
 // Fetch all AMC visits for reviewer report-level view.
 const fetchReportLevelVisits = async (filter, limit, offset, searchableFilters) => {
-  const visitsResponse = await VisitService.fetchVisits(filter, REPORT_LEVEL_FETCH_LIMIT, 0);
+  const allScheduledVisits = await fetchAllScheduledVisits(filter);
+  const allVendorByConfigurationId = await fetchVendorByConfigurationId(allScheduledVisits);
+  const allVisits = formatVisits(allScheduledVisits, allVendorByConfigurationId);
+  const filterOptions = getFilterOptions(allVisits, searchableFilters);
+  const activeSearchableFilters = hasSearchableFilters(searchableFilters);
+  const filteredVisitIds = activeSearchableFilters ? applySearchableFilters(allVisits, searchableFilters).map((visit) => visit.id).filter(Boolean) : [];
+
+  if (activeSearchableFilters && !filteredVisitIds.length) {
+    return {
+      visits: [],
+      totalCount: 0,
+      filterOptions,
+    };
+  }
+
+  const visitsResponse = await VisitService.fetchVisits(
+    activeSearchableFilters ? getFilterWithVisitIds(filter, filteredVisitIds) : filter,
+    limit,
+    offset
+  );
   const scheduledVisits = visitsResponse?.ScheduledVisits || [];
   const vendorByConfigurationId = await fetchVendorByConfigurationId(scheduledVisits);
-  const visits = formatVisits(scheduledVisits, vendorByConfigurationId);
-  const filteredVisits = applySearchableFilters(visits, searchableFilters);
 
   return {
-    visits: filteredVisits.slice(offset, offset + limit),
-    totalCount: filteredVisits.length,
-    filterOptions: getFilterOptions(visits, searchableFilters),
+    visits: formatVisits(scheduledVisits, vendorByConfigurationId),
+    totalCount: visitsResponse?.TotalCount !== undefined && visitsResponse?.TotalCount !== null ? visitsResponse.TotalCount : scheduledVisits.length,
+    filterOptions,
   };
 };
 

@@ -317,15 +317,6 @@ const CreateAMC = () => {
   }, [createdProject, persistedFormData, t])
 
   const handleFacilityDataUpload = useCallback(async (chosenFile) => {
-    if (amcConfigurationId) {
-      setFile({
-        name: chosenFile.name,
-        data: chosenFile,
-      });
-      setUploadedValidFile(true);
-      return;
-    }
-
     setBlockUI(true);
     let uploadedFile;
     try {
@@ -379,7 +370,7 @@ const CreateAMC = () => {
     }
 
     setFile(uploadedFile);
-  }, [amcConfigurationId, createdProject, persistedFormData, queryClient, t]);
+  }, [createdProject, persistedFormData, queryClient, t]);
 
   const validateActivityData = (activityData) => {
     let faultyData = false;
@@ -531,7 +522,7 @@ const CreateAMC = () => {
           },
         ],
       },
-      {
+      ...(amcConfigurationId ? [] : [{
         key: "3",
         body: [
           {
@@ -590,9 +581,9 @@ const CreateAMC = () => {
             },
           },
         ],
-      },
+      }]),
     ],
-    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError]
+    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError, amcConfigurationId]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -655,7 +646,7 @@ const CreateAMC = () => {
         const selectedUser = userEntry.email.value;
         const selectedOrganization = userEntry.organization.value;
         const selectedRole = userEntry.role.value;
-        const assignmentId = userEntry.id || savedAssignment.id || crypto.randomUUID();
+        const assignmentId = userEntry.id || savedAssignment.id;
         const assignedUser = getUserIdentifier(selectedUser);
         const auditDetails = getAuditDetails(savedAssignment.auditDetails);
 
@@ -764,7 +755,7 @@ const CreateAMC = () => {
             dispatch(
               populateResponsePage({
                 response: {},
-                message: t("PM_COMMON_AMC_CREATED"),
+                message: t("PM_COMMON_AMC_UPDATED"),
                 secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
                 onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
               })

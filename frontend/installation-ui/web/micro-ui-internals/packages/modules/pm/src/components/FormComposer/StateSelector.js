@@ -1,13 +1,16 @@
-import React, {useEffect, useMemo} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import {CustomDropdown} from "@egovernments/digit-ui-react-components";
 
 const StateSelector = ({
   data = {},
+  setValue,
   props,
 }) => {
 
   const { t, name, boundaryData, disable } = props;
-  const { value, onChange } = props;
+  const [selectedState, setSelectedState] = useState(data?.[name]);
+  const hasAppliedInitialValue = useRef(!!data?.[name]);
+  const hasUserCleared = useRef(false);
   const stateMenu = useMemo(
     () => boundaryData?.states?.map((state) => ({
       ...state,
@@ -15,7 +18,6 @@ const StateSelector = ({
     })) || [],
     [t, boundaryData]
   );
-  const selectedState = value || data?.[name];
   const displayState = useMemo(() => {
     if (!selectedState?.code) {
       return selectedState;
@@ -28,19 +30,21 @@ const StateSelector = ({
   }, [selectedState, stateMenu, t]);
 
   useEffect(() => {
-    if (!displayState?.code) {
+    if (hasAppliedInitialValue.current || hasUserCleared.current || selectedState || !data?.[name]) {
       return;
     }
 
-    if (value?.code === displayState.code && value?.name === displayState.name) {
-      return;
-    }
+    hasAppliedInitialValue.current = true;
+    setSelectedState(data[name]);
+  }, [data, name, selectedState]);
 
-    onChange(displayState);
-  }, [displayState, onChange, value?.code, value?.name]);
+  useEffect(() => {
+    setValue(name, displayState);
+  }, [name, displayState, setValue]);
 
   const handleStateSelection = (state) => {
-    onChange(state);
+    hasUserCleared.current = !state;
+    setSelectedState(state);
   }
 
   return (

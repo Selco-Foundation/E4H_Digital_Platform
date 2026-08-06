@@ -85,6 +85,8 @@ const StatusFilter = ({ t, onFilterChange, onSearchableFilterChange, selectedSta
             </div>
             <button
               type="button"
+              aria-label="Clear all filters"
+              title="Clear all filters"
               style={{
                 cursor: "pointer",
                 border: "1px solid #C84C0E",
