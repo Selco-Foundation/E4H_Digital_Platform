@@ -79,8 +79,10 @@ public class UserAnalyticsRepository {
         try {
             response = restTemplate.postForObject(uri, new HttpEntity<>(query, buildHeaders()), Map.class);
         } catch (Exception e) {
-            log.error("User analytics: aggregation failed on index {} for window [{}, {})",
-                    properties.getIndex(), from, to, e);
+            // The query goes in the error log, not just at debug — an Elasticsearch 400 names a line
+            // and column of the request body, which is unreadable without the body itself.
+            log.error("User analytics: aggregation failed on index {} for window [{}, {}), query was {}",
+                    properties.getIndex(), from, to, query, e);
             throw new CustomException("USER_ANALYTICS_ES_ERROR",
                     "Failed to aggregate user analytics from Elasticsearch: " + e.getMessage());
         }
@@ -192,7 +194,10 @@ public class UserAnalyticsRepository {
                                 "field", groupField,
                                 "size", properties.getTermsSize(),
                                 "missing", UNKNOWN),
-                        "aggs", topUsers)));
+                        // topUsers is an aggregation body, so it has to be keyed by its name here —
+                        // handing it to "aggs" bare makes Elasticsearch read "terms" as the
+                        // aggregation's name rather than its type.
+                        "aggs", Map.of(AGG_TOP_USERS, topUsers))));
     }
 
     /** Turns a {@code terms} aggregation into bucket key -> metrics. */
