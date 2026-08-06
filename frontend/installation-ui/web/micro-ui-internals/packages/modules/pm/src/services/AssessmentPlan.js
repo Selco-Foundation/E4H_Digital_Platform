@@ -17,7 +17,7 @@ const DEFAULT_ASSESSMENT_SUMMARY = {
 const withAssessmentPlanDefaults = (assessmentPlan) => ({
   ...assessmentPlan,
   status: assessmentPlan?.status || "DRAFT",
-  numberOfFacilities: assessmentPlan?.numberOfFacilities || 0,
+  numberOfFacilities: assessmentPlan?.healthFacilityCount ?? assessmentPlan?.numberOfFacilities ?? 0,
   summary: assessmentPlan?.summary || DEFAULT_ASSESSMENT_SUMMARY,
 });
 
