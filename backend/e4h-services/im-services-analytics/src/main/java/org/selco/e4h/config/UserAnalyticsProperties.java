@@ -52,6 +52,10 @@ public class UserAnalyticsProperties {
     @Value("${user.analytics.terms.size}")
     private int termsSize;
 
+    /** How many champion users to list per role and per application. */
+    @Value("${user.analytics.champion.count}")
+    private int championCount;
+
     /** IANA zone whose calendar week the report is cut on, e.g. Asia/Kolkata. */
     @Value("${user.analytics.report.zone}")
     private String reportZone;

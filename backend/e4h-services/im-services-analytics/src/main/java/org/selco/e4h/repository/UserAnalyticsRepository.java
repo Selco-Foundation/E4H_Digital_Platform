@@ -6,6 +6,7 @@ import org.egov.tracer.model.CustomException;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.config.UserAnalyticsProperties;
 import org.selco.e4h.util.UpdateUtils;
+import org.selco.e4h.web.models.ChampionUser;
 import org.selco.e4h.web.models.UserAnalyticsAggregation;
 import org.selco.e4h.web.models.UserAnalyticsMetrics;
 import org.springframework.http.HttpEntity;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,11 +24,18 @@ import java.util.Map;
 
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_ACTIVE_USERS;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_APPLICATION;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_GROUP;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_ROLE;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_STATE;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_CHAMPIONS_BY_APPLICATION;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_CHAMPIONS_BY_ROLE;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_LOGINS;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_TOP_USERS;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_USER_DETAILS;
 import static org.selco.e4h.util.UserAnalyticsConstants.UNKNOWN;
 import static org.selco.e4h.util.UserAnalyticsConstants.USER_LOGIN_EVENT_TYPE;
+import static org.selco.e4h.util.UserAnalyticsConstants.USER_NAME_SOURCE_PATH;
+import static org.selco.e4h.util.UserAnalyticsConstants.USER_USERNAME_SOURCE_PATH;
 
 /**
  * Aggregates a single week out of the {@code user-analytics-report} index.
@@ -52,14 +61,17 @@ public class UserAnalyticsRepository {
     /**
      * Runs the aggregation over {@code [from, to)}.
      *
-     * @param from inclusive start of the window, UTC
-     * @param to   exclusive end of the window, UTC
+     * @param from              inclusive start of the window, UTC
+     * @param to                exclusive end of the window, UTC
+     * @param includeChampions  whether to also rank champion users; false for the previous week,
+     *                          which is only aggregated to compute growth and whose champions would
+     *                          never be read
      */
     @SuppressWarnings("unchecked")
-    public UserAnalyticsAggregation aggregate(Instant from, Instant to) {
+    public UserAnalyticsAggregation aggregate(Instant from, Instant to, boolean includeChampions) {
         String uri = config.getEsHostName() + ":" + config.getEsPortNo()
                 + "/" + properties.getIndex() + "/" + SEARCH_PATH;
-        Map<String, Object> query = buildQuery(from, to);
+        Map<String, Object> query = buildQuery(from, to, includeChampions);
         log.info("User analytics: aggregating {} for window [{}, {})", properties.getIndex(), from, to);
         log.debug("User analytics: query {}", query);
 
@@ -84,6 +96,8 @@ public class UserAnalyticsRepository {
                 .overall(parseMetrics(aggregations))
                 .byState(parseDimension(aggregations, AGG_BY_STATE))
                 .byRole(parseDimension(aggregations, AGG_BY_ROLE))
+                .championsByRole(parseChampions(aggregations, AGG_CHAMPIONS_BY_ROLE))
+                .championsByApplication(parseChampions(aggregations, AGG_CHAMPIONS_BY_APPLICATION))
                 .build();
     }
 
@@ -94,10 +108,14 @@ public class UserAnalyticsRepository {
         return headers;
     }
 
-    private Map<String, Object> buildQuery(Instant from, Instant to) {
+    private Map<String, Object> buildQuery(Instant from, Instant to, boolean includeChampions) {
         Map<String, Object> aggregations = new LinkedHashMap<>(metricAggregations());
         aggregations.put(AGG_BY_STATE, termsAggregation(properties.getStateField()));
         aggregations.put(AGG_BY_ROLE, termsAggregation(properties.getRoleField()));
+        if (includeChampions) {
+            aggregations.put(AGG_CHAMPIONS_BY_ROLE, championsAggregation(properties.getRoleField()));
+            aggregations.put(AGG_CHAMPIONS_BY_APPLICATION, championsAggregation(properties.getApplicationField()));
+        }
 
         Map<String, Object> query = new LinkedHashMap<>();
         query.put("size", 0);
@@ -147,6 +165,36 @@ public class UserAnalyticsRepository {
                 Map.of(properties.getEventTypeField(), USER_LOGIN_EVENT_TYPE)));
     }
 
+    /**
+     * Ranks the top users within each value of {@code groupField}, counting every event except
+     * {@code USER_LOGIN} — signing in is not activity worth crowning someone for.
+     * <p>
+     * The users {@code terms} orders on {@code doc_count} by default, which is exactly the ranking
+     * wanted, and a one-hit {@code top_hits} carries the name and login id back so the report does
+     * not have to resolve uuids against the user service afterwards.
+     */
+    private Map<String, Object> championsAggregation(String groupField) {
+        Map<String, Object> topUsers = Map.of(
+                "terms", Map.of(
+                        "field", properties.getUserField(),
+                        "size", properties.getChampionCount()),
+                "aggs", Map.of(AGG_USER_DETAILS, Map.of(
+                        "top_hits", Map.of(
+                                "size", 1,
+                                "_source", Map.of("includes",
+                                        List.of(USER_NAME_SOURCE_PATH, USER_USERNAME_SOURCE_PATH))))));
+
+        return Map.of(
+                "filter", Map.of("bool", Map.of("must_not",
+                        List.of(Map.of("term", Map.of(properties.getEventTypeField(), USER_LOGIN_EVENT_TYPE))))),
+                "aggs", Map.of(AGG_BY_GROUP, Map.of(
+                        "terms", Map.of(
+                                "field", groupField,
+                                "size", properties.getTermsSize(),
+                                "missing", UNKNOWN),
+                        "aggs", topUsers)));
+    }
+
     /** Turns a {@code terms} aggregation into bucket key -> metrics. */
     private Map<String, UserAnalyticsMetrics> parseDimension(Map<String, Object> aggregations, String name) {
         Map<String, UserAnalyticsMetrics> byKey = new LinkedHashMap<>();
@@ -180,6 +228,48 @@ public class UserAnalyticsRepository {
                 .build();
     }
 
+    /**
+     * Turns a champions filter into group key -> ranked users. Absent when the caller asked for no
+     * champions, in which case there is nothing to read and the map comes back empty.
+     */
+    private Map<String, List<ChampionUser>> parseChampions(Map<String, Object> aggregations, String name) {
+        Map<String, List<ChampionUser>> byKey = new LinkedHashMap<>();
+        for (Map<String, Object> group : buckets(child(aggregations, name), AGG_BY_GROUP)) {
+            String key = asString(group.get("key"));
+            if (key == null) {
+                continue;
+            }
+            byKey.put(key, parseChampionUsers(group));
+        }
+        return byKey;
+    }
+
+    private List<ChampionUser> parseChampionUsers(Map<String, Object> group) {
+        List<ChampionUser> champions = new ArrayList<>();
+        for (Map<String, Object> userBucket : buckets(group, AGG_TOP_USERS)) {
+            Map<String, Object> user = championUserSource(userBucket);
+            champions.add(ChampionUser.builder()
+                    .uuid(asString(userBucket.get("key")))
+                    .userName(asString(user.get("userName")))
+                    .name(asString(user.get("name")))
+                    .activityCount(asLong(userBucket.get("doc_count")))
+                    .build());
+        }
+        return champions;
+    }
+
+    /**
+     * Digs {@code Data.user} out of the single {@code top_hits} document. Returns an empty map when
+     * the hit is missing, so a champion still lists with a blank name rather than failing the report.
+     */
+    private Map<String, Object> championUserSource(Map<String, Object> userBucket) {
+        List<Map<String, Object>> hits = listOf(child(child(userBucket, AGG_USER_DETAILS), "hits"), "hits");
+        if (hits.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return child(child(child(hits.get(0), "_source"), "Data"), "user");
+    }
+
     private long cardinality(Map<String, Object> node) {
         return asLong(child(node, AGG_ACTIVE_USERS).get("value"));
     }
@@ -188,10 +278,14 @@ public class UserAnalyticsRepository {
         return asLong(child(node, AGG_LOGINS).get("doc_count"));
     }
 
-    @SuppressWarnings("unchecked")
     private List<Map<String, Object>> buckets(Map<String, Object> node, String aggregationName) {
-        Object buckets = child(node, aggregationName).get("buckets");
-        return (buckets instanceof List) ? (List<Map<String, Object>>) buckets : Collections.emptyList();
+        return listOf(child(node, aggregationName), "buckets");
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> listOf(Map<String, Object> node, String key) {
+        Object value = (node == null) ? null : node.get(key);
+        return (value instanceof List) ? (List<Map<String, Object>>) value : Collections.emptyList();
     }
 
     @SuppressWarnings("unchecked")

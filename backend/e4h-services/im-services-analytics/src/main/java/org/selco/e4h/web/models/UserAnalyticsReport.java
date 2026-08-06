@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The assembled weekly report: one all-up row plus a row per state and per role, each carrying the
@@ -33,6 +34,12 @@ public class UserAnalyticsReport {
     /** Zone the week boundaries were cut on, reported so the numbers are reproducible. */
     private String zone;
 
+    /**
+     * True when the reported week is the one still in progress, so its counts cover only the days
+     * elapsed so far and are not comparable like-for-like against the full previous week.
+     */
+    private boolean partialWeek;
+
     /** Applications present across either week, in report column order. */
     private List<String> applications;
 
@@ -43,4 +50,10 @@ public class UserAnalyticsReport {
 
     /** Ordered by descending active users in the reported week. */
     private List<UserAnalyticsBucket> byRole;
+
+    /** {@code primary_role} -> its top champion users for the reported week, most active first. */
+    private Map<String, List<ChampionUser>> championsByRole;
+
+    /** Application -> its top champion users for the reported week, most active first. */
+    private Map<String, List<ChampionUser>> championsByApplication;
 }
