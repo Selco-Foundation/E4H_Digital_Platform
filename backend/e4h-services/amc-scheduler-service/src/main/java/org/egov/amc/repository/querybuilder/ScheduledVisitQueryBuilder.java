@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.egov.amc.util.AmcConstants.DOT;
+import static org.egov.amc.util.AmcConstants.PROJECT_MANAGER;
 
 @Component
 @Slf4j
@@ -56,9 +57,17 @@ public class ScheduledVisitQueryBuilder {
             "LEFT JOIN scheduled_visits sv_next ON sv_next.amc_configuration_id = sv.amc_configuration_id AND sv_next.visit_number = sv.visit_number + 1 ";
 
     private final String paginationWrapper = "SELECT * FROM " +
-            "(SELECT *, DENSE_RANK() OVER (ORDER BY sv_last_modified_time %s , sv_visit_id) offset_ FROM " +
-            "({})" +
-            " result) result_offset " +
+            "(SELECT *, DENSE_RANK() OVER (" +
+            "ORDER BY " +
+            "CASE " +
+            "WHEN sv_status IN ('PENDING_APPROVAL', 'PENDING_OTP_APPROVAL') THEN 0 " +
+            "WHEN sv_status = 'SCHEDULED' THEN 2 " +
+            "ELSE 1 " +
+            "END ASC, " +
+            "sv_last_modified_time DESC, " +
+            "sv_visit_id" +
+            ") offset_ " +
+            "FROM ({}) result) result_offset " +
             "WHERE offset_ > ? AND offset_ <= ?";
 
     private final AMCServiceConfiguration config;
@@ -98,16 +107,29 @@ public class ScheduledVisitQueryBuilder {
         }
     }
 
-    public String getScheduledVisitSearchQuery(ScheduledVisitSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
+    public String getScheduledVisitSearchQuery(ScheduledVisitSearchRequest request, URLParams urlParams, List<Object> preparedStmtList) {
+        ScheduledVisitSearchCriteria criteria = request.getSearchCriteria();
         log.trace("Entering getScheduledVisitSearchQuery method, isCountQuery: {}", criteria.isCountQuery());
         //This uses a ternary operator to choose between SCHEDULED_VISIT_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? SCHEDULED_VISIT_COUNT_QUERY : FETCH_SCHEDULED_VISIT_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
         log.debug("Building scheduled visit search query, tenantId: {}", criteria.getTenantId());
 
+        // Get user info
+        var userInfo = request.getRequestInfo().getUserInfo();
+        String userUuid = userInfo.getUuid();
+        boolean isProjectManager = false;
+        if (userInfo.getRoles() != null) {
+            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
+        }
+
+//        if (!isProjectManager) {
+//            queryBuilder.append("JOIN project_staff ps ON ps.projectid = prj.id ");
+//        }
+
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
         long nowMillis = System.currentTimeMillis();
-        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, nowMillis);
+        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, nowMillis, userUuid, isProjectManager);
 
         if (criteria.isCountQuery()) {
             return queryBuilder.toString();
@@ -135,7 +157,7 @@ public class ScheduledVisitQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset(), criteria.getSortDirection());
     }
 
-    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ScheduledVisitSearchCriteria criteria, StringBuilder queryBuilder, long nowMillis) {
+    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ScheduledVisitSearchCriteria criteria, StringBuilder queryBuilder, long nowMillis, String userUuid, boolean isProjectManager) {
 
         if (!CollectionUtils.isEmpty(criteria.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -268,6 +290,20 @@ public class ScheduledVisitQueryBuilder {
             queryBuilder.append(" ( sv.last_modified_time >= ? )");
             preparedStmtList.add(lastChangedSince);
         }
+
+        // Check if not project manager role
+        if (!isProjectManager) {
+            if (StringUtils.isBlank(userUuid)) {
+                throw new CustomException(
+                        "INVALID_USER",
+                        "User UUID is required to search scheduled visits"
+                );
+            }
+
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" sva.assigned_user = ? ");
+            preparedStmtList.add(userUuid);
+        }
     }
 
     // Builds "(ac.geography_details -> jsonKey @> ?::jsonb OR ...)" - one @> containment check per
@@ -316,7 +352,7 @@ public class ScheduledVisitQueryBuilder {
         ScheduledVisitSearchCriteria criteria = request.getSearchCriteria();
         criteria.setCountQuery(true);
         URLParams urlParams = URLParams.builder().tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
-        return getScheduledVisitSearchQuery(criteria, urlParams, preparedStatement);
+        return getScheduledVisitSearchQuery(request, urlParams, preparedStatement);
     }
 
     private String createQuery(Collection<String> ids) {
