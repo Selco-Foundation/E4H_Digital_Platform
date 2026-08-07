@@ -24,13 +24,16 @@ public class ICCReportService {
     private final FieldPlannerConfiguration fieldPlannerConfiguration;
     private final Producer producer;
     private final IccTemplateRepository repository;
+    private final FieldPlannerAnalyticsService fieldPlannerAnalyticsService;
 
-    public ICCReportService(FileStoreService fileStoreService, FieldPlannerConfiguration fieldPlannerConfiguration, Producer producer, IccTemplateRepository repository){
+    public ICCReportService(FileStoreService fileStoreService, FieldPlannerConfiguration fieldPlannerConfiguration, Producer producer, IccTemplateRepository repository,
+                            FieldPlannerAnalyticsService fieldPlannerAnalyticsService){
 
         this.fileStoreService = fileStoreService;
         this.fieldPlannerConfiguration = fieldPlannerConfiguration;
         this.producer = producer;
         this.repository = repository;
+        this.fieldPlannerAnalyticsService = fieldPlannerAnalyticsService;
     }
 
     public ICCReportUploadResponse upload(RequestInfo requestInfo, ICCReportUploadRequest request, MultipartFile file) {
@@ -51,6 +54,10 @@ public class ICCReportService {
 
         producer.push(fieldPlannerConfiguration.getSaveIccTemplate(), List.of(response));
         log.info("ICC template creation request pushed to Kafka topic: {}", fieldPlannerConfiguration.getSaveIccTemplate());
+
+        // Only after the file landed in filestore and the row was pushed — a failed upload throws
+        // above and publishes nothing (best-effort, never throws).
+        fieldPlannerAnalyticsService.publishIccReportUploadEvent(requestInfo, response.getId());
 
         return response;
     }
