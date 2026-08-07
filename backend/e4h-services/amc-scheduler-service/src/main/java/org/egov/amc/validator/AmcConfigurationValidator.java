@@ -444,6 +444,49 @@ public class AmcConfigurationValidator {
         }
     }
 
+    /*
+     * Delete only needs to identify the rows to remove, so - unlike update - it deliberately does NOT
+     * reuse validateAmcConfigurationRequest: requiring a full payload (assetTypes, assignments,
+     * durationMonths, ...) just to delete would force every caller to round-trip a search first.
+     */
+    public void validateDeleteAmcConfigurationRequest(AmcConfigurationRequest request) {
+        log.trace("Entering validateDeleteAmcConfigurationRequest method");
+        validateRequestInfo(request.getRequestInfo());
+
+        if (CollectionUtils.isEmpty(request.getAmcConfigurations())) {
+            log.error("AMC configuration list is empty. AMC configurations are mandatory");
+            throw new CustomException("AMC_CONFIGURATIONS", "AmcConfigurations are mandatory");
+        }
+
+        for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
+            if (StringUtils.isBlank(amcConfiguration.getId())) {
+                log.error("AMC configuration id is mandatory in delete request");
+                throw new CustomException("AMC_CONFIGURATION_ID", "AmcConfiguration id is mandatory in delete request");
+            }
+            if (StringUtils.isBlank(amcConfiguration.getTenantId())) {
+                log.error("Tenant id is mandatory in delete request");
+                throw new CustomException("TENANT_ID", TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
+            }
+        }
+        validateMultipleTenantIds(request);
+        log.debug("Delete AMC configuration request validation completed successfully");
+    }
+
+    /* Validates that every configuration targeted by a delete actually exists in the database */
+    public void validateDeleteAgainstDB(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB) {
+        Set<String> idsInDB = amcConfigurationsFromDB == null
+                ? Collections.emptySet()
+                : amcConfigurationsFromDB.stream().map(AmcConfiguration::getId).collect(java.util.stream.Collectors.toSet());
+
+        for (AmcConfiguration amcConfiguration : amcConfigurationsFromRequest) {
+            if (!idsInDB.contains(amcConfiguration.getId())) {
+                log.error("AMC configuration ID {} does not exist in the system", amcConfiguration.getId());
+                throw new CustomException("INVALID_AmcConfiguration_DELETE",
+                        "The amcConfiguration id " + amcConfiguration.getId() + " that you are trying to delete does not exist");
+            }
+        }
+    }
+
     /* Validates if all AmcConfiguration have same tenant Id */
     private void validateMultipleTenantIds(AmcConfigurationRequest request) {
         List<AmcConfiguration> amcConfigurations = request.getAmcConfigurations();
@@ -456,7 +499,18 @@ public class AmcConfigurationValidator {
 
     /* Validates projects data in update request against projects data fetched from database */
     public void validateUpdateAgainstDB(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB) {
-        log.trace("Entering validateUpdateAgainstDB method, request count: {}, DB count: {}", 
+        validateUpdateAgainstDB(amcConfigurationsFromRequest, amcConfigurationsFromDB, Collections.emptySet());
+    }
+
+    /**
+     * @param durationDrivenEndDateIds configurations whose end date was recomputed by the service from
+     *                                 a new durationMonths. Shortening the duration legitimately pulls
+     *                                 the end date back, so the "end date cannot be decreased" rule -
+     *                                 which exists to stop clients from silently truncating a running
+     *                                 contract - does not apply to them.
+     */
+    public void validateUpdateAgainstDB(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB, Set<String> durationDrivenEndDateIds) {
+        log.trace("Entering validateUpdateAgainstDB method, request count: {}, DB count: {}",
                 amcConfigurationsFromRequest != null ? amcConfigurationsFromRequest.size() : 0,
                 amcConfigurationsFromDB != null ? amcConfigurationsFromDB.size() : 0);
         if (CollectionUtils.isEmpty(amcConfigurationsFromDB)) {
@@ -484,13 +538,15 @@ public class AmcConfigurationValidator {
             }
         log.debug("Update against DB validation completed successfully for {} AMC configuration(s)", amcConfigurationsFromRequest.size());
 
-            validateStartDateAndEndDateAgainstDB(amcConfiguration, amcConfigurationFromDB, currentTimestamp, nextDateTimestampUTC);
+            boolean endDateIsDurationDriven = durationDrivenEndDateIds != null
+                    && durationDrivenEndDateIds.contains(amcConfiguration.getId());
+            validateStartDateAndEndDateAgainstDB(amcConfiguration, amcConfigurationFromDB, currentTimestamp, nextDateTimestampUTC, endDateIsDurationDriven);
 
 //            validateUpdateAddressAgainstDB(project, projectFromDB);
         }
     }
 
-    private void validateStartDateAndEndDateAgainstDB(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
+    private void validateStartDateAndEndDateAgainstDB(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC, boolean endDateIsDurationDriven) {
         String errorMessage = "";
         // Check if the amcConfiguration start date is not null and whether it's different from the one in the database
         errorMessage = getErrorMessage(amcConfiguration, amcConfigurationFromDB, currentTimestamp, nextDateTimestampUTC, errorMessage);
@@ -504,7 +560,8 @@ public class AmcConfigurationValidator {
         // Check if the project end date is not null and whether it's different from the one in the database
         if (amcConfiguration.getConfigurationEndDate() != null) {
             // Check if the project end date is before the current timestamp or within 24 hours from the next date's midnight
-            if (amcConfiguration.getConfigurationEndDate().compareTo(amcConfigurationFromDB.getConfigurationEndDate()) < 0) {
+            if (!endDateIsDurationDriven
+                    && amcConfiguration.getConfigurationEndDate().compareTo(amcConfigurationFromDB.getConfigurationEndDate()) < 0) {
                 if (amcConfiguration.getConfigurationEndDate().compareTo(currentTimestamp) < 0) {
                     errorMessage = "The amc configuration end date cannot be updated as it has already ended. The amc configuration end date cannot be decreased to a past date.";
                 } else if (amcConfiguration.getConfigurationEndDate().compareTo(nextDateTimestampUTC) < 0) {

@@ -41,6 +41,7 @@ public class AmcConfigurationService {
     private final ServiceRequestRepository requestRepository;
     private final AssetAmcRepository assetAmcRepository;
     private final AmcAnalyticsService amcAnalyticsService;
+    private final AmcVisitRegenerationService amcVisitRegenerationService;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -50,7 +51,7 @@ public class AmcConfigurationService {
     public AmcConfigurationService(
             AmcConfigurationRepository amcConfigurationRepository, AmcConfigurationValidator amcConfigurationValidator, ScheduledVisitRepository scheduledVisitRepository, AmcConfigurationEnrichment amcConfigurationEnrichment, AMCServiceConfiguration amcConfigurationConfiguration,
             Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil, ServiceRequestRepository requestRepository, AssetAmcRepository assetAmcRepository,
-            AmcAnalyticsService amcAnalyticsService) {
+            AmcAnalyticsService amcAnalyticsService, AmcVisitRegenerationService amcVisitRegenerationService) {
             this.amcConfigurationValidator = amcConfigurationValidator;
         this.scheduledVisitRepository = scheduledVisitRepository;
         this.producer = producer;
@@ -61,6 +62,7 @@ public class AmcConfigurationService {
         this.requestRepository = requestRepository;
         this.assetAmcRepository = assetAmcRepository;
         this.amcAnalyticsService = amcAnalyticsService;
+        this.amcVisitRegenerationService = amcVisitRegenerationService;
     }
 
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
@@ -154,9 +156,17 @@ public class AmcConfigurationService {
         log.info("Fetched AMC configurations for update request");
 
         /*
+         * The contract end date is a function of the start date and the duration, so a caller that
+         * changes durationMonths must not be the one deciding the new end date. Recompute it here, in
+         * calendar months, before validation - the ids we touched are passed on so the validator knows
+         * the decrease is server-derived rather than an arbitrary client shortening.
+         */
+        Set<String> durationDrivenEndDateIds = applyDurationDrivenEndDates(request.getAmcConfigurations(), amcConfigurationsFromDB);
+
+        /*
          * Validate the update amcConfiguration request against the amcConfigurations fetched from the database
          */
-        amcConfigurationValidator.validateUpdateAgainstDB(request.getAmcConfigurations(), amcConfigurationsFromDB);
+        amcConfigurationValidator.validateUpdateAgainstDB(request.getAmcConfigurations(), amcConfigurationsFromDB, durationDrivenEndDateIds);
 
         /*
          * Process each amcConfiguration in the update request
@@ -167,6 +177,99 @@ public class AmcConfigurationService {
         }
         log.info("Successfully processed update for {} AMC configuration(s)", request.getAmcConfigurations().size());
 
+        return request;
+    }
+
+    /**
+     * Recomputes configurationEndDate as startDate + durationMonths (calendar months) for every
+     * configuration whose duration changed, and returns their ids.
+     *
+     * <p>Shortening a contract below what has already been serviced would strand APPROVED visits
+     * outside the window, so the derived end date must stay after the last visit that actually took
+     * place.
+     */
+    private Set<String> applyDurationDrivenEndDates(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB) {
+        Set<String> touchedIds = new HashSet<>();
+        for (AmcConfiguration amcConfiguration : amcConfigurationsFromRequest) {
+            AmcConfiguration amcConfigurationFromDB = findAmcConfigurationById(String.valueOf(amcConfiguration.getId()), amcConfigurationsFromDB);
+            if (amcConfigurationFromDB == null
+                    || amcConfiguration.getDurationMonths() == null
+                    || Objects.equals(amcConfiguration.getDurationMonths(), amcConfigurationFromDB.getDurationMonths())) {
+                continue;
+            }
+
+            Long startDate = amcConfiguration.getConfigurationStartDate() != null
+                    ? amcConfiguration.getConfigurationStartDate()
+                    : amcConfigurationFromDB.getConfigurationStartDate();
+            if (startDate == null || startDate <= 0) {
+                continue;
+            }
+
+            long derivedEndDate = amcConfigurationServiceUtil.addMonths(startDate, amcConfiguration.getDurationMonths());
+            Long lastServicedVisitDate = getLastServicedVisitDate(amcConfigurationFromDB);
+            if (lastServicedVisitDate != null && derivedEndDate < lastServicedVisitDate) {
+                throw new CustomException("INVALID_AMC_CONFIGURATION_MODIFY",
+                        "The AMC duration cannot be reduced to " + amcConfiguration.getDurationMonths()
+                                + " months: visits have already been carried out beyond the resulting end date.");
+            }
+
+            log.info("Recomputed configurationEndDate for configurationId: {} from durationMonths {} -> {} (endDate {} -> {})",
+                    amcConfiguration.getId(), amcConfigurationFromDB.getDurationMonths(), amcConfiguration.getDurationMonths(),
+                    amcConfigurationFromDB.getConfigurationEndDate(), derivedEndDate);
+            amcConfiguration.setConfigurationEndDate(derivedEndDate);
+            touchedIds.add(amcConfiguration.getId());
+        }
+        return touchedIds;
+    }
+
+    /* Scheduled date of the latest APPROVED visit of a configuration, or null when none exists. */
+    private Long getLastServicedVisitDate(AmcConfiguration amcConfiguration) {
+        ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder()
+                .tenantId(amcConfiguration.getTenantId())
+                .amcConfigurationIds(List.of(amcConfiguration.getId()))
+                .statuses(List.of("APPROVED"))
+                .build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                .searchCriteria(searchCriteria)
+                .build();
+        List<ScheduledVisit> visits = scheduledVisitRepository.getScheduledVisit(
+                searchRequest, amcServiceConfiguration.getMaxLimit(), 0, amcConfiguration.getTenantId(), null, null);
+        if (visits == null || visits.isEmpty()) {
+            return null;
+        }
+        return visits.stream()
+                .map(ScheduledVisit::getScheduledDate)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(null);
+    }
+
+    /**
+     * Hard-deletes AMC configurations (and everything hanging off them: scheduled visits, asset links
+     * and assignments - see the delete-amc-configuration mapping in amc-persister.yml).
+     * Used by the ingestion service to reconcile a bulk upload: a facility that is inside the selected
+     * districts/blocks but no longer present in the uploaded file loses its configuration.
+     */
+    public AmcConfigurationRequest deleteAmcConfiguration(AmcConfigurationRequest request) {
+        log.trace("Entering deleteAmcConfiguration method");
+        amcConfigurationValidator.validateDeleteAmcConfigurationRequest(request);
+
+        List<AmcConfiguration> amcConfigurationsFromDB = searchAmcConfiguration(
+                getSearchAmcConfigurationRequest(request.getAmcConfigurations(), request.getRequestInfo()),
+                amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(),
+                request.getAmcConfigurations().get(0).getTenantId(), false, null);
+        amcConfigurationValidator.validateDeleteAgainstDB(request.getAmcConfigurations(), amcConfigurationsFromDB);
+
+        // Send back the full DB rows rather than the (possibly minimal) request payload, so callers get
+        // the deleted configurations in the response and the audit trail records who removed what.
+        for (AmcConfiguration amcConfigurationFromDB : amcConfigurationsFromDB) {
+            amcConfigurationEnrichment.enrichAmcConfigurationRequestOnUpdate(
+                    amcConfigurationFromDB, amcConfigurationFromDB, request.getRequestInfo());
+        }
+        request.setAmcConfigurations(amcConfigurationsFromDB);
+
+        log.info("Pushing delete for {} AMC configuration(s) to kafka", amcConfigurationsFromDB.size());
+        producer.push(amcServiceConfiguration.getDeleteAmcConfigurationTopic(), request);
         return request;
     }
 
@@ -246,7 +349,7 @@ public class AmcConfigurationService {
         amcConfigurationFromDB.setAssetTypes(amcConfiguration.getAssetTypes());
         amcConfigurationFromDB.setDurationMonths(amcConfiguration.getDurationMonths());
         amcConfigurationFromDB.setVisitFrequencyMonths(amcConfiguration.getVisitFrequencyMonths());
-        amcConfigurationFromDB.setVendorId(amcConfigurationFromDB.getId());
+        amcConfigurationFromDB.setVendorId(amcConfiguration.getVendorId());
         amcConfigurationFromDB.setGeographyDetails(amcConfiguration.getGeographyDetails());
         amcConfigurationFromDB.setAuditDetails(amcConfiguration.getAuditDetails());
 
@@ -283,6 +386,18 @@ public class AmcConfigurationService {
         log.debug("Pushing AMC configuration update to kafka for configurationId: {}", amcConfiguration.getId());
         producer.push(amcServiceConfiguration.getUpdateAmcConfigurationTopic(), request);
         log.info("AMC configuration update pushed to kafka for configurationId: {}", amcConfiguration.getId());
+
+        /*
+         * A new duration or visit frequency changes the visit plan, not just the configuration row:
+         * rebuild the not-yet-due visits so the schedule matches the contract the user just saved.
+         * Best-effort - the configuration update itself is already committed and must not be lost if
+         * regeneration fails.
+         */
+        try {
+            amcVisitRegenerationService.regenerateIfCadenceChanged(amcConfigurationFromDB, amcConfiguration, request.getRequestInfo());
+        } catch (Exception e) {
+            log.error("Failed to regenerate scheduled visits for configurationId: {}", amcConfiguration.getId(), e);
+        }
     }
 
     private boolean isValidCascadingUpdate(AmcConfiguration amcConfigurationFromDB, AmcConfiguration amcConfiguration) {
