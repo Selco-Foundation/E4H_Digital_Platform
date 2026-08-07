@@ -131,6 +131,7 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
                 .durationMonths(rs.getInt("amc_duration_months"))
                 .visitFrequencyMonths(rs.getInt("amc_visit_frequency_months"))
                 .status(rs.getString("amc_status"))
+                .isActive(rs.getBoolean("amc_is_active"))
                 .assignments(assignments)
                 .configurationStartDate(rs.getLong("amc_configuration_start_date"))
                 .configurationEndDate(rs.getLong("amc_configuration_end_date"))

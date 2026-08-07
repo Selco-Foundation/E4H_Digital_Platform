@@ -159,8 +159,14 @@ public class ScheduledVisitService {
         // Regenerating replaces the whole series; otherwise we only append after the existing visits,
         // because ux_scheduled_visits_unique_visit_per_amc forbids reusing a visit number.
         if (Boolean.TRUE.equals(request.getRegenerateExisting()) && !existingVisits.isEmpty()) {
-            log.info("regenerateExisting=true: deleting {} existing visit(s) of configuration {}",
+            log.info("regenerateExisting=true: deactivating {} existing visit(s) of configuration {}",
                     existingVisits.size(), request.getConfigurationId());
+            for (ScheduledVisit existingVisit : existingVisits) {
+                existingVisit.setIsActive(Boolean.FALSE);
+                existingVisit.setAuditDetails(amcConfigurationServiceUtil.getAuditDetails(
+                        request.getRequestInfo().getUserInfo().getUuid(), existingVisit.getAuditDetails(),
+                        existingVisit.getAuditDetails() == null));
+            }
             producer.push(amcServiceConfiguration.getDeleteScheduledVisitTopic(),
                     ScheduledVisitRequest.builder().requestInfo(request.getRequestInfo()).scheduledVisits(existingVisits).build());
             existingVisits = new ArrayList<>();

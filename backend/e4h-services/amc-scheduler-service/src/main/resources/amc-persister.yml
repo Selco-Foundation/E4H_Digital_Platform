@@ -183,11 +183,12 @@ serviceMaps:
 
     - version: 1.0
       name: AMC Configuration
-      description: Hard-deletes an amc configuration and everything hanging off it. The foreign keys on
-        scheduled_visits, asset_amc and amc_configuration_assignments are ON DELETE SET NULL, not
-        CASCADE, so the child rows must be deleted explicitly and before the parent - otherwise they
-        survive as orphans with a null amc_configuration_id. scheduled_visit_assignments is the one
-        exception: its FK to scheduled_visits is ON DELETE CASCADE.
+      description: Soft-deletes an amc configuration by clearing is_active. Nothing is physically
+        removed - scheduled visits, asset links and assignments all stay on disk, so an APPROVED visit
+        report or a submission pending review is never destroyed. The rows simply stop being returned:
+        both search query builders join amc_configuration and filter on ac.is_active. Reactivation is
+        deliberately not exposed; a facility that comes back gets a fresh configuration, which the
+        partial unique index (WHERE is_active) allows.
       fromTopic: delete-amc-configuration
       isTransaction: true
       isAuditEnabled: true
@@ -198,24 +199,13 @@ serviceMaps:
       transactionCodeJsonPath: $.id
       auditAttributeBasePath: $.*
       queryMaps:
-        - query: DELETE FROM scheduled_visits WHERE amc_configuration_id = ?;
+        - query: UPDATE amc_configuration SET is_active = false, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
           basePath: $.AmcConfigurations.*
           jsonMaps:
-            - jsonPath: $.AmcConfigurations.*.id
+            - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedBy
 
-        - query: DELETE FROM asset_amc WHERE amc_configuration_id = ?;
-          basePath: $.AmcConfigurations.*
-          jsonMaps:
-            - jsonPath: $.AmcConfigurations.*.id
+            - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedTime
 
-        - query: DELETE FROM amc_configuration_assignments WHERE amc_configuration_id = ?;
-          basePath: $.AmcConfigurations.*
-          jsonMaps:
-            - jsonPath: $.AmcConfigurations.*.id
-
-        - query: DELETE FROM amc_configuration WHERE id = ?;
-          basePath: $.AmcConfigurations.*
-          jsonMaps:
             - jsonPath: $.AmcConfigurations.*.id
 
     - version: 1.0
@@ -430,10 +420,11 @@ serviceMaps:
             - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedTime
 
     - version: 1.0
-      description: Deletes scheduled visits by id. Used when a configuration's durationMonths or
-        visitFrequencyMonths changes and the not-yet-started visits have to be regenerated on the new
-        cadence. scheduled_visit_assignments goes away on its own (FK is ON DELETE CASCADE);
-        visit_transaction is ON DELETE SET NULL and is intentionally kept as an audit trail.
+      description: Soft-deletes scheduled visits by clearing is_active. Used when a configuration's
+        durationMonths or visitFrequencyMonths changes and the not-yet-due visits have to be
+        regenerated on the new cadence. Nothing is physically removed, so what had been planned - and
+        by whom - stays auditable; the rows just stop being returned, since the visit search filters
+        on sv.is_active. Their assignments and visit_transaction rows are left untouched.
       fromTopic: delete-scheduled-visit
       isTransaction: true
       isAuditEnabled: true
@@ -444,9 +435,13 @@ serviceMaps:
       transactionCodeJsonPath: $.id
       auditAttributeBasePath: $.*
       queryMaps:
-        - query: DELETE FROM scheduled_visits WHERE id = ?;
+        - query: UPDATE scheduled_visits SET is_active = false, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
           basePath: $.ScheduledVisit.*
           jsonMaps:
+            - jsonPath: $.ScheduledVisit.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.ScheduledVisit.*.auditDetails.lastModifiedTime
+
             - jsonPath: $.ScheduledVisit.*.id
 
     - version: 1.0

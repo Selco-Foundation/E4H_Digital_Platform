@@ -4176,8 +4176,9 @@ async def bulk_ingest_amc_configurations(
 
         # Facilities that already hold a configuration inside the selected districts/blocks but are no
         # longer requested in the file: the upload is the source of truth for its own scope, so those
-        # configurations are removed. Facilities outside the selected districts/blocks are never
-        # touched - another upload owns them.
+        # configurations are deactivated (soft delete - the AMC service clears isActive, no row is
+        # removed and the visit history is preserved). Facilities outside the selected
+        # districts/blocks are never touched - another upload owns them.
         configs_to_delete = []
         candidate_facility_ids = [
             facility_id for facility_id, config in existing_config_by_facility.items()
