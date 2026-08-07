@@ -35,13 +35,13 @@ const fetchDocument = async (fileStoreId, fetchFileDetails = true) => {
   try {
     const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(fileStoreId);
     const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[fileStoreId]);
-    let fileDetails;
-    if (fetchFileDetails) {
-      fileDetails = await AMCService.fetchDocumentDetails(fileUrl);
-    }
+    if (!fileUrl || !fetchFileDetails) return { fileUrl };
+
+    const fileDetails = await AMCService.fetchDocumentDetails(fileUrl).catch(() => undefined);
     return { fileUrl, fileDetails };
   } catch (error) {
     console.error(`Failed to fetch document ${fileStoreId}:`, error);
+    return {};
   }
 }
 
@@ -83,22 +83,18 @@ const generateVisitReport = (userResponses, format) => {
 
 const getDocumentAggregation = async (processInstances) => {
   const reportDocumentAggregation = {};
-  const workflowDocuments = [];
+  const workflowDocuments = (processInstances || []).flatMap((processInstance) => processInstance?.documents || []);
+  const installationForm = workflowDocuments.find(
+    (document) => document.documentType?.toUpperCase() === "AMC_INSTALLATION_FORM"
+  );
 
-  const recentProcessInstance = processInstances?.[0];
-  if (Array.isArray(recentProcessInstance?.documents)) {
-    for (const document of recentProcessInstance.documents) {
-      const { fileUrl, fileDetails } = await fetchDocument(document.fileStoreId);
-      if (!fileUrl) continue;
-
-      if (document.documentType.toUpperCase() === "AMC_INSTALLATION_FORM") {
-        reportDocumentAggregation.amcInstallationForm = {
-          fileUrl,
-          ...fileDetails
-        };
-      }
-
-      workflowDocuments.push(document);
+  if (installationForm) {
+    const { fileUrl, fileDetails } = await fetchDocument(installationForm.fileStoreId);
+    if (fileUrl) {
+      reportDocumentAggregation.amcInstallationForm = {
+        fileUrl,
+        ...fileDetails,
+      };
     }
   }
 
