@@ -542,7 +542,7 @@ const CreateAMC = () => {
           },
         ],
       },
-      ...(amcConfigurationId ? [] : [{
+      {
         key: "3",
         body: [
           {
@@ -601,9 +601,9 @@ const CreateAMC = () => {
             },
           },
         ],
-      }]),
+      },
     ],
-    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError, amcConfigurationId]
+    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
