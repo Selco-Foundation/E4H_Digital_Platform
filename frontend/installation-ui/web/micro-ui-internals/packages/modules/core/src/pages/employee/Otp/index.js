@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useHistory, useLocation, useRouteMatch } from "react-router-dom";
 import ImageComponent from "../../../components/ImageComponent";
 import SandBoxHeader from "../../../components/SandBoxHeader";
+import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import Carousel from "../SignUp-v2/CarouselComponent/CarouselComponent";
 
 const setEmployeeDetail = (userObject, token) => {
@@ -87,9 +88,8 @@ const Otp = ({ isLogin = false }) => {
       setEmployeeDetail(user?.info, user?.access_token);
 
       try {
-        await Digit.UserService.userLoginReport({
+        await UserAccessReportService.userLoginReport({
           User: user?.info,
-          application: Digit.UserService.getLoginReportApplication?.(),
         });
       } catch (err) {
         console.error("Login report failed", err);

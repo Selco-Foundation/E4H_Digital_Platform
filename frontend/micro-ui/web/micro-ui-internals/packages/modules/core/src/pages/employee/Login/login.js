@@ -5,6 +5,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import PolicyConsentModal from "../../../components/PolicyConsentModal";
+import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
 
@@ -174,9 +175,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       let redirectPath = `/${window.contextPath}/employee`;
 
       try {
-        await Digit.UserService.userLoginReport({
+        await UserAccessReportService.userLoginReport({
           User: user.info,
-          application: window.contextPath === "installation-qc" ? "MANAGEMENT_HUB" : "SAURA_EMITRA",
         });
       } catch (err) {
         console.error("Login report failed", err);

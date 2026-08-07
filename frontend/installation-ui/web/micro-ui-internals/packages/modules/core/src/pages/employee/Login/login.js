@@ -6,6 +6,7 @@ import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import Carousel from "./Carousel/Carousel";
 import ImageComponent from "../../../components/ImageComponent";
+import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { CONSENT_COOKIE_KEYS, getConsentCookie, rememberRequiredConsents } from "../../../utilities/consentCookies";
 
 const setEmployeeDetail = (userObject, token) => {
@@ -50,9 +51,8 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
       let redirectPath = `/${window?.contextPath}/employee`;
 
       try {
-        await Digit.UserService.userLoginReport({
+        await UserAccessReportService.userLoginReport({
           User: user?.info,
-          application: Digit.UserService.getLoginReportApplication?.(),
         });
       } catch (err) {
         console.error("Login report failed", err);
