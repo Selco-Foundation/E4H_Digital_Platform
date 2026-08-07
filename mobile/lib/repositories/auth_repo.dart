@@ -45,6 +45,32 @@ class AuthRepository {
     }
   }
 
+  Future<void> reportLogin(UserRequest user) async {
+    const path = 'im-services/user/login/_report';
+
+    try {
+      final client = DioClient().dio;
+      await client.post(
+        path,
+        data: {
+          'User': user.toJson(),
+          'application': 'FIELD_ASSIST',
+        },
+        options: Options(
+          extra: const {
+            suppressSessionExpiryExtraKey: true,
+          },
+        ),
+      );
+    } catch (error, stackTrace) {
+      AppLogger.instance.error(
+        title: 'Login report error',
+        message: error.toString(),
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   AppNetworkException _normalizedLoginException(DioException err) {
     final wrapped = err.error;
     if (wrapped is AppNetworkException) {

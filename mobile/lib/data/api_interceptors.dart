@@ -12,6 +12,8 @@ import 'secure_storage/secureStore.dart';
 
 typedef SessionExpiredCallback = Future<void> Function();
 
+const String suppressSessionExpiryExtraKey = 'suppressSessionExpiry';
+
 class AuthTokenInterceptor extends Interceptor {
   final _lock = Lock();
   static const _maxRetries = 5;
@@ -107,6 +109,10 @@ class AuthTokenInterceptor extends Interceptor {
 
   @override
   void onError(DioError err, ErrorInterceptorHandler handler) async {
+    if (err.requestOptions.extra[suppressSessionExpiryExtraKey] == true) {
+      return handler.next(err);
+    }
+
     AppLogger.instance.error(
         title: "statusCode", message: err.response?.statusCode?.toString());
     if (err.response?.statusCode != 401) {

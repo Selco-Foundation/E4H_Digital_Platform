@@ -51,14 +51,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       _userRequest = response.userRequest!;
 
-      secureStore.setAccessToken(_accesstoken);
+      await Future.wait([
+        secureStore.setAccessToken(_accesstoken),
+        secureStore.setAccessInfo(ResponseModel(
+            access_token: _accesstoken,
+            token_type: response.token_type,
+            refresh_token: _refreshtoken,
+            scope: response.scope,
+            userRequest: _userRequest)),
+      ]);
 
-      secureStore.setAccessInfo(ResponseModel(
-          access_token: _accesstoken,
-          token_type: response.token_type,
-          refresh_token: _refreshtoken,
-          scope: response.scope,
-          userRequest: _userRequest));
+      await authRepository.reportLogin(_userRequest);
 
       emit(AuthState.authenticated(
           accesstoken: _accesstoken,
