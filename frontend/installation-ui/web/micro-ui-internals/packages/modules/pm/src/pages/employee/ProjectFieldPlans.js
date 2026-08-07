@@ -79,8 +79,8 @@ const ProjectFieldPlans = () => {
     {
       key: "AMC",
       heading: t("PM_LABEL_AMCS"),
-      buttonLabel: t("PM_ACTION_SET_UP_AMC"),
-      showAddIcon: false,
+      buttonLabel: t("PM_ACTION_ADD_AMC"),
+      showAddIcon: true,
       action: handleAMCCreationNavigation,
       introTitle: "PM_BEFORE_CREATING_AMC_TITLE",
       introSubTitle: "PM_BEFORE_CREATING_AMC_SUBTITLE",
