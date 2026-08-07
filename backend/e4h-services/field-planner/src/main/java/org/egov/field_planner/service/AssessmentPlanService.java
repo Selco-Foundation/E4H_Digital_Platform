@@ -217,10 +217,13 @@ public class AssessmentPlanService {
                 return Collections.emptyMap();
             }
             return assignmentResponse.getActivityAssignment().stream()
+                    .filter(this::isAssessmentAssignment)
                     .filter(assignment -> StringUtils.isNotBlank(assignment.getFieldPlanId()))
                     .collect(Collectors.groupingBy(
                             ActivityAssignment::getFieldPlanId,
-                            Collectors.mapping(assignment -> toAssessorAssignment(requestInfo, assignment), Collectors.toList())));
+                            Collectors.collectingAndThen(
+                                    Collectors.toList(),
+                                    assignments -> dedupeAssessorsByRole(requestInfo, assignments))));
         } catch (Exception e) {
             log.warn("Failed to fetch assessors for plans {}", planIds, e);
             return Collections.emptyMap();
@@ -245,6 +248,11 @@ public class AssessmentPlanService {
 
     private void assignAssessors(RequestInfo requestInfo, AssessmentPlan plan, List<AssessorAssignment> assessors) {
         validateAssessorRoles(assessors);
+        List<ActivityAssignment> existingAssignments = fetchAssessmentAssignments(requestInfo, plan);
+        if (!existingAssignments.isEmpty()) {
+            unassignActivityAssignments(requestInfo, plan.getTenantId(), existingAssignments);
+        }
+
         List<ActivityAssignment> assignments = new ArrayList<>();
         for (AssessorAssignment assessor : assessors) {
             Map<String, Object> role = Map.of(
@@ -284,6 +292,62 @@ public class AssessmentPlanService {
         serviceRequestRepository.fetchResult(new StringBuilder(url), bulkRequest);
     }
 
+    private List<ActivityAssignment> fetchAssessmentAssignments(RequestInfo requestInfo, AssessmentPlan plan) {
+        try {
+            ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder()
+                    .fieldPlanId(List.of(plan.getId()))
+                    .tenantId(plan.getTenantId())
+                    .build();
+            ActivityAssignmentSearchRequest searchRequest = ActivityAssignmentSearchRequest.builder()
+                    .criteria(criteria)
+                    .requestInfo(requestInfo)
+                    .build();
+            String url = configuration.getFieldPlanActivityServiceHost()
+                    + configuration.getFieldPlanActivitySearchUrl()
+                    + "?tenantId=" + plan.getTenantId() + "&offset=0&limit=100";
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
+            ActivityAssignmentResponse assignmentResponse = mapper.convertValue(response, ActivityAssignmentResponse.class);
+            if (assignmentResponse == null || assignmentResponse.getActivityAssignment() == null) {
+                return List.of();
+            }
+            return assignmentResponse.getActivityAssignment().stream()
+                    .filter(this::isAssessmentAssignment)
+                    .toList();
+        } catch (Exception e) {
+            log.warn("Failed to fetch existing assessors for plan {}", plan.getId(), e);
+            return List.of();
+        }
+    }
+
+    private void unassignActivityAssignments(RequestInfo requestInfo, String tenantId,
+                                             List<ActivityAssignment> assignments) {
+        ActivityAssignmentBulkRequest bulkRequest = ActivityAssignmentBulkRequest.builder()
+                .requestInfo(requestInfo)
+                .activityAssignments(assignments)
+                .build();
+        String url = configuration.getFieldPlanActivityServiceHost()
+                + configuration.getFieldPlanActivityUnassignUrl()
+                + "?tenantId=" + tenantId;
+        serviceRequestRepository.fetchResult(new StringBuilder(url), bulkRequest);
+    }
+
+    private List<AssessorAssignment> dedupeAssessorsByRole(RequestInfo requestInfo,
+                                                           List<ActivityAssignment> assignments) {
+        Map<String, AssessorAssignment> byRole = new LinkedHashMap<>();
+        for (ActivityAssignment assignment : assignments) {
+            String roleCode = assignment.getRole() != null ? (String) assignment.getRole().get("code") : null;
+            if (StringUtils.isNotBlank(roleCode)) {
+                byRole.putIfAbsent(roleCode, toAssessorAssignment(requestInfo, assignment));
+            }
+        }
+        return new ArrayList<>(byRole.values());
+    }
+
+    private boolean isAssessmentAssignment(ActivityAssignment assignment) {
+        return AssessmentConstants.ACTIVITY_CODE_ASSESSMENT.equalsIgnoreCase(assignment.getActivityCode())
+                || AssessmentConstants.ACTIVITY_CODE_ASSESSMENT.equalsIgnoreCase(assignment.getActivityId());
+    }
+
     private void validateAssessorRoles(List<AssessorAssignment> assessors) {
         Set<String> roles = new HashSet<>();
         for (AssessorAssignment assessor : assessors) {
@@ -292,6 +356,10 @@ public class AssessmentPlanService {
                         "Both ENUMERATOR and FIELD_POC assessors with userId are required");
             }
             roles.add(assessor.getRole());
+        }
+        if (roles.size() != assessors.size()) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_ASSESSOR_ROLE_REQUIRED,
+                    "Duplicate assessor roles are not allowed");
         }
         if (!roles.contains(AssessmentConstants.ROLE_ENUMERATOR)
                 || !roles.contains(AssessmentConstants.ROLE_FIELD_POC)) {
