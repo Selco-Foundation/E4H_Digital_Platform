@@ -1,18 +1,20 @@
 import React, { useMemo, useState } from "react";
-import { Table } from "@egovernments/digit-ui-react-components";
-
-// Dummy data mirrors AssessmentTable's structure until the AMC entity is defined.
-const DUMMY_AMCS = [
-  { id: "1", name: "GU-INS-2026-1", startDate: "2026-06-18", endDate: "2026-07-01", numberOfFacilities: 57, status: "DRAFT" },
-  { id: "2", name: "GU-INS-2026-2", startDate: "2026-07-05", endDate: "2026-07-20", numberOfFacilities: 45, status: "SCHEDULED" },
-  { id: "3", name: "GU-INS-2026-3", startDate: "2026-07-25", endDate: "2026-08-10", numberOfFacilities: 30, status: "COMPLETED" },
-  { id: "4", name: "GU-INS-2026-4", startDate: "2026-08-15", endDate: "2026-08-30", numberOfFacilities: 60, status: "DRAFT" },
-];
+import { Loader, Table } from "@egovernments/digit-ui-react-components";
+import { Link } from "react-router-dom";
+import useAMCConfiguration from "../../../hooks/useAMCConfiguration";
 
 const AMCTable = ({ t, projectId }) => {
 
+  const tenantId = Digit.ULBService.getStateId();
   const [pageSize, setPageSize] = useState(10);
   const [pageOffset, setPageOffset] = useState(0);
+
+  const { isLoading: amcConfigurationDataLoading, data: amcConfigurationData } = useAMCConfiguration({
+    tenantId,
+    projectIds: [projectId],
+  }, pageSize, pageOffset);
+
+  const placeHolderAMCs = [{}, {}];
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -34,32 +36,42 @@ const AMCTable = ({ t, projectId }) => {
     </span>
   );
 
-  const GetAssessmentBadge = () => (
+  const GetActivityList = (activities) => (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-      <span
-        style={{
-          backgroundColor: "#F1FFF8",
-          color: "#00703C",
-          width: "fit-content",
-          padding: "5px 10px",
-        }}
-      >
-        {t("PM_ACTIVITY_ASSESSMENT")}
-      </span>
+      {activities?.map((activity) => (
+        <span
+          key={activity.code}
+          style={{
+            backgroundColor: "#F1FFF8",
+            color: "#00703C",
+            width: "fit-content",
+            padding: "5px 10px",
+          }}
+        >
+          {activity.name}
+        </span>
+      ))}
     </div>
   );
 
   const columns = useMemo(
     () => [
       {
-        id: "assessmentPlanName",
-        Header: () => GetHead(t("ASSESSMENT_PLAN_NAME")),
-        Cell: ({ row }) => GetCell(row.original["name"]),
+        id: "amcPlanName",
+        Header: () => GetHead(t("AMC_PLAN_NAME")),
+        Cell: ({ row }) => (
+          <Link
+            to={`/${window.contextPath}/employee/pm/project/${projectId}/amc/create?amcConfigurationId=${row.original["id"]}&key=1`}
+            style={{ color: "#C84C0E" }}
+          >
+            {row.original["name"]}
+          </Link>
+        ),
       },
       {
         id: "activities",
         Header: () => GetHead(t("ACTIVITIES")),
-        Cell: () => GetAssessmentBadge(),
+        Cell: ({ row }) => GetActivityList(row.original["activities"]),
       },
       {
         id: "startDate",
@@ -72,17 +84,17 @@ const AMCTable = ({ t, projectId }) => {
         Cell: ({ row }) => GetCell(row.original["endDate"] ? formatDate(row.original["endDate"]) : ""),
       },
       {
-        id: "numberOfFacilities",
+        id: "numberOfHealthFacilities",
         Header: () => GetHead(t("NUMBER_OF_HEALTH_FACILITIES")),
-        Cell: ({ row }) => GetCell(row.original["numberOfFacilities"]),
+        Cell: ({ row }) => GetCell(row.original["healthFacilityNumber"]),
       },
       {
         id: "status",
-        Header: () => GetHead(t("ASSESSMENT_PLAN_STATUS")),
-        Cell: ({ row }) => GetCell(row.original["status"] ? t(`PM_ASSESSMENT_PLAN_STATUS_${row.original["status"]}`) : ""),
+        Header: () => GetHead(t("AMC_STATUS")),
+        Cell: ({ row }) => GetCell(row.original["status"] ? t(`AMC_STATUS_${row.original["status"].toUpperCase()}`) : ""),
       },
     ],
-    [t]
+    [t, projectId]
   );
 
   const onPageSizeChange = (e) => {
@@ -98,11 +110,15 @@ const AMCTable = ({ t, projectId }) => {
     setPageOffset(pageOffset - pageSize);
   };
 
+  if (amcConfigurationDataLoading) {
+    return <Loader />;
+  }
+
   return (
     <div style={{ borderRadius: "6px", overflow: "hidden", boxShadow: "0px 0px 4px 0 rgba(0, 0, 0, 0.2)" }}>
       <Table
         t={t}
-        data={DUMMY_AMCS}
+        data={amcConfigurationData?.amcConfigurations?.length ? amcConfigurationData.amcConfigurations : placeHolderAMCs}
         columns={columns}
         customTableWrapperClassName={"project-details-table"}
         getCellProps={() => {
@@ -117,7 +133,7 @@ const AMCTable = ({ t, projectId }) => {
         onNextPage={onNextPage}
         onPrevPage={onPrevPage}
         currentPage={Math.floor(pageOffset / pageSize)}
-        totalRecords={DUMMY_AMCS.length}
+        totalRecords={amcConfigurationData?.totalCount || placeHolderAMCs.length}
         onPageSizeChange={onPageSizeChange}
         pageSizeLimit={pageSize}
       />
