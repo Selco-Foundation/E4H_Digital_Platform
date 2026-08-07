@@ -149,16 +149,47 @@ public class ScheduledVisitService {
         if(request.getGenerationStartDate() != null && request.getGenerationStartDate() != 0)
             startDate = request.getGenerationStartDate();
         if(request.getGenerationEndDate() != null && request.getGenerationEndDate() != 0)
-            endDate = request.getGenerationStartDate();
+            endDate = request.getGenerationEndDate();
+
+        if (startDate == null || endDate == null)
+            throw new CustomException("GENERATE_VISIT_ERROR", "The configuration " + request.getConfigurationId() + " has no start or end date to generate visits from");
+
+        List<ScheduledVisit> existingVisits = getVisitsForConfiguration(amcConfiguration, request.getRequestInfo());
+
+        // Regenerating replaces the whole series; otherwise we only append after the existing visits,
+        // because ux_scheduled_visits_unique_visit_per_amc forbids reusing a visit number.
+        if (Boolean.TRUE.equals(request.getRegenerateExisting()) && !existingVisits.isEmpty()) {
+            log.info("regenerateExisting=true: deleting {} existing visit(s) of configuration {}",
+                    existingVisits.size(), request.getConfigurationId());
+            producer.push(amcServiceConfiguration.getDeleteScheduledVisitTopic(),
+                    ScheduledVisitRequest.builder().requestInfo(request.getRequestInfo()).scheduledVisits(existingVisits).build());
+            existingVisits = new ArrayList<>();
+        }
 
         // Generate scheduled visit based on startDate and Frequency
         List<Long> generateAmcVisits = amcConfigurationServiceUtil.generateAmcVisits(startDate, endDate, amcConfiguration.getVisitFrequencyMonths());
         if (generateAmcVisits ==null || generateAmcVisits.isEmpty())
             throw new CustomException("GENERATE_VISIT_ERROR", "Cannot generate scheduled visit for this configuration");
 
+        Set<Long> alreadyScheduledDates = existingVisits.stream()
+                .map(ScheduledVisit::getScheduledDate)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        generateAmcVisits = generateAmcVisits.stream().filter(date -> !alreadyScheduledDates.contains(date)).toList();
+        if (generateAmcVisits.isEmpty())
+            throw new CustomException("GENERATE_VISIT_ERROR", "All visits for this configuration have already been generated");
+
         List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
-        Long previousVisitDate = null;
-        int i =1;
+        Long previousVisitDate = existingVisits.stream()
+                .map(ScheduledVisit::getScheduledDate)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(null);
+        int i = existingVisits.stream()
+                .map(ScheduledVisit::getVisitNumber)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
         for (Long visitDate : generateAmcVisits){
             List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
                             .map(a -> ScheduledVisitAssignment.builder()
@@ -192,6 +223,21 @@ public class ScheduledVisitService {
                 .scheduledVisits(response.getScheduledVisits())
                 .totalCount(response.getScheduledVisits().size())
                 .build();
+    }
+
+    /* Raw visits of a configuration, straight from the repository - no boundary/employee enrichment needed here. */
+    private List<ScheduledVisit> getVisitsForConfiguration(AmcConfiguration amcConfiguration, RequestInfo requestInfo) {
+        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder()
+                .tenantId(amcConfiguration.getTenantId())
+                .amcConfigurationIds(List.of(amcConfiguration.getId()))
+                .build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                .RequestInfo(requestInfo)
+                .searchCriteria(criteria)
+                .build();
+        List<ScheduledVisit> visits = scheduledVisitsRepository.getScheduledVisit(
+                searchRequest, amcServiceConfiguration.getMaxLimit(), 0, amcConfiguration.getTenantId(), null, null);
+        return visits == null ? new ArrayList<>() : new ArrayList<>(visits);
     }
 
     public OtpResponse resendOTP(ResendOTPRequest request) {
