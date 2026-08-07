@@ -144,8 +144,9 @@ public class AmcVisitRegenerationService {
         }
 
         if (!visitsToDelete.isEmpty()) {
-            log.info("Deleting {} not-yet-due visit(s) of configurationId: {} before regeneration",
+            log.info("Deactivating {} not-yet-due visit(s) of configurationId: {} before regeneration",
                     visitsToDelete.size(), updatedConfiguration.getId());
+            deactivate(visitsToDelete, requestInfo);
             producer.push(amcServiceConfiguration.getDeleteScheduledVisitTopic(),
                     ScheduledVisitRequest.builder().requestInfo(requestInfo).scheduledVisits(visitsToDelete).build());
         }
@@ -160,6 +161,19 @@ public class AmcVisitRegenerationService {
         }
 
         return true;
+    }
+
+    /**
+     * Marks visits as soft-deleted and stamps who did it. The audit details coming back from the
+     * repository are those of the last real change, so they must be refreshed before the persister
+     * writes them - otherwise the deactivation would be attributed to whoever touched the visit last.
+     */
+    private void deactivate(List<ScheduledVisit> visits, RequestInfo requestInfo) {
+        for (ScheduledVisit visit : visits) {
+            visit.setIsActive(Boolean.FALSE);
+            visit.setAuditDetails(amcConfigurationServiceUtil.getAuditDetails(
+                    requestInfo.getUserInfo().getUuid(), visit.getAuditDetails(), visit.getAuditDetails() == null));
+        }
     }
 
     /** A visit is immutable once it is terminal, or once its scheduled date has come. */

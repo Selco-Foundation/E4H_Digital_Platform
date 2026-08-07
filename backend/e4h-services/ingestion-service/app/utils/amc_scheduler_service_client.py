@@ -168,8 +168,10 @@ class AMCSchedulerServiceClient:
         session: Optional[requests.Session] = None,
     ) -> Dict[str, Any]:
         """
-        Hard-delete AMC configurations along with their scheduled visits, asset links and assignments.
-        Unlike update, only {"id", "tenantId"} is required per payload.
+        Soft-delete AMC configurations: the service clears isActive, it does not remove any row.
+        The configurations and their scheduled visits stop being returned by searches but stay in the
+        database, so validated visit reports are preserved. Unlike update, only {"id", "tenantId"} is
+        required per payload.
         """
         return self._bulk_configuration_action("_delete", request_info, configuration_payloads, session)
 

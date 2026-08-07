@@ -28,7 +28,7 @@ public class ScheduledVisitQueryBuilder {
 
     private static final String FETCH_SCHEDULED_VISIT_QUERY = "SELECT sv.id AS sv_visit_id, sv.tenant_id AS sv_tenant_id, sv.amc_configuration_id AS sv_amc_configuration_id, sv.facility_id AS sv_facility_id, " +
             "sv.facility_name AS sv_facility_name, sv.project_id AS sv_project_id, sv.visit_number AS sv_visit_number, sv.scheduled_date AS sv_scheduled_date, sv.actual_visit_date AS sv_actual_visit_date, sv.last_scheduled_visit_date AS sv_last_scheduled_visit_date," +
-            " sv.status AS sv_status, sv.visit_report AS sv_visit_report, sv.created_by AS sv_created_by, sv.created_time AS sv_created_time, sv.last_modified_by AS sv_last_modified_by, sv.last_modified_time AS sv_last_modified_time, " +
+            " sv.status AS sv_status, sv.is_active AS sv_is_active, sv.visit_report AS sv_visit_report, sv.created_by AS sv_created_by, sv.created_time AS sv_created_time, sv.last_modified_by AS sv_last_modified_by, sv.last_modified_time AS sv_last_modified_time, " +
             "ac.id AS amc_id, ac.tenant_id AS amc_tenant_id, ac.vendor_id as amc_vendor_id, ac.facility_id as amc_facility_id, ac.project_id as amc_project_id, ac.asset_types as amc_asset_types, ac.duration_months as amc_duration_months, " +
             "ac.visit_frequency_months as amc_visit_frequency_months, ac.configuration_start_date as amc_configuration_start_date, ac.configuration_end_date as amc_configuration_end_date, ac.status AS amc_status, ac.additional_details AS amc_additional_details, ac.geography_details AS amc_geography_details, ac.created_by AS amc_created_by," +
             "ac.created_time AS amc_created_time, ac.last_modified_by AS amc_last_modified_by, ac.last_modified_time AS amc_last_modified_time, " +
@@ -83,6 +83,19 @@ public class ScheduledVisitQueryBuilder {
         }
     }
 
+    /**
+     * Excludes soft-deleted visits, and visits whose AMC configuration was itself soft-deleted,
+     * unless includeDeleted is requested. Visits with no configuration link at all are left visible -
+     * hiding them would be a silent behaviour change for data that predates the soft delete.
+     */
+    private static void addIsActiveConfigurationCondition(StringBuilder queryBuilder, List<Object> preparedStmtList, Boolean includeDeleted) {
+        if (Boolean.TRUE.equals(includeDeleted)) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" sv.is_active = true AND (ac.id IS NULL OR ac.is_active = true) ");
+    }
+
     /* Add conditional clause */
     private static void addConditionalClause(List<Object> values, StringBuilder queryString) {
         if (values.isEmpty())
@@ -131,12 +144,18 @@ public class ScheduledVisitQueryBuilder {
         long nowMillis = System.currentTimeMillis();
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, nowMillis, userUuid, isProjectManager);
 
+        // Visits of a soft-deleted configuration must disappear with it - otherwise a field agent
+        // would keep seeing visits to carry out for a contract that no longer exists. The rows stay in
+        // the database (that is the point of the soft delete); they are simply filtered out here.
+        // ac.id IS NULL keeps pre-existing visits whose configuration link was lost from vanishing.
+        addIsActiveConfigurationCondition(queryBuilder, preparedStmtList, urlParams.getIncludeDeleted());
+
         if (criteria.isCountQuery()) {
             return queryBuilder.toString();
         }
 
         String groupBy = " GROUP BY sv.id, sv.tenant_id, sv.amc_configuration_id, sv.facility_id,sv.project_id,  " +
-                "    sv.facility_name, sv.visit_number, sv.scheduled_date, sv.actual_visit_date, sv.status, sv.last_scheduled_visit_date, " +
+                "    sv.facility_name, sv.visit_number, sv.scheduled_date, sv.actual_visit_date, sv.status, sv.is_active, sv.last_scheduled_visit_date, " +
                 "    sv.visit_report, sv.created_by, sv.created_time, sv.last_modified_by, sv.last_modified_time, " +
                 "\n" +
                 "    ac.id, ac.tenant_id, ac.vendor_id, ac.facility_id, ac.project_id, " +
@@ -147,9 +166,6 @@ public class ScheduledVisitQueryBuilder {
                 "    f.facility_subtype, f.facility_ownership, f.facility_region, " +
                 "    f.facility_details, f.boundary_code, f.is_active, " +
                 "    f.facility_poc_name, f.facility_poc_phone, f.facility_poc_email, f.facility_status, f.hfr_id, f.nin_id";
-
-        //Add clause if includeDeleted is true in request parameter
-//        addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
 
         queryBuilder.append(groupBy);
 

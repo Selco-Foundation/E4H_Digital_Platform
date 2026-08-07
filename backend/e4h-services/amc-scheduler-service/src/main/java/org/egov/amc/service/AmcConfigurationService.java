@@ -245,9 +245,14 @@ public class AmcConfigurationService {
     }
 
     /**
-     * Hard-deletes AMC configurations (and everything hanging off them: scheduled visits, asset links
-     * and assignments - see the delete-amc-configuration mapping in amc-persister.yml).
-     * Used by the ingestion service to reconcile a bulk upload: a facility that is inside the selected
+     * Soft-deletes AMC configurations by clearing isActive.
+     *
+     * <p>Nothing is physically removed: the scheduled visits, asset links and assignments stay in the
+     * database, so a validated visit report or a submission awaiting review is never destroyed. The
+     * configuration and its visits simply stop being returned by searches, which filter on
+     * amc_configuration.is_active.
+     *
+     * <p>Used by the ingestion service to reconcile a bulk upload: a facility inside the selected
      * districts/blocks but no longer present in the uploaded file loses its configuration.
      */
     public AmcConfigurationRequest deleteAmcConfiguration(AmcConfigurationRequest request) {
@@ -261,14 +266,15 @@ public class AmcConfigurationService {
         amcConfigurationValidator.validateDeleteAgainstDB(request.getAmcConfigurations(), amcConfigurationsFromDB);
 
         // Send back the full DB rows rather than the (possibly minimal) request payload, so callers get
-        // the deleted configurations in the response and the audit trail records who removed what.
+        // the deactivated configurations in the response and the audit trail records who removed what.
         for (AmcConfiguration amcConfigurationFromDB : amcConfigurationsFromDB) {
             amcConfigurationEnrichment.enrichAmcConfigurationRequestOnUpdate(
                     amcConfigurationFromDB, amcConfigurationFromDB, request.getRequestInfo());
+            amcConfigurationFromDB.setIsActive(Boolean.FALSE);
         }
         request.setAmcConfigurations(amcConfigurationsFromDB);
 
-        log.info("Pushing delete for {} AMC configuration(s) to kafka", amcConfigurationsFromDB.size());
+        log.info("Pushing soft delete for {} AMC configuration(s) to kafka", amcConfigurationsFromDB.size());
         producer.push(amcServiceConfiguration.getDeleteAmcConfigurationTopic(), request);
         return request;
     }
