@@ -182,6 +182,43 @@ serviceMaps:
             - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedTime
 
     - version: 1.0
+      name: AMC Configuration
+      description: Hard-deletes an amc configuration and everything hanging off it. The foreign keys on
+        scheduled_visits, asset_amc and amc_configuration_assignments are ON DELETE SET NULL, not
+        CASCADE, so the child rows must be deleted explicitly and before the parent - otherwise they
+        survive as orphans with a null amc_configuration_id. scheduled_visit_assignments is the one
+        exception: its FK to scheduled_visits is ON DELETE CASCADE.
+      fromTopic: delete-amc-configuration
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.lastModifiedBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: DELETE FROM scheduled_visits WHERE amc_configuration_id = ?;
+          basePath: $.AmcConfigurations.*
+          jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.id
+
+        - query: DELETE FROM asset_amc WHERE amc_configuration_id = ?;
+          basePath: $.AmcConfigurations.*
+          jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.id
+
+        - query: DELETE FROM amc_configuration_assignments WHERE amc_configuration_id = ?;
+          basePath: $.AmcConfigurations.*
+          jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.id
+
+        - query: DELETE FROM amc_configuration WHERE id = ?;
+          basePath: $.AmcConfigurations.*
+          jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.id
+
+    - version: 1.0
       description: Saves a asset AMC
       fromTopic: save-asset-amc
       isTransaction: true
@@ -391,6 +428,26 @@ serviceMaps:
             - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedBy
 
             - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Deletes scheduled visits by id. Used when a configuration's durationMonths or
+        visitFrequencyMonths changes and the not-yet-started visits have to be regenerated on the new
+        cadence. scheduled_visit_assignments goes away on its own (FK is ON DELETE CASCADE);
+        visit_transaction is ON DELETE SET NULL and is intentionally kept as an audit trail.
+      fromTopic: delete-scheduled-visit
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.lastModifiedBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: DELETE FROM scheduled_visits WHERE id = ?;
+          basePath: $.ScheduledVisit.*
+          jsonMaps:
+            - jsonPath: $.ScheduledVisit.*.id
 
     - version: 1.0
       description: Persists visit transactions
