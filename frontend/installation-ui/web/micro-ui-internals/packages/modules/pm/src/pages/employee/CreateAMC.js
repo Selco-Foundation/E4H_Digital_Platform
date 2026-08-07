@@ -187,49 +187,69 @@ const CreateAMC = () => {
   }, [createdProject, getDefaultActivityAssignments]);
 
   useEffect(() => {
+    let ignore = false;
+
     const setSavedAMCGeographyDetails = async () => {
       if (!amcConfigurationId || !fetchedBoundaryData) {
         return;
       }
 
-      const response = await AMCService.fetchAMCConfigurations({
-        searchCriteria: {
-          tenantId,
-          ids: [amcConfigurationId],
-        },
-      });
+      try {
+        const response = await AMCService.fetchAMCConfigurations({
+          searchCriteria: {
+            tenantId,
+            ids: [amcConfigurationId],
+          },
+        });
 
-      const savedConfiguration = response?.AmcConfigurations?.[0];
-      setSavedAMCConfiguration(savedConfiguration);
+        if (ignore) {
+          return;
+        }
 
-      const assignmentOrganizationIds = savedConfiguration?.assignments
-        ?.map((assignment) => assignment?.organization?.id || assignment?.organisation?.id || assignment?.organizationId || assignment?.organisationId)
-        .filter(Boolean);
-      if (assignmentOrganizationIds?.length) {
-        setOrganizationIds([...new Set(assignmentOrganizationIds)]);
+        const savedConfiguration = response?.AmcConfigurations?.[0];
+        setSavedAMCConfiguration(savedConfiguration);
+
+        const assignmentOrganizationIds = savedConfiguration?.assignments
+          ?.map((assignment) => assignment?.organization?.id || assignment?.organisation?.id || assignment?.organizationId || assignment?.organisationId)
+          .filter(Boolean);
+        if (assignmentOrganizationIds?.length) {
+          setOrganizationIds([...new Set(assignmentOrganizationIds)]);
+        }
+
+        const savedGeographyDetails = savedConfiguration?.geographyDetails;
+        if (!savedGeographyDetails) {
+          return;
+        }
+        const parsedGeographyDetails = typeof savedGeographyDetails === "string" ? JSON.parse(savedGeographyDetails) : savedGeographyDetails;
+        const stateCode = parsedGeographyDetails?.state?.code || parsedGeographyDetails?.state;
+        const districtCodes = parsedGeographyDetails?.districts?.map((district) => district?.code || district) || [];
+        const blockCodes = parsedGeographyDetails?.blocks?.map((block) => block?.code || block) || [];
+
+        setPersistedFormData((prev) => ({
+          ...prev,
+          geographyDetails: {
+            state: fetchedBoundaryData.states.find((state) => state.code === stateCode),
+            districts: fetchedBoundaryData.districts.filter((district) => districtCodes.includes(district.code)),
+            blocks: fetchedBoundaryData.blocks.filter((block) => blockCodes.includes(block.code)),
+          },
+        }));
+      } catch (error) {
+        if (!ignore) {
+          console.error("Error fetching AMC configuration", error);
+          setToast({
+            label: t("CORE_COMMON_SOMETHING_WENT_WRONG"),
+            key: "error"
+          });
+        }
       }
-
-      const savedGeographyDetails = savedConfiguration?.geographyDetails;
-      if (!savedGeographyDetails) {
-        return;
-      }
-      const parsedGeographyDetails = typeof savedGeographyDetails === "string" ? JSON.parse(savedGeographyDetails) : savedGeographyDetails;
-      const stateCode = parsedGeographyDetails?.state?.code || parsedGeographyDetails?.state;
-      const districtCodes = parsedGeographyDetails?.districts?.map((district) => district?.code || district) || [];
-      const blockCodes = parsedGeographyDetails?.blocks?.map((block) => block?.code || block) || [];
-
-      setPersistedFormData((prev) => ({
-        ...prev,
-        geographyDetails: {
-          state: fetchedBoundaryData.states.find((state) => state.code === stateCode),
-          districts: fetchedBoundaryData.districts.filter((district) => districtCodes.includes(district.code)),
-          blocks: fetchedBoundaryData.blocks.filter((block) => blockCodes.includes(block.code)),
-        },
-      }));
     };
 
-    setSavedAMCGeographyDetails();
-  }, [amcConfigurationId, fetchedBoundaryData, tenantId]);
+    void setSavedAMCGeographyDetails();
+
+    return () => {
+      ignore = true;
+    };
+  }, [amcConfigurationId, fetchedBoundaryData, tenantId, t]);
 
   useEffect(() => {
     const assignments = savedAMCConfiguration?.assignments;
