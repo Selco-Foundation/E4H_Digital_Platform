@@ -3,6 +3,7 @@ package org.egov.amc.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.config.AMCServiceConfiguration;
+import org.egov.amc.util.BoundaryLocalizationUtil;
 import org.egov.amc.util.BoundaryUtil;
 import org.egov.amc.web.models.*;
 import org.egov.tracer.model.CustomException;
@@ -19,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 @Service
 @Slf4j
@@ -33,6 +35,7 @@ public class AmcVisitReportPdfService {
     private final AMCServiceConfiguration config;
     private final AmcConfigurationService amcConfigurationService;
     private final BoundaryUtil boundaryUtil;
+    private final BoundaryLocalizationUtil boundaryLocalizationUtil;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -43,11 +46,13 @@ public class AmcVisitReportPdfService {
             ServiceRequestRepository requestRepository,
             AMCServiceConfiguration config,
             AmcConfigurationService amcConfigurationService,
-            BoundaryUtil boundaryUtil) {
+            BoundaryUtil boundaryUtil,
+            BoundaryLocalizationUtil boundaryLocalizationUtil) {
         this.requestRepository = requestRepository;
         this.config = config;
         this.amcConfigurationService = amcConfigurationService;
         this.boundaryUtil = boundaryUtil;
+        this.boundaryLocalizationUtil = boundaryLocalizationUtil;
     }
 
     /**
@@ -109,7 +114,10 @@ public class AmcVisitReportPdfService {
                 ? amcConfiguration.getDurationMonths() / amcConfiguration.getVisitFrequencyMonths()
                 : 0;
 
+        // The boundary hierarchy carries codes (India_Assam_Darrang_DalgaonSialmari); the report must
+        // show the human-readable names, so resolve all three levels in one localization call.
         Boundary boundary = resolveBoundary(facility.getBoundaryCode());
+        Map<String, String> boundaryNames = localizeBoundary(boundary, request.getRequestInfo());
         GeoLocation geoLocation = resolveGeoLocation(visitReport);
 
         data.put("report_id", existingVisit.getId());
@@ -124,9 +132,12 @@ public class AmcVisitReportPdfService {
         data.put("vendor_name", amcConfiguration.getVendor() != null ? amcConfiguration.getVendor().getName() : null);
         data.put("project_number", amcConfiguration.getProject() != null ? amcConfiguration.getProject().getProjectNumber() : null);
         data.put("project_date", formatEpochMillisAsDate(existingVisit.getAmcConfiguration().getConfigurationStartDate()));
-        data.put("project_state", boundary != null ? boundary.getState() : null);
-        data.put("project_district", boundary != null ? boundary.getDistrict() : null);
-        data.put("project_block", boundary != null ? boundary.getBlock() : null);
+        data.put("project_state", boundary != null
+                ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getState()) : null);
+        data.put("project_district", boundary != null
+                ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getDistrict()) : null);
+        data.put("project_block", boundary != null
+                ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getBlock()) : null);
         data.put("nin_id", facility.getNinId() != null ? facility.getNinId() : facility.getHfrId());
         data.put("po_wo_number", null);
         data.put("documents", buildDocumentsForPdf(visitReport));
@@ -157,6 +168,17 @@ public class AmcVisitReportPdfService {
             return null;
         }
         return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(REPORT_DATE_FORMATTER);
+    }
+
+    /* State/district/block names for one boundary, resolved in a single localization call. */
+    private Map<String, String> localizeBoundary(Boundary boundary, org.egov.common.contract.request.RequestInfo requestInfo) {
+        if (boundary == null) {
+            return Map.of();
+        }
+        List<String> boundaryCodes = Stream.of(boundary.getState(), boundary.getDistrict(), boundary.getBlock())
+                .filter(Objects::nonNull)
+                .toList();
+        return boundaryLocalizationUtil.localizeBoundaryCodes(boundaryCodes, requestInfo);
     }
 
     private Boundary resolveBoundary(String boundaryCode) {
