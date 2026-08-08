@@ -14,10 +14,12 @@ const DEFAULT_ASSESSMENT_SUMMARY = {
   notEligibleCount: 0,
 };
 
+const valueOrDefault = (value, fallback) => value !== null && value !== undefined ? value : fallback;
+
 const withAssessmentPlanDefaults = (assessmentPlan) => ({
   ...assessmentPlan,
   status: assessmentPlan?.status || "DRAFT",
-  numberOfFacilities: assessmentPlan?.healthFacilityCount ?? assessmentPlan?.numberOfFacilities ?? 0,
+  numberOfFacilities: valueOrDefault(valueOrDefault(assessmentPlan?.healthFacilityCount, assessmentPlan?.numberOfFacilities), 0),
   summary: assessmentPlan?.summary || DEFAULT_ASSESSMENT_SUMMARY,
 });
 
@@ -61,7 +63,7 @@ export const AssessmentPlanService = {
 
     return {
       AssessmentPlans: assessmentPlans,
-      TotalCount: response?.totalCount ?? response?.TotalCount ?? assessmentPlans.length,
+      TotalCount: valueOrDefault(valueOrDefault(response?.totalCount, response?.TotalCount), assessmentPlans.length),
     };
   },
 
@@ -82,13 +84,13 @@ export const AssessmentPlanService = {
     const metrics = assessmentPlan?.metrics || {};
 
     return {
-      totalFacilities: assessmentPlan?.healthFacilityCount ?? 0,
-      remoteAssessmentDone: metrics?.remoteAssessmentDone ?? 0,
-      remoteAssessmentTotal: metrics?.remoteAssessmentTotal ?? 0,
-      onSiteAssessmentDone: metrics?.onSiteAssessmentDone ?? 0,
-      onSiteAssessmentAssigned: metrics?.onSiteAssessmentAssigned ?? 0,
-      eligible: metrics?.eligible ?? 0,
-      notEligible: metrics?.notEligible ?? 0,
+      totalFacilities: valueOrDefault(assessmentPlan?.healthFacilityCount, 0),
+      remoteAssessmentDone: valueOrDefault(metrics?.remoteAssessmentDone, 0),
+      remoteAssessmentTotal: valueOrDefault(metrics?.remoteAssessmentTotal, 0),
+      onSiteAssessmentDone: valueOrDefault(metrics?.onSiteAssessmentDone, 0),
+      onSiteAssessmentAssigned: valueOrDefault(metrics?.onSiteAssessmentAssigned, 0),
+      eligible: valueOrDefault(metrics?.eligible, 0),
+      notEligible: valueOrDefault(metrics?.notEligible, 0),
     };
   },
 
