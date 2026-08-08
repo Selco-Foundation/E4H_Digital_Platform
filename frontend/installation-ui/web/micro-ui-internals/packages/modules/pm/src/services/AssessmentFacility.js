@@ -42,7 +42,7 @@ export const AssessmentFacilityService = {
 
     return {
       facilities,
-      totalCount: response?.pagination?.total ?? facilities.length,
+      totalCount: response?.pagination?.total !== null && response?.pagination?.total !== undefined ? response.pagination.total : facilities.length,
     };
   },
 
