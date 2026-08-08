@@ -27,6 +27,21 @@ export const AMCService = {
 
   updateAMCConfigurations: async (request) => {
     const endpoint = "/asset-amc/v1/configuration/_update";
+    request?.AmcConfigurations?.forEach((configuration) => {
+      configuration.durationMonths = 1;
+      configuration.visitFrequencyMonths = 1;
+      configuration.configurationEndDate = 1;
+    });
+
+    const data = {
+      ...request,
+      AmcConfigurations: request?.AmcConfigurations?.map((configuration) => ({
+        ...configuration,
+        durationMonths: 1,
+        visitFrequencyMonths: 1,
+        configurationEndDate: 1,
+      })) || [],
+    };
     const tenantId = request?.AmcConfigurations?.[0]?.tenantId || Digit.ULBService.getCurrentTenantId();
     const headers = {
       "Content-Type": "application/json",
@@ -37,7 +52,7 @@ export const AMCService = {
 
     return await Request({
       url: endpoint,
-      data: request,
+      data,
       userService: true,
       method: "POST",
       auth: true,

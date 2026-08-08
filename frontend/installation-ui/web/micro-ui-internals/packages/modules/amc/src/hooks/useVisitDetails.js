@@ -164,28 +164,39 @@ const fetchVisitDetails = async (filter, limit, offset) => {
 
   const visitsResponse = await VisitService.fetchVisits(filter, limit, offset);
   const visitData = visitsResponse?.ScheduledVisits?.[0];
+  if (!visitData) return {};
 
   const facility = visitData?.facility || {};
+  const facilityId = facility.id || facility.facility_id || facility.facilityId || visitData?.facilityId;
+  const facilityDetails = facility?.facilityDetails || facility?.facility_details || {};
+  const facilityAmcSummary = await fetchFacilityAmcSummary(facilityId);
+  const geography = getFacilityGeography({
+    ...facility,
+    state: visitData?.state,
+    district: visitData?.district,
+    block: visitData?.block,
+  });
   const auditTrail = generateAuditTrail(visitData.processInstances);
   const { reportDocumentAggregation, workflowDocuments } = await getDocumentAggregation(visitData.processInstances);
   const mdmsConfigResponse = await Digit.MDMSService.getMultipleTypes(Digit.ULBService.getCurrentTenantId(), "AMC", ["FormConfig"]);
   const format = mdmsConfigResponse?.["AMC"]?.["FormConfig"]?.[0] || {};
   generateVisitReport(visitData?.visitReport?.responses, format);
   const visitImages = await fetchVisitImages(visitData?.visitReport?.documents);
+  const visitAmcNumber = getVisitAmcNumber(visitData);
 
   return {
     id: visitData?.id,
     facilityDetails: {
-      facilityName: facility.facility_name,
-      facilityId: facility.id,
-      facilityType: facility.facility_type,
+      facilityName: facility.facility_name || facility.facilityName || visitData?.facilityName || facilityId,
+      facilityId,
+      facilityType: facility.facility_type || facility.facilityType || facilityDetails.facilityType || facilityDetails.facility_type,
       // Use normalized location fields in visit details.
       state: geography.state,
       block: geography.block,
       district: geography.district,
       status: visitData?.status,
       ...facilityAmcSummary,
-      amcNumber: getVisitAmcNumber(visitData),
+      amcNumber: visitAmcNumber !== "-" ? visitAmcNumber : facilityAmcSummary.amcNumber || "-",
       assigned: visitData?.assignments?.[0]?.user?.name,
     },
     visitReport: format,
