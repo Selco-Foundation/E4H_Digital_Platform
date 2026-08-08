@@ -162,7 +162,7 @@ public class AmcConfigurationService {
          * calendar months, before validation - the ids we touched are passed on so the validator knows
          * the decrease is server-derived rather than an arbitrary client shortening.
          */
-        Set<String> durationDrivenEndDateIds = applyDurationDrivenEndDates(request.getAmcConfigurations(), amcConfigurationsFromDB);
+        Set<String> durationDrivenEndDateIds = applyDurationDrivenEndDates(request, amcConfigurationsFromDB);
 
         /*
          * Validate the update amcConfiguration request against the amcConfigurations fetched from the database
@@ -189,7 +189,8 @@ public class AmcConfigurationService {
      * outside the window, so the derived end date must stay after the last visit that actually took
      * place.
      */
-    private Set<String> applyDurationDrivenEndDates(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB) {
+    private Set<String> applyDurationDrivenEndDates(AmcConfigurationRequest request, List<AmcConfiguration> amcConfigurationsFromDB) {
+        List<AmcConfiguration> amcConfigurationsFromRequest = request.getAmcConfigurations();
         Set<String> touchedIds = new HashSet<>();
         for (AmcConfiguration amcConfiguration : amcConfigurationsFromRequest) {
             AmcConfiguration amcConfigurationFromDB = findAmcConfigurationById(String.valueOf(amcConfiguration.getId()), amcConfigurationsFromDB);
@@ -207,7 +208,7 @@ public class AmcConfigurationService {
             }
 
             long derivedEndDate = amcConfigurationServiceUtil.addMonths(startDate, amcConfiguration.getDurationMonths());
-            Long lastServicedVisitDate = getLastServicedVisitDate(amcConfigurationFromDB);
+            Long lastServicedVisitDate = getLastServicedVisitDate(request.getRequestInfo(), amcConfigurationFromDB);
             if (lastServicedVisitDate != null && derivedEndDate < lastServicedVisitDate) {
                 throw new CustomException("INVALID_AMC_CONFIGURATION_MODIFY",
                         "The AMC duration cannot be reduced to " + amcConfiguration.getDurationMonths()
@@ -224,13 +225,14 @@ public class AmcConfigurationService {
     }
 
     /* Scheduled date of the latest APPROVED visit of a configuration, or null when none exists. */
-    private Long getLastServicedVisitDate(AmcConfiguration amcConfiguration) {
+    private Long getLastServicedVisitDate(RequestInfo requestInfo ,AmcConfiguration amcConfiguration) {
         ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder()
                 .tenantId(amcConfiguration.getTenantId())
                 .amcConfigurationIds(List.of(amcConfiguration.getId()))
                 .statuses(List.of("APPROVED"))
                 .build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                .RequestInfo(requestInfo)
                 .searchCriteria(searchCriteria)
                 .build();
         List<ScheduledVisit> visits = scheduledVisitRepository.getScheduledVisit(
