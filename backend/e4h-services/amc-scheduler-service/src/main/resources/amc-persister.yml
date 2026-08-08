@@ -199,9 +199,11 @@ serviceMaps:
       transactionCodeJsonPath: $.id
       auditAttributeBasePath: $.*
       queryMaps:
-        - query: UPDATE amc_configuration SET is_active = false, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
+        - query: UPDATE amc_configuration SET is_active = false, status = ?, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
           basePath: $.AmcConfigurations.*
           jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.status
+
             - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedBy
 
             - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedTime

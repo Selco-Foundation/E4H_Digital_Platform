@@ -83,25 +83,8 @@ public class ScheduledVisitService {
         log.trace("Entering createScheduledVisit method");
         log.info("Creating {} scheduled visit(s)", request.getScheduledVisits().size());
         scheduledVisitsValidator.validateCreateScheduledVisitRequest(request);
+        validateUniqueVisitNumbers(request);
         for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
-            // Avoid creating two visits with same visit number
-            ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder()
-                    .tenantId(scheduledVisit.getTenantId())
-                    .amcConfigurationIds(List.of(scheduledVisit.getAmcConfigurationId()))
-                    .visitNumbers(List.of(scheduledVisit.getVisitNumber()))
-                    .build();
-            ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
-                    .RequestInfo(request.getRequestInfo())
-                    .searchCriteria(searchCriteria)
-                    .build();
-            List<ScheduledVisit> scheduledVisits = searchScheduledVisit(searchRequest, 1, 0, scheduledVisit.getTenantId(), null, null);
-            if (scheduledVisits !=null && !scheduledVisits.isEmpty()){
-                log.warn("Visit number {} already exists for configuration {}, visitId: {}",
-                        scheduledVisit.getVisitNumber(), scheduledVisit.getAmcConfigurationId(),
-                        scheduledVisits.get(0).getId());
-                throw new CustomException("CREATE_VISIT_ERROR", "A visit number: "+ scheduledVisit.getVisitNumber()+" already exist for configuration "+scheduledVisit.getAmcConfigurationId());
-            }
-
             Facility facility = getFacilityById(scheduledVisit.getFacilityId());
             if (facility == null) {
                 throw new CustomException("CREATE_VISIT_ERROR", "Facility not found for facilityId: " + scheduledVisit.getFacilityId());
@@ -229,6 +212,67 @@ public class ScheduledVisitService {
                 .scheduledVisits(response.getScheduledVisits())
                 .totalCount(response.getScheduledVisits().size())
                 .build();
+    }
+
+    /**
+     * Enforces ux_scheduled_visits_unique_visit_per_amc before anything is published.
+     *
+     * <p>Persistence goes through Kafka, so a violated unique index would only appear in the
+     * persister's logs, well after the API answered - the caller would believe the visits were
+     * created. Two sources of collision are checked: numbers repeated inside the batch (a
+     * regeneration builds a whole series at once), and numbers already taken in the database.
+     *
+     * <p>One query for the whole batch, not one per visit. It deliberately asks for deleted rows too
+     * and filters in memory: the index predicate is `WHERE is_active` on the visit alone, whereas the
+     * default search would also drop visits whose configuration is soft-deleted - those still hold
+     * their visit number.
+     */
+    private void validateUniqueVisitNumbers(ScheduledVisitRequest request) {
+        List<ScheduledVisit> visits = request.getScheduledVisits();
+
+        Set<String> seen = new HashSet<>();
+        for (ScheduledVisit visit : visits) {
+            if (!seen.add(visit.getAmcConfigurationId() + "|" + visit.getVisitNumber())) {
+                log.error("Visit number {} appears twice in the request for configuration {}",
+                        visit.getVisitNumber(), visit.getAmcConfigurationId());
+                throw new CustomException("CREATE_VISIT_ERROR", "The request contains visit number "
+                        + visit.getVisitNumber() + " more than once for configuration "
+                        + visit.getAmcConfigurationId());
+            }
+        }
+
+        List<String> configurationIds = visits.stream()
+                .map(ScheduledVisit::getAmcConfigurationId).filter(Objects::nonNull).distinct().toList();
+        List<Integer> visitNumbers = visits.stream()
+                .map(ScheduledVisit::getVisitNumber).filter(Objects::nonNull).distinct().toList();
+        if (configurationIds.isEmpty() || visitNumbers.isEmpty()) {
+            return;
+        }
+
+        String tenantId = visits.get(0).getTenantId();
+        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder()
+                .tenantId(tenantId)
+                .amcConfigurationIds(configurationIds)
+                .visitNumbers(visitNumbers)
+                .build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                .RequestInfo(request.getRequestInfo())
+                .searchCriteria(criteria)
+                .build();
+        List<ScheduledVisit> existingVisits = scheduledVisitsRepository.getScheduledVisit(
+                searchRequest, amcServiceConfiguration.getMaxLimit(), 0, tenantId, true, null);
+
+        for (ScheduledVisit existing : existingVisits == null ? List.<ScheduledVisit>of() : existingVisits) {
+            if (!Boolean.TRUE.equals(existing.getIsActive())) {
+                continue;
+            }
+            if (seen.contains(existing.getAmcConfigurationId() + "|" + existing.getVisitNumber())) {
+                log.warn("Visit number {} already exists for configuration {}, visitId: {}",
+                        existing.getVisitNumber(), existing.getAmcConfigurationId(), existing.getId());
+                throw new CustomException("CREATE_VISIT_ERROR", "A visit number: " + existing.getVisitNumber()
+                        + " already exist for configuration " + existing.getAmcConfigurationId());
+            }
+        }
     }
 
     /* Raw visits of a configuration, straight from the repository - no boundary/employee enrichment needed here. */

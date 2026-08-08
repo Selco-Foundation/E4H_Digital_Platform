@@ -14,6 +14,7 @@ import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.AmcConfigurationRepository;
 import org.egov.amc.service.enrichment.AmcConfigurationEnrichment;
 import org.egov.amc.util.AmcConfigurationServiceUtil;
+import org.egov.amc.util.AmcConstants;
 import org.egov.amc.validator.AmcConfigurationValidator;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -271,6 +272,10 @@ public class AmcConfigurationService {
             amcConfigurationEnrichment.enrichAmcConfigurationRequestOnUpdate(
                     amcConfigurationFromDB, amcConfigurationFromDB, request.getRequestInfo());
             amcConfigurationFromDB.setIsActive(Boolean.FALSE);
+            // ux_amc_configuration_unique_installation is scoped to status = 'ACTIVE', so clearing
+            // isActive alone would leave the slot occupied: the facility could never be given a new
+            // configuration, and the INSERT would fail silently on the persister side.
+            amcConfigurationFromDB.setStatus(AmcConstants.AMC_CONFIGURATION_CANCELLED_STATUS);
         }
         request.setAmcConfigurations(amcConfigurationsFromDB);
 
