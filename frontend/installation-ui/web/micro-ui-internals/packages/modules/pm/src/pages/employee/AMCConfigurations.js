@@ -38,9 +38,9 @@ const AMCConfigurations = () => {
 
   const GetConfiguration = (durationMonths, visitFrequencyMonths) => (
     <div>
-      <span>{t("AMC_DURATION_MONTHS")}: {durationMonths ?? "-"}</span>
+      <span>{t("AMC_DURATION_MONTHS")}: {durationMonths != null ? durationMonths : "-"}</span>
       <br/>
-      <span>{t("AMC_VISIT_FREQUENCY_MONTHS")}: {visitFrequencyMonths ?? "-"}</span>
+      <span>{t("AMC_VISIT_FREQUENCY_MONTHS")}: {visitFrequencyMonths != null ? visitFrequencyMonths : "-"}</span>
     </div>
   );
 
