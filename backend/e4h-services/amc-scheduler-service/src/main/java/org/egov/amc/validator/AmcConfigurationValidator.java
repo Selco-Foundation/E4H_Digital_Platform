@@ -11,6 +11,7 @@ import org.egov.common.models.project.*;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.AmcConfigurationRepository;
 import org.egov.amc.util.AmcConfigurationServiceUtil;
+import org.egov.amc.util.AmcConstants;
 import org.egov.amc.util.MDMSUtils;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,10 +50,13 @@ public class AmcConfigurationValidator {
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public AmcConfigurationValidator(ServiceRequestClient serviceRequestRepository, ServiceRequestRepository requestRepository, AmcConfigurationServiceUtil amcConfigurationServiceUtil){
+    private final AmcConfigurationRepository amcConfigurationRepository;
+
+    public AmcConfigurationValidator(ServiceRequestClient serviceRequestRepository, ServiceRequestRepository requestRepository, AmcConfigurationServiceUtil amcConfigurationServiceUtil, AmcConfigurationRepository amcConfigurationRepository){
         this.serviceRequestRepository = serviceRequestRepository;
         this.requestRepository = requestRepository;
         this.amcConfigurationServiceUtil = amcConfigurationServiceUtil;
+        this.amcConfigurationRepository = amcConfigurationRepository;
     }
 
     public void validateCreateAmcConfigurationRequest(AmcConfigurationRequest request) {
@@ -66,10 +70,104 @@ public class AmcConfigurationValidator {
         validateRequestInfo(requestInfo);
         //Verify if AmcConfiguration request and mandatory fields are present
         validateAmcConfigurationRequest(request);
+        //Reject duplicates up front - the database would otherwise reject them after the API replied
+        validateUniqueInstallationOnCreate(request);
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
         log.debug("Create AMC configuration request validation completed successfully");
+    }
+
+    /**
+     * Enforces ux_amc_configuration_unique_installation before anything is published.
+     *
+     * <p>This has to be checked here, not left to the database: persistence goes through Kafka, so the
+     * API has already answered 202 by the time the INSERT runs. A unique-index violation would only
+     * surface in the persister's logs - the caller would believe the configuration was created, and
+     * the bulk-ingest Excel would report "success" for a row that silently went nowhere.
+     *
+     * <p>The check mirrors the index predicate exactly: the uniqueness rule is scoped to
+     * status = 'ACTIVE', independently of is_active, so a soft-deleted row that still carries
+     * status = 'ACTIVE' does occupy the slot and must be reported.
+     */
+    private void validateUniqueInstallationOnCreate(AmcConfigurationRequest request) {
+        List<AmcConfiguration> amcConfigurations = request.getAmcConfigurations();
+
+        // 1. Duplicates inside the request itself - a bulk ingest can easily send the same facility twice.
+        Map<String, AmcConfiguration> byInstallation = new LinkedHashMap<>();
+        for (AmcConfiguration amcConfiguration : amcConfigurations) {
+            String key = buildInstallationKey(amcConfiguration);
+            if (byInstallation.containsKey(key)) {
+                log.error("Duplicate AMC configuration in request for installation {}", key);
+                throw new CustomException("DUPLICATE_AMC_CONFIGURATION",
+                        "The request contains more than one AMC configuration for facility "
+                                + amcConfiguration.getFacilityId() + " on project " + amcConfiguration.getProjectId()
+                                + " with vendor " + amcConfiguration.getVendorId()
+                                + ". Only one active configuration is allowed per facility, project and vendor.");
+            }
+            byInstallation.put(key, amcConfiguration);
+        }
+
+        // 2. Duplicates against what is already stored.
+        String tenantId = amcConfigurations.get(0).getTenantId();
+        List<String> facilityIds = amcConfigurations.stream()
+                .map(AmcConfiguration::getFacilityId).filter(Objects::nonNull).distinct().toList();
+        List<String> projectIds = amcConfigurations.stream()
+                .map(AmcConfiguration::getProjectId).filter(Objects::nonNull).distinct().toList();
+        if (facilityIds.isEmpty() || projectIds.isEmpty()) {
+            return;
+        }
+
+        for (AmcConfiguration existing : fetchActiveConfigurations(request.getRequestInfo(), tenantId, facilityIds, projectIds)) {
+            AmcConfiguration conflicting = byInstallation.get(buildInstallationKey(existing));
+            if (conflicting != null) {
+                log.error("AMC configuration {} already active for facility {} on project {}",
+                        existing.getId(), existing.getFacilityId(), existing.getProjectId());
+                throw new CustomException("DUPLICATE_AMC_CONFIGURATION",
+                        "An active AMC configuration (" + existing.getId() + ") already exists for facility "
+                                + conflicting.getFacilityId() + " on project " + conflicting.getProjectId()
+                                + " with vendor " + conflicting.getVendorId()
+                                + ". Update it instead of creating a new one.");
+            }
+        }
+    }
+
+    /* Paginated so a large bulk ingest cannot silently outrun the server-side limit clamp. */
+    private List<AmcConfiguration> fetchActiveConfigurations(RequestInfo requestInfo, String tenantId,
+                                                             List<String> facilityIds, List<String> projectIds) {
+        AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder()
+                .tenantId(tenantId)
+                .facilityIds(facilityIds)
+                .projectIds(projectIds)
+                .statuses(List.of(AmcConstants.AMC_CONFIGURATION_ACTIVE_STATUS))
+                .build();
+        AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder()
+                .RequestInfo(requestInfo)
+                .searchCriteria(criteria)
+                .build();
+
+        List<AmcConfiguration> all = new ArrayList<>();
+        int pageSize = config.getMaxLimit();
+        int offset = 0;
+        while (true) {
+            // includeDeleted = true: the index ignores is_active, so the pre-check must too.
+            List<AmcConfiguration> page = amcConfigurationRepository.getAmcConfiguration(
+                    searchRequest, pageSize, offset, tenantId, true, null);
+            if (page == null || page.isEmpty()) {
+                break;
+            }
+            all.addAll(page);
+            if (page.size() < pageSize) {
+                break;
+            }
+            offset += pageSize;
+        }
+        return all;
+    }
+
+    private String buildInstallationKey(AmcConfiguration amcConfiguration) {
+        return amcConfiguration.getTenantId() + "|" + amcConfiguration.getFacilityId()
+                + "|" + amcConfiguration.getProjectId() + "|" + amcConfiguration.getVendorId();
     }
 
     private void validateAmcConfigurationRequest(AmcConfigurationRequest request) {
