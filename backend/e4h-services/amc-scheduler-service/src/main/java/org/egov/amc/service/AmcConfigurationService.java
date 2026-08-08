@@ -141,10 +141,10 @@ public class AmcConfigurationService {
     public AmcConfigurationRequest updateAmcConfiguration(AmcConfigurationRequest request) {
         log.trace("Entering updateAmcConfiguration method");
         /*
-         * Validate the update amcConfiguration request
+         * Only enough validation to safely search the DB by id - full validation runs further down,
+         * once the sentinel fields below have been resolved into real values.
          */
-        amcConfigurationValidator.validateUpdateAmcConfigurationRequest(request);
-        log.info("Update AMC configuration request validated, configuration count: {}", request.getAmcConfigurations().size());
+        amcConfigurationValidator.validateUpdateRequestIdentifiers(request);
 
         /*
          * Search for amcConfiguration based on amcConfiguration IDs provided in the request
@@ -155,6 +155,22 @@ public class AmcConfigurationService {
                 request.getAmcConfigurations().get(0).getTenantId(), false, null);
         log.debug("Fetched {} AMC configuration(s) from database for update request", amcConfigurationsFromDB.size());
         log.info("Fetched AMC configurations for update request");
+
+        /*
+         * durationMonths=1 and visitFrequencyMonths=1 together, and configurationEndDate=1 on its
+         * own, are sentinels meaning "leave this field as it is" - a caller that only wants to change
+         * something else (e.g. assignments) doesn't have to look up and resend the current values.
+         * Both must be resolved before the full validation below runs, since neither sentinel is a
+         * value the validator tolerates on its own.
+         */
+        applyUnchangedCadenceSentinel(request.getAmcConfigurations(), amcConfigurationsFromDB);
+//        applyUnchangedEndDateSentinel(request.getAmcConfigurations(), amcConfigurationsFromDB);
+
+        /*
+         * Validate the update amcConfiguration request
+         */
+        amcConfigurationValidator.validateUpdateAmcConfigurationRequest(request);
+        log.info("Update AMC configuration request validated, configuration count: {}", request.getAmcConfigurations().size());
 
         /*
          * The contract end date is a function of the start date and the duration, so a caller that
@@ -179,6 +195,32 @@ public class AmcConfigurationService {
         log.info("Successfully processed update for {} AMC configuration(s)", request.getAmcConfigurations().size());
 
         return request;
+    }
+
+    /**
+     * Replaces the durationMonths=1 / visitFrequencyMonths=1 sentinel with the configuration's
+     * current DB values, in place, for every configuration in the request that carries it.
+     *
+     * <p>Both fields must be 1 together to be treated as the sentinel - a real 1-month-duration,
+     * 1-month-frequency configuration is not representable via this endpoint as a result, but that
+     * combination (a visit every month for one month) is not a real AMC plan.
+     */
+    private void applyUnchangedCadenceSentinel(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB) {
+        for (AmcConfiguration amcConfiguration : amcConfigurationsFromRequest) {
+            if (!Integer.valueOf(1).equals(amcConfiguration.getDurationMonths())
+                    || !Integer.valueOf(1).equals(amcConfiguration.getVisitFrequencyMonths()) || !Long.valueOf(1L).equals(amcConfiguration.getConfigurationEndDate())) {
+                continue;
+            }
+            AmcConfiguration amcConfigurationFromDB = findAmcConfigurationById(String.valueOf(amcConfiguration.getId()), amcConfigurationsFromDB);
+            if (amcConfigurationFromDB == null) {
+                continue;
+            }
+            log.info("durationMonths/visitFrequencyMonths/configurationEndDate sentinel (1/1/1) received for configurationId: {} - keeping DB values ({}, {}, {})",
+                    amcConfiguration.getId(), amcConfigurationFromDB.getDurationMonths(), amcConfigurationFromDB.getVisitFrequencyMonths(), amcConfigurationFromDB.getConfigurationEndDate());
+            amcConfiguration.setDurationMonths(amcConfigurationFromDB.getDurationMonths());
+            amcConfiguration.setVisitFrequencyMonths(amcConfigurationFromDB.getVisitFrequencyMonths());
+            amcConfiguration.setConfigurationEndDate(amcConfigurationFromDB.getConfigurationEndDate());
+        }
     }
 
     /**

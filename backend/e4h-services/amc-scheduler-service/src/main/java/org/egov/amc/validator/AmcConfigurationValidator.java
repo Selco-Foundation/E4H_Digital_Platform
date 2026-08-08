@@ -426,6 +426,35 @@ public class AmcConfigurationValidator {
         }
     }
 
+    /*
+     * Minimal subset of validateUpdateAmcConfigurationRequest's checks - just enough to safely search
+     * the DB by id before the sentinel fields (durationMonths/visitFrequencyMonths=1,
+     * configurationEndDate=1) are resolved into real values. The full validation still runs
+     * afterwards via validateUpdateAmcConfigurationRequest, so this duplication is harmless.
+     */
+    public void validateUpdateRequestIdentifiers(AmcConfigurationRequest request) {
+        log.trace("Entering validateUpdateRequestIdentifiers method");
+        validateRequestInfo(request.getRequestInfo());
+
+        if (CollectionUtils.isEmpty(request.getAmcConfigurations())) {
+            log.error("AMC configuration list is empty. AMC configurations are mandatory");
+            throw new CustomException("AmcConfiguration", "AMC configurations are mandatory");
+        }
+
+        for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
+            if (StringUtils.isBlank(amcConfiguration.getId())) {
+                log.error("AMC configuration ID is mandatory for update");
+                throw new CustomException("UPDATE_AMC_Configuration", "Amc Configuration Id is mandatory");
+            }
+            if (StringUtils.isBlank(amcConfiguration.getTenantId())) {
+                log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
+                throw new CustomException("TENANT_ID", TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
+            }
+        }
+        validateMultipleTenantIds(request);
+        log.debug("Update request identifier validation completed successfully");
+    }
+
     /* Validates Update Project request body */
     public void validateUpdateAmcConfigurationRequest(AmcConfigurationRequest request) {
         log.trace("Entering validateUpdateAmcConfigurationRequest method");
