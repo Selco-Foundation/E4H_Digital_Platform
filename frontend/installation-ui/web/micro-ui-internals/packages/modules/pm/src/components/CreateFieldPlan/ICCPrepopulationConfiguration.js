@@ -14,8 +14,6 @@ const getEmptyRow = (id = "icc-row-3") => ({
   file: null,
   template: null,
   templateFile: null,
-  validationErrorFile: null,
-  uploadInputKey: 0,
   templateOptions: [],
   capacityOptions: [],
   isCustomCapacity: false,
@@ -109,12 +107,7 @@ const getUniqueRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
     return acc;
   }
 
-  if (
-    !existingRow ||
-    (!existingRow.file && row.file) ||
-    (!existingRow.templateFile && row.templateFile) ||
-    (!existingRow.validationErrorFile && row.validationErrorFile)
-  ) {
+  if (!existingRow || (!existingRow.file && row.file) || (!existingRow.templateFile && row.templateFile)) {
     acc[rowKey] = row;
   }
 
@@ -217,112 +210,7 @@ const getICCUploadErrorMessage = (error) => (
   "CORE_COMMON_ERROR"
 );
 
-const getHeader = (headers = {}, name) => (
-  headers?.get?.(name) ||
-  headers?.get?.(name?.toLowerCase?.()) ||
-  headers?.get?.(name?.toUpperCase?.()) ||
-  headers?.[name] ||
-  headers?.[name?.toLowerCase?.()] ||
-  headers?.[name?.toUpperCase?.()] ||
-  headers?.[name?.replace?.(/(^|-)([a-z])/g, (_, separator, char) => `${separator}${char.toUpperCase()}`)]
-);
-
-const getFilenameFromDisposition = (disposition = "") => {
-  const filenameMatch = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
-  return filenameMatch?.[1] ? decodeURIComponent(filenameMatch[1].replace(/"/g, "")) : "";
-};
-
-const getICCValidationErrorFile = (error, fallbackName = "icc-validation-errors.xlsx") => {
-  const response = error?.response;
-  const data = response?.data;
-  const headers = response?.headers || {};
-  const detail = data?.detail || {};
-  const errorFile = (
-    data?.validationErrorFile ||
-    data?.errorFile ||
-    data?.file ||
-    detail?.validationErrorFile ||
-    detail?.errorFile ||
-    detail?.file
-  );
-
-  if (errorFile) {
-    return errorFile;
-  }
-
-  const contentType = getHeader(headers, "content-type") || data?.type || "";
-
-  if (typeof Blob !== "undefined" && data instanceof Blob && !contentType.includes("json")) {
-    const fileName = getFilenameFromDisposition(getHeader(headers, "content-disposition")) || fallbackName;
-    return {
-      name: fileName,
-      data,
-    };
-  }
-
-  return null;
-};
-
-const getICCUploadResponseErrorCount = (response) => {
-  const errorCount = parseInt(getHeader(response?.headers || {}, "x-error-count") || "0", 10);
-  return Number.isNaN(errorCount) ? 0 : errorCount;
-};
-
-const getICCValidationErrorFileFromResponse = (response, fallbackName = "icc-validation-errors.xlsx") => {
-  if (!getICCUploadResponseErrorCount(response)) {
-    return null;
-  }
-
-  const data = response?.data;
-  const contentType = getHeader(response?.headers || {}, "content-type") || data?.type || "";
-
-  if (typeof Blob === "undefined" || !(data instanceof Blob) || contentType.includes("json")) {
-    return null;
-  }
-
-  return {
-    name: getFilenameFromDisposition(getHeader(response?.headers || {}, "content-disposition")) || fallbackName,
-    data,
-  };
-};
-
-const clearRowFile = (row) => ({
-  ...row,
-  file: null,
-  validationErrorFile: null,
-  uploadInputKey: (row.uploadInputKey || 0) + 1,
-});
-
-const clearRowValidationError = (row) => ({
-  ...row,
-  validationErrorFile: null,
-});
-
-const setRowValidationErrorFile = (row, validationErrorFile) => ({
-  ...row,
-  file: null,
-  validationErrorFile,
-  uploadInputKey: (row.uploadInputKey || 0) + 1,
-});
-
-const getValidationErrorFileName = (file = {}) => (
-  file.name ||
-  file.fileName ||
-  file.filename ||
-  "icc-validation-errors.xlsx"
-);
-
 const isScheduledFieldPlan = (status) => normalizeValue(status) === "scheduled";
-
-const isValidExcelFile = (file) => file?.name?.toLowerCase?.().endsWith(".xlsx");
-
-const getUploadedFile = (event) => (
-  event?.target?.files?.[0] ||
-  event?.files?.[0] ||
-  event?.file ||
-  (Array.isArray(event) ? event[0] : null) ||
-  (event?.name ? event : null)
-);
 
 const getTemplateForRow = (row, templates = []) => {
   const systemTypeName = getICCApiSystemType(row.systemType?.name);
@@ -472,7 +360,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
   const systemTypeMaster = systemTypeMDMSResponse?.facility?.SystemType || [];
 
   useEffect(() => {
-    const formRows = getUniqueRows(rows).map(({ templateOptions, capacityOptions, validationErrorFile, uploadInputKey, ...row }) => row);
+    const formRows = getUniqueRows(rows).map(({ templateOptions, capacityOptions, ...row }) => row);
     setValue(name, formRows);
   }, [name, rows, setValue]);
 
@@ -534,8 +422,6 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           file: existingRow.file,
           template: existingRow.template,
           templateFile: existingRow.templateFile,
-          validationErrorFile: existingRow.validationErrorFile,
-          uploadInputKey: existingRow.uploadInputKey,
           templateOptions: existingRow.templateOptions,
         } : apiRow;
       });
@@ -621,8 +507,6 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
               file: existingRow.file,
               template: existingRow.template,
               templateFile: existingRow.templateFile,
-              validationErrorFile: existingRow.validationErrorFile,
-              uploadInputKey: existingRow.uploadInputKey,
               templateOptions: existingRow.templateOptions,
               totalSystemCapacity: parsedRow.isCustomCapacity ? existingRow.totalSystemCapacity || parsedRow.totalSystemCapacity : parsedRow.totalSystemCapacity,
             } : parsedRow;
@@ -673,12 +557,15 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     setRows((prevRows) => prevRows.map((row) => {
       if (row.id !== rowId) return row;
 
-      return clearRowFile(row);
+      return {
+        ...row,
+        file: null,
+      };
     }));
   };
 
   const handleFileUpload = async (rowId, event) => {
-    const uploadedFile = getUploadedFile(event);
+    const uploadedFile = event.target.files?.[0];
     const selectedRow = rows.find((row) => row.id === rowId);
 
     if (isScheduledFieldPlan(fieldPlanStatus)) {
@@ -689,66 +576,19 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       return;
     }
 
-    if (!uploadedFile) {
+    if (!uploadedFile || !selectedRow?.systemType || !selectedRow?.totalSystemCapacity || !fieldPlanId) {
       return;
     }
 
-    if (!isValidExcelFile(uploadedFile)) {
-      if (event?.target) {
-        event.target.value = null;
-      }
-      setToast?.({
-        key: "error",
-        label: "Invalid file format. Please upload a valid Excel file (xlsx).",
-        translate: false,
-      });
-      return;
-    }
-
-    setRows((prevRows) => prevRows.map((row) => {
-      if (row.id !== rowId) return row;
-
-      return clearRowValidationError(row);
-    }));
-
-    if (!selectedRow?.systemType || !selectedRow?.totalSystemCapacity || !fieldPlanId) {
-      return;
-    }
-
-    setRows((prevRows) => prevRows.map((row) => {
-      if (row.id !== rowId) return row;
-
-      return {
-        ...row,
-        file: uploadedFile,
-        validationErrorFile: null,
-      };
-    }));
+    updateRow(rowId, "file", uploadedFile);
     setBlockUI?.(true);
 
     try {
       const formData = getICCReportFormData(selectedRow, uploadedFile, fieldPlanId, tenantId);
-      let uploadResponse;
-
       if (selectedRow.template?.id) {
-        uploadResponse = await IngestionService.upsertICCReports(formData);
+        await IngestionService.upsertICCReports(formData);
       } else {
-        uploadResponse = await IngestionService.uploadICCReports(formData);
-      }
-
-      const validationErrorFile = getICCValidationErrorFileFromResponse(uploadResponse, uploadedFile.name);
-
-      if (validationErrorFile) {
-        if (event?.target) {
-          event.target.value = null;
-        }
-
-        setRows((prevRows) => prevRows.map((row) => {
-          if (row.id !== rowId) return row;
-
-          return setRowValidationErrorFile(row, validationErrorFile);
-        }));
-        return;
+        await IngestionService.uploadICCReports(formData);
       }
 
       setRows((prevRows) => prevRows.map((row) => {
@@ -760,27 +600,19 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             name: uploadedFile.name,
             isSavedTemplate: true,
           },
-          validationErrorFile: null,
         };
       }));
     } catch (error) {
       const uploadError = getICCUploadErrorMessage(error);
-      const validationErrorFile = getICCValidationErrorFile(error, uploadedFile.name);
-
-      if (event?.target) {
-        event.target.value = null;
-      }
 
       setRows((prevRows) => prevRows.map((row) => {
         if (row.id !== rowId) return row;
 
-        return setRowValidationErrorFile(row, validationErrorFile);
+        return {
+          ...row,
+          file: selectedRow.file || null,
+        };
       }));
-
-      if (validationErrorFile) {
-        return;
-      }
-
       setToast?.({
         key: "error",
         label: uploadError,
@@ -825,44 +657,6 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       await FilestoreService.downloadFileFromFilestore(selectedTemplate.fileStoreId, templateFile.name);
     } catch (error) {
       console.error("Error downloading ICC template", error);
-    }
-  };
-
-  const handleValidationErrorDownload = async (row) => {
-    const validationErrorFile = row.validationErrorFile;
-
-    if (!validationErrorFile) {
-      return;
-    }
-
-    try {
-      const fileStoreId = validationErrorFile.fileStoreId || validationErrorFile.filestoreId;
-
-      if (fileStoreId) {
-        await FilestoreService.downloadFileFromFilestore(fileStoreId, getValidationErrorFileName(validationErrorFile));
-        return;
-      }
-
-      const fileData = validationErrorFile.data || validationErrorFile;
-
-      if (typeof Blob === "undefined" || !(fileData instanceof Blob)) {
-        return;
-      }
-
-      const url = URL.createObjectURL(fileData);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = getValidationErrorFileName(validationErrorFile);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading ICC validation errors", error);
-      setToast?.({
-        key: "error",
-        label: "CORE_COMMON_ERROR",
-      });
     }
   };
 
@@ -1153,31 +947,6 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             min-width: 0;
           }
 
-          .icc-prepopulation-validation-error {
-            color: #B91900;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-family: Roboto;
-            font-size: 14px;
-            font-weight: 400;
-            line-height: 20px;
-            margin-top: 4px;
-          }
-
-          .icc-prepopulation-validation-error-text {
-            color: #B91900 !important;
-            font-family: Roboto;
-            font-size: 14px;
-            font-weight: 400;
-            line-height: 20px;
-          }
-
-          .icc-prepopulation-validation-download svg {
-            height: 22px;
-            width: 22px;
-          }
-
           @media (max-width: 768px) {
             .icc-prepopulation-row {
               padding: 16px;
@@ -1272,7 +1041,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                       </span>
                       <input
                         type={"file"}
-                        accept={".xlsx"}
+                        accept={".xlsx,.xls"}
                         disabled={isScheduledFieldPlan(fieldPlanStatus)}
                         onChange={(event) => handleFileUpload(row.id, event)}
                         style={{ display: "none" }}
@@ -1280,13 +1049,12 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                     </label>
                   ) : (
                     <UploadFile
-                      key={`${row.id}-${row.uploadInputKey || 0}`}
-                      accept={".xlsx"}
+                      accept={".xlsx,.xls"}
                       customClass={"icc-prepopulation-upload-file"}
                       enableButton={true}
                       onUpload={(event) => handleFileUpload(row.id, event)}
-                      onDelete={() => deletePreFillingTemplate(row.id)}
-                      removeTargetedFile={() => deletePreFillingTemplate(row.id)}
+                      onDelete={() => updateRow(row.id, "file", null)}
+                      removeTargetedFile={() => updateRow(row.id, "file", null)}
                       uploadedFiles={[]}
                       message={""}
                       textStyles={{
@@ -1360,34 +1128,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                   aria-label={t("CORE_COMMON_DELETE")}
                 />
               </div>
-              {row.validationErrorFile && (
-                <div className={"icc-prepopulation-validation-error"}>
-                  <span className={"icc-prepopulation-validation-error-text"}>{t("PM_ICC_VALIDATION_ERRORS_DOWNLOAD", "Validation errors found. Click download to review the errors.")}</span>
-                  <Button
-                    variation={"secondary"}
-                    label={""}
-                    icon={(
-                      <span className={"icc-prepopulation-validation-download"}>
-                        <DownloadIcon fill={"#C84C0E"} />
-                      </span>
-                    )}
-                    onButtonClick={() => handleValidationErrorDownload(row)}
-                    style={{
-                      border: "none",
-                      backgroundColor: "transparent",
-                      cursor: "pointer",
-                      height: "24px",
-                      width: "24px",
-                      padding: "0px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                    aria-label={t("CORE_COMMON_DOWNLOAD")}
-                  />
-                </div>
-              )}
-              {validationAttempt > 0 && !row.file && !row.validationErrorFile && <RequiredError />}
+              {validationAttempt > 0 && !row.file && <RequiredError />}
             </FieldWrapper>
           </div>
         ))}

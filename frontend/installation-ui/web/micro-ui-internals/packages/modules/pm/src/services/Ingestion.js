@@ -111,7 +111,6 @@ export const IngestionService = {
       attachAuthHeaders: true,
       auth : true,
       attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
-      responseType: "blob",
     });
   },
 
@@ -126,7 +125,6 @@ export const IngestionService = {
       attachAuthHeaders: true,
       auth : true,
       attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
-      responseType: "blob",
     });
   },
 
