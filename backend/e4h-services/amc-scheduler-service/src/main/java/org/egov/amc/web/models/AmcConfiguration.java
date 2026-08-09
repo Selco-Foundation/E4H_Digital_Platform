@@ -28,6 +28,7 @@ public class AmcConfiguration {
     private Long configurationStartDate;
     private Long configurationEndDate;
     private String status; // ACTIVE, EXPIRED, CANCELLED
+    private Map<String, Object> geographyDetails = null;
     private Map<String, Object> additionalDetails;
     private AuditDetails auditDetails;
     private Integer totalVisits;
