@@ -7,14 +7,15 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
   const {
     t, heading, description, name, allowedFileTypes = [], file, setFile,
-    handleFileUpload, invalidDataError, setInvalidDataError, setToast
+    handleFileUpload, invalidDataError, setInvalidDataError, setToast,
+    resetFile = setFile, onInvalidFile, onRemoveFile
   } = props;
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     return () => {
-      setFile(null);
+      resetFile(null);
       setInvalidDataError(null);
     }
   }, []);
@@ -41,9 +42,10 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
       clearErrors(name);
       setToast?.({
         key: "error",
-        label: "Invalid file format.Please upload a valid Excel file (xlsx).",
+        label: "Invalid file format. Please upload a valid Excel file (xlsx).",
         translate: false,
       });
+      onInvalidFile?.();
       setFile(null);
     }
   }
@@ -79,6 +81,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
   };
 
   const handleRemove = () => {
+    onRemoveFile?.();
     setFile(null);
     setInvalidDataError(null);
 

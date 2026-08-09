@@ -705,18 +705,6 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       return;
     }
 
-    if (!isValidExcelFile(uploadedFile)) {
-      if (event?.target) {
-        event.target.value = null;
-      }
-      setToast?.({
-        key: "error",
-        label: "Invalid file format. Please upload a valid Excel file (xlsx).",
-        translate: false,
-      });
-      return;
-    }
-
     setRows((prevRows) => prevRows.map((row) => {
       if (row.id !== rowId) return row;
 

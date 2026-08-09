@@ -132,17 +132,17 @@ const CreateFieldPlan = () => {
 
   const setFacilityUploadFile = (uploadedFile) => {
     setFile(uploadedFile);
+  };
 
-    if (uploadedFile === null) {
-      setHasSavedFacilityUpload(false);
-      setPersistedFormData((prevState) => ({
-        ...prevState,
-        facilityData: {
-          ...prevState?.facilityData,
-          uploadFacilityData: undefined,
-        },
-      }));
-    }
+  const clearFacilityUploadData = () => {
+    setHasSavedFacilityUpload(false);
+    setPersistedFormData((prevState) => ({
+      ...prevState,
+      facilityData: {
+        ...prevState?.facilityData,
+        uploadFacilityData: undefined,
+      },
+    }));
   };
 
   useEffect(() => {
@@ -857,6 +857,9 @@ const CreateFieldPlan = () => {
               setInvalidDataError,
               file,
               setFile: setFacilityUploadFile,
+              resetFile: setFile,
+              onInvalidFile: clearFacilityUploadData,
+              onRemoveFile: clearFacilityUploadData,
             },
             nextRoute: "",
             populators: {
