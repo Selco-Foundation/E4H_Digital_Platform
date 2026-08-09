@@ -1,23 +1,16 @@
 import { useQuery, useQueryClient } from "react-query";
 import {VisitService} from "../services/VisitService";
-import {getFacilityGeography} from "../utilities/GeographyUtils";
 
 const formatVisits = (visits) => {
-  return visits?.map((row) => {
-    const geography = getFacilityGeography(row?.facility);
-
-    // Add normalized location fields for project-level AMC visit rows.
-    return ({
+  return visits?.map((row) => ({
       id: row?.id,
       facilityName: row?.facility?.facility_name,
       facilityId: row?.facility?.id,
       status: row?.status,
-      state: geography.state,
-      block: geography.block,
-      district: geography.district,
+      block: row?.facility?.additionalDetails?.boundary?.block,
+      district: row?.facility?.additionalDetails?.boundary?.district,
       assigned: row?.assignments?.[0]?.user?.name,
-    });
-  });
+  }));
 }
 
 const fetchVisits = async (filter, limit, offset) => {

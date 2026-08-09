@@ -52,8 +52,6 @@ public class FieldPlannerService {
 
     private final FieldPlanTemplateService fieldPlanTemplateService;
 
-    private final FieldPlannerAnalyticsService fieldPlannerAnalyticsService;
-
     @Autowired
     @Qualifier("objectMapper")
     ObjectMapper mapper;
@@ -63,7 +61,7 @@ public class FieldPlannerService {
             FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators, FieldPlannerFacilityService facilityService,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
             Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository,
-            FieldPlanTemplateService fieldPlanTemplateService, FieldPlannerAnalyticsService fieldPlannerAnalyticsService) {
+            FieldPlanTemplateService fieldPlanTemplateService) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -75,7 +73,6 @@ public class FieldPlannerService {
             this.serviceRequestRepository = serviceRequestRepository;
             this.facilityService = facilityService;
             this.fieldPlanTemplateService = fieldPlanTemplateService;
-            this.fieldPlannerAnalyticsService = fieldPlannerAnalyticsService;
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
@@ -112,11 +109,6 @@ public class FieldPlannerService {
             producer.push(fieldPlannerConfiguration.getSaveFieldPlanTopic(), fieldPlanRequest);
             log.info("Field plan creation request pushed to Kafka topic: {}", fieldPlannerConfiguration.getSaveFieldPlanTopic());
         }
-
-        // One FIELD_PLAN_CREATE event per plan, after the persister push so a rejected create
-        // publishes nothing. Outside the loop because the loop pushes the whole request each pass
-        // (best-effort, never throws).
-        fieldPlannerAnalyticsService.publishCreateEvents(fieldPlanRequest);
 
         log.info("Field plan creation request processed successfully");
         log.trace("Exiting createFieldPlan method");
@@ -437,14 +429,7 @@ public class FieldPlannerService {
              */
             if (isCascadingFieldPlanDateUpdate) {
                 log.info("Processing cascading field plan date update for field plan ID: {}", fieldPlanId);
-                // Read before the update: analytics only tracks the update that schedules the plan,
-                // so it needs the status the plan came from to ignore the DRAFT edits before it.
-                String priorStatus = fielPlanFromDB.getStatus();
                 handleUpdateFieldPlan(request, fieldPlan, fielPlanFromDB);
-                // Only reached once the update has been pushed to the persister — a plan that failed
-                // validation above threw and never gets here (best-effort, never throws).
-                fieldPlannerAnalyticsService.publishScheduledEvent(request.getRequestInfo(), fieldPlan,
-                        fielPlanFromDB, priorStatus);
             }
         } else {
             log.warn("Field plan not found in database for ID: {}", fieldPlanId);
@@ -582,6 +567,8 @@ public class FieldPlannerService {
          */
         log.debug("Pushing field plan update to Kafka topic: {}", fieldPlannerConfiguration.getUpdateFieldPlanTopic());
         producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTopic(), request);
+        log.info("Field plan update pushed to Kafka successfully");
+        log.trace("Exiting handleUpdateFieldPlan method");
     }
 
     /**
@@ -631,7 +618,6 @@ public class FieldPlannerService {
     //   - solar_charge_controller_*: DC_OFF_GRID template (no dedicated inverter - CCU serves that role)
     private static final List<String[]> INVERTER_KEY_CANDIDATES = List.of(
             new String[]{"inverter_capacity", "inverter_make"},
-            new String[]{"solar_on_grid_pcu_inverter_capacity", "solar_on_grid_pcu_inverter_make"},
             new String[]{"solar_hybrid_pcu_capacity", "solar_hybrid_pcu_make"},
             new String[]{"solar_charge_controller_capacity", "solar_charge_controller_make"}
     );
@@ -1107,6 +1093,7 @@ public class FieldPlannerService {
             throw new CustomException("FACILITY_UNLINKING_FAILED",
                     "Failed to unlink facilities for project: " + fieldPlanId + ". Error: " + e.getMessage());
         }
+        log.trace("Exiting unlinkFieldplanFacilities method");
     }
 
     /**

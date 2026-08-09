@@ -52,8 +52,6 @@ public class IMService {
 
     private RmsInactiveIncidentService rmsInactiveIncidentService;
 
-    private SemAnalyticsService semAnalyticsService;
-
     @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
     private Set<String> openTicketStatuses;
 
@@ -69,8 +67,7 @@ public class IMService {
             ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
             IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils,
             LocalizationService localizationService, BoundaryService boundaryService,
-            RmsStatusUpdateService rmsStatusUpdateService, RmsInactiveIncidentService rmsInactiveIncidentService,
-            SemAnalyticsService semAnalyticsService
+            RmsStatusUpdateService rmsStatusUpdateService, RmsInactiveIncidentService rmsInactiveIncidentService
     ) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
@@ -86,7 +83,6 @@ public class IMService {
         this.boundaryService = boundaryService;
         this.rmsStatusUpdateService = rmsStatusUpdateService;
         this.rmsInactiveIncidentService = rmsInactiveIncidentService;
-        this.semAnalyticsService = semAnalyticsService;
     }
 
 
@@ -200,9 +196,6 @@ public class IMService {
         } catch (Exception e) {
             log.error("Failed to sync facility_rms_inactive_incident for incidentId={}", request.getIncident().getIncidentId(), e);
         }
-
-        // Publish SEM user-analytics event for the indexer.
-        semAnalyticsService.publishEvent(request, boundary);
 
         return request;
     }
@@ -384,9 +377,6 @@ public class IMService {
         } catch (Exception e) {
             log.error("Failed to sync facility_rms_inactive_incident for incidentId={}", request.getIncident().getIncidentId(), e);
         }
-
-        // Publish SEM user-analytics event for the indexer.
-        semAnalyticsService.publishEvent(request, boundary);
 
         return request;
     }

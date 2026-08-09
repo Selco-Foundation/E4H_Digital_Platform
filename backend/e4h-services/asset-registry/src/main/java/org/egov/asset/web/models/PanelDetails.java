@@ -26,7 +26,7 @@ public class PanelDetails {
     private String totalCapacityUnit;
 
     @JsonProperty("panelCapacity")
-    private String panelCapacity;
+    private Double panelCapacity;
 
     @JsonProperty("capacityUnit")
     private String capacityUnit;

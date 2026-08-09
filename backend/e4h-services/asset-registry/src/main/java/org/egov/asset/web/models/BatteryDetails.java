@@ -34,7 +34,7 @@ public class BatteryDetails {
     private String voltageUnit = null;
 
     @JsonProperty("batteryCapacity")
-    private String batteryCapacity;
+    private Double batteryCapacity;
 
     @JsonProperty("capacityUnit")
     private String capacityUnit;

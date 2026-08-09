@@ -48,18 +48,15 @@ public class UserService {
 
     private RestTemplate restTemplate;
 
-    private LoginAnalyticsService loginAnalyticsService;
-
     @Autowired
     public UserService(UserUtils userUtils, IMConfiguration config, ServiceRequestRepository repository, Producer producer,
-                       HRMSUtil hrmsUtil, RestTemplate restTemplate, LoginAnalyticsService loginAnalyticsService) {
+                       HRMSUtil hrmsUtil, RestTemplate restTemplate) {
         this.userUtils = userUtils;
         this.config = config;
         this.repository = repository;
         this.producer = producer;
         this.hrmsUtil = hrmsUtil;
         this.restTemplate = restTemplate;
-        this.loginAnalyticsService = loginAnalyticsService;
     }
 
     /**
@@ -293,27 +290,8 @@ public class UserService {
 
 
 
-    /**
-     * Records a reported login: publishes a USER_LOGIN analytics event for every caller, and — for
-     * the SEM roles it has always covered — the UserLoginReport consumed by the login-report index.
-     * <p>
-     * The user's HRMS jurisdiction boundary code feeds both (the analytics event's localized state
-     * and the report's location fields), so it is resolved once here. That resolution is
-     * best-effort: an HRMS failure now leaves the report's location fields empty rather than
-     * failing the call, so a transient HRMS problem cannot also cost us the login analytics event.
-     */
     public void loginReport(UserRequest userRequest) {
         log.trace("UserService::loginReport method invoked");
-        String boundaryCode = null;
-        try {
-            boundaryCode = fetchBoundaryCodeFromHrms(userRequest);
-        } catch (Exception e) {
-            log.warn("Unable to fetch HRMS boundary code for user: {}",
-                    userRequest.getUser() != null ? userRequest.getUser().getUserName() : null, e);
-        }
-
-        loginAnalyticsService.publishLoginEvent(userRequest, boundaryCode);
-
         try {
             log.debug("Processing login report for user: {}", userRequest.getUser().getUserName());
             User userInfo = userRequest.getUser();
@@ -344,7 +322,7 @@ public class UserService {
                     if (hasComplaintAssessorRole) {
                         return;
                     }
-                    populateComplainantLocationDetails(userRequest, userLoginReport, boundaryCode);
+                    populateComplainantLocationDetails(userRequest, userLoginReport);
 
                 } else {
                     log.debug("User is COMPLAINT_RESOLVER. Setting default empty values for location.");
@@ -361,10 +339,10 @@ public class UserService {
         }
     }
 
-    private void populateComplainantLocationDetails(UserRequest userRequest, UserLoginReport userLoginReport,
-                                                    String boundaryCode) {
+    private void populateComplainantLocationDetails(UserRequest userRequest, UserLoginReport userLoginReport) {
         User userInfo = userRequest.getUser();
         String tenantId = userInfo.getTenantId();
+        String boundaryCode = fetchBoundaryCodeFromHrms(userRequest);
 
         if (boundaryCode == null || boundaryCode.isBlank()) {
             log.warn("Boundary code not found in HRMS for user: {}", userInfo.getUserName());

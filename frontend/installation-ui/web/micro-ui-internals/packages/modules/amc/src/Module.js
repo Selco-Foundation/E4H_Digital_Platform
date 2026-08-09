@@ -6,7 +6,6 @@ import VisitTable from "./pages/employee/VisitTable";
 import VisitDetails from "./pages/employee/VisitDetails";
 import AMCCard from "./components/AMCCard";
 import ProjectTable from "./pages/employee/ProjectTable";
-import ReportLevelView from "./pages/employee/ReportLevelView";
 
 export const AMCReducers = getRootReducer;
 
@@ -31,7 +30,6 @@ const componentsToRegister = {
   AMCModule,
   AMCCard,
   AMCProjectTable : ProjectTable,
-  AMCReportLevelView : ReportLevelView,
   AMCFacilityTable : VisitTable,
   AMCFacilityDetails : VisitDetails
 };

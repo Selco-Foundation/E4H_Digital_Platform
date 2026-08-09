@@ -219,22 +219,4 @@ public class ActivityConfiguration {
 
     @Value("${egov.amc.scheduler.visit.generate.url}")
     private String amcVisitGenerateUrl;
-
-    //Localization
-    @Value("${egov.localization.host}")
-    private String localizationHost;
-
-    @Value("${egov.localization.context.path}")
-    private String localizationContextPath;
-
-    @Value("${egov.localization.search.endpoint}")
-    private String localizationSearchEndpoint;
-
-    /**
-     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
-     * (SEM), health-facility-registry, boundary-service, amc-scheduler-service and project publish
-     * to — see ActivityAnalyticsService.
-     */
-    @Value("${activity.kafka.user.analytics.topic:user-analytics-event}")
-    private String userAnalyticsTopic;
 }

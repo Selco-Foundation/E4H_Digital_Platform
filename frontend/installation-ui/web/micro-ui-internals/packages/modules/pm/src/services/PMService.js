@@ -44,7 +44,7 @@ const formatBoundaryData = (boundaryData, t) => {
   };
 }
 
-const formatActivityOrganizationUsers = (activityAssignments = [], projectId) => {
+const formatActivityOrganizationUsers = (activityAssignments = []) => {
   const formattedActivityOrganizationUsers = [];
 
   activityAssignments.forEach((activityAssignment) => {
@@ -60,22 +60,7 @@ const formatActivityOrganizationUsers = (activityAssignments = [], projectId) =>
         users: [],
       };
 
-      vendorObject.users = [
-        ...vendorObject.users,
-        {
-          ...userAssignment.email.value,
-          assignedTo: userAssignment.email.value.uuid,
-          assignedBy: Digit.UserService.getUser()?.info?.uuid,
-          projectId,
-          activityId: activityAssignment.activity.code,
-          activityCode: activityAssignment.activity.code,
-          pocNumber: userAssignment.poNumber.value,
-          organizationId: userAssignment.organization.value.id,
-          organizationName: userAssignment.organization.value.name,
-          role: userAssignment.role.value,
-          roles: [userAssignment.role.value],
-        }
-      ];
+      vendorObject.users = [...vendorObject.users, userAssignment.email.value];
       organizationToUsersMap.set(userAssignment.organization.value.id, vendorObject);
     }
 
@@ -87,12 +72,6 @@ const formatActivityOrganizationUsers = (activityAssignments = [], projectId) =>
 
   return formattedActivityOrganizationUsers;
 }
-
-const formatAMCGeographyDetails = (geographyDetails = {}) => ({
-  state: geographyDetails?.state?.code,
-  districts: geographyDetails?.districts?.map((district) => district.code) || [],
-  blocks: geographyDetails?.blocks?.map((block) => block.code) || [],
-});
 
 export const PMService = {
 
@@ -285,7 +264,7 @@ export const PMService = {
     const boundaryData = amcFormData.geographyDetails;
     const activityAssignments = amcFormData?.activityDetails?.activityUserAssignment;
 
-    const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(activityAssignments, projectId);
+    const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(activityAssignments);
     const userInfoList = [];
     for (const formattedActivityOrganizationUser of formattedActivityOrganizationUsers) {
       formattedActivityOrganizationUser.organizationUsers.forEach((orgUser) => userInfoList.push(({
@@ -302,7 +281,7 @@ export const PMService = {
   },
 
   uploadAMCFacilityDataTemplate: async (file, projectId, amcFormData) => {
-    const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(amcFormData.activityDetails.activityUserAssignment, projectId);
+    const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(amcFormData.activityDetails.activityUserAssignment);
     const userInfoList = [];
     for (const formattedActivityOrganizationUser of formattedActivityOrganizationUsers) {
       formattedActivityOrganizationUser.organizationUsers.forEach((orgUser) => userInfoList.push(({
@@ -361,7 +340,6 @@ export const PMService = {
       uploadRequest.append("amc_file", validatedFile.data);
       uploadRequest.append("project_id", projectId);
       uploadRequest.append("user_info_list", JSON.stringify(userInfoList));
-      uploadRequest.append("geography_details", JSON.stringify(formatAMCGeographyDetails(amcFormData.geographyDetails)));
       const uploadResponse = await IngestionService.uploadAMCFacilityData(uploadRequest)
 
       const uploadedFile = extractBlobFile(uploadResponse);

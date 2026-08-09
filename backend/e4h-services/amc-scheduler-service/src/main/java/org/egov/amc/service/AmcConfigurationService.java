@@ -40,7 +40,6 @@ public class AmcConfigurationService {
     private final AMCServiceConfiguration amcServiceConfiguration;
     private final ServiceRequestRepository requestRepository;
     private final AssetAmcRepository assetAmcRepository;
-    private final AmcAnalyticsService amcAnalyticsService;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -49,8 +48,7 @@ public class AmcConfigurationService {
     @Autowired
     public AmcConfigurationService(
             AmcConfigurationRepository amcConfigurationRepository, AmcConfigurationValidator amcConfigurationValidator, ScheduledVisitRepository scheduledVisitRepository, AmcConfigurationEnrichment amcConfigurationEnrichment, AMCServiceConfiguration amcConfigurationConfiguration,
-            Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil, ServiceRequestRepository requestRepository, AssetAmcRepository assetAmcRepository,
-            AmcAnalyticsService amcAnalyticsService) {
+            Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil, ServiceRequestRepository requestRepository, AssetAmcRepository assetAmcRepository) {
             this.amcConfigurationValidator = amcConfigurationValidator;
         this.scheduledVisitRepository = scheduledVisitRepository;
         this.producer = producer;
@@ -60,7 +58,6 @@ public class AmcConfigurationService {
             this.amcConfigurationServiceUtil = amcConfigurationServiceUtil;
         this.requestRepository = requestRepository;
         this.assetAmcRepository = assetAmcRepository;
-        this.amcAnalyticsService = amcAnalyticsService;
     }
 
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
@@ -101,9 +98,6 @@ public class AmcConfigurationService {
 
         log.info("Pushing {} AMC configuration(s) to kafka", request.getAmcConfigurations().size());
         producer.push(amcServiceConfiguration.getSaveAmcConfigurationTopic(), request);
-
-        // Creating a configuration is the AMC scheduling action - best-effort, never breaks create.
-        amcAnalyticsService.publishConfigurationCreateEvents(request);
         return request;
     }
 

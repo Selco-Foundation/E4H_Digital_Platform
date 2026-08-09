@@ -6,7 +6,6 @@ import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import Carousel from "./Carousel/Carousel";
 import ImageComponent from "../../../components/ImageComponent";
-import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { CONSENT_COOKIE_KEYS, getConsentCookie, rememberRequiredConsents } from "../../../utilities/consentCookies";
 
 const setEmployeeDetail = (userObject, token) => {
@@ -40,47 +39,29 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
     if (!user) {
       return;
     }
-    let cancelled = false;
+    Digit.SessionStorage.set("citizen.userRequestObject", user);
+    const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
+    if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
+    Digit.UserService.setUser(user);
+    setEmployeeDetail(user?.info, user?.access_token);
+    let redirectPath = `/${window?.contextPath}/employee`;
 
-    (async () => {
-      Digit.SessionStorage.set("citizen.userRequestObject", user);
-      const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
-      if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
-      Digit.UserService.setUser(user);
-      setEmployeeDetail(user?.info, user?.access_token);
-      let redirectPath = `/${window?.contextPath}/employee`;
+    /* logic to redirect back to same screen where we left off */
+    if (window?.location?.href?.includes("from=")) {
+      redirectPath = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || `/${window?.contextPath}/employee`;
+    }
 
-      try {
-        await UserAccessReportService.userLoginReport({
-          User: user?.info,
-        });
-      } catch (err) {
-        console.error("Login report failed", err);
-      }
+    /*  RAIN-6489 Logic to navigate to National DSS home in case user has only one role [NATADMIN]*/
+    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
+      redirectPath = `/${window?.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
+    }
+    /*  RAIN-6489 Logic to navigate to National DSS home in case user has only one role [NATADMIN]*/
+    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "STADMIN")) {
+      redirectPath = `/${window?.contextPath}/employee/dss/landing/home`;
+    }
 
-      /* logic to redirect back to same screen where we left off */
-      if (window?.location?.href?.includes("from=")) {
-        redirectPath = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || `/${window?.contextPath}/employee`;
-      }
-
-      /*  RAIN-6489 Logic to navigate to National DSS home in case user has only one role [NATADMIN]*/
-      if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
-        redirectPath = `/${window?.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
-      }
-      /*  RAIN-6489 Logic to navigate to National DSS home in case user has only one role [NATADMIN]*/
-      if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "STADMIN")) {
-        redirectPath = `/${window?.contextPath}/employee/dss/landing/home`;
-      }
-
-      if (!cancelled) {
-        history.replace(redirectPath); // Replaced history.replace with navigate
-      }
-    })().catch((err) => console.error("login effect failed", err));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user, history]);
+    history.replace(redirectPath); // Replaced history.replace with navigate
+  }, [user]);
 
   const onLogin = async (data) => {
     // if (!data.city) {

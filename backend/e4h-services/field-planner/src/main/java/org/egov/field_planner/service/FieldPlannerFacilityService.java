@@ -80,10 +80,10 @@ public class FieldPlannerFacilityService {
     public List<FieldPlanFacility> create(FieldPlanFacilityBulkRequest request, boolean isBulk) {
         log.trace("Entering create method for bulk field plan facility, isBulk: {}", isBulk);
         log.info("Received request to create bulk field plan facility, count: {}", request.getFieldPlanFacilities().size());
-
+        
         validateCreateFieldPlanRequest(request);
         log.debug("Field plan facility creation request validated");
-
+        
         List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
         try {
             if (!fieldPlanFacilities.isEmpty()) {
@@ -125,17 +125,20 @@ public class FieldPlannerFacilityService {
             log.trace("Exiting search method");
             return SearchResponse.<FieldPlanFacility>builder().response(fieldPlanFacilities).build();
         }
-        log.info("searching project facility using criteria");
-        return fieldPlanFacilityRepository.findWithCount(request.getCriteria(),
+        log.debug("Searching field plan facility using criteria, limit: {}, offset: {}", limit, offset);
+        SearchResponse<FieldPlanFacility> result = fieldPlanFacilityRepository.findWithCount(request.getCriteria(),
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
+        log.info("Field plan facility search completed, found {} results", result.getTotalCount());
+        log.trace("Exiting search method");
+        return result;
     }
 
     public List<SystemTypeCapacity> searchSystemTypeCapacity(FieldPlanFacilitySearchRequest request,
-                                                             Integer limit,
-                                                             Integer offset,
-                                                             String tenantId,
-                                                             Long lastChangedSince,
-                                                             Boolean includeDeleted) throws Exception {
+                                                               Integer limit,
+                                                               Integer offset,
+                                                               String tenantId,
+                                                               Long lastChangedSince,
+                                                               Boolean includeDeleted) throws Exception {
         log.trace("Entering searchSystemTypeCapacity method for field plan facility");
         log.info("Received request to search systemType/totalSystemCapacity for field plan facility, tenant: {}", tenantId);
 
@@ -200,26 +203,28 @@ public class FieldPlannerFacilityService {
     public List<FieldPlanFacility> unassignBulk(FieldPlanFacilityBulkRequest request, boolean isBulk) {
         log.trace("Entering unassignBulk method for field plan facility, isBulk: {}", isBulk);
         log.info("Received request to unassign bulk field plan facility, count: {}", request.getFieldPlanFacilities().size());
-
+        
         validateCreateFieldPlanRequest(request);
         log.debug("Field plan facility unassign request validated");
-
+        
         List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
         try {
             if (!fieldPlanFacilities.isEmpty()) {
                 log.debug("Processing {} field plan facilities for unassign", fieldPlanFacilities.size());
                 for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
-                    log.info("processing {} valid entities", fieldPlanFacilities.size());
                     fieldPlannerEnrichment.enrichFieldPlanFacilityRequestOnDelete(fieldPlanFacility, request.getRequestInfo());
                 }
                 log.debug("Field plan facilities enriched, pushing to Kafka");
                 producer.push(fieldPlannerConfiguration.getDeleteFieldPlanFacilityTopic(), fieldPlanFacilities);
-                log.info("successfully created project facility");
+                log.info("Successfully unassigned {} field plan facilities", fieldPlanFacilities.size());
+            } else {
+                log.warn("Empty field plan facility list in unassign request");
             }
         } catch (Exception exception) {
-            log.error("error occurred while updating fieldplan facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while unassigning field plan facilities", exception);
         }
 
+        log.trace("Exiting unassignBulk method");
         return fieldPlanFacilities;
     }
 
@@ -348,7 +353,7 @@ public class FieldPlannerFacilityService {
                     }
 
                 } catch (Exception e) {
-                    log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
+                    log.error("Error while fetching facility list for facility ID: {}", facility.getFacilityId(), e);
                     throw new CustomException("FACILITY_ERROR", "error while calling facility service");
                 }
             }

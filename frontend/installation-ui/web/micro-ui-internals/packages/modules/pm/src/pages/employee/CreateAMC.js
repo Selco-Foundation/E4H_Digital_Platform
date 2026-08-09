@@ -8,47 +8,15 @@ import { Stepper } from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
 import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
 import { useHistory } from "react-router-dom";
-import { useQueryClient } from "react-query";
 import { PMService } from "../../services/PMService";
 import useOrganization from "../../hooks/useOrganization";
-import useOrganizationUser from "../../hooks/useOrganizationUser";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
-import { AMCService } from "../../services/AMC";
-
-const getCurrentStepFromURL = () => {
-  const key = parseInt(new URLSearchParams(window.location.search).get("key"), 10);
-  return [1, 2, 3].includes(key) ? key : 1;
-};
-
-const getUserIdentifier = (user = {}) => user.uuid || user.userId || user.id;
-
-const getAuditDetails = (savedAuditDetails) => {
-  const userUuid = Digit.UserService.getUser()?.info?.uuid;
-  const now = Date.now();
-
-  return savedAuditDetails ? {
-    ...savedAuditDetails,
-    lastModifiedBy: userUuid,
-    lastModifiedTime: now,
-  } : {
-    createdBy: userUuid,
-    createdTime: now,
-    lastModifiedBy: userUuid,
-    lastModifiedTime: now,
-  };
-};
-
-const formatAMCGeographyDetailsForUpdate = (geographyDetails = {}) => ({
-  state: geographyDetails?.state?.code || geographyDetails?.state,
-  districts: geographyDetails?.districts?.map((district) => district?.code || district) || [],
-  blocks: geographyDetails?.blocks?.map((block) => block?.code || block) || [],
-});
 
 const CreateAMC = () => {
 
   const { t } = useTranslation();
   const tenantId = Digit.ULBService.getStateId();
-  const [currentKey, setCurrentKey] = useState(getCurrentStepFromURL);
+  const [currentKey, setCurrentKey] = useState(1);
   const [persistedFormData, setPersistedFormData] = useState({});
   const [defaultFormData, setDefaultFormData] = useState({});
   const [createdProject, setCreatedProject] = useState(null);
@@ -62,27 +30,10 @@ const CreateAMC = () => {
   const [getFormData, setGetFormData] = useState(null);
   const [backAlert, setBackAlert] = useState(null);
   const [boundaryData, setBoundaryData] = useState(null);
-  const [savedAMCConfiguration, setSavedAMCConfiguration] = useState(null);
-  const [organizationIds, setOrganizationIds] = useState([""]);
   const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
-  const amcConfigurationId = new URLSearchParams(window.location.search).get("amcConfigurationId");
   const dispatch = useDispatch();
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get("key") === currentKey.toString()) {
-      return;
-    }
-
-    searchParams.set("key", currentKey.toString());
-    history.replace({
-      pathname: window.location.pathname,
-      search: searchParams.toString(),
-    });
-  }, [currentKey, history]);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -105,16 +56,6 @@ const CreateAMC = () => {
   });
 
   const { data: organizationData } = useOrganization();
-
-  const { data: organizationUserData } = useOrganizationUser({
-    organizationIds,
-  });
-
-  useEffect(() => {
-    if (organizationData?.organizations?.length && organizationIds.length === 1 && organizationIds[0] === "") {
-      setOrganizationIds(organizationData.organizations.map((organization) => organization.id));
-    }
-  }, [organizationData, organizationIds]);
 
   useEffect(() => {
     const project = projectData?.projects?.[0];
@@ -178,138 +119,9 @@ const CreateAMC = () => {
         }
       }
 
-      setPersistedFormData((prev) => ({
-        ...formData,
-        geographyDetails: prev?.geographyDetails?.districts?.length ? prev.geographyDetails : formData.geographyDetails,
-        activityDetails: prev?.activityDetails?.activityUserAssignment?.length ? prev.activityDetails : formData.activityDetails,
-      }));
+      setPersistedFormData(formData);
     }
   }, [createdProject, getDefaultActivityAssignments]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    const setSavedAMCGeographyDetails = async () => {
-      if (!amcConfigurationId || !fetchedBoundaryData) {
-        return;
-      }
-
-      try {
-        const response = await AMCService.fetchAMCConfigurations({
-          searchCriteria: {
-            tenantId,
-            ids: [amcConfigurationId],
-          },
-        });
-
-        if (ignore) {
-          return;
-        }
-
-        const savedConfiguration = response?.AmcConfigurations?.[0];
-        setSavedAMCConfiguration(savedConfiguration);
-
-        const assignmentOrganizationIds = savedConfiguration?.assignments
-          ?.map((assignment) => assignment?.organization?.id || assignment?.organisation?.id || assignment?.organizationId || assignment?.organisationId)
-          .filter(Boolean);
-        if (assignmentOrganizationIds?.length) {
-          setOrganizationIds([...new Set(assignmentOrganizationIds)]);
-        }
-
-        const savedGeographyDetails = savedConfiguration?.geographyDetails;
-        if (!savedGeographyDetails) {
-          return;
-        }
-        const parsedGeographyDetails = typeof savedGeographyDetails === "string" ? JSON.parse(savedGeographyDetails) : savedGeographyDetails;
-        const stateCode = parsedGeographyDetails?.state?.code || parsedGeographyDetails?.state;
-        const districtCodes = parsedGeographyDetails?.districts?.map((district) => district?.code || district) || [];
-        const blockCodes = parsedGeographyDetails?.blocks?.map((block) => block?.code || block) || [];
-
-        setPersistedFormData((prev) => ({
-          ...prev,
-          geographyDetails: {
-            state: fetchedBoundaryData.states.find((state) => state.code === stateCode),
-            districts: fetchedBoundaryData.districts.filter((district) => districtCodes.includes(district.code)),
-            blocks: fetchedBoundaryData.blocks.filter((block) => blockCodes.includes(block.code)),
-          },
-        }));
-      } catch (error) {
-        if (!ignore) {
-          console.error("Error fetching AMC configuration", error);
-          setToast({
-            label: t("CORE_COMMON_SOMETHING_WENT_WRONG"),
-            key: "error"
-          });
-        }
-      }
-    };
-
-    void setSavedAMCGeographyDetails();
-
-    return () => {
-      ignore = true;
-    };
-  }, [amcConfigurationId, fetchedBoundaryData, tenantId, t]);
-
-  useEffect(() => {
-    const assignments = savedAMCConfiguration?.assignments;
-    if (!assignments?.length || !activityData || !organizationData || !organizationUserData) {
-      return;
-    }
-
-    const amcActivity = activityData.find((activity) => activity.code?.toUpperCase() === "AMC");
-    if (!amcActivity) {
-      return;
-    }
-
-    const savedUsers = [...assignments]
-      .sort((a, b) => (a.auditDetails?.createdTime || 0) - (b.auditDetails?.createdTime || 0))
-      .map((assignment) => {
-        const assignmentOrganization = assignment.organization || assignment.organisation || {};
-        const assignedUserId = assignment.assignedUser || assignment.assignedTo || assignment.userId;
-        const assignedUser = organizationUserData.organizationUsers?.find((user) => (
-          user.uuid?.toString() === assignedUserId?.toString() ||
-          user.userId?.toString() === assignedUserId?.toString() ||
-          user.id?.toString() === assignedUserId?.toString()
-        ));
-        const assignmentOrganizationId = assignmentOrganization.id || assignment.organizationId || assignment.organisationId || assignedUser?.organizationId;
-        const organizationFromMaster = organizationData.organizations?.find((org) => org.id === assignmentOrganizationId);
-        const vendorFallback = savedAMCConfiguration?.vendor?.id === assignmentOrganizationId ? savedAMCConfiguration.vendor : null;
-        const organization = organizationFromMaster || vendorFallback || assignmentOrganization;
-        const organizationName = organization?.name || assignmentOrganizationId;
-
-        return {
-          id: assignment.id,
-          savedAssignment: assignment,
-          poNumber: { value: assignment.pocNumber || "", error: "", },
-          organization: {
-            value: assignmentOrganizationId ? { ...organization, id: organization.id || assignmentOrganizationId, name: organizationName } : null,
-            error: "",
-          },
-          role: { value: assignment.role || null, error: "", },
-          email: {
-            value: assignedUser ? {
-              ...assignedUser,
-              emailKey: `${assignedUser.name || ""}${assignedUser.name ? " " : ""}[${assignedUser.emailId || ""}]`,
-            } : null,
-            error: "",
-          },
-          isEmailSent: assignment.isEmailSent || false,
-        };
-      });
-
-    setPersistedFormData((prev) => ({
-      ...prev,
-      activityDetails: {
-        activityUserAssignment: [
-          {
-            activity: amcActivity,
-            users: savedUsers,
-          },
-        ],
-      },
-    }));
-  }, [activityData, organizationData, organizationUserData, savedAMCConfiguration]);
 
   const handleFacilityDataDownload = useCallback(async () => {
 
@@ -337,6 +149,7 @@ const CreateAMC = () => {
   }, [createdProject, persistedFormData, t])
 
   const handleFacilityDataUpload = useCallback(async (chosenFile) => {
+
     setBlockUI(true);
     let uploadedFile;
     try {
@@ -369,7 +182,6 @@ const CreateAMC = () => {
         })
         setInvalidDataError(null);
         setUploadedValidFile(true);
-        await queryClient.invalidateQueries(["AMC_CONFIGURATION"]);
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
@@ -390,7 +202,7 @@ const CreateAMC = () => {
     }
 
     setFile(uploadedFile);
-  }, [createdProject, persistedFormData, queryClient, t]);
+  }, [createdProject, persistedFormData, t]);
 
   const validateActivityData = (activityData) => {
     let faultyData = false;
@@ -542,7 +354,7 @@ const CreateAMC = () => {
           },
         ],
       },
-      ...(amcConfigurationId ? [] : [{
+      {
         key: "3",
         body: [
           {
@@ -584,7 +396,6 @@ const CreateAMC = () => {
               allowedFileTypes: [".xlsx"],
               handleFileUpload: handleFacilityDataUpload,
               invalidDataError: invalidDataError,
-              errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
               heading: "PM_CREATE_AMC_HEAD_UPLOAD_FACILITY_DATA",
               description: "PM_CREATE_AMC_HEAD_UPLOAD_FACILITY_DATA_DESC",
               t,
@@ -601,9 +412,9 @@ const CreateAMC = () => {
             },
           },
         ],
-      }]),
+      },
     ],
-    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError, amcConfigurationId]
+    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -651,75 +462,6 @@ const CreateAMC = () => {
     return allRolesPresent;
   }
 
-  const buildUpdateAMCConfigurationRequest = (formData) => {
-    const geographyDetails = formatAMCGeographyDetailsForUpdate(formData.geographyDetails);
-    const assignmentRows = formData?.activityDetails?.activityUserAssignment?.flatMap((activityAssignment) => (
-      activityAssignment.users?.map((userEntry) => ({
-        ...userEntry,
-        activity: activityAssignment.activity,
-      })) || []
-    )) || [];
-    const assignments = assignmentRows
-      .filter((userEntry) => !userEntry.deleteAssignment && userEntry.email?.value)
-      .map((userEntry) => {
-        const savedAssignment = userEntry.savedAssignment || {};
-        const selectedUser = userEntry.email.value;
-        const selectedOrganization = userEntry.organization.value;
-        const selectedRole = userEntry.role.value;
-        const assignmentId = userEntry.id || savedAssignment.id;
-        const assignedUser = getUserIdentifier(selectedUser);
-        const auditDetails = getAuditDetails(savedAssignment.auditDetails);
-
-        return {
-          ...savedAssignment,
-          id: assignmentId,
-          tenantId: savedAssignment.tenantId || selectedUser.tenantId || savedAMCConfiguration.tenantId || tenantId,
-          amcConfigurationId: savedAMCConfiguration.id,
-          assignedUser: assignedUser?.toString(),
-          assignedTo: assignedUser,
-          assignedBy: Digit.UserService.getUser()?.info?.uuid,
-          projectId,
-          activityId: userEntry.activity?.code,
-          activityCode: userEntry.activity?.code,
-          pocNumber: userEntry.poNumber?.value || "",
-          poNumber: userEntry.poNumber?.value || "",
-          organizationId: selectedOrganization?.id,
-          organizationName: selectedOrganization?.name,
-          organization: selectedOrganization,
-          role: selectedRole,
-          roles: selectedRole ? [selectedRole] : [],
-          user: selectedUser,
-          userId: selectedUser.userId || selectedUser.id,
-          uuid: selectedUser.uuid,
-          userName: selectedUser.userName,
-          name: selectedUser.name,
-          mobileNumber: selectedUser.mobileNumber,
-          emailId: selectedUser.emailId,
-          isActive: true,
-          auditDetails,
-        };
-      });
-
-    return {
-      AmcConfigurations: [
-        {
-          ...savedAMCConfiguration,
-          tenantId: savedAMCConfiguration.tenantId || tenantId,
-          vendorId: savedAMCConfiguration.vendorId || savedAMCConfiguration.vendor?.id,
-          facilityId: savedAMCConfiguration.facilityId || savedAMCConfiguration.facility?.id,
-          projectId: savedAMCConfiguration.projectId || projectId,
-          assignments,
-          geographyDetails,
-          additionalDetails: {
-            ...(savedAMCConfiguration.additionalDetails || {}),
-            geographyDetails,
-          },
-          auditDetails: getAuditDetails(savedAMCConfiguration.auditDetails),
-        },
-      ],
-    };
-  };
-
   const saveActivityDetails = (activityData) => {
 
     const { faultyData, validatedData } = validateActivityData(activityData);
@@ -759,38 +501,7 @@ const CreateAMC = () => {
         saveActivityDetails(data.activityUserAssignment);
         break;
       case 3:
-        if (amcConfigurationId) {
-          if (!savedAMCConfiguration?.id) {
-            setToast({
-              label: t("CORE_COMMON_SOMETHING_WENT_WRONG"),
-              key: "error"
-            });
-            return;
-          }
-
-          try {
-            setBlockUI(true);
-            await AMCService.updateAMCConfigurations(buildUpdateAMCConfigurationRequest(persistedFormData));
-            await queryClient.invalidateQueries(["AMC_CONFIGURATION"]);
-            dispatch(
-              populateResponsePage({
-                response: {},
-                message: t("PM_COMMON_AMC_UPDATED"),
-                secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
-                onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
-              })
-            );
-            history.push(`/${window?.contextPath}/employee/pm/response`);
-          } catch (error) {
-            console.error("Error updating AMC configuration", error);
-            setToast({
-              label: t("CORE_COMMON_SOMETHING_WENT_WRONG"),
-              key: "error"
-            })
-          } finally {
-            setBlockUI(false);
-          }
-        } else if (!(file && uploadedValidFile)) {
+        if (!(file && uploadedValidFile)) {
           setToast({
             label: t("PM_TOAST_FACILITY_UPLOAD_MANDATORY"),
             key: "error"
@@ -841,15 +552,13 @@ const CreateAMC = () => {
     if (key + 1 >= currentKey) return;
     switch (currentKey) {
       case 2:
-        if (getFormData) {
-          const currentActivityAssignments = getFormData("activityUserAssignment");
-          setPersistedFormData((prevState) => ({
-            ...prevState,
-            activityDetails: {
-              activityUserAssignment: currentActivityAssignments,
-            },
-          }));
-        }
+        const currentActivityAssignments = getFormData("activityUserAssignment");
+        setPersistedFormData((prevState) => ({
+          ...prevState,
+          activityDetails: {
+            activityUserAssignment: currentActivityAssignments,
+          },
+        }));
         setCurrentKey(key + 1);
         break;
       case 3:
@@ -867,15 +576,13 @@ const CreateAMC = () => {
         });
         break;
       case 2:
-        if (getFormData) {
-          const currentActivityAssignments = getFormData("activityUserAssignment");
-          setPersistedFormData((prevState) => ({
-            ...prevState,
-            activityDetails: {
-              activityUserAssignment: currentActivityAssignments,
-            },
-          }));
-        }
+        const currentActivityAssignments = getFormData("activityUserAssignment");
+        setPersistedFormData((prevState) => ({
+          ...prevState,
+          activityDetails: {
+            activityUserAssignment: currentActivityAssignments,
+          },
+        }));
         setCurrentKey((prev) => prev - 1);
         break;
       case 3:

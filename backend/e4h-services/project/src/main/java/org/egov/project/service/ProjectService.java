@@ -69,15 +69,13 @@ public class ProjectService {
 
     private final ProjectNameGenerationService projectNameGenerationService;
 
-    private final ProjectAnalyticsService projectAnalyticsService;
-
     @Autowired
     BoundaryV2Util boundaryV2Util;
 
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper, ProjectNameGenerationService projectNameGenerationService, ProjectAnalyticsService projectAnalyticsService) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper, ProjectNameGenerationService projectNameGenerationService) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
@@ -91,7 +89,6 @@ public class ProjectService {
         this.objectMapper = new ObjectMapper();
         this.projectFacilityService = projectFacilityService;
         this.projectNameGenerationService = projectNameGenerationService;
-        this.projectAnalyticsService = projectAnalyticsService;
     }
 
     public List<String> validateProjectIds(List<String> productIds) {
@@ -138,11 +135,6 @@ public class ProjectService {
         producer.push(projectConfiguration.getSaveProjectTopic(), projectRequest);
         producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
         log.info("Pushed to kafka");
-
-        // One PROJECT_CREATE analytics event per project in the request (best-effort, never throws).
-        // Published after the persister push so the ids we emit are the ones being persisted.
-        projectAnalyticsService.publishCreateEvents(projectRequest);
-
         log.info("Successfully completed project creation for {} projects", projectRequest.getProjects().size());
         log.trace("Exiting createProject");
         return projectRequest;

@@ -48,12 +48,5 @@ public class ServiceConstants {
     public static final String TENANTID = "?tenantId=";
     public static final String BUSINESS_SERVICES = "&businessServices=";
 
-    // User-analytics event (shared user-analytics-report index, see FacilityAnalyticsService)
-    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
-    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
-    public static final String ANALYTICS_APPLICATION = "MANAGEMENT_HUB";
-    public static final String ANALYTICS_ENTITY_TYPE_FACILITY = "FACILITY";
-    public static final String ANALYTICS_EVENT_FACILITY_CREATE = "FACILITY_CREATE";
-    public static final String ANALYTICS_EVENT_FACILITY_UPDATE = "FACILITY_UPDATE";
 
 }

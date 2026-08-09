@@ -5,7 +5,7 @@ const AuditTrail = ({t, auditTrail}) => {
 
   const getTimelineCaptions = (checkpoint) => {
     return (
-      <div style={{ marginTop: "12px", width: "100%", maxWidth: "100%", minWidth: 0 }}>
+      <div style={{ marginTop: "12px", width: "800px" }}>
         <div style={{fontSize: "14px", color: "#666"}}>{checkpoint.date}</div>
         {checkpoint.reasons?.length > 0 && (
           <div style={{ marginTop: 12 }}>
@@ -14,15 +14,12 @@ const AuditTrail = ({t, auditTrail}) => {
               border: "1px solid #eee",
               borderRadius: 4,
               padding: 10,
-              marginTop: 10,
-              width: "100%",
-              maxWidth: "100%",
-              boxSizing: "border-box"
+              marginTop: 10
             }}>
               {checkpoint.reasons.map((reason, i) => (
-                <div style={{display: "flex", gap: "10px", padding: "4px 0", width: "100%", minWidth: 0}} key={i}>
-                  <div style={{fontWeight: "bold", flex: "1 1 0", minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-word"}}>{reason.reason}</div>
-                  <div style={{color: "#555", flex: "1 1 0", minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-word"}}>{reason.comment}</div>
+                <div style={{display: "flex", justifyContent: "space-between", padding: "4px 0"}} key={i}>
+                  <div style={{fontWeight: "bold", width: "50%", marginRight: "10px"}}>{reason.reason}</div>
+                  <div style={{color: "#555", width: "50%"}}>{reason.comment}</div>
                 </div>
               ))}
             </div>
@@ -43,30 +40,12 @@ const AuditTrail = ({t, auditTrail}) => {
       border: "1px solid #eee",
       borderTop: "none",
       borderBottom: "none",
-      minWidth: "900px",
-      boxSizing: "border-box"
-    }} className="amc-audit-trail">
-      <style>
-        {`
-          .amc-audit-trail .checkpoint > h2,
-          .amc-audit-trail .checkpoint-done > h2 {
-            flex: 0 0 24px;
-            min-width: 24px;
-            max-width: 24px;
-            box-sizing: border-box;
-          }
-
-          .amc-audit-trail .checkpoint > header,
-          .amc-audit-trail .checkpoint-done > header {
-            flex: 1 1 auto;
-            min-width: 0;
-          }
-        `}
-      </style>
+      minWidth: "900px"
+    }}>
       <h2 style={{ fontWeight: "bold", fontSize: "18px", marginBottom: 20 }}>
         {t("AUDIT_TRAIL")}
       </h2>
-      <div style={{ display: "flex", flexDirection: "column", position: "relative", width: "100%", minWidth: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
         <React.Fragment>
           {auditTrail?.length === 1 ? (
             <CheckPoint

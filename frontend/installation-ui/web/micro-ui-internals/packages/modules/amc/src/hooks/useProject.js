@@ -18,7 +18,7 @@ const fetchProject = async (filter, limit, offset, sortBy, sortDir) => {
   };
 }
 
-const useProject = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, sortDir = "DESC", enabled = true) => {
+const useProject = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, sortDir = "DESC") => {
 
   const {id, name, subProjectTypeId} = queryFilter;
 
@@ -39,11 +39,9 @@ const useProject = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, sor
   }
 
   const queryClient = useQueryClient();
-  // Report-level detail route does not have project id, so project fetch can be skipped.
   const {isLoading, isError, error, data} = useQuery(
     ["PROJECT", filter, limit, offset, sortBy, sortDir],
-    () => fetchProject(filter, limit, offset, sortBy, sortDir),
-    { enabled }
+    () => fetchProject(filter, limit, offset, sortBy, sortDir)
   );
 
   return {

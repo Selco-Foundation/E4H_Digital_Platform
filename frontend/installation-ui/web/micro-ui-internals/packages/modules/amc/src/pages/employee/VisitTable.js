@@ -141,12 +141,6 @@ const VisitTable = ({ t }) => {
       },
     },
     {
-      Header: t("PM_PROJECT_INFO_STATE"),
-      Cell: ({ row }) => {
-        return GetCell(row.original["state"] ? t(`Boundary_${row.original["state"]}`) : "-");
-      },
-    },
-    {
       Header: t("CS_BLOCK"),
       Cell: ({ row }) => {
         return GetCell(row.original["block"] ? t(`Boundary_${row.original["block"]}`) : "-");

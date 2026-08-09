@@ -8,12 +8,13 @@ import { Loader } from "@egovernments/digit-ui-react-components";
 import useVisitDetails from "../../hooks/useVisitDetails";
 import InfoCard from "../../components/VisitDetails/InfoCard";
 import useProject from "../../hooks/useProject";
-import { useParams } from "react-router-dom";
 
 const VisitDetails = ({t}) => {
 
   const dispatch = useDispatch();
-  const { projectId, visitId } = useParams();
+  const url = window.location.href;
+  const projectId = url.split("project/")[1].split("/")[0];
+  const visitId = url.split("amc-visits/")[1].split("/")[0].split("?")[0];
   const [facilityDetails, setFacilityDetails] = useState({});
   const [auditTrail, setAuditTrail] = useState([]);
   const [reportDocumentAggregation, setReportDocumentAggregation] = useState({});
@@ -21,10 +22,9 @@ const VisitDetails = ({t}) => {
   const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
   const [visitReport, setVisitReport] = useState(null);
 
-  // Project id is available only from project-level detail route.
   const { data: projectData } = useProject({
-    id: projectId ? [projectId] : [],
-  }, 10, 0, null, "DESC", !!projectId);
+    id: [projectId],
+  });
 
   const {
     isLoading,

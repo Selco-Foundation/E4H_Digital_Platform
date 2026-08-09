@@ -29,10 +29,6 @@
             [
               { "text": "PO/WO Number: {{po_wo_number}}" },
               { "text": "Block: {{project_block}}" }
-            ],
-            [
-              { "text": "Health Facility Type: {{health_facility_type}}" },
-              { "text": "" }
             ]
           ]
         },
@@ -306,9 +302,9 @@
             [
               "6",
               "Power Cable - From CCU to Room (Red)",
-              "{{ power_cable_from_ccu_to_room_red_description }} : {{power_cable_from_ccu_to_room_red_make}}",
-              "{{ power_cable_from_ccu_to_room_red_capacity }}",
-              "{{ power_cable_from_ccu_to_room_red_qty }}"
+              "{{ isolator_2_description }} : {{isolator_2_make}} ",
+              "{{ isolator_2_capacity }}",
+              "{{ isolator_2_qty }}"
             ],
             [
               "7",
@@ -558,64 +554,64 @@
             ],
             [
               "Measurement with Panel MCB OFF",
-              "{{dc_off_vmp_rn_string1_uom}}",
-              "String 1: {{dc_off_vmp_rn_string1_mv}}",
+              "{{dc_on_vmp_rn_string1_uom}}",
+              "String 1: {{dc_on_vmp_rn_string1_mv}}",
               "NA",
               "NA"
             ],
             [
               "Measurement with Panel MCB OFF",
-              "{{dc_off_vmp_rn_string2_uom}}",
-              "String 2: {{dc_off_vmp_rn_string2_mv}}",
+              "{{dc_on_vmp_rn_string2_uom}}",
+              "String 2: {{dc_on_vmp_rn_string2_mv}}",
               "NA",
               "NA"
             ],
             [
               "Measurement with Panel MCB OFF",
-              "{{dc_off_vmp_rn_array_uom}}",
-              "Array: {{dc_off_vmp_rn_array_mv}}",
+              "{{dc_on_vmp_rn_array_uom}}",
+              "Array: {{dc_on_vmp_rn_array_mv}}",
               "NA",
               "NA"
             ],
             [
               "Measurement with Panel MCB ON(Wait for 20 seconds)",
               "Vmp(in Volts)",
-              "String 1: {{dc_on_vmp_rn_string1_mv}}",
+              "String 1: {{ajb_on_vmp_string_1}}",
               "{{dc_on_imp_rn_string1_uom}}",
               "String 1: {{dc_on_imp_rn_string1_mv}}"
             ],
             [
               "Measurement with Panel MCB ON(Wait for 20 seconds)",
               "Vmp(in Volts)",
-              "String 2: {{dc_on_vmp_rn_string2_mv}}",
+              "String 2: {{ajb_on_vmp_string_2}}",
               "{{dc_on_imp_rn_string2_uom}}",
               "String 2: {{dc_on_imp_rn_string2_mv}}"
             ],
             [
               "Measurement with Panel MCB ON(Wait for 20 seconds)",
               "Vmp(in Volts)",
-              "Array: {{dc_on_vmp_rn_array_mv}}",
+              "Array: {{}}",
               "{{dc_on_imp_rn_array_uom}}",
               "Array: {{dc_on_imp_rn_array_mv}}"
             ],
             [
               "Measurement with Panel MCB ON(Wait for 20 seconds)",
-              "Pmp(in Watts)",
-              "String 1: {{ajb_on_pmp_string_1}}",
+              "Pmp(in Volts)",
+              "String 1: {{}}",
               "NA",
               "NA"
             ],
             [
               "Measurement with Panel MCB ON(Wait for 20 seconds)",
-              "Pmp(in Watts)",
-              "String 2: {{ajb_on_pmp_string_2}}",
+              "Pmp(in Volts)",
+              "String 2: {{}}",
               "NA",
               "NA"
             ],
             [
               "Measurement with Panel MCB ON(Wait for 20 seconds)",
-              "Pmp(in Watts)",
-              "Array: {{ajb_on_pmp_array}}",
+              "Pmp(in Volts)",
+              "Array: {{}}",
               "NA",
               "NA"
             ]

@@ -1,4 +1,3 @@
-import Axios from "axios";
 import Urls from "../../atoms/urls";
 import { Request, ServiceRequest } from "../../atoms/Utils/Request";
 import { Storage } from "../../atoms/Utils/Storage";
@@ -141,6 +140,15 @@ export const UserService = {
       useCache: true,
       userService: true,
       data: data.pageSize ? { tenantId, ...data } : { tenantId, ...data, pageSize: "100" },
+    });
+  },
+  userLoginReport: async (authResponse) => {
+    return ServiceRequest({
+      serviceName: "userLoginReport",
+      url: Urls.UserLoginReport,
+      method: "POST",
+      auth: true,
+      data: authResponse,
     });
   },
 };

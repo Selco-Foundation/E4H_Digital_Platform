@@ -63,17 +63,6 @@ public class ApplicationProperties {
     private String mdmsCreateEndPoint;
 
 
-    //Localization
-    @Value("${egov.localization.host}")
-    private String localizationHost;
-
-    @Value("${egov.localization.context.path}")
-    private String localizationContextPath;
-
-    @Value("${egov.localization.search.endpoint}")
-    private String localizationSearchEndpoint;
-
-
     //HRMS
     @Value("${egov.hrms.host}")
     private String hrmsHost;
@@ -112,13 +101,6 @@ public class ApplicationProperties {
 
     @Value("${kafka.topics.update.boundary.relationship}")
     private String updateBoundaryRelationshipTopic;
-
-    /**
-     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
-     * (SEM) and health-facility-registry publish to — see BoundaryAnalyticsService.
-     */
-    @Value("${boundary.kafka.user.analytics.topic:user-analytics-event}")
-    private String userAnalyticsTopic;
 
     @Value("${boundary.default.offset}")
     private Integer defaultOffset;

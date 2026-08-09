@@ -66,7 +66,7 @@ public class FieldPlannerApiController {
     public ResponseEntity<FieldPlanResponse> fieldPlanBeneficiaryV1CreatePost(@ApiParam(value = "Capture details of benificiary type.", required = true) @Valid @RequestBody FieldPlanRequest fieldPlanRequest) {
         log.trace("Entering fieldPlanBeneficiaryV1CreatePost endpoint");
         log.info("Received field plan creation request, field plan count: {}", fieldPlanRequest.getFieldPlans().size());
-
+        
         FieldPlanRequest enrichedFieldPlanRequest = fieldPlannerService.createFieldPlan(fieldPlanRequest);
         FieldPlanResponse response = FieldPlanResponse.builder()
                 .fieldPlans(enrichedFieldPlanRequest.getFieldPlans())
@@ -82,7 +82,7 @@ public class FieldPlannerApiController {
     public ResponseEntity<FieldPlanResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Field Plan.", required = true) @Valid @RequestBody FieldPlanRequest fieldPlanRequest) {
         log.trace("Entering updateFieldPlan endpoint");
         log.info("Received field plan update request, field plan count: {}", fieldPlanRequest.getFieldPlans().size());
-
+        
         FieldPlanRequest enrichedFieldPlanRequest = fieldPlannerService.updateFieldPlan(fieldPlanRequest);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(fieldPlanRequest.getRequestInfo(), true);
@@ -98,9 +98,9 @@ public class FieldPlannerApiController {
             @Valid @ModelAttribute URLParams urlParams
     ) {
         log.trace("Entering searchfieldPlanV2 endpoint");
-        log.info("Received field plan search request for tenant: {}, limit: {}, offset: {}",
+        log.info("Received field plan search request for tenant: {}, limit: {}, offset: {}", 
                 urlParams.getTenantId(), urlParams.getLimit(), urlParams.getOffset());
-
+        
         List<FieldPlan> fieldPlans = fieldPlannerService.searchFieldPlan(
                 request,
                 urlParams.getLimit(),
@@ -123,7 +123,7 @@ public class FieldPlannerApiController {
     public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityV1CreatePost(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
         log.trace("Entering fieldPlanFacilityV1CreatePost endpoint");
         log.info("Received field plan facility creation request");
-
+        
         FieldPlanFacility fieldPlanFacility = fieldPlannerFacilityService.create(request);
         FieldPlanFacilityResponse response = FieldPlanFacilityResponse.builder()
                 .fieldPlanFacility(fieldPlanFacility)
@@ -167,9 +167,9 @@ public class FieldPlannerApiController {
             @ApiParam(value = "Capture details of Project facility.", required = true) @Valid @RequestBody FieldPlanFacilitySearchRequest request
     ) throws Exception {
         log.trace("Entering fieldPlanFacilityV2SearchPost endpoint");
-        log.info("Received field plan facility search request for tenant: {}, limit: {}, offset: {}",
+        log.info("Received field plan facility search request for tenant: {}, limit: {}, offset: {}", 
                 urlParams.getTenantId(), urlParams.getLimit(), urlParams.getOffset());
-
+        
         SearchResponse<FieldPlanFacility> searchResponse = fieldPlannerFacilityService.search(
                 request,
                 urlParams.getLimit(),
@@ -184,7 +184,7 @@ public class FieldPlannerApiController {
                 .responseInfo(ResponseInfoFactory
                         .createResponseInfo(request.getRequestInfo(), true))
                 .build();
-        log.info("Field plan facility search completed, found {} results out of {} total",
+        log.info("Field plan facility search completed, found {} results out of {} total", 
                 searchResponse.getResponse().size(), searchResponse.getTotalCount());
         log.trace("Exiting fieldPlanFacilityV2SearchPost endpoint");
         return ResponseEntity.status(HttpStatus.OK).body(response);
@@ -222,7 +222,7 @@ public class FieldPlannerApiController {
     public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityUnassign(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
         log.trace("Entering fieldPlanFacilityUnassign endpoint");
         log.info("Received field plan facility unassign request");
-
+        
         FieldPlanFacility fieldPlanFacility = fieldPlannerFacilityService.unassign(request);
         FieldPlanFacilityResponse response = FieldPlanFacilityResponse.builder()
                 .fieldPlanFacility(fieldPlanFacility)

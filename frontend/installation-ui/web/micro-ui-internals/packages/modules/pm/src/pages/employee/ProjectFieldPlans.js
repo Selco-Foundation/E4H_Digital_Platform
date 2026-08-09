@@ -8,7 +8,6 @@ import { populateWorkingProject } from "../../redux/actions";
 import { useDispatch } from "react-redux";
 import IntroModal from "../../components/IntroModal";
 import useFieldPlan from "../../hooks/useFieldPlan";
-import useAMCConfiguration from "../../hooks/useAMCConfiguration";
 
 const ProjectFieldPlans = () => {
 
@@ -23,9 +22,6 @@ const ProjectFieldPlans = () => {
   const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
   const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
   const prevPageSizeRef = useRef(pageSize);
-  const [amcPageSize, setAMCPageSize] = useState(10);
-  const [amcPageOffset, setAMCPageOffset] = useState(0);
-  const prevAMCPageSizeRef = useRef(amcPageSize);
   const [createdProject, setCreatedProject] = useState(null);
   const dispatch = useDispatch();
   const [introModalData, setIntroModalData] = useState(null);
@@ -46,24 +42,12 @@ const ProjectFieldPlans = () => {
     projectIds: [projectId],
   });
 
-  const { isLoading: amcConfigurationDataLoading, data: amcConfigurationData } = useAMCConfiguration({
-    tenantId,
-    projectIds: [projectId],
-  }, amcPageSize, amcPageOffset);
-
   useEffect(() => {
     if (prevPageSizeRef.current !== pageSize) {
       setPageOffset(0);
       prevPageSizeRef.current = pageSize;
     }
   }, [pageSize]);
-
-  useEffect(() => {
-    if (prevAMCPageSizeRef.current !== amcPageSize) {
-      setAMCPageOffset(0);
-      prevAMCPageSizeRef.current = amcPageSize;
-    }
-  }, [amcPageSize]);
 
   useEffect(() => {
     const project = projectData?.projects?.[0];
@@ -156,57 +140,9 @@ const ProjectFieldPlans = () => {
     [t]
   );
 
-  const amcColumns = useMemo(
-    () => [
-      {
-        id: "amcPlanName",
-        Header: () => GetHead(t("AMC_PLAN_NAME")),
-        Cell: ({ row }) => (
-          <Link
-            to={`/${window.contextPath}/employee/pm/project/${projectId}/amc/create?amcConfigurationId=${row.original["id"]}&key=1`}
-            style={{ color: "#C84C0E" }}
-          >
-            {row.original["name"]}
-          </Link>
-        ),
-      },
-      {
-        id: "activities",
-        Header: () => GetHead(t("ACTIVITIES")),
-        Cell: ({ row }) => GetActivityList(row.original["activities"]),
-      },
-      {
-        id: "startDate",
-        Header: () => GetHead(t("START_DATE")),
-        Cell: ({ row }) => GetCell(row.original["startDate"] ? formatDate(row.original["startDate"]) : ""),
-      },
-      {
-        id: "endDate",
-        Header: () => GetHead(t("END_DATE")),
-        Cell: ({ row }) => GetCell(row.original["endDate"] ? formatDate(row.original["endDate"]) : ""),
-      },
-      {
-        id: "numberOfHealthFacilities",
-        Header: () => GetHead(t("NUMBER_OF_HEALTH_FACILITIES")),
-        Cell: ({ row }) => GetCell(row.original["healthFacilityNumber"]),
-      },
-      {
-        id: "status",
-        Header: () => GetHead(t("AMC_STATUS")),
-        Cell: ({ row }) => GetCell(row.original["status"] ? t(`AMC_STATUS_${row.original["status"].toUpperCase()}`) : ""),
-      },
-    ],
-    [t]
-  );
-
   const onPageSizeChange = (e) => {
     setPageSize(parseInt(e.target.value));
     setPageOffset(0);
-  }
-
-  const onAMCPageSizeChange = (e) => {
-    setAMCPageSize(parseInt(e.target.value));
-    setAMCPageOffset(0);
   }
 
   const onNextPage = () => {
@@ -215,14 +151,6 @@ const ProjectFieldPlans = () => {
 
   const onPrevPage = () => {
     setPageOffset(pageOffset - pageSize);
-  }
-
-  const onAMCNextPage = () => {
-    setAMCPageOffset(amcPageOffset + amcPageSize);
-  }
-
-  const onAMCPrevPage = () => {
-    setAMCPageOffset(amcPageOffset - amcPageSize);
   }
 
   const handleFieldPlanCreationNavigation = () => {
@@ -265,39 +193,6 @@ const ProjectFieldPlans = () => {
           totalRecords={fieldPlanData?.totalCount || placeHolderFieldPlans.length}
           onPageSizeChange={onPageSizeChange}
           pageSizeLimit={pageSize}
-        />
-      </div>
-    )
-  }
-
-  const renderAMCConfigurationTable = () => {
-
-    if (amcConfigurationDataLoading) {
-      return <Loader />;
-    }
-
-    return (
-      <div style={{ borderRadius: "6px", overflow: "hidden", boxShadow: "0px 0px 4px 0 rgba(0, 0, 0, 0.2)" }}>
-        <Table
-          t={t}
-          data={amcConfigurationData?.amcConfigurations?.length ? amcConfigurationData.amcConfigurations : placeHolderFieldPlans}
-          columns={amcColumns}
-          customTableWrapperClassName={"project-details-table"}
-          getCellProps={() => {
-            return {
-              style: {
-                height: "70px",
-                minHeight: "fit-content",
-              }
-            };
-          }}
-          styles={{minWidth: "300px", overflow: "auto"}}
-          onNextPage={onAMCNextPage}
-          onPrevPage={onAMCPrevPage}
-          currentPage={Math.floor(amcPageOffset / amcPageSize)}
-          totalRecords={amcConfigurationData?.totalCount || placeHolderFieldPlans.length}
-          onPageSizeChange={onAMCPageSizeChange}
-          pageSizeLimit={amcPageSize}
         />
       </div>
     )
@@ -362,12 +257,6 @@ const ProjectFieldPlans = () => {
             {t("CORE_COMMON_ADD_NEW")}
           </span>
         </button>
-      </div>
-      {renderFieldPlanTable()}
-      <div style={{display: "flex", gap: "15px", alignItems: "center", marginTop: "45px", marginBottom: "25px"}}>
-        <div style={{fontSize: "32px", fontWeight: "bold", fontFamily: "Roboto Condensed", color: "#0B0C0C"}}>
-          {t("AMC")}
-        </div>
         <button
           type="button"
           className={"jk-digit-secondary-btn"}
@@ -390,33 +279,16 @@ const ProjectFieldPlans = () => {
         >
           <span
             style={{
-              width: "18px",
-              height: "18px",
-              borderRadius: "5px",
-              background: "#C84C0E",
-              color: "white",
-              fontSize: "20px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginRight: "10px"
-            }}
-          >
-            +
-          </span>
-          <span
-            style={{
               fontSize: "16px",
               fontWeight: "500",
               fontFamily: "Roboto"
             }}
           >
-            {t("CORE_COMMON_ADD_NEW")}
+            {t("PM_ACTION_SET_UP_AMC")}
           </span>
         </button>
       </div>
-      {renderAMCConfigurationTable()}
+      {renderFieldPlanTable()}
       <IntroModal
         open={!!introModalData}
         onClose={() => setIntroModalData(null)}

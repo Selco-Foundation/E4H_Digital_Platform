@@ -282,22 +282,4 @@ public class ProjectConfiguration {
     // Project Name Generation Configuration
     @Value("${project.name.default.code:E4H}")
     private String projectNameDefaultCode;
-
-    //Localization
-    @Value("${egov.localization.host}")
-    private String localizationHost;
-
-    @Value("${egov.localization.context.path}")
-    private String localizationContextPath;
-
-    @Value("${egov.localization.search.endpoint}")
-    private String localizationSearchEndpoint;
-
-    /**
-     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
-     * (SEM), health-facility-registry, boundary-service and amc-scheduler-service publish to —
-     * see ProjectAnalyticsService.
-     */
-    @Value("${project.kafka.user.analytics.topic:user-analytics-event}")
-    private String userAnalyticsTopic;
 }

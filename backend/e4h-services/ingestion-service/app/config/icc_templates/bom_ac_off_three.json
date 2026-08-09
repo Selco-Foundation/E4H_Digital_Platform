@@ -29,10 +29,6 @@
             [
               { "text": "PO/WO Number: {{po_wo_number}}" },
               { "text": "Block: {{project_block}}" }
-            ],
-            [
-              { "text": "Health Facility Type: {{health_facility_type}}" },
-              { "text": "" }
             ]
           ]
         },
@@ -229,9 +225,9 @@
             [
               "23",
               "Load side MCB with Conduit box ",
-              "{{ load_side_mcb_conduit_box_make }}",
-              "{{ load_side_mcb_conduit_box_capacity }}",
-              "{{ load_side_mcb_conduit_box_qty }}"
+              "{{  }}",
+              "{{  }}",
+              "{{  }}"
             ],
             [
               "24",
@@ -405,7 +401,7 @@
             [
               "2",
               " RMS Type Installed (Type 1 / Type 2 / Type 3)",
-              "{{rms_type_installed}} : {{rms_type_description}}"
+              "{{rms_type_installed}}"
             ],
             ["3", "RMS IP Number/MAC ID", "{{ rms_ip_mac_id }}"],
             ["4", "RMS Serial Number", "{{ rms_serial_number }}"],
@@ -413,13 +409,9 @@
             [
               "6",
               "Installation status (Completed/Not Completed)",
-              "{{ rms_installation_status }} : {{rms_installation_notes}}"
+              "{{ rms_installation_status }}"
             ],
-            [
-              "7",
-              "Meter Status (Active/Inactive)",
-              "{{ rms_meter_status }} - {{rms_meter_status_notes}}"
-            ],
+            ["7", "Meter Status (Active/Inactive)", "{{ rms_meter_status }}"],
             [
               "8",
               "Date of Installation completed (DD-MM-YYYY)",
@@ -446,11 +438,7 @@
               "Availability of Airtel Network (Yes/No)",
               "{{ rms_airtel_network_available }}"
             ],
-            [
-              "14",
-              "Type of RMS (Single phase/Three phase)",
-              "{{ rms_type }} - {{rms_type_notes}}"
-            ],
+            ["14", "Type of RMS (Single phase/Three phase)", "{{ rms_type }}"],
             ["15", "RMS - CSQ value (During IP Pinging)", "{{ rms_csq_value }}"]
           ]
         },
@@ -607,8 +595,8 @@
               "20",
               "Power Cable - 2 (Red)",
               "{{ power_cable_2_red_description }} : {{power_cable_2_red_make}}",
-              "{{ power_cable_2_red_capacity }}",
-              "{{ power_cable_2_red_qty }}"
+              "{{ power_cable_2_black_capacity }}",
+              "{{ power_cable_2_black_qty }}"
             ],
             [
               "21",
