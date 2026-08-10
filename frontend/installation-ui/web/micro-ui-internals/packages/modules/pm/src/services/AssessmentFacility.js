@@ -4,6 +4,7 @@ import { Request } from "@egovernments/digit-ui-libraries";
 
 const mapAssessmentFacility = (facility) => ({
   ...facility,
+  id: facility?.planFacilityId,
   name: facility?.facilityName,
   remoteStatus: facility?.phoneStatus || "NOT_INITIATED",
   onSiteStatus: facility?.fieldStatus || "NOT_INITIATED",
