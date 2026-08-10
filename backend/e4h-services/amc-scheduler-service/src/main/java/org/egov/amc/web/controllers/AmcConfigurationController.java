@@ -4,6 +4,7 @@ package org.egov.amc.web.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.service.AmcConfigurationService;
 import org.egov.amc.web.models.AmcConfiguration;
@@ -29,6 +30,7 @@ import java.util.List;
 @Controller
 @RequestMapping("/v1/configuration")
 @Validated
+@Slf4j
 public class AmcConfigurationController {
     private final AmcConfigurationService amcConfigurationService;
 

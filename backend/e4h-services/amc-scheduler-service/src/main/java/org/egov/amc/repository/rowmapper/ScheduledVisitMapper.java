@@ -146,7 +146,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         try {
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (IOException e) {
-            log.error("Failed to parse geography_details JSON for column: {}", columnName, e);
+//            log.error("Failed to parse geography_details JSON for column: {}", columnName, e);
             throw new CustomException("PARSING ERROR", "Failed to parse geographyDetails");
         }
     }
