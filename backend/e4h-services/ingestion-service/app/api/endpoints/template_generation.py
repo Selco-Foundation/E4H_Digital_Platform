@@ -46,6 +46,8 @@ fieldPlan_service_url = os.getenv("FIELDPLAN_SERVICE_URL")
 fieldPlan_activity_service_url = os.getenv("FIELDPLAN_ACTIVITY_SERVICE_URL")
 amc_scheduler_service_url = os.getenv("AMC_SCHEDULER_SERVICE_URL")
 DEFAULT_AMC_ASSET_TYPES = ["INVERTER", "PANEL", "BATTERY"]
+# Only an ACTIVE AMC configuration blocks creating another one for the same facility + project.
+AMC_ACTIVE_STATUS = "ACTIVE"
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
     "port": int(os.getenv("DB_PORT", 5432)),
@@ -984,9 +986,10 @@ async def get_amc_configuration_template(
         payload: dict = Body(..., description="Payload containing RequestInfo, boundary_data")
 ):
     request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    tenant_id = request_info.user_info.tenant_id if request_info.user_info and request_info.user_info.tenant_id else "in"
 
     boundary_data = payload.get("boundary_data", {})
-    project_id = payload.get("project_id")  
+    project_id = payload.get("project_id")
 
     if not boundary_data:
         raise HTTPException(status_code=400, detail="boundary_data is required")
@@ -1076,22 +1079,30 @@ async def get_amc_configuration_template(
         )
 
         # Initialize AMC scheduler client and prefetch existing configs for this project once
+        # (one search call for the whole project, not one per facility - see the per-row lookup below).
+        # Only ACTIVE configurations pre-fill a row: once the previous AMC is EXPIRED or CANCELLED the
+        # facility is treated as having no current contract.
+        # The AMC columns stay editable even when a configuration already exists: re-uploading the
+        # template with a different frequency/duration is how an existing configuration gets updated
+        # (see /amcConfigurationBulkIngest), so locking them would make that impossible.
         amc_client = None
         existing_amc_by_facility = {}
         if amc_scheduler_service_url and project_id:
             amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url)
             try:
-                all_existing_configs_resp = amc_client.search_amc_configurations(
+                all_existing_configs = amc_client.search_all_amc_configurations(
                     request_info,
-                    project_id=project_id
+                    project_id=project_id,
+                    tenant_id=tenant_id,
                 )
-                all_existing_configs = all_existing_configs_resp.get("AmcConfigurations", [])
                 for config in all_existing_configs:
                     facility_id = config.get("facilityId")
+                    if str(config.get("status") or "").strip().upper() != AMC_ACTIVE_STATUS:
+                        continue
                     if facility_id and facility_id not in existing_amc_by_facility:
                         existing_amc_by_facility[facility_id] = config
                 logger.info(
-                    f"Fetched {len(existing_amc_by_facility)} existing AMC configurations for project {project_id}"
+                    f"Fetched {len(existing_amc_by_facility)} active AMC configurations for project {project_id}"
                 )
             except Exception as e:
                 logger.warning(f"Error fetching existing AMC configurations for project {project_id}: {e}")
@@ -1099,7 +1110,6 @@ async def get_amc_configuration_template(
         # Create rows for AMC configuration template - one row per facility
         # Asset types ["INVERTER","PANEL","BATTERY"] will be used as default for each configuration during processing
         rows = []
-        rows_with_existing_amc = []  # Track row indices that have existing AMC configurations
 
         def convert_frequency_to_display(frequency_months):
             """Convert frequency in months to display format"""
@@ -1119,7 +1129,7 @@ async def get_amc_configuration_template(
                 return "5 Years"
             return ""
 
-        for idx, facility in enumerate(all_facilities):
+        for facility in all_facilities:
             # facility_details = facility.get("facility_details", {}) or {}
             nin_id = facility.get("nin_id", "")
             hfr_id = facility.get("hfr_id", "")
@@ -1133,29 +1143,16 @@ async def get_amc_configuration_template(
             frequency_value = ""
             duration_value = ""
 
-            # Read existing AMC configuration from prefetched map
-            if amc_client and project_id and facility_id:
-                try:
-                    existing_configs = amc_client.search_amc_configurations(
-                        request_info,
-                        facility_id=facility_id,
-                        project_id=project_id
-                    )
-                    # Check if any configurations exist
-                    configs = existing_configs.get("AmcConfigurations", [])
-                    if configs:
-                        # Use the first configuration found
-                        existing_config = configs[0]
-                        frequency_months = existing_config.get("frequency")
-                        duration_months = existing_config.get("duration")
+            # Read existing AMC configuration from the map prefetched once above (no per-facility call)
+            if facility_id:
+                existing_config = existing_amc_by_facility.get(facility_id)
+                if existing_config:
+                    frequency_months = existing_config.get("visitFrequencyMonths")
+                    duration_months = existing_config.get("durationMonths")
 
-                        frequency_value = convert_frequency_to_display(frequency_months)
-                        duration_value = convert_duration_to_display(duration_months)
-                        rows_with_existing_amc.append(idx)
-                        logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
-                except Exception as e:
-                    logger.warning(f"Error checking existing AMC config for facility {facility_id}: {e}")
-                    # Continue without existing config data
+                    frequency_value = convert_frequency_to_display(frequency_months)
+                    duration_value = convert_duration_to_display(duration_months)
+                    logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
 
             # Create one row per facility (asset types are handled internally during processing)
             rows.append({
@@ -1231,44 +1228,6 @@ async def get_amc_configuration_template(
             always_locked_columns=["BoundaryCode"],
             extra_append_rows=500
         )
-
-        # Lock AMC-Frequency and AMC-Duration for rows with existing AMC configurations
-        if rows_with_existing_amc:
-            wb = load_workbook(output_file_path)
-            ws = wb[sheet_name]
-            grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
-
-            header_row = [cell.value for cell in ws[1]]
-            frequency_col_idx = None
-            duration_col_idx = None
-
-            for idx, header in enumerate(header_row, start=1):
-                if header == "AMC-Frequency":
-                    frequency_col_idx = idx
-                elif header == "AMC-Duration":
-                    duration_col_idx = idx
-
-            # Lock cells for rows with existing AMC configurations
-            # Note: rows_with_existing_amc contains 0-based indices, Excel rows are 1-based
-            # Header is row 1, so data starts at row 2
-            for row_idx_0based in rows_with_existing_amc:
-                excel_row = row_idx_0based + 2  # +2 because header is row 1, and 0-based to 1-based
-
-                if frequency_col_idx:
-                    cell = ws.cell(row=excel_row, column=frequency_col_idx)
-                    cell.protection = Protection(locked=True)
-                    cell.fill = grey_fill
-
-                if duration_col_idx:
-                    cell = ws.cell(row=excel_row, column=duration_col_idx)
-                    cell.protection = Protection(locked=True)
-                    cell.fill = grey_fill
-
-            # Re-enable sheet protection
-            ws.protection.sheet = True
-            ws.protection.enable()
-            wb.save(output_file_path)
-            logger.info(f"Locked AMC fields for {len(rows_with_existing_amc)} rows with existing AMC configurations")
 
         # Autofit columns
         autofit_columns(

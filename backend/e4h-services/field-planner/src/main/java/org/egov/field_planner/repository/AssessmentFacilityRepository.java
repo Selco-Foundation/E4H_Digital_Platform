@@ -1,6 +1,7 @@
 package org.egov.field_planner.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.field_planner.repository.querybuilder.AssessmentQueryBuilder;
 import org.egov.field_planner.repository.rowmapper.AssessmentFacilityRowMapper;
@@ -26,6 +27,7 @@ import java.util.UUID;
 
 @Slf4j
 @Repository
+@RequiredArgsConstructor
 public class AssessmentFacilityRepository {
 
     private final JdbcTemplate jdbcTemplate;
