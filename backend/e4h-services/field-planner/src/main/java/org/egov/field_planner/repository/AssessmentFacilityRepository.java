@@ -1,7 +1,6 @@
 package org.egov.field_planner.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.field_planner.repository.querybuilder.AssessmentQueryBuilder;
 import org.egov.field_planner.repository.rowmapper.AssessmentFacilityRowMapper;
@@ -15,6 +14,7 @@ import org.egov.field_planner.web.models.PlanFacilityFilters;
 import org.egov.field_planner.web.models.PlanFacilityIncludeItem;
 import org.egov.field_planner.web.models.SubmissionQueueFilters;
 import org.egov.field_planner.web.models.SubmissionQueueSort;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -26,7 +26,6 @@ import java.util.UUID;
 
 @Slf4j
 @Repository
-@RequiredArgsConstructor
 public class AssessmentFacilityRepository {
 
     private final JdbcTemplate jdbcTemplate;
@@ -35,6 +34,21 @@ public class AssessmentFacilityRepository {
     private final AssessmentQueueFacilityRowMapper queueFacilityRowMapper;
     private final EligibleFacilityRowMapper eligibleFacilityRowMapper;
     private final ObjectMapper objectMapper;
+
+    public AssessmentFacilityRepository(
+            JdbcTemplate jdbcTemplate,
+            AssessmentQueryBuilder queryBuilder,
+            @Qualifier("assessmentFacilityRowMapper") AssessmentFacilityRowMapper facilityRowMapper,
+            AssessmentQueueFacilityRowMapper queueFacilityRowMapper,
+            EligibleFacilityRowMapper eligibleFacilityRowMapper,
+            ObjectMapper objectMapper) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.queryBuilder = queryBuilder;
+        this.facilityRowMapper = facilityRowMapper;
+        this.queueFacilityRowMapper = queueFacilityRowMapper;
+        this.eligibleFacilityRowMapper = eligibleFacilityRowMapper;
+        this.objectMapper = objectMapper;
+    }
 
     public PlanFacility insertFacility(String planId, String tenantId, String facilityId,
                                          PlanFacilityIncludeItem metadata, String userId) {
