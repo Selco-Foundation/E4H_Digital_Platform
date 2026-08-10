@@ -796,7 +796,7 @@ const CreateFieldPlan = () => {
               selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData?.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
               description: "PM_CREATE_FIELD_PLAN_LABEL_ACTIVITIES_DESC",
               t,
-              activityData: activityData?.filter((activity) => activity?.code !== "AMC"),
+              activityData: activityData?.filter((activity) => activity?.code === "INS"),
             },
             route: "activities",
             nextRoute: "",
