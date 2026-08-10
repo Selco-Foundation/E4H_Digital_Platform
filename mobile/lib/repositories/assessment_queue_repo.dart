@@ -31,9 +31,12 @@ class AssessmentQueueRepository {
         'assessmentPhase': assessmentMode.assessmentPhase,
         'tenantId': _tenantId ?? envConfig.variables.tenantId,
         if (normalizedSearch != null && normalizedSearch.isNotEmpty)
-          'searchText': normalizedSearch,
-        'sortBy': 'lastActionTime',
-        'sortOrder': sortOrder,
+          'filters': <String, dynamic>{
+            'facilityName': normalizedSearch,
+          },
+        'sort': <String, dynamic>{
+          'sortOrder': sortOrder,
+        },
         'offset': offset,
         'limit': limit,
       },
