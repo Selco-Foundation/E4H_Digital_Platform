@@ -155,6 +155,34 @@ def field_plan_facility_validation(
     return errors
 
 
+def facility_validation(
+    df, mdms_client, request_info, facility_client, boundary_data, schemaName
+):
+    """Facility ingestion validation for new rows (boundary resolved upstream)."""
+    df = df.reset_index(drop=True)
+
+    errors = [[] for _ in range(len(df))]
+    add_err = lambda i, msg: errors[i].append(msg)
+
+    new_rows = df[df["Facility Id"].isna() | (df["Facility Id"].astype(str).str.strip() == "")]
+    if new_rows.empty:
+        return errors
+
+    new_rows = new_rows.reset_index()
+
+    schema = mdms_client.get_column_definitions_and_row_constraints_with_metadata(
+        request_info, schemaName
+    )
+
+    validate_columns(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_unique_ids(df, schema, add_err)
+    validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_anganwadi_poc_username(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client)
+
+    return errors
+
+
 def assessment_plan_include_validation(
     df,
     mdms_client,
