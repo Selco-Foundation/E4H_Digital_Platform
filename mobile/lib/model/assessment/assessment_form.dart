@@ -3,6 +3,177 @@
 
 import 'assessment_form_type.dart';
 
+class AssessmentFacilityAddress {
+  final String? addressNumber;
+  final String? addressLine1;
+  final String? addressLine2;
+  final String? landmark;
+  final String? city;
+  final String? pincode;
+  final String? detail;
+  final String? state;
+  final String? district;
+  final String? block;
+  final String? doorNo;
+  final String? buildingName;
+  final String? street;
+
+  const AssessmentFacilityAddress({
+    this.addressNumber,
+    this.addressLine1,
+    this.addressLine2,
+    this.landmark,
+    this.city,
+    this.pincode,
+    this.detail,
+    this.state,
+    this.district,
+    this.block,
+    this.doorNo,
+    this.buildingName,
+    this.street,
+  });
+
+  factory AssessmentFacilityAddress.fromJson(Object? value) {
+    final json = value is Map
+        ? Map<String, dynamic>.from(value)
+        : const <String, dynamic>{};
+    return AssessmentFacilityAddress(
+      addressNumber: _assessmentString(json['addressNumber']),
+      addressLine1: _assessmentString(json['addressLine1']),
+      addressLine2: _assessmentString(json['addressLine2']),
+      landmark: _assessmentString(json['landmark']),
+      city: _assessmentString(json['city']),
+      pincode: _assessmentString(json['pincode']),
+      detail: _assessmentString(json['detail']),
+      state: _assessmentString(json['state']),
+      district: _assessmentString(json['district']),
+      block: _assessmentString(json['block']),
+      doorNo: _assessmentString(json['doorNo']),
+      buildingName: _assessmentString(json['buildingName']),
+      street: _assessmentString(json['street']),
+    );
+  }
+}
+
+class AssessmentFacilityBoundary {
+  final String? state;
+  final String? district;
+  final String? block;
+
+  const AssessmentFacilityBoundary({this.state, this.district, this.block});
+
+  factory AssessmentFacilityBoundary.fromJson(Object? value) {
+    final json = value is Map
+        ? Map<String, dynamic>.from(value)
+        : const <String, dynamic>{};
+    return AssessmentFacilityBoundary(
+      state: _assessmentString(json['state']),
+      district: _assessmentString(json['district']),
+      block: _assessmentString(json['block']),
+    );
+  }
+}
+
+class AssessmentFacilityDetails {
+  final String? facilityId;
+  final String? facilityName;
+  final String? facilityCategory;
+  final String? facilityType;
+  final AssessmentFacilityAddress address;
+  final String? boundaryCode;
+  final AssessmentFacilityBoundary boundary;
+  final String? facilityPocName;
+  final String? facilityPocPhone;
+  final String? ninId;
+  final String? hfrId;
+
+  const AssessmentFacilityDetails({
+    this.facilityId,
+    this.facilityName,
+    this.facilityCategory,
+    this.facilityType,
+    this.address = const AssessmentFacilityAddress(),
+    this.boundaryCode,
+    this.boundary = const AssessmentFacilityBoundary(),
+    this.facilityPocName,
+    this.facilityPocPhone,
+    this.ninId,
+    this.hfrId,
+  });
+
+  factory AssessmentFacilityDetails.fromJson(Map<String, dynamic> json) {
+    return AssessmentFacilityDetails(
+      facilityId: _assessmentString(json['facility_id']),
+      facilityName: _assessmentString(json['facility_name']),
+      facilityCategory: _assessmentString(json['facility_category']),
+      facilityType: _assessmentString(json['facility_type']),
+      address: AssessmentFacilityAddress.fromJson(json['address']),
+      boundaryCode: _assessmentString(json['boundaryCode']),
+      boundary: AssessmentFacilityBoundary.fromJson(json['boundary']),
+      facilityPocName: _assessmentString(json['facility_poc_name']),
+      facilityPocPhone: _assessmentString(json['facility_poc_phone']),
+      ninId: _assessmentString(json['nin_id']),
+      hfrId: _assessmentString(json['hfr_id']),
+    );
+  }
+
+  String? get formattedAddress {
+    final boundaryParts = boundaryCode
+            ?.split('_')
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    String? boundaryCodePart(int index) {
+      if (index >= boundaryParts.length) return null;
+      final value = boundaryParts[index];
+      return value.contains('/') ? null : value;
+    }
+
+    String? boundaryLabel(String? value) {
+      final normalized = _assessmentString(value);
+      if (normalized == null) return null;
+      final parts = normalized.split('_');
+      return _assessmentString(parts.last);
+    }
+
+    final block =
+        address.block ?? boundaryLabel(boundary.block) ?? boundaryCodePart(3);
+    final district = address.district ??
+        boundaryLabel(boundary.district) ??
+        boundaryCodePart(2);
+    final state =
+        address.state ?? boundaryLabel(boundary.state) ?? boundaryCodePart(1);
+    final values = <String?>[
+      address.doorNo,
+      address.buildingName,
+      address.addressNumber,
+      address.addressLine1,
+      address.addressLine2,
+      address.street,
+      address.landmark,
+      address.detail,
+      address.city,
+      block,
+      district,
+      state,
+      address.pincode,
+    ];
+    final normalized = values
+        .map(_assessmentString)
+        .whereType<String>()
+        .toList(growable: false);
+    return normalized.isEmpty ? null : normalized.join(', ');
+  }
+}
+
+String? _assessmentString(Object? value) {
+  if (value == null) return null;
+  final normalized = value.toString().trim();
+  return normalized.isEmpty ? null : normalized;
+}
+
 enum AssessmentUnableToContactReason {
   NO_ANSWER,
   WRONG_NUMBER;

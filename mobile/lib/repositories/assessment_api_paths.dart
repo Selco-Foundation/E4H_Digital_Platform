@@ -8,4 +8,5 @@ class AssessmentApiPaths {
   static const phoneUnableToContact =
       '$serviceBase/submission/phone/_unable-to-contact';
   static const fieldSubmission = '$serviceBase/submission/field/_create';
+  static const facilitySearch = 'facility-service/v2/facility/search';
 }

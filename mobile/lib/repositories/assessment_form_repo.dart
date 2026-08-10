@@ -20,6 +20,7 @@ class AssessmentFormRepository {
   static const phoneUnableToContactPath =
       AssessmentApiPaths.phoneUnableToContact;
   static const fieldSubmissionPath = AssessmentApiPaths.fieldSubmission;
+  static const facilitySearchPath = AssessmentApiPaths.facilitySearch;
   static const mobileSchemaAsset =
       'assets/forms/assessment_mobile_form_schema.json';
 
@@ -72,6 +73,36 @@ class AssessmentFormRepository {
         );
       }
       return resolution;
+    } on DioException catch (error) {
+      throw _parseDioError(error);
+    }
+  }
+
+  Future<AssessmentFacilityDetails?> getFacilityDetails({
+    required String facilityId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        facilitySearchPath,
+        queryParameters: {
+          'tenantId': _tenantId ?? envConfig.variables.tenantId,
+          'facilityId': facilityId,
+        },
+        data: <String, dynamic>{},
+        options: Options(
+          headers: {
+            Headers.acceptHeader: Headers.jsonContentType,
+            Headers.contentTypeHeader: Headers.jsonContentType,
+          },
+        ),
+      );
+      final facilities = _responseMap(response.data)['facilities'];
+      if (facilities is! List || facilities.isEmpty) return null;
+      final first = facilities.first;
+      if (first is! Map) return null;
+      return AssessmentFacilityDetails.fromJson(
+        Map<String, dynamic>.from(first),
+      );
     } on DioException catch (error) {
       throw _parseDioError(error);
     }

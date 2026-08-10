@@ -25,6 +25,7 @@ import '../repositories/assessment_draft_repo.dart';
 import '../repositories/assessment_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/assessment_form_mapper.dart';
+import '../utils/app_logger.dart';
 import '../utils/constants.dart';
 import '../utils/envConfig.dart';
 import '../utils/extensions.dart';
@@ -59,6 +60,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
   String? _error;
   AssessmentSubmissionRequest? _pendingRequest;
   AssessmentFormType? _resolvedFormType;
+  AssessmentFacilityDetails? _facilityDetails;
 
   String get _schemaKey =>
       '${_resolvedFormType?.schemaName ?? 'Assessment.Pending'}:'
@@ -86,14 +88,19 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _facilityDetails = null;
     });
     try {
+      final facilityDetails = _getFacilityDetails(
+        widget.facility.facilityId,
+      );
       final resolution = await _repository.resolveForm(
         planFacilityId: planFacilityId,
         facilityCategory: category,
         assessmentMode: widget.assessmentMode,
       );
       _resolvedFormType = resolution.formType;
+      _facilityDetails = await facilityDetails;
       final schema = await _repository.loadMobileSchema(resolution.formType);
       if (!mounted) return;
       schema['name'] = _schemaKey;
@@ -113,55 +120,44 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
     }
   }
 
+  Future<AssessmentFacilityDetails?> _getFacilityDetails(
+    String? facilityId,
+  ) async {
+    final normalized = facilityId?.trim();
+    if (normalized == null || normalized.isEmpty) return null;
+    try {
+      return await _repository.getFacilityDetails(facilityId: normalized);
+    } catch (error) {
+      AppLogger.instance.error(
+        title: 'Assessment facility details',
+        message: error.toString(),
+      );
+      return null;
+    }
+  }
+
   Map<String, dynamic> _defaults() {
     final user = context.read<AuthBloc>().state.maybeWhen(
           authenticated: (_, __, userRequest) => userRequest,
           orElse: () => null,
         );
-    final geography = [
-      widget.facility.block,
-      widget.facility.district,
-      widget.facility.state,
-    ]
-        .map((value) => value?.trim())
-        .whereType<String>()
-        .where((value) => value.isNotEmpty)
-        .join(', ');
     String display(String? value) {
       final normalized = value?.trim();
       return normalized == null || normalized.isEmpty ? '---' : normalized;
     }
 
     String editable(String? value) => value?.trim() ?? '';
-    final isAwc = _resolvedFormType == AssessmentFormType.AWC_PHONE ||
-        _resolvedFormType == AssessmentFormType.AWC_FIELD;
+    final formType = _resolvedFormType;
 
     return {
       'assessorName': display(user?.name ?? user?.userName),
       'assessorContact': editable(user?.mobileNumber),
       'callDate': DateTime.now(),
-      'facilityName': display(widget.facility.facilityName),
-      'facilityType': display(widget.facility.facilityType),
-      'facilityAddress': display(
-        widget.facility.address?.trim().isNotEmpty == true
-            ? widget.facility.address
-            : geography,
-      ),
-      'facilityCode': display(widget.facility.facilityCode),
-      'facilityInChargeName': isAwc
-          ? editable(widget.facility.facilityInCharge.name)
-          : display(widget.facility.facilityInCharge.name),
-      'facilityInChargeContact': isAwc
-          ? editable(widget.facility.facilityInCharge.phone)
-          : display(widget.facility.facilityInCharge.phone),
-      'facilityInChargeDesignation': '',
-      'alternateContactName': isAwc
-          ? editable(widget.facility.alternativeContact.name)
-          : display(widget.facility.alternativeContact.name),
-      'alternateContactDesignation': '',
-      'alternateContactNumber': isAwc
-          ? editable(widget.facility.alternativeContact.phone)
-          : display(widget.facility.alternativeContact.phone),
+      if (formType != null)
+        ...buildAssessmentFacilityDefaults(
+          facility: _facilityDetails,
+          formType: formType,
+        ),
     };
   }
 

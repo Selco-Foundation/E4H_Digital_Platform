@@ -2,6 +2,41 @@ import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
 import 'package:digit_forms_engine/models/property_schema/property_schema.dart';
 import 'package:digit_forms_engine/utils/utils.dart' as forms_utils;
 
+import '../model/assessment/assessment_form.dart';
+import '../model/assessment/assessment_form_type.dart';
+
+Map<String, dynamic> buildAssessmentFacilityDefaults({
+  required AssessmentFacilityDetails? facility,
+  required AssessmentFormType formType,
+}) {
+  String display(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? '---' : normalized;
+  }
+
+  String editable(String? value) => value?.trim() ?? '';
+  final isAwc = formType == AssessmentFormType.AWC_PHONE ||
+      formType == AssessmentFormType.AWC_FIELD;
+  return {
+    'facilityName': display(facility?.facilityName),
+    'facilityType': display(facility?.facilityType),
+    'facilityAddress': display(facility?.formattedAddress),
+    'facilityCode': display(facility?.facilityId),
+    'facilityInChargeName': isAwc
+        ? editable(facility?.facilityPocName)
+        : display(facility?.facilityPocName),
+    'facilityInChargeContact': isAwc
+        ? editable(facility?.facilityPocPhone)
+        : display(facility?.facilityPocPhone),
+    'facilityInChargeDesignation': '',
+    'alternateContactName': isAwc ? '' : '---',
+    'alternateContactDesignation': '',
+    'alternateContactNumber': isAwc ? '' : '---',
+    'ninId': editable(facility?.ninId),
+    'hfrId': editable(facility?.hfrId),
+  };
+}
+
 bool isAssessmentPropertyVisible({
   required String pageKey,
   required dynamic property,
