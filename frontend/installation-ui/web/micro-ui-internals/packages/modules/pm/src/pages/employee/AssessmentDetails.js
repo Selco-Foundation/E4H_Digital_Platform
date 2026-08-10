@@ -615,7 +615,7 @@ const AssessmentDetails = () => {
               cursor: canCompletePlan() ? "pointer" : "default",
             }}
           >
-            {t("PM_ACTION_PROCEED_ASSESSMENT_PLAN_CREATION")}
+            {t("PM_ACTION_PROCEED_TO_FIELD_PLAN_CREATION")}
           </button>
         </div>
       </div>
