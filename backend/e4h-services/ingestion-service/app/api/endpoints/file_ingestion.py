@@ -25,6 +25,7 @@ from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
     field_plan_facility_validation,
+    assessment_plan_include_validation,
     collect_hfr_nin_errors_for_row,
     collect_anganwadi_poc_username_errors_for_row,
 )
@@ -4113,31 +4114,6 @@ def _parse_upstream_error_detail(response: Optional[requests.Response]) -> str:
     return body
 
 
-def _validate_assessment_include_rows(
-        df: pd.DataFrame,
-        include_col: str,
-        facility_id_col: str,
-        linked_ids: Set[str],
-        plan_facility_ids: Set[str],
-) -> List[List[str]]:
-    validation_errors: List[List[str]] = []
-    for _, row in df.iterrows():
-        errs: List[str] = []
-        include_val = str(row.get(include_col, "")).strip().lower()
-        if include_val != "yes":
-            validation_errors.append(errs)
-            continue
-        facility_id = _normalize_facility_id_from_excel(row.get(facility_id_col))
-        if not facility_id:
-            errs.append("Facility Id is required for Yes rows")
-        elif facility_id not in linked_ids:
-            errs.append("Facility is not linked to this project")
-        elif facility_id in plan_facility_ids:
-            errs.append("Facility already included in this assessment plan")
-        validation_errors.append(errs)
-    return validation_errors
-
-
 def _apply_validation_results_to_dataframe(
         df: pd.DataFrame,
         validation_errors: List[List[str]],
@@ -4253,8 +4229,15 @@ async def validate_assessment_plan_include_data(
             if f.get("facilityId")
         }
 
-        validation_errors = _validate_assessment_include_rows(
-            df, include_col, facility_id_col, linked_ids, plan_facility_ids
+        mdms_client = MDMSClient(mdms_url)
+        validation_errors = assessment_plan_include_validation(
+            df,
+            mdms_client,
+            request_info_obj,
+            include_col,
+            facility_id_col,
+            linked_ids,
+            plan_facility_ids,
         )
         error_count = _apply_validation_results_to_dataframe(df, validation_errors)
         _write_validated_facility_sheet(wb, df, facility_sheet_name)
@@ -4389,39 +4372,44 @@ async def apply_assessment_plan_include_data(
             yes_row_indices.append(index)
             facilities.append(_build_assessment_include_facility_payload(row, df, facility_id_col))
 
-        if facilities:
-            try:
-                response = assessment_client.bulk_create_plan_facilities(
-                    request_info_obj, plan_id, tenant_id, facilities
-                )
-                created = response.get("created", []) or []
-                api_errors = response.get("errors", []) or []
+        if not facilities:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one facility must be marked Include in Assessment Plan = Yes",
+            )
 
-                created_ids = {
-                    _normalize_facility_id_from_excel(item.get("facilityId"))
-                    for item in created
-                    if item.get("facilityId")
-                }
-                error_by_facility_id = {
-                    _normalize_facility_id_from_excel(item.get("facilityId")): item
-                    for item in api_errors
-                    if item.get("facilityId")
-                }
+        try:
+            response = assessment_client.bulk_create_plan_facilities(
+                request_info_obj, plan_id, tenant_id, facilities
+            )
+            created = response.get("created", []) or []
+            api_errors = response.get("errors", []) or []
 
-                for index in yes_row_indices:
-                    facility_id = _normalize_facility_id_from_excel(df.at[index, facility_id_col])
-                    if facility_id in created_ids:
-                        df.at[index, result_col] = "Included"
-                    elif facility_id in error_by_facility_id:
-                        err = error_by_facility_id[facility_id]
-                        message = err.get("message") or err.get("code") or "Include failed"
-                        df.at[index, result_col] = f"Failed: {message}"
-                    else:
-                        df.at[index, result_col] = "Not Attempted"
-            except requests.HTTPError as http_err:
-                detail = _parse_upstream_error_detail(http_err.response)
-                for index in yes_row_indices:
-                    df.at[index, result_col] = f"Failed: {detail}"
+            created_ids = {
+                _normalize_facility_id_from_excel(item.get("facilityId"))
+                for item in created
+                if item.get("facilityId")
+            }
+            error_by_facility_id = {
+                _normalize_facility_id_from_excel(item.get("facilityId")): item
+                for item in api_errors
+                if item.get("facilityId")
+            }
+
+            for index in yes_row_indices:
+                facility_id = _normalize_facility_id_from_excel(df.at[index, facility_id_col])
+                if facility_id in created_ids:
+                    df.at[index, result_col] = "Included"
+                elif facility_id in error_by_facility_id:
+                    err = error_by_facility_id[facility_id]
+                    message = err.get("message") or err.get("code") or "Include failed"
+                    df.at[index, result_col] = f"Failed: {message}"
+                else:
+                    df.at[index, result_col] = "Not Attempted"
+        except requests.HTTPError as http_err:
+            detail = _parse_upstream_error_detail(http_err.response)
+            for index in yes_row_indices:
+                df.at[index, result_col] = f"Failed: {detail}"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"assessment_plan_include_apply_results_{timestamp}.xlsx"

@@ -121,6 +121,11 @@ public class AssessmentPlanService {
         planRepository.updatePlan(existing, request.getRequestInfo().getUserInfo().getUuid());
 
         if (request.getAssessors() != null && !request.getAssessors().isEmpty()) {
+            int facilityCount = planRepository.countFacilitiesOnPlan(existing.getId());
+            if (facilityCount == 0) {
+                throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_FACILITIES_REQUIRED,
+                        "At least one facility must be included in the assessment plan before assigning assessors");
+            }
             assignAssessors(request.getRequestInfo(), existing, request.getAssessors());
         }
         existing.setAssessors(getAssessors(request.getRequestInfo(), existing));
