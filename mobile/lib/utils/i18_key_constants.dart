@@ -24,6 +24,7 @@ const amcHome = AmcHome();
 const amcReportHome = AmcReportHome();
 const amcMediaUpload = AmcMediaUpload();
 const amcSelectFacility = AmcSelectFacility();
+const assessmentSelectFacility = AssessmentSelectFacility();
 const home = Home();
 const bomButtons = BomButtons();
 const installationImages = InstallationImages();
@@ -359,6 +360,31 @@ class AmcSelectFacility {
   String get amcNumber => 'AMC_NUMBER';
   String get report => 'AMC_SELECT_FACILITY_REPORT';
   String get submitForApproval => 'AMC_SELECT_FACILITY_SUBMIT_FOR_APPROVAL';
+}
+
+class AssessmentSelectFacility {
+  const AssessmentSelectFacility();
+
+  String get failedToLoad => 'ASSESSMENT_SELECT_FACILITY_FAILED_TO_LOAD';
+  String get noFacilitiesFound =>
+      'ASSESSMENT_SELECT_FACILITY_NO_FACILITIES_FOUND';
+  String get loadMoreFailedRetry =>
+      'ASSESSMENT_SELECT_FACILITY_LOAD_MORE_FAILED_RETRY';
+  String get lastActionTime => 'ASSESSMENT_SELECT_FACILITY_LAST_ACTION_TIME';
+  String get couldNotReach => 'ASSESSMENT_SELECT_FACILITY_COULD_NOT_REACH';
+  String get selectReason => 'ASSESSMENT_SELECT_FACILITY_SELECT_REASON';
+  String get noAnswerReason => 'ASSESSMENT_SELECT_FACILITY_NO_ANSWER_REASON';
+  String get wrongNumberReason =>
+      'ASSESSMENT_SELECT_FACILITY_WRONG_NUMBER_REASON';
+  String get updateStatus => 'ASSESSMENT_SELECT_FACILITY_UPDATE_STATUS';
+  String get startAssessment => 'ASSESSMENT_SELECT_FACILITY_START_ASSESSMENT';
+  String get statusScheduled => 'ASSESSMENT_SELECT_FACILITY_STATUS_SCHEDULED';
+  String get statusNoAnswer => 'ASSESSMENT_SELECT_FACILITY_STATUS_NO_ANSWER';
+  String get statusWrongNumber =>
+      'ASSESSMENT_SELECT_FACILITY_STATUS_WRONG_NUMBER';
+  String get statusQualified => 'ASSESSMENT_SELECT_FACILITY_STATUS_QUALIFIED';
+  String get statusNotQualified =>
+      'ASSESSMENT_SELECT_FACILITY_STATUS_NOT_QUALIFIED';
 }
 
 class Home {

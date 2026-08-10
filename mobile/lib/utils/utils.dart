@@ -362,6 +362,24 @@ enum USER_TYPES { SUPERVISOR, FIELD_STAFF, AMC, ASSESSOR }
 
 enum ASSET_TYPES { BATTERY, INVERTER, PANEL }
 
+enum ASSESSMENT_STATUS {
+  PENDING,
+  PENDING_NO_ANSWER,
+  PENDING_WRONG_NUMBER,
+  QUALIFIED,
+  NOT_QUALIFIED;
+
+  static ASSESSMENT_STATUS? fromCode(String? code) {
+    final normalized = code?.trim().toUpperCase();
+    if (normalized == null || normalized.isEmpty) return null;
+
+    for (final status in values) {
+      if (status.name == normalized) return status;
+    }
+    return null;
+  }
+}
+
 String assetTypeDisplayName(String typeCode) {
   if (typeCode.toLowerCase() == ASSET_TYPES.INVERTER.name.toLowerCase()) {
     return 'Inverter / PCU';

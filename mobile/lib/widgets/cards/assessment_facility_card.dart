@@ -8,6 +8,8 @@ import 'package:digit_ui_components/widgets/atoms/digit_radio_list.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 
+import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
 
 class AssessmentFacilityCard extends StatefulWidget {
@@ -60,19 +62,19 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
             ReportDetailRow(
-              label: 'Status',
+              label: context.translate(i18.common.status),
               value: _detailText(widget.status, textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'State',
+              label: context.translate(i18.common.state),
               value: _detailText(widget.state, textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'District',
+              label: context.translate(i18.common.district),
               value: _detailText(widget.district, textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'Block',
+              label: context.translate(i18.common.block),
               value: _detailText(widget.block, textTheme, theme),
             ),
             if (widget.isRemoteAssessor) ...[
@@ -87,14 +89,18 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
                       const SizedBox(width: double.infinity),
                       const SizedBox(height: spacer1),
                       Text(
-                        'Could not reach?',
+                        context.translate(
+                          i18.assessmentSelectFacility.couldNotReach,
+                        ),
                         style: textTheme.headingS.copyWith(
                           color: theme.colorTheme.text.primary,
                         ),
                       ),
                       const SizedBox(height: spacer2),
                       Text(
-                        'Select a reason',
+                        context.translate(
+                          i18.assessmentSelectFacility.selectReason,
+                        ),
                         style: textTheme.bodyS.copyWith(
                           color: theme.colorTheme.text.secondary,
                         ),
@@ -108,11 +114,15 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
                         radioDigitButtons: [
                           RadioButtonModel(
                             code: 'NO_ANSWER',
-                            name: "Ring but didn't pick",
+                            name: context.translate(
+                              i18.assessmentSelectFacility.noAnswerReason,
+                            ),
                           ),
                           RadioButtonModel(
                             code: 'WRONG_NUMBER',
-                            name: 'Wrong number',
+                            name: context.translate(
+                              i18.assessmentSelectFacility.wrongNumberReason,
+                            ),
                           ),
                         ],
                         onChanged: (reason) {
@@ -131,8 +141,12 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
             DigitButton(
               mainAxisSize: MainAxisSize.max,
               label: _hasUnableToContactReason
-                  ? 'Update Status'
-                  : 'Start Assessment',
+                  ? context.translate(
+                      i18.assessmentSelectFacility.updateStatus,
+                    )
+                  : context.translate(
+                      i18.assessmentSelectFacility.startAssessment,
+                    ),
               onPressed: _hasUnableToContactReason
                   ? widget.onUpdateStatus
                   : widget.onStartAssessment,
