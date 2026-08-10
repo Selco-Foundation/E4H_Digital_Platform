@@ -8,6 +8,7 @@ import 'package:digit_ui_components/widgets/atoms/digit_radio_list.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 
+import '../../model/assessment/assessment_form.dart';
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
@@ -20,7 +21,8 @@ class AssessmentFacilityCard extends StatefulWidget {
   final String block;
   final bool isRemoteAssessor;
   final VoidCallback onStartAssessment;
-  final VoidCallback onUpdateStatus;
+  final Future<bool> Function(AssessmentUnableToContactReason reason)
+      onUpdateStatus;
 
   const AssessmentFacilityCard({
     super.key,
@@ -39,9 +41,27 @@ class AssessmentFacilityCard extends StatefulWidget {
 }
 
 class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
-  String? _unableToContactReason;
+  AssessmentUnableToContactReason? _unableToContactReason;
+  bool _isUpdatingStatus = false;
 
   bool get _hasUnableToContactReason => _unableToContactReason != null;
+
+  Future<void> _updateStatus() async {
+    final reason = _unableToContactReason;
+    if (reason == null || _isUpdatingStatus) return;
+    setState(() => _isUpdatingStatus = true);
+    var succeeded = false;
+    try {
+      succeeded = await widget.onUpdateStatus(reason);
+    } catch (_) {
+      succeeded = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _isUpdatingStatus = false;
+      if (succeeded) _unableToContactReason = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +127,7 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
                       ),
                       const SizedBox(height: spacer2),
                       RadioList(
-                        groupValue: _unableToContactReason ?? '',
+                        groupValue: _unableToContactReason?.name ?? '',
                         containerPadding: const EdgeInsets.symmetric(
                           vertical: spacer2,
                         ),
@@ -126,11 +146,17 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
                           ),
                         ],
                         onChanged: (reason) {
+                          if (_isUpdatingStatus) return;
+                          final selectedReason =
+                              AssessmentUnableToContactReason.fromCode(
+                            reason.code,
+                          );
+                          if (selectedReason == null) return;
                           setState(() {
                             _unableToContactReason =
-                                _unableToContactReason == reason.code
+                                _unableToContactReason == selectedReason
                                     ? null
-                                    : reason.code;
+                                    : selectedReason;
                           });
                         },
                       ),
@@ -143,16 +169,21 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
             const SizedBox(height: spacer4),
             DigitButton(
               mainAxisSize: MainAxisSize.max,
-              label: _hasUnableToContactReason
+              label: _isUpdatingStatus
                   ? context.translate(
-                      i18.assessmentSelectFacility.updateStatus,
+                      i18.assessmentSelectFacility.updatingStatus,
                     )
-                  : context.translate(
-                      i18.assessmentSelectFacility.startAssessment,
-                    ),
+                  : _hasUnableToContactReason
+                      ? context.translate(
+                          i18.assessmentSelectFacility.updateStatus,
+                        )
+                      : context.translate(
+                          i18.assessmentSelectFacility.startAssessment,
+                        ),
               onPressed: _hasUnableToContactReason
-                  ? widget.onUpdateStatus
+                  ? _updateStatus
                   : widget.onStartAssessment,
+              isDisabled: _isUpdatingStatus,
               type: DigitButtonType.primary,
               size: DigitButtonSize.large,
             ),

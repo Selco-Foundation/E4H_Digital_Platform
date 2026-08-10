@@ -380,6 +380,11 @@ class AssessmentSelectFacility {
   String get wrongNumberReason =>
       'ASSESSMENT_SELECT_FACILITY_WRONG_NUMBER_REASON';
   String get updateStatus => 'ASSESSMENT_SELECT_FACILITY_UPDATE_STATUS';
+  String get updatingStatus => 'ASSESSMENT_SELECT_FACILITY_UPDATING_STATUS';
+  String get statusUpdateSuccess =>
+      'ASSESSMENT_SELECT_FACILITY_STATUS_UPDATE_SUCCESS';
+  String get statusUpdateFailed =>
+      'ASSESSMENT_SELECT_FACILITY_STATUS_UPDATE_FAILED';
   String get startAssessment => 'ASSESSMENT_SELECT_FACILITY_START_ASSESSMENT';
   String get statusScheduled => 'ASSESSMENT_SELECT_FACILITY_STATUS_SCHEDULED';
   String get statusNoAnswer => 'ASSESSMENT_SELECT_FACILITY_STATUS_NO_ANSWER';

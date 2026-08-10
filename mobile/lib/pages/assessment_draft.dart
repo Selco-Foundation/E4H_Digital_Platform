@@ -10,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/authbloc.dart';
 import '../data/nosql/cache_assessment_draft.dart';
 import '../model/assessment/assessment_form.dart';
+import '../model/assessment/assessment_form_type.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../repositories/assessment_draft_repo.dart';
 import '../repositories/assessment_form_repo.dart';
@@ -57,7 +58,7 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
     });
     try {
       final repository = await _draftRepository();
-      final drafts = await repository.listPhoneDrafts(_assessorId);
+      final drafts = await repository.listDrafts(_assessorId);
       if (mounted) {
         setState(() {
           _drafts = drafts;
@@ -90,8 +91,12 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
     for (final draft in pending) {
       try {
         final request = drafts.requestOf(draft);
-        await forms.submitPhoneAssessment(request);
-        await drafts.delete(request.tenantId, request.planFacilityId);
+        await forms.submitAssessment(request);
+        await drafts.delete(
+          request.tenantId,
+          request.planFacilityId,
+          request.assessmentPhase,
+        );
       } on AssessmentApiException catch (error) {
         failed++;
         if (error.isConflict || error.isAuthorizationFailure) {
@@ -131,9 +136,13 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
         : hasOnSite && !hasRemote
             ? AssessmentMode.onSite
             : AssessmentMode.remote;
-    final visibleDrafts = selectedMode == AssessmentMode.remote
-        ? _drafts
-        : const <CacheAssessmentDraft>[];
+    final selectedPhase = selectedMode == AssessmentMode.remote
+        ? AssessmentPhase.PHONE
+        : AssessmentPhase.FIELD;
+    final visibleDrafts = _drafts
+        .where(
+            (draft) => AssessmentPhase.fromCode(draft.phase) == selectedPhase)
+        .toList(growable: false);
     final hasPending = visibleDrafts.any(
       (draft) => draft.status == AssessmentDraftStatus.pending,
     );

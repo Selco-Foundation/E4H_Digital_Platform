@@ -18,6 +18,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 import '../blocs/auth/authbloc.dart';
 import '../model/assessment/assessment_form.dart';
+import '../model/assessment/assessment_form_type.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../model/assessment/assessment_queue.dart';
 import '../repositories/assessment_draft_repo.dart';
@@ -57,9 +58,11 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
   bool _isFrozenDraft = false;
   String? _error;
   AssessmentSubmissionRequest? _pendingRequest;
+  AssessmentFormType? _resolvedFormType;
 
   String get _schemaKey =>
-      'Assessment.HF_PHONE:${widget.facility.planFacilityId ?? 'missing'}';
+      '${_resolvedFormType?.schemaName ?? 'Assessment.Pending'}:'
+      '${widget.facility.planFacilityId ?? 'missing'}';
 
   @override
   void initState() {
@@ -85,11 +88,13 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       _error = null;
     });
     try {
-      await _repository.resolvePhoneForm(
+      final resolution = await _repository.resolveForm(
         planFacilityId: planFacilityId,
         facilityCategory: category,
+        assessmentMode: widget.assessmentMode,
       );
-      final schema = await _repository.loadPhoneMobileSchema();
+      _resolvedFormType = resolution.formType;
+      final schema = await _repository.loadMobileSchema(resolution.formType);
       if (!mounted) return;
       schema['name'] = _schemaKey;
       final bloc = context.read<FormsBloc>();
@@ -127,8 +132,13 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       return normalized == null || normalized.isEmpty ? '---' : normalized;
     }
 
+    String editable(String? value) => value?.trim() ?? '';
+    final isAwc = _resolvedFormType == AssessmentFormType.AWC_PHONE ||
+        _resolvedFormType == AssessmentFormType.AWC_FIELD;
+
     return {
       'assessorName': display(user?.name ?? user?.userName),
+      'assessorContact': editable(user?.mobileNumber),
       'callDate': DateTime.now(),
       'facilityName': display(widget.facility.facilityName),
       'facilityType': display(widget.facility.facilityType),
@@ -138,12 +148,20 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
             : geography,
       ),
       'facilityCode': display(widget.facility.facilityCode),
-      'facilityInChargeName': display(widget.facility.facilityInCharge.name),
-      'facilityInChargeContact':
-          display(widget.facility.facilityInCharge.phone),
-      'alternateContactName': display(widget.facility.alternativeContact.name),
-      'alternateContactNumber':
-          display(widget.facility.alternativeContact.phone),
+      'facilityInChargeName': isAwc
+          ? editable(widget.facility.facilityInCharge.name)
+          : display(widget.facility.facilityInCharge.name),
+      'facilityInChargeContact': isAwc
+          ? editable(widget.facility.facilityInCharge.phone)
+          : display(widget.facility.facilityInCharge.phone),
+      'facilityInChargeDesignation': '',
+      'alternateContactName': isAwc
+          ? editable(widget.facility.alternativeContact.name)
+          : display(widget.facility.alternativeContact.name),
+      'alternateContactDesignation': '',
+      'alternateContactNumber': isAwc
+          ? editable(widget.facility.alternativeContact.phone)
+          : display(widget.facility.alternativeContact.phone),
     };
   }
 
@@ -261,16 +279,18 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
 
   Future<void> _submit(SchemaObject schema) async {
     final planFacilityId = widget.facility.planFacilityId!;
-    final category = widget.facility.facilityCategory!;
     final user = context.read<AuthBloc>().state.maybeWhen(
           authenticated: (_, __, value) => value,
           orElse: () => null,
         );
+    final formType = _resolvedFormType;
+    if (formType == null) return;
     final request = _pendingRequest ??
         AssessmentSubmissionRequest(
           planFacilityId: planFacilityId,
           tenantId: envConfig.variables.tenantId,
-          facilityCategory: category,
+          facilityCategory: formType.facilityCategory,
+          assessmentPhase: formType.phase,
           submissionData: buildAssessmentSubmissionData(schema),
           submittedByName: (user?.name ?? user?.userName ?? '').trim(),
           clientSubmissionTime: DateTime.now().millisecondsSinceEpoch,
@@ -280,11 +300,12 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       _error = null;
     });
     try {
-      await _repository.submitPhoneAssessment(request);
+      await _repository.submitAssessment(request);
       final isar = await Constants().isar;
       await AssessmentDraftRepository(isar).delete(
         request.tenantId,
         request.planFacilityId,
+        request.assessmentPhase,
       );
       if (!mounted) return;
       context.read<FormsBloc>().add(
@@ -333,6 +354,84 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  List<Map<String, Widget>> _customComponents(
+    PropertySchema page,
+    FormGroup form,
+  ) {
+    return [
+      for (final entry
+          in page.properties?.entries ?? <MapEntry<String, PropertySchema>>[])
+        if (entry.value.format == PropertySchemaFormat.custom &&
+            (entry.key == 'facilityOpeningTime' ||
+                entry.key == 'facilityClosingTime'))
+          {
+            entry.key: ReactiveTextField<String>(
+              formControlName: entry.key,
+              readOnly: true,
+              validationMessages: {
+                ValidationMessage.required: (_) => 'This field is required',
+                ValidationMessage.pattern: (_) => 'Enter a valid value',
+              },
+              decoration: InputDecoration(
+                labelText: entry.value.label,
+                suffixIcon: const Icon(Icons.access_time),
+              ),
+              onTap: (control) async {
+                final parts = control.value?.split(':') ?? const <String>[];
+                final initial = parts.length == 2
+                    ? TimeOfDay(
+                        hour: int.tryParse(parts[0]) ?? TimeOfDay.now().hour,
+                        minute:
+                            int.tryParse(parts[1]) ?? TimeOfDay.now().minute,
+                      )
+                    : TimeOfDay.now();
+                final selected = await showTimePicker(
+                  context: context,
+                  initialTime: initial,
+                  helpText: entry.key == 'facilityOpeningTime'
+                      ? 'Select opening time'
+                      : 'Select closing time',
+                );
+                if (selected == null) return;
+                control.updateValue(
+                  '${selected.hour.toString().padLeft(2, '0')}:'
+                  '${selected.minute.toString().padLeft(2, '0')}',
+                );
+                control.markAsTouched();
+              },
+            ),
+          },
+      for (final entry
+          in page.properties?.entries ?? <MapEntry<String, PropertySchema>>[])
+        if (entry.value.format == PropertySchemaFormat.custom &&
+            entry.value.schemaCode?.startsWith('ASSESSMENT_OTHER_FOR:') == true)
+          {
+            entry.key: ReactiveValueListenableBuilder<String>(
+              formControlName: entry.value.schemaCode!
+                  .substring('ASSESSMENT_OTHER_FOR:'.length),
+              builder: (context, control, _) {
+                final show = control.value
+                        ?.split('.')
+                        .map((value) => value.trim().toUpperCase())
+                        .contains('OTHER') ==
+                    true;
+                if (!show) return const SizedBox.shrink();
+                return ReactiveTextField<String>(
+                  formControlName: entry.key,
+                  readOnly: _isFrozenDraft,
+                  validationMessages: {
+                    ValidationMessage.required: (_) => 'This field is required',
+                  },
+                  decoration: InputDecoration(
+                    labelText: entry.value.label,
+                  ),
+                );
+              },
+            ),
+          },
+    ];
   }
 
   void _openBackendError(
@@ -425,12 +524,10 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                         ? context.translate(i18.assessmentForm.submitting)
                         : _isFrozenDraft
                             ? context.translate(i18.common.retry)
-                            : context.translate(
-                                pageEntry.value.actionLabel ??
-                                    (_pageIndex == schema.pages.length - 1
-                                        ? i18.common.coreCommonSubmit
-                                        : i18.common.coreCommonNext),
-                              ),
+                            : pageEntry.value.actionLabel ??
+                                (_pageIndex == schema.pages.length - 1
+                                    ? 'Submit'
+                                    : 'Next'),
                     onPressed: () => _isFrozenDraft
                         ? _submit(schema)
                         : _continue(
@@ -466,18 +563,18 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                   children: [
                     if (pageEntry.value.label != null)
                       Text(
-                        context.translate(pageEntry.value.label!),
+                        pageEntry.value.label!,
                         style: theme.digitTextTheme(context).headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2,
                             ),
                       ),
                     if (pageEntry.value.description != null)
-                      Text(context.translate(pageEntry.value.description!)),
+                      Text(pageEntry.value.description!),
                     JsonForms(
                       currentSchemaKey: _schemaKey,
                       propertySchema: pageEntry.value,
                       pageName: pageEntry.key,
-                      childrens: const [],
+                      childrens: _customComponents(pageEntry.value, form),
                       defaultValues: defaults,
                       isView: _isFrozenDraft,
                     ),

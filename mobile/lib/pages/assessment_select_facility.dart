@@ -15,8 +15,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/assessment_queue/assessment_queue.dart';
+import '../model/assessment/assessment_form.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../model/assessment/assessment_queue.dart';
+import '../repositories/assessment_form_repo.dart';
 import '../repositories/assessment_queue_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -65,6 +67,8 @@ class _AssessmentSelectFacilityViewState
   static const _scrollThreshold = 200.0;
 
   Timer? _searchTimer;
+  final AssessmentFormRepository _assessmentFormRepository =
+      AssessmentFormRepository();
   String _searchQuery = '';
   String _sortOrder = 'DESC';
 
@@ -298,7 +302,8 @@ class _AssessmentSelectFacilityViewState
             block: _displayValue(facility.block),
             isRemoteAssessor: widget.assessmentMode == AssessmentMode.remote,
             onStartAssessment: () => _startAssessment(facility),
-            onUpdateStatus: () {},
+            onUpdateStatus: (reason) =>
+                _updateUnableToContactStatus(facility, reason),
           ),
           const SizedBox(height: spacer5),
         ],
@@ -330,6 +335,44 @@ class _AssessmentSelectFacilityViewState
         assessmentMode: widget.assessmentMode,
         onSubmissionSucceeded: _requestRefresh,
       ),
+    );
+  }
+
+  Future<bool> _updateUnableToContactStatus(
+    AssessmentQueueFacility facility,
+    AssessmentUnableToContactReason reason,
+  ) async {
+    final planFacilityId = facility.planFacilityId?.trim();
+    if (planFacilityId == null || planFacilityId.isEmpty) {
+      _showStatusUpdateMessage(
+        i18.assessmentSelectFacility.statusUpdateFailed,
+      );
+      return false;
+    }
+    try {
+      await _assessmentFormRepository.markPhoneUnableToContact(
+        planFacilityId: planFacilityId,
+        reason: reason,
+      );
+      if (!mounted) return true;
+      _showStatusUpdateMessage(
+        i18.assessmentSelectFacility.statusUpdateSuccess,
+      );
+      _requestRefresh();
+      return true;
+    } catch (_) {
+      if (mounted) {
+        _showStatusUpdateMessage(
+          i18.assessmentSelectFacility.statusUpdateFailed,
+        );
+      }
+      return false;
+    }
+  }
+
+  void _showStatusUpdateMessage(String localizationKey) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.translate(localizationKey))),
     );
   }
 

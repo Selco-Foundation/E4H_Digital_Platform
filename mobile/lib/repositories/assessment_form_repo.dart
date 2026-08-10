@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
 import '../model/assessment/assessment_form.dart';
+import '../model/assessment/assessment_form_type.dart';
+import '../model/assessment/assessment_mode.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
@@ -15,8 +17,11 @@ typedef AssessmentSchemaLoader = Future<String> Function();
 class AssessmentFormRepository {
   static const resolvePath = AssessmentApiPaths.formResolve;
   static const phoneSubmissionPath = AssessmentApiPaths.phoneSubmission;
-  static const phoneFormType = 'HF_PHONE';
-  static const localSchemaAsset = 'assets/forms/assessment_hf_phone.json';
+  static const phoneUnableToContactPath =
+      AssessmentApiPaths.phoneUnableToContact;
+  static const fieldSubmissionPath = AssessmentApiPaths.fieldSubmission;
+  static const mobileSchemaAsset =
+      'assets/forms/assessment_mobile_form_schema.json';
 
   final Dio _dio;
   final AssessmentSchemaLoader _schemaLoader;
@@ -29,29 +34,41 @@ class AssessmentFormRepository {
   })  : _dio = dio ?? DioClient().dio,
         _tenantId = tenantId,
         _schemaLoader =
-            schemaLoader ?? (() => rootBundle.loadString(localSchemaAsset));
+            schemaLoader ?? (() => rootBundle.loadString(mobileSchemaAsset));
 
-  Future<AssessmentFormResolution> resolvePhoneForm({
+  Future<AssessmentFormResolution> resolveForm({
     required String planFacilityId,
     required String facilityCategory,
+    required AssessmentMode assessmentMode,
   }) async {
+    final expected = AssessmentFormType.expectedFor(
+      facilityCategory: facilityCategory,
+      mode: assessmentMode,
+    );
+    if (expected == null) {
+      throw const AssessmentApiException(
+        code: 'ASSESSMENT_UNSUPPORTED_FACILITY_CATEGORY',
+        message: 'Unsupported assessment facility category',
+      );
+    }
     try {
       final response = await _dio.post(
         resolvePath,
         data: {
           'planFacilityId': planFacilityId,
-          'facilityCategory': facilityCategory,
-          'assessmentPhase': 'PHONE',
+          'facilityCategory': expected.facilityCategory,
+          'assessmentPhase': expected.phase.name,
           'tenantId': _tenantId ?? envConfig.variables.tenantId,
         },
       );
-      final data = _responseMap(response.data);
-      final resolution = AssessmentFormResolution.fromJson(data);
-      if (resolution.formType.toUpperCase() != phoneFormType) {
+      final resolution = AssessmentFormResolution.fromJson(
+        _responseMap(response.data),
+      );
+      if (resolution.formType != expected) {
         throw AssessmentApiException(
           statusCode: response.statusCode,
           code: 'ASSESSMENT_UNSUPPORTED_FORM_TYPE',
-          message: 'Unsupported assessment form: ${resolution.formType}',
+          message: 'Unsupported assessment form: ${resolution.formType.name}',
         );
       }
       return resolution;
@@ -60,7 +77,9 @@ class AssessmentFormRepository {
     }
   }
 
-  Future<Map<String, dynamic>> loadPhoneMobileSchema() async {
+  Future<Map<String, dynamic>> loadMobileSchema(
+    AssessmentFormType formType,
+  ) async {
     final decoded = jsonDecode(await _schemaLoader());
     if (decoded is! Map) {
       throw const FormatException('Invalid assessment mobile schema');
@@ -70,32 +89,72 @@ class AssessmentFormRepository {
     if (docs is! List) {
       throw const FormatException('Assessment mobile schema is missing');
     }
-    Map<String, dynamic>? record;
+    final matches = <Map<String, dynamic>>[];
     for (final value in docs.whereType<Map>()) {
       final candidate = Map<String, dynamic>.from(value);
       final data = candidate['data'];
-      if (data is Map &&
-          data['formType']?.toString().toUpperCase() == phoneFormType) {
-        record = candidate;
-        break;
+      if (data is! Map) continue;
+      final dataFormType =
+          AssessmentFormType.fromCode(data['formType']?.toString());
+      final identifierFormType = AssessmentFormType.fromCode(
+        candidate['uniqueIdentifier']?.toString(),
+      );
+      if (dataFormType == formType || identifierFormType == formType) {
+        if (dataFormType != formType || identifierFormType != formType) {
+          throw FormatException(
+            '${formType.name} mobile schema identifiers do not match',
+          );
+        }
+        matches.add(candidate);
       }
     }
-    if (record == null) {
-      throw const FormatException('HF_PHONE mobile schema is missing');
+    if (matches.isEmpty) {
+      throw FormatException('${formType.name} mobile schema is missing');
     }
+    if (matches.length > 1) {
+      throw FormatException('${formType.name} mobile schema is duplicated');
+    }
+    final record = matches.single;
     final transformed = transformSelcoFormMdmsDocToSchema(record);
-    transformed['uniqueIdentifier'] = phoneFormType;
+    transformed['name'] = formType.schemaName;
+    transformed['uniqueIdentifier'] = formType.name;
     return transformed;
   }
 
-  Future<AssessmentSubmissionResponse> submitPhoneAssessment(
-    AssessmentSubmissionRequest request,
-  ) async {
+  Future<void> markPhoneUnableToContact({
+    required String planFacilityId,
+    required AssessmentUnableToContactReason reason,
+  }) async {
     try {
       final response = await _dio.post(
-        phoneSubmissionPath,
-        data: request.toJson(),
+        phoneUnableToContactPath,
+        data: {
+          'planFacilityId': planFacilityId,
+          'reason': reason.name,
+        },
       );
+      final statusCode = response.statusCode ?? 0;
+      if (statusCode < 200 || statusCode >= 300) {
+        throw AssessmentApiException(
+          statusCode: response.statusCode,
+          code: 'ASSESSMENT_UNABLE_TO_CONTACT_FAILED',
+          message: 'Unable to update facility contact status',
+        );
+      }
+    } on DioException catch (error) {
+      throw _parseDioError(error);
+    }
+  }
+
+  Future<AssessmentSubmissionResponse> submitAssessment(
+    AssessmentSubmissionRequest request,
+  ) async {
+    final path = switch (request.assessmentPhase) {
+      AssessmentPhase.PHONE => phoneSubmissionPath,
+      AssessmentPhase.FIELD => fieldSubmissionPath,
+    };
+    try {
+      final response = await _dio.post(path, data: request.toJson());
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw AssessmentApiException(
           statusCode: response.statusCode,

@@ -4,6 +4,7 @@ import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_assessment_draft.dart';
 import '../model/assessment/assessment_form.dart';
+import '../model/assessment/assessment_form_type.dart';
 import '../model/assessment/assessment_queue.dart';
 
 class AssessmentDraftStatus {
@@ -16,8 +17,12 @@ class AssessmentDraftRepository {
 
   const AssessmentDraftRepository(this.isar);
 
-  static String key(String tenantId, String planFacilityId) =>
-      '$tenantId::$planFacilityId::PHONE';
+  static String key(
+    String tenantId,
+    String planFacilityId,
+    AssessmentPhase phase,
+  ) =>
+      '$tenantId::$planFacilityId::${phase.name}';
 
   Future<CacheAssessmentDraft> save({
     required AssessmentSubmissionRequest request,
@@ -26,7 +31,11 @@ class AssessmentDraftRepository {
     required bool blocked,
     required String error,
   }) async {
-    final draftKey = key(request.tenantId, request.planFacilityId);
+    final draftKey = key(
+      request.tenantId,
+      request.planFacilityId,
+      request.assessmentPhase,
+    );
     late CacheAssessmentDraft saved;
     await isar.writeTxn(() async {
       final existing = await isar.cacheAssessmentDrafts
@@ -38,7 +47,7 @@ class AssessmentDraftRepository {
             draftKey: draftKey,
             tenantId: request.tenantId,
             assessorId: assessorId,
-            phase: 'PHONE',
+            phase: request.assessmentPhase.name,
             status: blocked
                 ? AssessmentDraftStatus.blocked
                 : AssessmentDraftStatus.pending,
@@ -49,6 +58,7 @@ class AssessmentDraftRepository {
           );
       draft
         ..assessorId = assessorId
+        ..phase = request.assessmentPhase.name
         ..status = blocked
             ? AssessmentDraftStatus.blocked
             : AssessmentDraftStatus.pending
@@ -64,19 +74,22 @@ class AssessmentDraftRepository {
     return saved;
   }
 
-  Future<List<CacheAssessmentDraft>> listPhoneDrafts(String assessorId) {
+  Future<List<CacheAssessmentDraft>> listDrafts(String assessorId) {
     return isar.cacheAssessmentDrafts
         .filter()
         .assessorIdEqualTo(assessorId, caseSensitive: false)
-        .phaseEqualTo('PHONE', caseSensitive: false)
         .sortByUpdatedAtDesc()
         .findAll();
   }
 
-  Future<void> delete(String tenantId, String planFacilityId) async {
+  Future<void> delete(
+    String tenantId,
+    String planFacilityId,
+    AssessmentPhase phase,
+  ) async {
     final draft = await isar.cacheAssessmentDrafts
         .where()
-        .draftKeyEqualTo(key(tenantId, planFacilityId))
+        .draftKeyEqualTo(key(tenantId, planFacilityId, phase))
         .findFirst();
     if (draft == null) return;
     await isar.writeTxn(() => isar.cacheAssessmentDrafts.delete(draft.id));

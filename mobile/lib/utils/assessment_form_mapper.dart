@@ -8,6 +8,17 @@ bool isAssessmentPropertyVisible({
   required Map<String, dynamic> values,
 }) {
   if (property.hidden == true) return false;
+  final otherSource = property.schemaCode?.toString();
+  if (otherSource != null && otherSource.startsWith('ASSESSMENT_OTHER_FOR:')) {
+    final sourceField = otherSource.substring('ASSESSMENT_OTHER_FOR:'.length);
+    final pageValues = values[pageKey];
+    final raw = pageValues is Map ? pageValues[sourceField] : null;
+    return raw
+        .toString()
+        .split('.')
+        .map((value) => value.trim().toUpperCase())
+        .contains('OTHER');
+  }
   final condition = property.visibilityCondition;
   if (condition == null || condition.expression.trim().isEmpty) return true;
   final flattened = <String, dynamic>{};

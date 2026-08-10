@@ -1,11 +1,30 @@
+// Backend wire values intentionally use upper snake case.
+// ignore_for_file: constant_identifier_names
+
+import 'assessment_form_type.dart';
+
+enum AssessmentUnableToContactReason {
+  NO_ANSWER,
+  WRONG_NUMBER;
+
+  static AssessmentUnableToContactReason? fromCode(String? value) {
+    final code = value?.trim().toUpperCase();
+    if (code == null || code.isEmpty) return null;
+    for (final reason in values) {
+      if (reason.name == code) return reason;
+    }
+    return null;
+  }
+}
+
 class AssessmentFormResolution {
-  final String formType;
+  final AssessmentFormType formType;
 
   const AssessmentFormResolution({required this.formType});
 
   factory AssessmentFormResolution.fromJson(Map<String, dynamic> json) {
-    final formType = json['formType']?.toString().trim();
-    if (formType == null || formType.isEmpty) {
+    final formType = AssessmentFormType.fromCode(json['formType']?.toString());
+    if (formType == null) {
       throw const FormatException('Assessment form type is missing');
     }
     return AssessmentFormResolution(formType: formType);
@@ -16,16 +35,18 @@ class AssessmentSubmissionRequest {
   final String planFacilityId;
   final String tenantId;
   final String facilityCategory;
+  final AssessmentPhase assessmentPhase;
   final Map<String, dynamic> submissionData;
-  final String submittedByName;
+  final String? submittedByName;
   final int clientSubmissionTime;
 
   const AssessmentSubmissionRequest({
     required this.planFacilityId,
     required this.tenantId,
     required this.facilityCategory,
+    required this.assessmentPhase,
     required this.submissionData,
-    required this.submittedByName,
+    this.submittedByName,
     required this.clientSubmissionTime,
   });
 
@@ -33,9 +54,11 @@ class AssessmentSubmissionRequest {
         'planFacilityId': planFacilityId,
         'tenantId': tenantId,
         'facilityCategory': facilityCategory,
-        'assessmentPhase': 'PHONE',
+        'assessmentPhase': assessmentPhase.name,
         'submissionData': submissionData,
-        'submittedByName': submittedByName,
+        if (assessmentPhase == AssessmentPhase.PHONE &&
+            submittedByName?.trim().isNotEmpty == true)
+          'submittedByName': submittedByName!.trim(),
         'clientSubmissionTime': clientSubmissionTime,
       };
 
@@ -44,10 +67,13 @@ class AssessmentSubmissionRequest {
       planFacilityId: json['planFacilityId'].toString(),
       tenantId: json['tenantId'].toString(),
       facilityCategory: json['facilityCategory'].toString(),
+      assessmentPhase:
+          AssessmentPhase.fromCode(json['assessmentPhase']?.toString()) ??
+              AssessmentPhase.PHONE,
       submissionData: Map<String, dynamic>.from(
         json['submissionData'] as Map? ?? const {},
       ),
-      submittedByName: json['submittedByName']?.toString() ?? '',
+      submittedByName: json['submittedByName']?.toString(),
       clientSubmissionTime:
           (json['clientSubmissionTime'] as num?)?.toInt() ?? 0,
     );

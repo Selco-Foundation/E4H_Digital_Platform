@@ -512,6 +512,7 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
 
       propsMap[key] = {
         'type': prop['type'],
+        'schemaCode': prop['schemaCode'],
         'label': prop['label'],
         'order': prop['order'],
         'value': prop['value'],
