@@ -20,6 +20,9 @@ public class SubmissionQueueSearchResponse {
     @JsonProperty("queue")
     private List<SubmissionQueueItem> queue;
 
+    @JsonProperty("count")
+    private Integer count;
+
     @JsonProperty("total")
     private Integer total;
 

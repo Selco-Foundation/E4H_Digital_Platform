@@ -52,6 +52,7 @@ public class AssessmentSubmissionService {
         int total = facilityRepository.countQueueFacilities(planIds, request.getAssessmentPhase(), effectiveFilters);
         return SubmissionQueueSearchResponse.builder()
                 .queue(queue)
+                .count(total)
                 .total(total)
                 .pagination(Pagination.builder().offset(offset).limit(limit).total(total).build())
                 .build();
