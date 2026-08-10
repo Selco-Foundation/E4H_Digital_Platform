@@ -572,7 +572,7 @@ const CreateProject = () => {
         message: !!createdProject?.status ? t("PM_COMMON_PROJECT_UPDATED") : t("PM_COMMON_PROJECT_CREATED"),
         createdId: upsertedProject.name,
         info: t("PM_COMMON_PROJECT_NAME"),
-        secondaryRedirectionLabel: t("PM_LABEL_CREATE_FIELD_PLAN"),
+        secondaryRedirectionLabel: t("PM_LABEL_MANAGE_PROJECT"),
         onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
       }))
       history.push(`/${window?.contextPath}/employee/pm/response`);
