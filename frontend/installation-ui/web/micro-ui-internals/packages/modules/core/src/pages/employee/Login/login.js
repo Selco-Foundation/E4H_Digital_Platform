@@ -6,6 +6,7 @@ import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import Carousel from "./Carousel/Carousel";
 import ImageComponent from "../../../components/ImageComponent";
+import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { CONSENT_COOKIE_KEYS, getConsentCookie, rememberRequiredConsents } from "../../../utilities/consentCookies";
 
 const setEmployeeDetail = (userObject, token) => {
@@ -45,6 +46,11 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
     Digit.UserService.setUser(user);
     setEmployeeDetail(user?.info, user?.access_token);
     let redirectPath = `/${window?.contextPath}/employee`;
+
+    // Fire-and-forget audit of the successful login; doesn't block the redirect flow below.
+    UserAccessReportService.userLoginReport({
+      User: user?.info,
+    }).catch((err) => console.error("Login report failed", err));
 
     /* logic to redirect back to same screen where we left off */
     if (window?.location?.href?.includes("from=")) {
