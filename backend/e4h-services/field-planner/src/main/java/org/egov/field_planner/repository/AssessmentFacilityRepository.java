@@ -228,6 +228,16 @@ public class AssessmentFacilityRepository {
         return count != null ? count : 0;
     }
 
+    public int countPendingOverallOnOtherPlans(String facilityId, String targetPlanId) {
+        List<Object> params = new ArrayList<>();
+        Integer count = jdbcTemplate.queryForObject(
+                queryBuilder.getPendingOverallOnOtherPlansCountQuery(params, facilityId, targetPlanId),
+                Integer.class,
+                params.toArray()
+        );
+        return count != null ? count : 0;
+    }
+
     public List<Map<String, Object>> findNonClosedSourcePlans(String facilityId, String targetPlanId) {
         List<Object> params = new ArrayList<>();
         return jdbcTemplate.queryForList(

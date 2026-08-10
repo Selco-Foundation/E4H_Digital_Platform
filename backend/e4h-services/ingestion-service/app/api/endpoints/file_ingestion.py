@@ -4130,6 +4130,43 @@ def _apply_validation_results_to_dataframe(
     return error_count
 
 
+def _apply_include_validation_results_to_dataframe(
+        df: pd.DataFrame,
+        validation_errors: List[List[str]],
+        exclusion_messages: List[List[str]],
+) -> int:
+    error_count = 0
+    for i in range(len(df)):
+        if validation_errors[i]:
+            df.at[i, "status"] = "FAILED"
+            df.at[i, "error"] = "; ".join(dict.fromkeys(validation_errors[i]))
+            error_count += 1
+        elif exclusion_messages[i]:
+            df.at[i, "status"] = "EXCLUDED"
+            df.at[i, "error"] = "; ".join(dict.fromkeys(exclusion_messages[i]))
+        else:
+            include_col = _find_assessment_include_col(df)
+            if include_col is not None:
+                include_val = str(df.at[i, include_col]).strip().lower()
+                if include_val == "yes":
+                    df.at[i, "status"] = "PASSED"
+                    df.at[i, "error"] = ""
+    return error_count
+
+
+def _build_availability_exclusions(
+        availability_response: dict,
+) -> dict:
+    exclusions = {}
+    for item in availability_response.get("excluded", []) or []:
+        facility_id = _normalize_facility_id_from_excel(item.get("facilityId"))
+        if not facility_id:
+            continue
+        message = item.get("message") or item.get("code") or "Facility excluded from assessment plan"
+        exclusions[facility_id] = message
+    return exclusions
+
+
 def _write_validated_facility_sheet(
         wb,
         df: pd.DataFrame,
@@ -4220,26 +4257,29 @@ async def validate_assessment_plan_include_data(
         }
 
         assessment_client = AssessmentServiceClient(fieldPlan_service_url)
-        plan_facility_response = assessment_client.search_plan_facilities(
-            request_info_obj, plan_id, export_all=True
+        all_facility_ids = [
+            _normalize_facility_id_from_excel(row.get(facility_id_col))
+            for _, row in df.iterrows()
+            if _normalize_facility_id_from_excel(row.get(facility_id_col))
+        ]
+        availability_response = assessment_client.check_include_availability(
+            request_info_obj, plan_id, tenant_id, all_facility_ids
         )
-        plan_facility_ids = {
-            f.get("facilityId")
-            for f in (plan_facility_response.get("facilities", []) or [])
-            if f.get("facilityId")
-        }
+        availability_exclusions = _build_availability_exclusions(availability_response)
 
         mdms_client = MDMSClient(mdms_url)
-        validation_errors = assessment_plan_include_validation(
+        validation_errors, exclusion_messages = assessment_plan_include_validation(
             df,
             mdms_client,
             request_info_obj,
             include_col,
             facility_id_col,
             linked_ids,
-            plan_facility_ids,
+            availability_exclusions,
         )
-        error_count = _apply_validation_results_to_dataframe(df, validation_errors)
+        error_count = _apply_include_validation_results_to_dataframe(
+            df, validation_errors, exclusion_messages
+        )
         _write_validated_facility_sheet(wb, df, facility_sheet_name)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -4345,11 +4385,11 @@ async def apply_assessment_plan_include_data(
                 detail="Missing 'status'/'error' columns. Please upload validated file.",
             )
 
-        failed_rows = df[df["status"].astype(str).str.upper() != "PASSED"]
+        failed_rows = df[df["status"].astype(str).str.upper() == "FAILED"]
         if not failed_rows.empty:
             raise HTTPException(
                 status_code=400,
-                detail="Validation failed: Some rows are not marked as PASSED. Please upload a fully validated file.",
+                detail="Validation failed: Some rows are marked as FAILED. Please fix errors and re-validate.",
             )
 
         result_col = "Assessment Plan Include Status"
@@ -4362,6 +4402,12 @@ async def apply_assessment_plan_include_data(
             include_val = str(row.get(include_col, "")).strip().lower()
             if include_val != "yes":
                 df.at[index, result_col] = "Skipped (Include in Assessment Plan != Yes)"
+                continue
+
+            row_status = str(row.get("status", "")).strip().upper()
+            if row_status == "EXCLUDED":
+                exclusion_msg = str(row.get("error", "")).strip()
+                df.at[index, result_col] = f"Skipped: {exclusion_msg}" if exclusion_msg else "Skipped (excluded)"
                 continue
 
             facility_id = _normalize_facility_id_from_excel(row.get(facility_id_col))
@@ -4384,6 +4430,7 @@ async def apply_assessment_plan_include_data(
             )
             created = response.get("created", []) or []
             api_errors = response.get("errors", []) or []
+            api_skipped = response.get("skipped", []) or []
 
             created_ids = {
                 _normalize_facility_id_from_excel(item.get("facilityId"))
@@ -4395,11 +4442,20 @@ async def apply_assessment_plan_include_data(
                 for item in api_errors
                 if item.get("facilityId")
             }
+            skipped_by_facility_id = {
+                _normalize_facility_id_from_excel(item.get("facilityId")): item
+                for item in api_skipped
+                if item.get("facilityId")
+            }
 
             for index in yes_row_indices:
                 facility_id = _normalize_facility_id_from_excel(df.at[index, facility_id_col])
                 if facility_id in created_ids:
                     df.at[index, result_col] = "Included"
+                elif facility_id in skipped_by_facility_id:
+                    skip = skipped_by_facility_id[facility_id]
+                    message = skip.get("message") or skip.get("code") or "Facility skipped"
+                    df.at[index, result_col] = f"Skipped: {message}"
                 elif facility_id in error_by_facility_id:
                     err = error_by_facility_id[facility_id]
                     message = err.get("message") or err.get("code") or "Include failed"

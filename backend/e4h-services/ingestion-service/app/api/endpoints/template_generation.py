@@ -107,6 +107,35 @@ def _resolve_template_boundary_list(
     logger.info(f"Boundary sheet populated with {len(all_boundaries)} rows from boundary service")
     return all_boundaries
 
+
+def _normalize_template_facility_id(val) -> str:
+    if val is None:
+        return ""
+    if isinstance(val, bool):
+        return str(val).strip()
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, float):
+        if val.is_integer():
+            return str(int(val))
+        return str(val).strip()
+    text = str(val).strip()
+    if not text or text.lower() == "nan":
+        return ""
+    if text.endswith(".0") and text[:-2].replace("-", "", 1).isdigit():
+        return text[:-2]
+    return text
+
+
+def _append_excluded_facilities_sheet(output_path: str, excluded_rows: List[dict]) -> None:
+    from app.utils.file_utils import create_excel_data_writer
+
+    df = pd.DataFrame(excluded_rows, columns=["Facility Id", "Facility Name", "Exclusion Reason"])
+    writer = create_excel_data_writer(output_path, "ExcludedFacilities")
+    writer.write_data(df)
+    autofit_columns(output_path, "ExcludedFacilities", auto_fit=True)
+
+
 @router.post('/facilityIngestionTemplateWithData',
             summary='Generate facility ingestion template Excel file with schema, already present data and boundary codes',
             response_description="Returns Excel template with facility schema, facility data and boundary codes")
@@ -1292,6 +1321,7 @@ async def get_assessment_plan_include_template(
     mdms_client = MDMSClient(mdms_url)
     project_client = ProjectServiceClient(project_service_url)
     facility_client = FacilityServiceClient(facility_service_url)
+    assessment_client = AssessmentServiceClient(fieldPlan_service_url)
 
     try:
         facility_schema = mdms_client.get_column_definitions_with_metadata(
@@ -1304,7 +1334,27 @@ async def get_assessment_plan_include_template(
             pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")
         ]
 
+        availability_response = assessment_client.check_include_availability(
+            request_info, plan_id, tenant_id, facility_ids
+        )
+        available_ids = {
+            _normalize_template_facility_id(fid)
+            for fid in (availability_response.get("availableFacilityIds", []) or [])
+            if fid
+        }
+        excluded_items = availability_response.get("excluded", []) or []
+
+        plan_facility_response = assessment_client.search_plan_facilities(
+            request_info, plan_id, export_all=True
+        )
+        plan_facility_ids = {
+            _normalize_template_facility_id(f.get("facilityId"))
+            for f in (plan_facility_response.get("facilities", []) or [])
+            if f.get("facilityId")
+        }
+
         all_facilities = []
+        excluded_facility_rows = []
         if facility_ids and facility_client:
             bulk_result = facility_client.bulk_search_facility(
                 request_info=request_info,
@@ -1314,18 +1364,37 @@ async def get_assessment_plan_include_template(
                 send_non_paginated_response=True,
             )
             facilities_by_id = {
-                f.get("facility_id") or f.get("facilityId"): f
+                _normalize_template_facility_id(f.get("facility_id") or f.get("facilityId")): f
                 for f in (bulk_result.get("facilities", []) or [])
             }
             for pf in project_facilities:
-                fid = pf.get("facilityId")
+                fid = _normalize_template_facility_id(pf.get("facilityId"))
                 if not fid:
+                    continue
+                if fid not in available_ids:
                     continue
                 facility = dict(facilities_by_id.get(fid, {}))
                 if not facility.get("facility_id") and not facility.get("facilityId"):
                     facility["facility_id"] = fid
-                facility["include_in_assessment_plan"] = ""
+                facility["include_in_assessment_plan"] = "Yes" if fid in plan_facility_ids else ""
                 all_facilities.append(facility)
+
+            for item in excluded_items:
+                fid = _normalize_template_facility_id(item.get("facilityId"))
+                if not fid:
+                    continue
+                facility = dict(facilities_by_id.get(fid, {}))
+                facility_name = (
+                    facility.get("facility_name")
+                    or facility.get("facilityName")
+                    or facility.get("name")
+                    or ""
+                )
+                excluded_facility_rows.append({
+                    "Facility Id": fid,
+                    "Facility Name": facility_name,
+                    "Exclusion Reason": item.get("message") or item.get("code") or "Excluded",
+                })
 
         boundary_list = _resolve_template_boundary_list(
             facility_service, request_info, boundary_data, all_facilities
@@ -1344,6 +1413,9 @@ async def get_assessment_plan_include_template(
             extra_append_rows=0,
             optimize_for_performance=True,
         )
+
+        if excluded_facility_rows:
+            _append_excluded_facilities_sheet(output_file_path, excluded_facility_rows)
 
         background_tasks.add_task(cleanup_temp_file, output_file_path)
         return FileResponse(

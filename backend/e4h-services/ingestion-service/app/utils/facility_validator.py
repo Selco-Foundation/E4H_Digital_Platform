@@ -1,5 +1,5 @@
 import re
-from typing import Any, Callable, Dict, List, MutableMapping, Optional
+from typing import Any, Callable, Dict, List, MutableMapping, Optional, Set
 
 import pandas as pd
 from fastapi import HTTPException
@@ -155,39 +155,82 @@ def field_plan_facility_validation(
     return errors
 
 
-def facility_validation(
-    df, mdms_client, request_info, facility_client, boundary_data, schemaName
+def assessment_plan_include_validation(
+    df,
+    mdms_client,
+    request_info,
+    include_col: str,
+    facility_id_col: str,
+    linked_ids: Set[str],
+    availability_exclusions: Optional[Dict[str, str]] = None,
 ):
-    """Main function that orchestrates all facility file validations."""
-    # Reset index so we always work with 0-based positional indices
+    """
+    Validate assessment plan include Excel rows marked Include in Assessment Plan = Yes.
+    Availability exclusions (ongoing assessment, etc.) are reported as EXCLUDED, not FAILED.
+    """
+    from app.ingest.facility_template_service import filter_assessment_include_schema
+
     df = df.reset_index(drop=True)
+    errors: List[List[str]] = [[] for _ in range(len(df))]
+    exclusions: List[List[str]] = [[] for _ in range(len(df))]
+    availability_exclusions = availability_exclusions or {}
+    yes_row_count = 0
 
-    errors = [[] for _ in range(len(df))]
-    add_err = lambda i, msg: errors[i].append(msg)
-
-    # Only validate rows where Facility ID is empty
-    new_rows = df[df["Facility Id"].isna() | (df["Facility Id"].astype(str).str.strip() == "")]
-    if new_rows.empty:
-        return errors  # No new rows to validate
-
-    # Reset index on new_rows to get 0-based row positions
-    new_rows = new_rows.reset_index()
-
-    schema = mdms_client.get_column_definitions_and_row_constraints_with_metadata(
-        request_info, schemaName
+    schema_response = mdms_client.get_column_definitions_and_row_constraints_with_metadata(
+        request_info, "data-ingestion.FieldPlanFacilityIngestionSchema"
     )
+    filtered_columns = filter_assessment_include_schema(schema_response.get("column_list", []) or [])
+    schema = {"column_list": filtered_columns}
 
-    # Use positional index mapping to reference errors in original df
-    validate_columns(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
-    validate_unique_ids(df, schema, add_err)
-    validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
-    validate_anganwadi_poc_username(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
-    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client)
+    for pos in range(len(df)):
+        row = df.iloc[pos]
+        include_val = str(row.get(include_col, "")).strip().lower()
+        if include_val != "yes":
+            continue
 
-    return errors
+        yes_row_count += 1
+
+        facility_id = _normalize_assessment_facility_id(row.get(facility_id_col))
+        if not facility_id:
+            errors[pos].append("Facility Id is required for Yes rows")
+        elif facility_id not in linked_ids:
+            errors[pos].append("Facility is not linked to this project")
+        elif facility_id in availability_exclusions:
+            exclusions[pos].append(availability_exclusions[facility_id])
+
+        row_frame = pd.DataFrame([row]).reset_index(drop=True)
+        validate_columns(
+            row_frame,
+            schema,
+            lambda i, msg, row_pos=pos: errors[row_pos].append(msg),
+        )
+
+    if yes_row_count == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one facility must be marked Include in Assessment Plan = Yes",
+        )
+
+    return errors, exclusions
 
 
-# ----------------- Helper Functions ----------------- #
+def _normalize_assessment_facility_id(val) -> str:
+    if pd.isna(val) or val is None:
+        return ""
+    if isinstance(val, bool):
+        return str(val).strip()
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, float):
+        if val.is_integer():
+            return str(int(val))
+        return str(val).strip()
+    text = str(val).strip()
+    if not text or text.lower() == "nan":
+        return ""
+    if text.endswith(".0") and text[:-2].replace("-", "", 1).isdigit():
+        return text[:-2]
+    return text
 
 def validate_boundary_codes(df, allowed_boundary_codes, add_err):
     """

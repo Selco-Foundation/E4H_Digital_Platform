@@ -141,6 +141,21 @@ public class AssessmentQueryBuilder {
                 """;
     }
 
+    public String getPendingOverallOnOtherPlansCountQuery(List<Object> params, String facilityId, String targetPlanId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(facilityId);
+        params.add(targetPlanId);
+        return """
+                SELECT COUNT(*) FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
+                JOIN field_plans fp ON fp.id = fa.field_plan_id
+                WHERE fa.facility_id = ?
+                AND fa.field_plan_id <> ?
+                AND fa.overall_status = 'PENDING' AND fp.plan_type = 'ASSESSMENT'
+                """;
+    }
+
     public String getNonClosedSourcePlansQuery(List<Object> params, String facilityId, String targetPlanId) {
         params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         params.add(facilityId);

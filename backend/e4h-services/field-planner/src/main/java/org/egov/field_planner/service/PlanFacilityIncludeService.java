@@ -24,6 +24,38 @@ public class PlanFacilityIncludeService {
     private final AssessmentWorkflowService workflowService;
     private final AssessmentFacilityMetadataService facilityMetadataService;
 
+    public PlanFacilityIncludeAvailabilityResponse checkIncludeAvailability(
+            PlanFacilityIncludeAvailabilityRequest request) {
+        AssessmentPlan plan = planRepository.findById(request.getPlanId())
+                .orElseThrow(() -> new CustomException(AssessmentConstants.ASSESSMENT_PLAN_NOT_FOUND,
+                        "Assessment plan not found: " + request.getPlanId()));
+
+        Set<String> projectFacilityIds = projectService.getProjectFacilityIds(
+                request.getRequestInfo(), request.getTenantId(), plan.getProjectId());
+
+        List<String> facilityIds = request.getFacilityIds() != null
+                ? request.getFacilityIds().stream().filter(Objects::nonNull).distinct().toList()
+                : List.of();
+
+        List<String> available = new ArrayList<>();
+        List<PlanFacilityIncludeError> excluded = new ArrayList<>();
+
+        for (String facilityId : facilityIds) {
+            Optional<PlanFacilityIncludeError> exclusion = evaluateAvailability(
+                    plan, facilityId, projectFacilityIds, true);
+            if (exclusion.isPresent()) {
+                excluded.add(exclusion.get());
+            } else {
+                available.add(facilityId);
+            }
+        }
+
+        return PlanFacilityIncludeAvailabilityResponse.builder()
+                .availableFacilityIds(available)
+                .excluded(excluded)
+                .build();
+    }
+
     @Transactional
     public PlanFacilityBulkIncludeResponse bulkInclude(PlanFacilityBulkIncludeRequest request) {
         List<PlanFacilityIncludeItem> items = request.getFacilityIds().stream()
@@ -71,23 +103,16 @@ public class PlanFacilityIncludeService {
                         .build());
                 continue;
             }
-            Optional<String> validationError = validateInclude(plan, facilityId, projectFacilityIds);
-            if (validationError.isPresent()) {
-                String[] parts = validationError.get().split("\\|", 2);
-                errors.add(PlanFacilityIncludeError.builder()
-                        .facilityId(facilityId)
-                        .code(parts[0])
-                        .message(parts.length > 1 ? parts[1] : parts[0])
-                        .build());
-                continue;
-            }
 
-            if (facilityRepository.findExistingOnPlan(planId, facilityId).isPresent()) {
-                errors.add(PlanFacilityIncludeError.builder()
-                        .facilityId(facilityId)
-                        .code(AssessmentConstants.ASSESSMENT_FACILITY_ALREADY_ON_PLAN)
-                        .message("Facility already included in this assessment plan")
-                        .build());
+            Optional<PlanFacilityIncludeError> exclusion = evaluateAvailability(
+                    plan, facilityId, projectFacilityIds, false);
+            if (exclusion.isPresent()) {
+                PlanFacilityIncludeError issue = exclusion.get();
+                if (AssessmentConstants.ASSESSMENT_FACILITY_NOT_ON_PROJECT.equals(issue.getCode())) {
+                    errors.add(issue);
+                } else {
+                    skipped.add(issue);
+                }
                 continue;
             }
 
@@ -130,29 +155,51 @@ public class PlanFacilityIncludeService {
                 .build();
     }
 
-    private Optional<String> validateInclude(AssessmentPlan plan, String facilityId, Set<String> projectFacilityIds) {
+    Optional<PlanFacilityIncludeError> evaluateAvailability(AssessmentPlan plan, String facilityId,
+                                                             Set<String> projectFacilityIds,
+                                                             boolean forTemplateDownload) {
         if (!projectFacilityIds.contains(facilityId)) {
-            return Optional.of(AssessmentConstants.ASSESSMENT_FACILITY_NOT_ON_PROJECT
-                    + "|Facility is not linked to this project");
+            return Optional.of(PlanFacilityIncludeError.builder()
+                    .facilityId(facilityId)
+                    .code(AssessmentConstants.ASSESSMENT_FACILITY_NOT_ON_PROJECT)
+                    .message("Facility is not linked to this project")
+                    .build());
         }
 
-        // R5 — ongoing assessment with PENDING overall_status
-        if (facilityRepository.countPendingOverallForFacility(facilityId) > 0) {
-            return Optional.of(AssessmentConstants.ASSESSMENT_FACILITY_ONGOING
-                    + "|Facility has an ongoing assessment with pending result");
+        if (facilityRepository.findExistingOnPlan(plan.getId(), facilityId).isPresent()) {
+            if (forTemplateDownload) {
+                return Optional.empty();
+            }
+            return Optional.of(PlanFacilityIncludeError.builder()
+                    .facilityId(facilityId)
+                    .code(AssessmentConstants.ASSESSMENT_FACILITY_ALREADY_ON_PLAN)
+                    .message("Facility already included in this assessment plan")
+                    .build());
         }
 
-        // R0 — source assessment plans must be CLOSED
+        if (facilityRepository.countPendingOverallOnOtherPlans(facilityId, plan.getId()) > 0) {
+            return Optional.of(PlanFacilityIncludeError.builder()
+                    .facilityId(facilityId)
+                    .code(AssessmentConstants.ASSESSMENT_FACILITY_ONGOING)
+                    .message("Facility has an ongoing assessment with pending result")
+                    .build());
+        }
+
         List<Map<String, Object>> openPlans = facilityRepository.findNonClosedSourcePlans(facilityId, plan.getId());
         if (!openPlans.isEmpty()) {
-            return Optional.of(AssessmentConstants.ASSESSMENT_PLAN_NOT_COMPLETE
-                    + "|Complete source assessment plan before reusing this facility");
+            return Optional.of(PlanFacilityIncludeError.builder()
+                    .facilityId(facilityId)
+                    .code(AssessmentConstants.ASSESSMENT_PLAN_NOT_COMPLETE)
+                    .message("Complete source assessment plan before reusing this facility")
+                    .build());
         }
 
-        // R1 — same project eligible unassigned
         if (facilityRepository.hasSameProjectEligibleActive(facilityId, plan.getProjectId(), plan.getId())) {
-            return Optional.of(AssessmentConstants.ASSESSMENT_FACILITY_ELIGIBLE_ACTIVE
-                    + "|Eligible facility in same project must be handed off or marked not eligible first");
+            return Optional.of(PlanFacilityIncludeError.builder()
+                    .facilityId(facilityId)
+                    .code(AssessmentConstants.ASSESSMENT_FACILITY_ELIGIBLE_ACTIVE)
+                    .message("Eligible facility in same project must be handed off or marked not eligible first")
+                    .build());
         }
 
         return Optional.empty();
