@@ -22,6 +22,8 @@ const InfoCard = ({ t, facilityDetails }) => {
       border: "1px solid #eee",
       minWidth: "900px"
     }}>
+      {/* Show normalized facility geography from visit details. */}
+      {InfoCardItem(t("PM_PROJECT_INFO_STATE"), facilityDetails.state ? t(`Boundary_${facilityDetails.state}`) : "-")}
       {InfoCardItem(t("CS_DISTRICT"), facilityDetails.district ? t(`Boundary_${facilityDetails.district}`) : "-")}
       {InfoCardItem(t("CS_BLOCK"), facilityDetails.block ? t(`Boundary_${facilityDetails.block}`) : "-")}
       {InfoCardItem(t("CS_HEALTH_FACILITY_TYPE"), facilityDetails.facilityType ? facilityDetails.facilityType : "-")}
