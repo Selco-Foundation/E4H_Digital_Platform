@@ -3,6 +3,7 @@ import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../data/nosql/cache_activity_facility_asset.dart';
+import '../data/nosql/cache_assessment_draft.dart';
 import '../data/nosql/cache_activity_facility_bom_values.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
@@ -58,6 +59,7 @@ class Constants {
       return await Isar.open(
         [
           LocalizationWrapperSchema,
+          CacheAssessmentDraftSchema,
           CacheActivityFacilityAssetSchema,
           CacheAssetCountSchema,
           CacheSpecificationSchema,

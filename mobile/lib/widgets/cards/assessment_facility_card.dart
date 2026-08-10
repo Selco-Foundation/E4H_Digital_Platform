@@ -127,7 +127,10 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
                         ],
                         onChanged: (reason) {
                           setState(() {
-                            _unableToContactReason = reason.code;
+                            _unableToContactReason =
+                                _unableToContactReason == reason.code
+                                    ? null
+                                    : reason.code;
                           });
                         },
                       ),

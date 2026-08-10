@@ -4,15 +4,18 @@ import '../data/remote_client.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../model/assessment/assessment_queue.dart';
 import '../utils/envConfig.dart';
+import 'assessment_api_paths.dart';
 
 class AssessmentQueueRepository {
   static const int defaultPageSize = 10;
-  static const String queueSearchPath =
-      'assessment/v1/submission/queue/_search';
+  static const String queueSearchPath = AssessmentApiPaths.queueSearch;
 
   final Dio _dio;
+  final String? _tenantId;
 
-  AssessmentQueueRepository({Dio? dio}) : _dio = dio ?? DioClient().dio;
+  AssessmentQueueRepository({Dio? dio, String? tenantId})
+      : _dio = dio ?? DioClient().dio,
+        _tenantId = tenantId;
 
   Future<AssessmentQueueResponse> search({
     required AssessmentMode assessmentMode,
@@ -26,7 +29,7 @@ class AssessmentQueueRepository {
       queueSearchPath,
       data: <String, dynamic>{
         'assessmentPhase': assessmentMode.assessmentPhase,
-        'tenantId': envConfig.variables.tenantId,
+        'tenantId': _tenantId ?? envConfig.variables.tenantId,
         if (normalizedSearch != null && normalizedSearch.isNotEmpty)
           'searchText': normalizedSearch,
         'sortBy': 'lastActionTime',

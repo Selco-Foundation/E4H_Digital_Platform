@@ -65,7 +65,7 @@ class AssessmentQueueFacility {
       planId: _asString(json['planId']),
       facilityId: _asString(json['facilityId']),
       facilityName: _asString(json['facilityName']),
-      facilityCategory: _asString(json['facilityCategory']),
+      facilityCategory: _normalizeFacilityCategory(json['facilityCategory']),
       facilityType: _asString(json['facilityType']),
       facilityCode: _asString(json['facilityCode']),
       address: _asString(json['address']),
@@ -164,4 +164,9 @@ int? _asInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '');
+}
+
+String? _normalizeFacilityCategory(Object? value) {
+  final category = _asString(value);
+  return category?.toUpperCase();
 }

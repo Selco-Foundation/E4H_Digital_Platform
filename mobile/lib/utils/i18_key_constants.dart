@@ -25,6 +25,8 @@ const amcReportHome = AmcReportHome();
 const amcMediaUpload = AmcMediaUpload();
 const amcSelectFacility = AmcSelectFacility();
 const assessmentSelectFacility = AssessmentSelectFacility();
+const assessmentForm = AssessmentForm();
+const assessmentDraft = AssessmentDraft();
 const home = Home();
 const bomButtons = BomButtons();
 const installationImages = InstallationImages();
@@ -365,6 +367,7 @@ class AmcSelectFacility {
 class AssessmentSelectFacility {
   const AssessmentSelectFacility();
 
+  String get title => 'ASSESSMENT_SELECT_FACILITY_TITLE';
   String get failedToLoad => 'ASSESSMENT_SELECT_FACILITY_FAILED_TO_LOAD';
   String get noFacilitiesFound =>
       'ASSESSMENT_SELECT_FACILITY_NO_FACILITIES_FOUND';
@@ -385,6 +388,35 @@ class AssessmentSelectFacility {
   String get statusQualified => 'ASSESSMENT_SELECT_FACILITY_STATUS_QUALIFIED';
   String get statusNotQualified =>
       'ASSESSMENT_SELECT_FACILITY_STATUS_NOT_QUALIFIED';
+}
+
+class AssessmentForm {
+  const AssessmentForm();
+
+  String get unableToLoad => 'ASSESSMENT_FORM_UNABLE_TO_LOAD';
+  String get unavailable => 'ASSESSMENT_FORM_UNAVAILABLE';
+  String get missingFacilityData => 'ASSESSMENT_FORM_MISSING_FACILITY_DATA';
+  String get submitting => 'ASSESSMENT_FORM_SUBMITTING';
+  String get savedToDrafts => 'ASSESSMENT_FORM_SAVED_TO_DRAFTS';
+  String get conflictSaved => 'ASSESSMENT_FORM_CONFLICT_SAVED';
+  String get submittedTitle => 'ASSESSMENT_FORM_SUBMITTED_TITLE';
+  String get submittedDescription => 'ASSESSMENT_FORM_SUBMITTED_DESCRIPTION';
+}
+
+class AssessmentDraft {
+  const AssessmentDraft();
+
+  String get title => 'ASSESSMENT_DRAFT_TITLE';
+  String get sync => 'ASSESSMENT_DRAFT_SYNC';
+  String get remote => 'ASSESSMENT_DRAFT_REMOTE';
+  String get onSite => 'ASSESSMENT_DRAFT_ON_SITE';
+  String get empty => 'ASSESSMENT_DRAFT_EMPTY';
+  String get pending => 'ASSESSMENT_DRAFT_PENDING';
+  String get blocked => 'ASSESSMENT_DRAFT_BLOCKED';
+  String get syncing => 'ASSESSMENT_DRAFT_SYNCING';
+  String get syncComplete => 'ASSESSMENT_DRAFT_SYNC_COMPLETE';
+  String get syncPartial => 'ASSESSMENT_DRAFT_SYNC_PARTIAL';
+  String get loadFailed => 'ASSESSMENT_DRAFT_LOAD_FAILED';
 }
 
 class Home {

@@ -90,7 +90,7 @@ flutter:
     - assets/icons/svg/
     - assets/animated_json/
     - assets/images/
-    - assets/mocks/
+    - assets/forms/
 
   fonts:
     - family: Roboto

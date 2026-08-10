@@ -95,8 +95,9 @@ abstract class _$AppRouter extends RootStackRouter {
         routeData: routeData,
         child: AssessmentDynamicFormPage(
           key: args.key,
-          pageName: args.pageName,
-          schemaName: args.schemaName,
+          facility: args.facility,
+          assessmentMode: args.assessmentMode,
+          onSubmissionSucceeded: args.onSubmissionSucceeded,
         ),
       );
     },
@@ -604,17 +605,18 @@ class AssessmentDynamicFormRoute
     extends PageRouteInfo<AssessmentDynamicFormRouteArgs> {
   AssessmentDynamicFormRoute({
     Key? key,
-    required String pageName,
-    required String schemaName,
+    required AssessmentQueueFacility facility,
+    required AssessmentMode assessmentMode,
+    required void Function() onSubmissionSucceeded,
     List<PageRouteInfo>? children,
   }) : super(
           AssessmentDynamicFormRoute.name,
           args: AssessmentDynamicFormRouteArgs(
             key: key,
-            pageName: pageName,
-            schemaName: schemaName,
+            facility: facility,
+            assessmentMode: assessmentMode,
+            onSubmissionSucceeded: onSubmissionSucceeded,
           ),
-          rawPathParams: {'pageName': pageName},
           initialChildren: children,
         );
 
@@ -627,19 +629,22 @@ class AssessmentDynamicFormRoute
 class AssessmentDynamicFormRouteArgs {
   const AssessmentDynamicFormRouteArgs({
     this.key,
-    required this.pageName,
-    required this.schemaName,
+    required this.facility,
+    required this.assessmentMode,
+    required this.onSubmissionSucceeded,
   });
 
   final Key? key;
 
-  final String pageName;
+  final AssessmentQueueFacility facility;
 
-  final String schemaName;
+  final AssessmentMode assessmentMode;
+
+  final void Function() onSubmissionSucceeded;
 
   @override
   String toString() {
-    return 'AssessmentDynamicFormRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName}';
+    return 'AssessmentDynamicFormRouteArgs{key: $key, facility: $facility, assessmentMode: $assessmentMode, onSubmissionSucceeded: $onSubmissionSucceeded}';
   }
 }
 

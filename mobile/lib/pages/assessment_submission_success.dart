@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 
 @RoutePage()
 class AssessmentSubmissionSuccessPage extends StatelessWidget {
@@ -29,14 +31,15 @@ class AssessmentSubmissionSuccessPage extends StatelessWidget {
               animate: true,
               repeat: true,
               type: PanelType.success,
-              title: 'Assessment Submitted Successfully',
-              description:
-                  'The assessment has been completed successfully on this device.',
+              title: context.translate(i18.assessmentForm.submittedTitle),
+              description: context.translate(
+                i18.assessmentForm.submittedDescription,
+              ),
               actions: [
                 DigitButton(
                   type: DigitButtonType.primary,
                   size: DigitButtonSize.large,
-                  label: 'Home',
+                  label: context.translate(i18.common.coreCommonHome),
                   onPressed: () {
                     context
                         .read<FormsBloc>()

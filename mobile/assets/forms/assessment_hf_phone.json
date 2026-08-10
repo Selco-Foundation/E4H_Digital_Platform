@@ -4,8 +4,8 @@
     {
       "id": "mock-assessment-hf-phone",
       "tenantId": "in",
-      "schemaCode": "assessment.AssessmentFormSchema",
-      "uniqueIdentifier": "Assessment.HF_PHONE",
+      "schemaCode": "assessment.AssessmentMobileFormSchema",
+      "uniqueIdentifier": "HF_PHONE",
       "data": {
         "formType": "HF_PHONE",
         "name": "Assessment.HF_PHONE",
@@ -39,9 +39,9 @@
             "order": 2,
             "actionLabel": "Next",
             "properties": [
-              { "fieldName": "existingSolarSystem", "type": "string", "format": "dropdown", "label": "Does the facility have an existing solar system?", "order": 1, "includeInForm": true, "enums": [{ "code": "YES", "name": "Yes" }, { "code": "NO", "name": "No" }], "validations": [{ "type": "required", "value": true }] },
-              { "fieldName": "existingSolarEquipment", "type": "string", "format": "select", "label": "Which solar equipment is available?", "order": 2, "isMultiSelect": true, "includeInForm": true, "visibilityCondition": { "expression": "facilityServices.existingSolarSystem == \"YES\"" }, "enums": [{ "code": "COMPLETE_FACILITY", "name": "Complete facility" }, { "code": "SOLAR_WATER_PUMP", "name": "Solar water pump" }, { "code": "SOLAR_WATER_HEATER", "name": "Solar water heater" }, { "code": "SOLAR_ILR_DF", "name": "Solar ILR/Deep freezer" }, { "code": "SOLAR_STREET_LIGHT", "name": "Solar street light" }, { "code": "LIGHTS_FANS", "name": "Lights and fans" }, { "code": "DONT_KNOW", "name": "Don't know" }], "validations": [{ "type": "required", "value": true }] },
-              { "fieldName": "governmentOwnedFacility", "type": "string", "format": "radio", "label": "Is the facility government owned?", "order": 3, "includeInForm": true, "enums": [{ "code": "YES", "name": "Yes" }, { "code": "NO", "name": "No" }], "validations": [{ "type": "required", "value": true }] },
+              { "fieldName": "existingSolar", "type": "string", "format": "dropdown", "label": "Does the facility have an existing solar system?", "order": 1, "includeInForm": true, "enums": [{ "code": "YES", "name": "Yes" }, { "code": "NO", "name": "No" }], "validations": [{ "type": "required", "value": true }] },
+              { "fieldName": "existingSolarEquipment", "type": "string", "format": "select", "label": "Which solar equipment is available?", "order": 2, "isMultiSelect": true, "includeInForm": true, "visibilityCondition": { "expression": "facilityServices.existingSolar == \"YES\"" }, "enums": [{ "code": "COMPLETE_FACILITY", "name": "Complete facility" }, { "code": "SOLAR_WATER_PUMP", "name": "Solar water pump" }, { "code": "SOLAR_WATER_HEATER", "name": "Solar water heater" }, { "code": "SOLAR_ILR_DF", "name": "Solar ILR/Deep freezer" }, { "code": "SOLAR_STREET_LIGHT", "name": "Solar street light" }, { "code": "LIGHTS_FANS", "name": "Lights and fans" }, { "code": "DONT_KNOW", "name": "Don't know" }], "validations": [{ "type": "required", "value": true }] },
+              { "fieldName": "govtOwned", "type": "string", "format": "radio", "label": "Is the facility government owned?", "order": 3, "includeInForm": true, "enums": [{ "code": "YES", "name": "Yes" }, { "code": "NO", "name": "No" }], "validations": [{ "type": "required", "value": true }] },
               { "fieldName": "facilityTimings", "type": "string", "format": "dropdown", "label": "Facility Timings", "order": 4, "includeInForm": true, "enums": [{ "code": "NINE_TO_FIVE", "name": "9 AM to 5 PM" }, { "code": "TWENTY_FOUR_SEVEN", "name": "24 x 7" }, { "code": "OTHER", "name": "Other (Specify)" }], "validations": [{ "type": "required", "value": true }] },
               { "fieldName": "staffAvailable", "type": "string", "format": "select", "label": "Staff available at the facility", "order": 5, "isMultiSelect": true, "includeInForm": true, "enums": [{ "code": "MEDICAL_OFFICER", "name": "Medical Officer" }, { "code": "PHARMACIST", "name": "Pharmacist" }, { "code": "LAB_TECHNICIAN", "name": "Lab Technician" }, { "code": "STAFF_NURSE", "name": "Staff Nurse" }, { "code": "CHO", "name": "CHO" }, { "code": "ANM", "name": "ANM" }, { "code": "NONE", "name": "None" }, { "code": "OTHER", "name": "Other (Specify)" }], "validations": [{ "type": "required", "value": true }] },
               { "fieldName": "deliveryPoint", "type": "string", "format": "radio", "label": "Is the facility a delivery point?", "order": 6, "includeInForm": true, "enums": [{ "code": "YES", "name": "Yes" }, { "code": "NO", "name": "No" }], "validations": [{ "type": "required", "value": true }] },

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:digit_forms_engine/blocs/forms/forms.dart';
@@ -16,20 +17,31 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 import '../blocs/auth/authbloc.dart';
-import '../repositories/assessment_mock_form_repo.dart';
+import '../model/assessment/assessment_form.dart';
+import '../model/assessment/assessment_mode.dart';
+import '../model/assessment/assessment_queue.dart';
+import '../repositories/assessment_draft_repo.dart';
+import '../repositories/assessment_form_repo.dart';
 import '../router/app_router.dart';
+import '../utils/assessment_form_mapper.dart';
+import '../utils/constants.dart';
+import '../utils/envConfig.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
 class AssessmentDynamicFormPage extends StatefulWidget {
-  final String pageName;
-  final String schemaName;
+  final AssessmentQueueFacility facility;
+  final AssessmentMode assessmentMode;
+  final VoidCallback onSubmissionSucceeded;
 
   const AssessmentDynamicFormPage({
     super.key,
-    @PathParam() required this.pageName,
-    required this.schemaName,
+    required this.facility,
+    required this.assessmentMode,
+    required this.onSubmissionSucceeded,
   });
 
   @override
@@ -38,230 +50,395 @@ class AssessmentDynamicFormPage extends StatefulWidget {
 }
 
 class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
-  final _repository = AssessmentMockFormRepository();
+  final AssessmentFormRepository _repository = AssessmentFormRepository();
+  int _pageIndex = 0;
   bool _isLoading = true;
   bool _isSubmitting = false;
-  String? _loadError;
+  bool _isFrozenDraft = false;
+  String? _error;
+  AssessmentSubmissionRequest? _pendingRequest;
 
-  Map<String, dynamic> _initialDefaults() {
-    final user = context.read<AuthBloc>().state.maybeWhen(
-          authenticated: (_, __, userRequest) => userRequest,
-          orElse: () => null,
-        );
-    final assessorName = user?.name?.trim().isNotEmpty == true
-        ? user!.name!.trim()
-        : (user?.userName ?? '');
-
-    return {
-      'assessorName': assessorName,
-      'callDate': DateTime.now(),
-      'facilityName': 'Digar Kashipur',
-      'facilityType': 'Health Facility',
-      'facilityAddress': 'Cedharban, Cachar, Assam',
-      'facilityCode': 'HF-0001',
-      'facilityInChargeName': 'Facility In-charge',
-      'facilityInChargeContact': '9876543210',
-      'alternateContactName': 'Alternative Contact',
-      'alternateContactNumber': '9876543211',
-    };
-  }
+  String get _schemaKey =>
+      'Assessment.HF_PHONE:${widget.facility.planFacilityId ?? 'missing'}';
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureSchemaLoaded());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
-  Future<void> _ensureSchemaLoaded() async {
-    final formsBloc = context.read<FormsBloc>();
-    if (formsBloc.state.cachedSchemas.containsKey(widget.schemaName)) {
-      if (mounted) setState(() => _isLoading = false);
+  Future<void> _load() async {
+    final planFacilityId = widget.facility.planFacilityId?.trim();
+    final category = widget.facility.facilityCategory?.trim();
+    if (planFacilityId == null ||
+        planFacilityId.isEmpty ||
+        category == null ||
+        category.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _error = context.translate(i18.assessmentForm.missingFacilityData);
+      });
       return;
     }
-
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
-      final schema = await _repository.loadFormSchema();
-      final loaded = formsBloc.stream.firstWhere(
-        (state) => state.cachedSchemas.containsKey(widget.schemaName),
+      await _repository.resolvePhoneForm(
+        planFacilityId: planFacilityId,
+        facilityCategory: category,
       );
-      formsBloc.add(FormsEvent.load(schemas: [jsonEncode(schema)]));
+      final schema = await _repository.loadPhoneMobileSchema();
+      if (!mounted) return;
+      schema['name'] = _schemaKey;
+      final bloc = context.read<FormsBloc>();
+      final loaded = bloc.stream.firstWhere(
+        (state) => state.cachedSchemas.containsKey(_schemaKey),
+      );
+      bloc.add(FormsEvent.load(schemas: [jsonEncode(schema)]));
       await loaded;
       if (mounted) setState(() => _isLoading = false);
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _loadError = error.toString();
+        _error = error.toString();
       });
     }
   }
 
-  FormGroup _buildForm(
-    PropertySchema pageSchema,
-    Map<String, dynamic> pageDefaults,
-  ) {
-    final controls = JsonForms.getFormControls(
-      pageSchema,
-      defaultValues: pageDefaults,
-    );
-    final form = fb.group(controls);
+  Map<String, dynamic> _defaults() {
+    final user = context.read<AuthBloc>().state.maybeWhen(
+          authenticated: (_, __, userRequest) => userRequest,
+          orElse: () => null,
+        );
+    final geography = [
+      widget.facility.block,
+      widget.facility.district,
+      widget.facility.state,
+    ]
+        .map((value) => value?.trim())
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .join(', ');
+    String display(String? value) {
+      final normalized = value?.trim();
+      return normalized == null || normalized.isEmpty ? '---' : normalized;
+    }
 
-    final properties = pageSchema.properties;
-    if (properties == null) return form;
-    for (final entry in properties.entries) {
+    return {
+      'assessorName': display(user?.name ?? user?.userName),
+      'callDate': DateTime.now(),
+      'facilityName': display(widget.facility.facilityName),
+      'facilityType': display(widget.facility.facilityType),
+      'facilityAddress': display(
+        widget.facility.address?.trim().isNotEmpty == true
+            ? widget.facility.address
+            : geography,
+      ),
+      'facilityCode': display(widget.facility.facilityCode),
+      'facilityInChargeName': display(widget.facility.facilityInCharge.name),
+      'facilityInChargeContact':
+          display(widget.facility.facilityInCharge.phone),
+      'alternateContactName': display(widget.facility.alternativeContact.name),
+      'alternateContactNumber':
+          display(widget.facility.alternativeContact.phone),
+    };
+  }
+
+  FormGroup _buildForm(PropertySchema page, Map<String, dynamic> defaults) {
+    final controls = JsonForms.getFormControls(page, defaultValues: defaults);
+    final form = fb.group(controls);
+    for (final entry
+        in page.properties?.entries ?? <MapEntry<String, PropertySchema>>[]) {
       if (!form.contains(entry.key)) continue;
-      final schemaValue = entry.value.value;
-      if (schemaValue != null && schemaValue.toString().isNotEmpty) {
+      final value = entry.value.value ?? defaults[entry.key];
+      if (value != null) {
         form.control(entry.key).updateValue(
-              coerceForControl(form.control(entry.key), schemaValue),
-              emitEvent: false,
-            );
-      } else if (pageDefaults.containsKey(entry.key)) {
-        form.control(entry.key).updateValue(
-              coerceForControl(
-                  form.control(entry.key), pageDefaults[entry.key]),
+              coerceForControl(form.control(entry.key), value),
               emitEvent: false,
             );
       }
     }
+    if (_isFrozenDraft) form.markAsDisabled();
     return form;
+  }
+
+  SchemaObject _withPageValues(
+    SchemaObject schema,
+    String pageKey,
+    PropertySchema page,
+    FormGroup form,
+  ) {
+    final values = JsonForms.getFormValues(form, page);
+    final updatedPage = page.copyWith(
+      properties: {
+        for (final entry
+            in page.properties?.entries ?? <MapEntry<String, PropertySchema>>[])
+          entry.key: values.containsKey(entry.key)
+              ? entry.value.copyWith(value: values[entry.key])
+              : entry.value,
+      },
+    );
+    return schema.copyWith(
+      pages: {
+        for (final entry in schema.pages.entries)
+          entry.key: entry.key == pageKey ? updatedPage : entry.value,
+      },
+    );
   }
 
   Future<void> _continue(
     FormGroup form,
     SchemaObject schema,
-    PropertySchema pageSchema,
+    String pageKey,
+    PropertySchema page,
   ) async {
-    if (_isSubmitting) return;
-
-    final invalid = <String>[];
-    for (final key in pageSchema.properties?.keys ?? const <String>[]) {
-      if (!form.contains(key)) continue;
-      final control = form.control(key);
+    if (_isSubmitting || _isFrozenDraft) return;
+    final updated = _withPageValues(schema, pageKey, page, form);
+    final allValues = {
+      for (final pageEntry in updated.pages.entries)
+        pageEntry.key: {
+          for (final property in pageEntry.value.properties?.entries ??
+              <MapEntry<String, PropertySchema>>[])
+            property.key: property.value.value,
+        },
+    };
+    String? invalid;
+    for (final entry
+        in page.properties?.entries ?? <MapEntry<String, PropertySchema>>[]) {
+      if (entry.value.readOnly == true || !form.contains(entry.key)) continue;
+      if (!isAssessmentPropertyVisible(
+        pageKey: pageKey,
+        property: entry.value,
+        values: allValues,
+      )) {
+        continue;
+      }
+      final control = form.control(entry.key);
       control.markAsTouched();
       control.updateValueAndValidity();
-      if (!control.valid) invalid.add(key);
+      if (!control.valid) {
+        invalid = entry.key;
+        break;
+      }
     }
-
-    if (invalid.isNotEmpty) {
-      final label = labelForKey(pageSchema, invalid.first);
+    if (invalid != null) {
+      final label = labelForKey(page, invalid);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please correct: $label')),
+        SnackBar(
+          content: Text(
+            '${context.translate(i18.common.pleaseCorrect)}: $label',
+          ),
+        ),
       );
       return;
     }
-
-    setState(() => _isSubmitting = true);
-    try {
-      final values = JsonForms.getFormValues(form, pageSchema);
-      final updatedPage = pageSchema.copyWith(
-        properties: Map.fromEntries(
-          pageSchema.properties?.entries.map(
-                (entry) => MapEntry(
-                  entry.key,
-                  values.containsKey(entry.key)
-                      ? entry.value.copyWith(value: values[entry.key])
-                      : entry.value,
-                ),
-              ) ??
-              const [],
-        ),
-      );
-      final updatedSchema = schema.copyWith(
-        pages: Map.fromEntries(
-          schema.pages.entries.map(
-            (entry) => MapEntry(
-              entry.key,
-              entry.key == widget.pageName ? updatedPage : entry.value,
-            ),
-          ),
-        ),
-      );
-      final formsBloc = context.read<FormsBloc>();
-      formsBloc.add(
-        FormsUpdateEvent(schema: updatedSchema, schemaKey: widget.schemaName),
-      );
-
-      final pageNames = schema.pages.keys.toList();
-      final pageIndex = pageNames.indexOf(widget.pageName);
-      if (pageIndex >= 0 && pageIndex < pageNames.length - 1) {
-        context.router.push(
-          AssessmentDynamicFormRoute(
-            pageName: pageNames[pageIndex + 1],
-            schemaName: widget.schemaName,
-          ),
+    context.read<FormsBloc>().add(
+          FormsUpdateEvent(schema: updated, schemaKey: _schemaKey),
         );
-        return;
-      }
+    if (_pageIndex < updated.pages.length - 1) {
+      setState(() => _pageIndex++);
+      return;
+    }
+    await _submit(updated);
+  }
 
-      final submitted = formsBloc.stream.firstWhere(
-        (state) =>
-            state is FormsSubmittedState &&
-            state.activeSchemaKey == widget.schemaName,
+  void _previousPage(
+    FormGroup form,
+    SchemaObject schema,
+    String pageKey,
+    PropertySchema page,
+  ) {
+    if (_pageIndex == 0) return;
+    final updated = _withPageValues(schema, pageKey, page, form);
+    context.read<FormsBloc>().add(
+          FormsUpdateEvent(schema: updated, schemaKey: _schemaKey),
+        );
+    setState(() => _pageIndex--);
+  }
+
+  Future<void> _submit(SchemaObject schema) async {
+    final planFacilityId = widget.facility.planFacilityId!;
+    final category = widget.facility.facilityCategory!;
+    final user = context.read<AuthBloc>().state.maybeWhen(
+          authenticated: (_, __, value) => value,
+          orElse: () => null,
+        );
+    final request = _pendingRequest ??
+        AssessmentSubmissionRequest(
+          planFacilityId: planFacilityId,
+          tenantId: envConfig.variables.tenantId,
+          facilityCategory: category,
+          submissionData: buildAssessmentSubmissionData(schema),
+          submittedByName: (user?.name ?? user?.userName ?? '').trim(),
+          clientSubmissionTime: DateTime.now().millisecondsSinceEpoch,
+        );
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+    try {
+      await _repository.submitPhoneAssessment(request);
+      final isar = await Constants().isar;
+      await AssessmentDraftRepository(isar).delete(
+        request.tenantId,
+        request.planFacilityId,
       );
-      formsBloc.add(FormsEvent.submit(schemaKey: widget.schemaName));
-      await submitted;
       if (!mounted) return;
-      context.router.replaceAll([
-        AssessmentSubmissionSuccessRoute(schemaName: widget.schemaName),
-      ]);
+      context.read<FormsBloc>().add(
+            FormsEvent.clearForm(schemaKey: _schemaKey),
+          );
+      try {
+        widget.onSubmissionSucceeded();
+      } catch (_) {
+        // Queue refresh must never block a confirmed-success transition.
+      }
+      if (!mounted) return;
+      unawaited(
+        context.router.replace<void>(
+          AssessmentSubmissionSuccessRoute(schemaName: _schemaKey),
+        ),
+      );
+    } on AssessmentApiException catch (error) {
+      if (error.code == 'ASSESSMENT_INVALID_FORM_DATA') {
+        _openBackendError(schema, error);
+      } else if (error.isRetryable ||
+          error.isAuthorizationFailure ||
+          error.isConflict) {
+        final isar = await Constants().isar;
+        final assessorId = user?.uuid ?? user?.userName ?? '';
+        await AssessmentDraftRepository(isar).save(
+          request: request,
+          facility: widget.facility,
+          assessorId: assessorId,
+          blocked: error.isAuthorizationFailure || error.isConflict,
+          error: error.message,
+        );
+        if (mounted) {
+          setState(() {
+            _pendingRequest = request;
+            _isFrozenDraft = true;
+            _error = error.isConflict
+                ? context.translate(i18.assessmentForm.conflictSaved)
+                : context.translate(i18.assessmentForm.savedToDrafts);
+          });
+        }
+      } else if (mounted) {
+        setState(() => _error = error.message);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
+  void _openBackendError(
+    SchemaObject schema,
+    AssessmentApiException error,
+  ) {
+    final field = error.fields.isEmpty ? null : error.fields.first;
+    if (field != null) {
+      final index = schema.pages.values.toList().indexWhere(
+            (page) => page.properties?.containsKey(field) == true,
+          );
+      if (index >= 0) _pageIndex = index;
+    }
+    setState(() => _error = error.message);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_error != null &&
+        context.read<FormsBloc>().state.cachedSchemas[_schemaKey] == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(context.translate(i18.assessmentForm.unableToLoad)),
+              const SizedBox(height: spacer2),
+              DigitButton(
+                label: context.translate(i18.common.retry),
+                onPressed: _load,
+                type: DigitButtonType.secondary,
+                size: DigitButtonSize.medium,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       body: BlocBuilder<FormsBloc, FormsState>(
         builder: (context, state) {
-          if (_isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (_loadError != null) {
-            return const Center(
-              child: Text('Unable to load assessment form.'),
+          final schema = state.cachedSchemas[_schemaKey];
+          if (schema == null || schema.pages.isEmpty) {
+            return Center(
+              child: Text(context.translate(i18.assessmentForm.unavailable)),
             );
           }
-
-          final schema = state.cachedSchemas[widget.schemaName];
-          final pageSchema = schema?.pages[widget.pageName];
-          if (schema == null || pageSchema == null) {
-            return const Center(child: Text('Assessment form is unavailable.'));
-          }
-
-          final pageIndex = schema.pages.keys.toList().indexOf(widget.pageName);
-          final pageDefaults = subsetForPage(
-            schema,
-            widget.pageName,
-            _initialDefaults(),
-          );
-
+          final pageEntry = schema.pages.entries.elementAt(_pageIndex);
+          final defaults = subsetForPage(schema, pageEntry.key, _defaults());
           return ReactiveFormBuilder(
-            key: ValueKey('${widget.schemaName}:${widget.pageName}'),
-            form: () => _buildForm(pageSchema, pageDefaults),
-            builder: (context, form, child) => ScrollableContent(
+            key: ValueKey('$_schemaKey:${pageEntry.key}:$_isFrozenDraft'),
+            form: () => _buildForm(pageEntry.value, defaults),
+            builder: (context, form, _) => ScrollableContent(
               backgroundColor: theme.colorTheme.generic.background,
               enableFixedDigitButton: true,
-              header: const Padding(
-                padding: EdgeInsets.all(spacer2),
+              header: Padding(
+                padding: const EdgeInsets.all(spacer2),
                 child: BackNavigationHelpHeaderWidget(
                   showBackNavigation: true,
                   showHelp: false,
+                  defaultPopRoute: _pageIndex == 0,
+                  handleback: _pageIndex == 0
+                      ? null
+                      : () => _previousPage(
+                            form,
+                            schema,
+                            pageEntry.key,
+                            pageEntry.value,
+                          ),
                 ),
               ),
               footer: DigitCard(
                 margin: const EdgeInsets.only(top: spacer2),
                 children: [
+                  if (_error != null) ...[
+                    Text(
+                      _error!,
+                      style: TextStyle(color: theme.colorTheme.alert.error),
+                    ),
+                    const SizedBox(height: spacer2),
+                  ],
                   DigitButton(
                     isDisabled: _isSubmitting,
                     mainAxisSize: MainAxisSize.max,
                     label: _isSubmitting
-                        ? 'Please wait...'
-                        : (pageSchema.actionLabel ?? 'Next'),
-                    onPressed: () => _continue(form, schema, pageSchema),
+                        ? context.translate(i18.assessmentForm.submitting)
+                        : _isFrozenDraft
+                            ? context.translate(i18.common.retry)
+                            : context.translate(
+                                pageEntry.value.actionLabel ??
+                                    (_pageIndex == schema.pages.length - 1
+                                        ? i18.common.coreCommonSubmit
+                                        : i18.common.coreCommonNext),
+                              ),
+                    onPressed: () => _isFrozenDraft
+                        ? _submit(schema)
+                        : _continue(
+                            form,
+                            schema,
+                            pageEntry.key,
+                            pageEntry.value,
+                          ),
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
                   ),
@@ -273,7 +450,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                   child: SizedBox(
                     height: spacer8,
                     child: DigitStepper(
-                      activeIndex: pageIndex,
+                      activeIndex: _pageIndex,
                       stepperList: List.generate(
                         schema.pages.length,
                         (_) => const StepperData(),
@@ -287,28 +464,22 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                 DigitCard(
                   margin: const EdgeInsets.symmetric(horizontal: spacer2),
                   children: [
-                    if (pageSchema.label != null)
+                    if (pageEntry.value.label != null)
                       Text(
-                        pageSchema.label!,
-                        style: theme
-                            .digitTextTheme(context)
-                            .headingXl
-                            .copyWith(color: theme.colorTheme.primary.primary2),
-                      ),
-                    if (pageSchema.description != null)
-                      Text(
-                        pageSchema.description!,
-                        style: theme.digitTextTheme(context).bodyS.copyWith(
-                              color: theme.colorTheme.text.secondary,
+                        context.translate(pageEntry.value.label!),
+                        style: theme.digitTextTheme(context).headingXl.copyWith(
+                              color: theme.colorTheme.primary.primary2,
                             ),
                       ),
+                    if (pageEntry.value.description != null)
+                      Text(context.translate(pageEntry.value.description!)),
                     JsonForms(
-                      currentSchemaKey: widget.schemaName,
-                      propertySchema: pageSchema,
-                      pageName: widget.pageName,
+                      currentSchemaKey: _schemaKey,
+                      propertySchema: pageEntry.value,
+                      pageName: pageEntry.key,
                       childrens: const [],
-                      defaultValues: pageDefaults,
-                      isView: false,
+                      defaultValues: defaults,
+                      isView: _isFrozenDraft,
                     ),
                   ],
                 ),

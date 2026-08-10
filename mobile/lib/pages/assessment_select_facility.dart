@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/models/RadioButtonModel.dart';
 import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
@@ -12,7 +11,6 @@ import 'package:digit_ui_components/widgets/atoms/digit_search_form_input.dart';
 import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
-import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -98,13 +96,19 @@ class _AssessmentSelectFacilityViewState
 
   Future<void> _refresh() async {
     final bloc = context.read<AssessmentQueueBloc>();
-    bloc.add(AssessmentQueueRefresh(
-      query: _searchQuery,
-      sortOrder: _sortOrder,
-    ));
+    _requestRefresh(bloc);
     await bloc.stream.firstWhere(
       (state) =>
           state is AssessmentQueueLoaded || state is AssessmentQueueFailure,
+    );
+  }
+
+  void _requestRefresh([AssessmentQueueBloc? bloc]) {
+    (bloc ?? context.read<AssessmentQueueBloc>()).add(
+      AssessmentQueueRefresh(
+        query: _searchQuery,
+        sortOrder: _sortOrder,
+      ),
     );
   }
 
@@ -123,50 +127,44 @@ class _AssessmentSelectFacilityViewState
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (notification) {
-          if (notification is ScrollUpdateNotification &&
-              notification.metrics.maxScrollExtent > 0 &&
-              notification.metrics.pixels >= 0 &&
-              notification.metrics.pixels >
-                  notification.metrics.maxScrollExtent - _scrollThreshold) {
-            _loadMore();
-          }
-          return false;
-        },
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          child: ScrollConfiguration(
-            behavior: const _AlwaysScrollableBehavior(),
-            child: ScrollableContent(
-              backgroundColor: theme.colorTheme.generic.background,
-              header: const BackNavigationHelpHeaderWidget(
-                showBackNavigation: true,
-                showHelp: false,
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: spacer4,
-                    vertical: spacer2,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: spacer2),
-                      _buildSearchAndSort(textTheme, theme),
-                      const SizedBox(height: spacer4),
-                      BlocBuilder<AssessmentQueueBloc, AssessmentQueueState>(
-                        builder: (context, state) =>
-                            _buildQueueState(state, textTheme, theme),
-                      ),
-                    ],
-                  ),
+      backgroundColor: theme.colorTheme.generic.background,
+      body: Column(
+        children: [
+          const BackNavigationHelpHeaderWidget(
+            showBackNavigation: true,
+            showHelp: false,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: spacer4,
+              vertical: spacer2,
+            ),
+            child: _buildSearchAndSort(textTheme, theme),
+          ),
+          const SizedBox(height: spacer2),
+          Expanded(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollUpdateNotification &&
+                    notification.metrics.maxScrollExtent > 0 &&
+                    notification.metrics.pixels >= 0 &&
+                    notification.metrics.pixels >
+                        notification.metrics.maxScrollExtent -
+                            _scrollThreshold) {
+                  _loadMore();
+                }
+                return false;
+              },
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                child: BlocBuilder<AssessmentQueueBloc, AssessmentQueueState>(
+                  builder: (context, state) =>
+                      _buildQueueState(state, textTheme, theme),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -174,23 +172,35 @@ class _AssessmentSelectFacilityViewState
   Widget _buildSearchAndSort(DigitTextTheme textTheme, ThemeData theme) {
     return DigitCard(
       children: [
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: DigitSearchFormInput(
-                suffixIcon: Icons.search,
-                onChange: _onSearchChanged,
+            Text(
+              context.translate(i18.assessmentSelectFacility.title),
+              style: textTheme.bodyL.copyWith(
+                color: theme.colorTheme.text.primary,
               ),
             ),
-            const SizedBox(width: spacer2),
-            GestureDetector(
-              key: const ValueKey('assessment-queue-sort'),
-              onTap: () => _showSortPopup(textTheme, theme),
-              child: Icon(
-                Icons.import_export,
-                color: theme.colorTheme.primary.primary1,
-                size: spacer8,
-              ),
+            const SizedBox(height: spacer1),
+            Row(
+              children: [
+                Expanded(
+                  child: DigitSearchFormInput(
+                    suffixIcon: Icons.search,
+                    onChange: _onSearchChanged,
+                  ),
+                ),
+                const SizedBox(width: spacer2),
+                GestureDetector(
+                  key: const ValueKey('assessment-queue-sort'),
+                  onTap: () => _showSortPopup(textTheme, theme),
+                  child: Icon(
+                    Icons.import_export,
+                    color: theme.colorTheme.primary.primary1,
+                    size: spacer8,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -204,54 +214,75 @@ class _AssessmentSelectFacilityViewState
     ThemeData theme,
   ) {
     if (state is AssessmentQueueInitial || state is AssessmentQueueLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.only(top: spacer8),
-          child: CircularProgressIndicator(),
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          Padding(
+            padding: EdgeInsets.only(top: spacer8),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ],
       );
     }
 
     if (state is AssessmentQueueFailure) {
-      return Center(
-        child: Column(
-          children: [
-            Text(
-              context.translate(i18.assessmentSelectFacility.failedToLoad),
-              style: textTheme.bodyS.copyWith(
-                color: theme.colorTheme.alert.error,
-              ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: spacer4),
+        children: [
+          const SizedBox(height: spacer4),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  context.translate(i18.assessmentSelectFacility.failedToLoad),
+                  style: textTheme.bodyS.copyWith(
+                    color: theme.colorTheme.alert.error,
+                  ),
+                ),
+                const SizedBox(height: spacer2),
+                DigitButton(
+                  label: context.translate(i18.common.retry),
+                  onPressed: _loadInitial,
+                  type: DigitButtonType.secondary,
+                  size: DigitButtonSize.medium,
+                ),
+              ],
             ),
-            const SizedBox(height: spacer2),
-            DigitButton(
-              label: context.translate(i18.common.retry),
-              onPressed: _loadInitial,
-              type: DigitButtonType.secondary,
-              size: DigitButtonSize.medium,
-            ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     final loaded = state as AssessmentQueueLoaded;
     if (loaded.facilities.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: spacer4),
-          child: Text(
-            context.translate(
-              i18.assessmentSelectFacility.noFacilitiesFound,
-            ),
-            style: textTheme.bodyS.copyWith(
-              color: theme.colorTheme.text.secondary,
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: spacer4),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: spacer4),
+            child: Center(
+              child: Text(
+                context.translate(
+                  i18.assessmentSelectFacility.noFacilitiesFound,
+                ),
+                style: textTheme.bodyS.copyWith(
+                  color: theme.colorTheme.text.secondary,
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       );
     }
 
-    return Column(
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(
+        horizontal: spacer4,
+        vertical: spacer2,
+      ),
       children: [
         for (final facility in loaded.facilities) ...[
           AssessmentFacilityCard(
@@ -266,10 +297,10 @@ class _AssessmentSelectFacilityViewState
             district: _displayValue(facility.district),
             block: _displayValue(facility.block),
             isRemoteAssessor: widget.assessmentMode == AssessmentMode.remote,
-            onStartAssessment: _startAssessment,
+            onStartAssessment: () => _startAssessment(facility),
             onUpdateStatus: () {},
           ),
-          const SizedBox(height: spacer4),
+          const SizedBox(height: spacer5),
         ],
         if (loaded.isLoadingMore)
           const Padding(
@@ -292,15 +323,12 @@ class _AssessmentSelectFacilityViewState
     );
   }
 
-  void _startAssessment() {
-    const schemaName = 'Assessment.HF_PHONE';
-    context.read<FormsBloc>().add(
-          const FormsEvent.clearForm(schemaKey: schemaName),
-        );
-    context.router.push(
+  void _startAssessment(AssessmentQueueFacility facility) {
+    context.router.push<void>(
       AssessmentDynamicFormRoute(
-        pageName: 'assessorFacilityDetails',
-        schemaName: schemaName,
+        facility: facility,
+        assessmentMode: widget.assessmentMode,
+        onSubmissionSucceeded: _requestRefresh,
       ),
     );
   }
@@ -414,14 +442,5 @@ class _AssessmentSelectFacilityViewState
   String _displayValue(String? value) {
     final normalized = value?.trim();
     return normalized == null || normalized.isEmpty ? '---' : normalized;
-  }
-}
-
-class _AlwaysScrollableBehavior extends MaterialScrollBehavior {
-  const _AlwaysScrollableBehavior();
-
-  @override
-  ScrollPhysics getScrollPhysics(BuildContext context) {
-    return const AlwaysScrollableScrollPhysics();
   }
 }
