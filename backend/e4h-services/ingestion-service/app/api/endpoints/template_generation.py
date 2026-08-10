@@ -17,7 +17,7 @@ from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
 from app.schemas.boundary import Boundary, flatten_boundaries
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
-from app.utils.convertor import request_info_from_json
+from app.utils.convertor import request_info_from_json, apply_field_plan_facility_additional_fields
 from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_prefilled_rows_in_excel, \
     lock_excel_columns
 from app.utils.facility_service_client import FacilityServiceClient
@@ -343,6 +343,7 @@ async def get_facility_ingestion_template_with_data(
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
         fieldplan_facilities_data = []
+        fieldplan_facility_by_id = {}
         if fieldplan_id and fieldPlan_service_url:
             try:
                 fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
@@ -350,6 +351,9 @@ async def get_facility_ingestion_template_with_data(
                 fieldplan_facilities = fieldplan_facilities_response.get("FieldPlanFacilities", [])
                 fieldplan_linked_facility_ids = {pf.get("facilityId") for pf in fieldplan_facilities if
                                                pf.get("facilityId")}
+                fieldplan_facility_by_id = {
+                    pf.get("facilityId"): pf for pf in fieldplan_facilities if pf.get("facilityId")
+                }
                 logger.info(
                     f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
 
@@ -418,6 +422,13 @@ async def get_facility_ingestion_template_with_data(
                 if facility_id in fieldplan_linked_facility_ids:
                     facility["include_in_fieldplan"] = "Yes"
                     logger.info(f"Facility {facility_id} is linked to fieldplan - marking as Yes")
+                    # Overlay the field-plan-specific solar config (facilityType/systemType/
+                    # solarSolutionDesignType/totalSystemCapacity) from the FieldPlanFacility's
+                    # additionalFields, resolved to labels by generate_template_file_with_data's
+                    # existing code->name lookup against facility_schema.
+                    linked_pf = fieldplan_facility_by_id.get(facility_id)
+                    if linked_pf:
+                        apply_field_plan_facility_additional_fields(facility, linked_pf.get("additionalFields"))
                 else:
 
                     facility["include_in_fieldplan"] = "No"

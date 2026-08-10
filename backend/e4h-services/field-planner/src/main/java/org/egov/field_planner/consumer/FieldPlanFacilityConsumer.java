@@ -54,4 +54,16 @@ public class FieldPlanFacilityConsumer {
         }
     }
 
+    @KafkaListener(topics = "${fieldPlan.facility.consumer.bulk.update.topic}")
+    public List<FieldPlanFacility> bulkUpdate(Map<String, Object> consumerRecord,
+                                              @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        try {
+            FieldPlanFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, FieldPlanFacilityBulkRequest.class);
+            return service.updateBulk(request, true);
+        } catch (Exception exception) {
+            log.error("error in fieldplan facility consumer bulk update", ExceptionUtils.getStackTrace(exception));
+            return Collections.emptyList();
+        }
+    }
+
 }

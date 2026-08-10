@@ -111,6 +111,22 @@ export const IngestionService = {
       attachAuthHeaders: true,
       auth : true,
       attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    });
+  },
+
+  upsertICCReports : async (iccReportsData) => {
+    const endpoint = "/ingestion-service/ingest/icc-reports/_update";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : iccReportsData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
     });
   },
 

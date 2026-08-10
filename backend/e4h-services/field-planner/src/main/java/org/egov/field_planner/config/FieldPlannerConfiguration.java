@@ -29,6 +29,9 @@ public class FieldPlannerConfiguration {
     @Value("${fieldPlan.facility.consumer.bulk.unassign.topic}")
     private String bulkUnassignFieldPlanFacilityTopic;
 
+    @Value("${fieldPlan.facility.consumer.bulk.update.topic}")
+    private String bulkUpdateFieldPlanFacilityTopic;
+
     @Value("${egov.project.host}")
     private String projectServiceHost;
 
@@ -63,6 +66,8 @@ public class FieldPlannerConfiguration {
     private String mdmsHost;
     @Value("${egov.mdms.search.endpoint}")
     private String mdmsEndPoint;
+    @Value("${egov.mdms.v2.search.endpoint}")
+    private String mdmsV2SearchEndpoint;
 
     @Value("${project.document.id.verification.required}")
     private String documentIdVerificationRequired;
@@ -70,14 +75,32 @@ public class FieldPlannerConfiguration {
     @Value("${fieldPlan.management.system.kafka.create.topic}")
     private String saveFieldPlanTopic;
 
+    @Value("${icc.report.kafka.create.topic}")
+    private String saveIccTemplate;
+
+    @Value("${egov.filestore.host}")
+    private String fileStoreHost;
+
+    @Value("${egov.filestore.module}")
+    private String fileStoreModule;
+
     @Value("${fieldPlan.facility.kafka.create.topic}")
     private String createFieldPlanFacilityTopic;
 
     @Value("${fieldPlan.facility.kafka.unassign.topic}")
     private String deleteFieldPlanFacilityTopic;
 
+    @Value("${fieldPlan.facility.kafka.update.topic}")
+    private String updateFieldPlanFacilityTopic;
+
     @Value("${fieldPlan.kafka.update.topic}")
     private String updateFieldPlanTopic;
+
+    @Value("${fieldPlan.template.kafka.create.topic}")
+    private String createFieldPlanTemplateTopic;
+
+    @Value("${fieldPlan.template.kafka.update.topic}")
+    private String updateFieldPlanTemplateTopic;
 
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
@@ -132,4 +155,22 @@ public class FieldPlannerConfiguration {
 
     @Value("${email.activity.assignment.default.password}")
     private String defaultUserPassword;
+
+    //Localization
+    @Value("${egov.localization.host}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
+    /**
+     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
+     * (SEM), health-facility-registry, boundary-service, amc-scheduler-service, project and
+     * field-planner-activity publish to — see FieldPlannerAnalyticsService.
+     */
+    @Value("${fieldplan.kafka.user.analytics.topic:user-analytics-event}")
+    private String userAnalyticsTopic;
 }

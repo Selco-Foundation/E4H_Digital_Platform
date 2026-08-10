@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.core.AdditionalFields;
+import org.egov.common.models.core.Field;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.project.ProjectFacility;
 import org.egov.common.producer.Producer;
@@ -114,6 +116,61 @@ public class FieldPlannerFacilityService {
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
     }
 
+    public List<SystemTypeCapacity> searchSystemTypeCapacity(FieldPlanFacilitySearchRequest request,
+                                                               Integer limit,
+                                                               Integer offset,
+                                                               String tenantId,
+                                                               Long lastChangedSince,
+                                                               Boolean includeDeleted) throws Exception {
+        log.trace("Entering searchSystemTypeCapacity method for field plan facility");
+        log.info("Received request to search systemType/totalSystemCapacity for field plan facility, tenant: {}", tenantId);
+
+        SearchResponse<FieldPlanFacility> searchResponse = search(request, limit, offset, tenantId, lastChangedSince, includeDeleted);
+        Map<String, SystemTypeCapacity> uniqueCombinations = new LinkedHashMap<>();
+        for (FieldPlanFacility fieldPlanFacility : searchResponse.getResponse()) {
+            SystemTypeCapacity systemTypeCapacity = toSystemTypeCapacity(fieldPlanFacility);
+            if (systemTypeCapacity == null) {
+                continue;
+            }
+            String key = systemTypeCapacity.getSystemType() + "|" + systemTypeCapacity.getTotalSystemCapacity();
+            uniqueCombinations.putIfAbsent(key, systemTypeCapacity);
+        }
+        List<SystemTypeCapacity> result = new ArrayList<>(uniqueCombinations.values());
+
+        log.info("SystemType/totalSystemCapacity search completed, found {} unique combinations", result.size());
+        log.trace("Exiting searchSystemTypeCapacity method");
+        return result;
+    }
+
+    private SystemTypeCapacity toSystemTypeCapacity(FieldPlanFacility fieldPlanFacility) {
+        AdditionalFields additionalFields = fieldPlanFacility.getAdditionalFields();
+        if (additionalFields == null || additionalFields.getFields() == null) {
+            return null;
+        }
+        String systemType = null;
+        String totalSystemCapacity = null;
+        String customTotalSystemCapacity = null;
+        for (Field field : additionalFields.getFields()) {
+            if ("systemType".equals(field.getKey())) {
+                systemType = field.getValue();
+            } else if ("totalSystemCapacity".equals(field.getKey())) {
+                totalSystemCapacity = field.getValue();
+            } else if ("customTotalSystemCapacity".equals(field.getKey())) {
+                customTotalSystemCapacity = field.getValue();
+            }
+        }
+        if ("CUSTOM".equalsIgnoreCase(totalSystemCapacity)) {
+            totalSystemCapacity = customTotalSystemCapacity;
+        }
+        if (systemType == null && totalSystemCapacity == null) {
+            return null;
+        }
+        return SystemTypeCapacity.builder()
+                .systemType(systemType)
+                .totalSystemCapacity(totalSystemCapacity)
+                .build();
+    }
+
     public FieldPlanFacility unassign(FieldPlanFacilityRequest request) {
         log.info("received request to create fieldplan facility");
         FieldPlanFacilityBulkRequest bulkRequest = FieldPlanFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
@@ -141,6 +198,93 @@ public class FieldPlannerFacilityService {
         }
 
         return fieldPlanFacilities;
+    }
+
+    // Fields a user may edit on an already-linked FieldPlanFacility - facilityType and the
+    // facilityId/fieldPlanId link itself stay immutable via this path.
+    private static final Set<String> UPDATABLE_ADDITIONAL_FIELD_KEYS = Set.of(
+            "systemType", "solarSolutionDesignType", "totalSystemCapacity",
+            "customSolarSolutionDesignType", "customTotalSystemCapacity"
+    );
+
+    public List<FieldPlanFacility> updateBulk(FieldPlanFacilityBulkRequest request, boolean isBulk) {
+        log.info("received request to update bulk fieldplan facility");
+        List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
+
+        List<String> ids = fieldPlanFacilities.stream().map(FieldPlanFacility::getId).toList();
+        List<FieldPlanFacility> existingFacilities = fieldPlanFacilityRepository.findById(ids, false);
+        Map<String, FieldPlanFacility> existingById = existingFacilities.stream()
+                .collect(Collectors.toMap(FieldPlanFacility::getId, f -> f));
+
+        Map<String, String> errorMap = new HashMap<>();
+        AtomicInteger counter = new AtomicInteger(1);
+        for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities) {
+            if (fieldPlanFacility.getId() == null || !existingById.containsKey(fieldPlanFacility.getId())) {
+                errorMap.put("INVALID_FIELDPLAN_FACILITY_ID" + counter.getAndIncrement(),
+                        "FieldPlanFacility does not exist: " + fieldPlanFacility.getId());
+            }
+        }
+        if (!errorMap.isEmpty()) {
+            throw new CustomException(errorMap);
+        }
+
+        try {
+            if (!fieldPlanFacilities.isEmpty()) {
+                for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities) {
+                    FieldPlanFacility fieldPlanFacilityFromDb = existingById.get(fieldPlanFacility.getId());
+                    mergeUpdatableAdditionalFields(fieldPlanFacility, fieldPlanFacilityFromDb);
+                    fieldPlanFacility.setFacilityId(fieldPlanFacilityFromDb.getFacilityId());
+                    fieldPlanFacility.setFieldPlanId(fieldPlanFacilityFromDb.getFieldPlanId());
+                    fieldPlanFacility.setTenantId(fieldPlanFacilityFromDb.getTenantId());
+                    fieldPlanFacility.setIsDeleted(fieldPlanFacilityFromDb.getIsDeleted());
+                    fieldPlannerEnrichment.enrichFieldPlanFacilityRequestOnUpdate(fieldPlanFacility, fieldPlanFacilityFromDb, request.getRequestInfo());
+                }
+                producer.push(fieldPlannerConfiguration.getUpdateFieldPlanFacilityTopic(), fieldPlanFacilities);
+                log.info("successfully pushed fieldplan facility update");
+            }
+        } catch (Exception exception) {
+            log.error("error occurred while updating fieldplan facility: {}", ExceptionUtils.getStackTrace(exception));
+        }
+
+        return fieldPlanFacilities;
+    }
+
+    /**
+     * Overlays only the user-editable keys (systemType, solarSolutionDesignType,
+     * totalSystemCapacity, customSolarSolutionDesignType, customTotalSystemCapacity) from the
+     * incoming request onto the existing DB record's additionalFields - every other existing key
+     * (e.g. facilityType) is preserved unchanged, same merge-not-replace approach as
+     * FieldPlanTemplateService.mergeTemplateData.
+     */
+    private void mergeUpdatableAdditionalFields(FieldPlanFacility fieldPlanFacility, FieldPlanFacility fieldPlanFacilityFromDb) {
+        Map<String, String> merged = new LinkedHashMap<>();
+        AdditionalFields existingAdditionalFields = fieldPlanFacilityFromDb.getAdditionalFields();
+        if (existingAdditionalFields != null && existingAdditionalFields.getFields() != null) {
+            for (Field field : existingAdditionalFields.getFields()) {
+                if (field.getKey() != null) {
+                    merged.put(field.getKey(), field.getValue());
+                }
+            }
+        }
+
+        AdditionalFields incomingAdditionalFields = fieldPlanFacility.getAdditionalFields();
+        if (incomingAdditionalFields != null && incomingAdditionalFields.getFields() != null) {
+            for (Field field : incomingAdditionalFields.getFields()) {
+                if (field.getKey() != null && UPDATABLE_ADDITIONAL_FIELD_KEYS.contains(field.getKey())) {
+                    merged.put(field.getKey(), field.getValue());
+                }
+            }
+        }
+
+        List<Field> mergedFields = merged.entrySet().stream()
+                .map(entry -> Field.builder().key(entry.getKey()).value(entry.getValue()).build())
+                .toList();
+
+        fieldPlanFacility.setAdditionalFields(AdditionalFields.builder()
+                .schema(existingAdditionalFields != null ? existingAdditionalFields.getSchema() : "FieldPlanFacility")
+                .version(existingAdditionalFields != null ? existingAdditionalFields.getVersion() : 1)
+                .fields(mergedFields)
+                .build());
     }
 
     public void validateCreateFieldPlanRequest(FieldPlanFacilityBulkRequest request) {

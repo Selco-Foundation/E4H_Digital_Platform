@@ -31,6 +31,9 @@ public class Co2MonthlyIndexPayload {
     private String hfrId;
     private String ninId;
     private String facilityType;
+    private String facilityCategory;
+    private String mappedVendorName;
+    private String mappedVendorUserName;
     private String facilityName;
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private String projectName;
@@ -38,8 +41,11 @@ public class Co2MonthlyIndexPayload {
     private String geoPoint;
     private Boolean isLive;
     private Long solarInstallationDate;
+    
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private Long rmsInstallationDate;
     private Double solarSystemCapacity;
+    private Double totalSolarEnergyGeneratedInKwh;
     private int month;
     private int year;
     private String financialYear;
@@ -74,6 +80,9 @@ public class Co2MonthlyIndexPayload {
                 .hfrId(doc.getHfrId())
                 .ninId(doc.getNinId())
                 .facilityType(doc.getFacilityType())
+                .facilityCategory(doc.getFacilityCategory())
+                .mappedVendorName(doc.getMappedVendorName())
+                .mappedVendorUserName(doc.getMappedVendorUserName())
                 .facilityName(doc.getFacilityName())
                 .projectName(doc.getProjectName() != null ? doc.getProjectName() : "")
                 .tenantId(doc.getTenantId())
@@ -82,6 +91,7 @@ public class Co2MonthlyIndexPayload {
                 .solarInstallationDate(isoDateToEpochMillis(doc.getSolarInstallationDate()))
                 .rmsInstallationDate(isoDateToEpochMillis(doc.getRmsInstallationDate()))
                 .solarSystemCapacity(doc.getSolarSystemCapacity())
+                .totalSolarEnergyGeneratedInKwh(doc.getTotalSolarEnergyGeneratedInKwh())
                 .month(doc.getMonth())
                 .year(doc.getYear())
                 .financialYear(doc.getFinancialYear())

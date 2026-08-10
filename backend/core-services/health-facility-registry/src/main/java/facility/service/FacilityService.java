@@ -42,6 +42,7 @@ public class FacilityService {
     private final BoundaryService boundaryService;
     private final Configuration configs;
     private final FacilityKibanaMapper facilityKibanaMapper;
+    private final FacilityProjectClient facilityProjectClient;
     private EncryptionDecryptionUtil encryptionDecryptionUtil;
     private BoundaryUtil boundaryUtil;
 
@@ -51,6 +52,7 @@ public class FacilityService {
     private final HRMSService hrmsService;
     private final VendorOrganisationService vendorOrganisationService;
     private final RestTemplate restTemplate;
+    private final FacilityAnalyticsService facilityAnalyticsService;
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
     private static final String LOCALIZATION_LOCALE = "en_IN";
@@ -70,13 +72,15 @@ public class FacilityService {
             BoundaryService boundaryService,
             Configuration configs,
             FacilityKibanaMapper facilityKibanaMapper,
+            FacilityProjectClient facilityProjectClient,
             EncryptionDecryptionUtil encryptionDecryptionUtil,
             BoundaryUtil boundaryUtil,
             FacilityRowMapperV2 facilityRowMapperV2,
             HRMSUtils hrmsUtils,
             HRMSService hrmsService,
             VendorOrganisationService vendorOrganisationService,
-            RestTemplate restTemplate) {
+            RestTemplate restTemplate,
+            FacilityAnalyticsService facilityAnalyticsService) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.facilityRowMapper = facilityRowMapper;
@@ -87,6 +91,7 @@ public class FacilityService {
         this.boundaryService = boundaryService;
         this.configs = configs;
         this.facilityKibanaMapper = facilityKibanaMapper;
+        this.facilityProjectClient = facilityProjectClient;
         this.encryptionDecryptionUtil = encryptionDecryptionUtil;
         this.boundaryUtil = boundaryUtil;
         this.facilityRowMapperV2 = facilityRowMapperV2;
@@ -94,6 +99,7 @@ public class FacilityService {
         this.hrmsService = hrmsService;
         this.vendorOrganisationService = vendorOrganisationService;
         this.restTemplate = restTemplate;
+        this.facilityAnalyticsService = facilityAnalyticsService;
     }
 
     /**
@@ -303,6 +309,8 @@ public class FacilityService {
         }
 
         log.info("Successfully created {} facilities", validatedFacilities.size());
+        // One FACILITY_CREATE analytics event per created facility (best-effort, never throws).
+        facilityAnalyticsService.publishCreateEvents(request.getRequestInfo(), validatedFacilities);
         log.trace("Exiting createFacility method");
         return validatedFacilities;
     }
@@ -988,6 +996,14 @@ public class FacilityService {
         }
         
         log.info("Successfully updated facility {}", update.getFacilityId());
+        // FACILITY_UPDATE analytics event (best-effort, never throws). Built separately rather
+        // than reusing `facility`: boundaryCode is read-only on the update payload, so the state
+        // lookup needs the persisted one, and `facility` is the API response.
+        facilityAnalyticsService.publishUpdateEvent(request.getRequestInfo(), Facility.builder()
+                .facilityId(update.getFacilityId())
+                .tenantId(update.getTenantId())
+                .boundaryCode(firstNonBlank(facility.getBoundaryCode(), existingFacility.getBoundaryCode()))
+                .build());
         log.trace("Exiting updateFacility method");
         return facility;
     }
@@ -1483,6 +1499,81 @@ public class FacilityService {
 
         log.info("Kibana reindex complete: scanned={}, reindexed={}, skipped={}, failed={}",
                 response.getScanned(), response.getReindexed(), response.getSkipped(), response.getFailed());
+        return response;
+    }
+
+    /**
+     * Backfills {@code projectName} on facilities already present in the health facility index.
+     * Scans the index, resolves each facility's project name from the project service (batched),
+     * and patches only {@code Data.projectName} on documents whose value is missing or stale.
+     */
+    public FacilityProjectNameBackfillResponse backfillFacilityProjectNames(FacilityProjectNameBackfillRequest request) {
+        if (!configs.isFacilityProjectNameBackfillEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility projectName backfill is disabled. Set facility.project-name.backfill.enabled=true to run.");
+        }
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+
+        final int projectFetchBatchSize = 100;
+        String tenantId = request.getTenantId();
+        int pageSize = (request.getBatchSize() != null && request.getBatchSize() > 0) ? request.getBatchSize() : 500;
+
+        List<FacilityKibanaMapper.IndexedFacilityRef> refs =
+                facilityKibanaMapper.fetchAllIndexedFacilities(tenantId, pageSize);
+
+        FacilityProjectNameBackfillResponse response = FacilityProjectNameBackfillResponse.builder()
+                .scanned(refs.size())
+                .errors(new ArrayList<>())
+                .build();
+
+        if (refs.isEmpty()) {
+            return response;
+        }
+
+        // Resolve project names in batches, grouped by tenant (project lookup is tenant-scoped).
+        Map<String, String> projectNamesByFacilityId = new HashMap<>();
+        Map<String, List<String>> facilityIdsByTenant = new LinkedHashMap<>();
+        for (FacilityKibanaMapper.IndexedFacilityRef ref : refs) {
+            String refTenant = ref.getTenantId() != null ? ref.getTenantId() : tenantId;
+            facilityIdsByTenant.computeIfAbsent(refTenant, k -> new ArrayList<>()).add(ref.getFacilityId());
+        }
+        for (Map.Entry<String, List<String>> entry : facilityIdsByTenant.entrySet()) {
+            String batchTenant = entry.getKey();
+            List<String> ids = entry.getValue();
+            for (int i = 0; i < ids.size(); i += projectFetchBatchSize) {
+                List<String> batch = ids.subList(i, Math.min(i + projectFetchBatchSize, ids.size()));
+                projectNamesByFacilityId.putAll(
+                        facilityProjectClient.fetchProjectNamesByFacility(request.getRequestInfo(), batchTenant, batch));
+            }
+        }
+
+        for (FacilityKibanaMapper.IndexedFacilityRef ref : refs) {
+            String projectName = projectNamesByFacilityId.get(ref.getFacilityId());
+            // No mapping found, or projectName already up to date → nothing to write.
+            if (projectName == null || projectName.isBlank() || projectName.equals(ref.getProjectName())) {
+                response.setSkipped(response.getSkipped() + 1);
+                continue;
+            }
+            int updated = facilityKibanaMapper.updateProjectNameByFacilityId(
+                    ref.getFacilityId(), ref.getTenantId(), projectName);
+            if (updated > 0) {
+                response.setUpdated(response.getUpdated() + 1);
+            } else if (updated == 0) {
+                response.setSkipped(response.getSkipped() + 1);
+            } else {
+                response.setFailed(response.getFailed() + 1);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(ref.getFacilityId())
+                        .tenantId(ref.getTenantId())
+                        .message("Elasticsearch _update_by_query failed")
+                        .build());
+            }
+        }
+
+        log.info("projectName backfill complete: scanned={}, updated={}, skipped={}, failed={}",
+                response.getScanned(), response.getUpdated(), response.getSkipped(), response.getFailed());
         return response;
     }
 
@@ -2120,7 +2211,7 @@ public class FacilityService {
 
     private String buildBulkSearchOrderBy(FacilityBulkSearchCriteria criteria) {
         String sortBy = criteria.getSortBy() != null ? criteria.getSortBy().trim().toLowerCase() : "updated_at";
-        String column = "created_at".equals(sortBy) ? "fac.created_at" : "fac.updated_at";
+        String column = ("created_at".equals(sortBy) || "createdat".equals(sortBy)) ? "fac.created_at" : "fac.updated_at";
         boolean asc = "asc".equalsIgnoreCase(criteria.getSortOrder());
         return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST ";
     }

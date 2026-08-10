@@ -16,6 +16,7 @@ import PrivacyComponent from "./components/PrivacyComponent";
 import LoginSignupSelector from "./components/LoginSignupSelector";
 import ForgotOrganizationTooltip from "./components/ForgotOrganizationTooltip";
 import OtpComponent from "./pages/employee/Otp/OtpCustomComponent";
+import TOUComponent from "./components/TOUComponent";
 
 const DigitUIWrapper = ({ stateCode, enabledModules, moduleReducers, defaultLanding,allowedUserTypes }) => {
   const { isLoading, data: initData={} } = Digit.Hooks.useInitStore(stateCode, enabledModules);
@@ -26,6 +27,9 @@ const DigitUIWrapper = ({ stateCode, enabledModules, moduleReducers, defaultLand
   const i18n = getI18n();
   if(!Digit.ComponentRegistryService.getComponent("PrivacyComponent")){
     Digit.ComponentRegistryService.setComponent("PrivacyComponent", PrivacyComponent);
+  }
+  if(!Digit.ComponentRegistryService.getComponent("TOUComponent")){
+    Digit.ComponentRegistryService.setComponent("TOUComponent", TOUComponent);
   }
   return (
     <Provider store={data}>
@@ -161,6 +165,7 @@ const componentsToRegister = {
   LoginSignupSelector,
   ForgotOrganizationTooltip,
   PrivacyComponent,
+  TOUComponent,
   OtpComponent,
 };
 
