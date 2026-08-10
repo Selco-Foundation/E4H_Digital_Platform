@@ -189,7 +189,7 @@ const AssessmentDetails = () => {
       await PMService.downloadAssessmentPlanFacilityExport(assessmentId, projectQueryFilter.facilityFilterQuery);
     } catch (error) {
       console.error("Error exporting assessment plan facilities", error);
-      setToast({ key: "error", label: t("PM_ASSESSMENT_ACTION_ERROR") });
+      setToast({ key: "error", label: t("PM_ASSESSMENT_FACILITY_DATA_DOWNLOAD_ERROR") });
     } finally {
       setActionLoading(false);
     }
