@@ -5,6 +5,7 @@ import { useStore } from "./services/index";
 import { initI18n } from "./translations/index";
 
 import { Storage, PersistantStorage } from "./services/atoms/Utils/Storage";
+import { Request } from "./services/atoms/Utils/Request";
 import { UploadServices } from "./services/atoms/UploadServices";
 import JsDictionary from "./services/atoms/JsDictionary";
 
@@ -93,4 +94,4 @@ const initLibraries = () => {
   });
 };
 
-export { initLibraries, Enums, Hooks, subFormRegistry };
+export { initLibraries, Enums, Hooks, Request, subFormRegistry };

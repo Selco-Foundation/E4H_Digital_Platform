@@ -164,4 +164,22 @@ public class FieldPlannerConfiguration {
 
     @Value("${email.activity.assignment.default.password}")
     private String defaultUserPassword;
+
+    //Localization
+    @Value("${egov.localization.host}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
+    /**
+     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
+     * (SEM), health-facility-registry, boundary-service, amc-scheduler-service, project and
+     * field-planner-activity publish to — see FieldPlannerAnalyticsService.
+     */
+    @Value("${fieldplan.kafka.user.analytics.topic:user-analytics-event}")
+    private String userAnalyticsTopic;
 }
