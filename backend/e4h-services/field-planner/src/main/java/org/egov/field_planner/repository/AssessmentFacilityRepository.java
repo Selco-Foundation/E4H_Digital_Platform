@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.field_planner.repository.querybuilder.AssessmentQueryBuilder;
 import org.egov.field_planner.repository.rowmapper.AssessmentFacilityRowMapper;
+import org.egov.field_planner.repository.rowmapper.AssessmentQueueFacilityRowMapper;
 import org.egov.field_planner.repository.rowmapper.EligibleFacilityRowMapper;
 import org.egov.field_planner.util.AssessmentConstants;
 import org.egov.tracer.model.CustomException;
@@ -12,6 +13,8 @@ import org.egov.field_planner.web.models.EligibleFacility;
 import org.egov.field_planner.web.models.PlanFacility;
 import org.egov.field_planner.web.models.PlanFacilityFilters;
 import org.egov.field_planner.web.models.PlanFacilityIncludeItem;
+import org.egov.field_planner.web.models.SubmissionQueueFilters;
+import org.egov.field_planner.web.models.SubmissionQueueSort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -29,6 +32,7 @@ public class AssessmentFacilityRepository {
     private final JdbcTemplate jdbcTemplate;
     private final AssessmentQueryBuilder queryBuilder;
     private final AssessmentFacilityRowMapper facilityRowMapper;
+    private final AssessmentQueueFacilityRowMapper queueFacilityRowMapper;
     private final EligibleFacilityRowMapper eligibleFacilityRowMapper;
     private final ObjectMapper objectMapper;
 
@@ -103,13 +107,28 @@ public class AssessmentFacilityRepository {
         return count != null ? count : 0;
     }
 
-    public List<PlanFacility> findQueueFacilities(List<String> planIds, String assessmentPhase) {
+    public List<PlanFacility> findQueueFacilities(List<String> planIds, String assessmentPhase,
+                                                  SubmissionQueueFilters filters, SubmissionQueueSort sort,
+                                                  int limit, int offset) {
         if (planIds == null || planIds.isEmpty()) {
             return List.of();
         }
         List<Object> params = new ArrayList<>();
-        String query = queryBuilder.getSubmissionQueueQuery(params, planIds, assessmentPhase);
-        return jdbcTemplate.query(query, facilityRowMapper, params.toArray());
+        String query = queryBuilder.getSubmissionQueueQuery(params, planIds, assessmentPhase, filters, sort);
+        query += " LIMIT ? OFFSET ? ";
+        params.add(limit);
+        params.add(offset);
+        return jdbcTemplate.query(query, queueFacilityRowMapper, params.toArray());
+    }
+
+    public int countQueueFacilities(List<String> planIds, String assessmentPhase, SubmissionQueueFilters filters) {
+        if (planIds == null || planIds.isEmpty()) {
+            return 0;
+        }
+        List<Object> params = new ArrayList<>();
+        String query = queryBuilder.getSubmissionQueueCountQuery(params, planIds, assessmentPhase, filters);
+        Integer count = jdbcTemplate.queryForObject(query, Integer.class, params.toArray());
+        return count != null ? count : 0;
     }
 
     public List<EligibleFacility> findEligibleFacilities(String projectId, List<String> assessmentPlanIds) {

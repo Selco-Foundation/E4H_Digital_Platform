@@ -39,6 +39,12 @@ public class PlanFacility {
     @JsonProperty("block")
     private String block;
 
+    @JsonProperty("state")
+    private String state;
+
+    @JsonProperty("planName")
+    private String planName;
+
     @JsonProperty("phoneStatus")
     private String phoneStatus;
 

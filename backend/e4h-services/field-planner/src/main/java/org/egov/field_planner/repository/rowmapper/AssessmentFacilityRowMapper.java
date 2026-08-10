@@ -16,7 +16,7 @@ import java.util.Map;
 @Component
 public class AssessmentFacilityRowMapper implements RowMapper<PlanFacility> {
 
-    private final ObjectMapper objectMapper;
+    protected final ObjectMapper objectMapper;
 
     public AssessmentFacilityRowMapper(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;

@@ -11,6 +11,7 @@ import org.egov.field_planner.web.models.Facility;
 import org.egov.field_planner.web.models.PlanFacility;
 import org.egov.field_planner.web.models.PlanFacilityFilters;
 import org.egov.field_planner.web.models.PlanFacilityIncludeItem;
+import org.egov.field_planner.web.models.SubmissionQueueFilters;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -46,6 +47,10 @@ public class AssessmentFacilityMetadataService {
         if (StringUtils.isNotBlank(facility.getBlock())) {
             facility.setBlock(AssessmentBoundaryHelper.toBlockDisplayName(
                     facility.getBlock(), fieldPlannerServiceUtil));
+        }
+        if (StringUtils.isNotBlank(facility.getState())) {
+            facility.setState(AssessmentBoundaryHelper.toStateDisplayName(
+                    facility.getState(), fieldPlannerServiceUtil));
         }
         if (StringUtils.isNotBlank(facility.getFacilityCategory())) {
             facility.setFacilityCategory(facilityMdmsService.toCategoryDisplayName(
@@ -111,6 +116,21 @@ public class AssessmentFacilityMetadataService {
                 .phoneStatuses(filters.getPhoneStatuses())
                 .fieldStatuses(filters.getFieldStatuses())
                 .overallStatuses(filters.getOverallStatuses())
+                .build();
+    }
+
+    public SubmissionQueueFilters expandQueueFilters(SubmissionQueueFilters filters) {
+        if (filters == null) {
+            return null;
+        }
+        return SubmissionQueueFilters.builder()
+                .facilityName(filters.getResolvedFacilityName())
+                .states(AssessmentBoundaryHelper.expandStateFilterValues(
+                        filters.getResolvedStates(), fieldPlannerServiceUtil))
+                .districts(AssessmentBoundaryHelper.expandDistrictFilterValues(
+                        filters.getResolvedDistricts(), fieldPlannerServiceUtil))
+                .blocks(AssessmentBoundaryHelper.expandBlockFilterValues(
+                        filters.getResolvedBlocks(), fieldPlannerServiceUtil))
                 .build();
     }
 

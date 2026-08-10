@@ -28,6 +28,10 @@ public class AssessmentSubmissionService {
     private final AssessmentWorkflowService workflowService;
     private final AllowedActionsService allowedActionsService;
     private final PlanFacilitySearchService searchService;
+    private final AssessmentFacilityMetadataService facilityMetadataService;
+
+    private static final int DEFAULT_QUEUE_LIMIT = 50;
+    private static final int MAX_QUEUE_LIMIT = 500;
 
     public SubmissionQueueSearchResponse searchQueue(SubmissionQueueSearchRequest request) {
         String role = AssessmentConstants.PHASE_PHONE.equals(request.getAssessmentPhase())
@@ -35,22 +39,47 @@ public class AssessmentSubmissionService {
                 : AssessmentConstants.ROLE_FIELD_POC;
         List<String> planIds = assessorService.getAssignedPlanIds(
                 request.getRequestInfo(), request.getTenantId(), role);
-        List<PlanFacility> facilities = facilityRepository.findQueueFacilities(planIds, request.getAssessmentPhase());
+        SubmissionQueueFilters effectiveFilters = facilityMetadataService.expandQueueFilters(request.getFilters());
+        int limit = resolveLimit(request.getLimit());
+        int offset = request.getOffset() != null && request.getOffset() >= 0 ? request.getOffset() : 0;
+        List<PlanFacility> facilities = facilityRepository.findQueueFacilities(
+                planIds, request.getAssessmentPhase(), effectiveFilters, request.getSort(), limit, offset);
+        String tenantId = request.getTenantId();
+        facilities.forEach(f -> facilityMetadataService.enrichDisplayFields(f, request.getRequestInfo(), tenantId));
         List<SubmissionQueueItem> queue = facilities.stream()
-                .map(f -> SubmissionQueueItem.builder()
-                        .planFacilityId(f.getPlanFacilityId())
-                        .planId(f.getAssessmentPlanId())
-                        .facilityId(f.getFacilityId())
-                        .facilityName(f.getFacilityName())
-                        .facilityCategory(f.getFacilityCategory())
-                        .phoneStatus(f.getPhoneStatus())
-                        .fieldStatus(f.getFieldStatus())
-                        .build())
+                .map(this::toQueueItem)
                 .toList();
+        int total = facilityRepository.countQueueFacilities(planIds, request.getAssessmentPhase(), effectiveFilters);
         return SubmissionQueueSearchResponse.builder()
                 .queue(queue)
-                .total(queue.size())
+                .total(total)
+                .pagination(Pagination.builder().offset(offset).limit(limit).total(total).build())
                 .build();
+    }
+
+    private SubmissionQueueItem toQueueItem(PlanFacility facility) {
+        return SubmissionQueueItem.builder()
+                .planFacilityId(facility.getPlanFacilityId())
+                .planId(facility.getAssessmentPlanId())
+                .planName(facility.getPlanName())
+                .facilityId(facility.getFacilityId())
+                .facilityName(facility.getFacilityName())
+                .facilityCategory(facility.getFacilityCategory())
+                .facilityType(facility.getFacilityType())
+                .state(facility.getState())
+                .district(facility.getDistrict())
+                .block(facility.getBlock())
+                .phoneStatus(facility.getPhoneStatus())
+                .fieldStatus(facility.getFieldStatus())
+                .lastActionTime(facility.getLastActionTime())
+                .build();
+    }
+
+    private int resolveLimit(Integer limit) {
+        if (limit == null || limit <= 0) {
+            return DEFAULT_QUEUE_LIMIT;
+        }
+        return Math.min(limit, MAX_QUEUE_LIMIT);
     }
 
     public SubmissionFormResolveResponse resolveForm(SubmissionFormResolveRequest request) {

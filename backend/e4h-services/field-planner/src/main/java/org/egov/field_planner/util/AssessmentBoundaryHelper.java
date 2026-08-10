@@ -95,6 +95,42 @@ public final class AssessmentBoundaryHelper {
         return expandBoundaryFilterValues(values, util, false);
     }
 
+    public static String toStateDisplayName(String storedValue, FieldPlannerServiceUtil util) {
+        if (StringUtils.isBlank(storedValue) || util == null) {
+            return storedValue;
+        }
+        if (isBoundaryCode(storedValue)) {
+            String[] parts = storedValue.split("_");
+            if (parts.length >= 2) {
+                return util.boundaryCodeToName(parts[1]);
+            }
+        }
+        return storedValue;
+    }
+
+    public static List<String> expandStateFilterValues(List<String> values, FieldPlannerServiceUtil util) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        Set<String> expanded = new LinkedHashSet<>();
+        for (String value : values) {
+            if (StringUtils.isBlank(value)) {
+                continue;
+            }
+            expanded.add(value);
+            if (!value.contains("_")) {
+                expanded.add(util.boundaryCodeToName(value));
+                continue;
+            }
+            String[] parts = value.split("_");
+            if (parts.length >= 2 && "India".equalsIgnoreCase(parts[0])) {
+                expanded.add(util.boundaryCodeToName(parts[1]));
+            }
+            expanded.add(util.boundaryCodeToName(parts[parts.length - 1]));
+        }
+        return new ArrayList<>(expanded);
+    }
+
     private static List<String> expandBoundaryFilterValues(List<String> values,
                                                            FieldPlannerServiceUtil util,
                                                            boolean district) {
