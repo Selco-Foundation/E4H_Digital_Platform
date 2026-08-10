@@ -66,21 +66,17 @@ const Summary = ({
 
   const AssetInfoItem = (title, value) => (
     <div style={{
+      width: "300px",
       display: "flex",
-      marginBottom: "10px",
+      marginBottom: "10px"
     }}>
       <div style={{
         fontWeight: "bold",
-        width: "150px",
+        width: "50%"
       }}>
         {title}
       </div>
-      <div style={{
-        width: "220px",
-        wordBreak: "break-word"
-      }}>
-        {value || t("CORE_COMMON_NOT_APPLICABLE")}
-      </div>
+      <div>{value || t("CORE_COMMON_NOT_APPLICABLE")}</div>
     </div>
   )
 
@@ -195,7 +191,7 @@ const Summary = ({
         ) : (
           <div style={{ padding: "20px" }}>
             <Section title={t(`QC_INSTALLATION_ASSET_COUNT`)}>
-              {AssetInfoItem(t(`QC_INSTALLATION_${section}`), count)}
+              {AssetInfoItem(sectionName, count)}
             </Section>
 
             <Section title={t(`QC_INSTALLATION_${section}_SPECIFICATIONS`)}>
@@ -209,6 +205,12 @@ const Summary = ({
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_DURATION`), details.warrantyDuration)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), t(`QC_INSTALLATION_BRAND_${details.brand}`))}
             </Section>
+
+            {section === "BATTERY" && (
+              <Section title={t(`QC_INSTALLATION_CAPACITY`)}>
+                {AssetInfoItem(t(`QC_INSTALLATION_ASSET_VOLTAGE`), specifications.voltage)}
+              </Section>
+            )}
 
             {items?.map((item, index) => (
               <Section key={index} title={`${t(`QC_INSTALLATION_${section}`)} ${index + 1}`}>
