@@ -51,6 +51,12 @@ public class AMCServiceConfiguration {
     @Value("${egov.otp.bypass.validation}")
     private boolean byPassOtpValidation;
 
+    @Value("${egov.pdf.host}")
+    private String pdfServiceHost;
+
+    @Value("${egov.createandsave.pdf.url}")
+    private String pdfServiceCreateUrl;
+
     @Value("${egov.facility.host}")
     private String facilityServiceHost;
 
@@ -81,6 +87,9 @@ public class AMCServiceConfiguration {
     @Value("${amc.configuration.update.topic}")
     private String updateAmcConfigurationTopic;
 
+    @Value("${amc.configuration.delete.topic}")
+    private String deleteAmcConfigurationTopic;
+
     @Value("${asset.amc.create.topic}")
     private String saveAssetAmcTopic;
 
@@ -92,6 +101,9 @@ public class AMCServiceConfiguration {
 
     @Value("${scheduled.visit.update.topic}")
     private String updateScheduledVisitTopic;
+
+    @Value("${scheduled.visit.delete.topic}")
+    private String deleteScheduledVisitTopic;
 
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
