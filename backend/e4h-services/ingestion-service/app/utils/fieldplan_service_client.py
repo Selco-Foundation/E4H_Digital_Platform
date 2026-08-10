@@ -15,40 +15,39 @@ class FieldPlanServiceClient:
     def __init__(self, fieldPlan_service_url: str):
         self.fieldPlan_service_url = fieldPlan_service_url
 
-    def create_fieldPlan_facility(self, request_info: RequestInfo, fieldPlan_id: str, facility_id: str):
+    def create_fieldPlan_facility(
+        self,
+        request_info: RequestInfo,
+        fieldPlan_id: str,
+        facility_id: str,
+        source_plan_facility_id: Optional[str] = None,
+        assessment_plan_id: Optional[str] = None,
+        additional_fields: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/_create"
         headers = {
             "Content-Type": "application/json"
         }
 
+        field_plan_facility: Dict[str, Any] = {
+            'facilityId': facility_id,
+            'fieldPlanId': fieldPlan_id,
+            'isdeleted': False,
+            'tenantId': 'in'
+        }
+        if source_plan_facility_id:
+            field_plan_facility['sourcePlanFacilityId'] = source_plan_facility_id
+        if additional_fields:
+            field_plan_facility['additionalFields'] = additional_fields
+
         payload = {
             'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-            'FieldPlanFacility': {
-                'facilityId': facility_id,
-                'fieldPlanId': fieldPlan_id,
-                'isdeleted': False,
-                'tenantId': 'in'
-            }
+            'FieldPlanFacility': field_plan_facility,
         }
         logger.trace(f"Creating field plan facility: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            logger.info(f"Field plan facility created successfully: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
-            logger.debug(f"Create response: {json.loads(response.text)}")
-            return response
-
-        except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error creating field plan facility: {http_err}", exc_info=True)
-            raise http_err
-        except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error creating field plan facility: {conn_err}", exc_info=True)
-            raise conn_err
-        except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error creating field plan facility: {timeout_err}", exc_info=True)
-            raise timeout_err
-        except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error creating field plan facility: {req_err}", exc_info=True)
-            raise req_err
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
 
     def create_fieldPlan_facility_bulk(
         self,
@@ -78,6 +77,9 @@ class FieldPlanServiceClient:
             additional_fields = facility.get("additionalFields")
             if additional_fields:
                 entry["additionalFields"] = additional_fields
+            source_plan_facility_id = facility.get("sourcePlanFacilityId")
+            if source_plan_facility_id:
+                entry["sourcePlanFacilityId"] = source_plan_facility_id
             field_plan_facilities.append(entry)
 
         payload = {

@@ -18,6 +18,11 @@ public class AmcConstants {
     public static final String APPROVED_STATUS = "APPROVED";
     public static final String SCHEDULE_ACTION = "SCHEDULE";
     public static final String EXPIRE_ACTION = "EXPIRE";
+    // AmcConfiguration.status - a separate vocabulary from the scheduled-visit statuses above.
+    // ux_amc_configuration_unique_installation is scoped to AMC_CONFIGURATION_ACTIVE_STATUS, so any
+    // code that retires a configuration must move it off ACTIVE or the slot stays taken.
+    public static final String AMC_CONFIGURATION_ACTIVE_STATUS = "ACTIVE";
+    public static final String AMC_CONFIGURATION_CANCELLED_STATUS = "CANCELLED";
     public static final String MASTER_ATTENDANCE_SESSION = "AttendanceSessions";
     public static final String CODE = "code";
     public static final String PROJECT_TYPE_FIELDPLAN = "FieldPlan";

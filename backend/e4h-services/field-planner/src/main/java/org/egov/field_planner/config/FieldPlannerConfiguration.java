@@ -138,6 +138,15 @@ public class FieldPlannerConfiguration {
     @Value("${egov.workflow.business.service}")
     private String businessService;
 
+    @Value("${egov.assessment.workflow.business.service}")
+    private String assessmentBusinessService;
+
+    @Value("${egov.search.project.facility.url}")
+    private String projectFacilitySearchUrl;
+
+    @Value("${egov.fieldplan.activity.assign.url}")
+    private String fieldPlanActivityAssignUrl;
+
     @Value("${egov.hrms.host}")
     private String hrmsHost;
 

@@ -30,6 +30,11 @@ public class ScheduledVisit {
     private Long actualVisitDate;
     private Long lastVisitDate;
     private String status; // DRAFT, SCHEDULED, APPROVED, etc.
+    // Soft-delete flag, distinct from `status`: status is where the visit is in its workflow,
+    // isActive is whether the visit still belongs to the plan at all. Cleared when a series is
+    // regenerated on a new cadence; searches hide anything with isActive = false.
+    @JsonProperty("isActive")
+    private Boolean isActive;
     private VisitReport visitReport;
     private Workflow workflow;
     private List<ProcessInstance> processInstances;
