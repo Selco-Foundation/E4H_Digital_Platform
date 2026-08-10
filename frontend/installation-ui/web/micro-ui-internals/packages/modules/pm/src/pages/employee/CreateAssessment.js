@@ -440,11 +440,11 @@ const CreateAssessment = () => {
     return assessors;
   }
 
-  const assignAssessmentActivityUsers = async (activityData, planOverrides = {}) => {
+  const assignAssessmentActivityUsers = async (activityData) => {
     const assessors = formatAssessorsForUpdate(activityData);
 
     const assessmentPlanUpdateData = {
-      AssessmentPlans: [{ ...createdAssessmentPlan, ...planOverrides }],
+      AssessmentPlans: [{ ...createdAssessmentPlan }],
       assessors,
       apiOperation: "UPDATE",
     };
@@ -790,17 +790,17 @@ const CreateAssessment = () => {
 
     } else {
       setBlockUI(true);
-      const schedulingAssessmentPlan = createdAssessmentPlan?.status === "DRAFT";
+      const updatingAssessmentPlan = !!createdAssessmentPlan?.id;
 
       try {
-        await assignAssessmentActivityUsers(activityData, schedulingAssessmentPlan ? { status: "SCHEDULED" } : {});
+        await assignAssessmentActivityUsers(activityData);
 
         const upsertedAssessmentPlanData = await invalidateAssessmentPlanData();
         const upsertedAssessmentPlan = upsertedAssessmentPlanData?.assessmentPlans?.[0];
         dispatch(
           populateResponsePage({
             response: {},
-            message: schedulingAssessmentPlan ? t("PM_COMMON_ASSESSMENT_PLAN_CREATED") : t("PM_COMMON_ASSESSMENT_PLAN_UPDATED"),
+            message: updatingAssessmentPlan ? t("PM_COMMON_ASSESSMENT_PLAN_UPDATED") : t("PM_COMMON_ASSESSMENT_PLAN_CREATED"),
             createdId: upsertedAssessmentPlan?.name,
             info: t("PM_COMMON_ASSESSMENT_PLAN_NAME"),
             secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
@@ -813,7 +813,7 @@ const CreateAssessment = () => {
         console.error("Error submitting assessment plan creation form", error);
         setToast({
           key: "error",
-          label: CommonUtils.getApiErrorMessage(error) || (schedulingAssessmentPlan ? t("PM_TOAST_ASSESSMENT_PLAN_SUBMIT_CREATE_ERROR") : t("PM_TOAST_ASSESSMENT_PLAN_SUBMIT_UPDATE_ERROR")),
+          label: CommonUtils.getApiErrorMessage(error) || (updatingAssessmentPlan ? t("PM_TOAST_ASSESSMENT_PLAN_SUBMIT_CREATE_ERROR") : t("PM_TOAST_ASSESSMENT_PLAN_SUBMIT_UPDATE_ERROR")),
         })
 
       } finally {
