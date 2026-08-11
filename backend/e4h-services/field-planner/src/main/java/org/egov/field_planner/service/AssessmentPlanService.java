@@ -53,7 +53,7 @@ public class AssessmentPlanService {
         }
 
         plan.setId(UUID.randomUUID().toString());
-        plan.setStatus(AssessmentConstants.PLAN_STATUS_ACTIVE);
+        plan.setStatus(resolveCreateStatus(plan.getStatus()));
         plan.setPlanType(AssessmentConstants.PLAN_TYPE_ASSESSMENT);
         plan.setHealthFacilityCount(0);
         plan.setCanProceedToFieldPlan(false);
@@ -128,6 +128,14 @@ public class AssessmentPlanService {
             }
             assignAssessors(request.getRequestInfo(), existing, request.getAssessors());
         }
+
+        applyPlanStatusTransition(
+                incoming,
+                existing,
+                request.getRequestInfo().getUserInfo().getUuid(),
+                request.getRequestInfo(),
+                request.getAssessors());
+
         existing.setAssessors(getAssessors(request.getRequestInfo(), existing));
 
         return existing;
@@ -139,17 +147,95 @@ public class AssessmentPlanService {
                 .orElseThrow(() -> new CustomException(AssessmentConstants.ASSESSMENT_PLAN_NOT_FOUND,
                         "Assessment plan not found: " + request.getPlanId()));
 
+        closeActivePlan(plan, request.getRequestInfo().getUserInfo().getUuid());
+        plan.setCanProceedToFieldPlan(true);
+        return plan;
+    }
+
+    private void applyPlanStatusTransition(AssessmentPlan incoming, AssessmentPlan existing, String userId,
+                                           RequestInfo requestInfo, List<AssessorAssignment> incomingAssessors) {
+        if (StringUtils.isBlank(incoming.getStatus())) {
+            return;
+        }
+
+        String requestedStatus = incoming.getStatus().trim().toUpperCase();
+        if (AssessmentConstants.PLAN_STATUS_DRAFT.equals(requestedStatus)) {
+            if (!AssessmentConstants.PLAN_STATUS_DRAFT.equals(existing.getStatus())) {
+                throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION,
+                        "Assessment plan status cannot be changed back to DRAFT");
+            }
+            existing.setStatus(AssessmentConstants.PLAN_STATUS_DRAFT);
+            return;
+        }
+        if (AssessmentConstants.PLAN_STATUS_ACTIVE.equals(requestedStatus)) {
+            activateDraftPlan(existing, userId, requestInfo, incomingAssessors);
+            return;
+        }
+        throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION,
+                "Unsupported assessment plan status for update: " + incoming.getStatus()
+                        + ". Use plan/_mark-complete to close the plan.");
+    }
+
+    private String resolveCreateStatus(String status) {
+        if (StringUtils.isBlank(status)) {
+            return AssessmentConstants.PLAN_STATUS_DRAFT;
+        }
+        String normalized = status.trim().toUpperCase();
+        if (!AssessmentConstants.PLAN_STATUS_DRAFT.equals(normalized)) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION,
+                    "New assessment plans must be created with status DRAFT");
+        }
+        return AssessmentConstants.PLAN_STATUS_DRAFT;
+    }
+
+    private void activateDraftPlan(AssessmentPlan plan, String userId, RequestInfo requestInfo,
+                                   List<AssessorAssignment> incomingAssessors) {
+        if (AssessmentConstants.PLAN_STATUS_ACTIVE.equals(plan.getStatus())) {
+            return;
+        }
+        if (!AssessmentConstants.PLAN_STATUS_DRAFT.equals(plan.getStatus())) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION,
+                    "Only draft assessment plans can be activated");
+        }
+        int facilityCount = planRepository.countFacilitiesOnPlan(plan.getId());
+        if (facilityCount == 0) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_NO_FACILITIES,
+                    "No facility added for assessment plan");
+        }
+        validateAssessorsForActivation(requestInfo, plan, incomingAssessors);
+        planRepository.updatePlanStatus(plan.getId(), AssessmentConstants.PLAN_STATUS_ACTIVE, userId);
+        plan.setStatus(AssessmentConstants.PLAN_STATUS_ACTIVE);
+    }
+
+    private void validateAssessorsForActivation(RequestInfo requestInfo, AssessmentPlan plan,
+                                                 List<AssessorAssignment> incomingAssessors) {
+        if (incomingAssessors != null && !incomingAssessors.isEmpty()) {
+            validateAssessorRoles(incomingAssessors);
+            return;
+        }
+        List<AssessorAssignment> assignedAssessors = getAssessors(requestInfo, plan);
+        if (assignedAssessors.isEmpty()) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_ASSESSORS_REQUIRED,
+                    "No assessors assigned for assessment plan");
+        }
+        validateAssessorRoles(assignedAssessors);
+    }
+
+    private void closeActivePlan(AssessmentPlan plan, String userId) {
+        if (AssessmentConstants.PLAN_STATUS_CLOSED.equals(plan.getStatus())) {
+            return;
+        }
+        if (!AssessmentConstants.PLAN_STATUS_ACTIVE.equals(plan.getStatus())) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_NOT_ACTIVE,
+                    "Only active assessment plans can be marked complete");
+        }
         AssessmentPlanMetrics metrics = planRepository.getMetrics(plan.getId());
         if (metrics.getResultPending() > 0) {
             throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_HAS_PENDING_FACILITIES,
                     "All facilities must have ELIGIBLE or NOT_ELIGIBLE overall status before marking complete");
         }
-
-        planRepository.updatePlanStatus(plan.getId(), AssessmentConstants.PLAN_STATUS_CLOSED,
-                request.getRequestInfo().getUserInfo().getUuid());
+        planRepository.updatePlanStatus(plan.getId(), AssessmentConstants.PLAN_STATUS_CLOSED, userId);
         plan.setStatus(AssessmentConstants.PLAN_STATUS_CLOSED);
-        plan.setCanProceedToFieldPlan(true);
-        return plan;
     }
 
     private void validateDateRange(AssessmentPlan plan) {
