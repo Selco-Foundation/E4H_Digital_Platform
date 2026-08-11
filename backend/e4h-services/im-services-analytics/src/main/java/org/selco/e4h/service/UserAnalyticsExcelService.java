@@ -37,8 +37,10 @@ import static org.selco.e4h.util.UserAnalyticsConstants.SHEET_SUMMARY;
  * <b>Summary</b> is metric-per-row and application-per-column, so it carries the full detail
  * including the previous week and the growth for each application. <b>By State</b> and <b>By Role</b>
  * stack two blocks per sheet — an Active Users table, then a Logins table below it — so each metric
- * reads as its own table rather than as one very wide row. <b>Top Champions</b> ranks the busiest
- * users per role and per application.
+ * reads as its own table rather than as one very wide row. <b>By State</b> additionally carries the
+ * event-type cross-tabs: state down the rows against event type across the columns, once for all
+ * applications together and once per application. <b>Top Champions</b> ranks the busiest users per
+ * role and per application.
  */
 @Slf4j
 @Service
@@ -48,6 +50,7 @@ public class UserAnalyticsExcelService {
     private static final String NOT_APPLICABLE = "N/A";
     private static final String PERCENT_FORMAT = "0.00\"%\"";
     private static final String NO_ACTIVITY = "No activity in either week";
+    private static final String NO_EVENTS = "No events in the reported week";
 
     /** POI column widths are in 1/256ths of a character, so these are 38 and 18 characters. */
     private static final int FIRST_COLUMN_WIDTH = 38 * 256;
@@ -60,8 +63,8 @@ public class UserAnalyticsExcelService {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Styles styles = new Styles(workbook);
             writeSummarySheet(workbook.createSheet(SHEET_SUMMARY), report, styles);
-            writeDimensionSheet(workbook.createSheet(SHEET_BY_STATE), "State", report.getByState(), report, styles);
-            writeDimensionSheet(workbook.createSheet(SHEET_BY_ROLE), "Role", report.getByRole(), report, styles);
+            writeDimensionSheet(workbook.createSheet(SHEET_BY_STATE), "State", report.getByState(), report, styles, true);
+            writeDimensionSheet(workbook.createSheet(SHEET_BY_ROLE), "Role", report.getByRole(), report, styles, false);
             writeChampionsSheet(workbook.createSheet(SHEET_CHAMPIONS), report, styles);
             workbook.write(out);
             byte[] bytes = out.toByteArray();
@@ -102,9 +105,13 @@ public class UserAnalyticsExcelService {
     /**
      * One row per state or role, in two stacked blocks: Active Users first, then Logins beneath it.
      * Each block repeats the dimension column so either table can be read or copied on its own.
+     *
+     * @param eventTypeMatrices appends the event-type cross-tabs below the two blocks — one for all
+     *                          applications together and one per application. Only the state sheet
+     *                          asks for them; the aggregation is not requested for roles.
      */
     private void writeDimensionSheet(Sheet sheet, String dimension, List<UserAnalyticsBucket> buckets,
-                                     UserAnalyticsReport report, Styles styles) {
+                                     UserAnalyticsReport report, Styles styles, boolean eventTypeMatrices) {
         List<String> applications = report.getApplications();
         int rowIndex = writeMetadata(sheet, report, styles, 0) + 1;
 
@@ -142,8 +149,8 @@ public class UserAnalyticsExcelService {
         loginHeaders.add("Previous Week");
         writeHeaderRow(sheet, rowIndex++, loginHeaders, styles, false);
 
-        // Every branch leaves rowIndex past the last row it wrote, even though this is currently the
-        // final block on the sheet — a block appended below would otherwise overwrite it.
+        // Every branch leaves rowIndex past the last row it wrote — the event-type blocks are
+        // appended below and would otherwise overwrite it.
         if (buckets == null || buckets.isEmpty()) {
             sheet.createRow(rowIndex++).createCell(0).setCellValue(NO_ACTIVITY);
         } else {
@@ -159,7 +166,80 @@ public class UserAnalyticsExcelService {
             }
         }
 
-        setColumnWidths(sheet, Math.max(activeUserHeaders.size(), loginHeaders.size()));
+        int columns = Math.max(activeUserHeaders.size(), loginHeaders.size());
+        if (eventTypeMatrices) {
+            rowIndex++;
+            columns = Math.max(columns, writeEventTypeMatrices(sheet, rowIndex, dimension, buckets, report, styles));
+        }
+        setColumnWidths(sheet, columns);
+    }
+
+    /**
+     * The event-type cross-tabs: one covering every application, then one per application, each a
+     * dimension value per row and an event type per column.
+     *
+     * @return the widest header written, so the caller can size the columns for the whole sheet
+     */
+    private int writeEventTypeMatrices(Sheet sheet, int rowIndex, String dimension,
+                                       List<UserAnalyticsBucket> buckets, UserAnalyticsReport report,
+                                       Styles styles) {
+        List<String> eventTypes = report.getEventTypes();
+        String title = "Events by " + dimension + " and Event Type";
+        if (eventTypes == null || eventTypes.isEmpty()) {
+            rowIndex = writeSectionTitle(sheet, rowIndex, title, styles);
+            sheet.createRow(rowIndex).createCell(0).setCellValue(NO_EVENTS);
+            return 1;
+        }
+
+        rowIndex = writeEventTypeMatrix(sheet, rowIndex, title + " — All Applications", dimension,
+                buckets, eventTypes, null, styles);
+        for (String application : report.getApplications()) {
+            rowIndex++;
+            rowIndex = writeEventTypeMatrix(sheet, rowIndex, title + " — " + application, dimension,
+                    buckets, eventTypes, application, styles);
+        }
+        return eventTypes.size() + 2;
+    }
+
+    /**
+     * One cross-tab. Every event-type column is written for every dimension value, including the
+     * zeroes, so all the matrices carry the same rows in the same order and can be read or diffed
+     * against each other. Unlike active users these are event counts, so the total column genuinely
+     * is the sum of the columns to its left.
+     *
+     * @param application the application to count within, or null to count across all of them
+     */
+    private int writeEventTypeMatrix(Sheet sheet, int rowIndex, String title, String dimension,
+                                     List<UserAnalyticsBucket> buckets, List<String> eventTypes,
+                                     String application, Styles styles) {
+        rowIndex = writeSectionTitle(sheet, rowIndex, title, styles);
+
+        List<String> headers = new ArrayList<>();
+        headers.add(dimension);
+        headers.addAll(eventTypes);
+        headers.add(TOTAL);
+        writeHeaderRow(sheet, rowIndex++, headers, styles, false);
+
+        if (buckets == null || buckets.isEmpty()) {
+            sheet.createRow(rowIndex++).createCell(0).setCellValue(NO_ACTIVITY);
+            return rowIndex;
+        }
+
+        for (UserAnalyticsBucket bucket : buckets) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(bucket.getKey());
+            int column = 1;
+            long total = 0L;
+            for (String eventType : eventTypes) {
+                long count = (application == null)
+                        ? bucket.getCurrent().eventCountFor(eventType)
+                        : bucket.getCurrent().eventCountFor(application, eventType);
+                total += count;
+                writeNumber(row, column++, count, styles);
+            }
+            writeNumber(row, column, total, styles);
+        }
+        return rowIndex;
     }
 
     /** The busiest users per role, then per application, each ranked on non-login activity. */

@@ -24,6 +24,7 @@ import java.util.Map;
 
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_ACTIVE_USERS;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_APPLICATION;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_EVENT_TYPE;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_GROUP;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_ROLE;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_STATE;
@@ -111,9 +112,9 @@ public class UserAnalyticsRepository {
     }
 
     private Map<String, Object> buildQuery(Instant from, Instant to, boolean includeChampions) {
-        Map<String, Object> aggregations = new LinkedHashMap<>(metricAggregations());
-        aggregations.put(AGG_BY_STATE, termsAggregation(properties.getStateField()));
-        aggregations.put(AGG_BY_ROLE, termsAggregation(properties.getRoleField()));
+        Map<String, Object> aggregations = new LinkedHashMap<>(metricAggregations(false));
+        aggregations.put(AGG_BY_STATE, termsAggregation(properties.getStateField(), true));
+        aggregations.put(AGG_BY_ROLE, termsAggregation(properties.getRoleField(), false));
         if (includeChampions) {
             aggregations.put(AGG_CHAMPIONS_BY_ROLE, championsAggregation(properties.getRoleField()));
             aggregations.put(AGG_CHAMPIONS_BY_APPLICATION, championsAggregation(properties.getApplicationField()));
@@ -127,21 +128,36 @@ public class UserAnalyticsRepository {
         return query;
     }
 
-    /** A state / role {@code terms} bucket carrying the same metrics as the top level. */
-    private Map<String, Object> termsAggregation(String field) {
+    /**
+     * A state / role {@code terms} bucket carrying the same metrics as the top level.
+     *
+     * @param includeEventTypes whether to also break the bucket down by event type
+     */
+    private Map<String, Object> termsAggregation(String field, boolean includeEventTypes) {
         return Map.of(
                 "terms", Map.of(
                         "field", field,
                         "size", properties.getTermsSize(),
                         "missing", UNKNOWN),
-                "aggs", metricAggregations());
+                "aggs", metricAggregations(includeEventTypes));
     }
 
     /**
      * The metrics computed at every level: distinct active users, login count, and both again split
      * by application.
+     *
+     * @param includeEventTypes adds an event-type {@code terms} beside the metrics and again inside
+     *                          the per-application buckets, giving the counts the By State cross-tabs
+     *                          need both overall and per application
      */
-    private Map<String, Object> metricAggregations() {
+    private Map<String, Object> metricAggregations(boolean includeEventTypes) {
+        Map<String, Object> applicationAggregations = new LinkedHashMap<>();
+        applicationAggregations.put(AGG_ACTIVE_USERS, activeUsersAggregation());
+        applicationAggregations.put(AGG_LOGINS, loginsAggregation());
+        if (includeEventTypes) {
+            applicationAggregations.put(AGG_BY_EVENT_TYPE, eventTypesAggregation());
+        }
+
         Map<String, Object> aggregations = new LinkedHashMap<>();
         aggregations.put(AGG_ACTIVE_USERS, activeUsersAggregation());
         aggregations.put(AGG_LOGINS, loginsAggregation());
@@ -150,10 +166,22 @@ public class UserAnalyticsRepository {
                         "field", properties.getApplicationField(),
                         "size", properties.getTermsSize(),
                         "missing", UNKNOWN),
-                "aggs", Map.of(
-                        AGG_ACTIVE_USERS, activeUsersAggregation(),
-                        AGG_LOGINS, loginsAggregation())));
+                "aggs", applicationAggregations));
+        if (includeEventTypes) {
+            aggregations.put(AGG_BY_EVENT_TYPE, eventTypesAggregation());
+        }
         return aggregations;
+    }
+
+    /**
+     * Every event type seen in the bucket with its document count. {@code USER_LOGIN} is included
+     * here — unlike the champions ranking, the cross-tab is a plain census of what happened.
+     */
+    private Map<String, Object> eventTypesAggregation() {
+        return Map.of("terms", Map.of(
+                "field", properties.getEventTypeField(),
+                "size", properties.getEventTypeTermsSize(),
+                "missing", UNKNOWN));
     }
 
     private Map<String, Object> activeUsersAggregation() {
@@ -217,6 +245,7 @@ public class UserAnalyticsRepository {
     private UserAnalyticsMetrics parseMetrics(Map<String, Object> node) {
         Map<String, Long> activeUsersByApplication = new LinkedHashMap<>();
         Map<String, Long> loginsByApplication = new LinkedHashMap<>();
+        Map<String, Map<String, Long>> eventCountsByApplicationAndType = new LinkedHashMap<>();
         for (Map<String, Object> bucket : buckets(node, AGG_BY_APPLICATION)) {
             String application = asString(bucket.get("key"));
             if (application == null) {
@@ -224,13 +253,32 @@ public class UserAnalyticsRepository {
             }
             activeUsersByApplication.put(application, cardinality(bucket));
             loginsByApplication.put(application, docCount(bucket));
+            eventCountsByApplicationAndType.put(application, parseEventCounts(bucket));
         }
         return UserAnalyticsMetrics.builder()
                 .activeUsersByApplication(activeUsersByApplication)
                 .activeUsersTotal(cardinality(node))
                 .loginsByApplication(loginsByApplication)
                 .loginsTotal(docCount(node))
+                .eventCountsByType(parseEventCounts(node))
+                .eventCountsByApplicationAndType(eventCountsByApplicationAndType)
                 .build();
+    }
+
+    /**
+     * Event type -> document count. Comes back empty for the levels that did not ask for the
+     * breakdown — the overall and by-role nodes simply carry no {@code by_event_type} to read.
+     */
+    private Map<String, Long> parseEventCounts(Map<String, Object> node) {
+        Map<String, Long> byEventType = new LinkedHashMap<>();
+        for (Map<String, Object> bucket : buckets(node, AGG_BY_EVENT_TYPE)) {
+            String eventType = asString(bucket.get("key"));
+            if (eventType == null) {
+                continue;
+            }
+            byEventType.put(eventType, asLong(bucket.get("doc_count")));
+        }
+        return byEventType;
     }
 
     /**
