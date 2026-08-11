@@ -2,6 +2,7 @@ import {useQuery, useQueryClient} from "react-query";
 import { AMCService } from "../services/AMC";
 import { FilestoreService } from "../services/Filestore";
 import {VisitService} from "../services/VisitService";
+import {getFacilityGeography} from "../utilities/GeographyUtils";
 
 const generateAuditTrail = (processInstances) => {
   const auditTrail = [];
@@ -34,13 +35,13 @@ const fetchDocument = async (fileStoreId, fetchFileDetails = true) => {
   try {
     const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(fileStoreId);
     const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[fileStoreId]);
-    let fileDetails;
-    if (fetchFileDetails) {
-      fileDetails = await AMCService.fetchDocumentDetails(fileUrl);
-    }
+    if (!fileUrl || !fetchFileDetails) return { fileUrl };
+
+    const fileDetails = await AMCService.fetchDocumentDetails(fileUrl).catch(() => undefined);
     return { fileUrl, fileDetails };
   } catch (error) {
     console.error(`Failed to fetch document ${fileStoreId}:`, error);
+    return {};
   }
 }
 
@@ -82,22 +83,18 @@ const generateVisitReport = (userResponses, format) => {
 
 const getDocumentAggregation = async (processInstances) => {
   const reportDocumentAggregation = {};
-  const workflowDocuments = [];
+  const workflowDocuments = (processInstances || []).flatMap((processInstance) => processInstance?.documents || []);
+  const installationForm = workflowDocuments.find(
+    (document) => document.documentType?.toUpperCase() === "AMC_INSTALLATION_FORM"
+  );
 
-  const recentProcessInstance = processInstances?.[0];
-  if (Array.isArray(recentProcessInstance?.documents)) {
-    for (const document of recentProcessInstance.documents) {
-      const { fileUrl, fileDetails } = await fetchDocument(document.fileStoreId);
-      if (!fileUrl) continue;
-
-      if (document.documentType.toUpperCase() === "AMC_INSTALLATION_FORM") {
-        reportDocumentAggregation.amcInstallationForm = {
-          fileUrl,
-          ...fileDetails
-        };
-      }
-
-      workflowDocuments.push(document);
+  if (installationForm) {
+    const { fileUrl, fileDetails } = await fetchDocument(installationForm.fileStoreId);
+    if (fileUrl) {
+      reportDocumentAggregation.amcInstallationForm = {
+        fileUrl,
+        ...fileDetails,
+      };
     }
   }
 
@@ -167,27 +164,39 @@ const fetchVisitDetails = async (filter, limit, offset) => {
 
   const visitsResponse = await VisitService.fetchVisits(filter, limit, offset);
   const visitData = visitsResponse?.ScheduledVisits?.[0];
+  if (!visitData) return {};
 
   const facility = visitData?.facility || {};
-  const facilityAmcSummary = await fetchFacilityAmcSummary(facility.id);
+  const facilityId = facility.id || facility.facility_id || facility.facilityId || visitData?.facilityId;
+  const facilityDetails = facility?.facilityDetails || facility?.facility_details || {};
+  const facilityAmcSummary = await fetchFacilityAmcSummary(facilityId);
+  const geography = getFacilityGeography({
+    ...facility,
+    state: visitData?.state,
+    district: visitData?.district,
+    block: visitData?.block,
+  });
   const auditTrail = generateAuditTrail(visitData.processInstances);
   const { reportDocumentAggregation, workflowDocuments } = await getDocumentAggregation(visitData.processInstances);
   const mdmsConfigResponse = await Digit.MDMSService.getMultipleTypes(Digit.ULBService.getCurrentTenantId(), "AMC", ["FormConfig"]);
   const format = mdmsConfigResponse?.["AMC"]?.["FormConfig"]?.[0] || {};
   generateVisitReport(visitData?.visitReport?.responses, format);
   const visitImages = await fetchVisitImages(visitData?.visitReport?.documents);
+  const visitAmcNumber = getVisitAmcNumber(visitData);
 
   return {
     id: visitData?.id,
     facilityDetails: {
-      facilityName: facility.facility_name,
-      facilityId: facility.id,
-      facilityType: facility.facility_type,
-      block: facility.additionalDetails?.boundary?.block,
-      district: facility.additionalDetails?.boundary?.district,
+      facilityName: facility.facility_name || facility.facilityName || visitData?.facilityName || facilityId,
+      facilityId,
+      facilityType: facility.facility_type || facility.facilityType || facilityDetails.facilityType || facilityDetails.facility_type,
+      // Use normalized location fields in visit details.
+      state: geography.state,
+      block: geography.block,
+      district: geography.district,
       status: visitData?.status,
       ...facilityAmcSummary,
-      amcNumber: getVisitAmcNumber(visitData),
+      amcNumber: visitAmcNumber !== "-" ? visitAmcNumber : facilityAmcSummary.amcNumber || "-",
       assigned: visitData?.assignments?.[0]?.user?.name,
     },
     visitReport: format,
