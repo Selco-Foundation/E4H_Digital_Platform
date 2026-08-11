@@ -203,6 +203,37 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
     );
   }
 
+  String _visibilitySignature(
+    SchemaObject schema,
+    String pageKey,
+    PropertySchema page,
+    FormGroup form,
+  ) {
+    final values = <String, dynamic>{
+      for (final pageEntry in schema.pages.entries)
+        pageEntry.key: <String, dynamic>{
+          for (final property in pageEntry.value.properties?.entries ??
+              <MapEntry<String, PropertySchema>>[])
+            property.key: property.value.value,
+        },
+    };
+    values[pageKey] = <String, dynamic>{
+      if (values[pageKey] is Map)
+        ...Map<String, dynamic>.from(values[pageKey] as Map),
+      ...form.rawValue,
+    };
+    return (page.properties?.entries ?? <MapEntry<String, PropertySchema>>[])
+        .where(
+          (entry) => isAssessmentPropertyVisible(
+            pageKey: pageKey,
+            property: entry.value,
+            values: values,
+          ),
+        )
+        .map((entry) => entry.key)
+        .join('|');
+  }
+
   Future<void> _continue(
     FormGroup form,
     SchemaObject schema,
@@ -287,7 +318,9 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
           tenantId: envConfig.variables.tenantId,
           facilityCategory: formType.facilityCategory,
           assessmentPhase: formType.phase,
-          submissionData: buildAssessmentSubmissionData(schema),
+          submissionData: Map<String, dynamic>.from(
+            jsonSafe(buildAssessmentSubmissionData(schema)) as Map,
+          ),
           submittedByName: (user?.name ?? user?.userName ?? '').trim(),
           clientSubmissionTime: DateTime.now().millisecondsSinceEpoch,
         );
@@ -566,13 +599,28 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                       ),
                     if (pageEntry.value.description != null)
                       Text(pageEntry.value.description!),
-                    JsonForms(
-                      currentSchemaKey: _schemaKey,
-                      propertySchema: pageEntry.value,
-                      pageName: pageEntry.key,
-                      childrens: _customComponents(pageEntry.value, form),
-                      defaultValues: defaults,
-                      isView: _isFrozenDraft,
+                    StreamBuilder<Object?>(
+                      stream: form.valueChanges,
+                      builder: (context, _) {
+                        final visibilitySignature = _visibilitySignature(
+                          schema,
+                          pageEntry.key,
+                          pageEntry.value,
+                          form,
+                        );
+                        return JsonForms(
+                          key: ValueKey(
+                            '$_schemaKey:${pageEntry.key}:'
+                            '$visibilitySignature',
+                          ),
+                          currentSchemaKey: _schemaKey,
+                          propertySchema: pageEntry.value,
+                          pageName: pageEntry.key,
+                          childrens: _customComponents(pageEntry.value, form),
+                          defaultValues: defaults,
+                          isView: _isFrozenDraft,
+                        );
+                      },
                     ),
                   ],
                 ),
