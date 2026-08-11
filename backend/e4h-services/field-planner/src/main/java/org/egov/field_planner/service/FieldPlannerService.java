@@ -113,10 +113,9 @@ public class FieldPlannerService {
             log.info("Field plan creation request pushed to Kafka topic: {}", fieldPlannerConfiguration.getSaveFieldPlanTopic());
         }
 
-        // One FIELD_PLAN_CREATE event per plan, after the persister push so a rejected create
-        // publishes nothing. Outside the loop because the loop pushes the whole request each pass
-        // (best-effort, never throws).
-        fieldPlannerAnalyticsService.publishCreateEvents(fieldPlanRequest);
+        // No analytics event here: a create only ever drafts a plan. The FIELD_PLAN_CREATE event is
+        // emitted from the update that moves the plan into SCHEDULED — see
+        // FieldPlannerAnalyticsService#publishScheduledEvent.
 
         log.info("Field plan creation request processed successfully");
         log.trace("Exiting createFieldPlan method");
