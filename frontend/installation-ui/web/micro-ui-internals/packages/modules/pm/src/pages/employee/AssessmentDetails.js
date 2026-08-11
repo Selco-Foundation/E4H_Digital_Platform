@@ -542,7 +542,6 @@ const AssessmentDetails = () => {
     if (pendingAction?.type === "PROCEED" && pendingAction?.targetResult === "NOT_ELIGIBLE") {
       return {
         title: t("PM_ASSESSMENT_CONFIRM_RESULT_TITLE"),
-        description: t("PM_ASSESSMENT_MARK_NOT_ELIGIBLE_DESC"),
         message: `${t("PM_ASSESSMENT_CONFIRM_ACTION_MESSAGE_PREFIX")} ${count} ${t("PM_ASSESSMENT_FACILITIES_UNIT")} ${t("PM_ASSESSMENT_CONFIRM_ACTION_MESSAGE_TO")} '${t("PM_ASSESSMENT_FACILITY_STATUS_NOT_ELIGIBLE")}'.`,
         confirmLabel: t("PM_ASSESSMENT_ACTION_MARK_NOT_ELIGIBLE"),
         confirmColor: "#B91900",
@@ -649,9 +648,18 @@ const AssessmentDetails = () => {
           planCompleted={planCompleted}
           canAssignOnSite={canAssignForOnSiteAssessment(facilityDetailsModal)}
           onClose={() => setFacilityDetailsModal(null)}
-          onAssignOnSite={() => openAssignOnSiteConfirm([facilityDetailsModal.id], "FACILITY_MODAL")}
-          onMarkEligible={() => openMarkEligibleConfirm([facilityDetailsModal.id], "FACILITY_MODAL")}
-          onMarkNotEligible={() => openMarkNotEligibleConfirm([facilityDetailsModal.id], "FACILITY_MODAL")}
+          onAssignOnSite={() => {
+            openAssignOnSiteConfirm([facilityDetailsModal.id], "FACILITY_MODAL");
+            setFacilityDetailsModal(null);
+          }}
+          onMarkEligible={() => {
+            openMarkEligibleConfirm([facilityDetailsModal.id], "FACILITY_MODAL");
+            setFacilityDetailsModal(null);
+          }}
+          onMarkNotEligible={() => {
+            openMarkNotEligibleConfirm([facilityDetailsModal.id], "FACILITY_MODAL");
+            setFacilityDetailsModal(null);
+          }}
         />
       )}
 
@@ -690,14 +698,16 @@ const AssessmentDetails = () => {
       )}
 
       {toast && (
-        <Toast
-          error={toast.key === "error"}
-          warning={toast.key === "warning"}
-          style={toast.key === "error" ? { backgroundColor: "#B91900" } : {}}
-          label={toast.label}
-          isDleteBtn={true}
-          onClose={() => setToast(null)}
-        />
+        <div style={{ position: "fixed", zIndex: 10000001 }}>
+          <Toast
+            error={toast.key === "error"}
+            warning={toast.key === "warning"}
+            style={toast.key === "error" ? { backgroundColor: "#B91900" } : {}}
+            label={toast.label}
+            isDleteBtn={true}
+            onClose={() => setToast(null)}
+          />
+        </div>
       )}
     </div>
   );

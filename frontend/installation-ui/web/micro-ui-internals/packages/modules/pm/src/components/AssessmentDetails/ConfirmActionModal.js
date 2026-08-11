@@ -33,9 +33,11 @@ const ConfirmActionModal = ({ t, title, description, message, confirmLabel, conf
           </button>
         </div>
 
-        <p style={{ fontSize: "16px", color: "#0B0C0C", marginTop: "12px", marginBottom: "20px" }}>
-          {description}
-        </p>
+        {description && (
+          <p style={{ fontSize: "16px", color: "#0B0C0C", marginTop: "12px", marginBottom: "20px" }}>
+            {description}
+          </p>
+        )}
 
         {message && (
           <div
