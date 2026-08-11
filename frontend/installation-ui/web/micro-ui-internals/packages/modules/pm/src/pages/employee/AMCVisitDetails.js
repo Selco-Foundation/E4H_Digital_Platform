@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
 import { Loader } from "@egovernments/digit-ui-react-components";
-import useAMCConfiguration from "../../hooks/useAMCConfiguration";
+import useAMCConfigurationList from "../../hooks/useAMCConfigurationList";
 import useAMCVisitDetails from "../../hooks/useAMCVisitDetails";
 import InfoCard from "../../components/AMCVisitDetails/InfoCard";
 import AuditTrail from "../../components/AMCVisitDetails/AuditTrail";
@@ -21,7 +21,7 @@ const AMCVisitDetails = () => {
   const [reportDocumentAggregation, setReportDocumentAggregation] = useState({});
   const [visitReport, setVisitReport] = useState(null);
 
-  const { isLoading: configurationDataLoading, data: configurationData } = useAMCConfiguration({
+  const { isLoading: configurationDataLoading, data: configurationData } = useAMCConfigurationList({
     ids: [configurationId],
   });
 

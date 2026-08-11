@@ -3,7 +3,7 @@ import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import useAMCConfiguration from "../../hooks/useAMCConfiguration";
+import useAMCConfigurationList from "../../hooks/useAMCConfigurationList";
 import useAMCVisit from "../../hooks/useAMCVisit";
 import Filter from "../../components/AMCVisits/Filter";
 import SearchAction from "../../components/AMCVisits/SearchAction";
@@ -51,7 +51,7 @@ const AMCVisits = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const { isLoading: configurationDataLoading, data: configurationData } = useAMCConfiguration({
+  const { isLoading: configurationDataLoading, data: configurationData } = useAMCConfigurationList({
     ids: [configurationId],
   });
 
