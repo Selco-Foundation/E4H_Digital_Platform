@@ -185,9 +185,11 @@ public class PlanFacilityDecisionService {
 
     private void validateNotEligible(PlanFacilityDecisionItem item, String phoneOutcome, String fieldOutcome,
                                       String planFacilityId) {
-        if (StringUtils.isBlank(item.getRemarks())) {
+        if (AssessmentConstants.OUTCOME_QUALIFIED.equals(phoneOutcome)
+                && AssessmentConstants.OUTCOME_QUALIFIED.equals(fieldOutcome)
+                && StringUtils.isBlank(item.getRemarks())) {
             throw new CustomException(AssessmentConstants.ASSESSMENT_INELIGIBLE_REASON_REQUIRED,
-                    "remarks is required for NOT_ELIGIBLE");
+                    "remarks is required when both outcomes are QUALIFIED");
         }
     }
 
