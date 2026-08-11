@@ -145,8 +145,6 @@ class FacilityTemplateService:
 
                 allow_blank_map[header_name] = not col.get("required", False)
 
-                column_code = col.get("code")
-
                 # --- 1. MDMS Dropdowns ---
                 mdms_values = col.get("mdms_values")
                 if mdms_values:
@@ -211,26 +209,20 @@ class FacilityTemplateService:
                         existing_include_column = col
                         break
 
-            if existing_include_column:
-                # Use the existing column
-                include_column = existing_include_column
-                dropdowns_map[include_column] = ["Yes", "No"]
-                editable_columns.append(include_column)
-                logger.info(f"Using existing column: {include_column}")
-            # else:
-                # Add new "Include in Project" column
-                # include_column = "Include in Project"
-                # output_list.append(include_column)
-                # dropdowns_map[include_column] = ["Yes", "No"]
-                # editable_columns.append(include_column)
-                # logger.info(f"Added new column: {include_column}")
+                if existing_include_column:
+                    include_column = existing_include_column
+                    dropdowns_map[include_column] = ["Yes", "No"]
+                    editable_columns.append(include_column)
+                    logger.info(f"Using existing column: {include_column}")
 
             logger.info(f"Final columns: {output_list}")
 
             # Add Existing Facilities Sheet (Optional)
             formatted_facilities = []
             if facility_data:
-                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list, type)
+                formatted_facilities = format_facility_data_for_template(
+                    facility_data, schema_for_template, output_list, type
+                )
 
             df_facility = pd.DataFrame(formatted_facilities, columns=output_list)
             facility_writer = create_excel_data_writer(

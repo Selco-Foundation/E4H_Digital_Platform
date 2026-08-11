@@ -35,6 +35,7 @@ public class FieldPlanFacilityRowMapper implements RowMapper<FieldPlanFacility> 
                             .lastModifiedTime(resultSet.getLong("lastmodifiedtime"))
                             .build())
                     .isDeleted(resultSet.getBoolean("isdeleted"))
+                    .sourcePlanFacilityId(resultSet.getString("source_plan_facility_id"))
                     .build();
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

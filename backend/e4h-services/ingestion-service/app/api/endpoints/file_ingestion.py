@@ -5,7 +5,7 @@ import os
 import shutil
 import tempfile
 import zipfile
-from datetime import datetime, timedelta
+from datetime import datetime
 import uuid
 from typing import Optional, Dict, List, Set
 
@@ -3141,6 +3141,7 @@ async def create_fielplan_facilities(
                             role_to_ids[code].append(item.get("assignedTo"))
 
                 pending_bulk_fieldplan_links = []
+                pending_assessment_handoffs = []
                 pending_bulk_fieldplan_updates = []
                 # iterate all rows — handle existing facility ids (linking/unlinking)
                 for index, row in df.iterrows():
@@ -3330,6 +3331,65 @@ async def create_fielplan_facilities(
                             for row_idx, _ in chunk:
                                 df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
 
+                if pending_assessment_handoffs and assessment_client:
+                    for row_idx, bulk_entry, plan_facility_id in pending_assessment_handoffs:
+                        facility_id = bulk_entry["facilityId"]
+                        try:
+                            create_resp = fieldplan_client.create_fieldPlan_facility(
+                                request_info=request_info,
+                                fieldPlan_id=fieldplan_id,
+                                facility_id=facility_id,
+                                source_plan_facility_id=plan_facility_id,
+                                additional_fields=bulk_entry.get("additionalFields"),
+                            )
+                            field_plan_facility = (
+                                create_resp.get("FieldPlanFacility")
+                                or create_resp.get("fieldPlanFacility")
+                                or {}
+                            )
+                            field_plan_facility_id = field_plan_facility.get("id")
+                            if not field_plan_facility_id:
+                                search_resp = fieldplan_client.search_fieldplan_facility(
+                                    request_info, fieldplan_id
+                                )
+                                for pf in search_resp.get("FieldPlanFacilities", []):
+                                    if pf.get("facilityId") == facility_id:
+                                        field_plan_facility_id = pf.get("id")
+                                        break
+                            if not field_plan_facility_id:
+                                raise ValueError("FieldPlanFacility id not returned after create")
+
+                            assessment_client.apply_facility_handoff(
+                                request_info=request_info,
+                                plan_facility_id=plan_facility_id,
+                                installation_field_plan_id=fieldplan_id,
+                                field_plan_facility_id=field_plan_facility_id,
+                            )
+                            df.at[row_idx, 'Field Plan Linking Status'] = "Linked + Assessment Handoff"
+                            fieldplan_linked_facility_ids.add(facility_id)
+
+                            if fieldplan_data:
+                                fieldplan = fieldplan_data[0]
+                                if fieldplan.get("status") == 'SCHEDULED':
+                                    try:
+                                        fieldplan_activity_client.create_facility_activity(
+                                            request_info=request_info,
+                                            fieldPlan=fieldplan,
+                                            roleToIds=role_to_ids,
+                                            facility_id=facility_id,
+                                        )
+                                    except Exception as activity_exc:
+                                        logger.error(
+                                            f"Error creating facility activity for {facility_id}: {activity_exc}",
+                                            exc_info=True,
+                                        )
+                        except Exception as handoff_exc:
+                            logger.error(
+                                f"Assessment handoff failed for planFacilityId={plan_facility_id}: {handoff_exc}",
+                                exc_info=True,
+                            )
+                            df.at[row_idx, 'Field Plan Linking Status'] = f"Handoff failed: {handoff_exc}"
+
                 if pending_bulk_fieldplan_updates:
                     chunk_size = BULK_INGEST_CHUNK_SIZE
                     for i in range(0, len(pending_bulk_fieldplan_updates), chunk_size):
@@ -3463,10 +3523,16 @@ async def validate_amc_configurations_excel_sheet(
                 amc_frequency = str(row.get(frequency_col, "")).strip() if not pd.isna(row.get(frequency_col)) else ""
                 amc_duration = str(row.get(duration_col, "")).strip() if not pd.isna(row.get(duration_col)) else ""
 
-                # Check if fields are filled
-                if not amc_frequency or not amc_duration:
+                # A row left entirely blank means the user does not want an AMC on that facility - and
+                # is how an existing configuration gets removed at ingest time. Only a half-filled row
+                # is an error, because it is always a mistake rather than an opt-out.
+                if amc_frequency and not amc_duration:
                     validation_errors.append(
-                        "Please ensure AMC frequency, and duration are selected for all listed assets before upload."
+                        "Please ensure AMC duration is selected when an AMC frequency is set."
+                    )
+                elif amc_duration and not amc_frequency:
+                    validation_errors.append(
+                        "Please ensure AMC frequency is selected when an AMC duration is set."
                     )
 
                 # Set status and error
@@ -3551,6 +3617,133 @@ async def validate_amc_configurations_excel_sheet(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
+def _extract_boundary_codes(geography_details: dict, key: str) -> Set[str]:
+    """
+    Boundary codes under geography_details[key] ("districts" or "blocks").
+
+    The platform emits geographyDetails in two shapes - a list of plain code strings, and a list of
+    {"code": ..., "name": ...} objects - so both are accepted here rather than picking one and
+    silently returning nothing for the other.
+    """
+    codes: Set[str] = set()
+    for entry in geography_details.get(key) or []:
+        if isinstance(entry, dict):
+            code = entry.get("code")
+        else:
+            code = entry
+        if code:
+            codes.add(str(code).strip())
+    codes.discard("")
+    return codes
+
+
+def _build_amc_geography_scope(geography_details: dict):
+    """
+    Predicate telling whether a boundary code falls inside the districts/blocks the user selected,
+    plus whether a scope was actually supplied.
+
+    Boundary codes are hierarchical ("India_Karnataka_Mysuru_HD_Kote"), so a district is matched by
+    prefix. When no district or block was selected the scope is unrestricted - a bulk upload must not
+    silently drop every row because the caller omitted the geography filters. Callers must check the
+    second return value before doing anything destructive: an unrestricted scope covers the whole
+    project, which is exactly when deleting "everything not in the file" would be catastrophic.
+    """
+    block_codes = _extract_boundary_codes(geography_details, "blocks")
+    district_codes = _extract_boundary_codes(geography_details, "districts")
+
+    if not block_codes and not district_codes:
+        logger.warning("geography_details carries no districts or blocks - AMC rows will not be filtered by boundary")
+        return (lambda boundary_code: True), False
+
+    def is_in_scope(boundary_code: Optional[str]) -> bool:
+        code = str(boundary_code or "").strip()
+        if not code:
+            return False
+        if code in block_codes:
+            return True
+        return any(code == district or code.startswith(f"{district}_") for district in district_codes)
+
+    return is_in_scope, True
+
+
+def _add_months(start: datetime, months: int) -> datetime:
+    """
+    Calendar-month arithmetic, matching AmcConfigurationServiceUtil.generateAmcVisits on the Java side.
+    A 30-days-per-month approximation drifts by over a month on a 60-month contract, which would put
+    the configuration end date before the last visit the scheduler generates.
+    """
+    month_index = start.month - 1 + months
+    year = start.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(start.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+                          31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    return start.replace(year=year, month=month, day=day)
+
+
+def _normalize_amc_assignments(assignments) -> List[dict]:
+    """
+    Rebuilds the nested auditDetails the AMC model expects on each assignment.
+
+    The search query aggregates assignments with jsonb_build_object and emits the audit columns flat
+    ("createdBy", "lastModifiedTime", ...), while AmcConfigurationAssignment declares an auditDetails
+    object. Because the service disables FAIL_ON_UNKNOWN_PROPERTIES, echoing the flat form back on an
+    update is accepted but silently drops the values, and the assignment upsert then writes NULL into
+    last_modified_by/last_modified_time.
+    """
+    normalized: List[dict] = []
+    for assignment in assignments or []:
+        if not isinstance(assignment, dict):
+            continue
+        assignment = dict(assignment)
+        audit_details = assignment.get("auditDetails")
+        if not audit_details:
+            audit_details = {
+                key: assignment.get(key)
+                for key in ("createdBy", "createdTime", "lastModifiedBy", "lastModifiedTime")
+                if assignment.get(key) is not None
+            }
+        if audit_details:
+            assignment["auditDetails"] = audit_details
+        normalized.append(assignment)
+    return normalized
+
+
+def build_amc_configuration_update_payload(
+        existing_config: dict,
+        duration_months: int,
+        frequency_months: int,
+) -> dict:
+    """
+    Full update payload for an existing AMC configuration, carrying only a new duration/frequency.
+
+    The AMC service replays the entire create validation on update, so a partial payload is rejected:
+    everything it validated on create has to be sent back. Two fields are easy to get wrong -
+      * status: the persister writes it straight from the payload and nothing restores it, so omitting
+        it would null the column out;
+      * geographyDetails: its state is read-only, so the stored value is reused rather than the one
+        from the upload form.
+    Search-only enrichments (vendor, facility, project, assetsAmc, totalVisits, completedVisits) are
+    deliberately left out. configurationEndDate is recomputed server-side from durationMonths.
+    """
+    return {
+        "id": existing_config.get("id"),
+        "tenantId": existing_config.get("tenantId"),
+        "vendorId": existing_config.get("vendorId"),
+        "facilityId": existing_config.get("facilityId"),
+        "projectId": existing_config.get("projectId"),
+        "durationMonths": duration_months,
+        "visitFrequencyMonths": frequency_months,
+        "status": existing_config.get("status") or "ACTIVE",
+        "configurationStartDate": existing_config.get("configurationStartDate"),
+        "configurationEndDate": existing_config.get("configurationEndDate"),
+        "assetTypes": existing_config.get("assetTypes"),
+        "assignments": _normalize_amc_assignments(existing_config.get("assignments")),
+        "geographyDetails": existing_config.get("geographyDetails"),
+        "additionalDetails": existing_config.get("additionalDetails"),
+        "auditDetails": existing_config.get("auditDetails"),
+    }
+
+
 def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
     # Vendor id (or name fallback) for the vendor that has a user with role AMC_FIELD_STAFF.
     role_code = "AMC_FIELD_STAFF"
@@ -3598,6 +3791,7 @@ async def bulk_ingest_amc_configurations(
         amc_sheet_name: str = Form(default="amc-configurations", description="Name of the sheet containing AMC data"),
         project_id: str = Form(..., description="Project ID"),
         user_info_list: str = Form(..., description="JSON array of user info objects with vendor mapping"),
+        geography_details: str = Form(..., description="JSON object with state, districts and blocks for the AMC configurations being created"),
         request_info: str = Form(default="")
 ):
     input_temp_file = None
@@ -3615,6 +3809,14 @@ async def bulk_ingest_amc_configurations(
                 raise HTTPException(status_code=400, detail="user_info_list must be a JSON array")
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=400, detail=f"Invalid JSON in user_info_list: {str(e)}")
+
+        # Parse geography details (state/districts/blocks) - same scope applied to every AMC configuration in this batch
+        try:
+            geography_details_data = json.loads(geography_details)
+            if not isinstance(geography_details_data, dict):
+                raise HTTPException(status_code=400, detail="geography_details must be a JSON object")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON in geography_details: {str(e)}")
 
         amc_vendor_id = get_vendor_id_for_amc_field_staff(user_info_data)
 
@@ -3668,6 +3870,10 @@ async def bulk_ingest_amc_configurations(
                     "userName": user_name,
                     "name": user_name,
                     "tenantId": user_tenant_id,
+                    # role/pocNumber live on the user object; fall back to the vendor_mapping level
+                    # for backward compatibility with older payload shapes.
+                    "role": user.get("role") or vendor_mapping.get("role"),
+                    "pocNumber": user.get("pocNumber") or vendor_mapping.get("pocNumber"),
                     "fullUser": user  # Store full user object for reference
                 })
 
@@ -3721,9 +3927,6 @@ async def bulk_ingest_amc_configurations(
         if not facility_client:
             raise HTTPException(status_code=500, detail="Facility Service is not configured")
 
-        # Track configurations to detect duplicates (vendor-facility-project combination)
-        seen_configs = set()
-
         facility_ids_from_file = []
         for _, row in df.iterrows():
             if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
@@ -3732,54 +3935,75 @@ async def bulk_ingest_amc_configurations(
             if facility_id:
                 facility_ids_from_file.append(facility_id)
 
+        facility_batch_size = int(os.getenv("AMC_INGEST_FACILITY_ID_BATCH_SIZE", "500"))
+
+        def load_facilities_by_id(ids: List[str]) -> Dict[str, dict]:
+            """
+            Facility rows keyed by facility_id, in batches. Uses the with-boundary variant because
+            boundary codes drive the district/block scope check below.
+            """
+            loaded: Dict[str, dict] = {}
+            unique_ids = list(dict.fromkeys(i for i in ids if i))
+            for batch_start in range(0, len(unique_ids), facility_batch_size):
+                batch_ids = unique_ids[batch_start:batch_start + facility_batch_size]
+                bulk_facility_result = facility_client.bulk_search_facility_with_boundary(
+                    request_info=request_info_obj,
+                    tenant_ids=["in"],
+                    facility_ids=batch_ids,
+                    limit=max(len(batch_ids), 50),
+                    send_non_paginated_response=True,
+                )
+                for facility in (bulk_facility_result.get("facilities", []) or []):
+                    f_id = facility.get("facility_id")
+                    if f_id:
+                        loaded[f_id] = facility
+            return loaded
+
         facility_map = {}
         if facility_ids_from_file:
-            unique_facility_ids = list(dict.fromkeys(facility_ids_from_file))
-            facility_batch_size = int(os.getenv("AMC_INGEST_FACILITY_ID_BATCH_SIZE", "500"))
             try:
-                for batch_start in range(0, len(unique_facility_ids), facility_batch_size):
-                    batch_ids = unique_facility_ids[batch_start:batch_start + facility_batch_size]
-                    bulk_facility_result = facility_client.bulk_search_facility(
-                        request_info=request_info_obj,
-                        tenant_ids=["in"],
-                        facility_ids=batch_ids,
-                        limit=max(len(batch_ids), 50),
-                        send_non_paginated_response=True,
-                    )
-                    for facility in (bulk_facility_result.get("facilities", []) or []):
-                        f_id = facility.get("facility_id")
-                        if f_id:
-                            facility_map[f_id] = facility
+                facility_map = load_facilities_by_id(facility_ids_from_file)
             except Exception as e:
                 logger.error(f"Error bulk searching facilities for AMC ingest: {e}", exc_info=True)
                 raise HTTPException(status_code=502, detail=f"Facility lookup failed: {str(e)}")
 
-        asset_types_formatted = []
-        asset_type_names = {
-            "INVERTER": "Inverter",
-            "PANEL": "Panel",
-            "BATTERY": "Battery"
-        }
-        for asset_type in DEFAULT_AMC_ASSET_TYPES:
-            asset_types_formatted.append({
-                "code": asset_type,
-                "name": asset_type_names.get(asset_type, asset_type.title())
-            })
+        # District/block scope selected in the UI. Rows outside it are never created, and existing
+        # configurations inside it that disappeared from the file are deleted (see reconciliation below).
+        is_boundary_in_scope, has_geography_scope = _build_amc_geography_scope(geography_details_data)
 
-        assignments_template = []
-        for user in assignment_users:
-            assigned_user_id = user.get("id") or user.get("userId")
-            assignment_tenant_id = user.get("tenantId") or tenant_id
-            assignments_template.append({
-                "assignedUser": str(assigned_user_id),
-                "tenantId": assignment_tenant_id,
-            })
-
-        now = datetime.now()
-        configuration_start_date = int(now.timestamp() * 1000)
+        # One search for the whole project instead of one per row. Configurations of any status are
+        # loaded, not just ACTIVE ones: ux_amc_configuration_unique_installation
+        # (tenant_id, facility_id, project_id, vendor_id) means a second create for a facility that
+        # already has an EXPIRED or CANCELLED configuration would be rejected by the database - and
+        # since persistence is asynchronous, that rejection would never surface to the user. So an
+        # existing configuration is always updated, never duplicated.
+        existing_config_by_facility: Dict[str, dict] = {}
+        try:
+            for config in amc_client.search_all_amc_configurations(
+                    request_info_obj, project_id=project_id, tenant_id=tenant_id):
+                config_facility_id = config.get("facilityId")
+                if not config_facility_id:
+                    continue
+                current = existing_config_by_facility.get(config_facility_id)
+                # An ACTIVE configuration always wins over a closed one for the same facility.
+                if current is None or (
+                        str(current.get("status") or "").strip().upper() != "ACTIVE"
+                        and str(config.get("status") or "").strip().upper() == "ACTIVE"):
+                    existing_config_by_facility[config_facility_id] = config
+            logger.info(
+                f"Loaded {len(existing_config_by_facility)} existing AMC configuration(s) for project {project_id}"
+            )
+        except Exception as e:
+            logger.error(f"Error loading existing AMC configurations for project {project_id}: {e}", exc_info=True)
+            raise HTTPException(status_code=502, detail=f"AMC configuration lookup failed: {str(e)}")
 
         configs_to_create = []
         row_indexes_for_configs = []
+        configs_to_update = []
+        row_indexes_for_updates = []
+        # Facilities the user kept in the file with a usable AMC selection. Anything already configured
+        # inside the selected districts/blocks but missing from this set loses its configuration.
+        facility_ids_kept_in_file: Set[str] = set()
 
         for index, row in df.iterrows():
             try:
@@ -3801,11 +4025,34 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
                     continue
 
+                # The template writes a locked BoundaryCode column; fall back to the facility record
+                # when the column is missing (older template) or blank.
+                facility_record = facility_map.get(facility_id) or {}
+                boundary_code = str(row.get("BoundaryCode", "") or "").strip()
+                if not boundary_code:
+                    boundary_code = str(
+                        facility_record.get("boundary_code") or facility_record.get("boundaryCode") or ""
+                    ).strip()
+
+                if not is_boundary_in_scope(boundary_code):
+                    df.at[index, 'status'] = 'skipped'
+                    df.at[index, 'error'] = (
+                        f'Facility is outside the selected districts/blocks (boundary code: {boundary_code or "unknown"})'
+                    )
+                    continue
+
                 # Get AMC frequency and duration (already validated, just convert to months)
                 frequency_col = "AMC-Frequency" if "AMC-Frequency" in df.columns else "amc-frequency"
                 duration_col = "AMC-Duration" if "AMC-Duration" in df.columns else "amc-duration"
-                amc_frequency = str(row.get(frequency_col, "")).strip()
-                amc_duration = str(row.get(duration_col, "")).strip()
+                amc_frequency = "" if pd.isna(row.get(frequency_col)) else str(row.get(frequency_col, "")).strip()
+                amc_duration = "" if pd.isna(row.get(duration_col)) else str(row.get(duration_col, "")).strip()
+
+                # A row left blank means the user does not want an AMC on this facility. That is a
+                # deliberate choice, not an error - and it is what drives the deletion pass below.
+                if not amc_frequency and not amc_duration:
+                    df.at[index, 'status'] = 'skipped'
+                    df.at[index, 'error'] = 'No AMC frequency/duration selected'
+                    continue
 
                 # Convert frequency to months (format already validated in validation endpoint)
                 if amc_frequency == "Every 6 Months":
@@ -3829,13 +4076,24 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC duration value: {amc_duration}'
                     continue
 
-                # Check for duplicate configuration (vendor-facility-project combination)
-                config_key = (facility_id, project_id)
-                if config_key in seen_configs:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = 'Duplicate configuration: vendor-facility-project combination already exists'
+                facility_ids_kept_in_file.add(facility_id)
+
+                # An existing configuration is updated in place rather than duplicated - the database
+                # allows only one configuration per (tenant, facility, project, vendor).
+                existing_config = existing_config_by_facility.get(facility_id)
+                if existing_config:
+                    if (existing_config.get("durationMonths") == duration_months
+                            and existing_config.get("visitFrequencyMonths") == frequency_months
+                            and str(existing_config.get("status") or "").strip().upper() == "ACTIVE"):
+                        df.at[index, 'status'] = 'skipped'
+                        df.at[index, 'error'] = 'No change'
+                        continue
+
+                    configs_to_update.append(build_amc_configuration_update_payload(
+                        existing_config, duration_months, frequency_months
+                    ))
+                    row_indexes_for_updates.append(index)
                     continue
-                seen_configs.add(config_key)
 
                 # Create assignments array from vendor users
                 assignments = []
@@ -3847,7 +4105,10 @@ async def bulk_ingest_amc_configurations(
 
                     assignment = {
                         "assignedUser": str(assigned_user_id),
-                        "tenantId": assignment_tenant_id
+                        "tenantId": assignment_tenant_id,
+                        "role": user.get("role"),
+                        "additionalDetails": None,
+                        "pocNumber": user.get("pocNumber"),
                     }
                     assignments.append(assignment)
 
@@ -3864,11 +4125,12 @@ async def bulk_ingest_amc_configurations(
                         "name": asset_type_names.get(asset_type, asset_type.title())
                     })
 
-                # Calculate configuration dates (start date = now, end date = start + duration)
+                # Calculate configuration dates (start date = now, end date = start + duration).
+                # Calendar months, not 30-day months: the AMC scheduler generates visits with calendar
+                # arithmetic, so an approximation would place the last visit past the contract end.
                 now = datetime.now()
                 configuration_start_date = int(now.timestamp() * 1000)  # Convert to milliseconds
-                end_date = now + timedelta(days=duration_months * 30)  # Approximate: 30 days per month
-                configuration_end_date = int(end_date.timestamp() * 1000)
+                configuration_end_date = int(_add_months(now, duration_months).timestamp() * 1000)
 
                 configs_to_create.append({
                     "tenantId": tenant_id,
@@ -3881,7 +4143,9 @@ async def bulk_ingest_amc_configurations(
                     "configurationStartDate": configuration_start_date,
                     "configurationEndDate": configuration_end_date,
                     "assetTypes": asset_types_formatted,
-                    "assignments": assignments
+                    "assignments": assignments,
+                    # Same state/districts/blocks scope for every AMC configuration in this batch, same as field plan
+                    "geographyDetails": geography_details_data
                 })
                 row_indexes_for_configs.append(index)
             except Exception as e:
@@ -3889,41 +4153,108 @@ async def bulk_ingest_amc_configurations(
                 df.at[index, 'error'] = f'Unexpected error: {str(e)}'
                 logger.error(f"Error processing row {index}: {e}")
 
-        if configs_to_create:
-            chunk_size = AMC_CONFIGURATION_BULK_CHUNK_SIZE
-            n_cfgs = len(configs_to_create)
+        chunk_size = AMC_CONFIGURATION_BULK_CHUNK_SIZE
 
-            def _process_amc_chunk(
-                chunk_cfgs: List[dict],
-                chunk_row_indexes: List,
-                http_session: requests.Session,
-            ) -> None:
+        def _process_amc_chunk(
+            action: str,
+            success_status: str,
+            chunk_cfgs: List[dict],
+            chunk_row_indexes: List,
+            http_session: requests.Session,
+        ) -> None:
+            # A chunk is all-or-nothing: the AMC service answers per request, not per configuration,
+            # so a single rejection marks every row of the chunk. Creates and updates are therefore
+            # dispatched separately, to keep one failing side from burying the other.
+            send = (amc_client.create_amc_configurations_bulk if action == "create"
+                    else amc_client.update_amc_configurations_bulk)
+            try:
+                send(request_info_obj, chunk_cfgs, session=http_session)
+                df.loc[chunk_row_indexes, "status"] = success_status
+                df.loc[chunk_row_indexes, "error"] = ""
+            except Exception as exc:
+                logger.error(
+                    "Bulk AMC %s failed for %s rows: %s",
+                    action,
+                    len(chunk_cfgs),
+                    exc,
+                    exc_info=True,
+                )
+                err = str(exc)
+                df.loc[chunk_row_indexes, "status"] = "failed"
+                df.loc[chunk_row_indexes, "error"] = err
+
+        # Facilities that already hold a configuration inside the selected districts/blocks but are no
+        # longer requested in the file: the upload is the source of truth for its own scope, so those
+        # configurations are deactivated (soft delete - the AMC service clears isActive, no row is
+        # removed and the visit history is preserved). Facilities outside the selected
+        # districts/blocks are never touched - another upload owns them.
+        configs_to_delete = []
+        candidate_facility_ids = [
+            facility_id for facility_id, config in existing_config_by_facility.items()
+            if str(config.get("status") or "").strip().upper() == "ACTIVE"
+            and facility_id not in facility_ids_kept_in_file
+        ] if has_geography_scope else []
+        if not has_geography_scope and existing_config_by_facility:
+            logger.warning(
+                "Skipping AMC deletion pass for project %s: geography_details defines no districts or "
+                "blocks, so the upload's scope cannot be bounded and every configuration would qualify",
+                project_id,
+            )
+        if candidate_facility_ids:
+            try:
+                # Facilities absent from the file were never looked up, so resolve their boundary codes.
+                missing_ids = [fid for fid in candidate_facility_ids if fid not in facility_map]
+                if missing_ids:
+                    facility_map.update(load_facilities_by_id(missing_ids))
+            except Exception as e:
+                logger.error(f"Error resolving boundaries of AMC deletion candidates: {e}", exc_info=True)
+                raise HTTPException(status_code=502, detail=f"Facility lookup failed: {str(e)}")
+
+            for facility_id in candidate_facility_ids:
+                facility_record = facility_map.get(facility_id) or {}
+                boundary_code = facility_record.get("boundary_code") or facility_record.get("boundaryCode")
+                if not is_boundary_in_scope(boundary_code):
+                    continue
+                config = existing_config_by_facility[facility_id]
+                configs_to_delete.append({
+                    "id": config.get("id"),
+                    "tenantId": config.get("tenantId") or tenant_id,
+                })
+
+        deleted_count = 0
+        with requests.Session() as http_session:
+            for start in range(0, len(configs_to_create), chunk_size):
+                _process_amc_chunk(
+                    "create",
+                    "success",
+                    configs_to_create[start:start + chunk_size],
+                    row_indexes_for_configs[start:start + chunk_size],
+                    http_session,
+                )
+
+            for start in range(0, len(configs_to_update), chunk_size):
+                _process_amc_chunk(
+                    "update",
+                    "updated",
+                    configs_to_update[start:start + chunk_size],
+                    row_indexes_for_updates[start:start + chunk_size],
+                    http_session,
+                )
+
+            for start in range(0, len(configs_to_delete), chunk_size):
+                chunk = configs_to_delete[start:start + chunk_size]
                 try:
-                    amc_client.create_amc_configurations_bulk(
-                        request_info_obj,
-                        chunk_cfgs,
-                        session=http_session,
-                    )
-                    df.loc[chunk_row_indexes, "status"] = "success"
-                    df.loc[chunk_row_indexes, "error"] = ""
+                    amc_client.delete_amc_configurations(request_info_obj, chunk, session=http_session)
+                    deleted_count += len(chunk)
                 except Exception as exc:
                     logger.error(
-                        "Bulk AMC create failed for %s rows: %s",
-                        len(chunk_cfgs),
-                        exc,
-                        exc_info=True,
+                        "Bulk AMC delete failed for %s configuration(s): %s", len(chunk), exc, exc_info=True
                     )
-                    err = str(exc)
-                    df.loc[chunk_row_indexes, "status"] = "failed"
-                    df.loc[chunk_row_indexes, "error"] = err
 
-            with requests.Session() as http_session:
-                for start in range(0, n_cfgs, chunk_size):
-                    _process_amc_chunk(
-                        configs_to_create[start:start + chunk_size],
-                        row_indexes_for_configs[start:start + chunk_size],
-                        http_session,
-                    )
+        logger.info(
+            f"AMC bulk ingest for project {project_id}: {len(configs_to_create)} created, "
+            f"{len(configs_to_update)} updated, {deleted_count}/{len(configs_to_delete)} deleted"
+        )
 
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=amc_sheet_name)
@@ -3933,11 +4264,14 @@ async def bulk_ingest_amc_configurations(
         background_tasks.add_task(cleanup_temp_file, output_file_path)
         background_tasks.add_task(cleanup_temp_file, input_temp_file.name)
 
-        return FileResponse(
+        response = FileResponse(
             path=output_file_path,
             filename=output_filename,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        # Deletions do not show up as rows in the returned file, so the UI needs them out of band.
+        response.headers["X-Deleted-Count"] = str(deleted_count)
+        return response
 
     except HTTPException:
         if input_temp_file and os.path.exists(input_temp_file.name):
