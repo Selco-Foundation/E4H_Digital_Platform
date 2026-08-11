@@ -10,7 +10,6 @@ import org.egov.common.producer.Producer;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.util.MDMSUtils;
 import org.egov.field_planner.web.models.FieldPlan;
-import org.egov.field_planner.web.models.FieldPlanRequest;
 import org.egov.field_planner.web.models.UserAnalyticsEvent;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
@@ -59,14 +58,14 @@ import static org.egov.field_planner.util.FieldPlannerConstants.USER_ANALYTICS_M
  * field plans are authored there, unlike the Field Assist report submissions that
  * {@code ActivityAnalyticsService} covers.
  *
- * <p>Three entry points, one per instrumented endpoint:
+ * <p>Two entry points, one per instrumented endpoint:
  * <ul>
- *   <li>{@link #publishCreateEvents} — one FIELD_PLAN_CREATE per plan in {@code /field-plan/v1/_create}.</li>
  *   <li>{@link #publishScheduledEvent} — one FIELD_PLAN_CREATE for the
  *   {@code /field-plan/v1/_update} call that moves a plan into SCHEDULED, the point staffing and
- *   facilities are locked in and the activities are created downstream. Same event type as the
- *   create, so both land under one type in the report. Ordinary edits publish nothing: a plan is
- *   edited repeatedly while in DRAFT, but it goes live exactly once.</li>
+ *   facilities are locked in and the activities are created downstream. This is the only place a
+ *   field plan counts as created for the report: {@code /field-plan/v1/_create} merely drafts a
+ *   plan, and a draft is edited repeatedly before it goes live exactly once, so the create endpoint
+ *   itself is deliberately not instrumented.</li>
  *   <li>{@link #publishIccReportUploadEvent} — one ICC_REPORT_UPLOAD per
  *   {@code /field-plan/v1/icc-report/upload}.</li>
  * </ul>
@@ -86,7 +85,7 @@ import static org.egov.field_planner.util.FieldPlannerConstants.USER_ANALYTICS_M
  * events carry no state.
  *
  * <p>Every entry point is best-effort — any failure is logged and swallowed so analytics can never
- * break a field plan create, update or upload.
+ * break a field plan update or an ICC report upload.
  */
 @Service
 @Slf4j
@@ -108,46 +107,11 @@ public class FieldPlannerAnalyticsService {
     }
 
     /**
-     * Publishes one FIELD_PLAN_CREATE event per created field plan. The create endpoint takes a list,
-     * so MDMS is hit once per tenant and each state is localized once, not once per plan.
-     */
-    public void publishCreateEvents(FieldPlanRequest fieldPlanRequest) {
-        if (fieldPlanRequest == null || fieldPlanRequest.getFieldPlans() == null
-                || fieldPlanRequest.getFieldPlans().isEmpty()) {
-            return;
-        }
-        RequestInfo requestInfo = fieldPlanRequest.getRequestInfo();
-        // Memo shared across the whole payload; only alive for this call.
-        Map<String, String> stateNameByCode = new HashMap<>();
-        UserType userType = null;
-        int published = 0;
-
-        for (FieldPlan fieldPlan : fieldPlanRequest.getFieldPlans()) {
-            if (fieldPlan == null || fieldPlan.getId() == null) {
-                continue;
-            }
-            try {
-                String tenantId = (fieldPlan.getTenantId() != null) ? fieldPlan.getTenantId() : TENANTID;
-                if (userType == null) {
-                    userType = resolveUserType(requestInfo, tenantId, extractUserRoleCodes(userOf(requestInfo)));
-                }
-                publish(requestInfo, ANALYTICS_EVENT_FIELD_PLAN_CREATE, fieldPlan.getId(),
-                        ANALYTICS_ENTITY_TYPE_FIELD_PLAN, userType,
-                        resolveState(geographyStateCode(fieldPlan), requestInfo, stateNameByCode, fieldPlan.getId()));
-                published++;
-            } catch (Exception e) {
-                log.error("Field planner analytics: failed to publish {} event for fieldPlanId={}",
-                        ANALYTICS_EVENT_FIELD_PLAN_CREATE, fieldPlan.getId(), e);
-            }
-        }
-        log.info("Field planner analytics: published {} {} event(s)", published, ANALYTICS_EVENT_FIELD_PLAN_CREATE);
-    }
-
-    /**
      * Publishes one FIELD_PLAN_CREATE event for the update that moves a plan into SCHEDULED, and
-     * nothing at all for any other update. A plan is edited repeatedly while in DRAFT and those
-     * edits are not business events; going live happens exactly once and is. The event type matches
-     * the one the create endpoint emits so the report counts both under a single type.
+     * nothing at all for any other update. This is the service's only field-plan event: a plan is
+     * edited repeatedly while in DRAFT and those edits are not business events; going live happens
+     * exactly once and is. The create endpoint publishes nothing, so a plan yields exactly one
+     * FIELD_PLAN_CREATE over its lifetime, at the moment it is scheduled.
      * <p>
      * Called from the update flow rather than the controller, so a request that matches no plan in
      * the DB — or one that never reaches the persister push — publishes nothing either.
@@ -186,7 +150,7 @@ public class FieldPlannerAnalyticsService {
 
             publish(requestInfo, ANALYTICS_EVENT_FIELD_PLAN_CREATE, fieldPlanId,
                     ANALYTICS_ENTITY_TYPE_FIELD_PLAN, userType,
-                    resolveState(stateBoundaryCode, requestInfo, new HashMap<>(), fieldPlanId));
+                    resolveState(stateBoundaryCode, requestInfo, fieldPlanId));
             log.info("Field planner analytics: published {} event for fieldPlanId={} (priorStatus={})",
                     ANALYTICS_EVENT_FIELD_PLAN_CREATE, fieldPlanId, priorStatus);
         } catch (Exception e) {
@@ -242,24 +206,15 @@ public class FieldPlannerAnalyticsService {
         return (geographyDetails != null) ? asString(geographyDetails.get(GEOGRAPHY_DETAILS_STATE)) : null;
     }
 
-    /**
-     * Resolves the localized state name for a boundary code, memoizing per state code so a create
-     * carrying several plans in one state costs one localization call.
-     */
-    private String resolveState(String boundaryCode, RequestInfo requestInfo, Map<String, String> stateNameByCode,
-                                String entityId) {
+    /** Resolves the localized state name for a boundary code, or null when it carries no state. */
+    private String resolveState(String boundaryCode, RequestInfo requestInfo, String entityId) {
         String stateBoundaryCode = extractStateBoundaryCode(boundaryCode);
         if (stateBoundaryCode == null) {
             log.info("Field planner analytics: no state segment in boundaryCode={} for entityId={}, "
                     + "state will be null", boundaryCode, entityId);
             return null;
         }
-        // Not computeIfAbsent: a failed localization is null, and we want to cache that too rather
-        // than retry the lookup for every plan in the state.
-        if (!stateNameByCode.containsKey(stateBoundaryCode)) {
-            stateNameByCode.put(stateBoundaryCode, localizeStateName(stateBoundaryCode, requestInfo));
-        }
-        return stateNameByCode.get(stateBoundaryCode);
+        return localizeStateName(stateBoundaryCode, requestInfo);
     }
 
     /**
