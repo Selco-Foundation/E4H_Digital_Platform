@@ -145,21 +145,7 @@ class AssessmentFacilityDetails {
         boundaryCodePart(2);
     final state =
         address.state ?? boundaryLabel(boundary.state) ?? boundaryCodePart(1);
-    final values = <String?>[
-      address.doorNo,
-      address.buildingName,
-      address.addressNumber,
-      address.addressLine1,
-      address.addressLine2,
-      address.street,
-      address.landmark,
-      address.detail,
-      address.city,
-      block,
-      district,
-      state,
-      address.pincode,
-    ];
+    final values = <String?>[state, district, block];
     final normalized = values
         .map(_assessmentString)
         .whereType<String>()
