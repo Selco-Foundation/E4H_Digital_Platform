@@ -82,7 +82,7 @@ public class PlanFacilityDecisionService {
                     "Assign for on-site preconditions not met");
         }
 
-        workflowService.transitionWorkflow(facility.getPlanFacilityId(), "in",
+        workflowService.transitionPmWorkflow(facility.getPlanFacilityId(), "in",
                 AssessmentConstants.WF_ACTION_ASSIGN_FOR_FIELD, requestInfo, null);
 
         long now = System.currentTimeMillis();
@@ -133,7 +133,7 @@ public class PlanFacilityDecisionService {
         String wfAction = AssessmentConstants.OVERALL_ELIGIBLE.equals(targetStatus)
                 ? AssessmentConstants.WF_ACTION_MARK_ELIGIBLE
                 : AssessmentConstants.WF_ACTION_MARK_NOT_ELIGIBLE;
-        workflowService.transitionWorkflow(facility.getPlanFacilityId(), "in", wfAction, requestInfo,
+        workflowService.transitionPmWorkflow(facility.getPlanFacilityId(), "in", wfAction, requestInfo,
                 item.getRemarks());
 
         long now = System.currentTimeMillis();
