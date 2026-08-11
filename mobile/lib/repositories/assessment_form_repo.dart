@@ -1,41 +1,36 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
-import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
+import '../model/appconfig/mdmsRequest.dart';
 import '../model/assessment/assessment_form.dart';
 import '../model/assessment/assessment_form_type.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
+import 'app_init_repo.dart' hide envConfig;
 import 'assessment_api_paths.dart';
 
-typedef AssessmentSchemaLoader = Future<String> Function();
-
 class AssessmentFormRepository {
+  static const mobileSchemaCode = 'assessment.AssessmentMobileFormSchema';
   static const resolvePath = AssessmentApiPaths.formResolve;
   static const phoneSubmissionPath = AssessmentApiPaths.phoneSubmission;
   static const phoneUnableToContactPath =
       AssessmentApiPaths.phoneUnableToContact;
   static const fieldSubmissionPath = AssessmentApiPaths.fieldSubmission;
   static const facilitySearchPath = AssessmentApiPaths.facilitySearch;
-  static const mobileSchemaAsset =
-      'assets/forms/assessment_mobile_form_schema.json';
 
   final Dio _dio;
-  final AssessmentSchemaLoader _schemaLoader;
+  final AppInitRepo _appInitRepo;
   final String? _tenantId;
 
   AssessmentFormRepository({
     Dio? dio,
-    AssessmentSchemaLoader? schemaLoader,
+    AppInitRepo? appInitRepo,
     String? tenantId,
   })  : _dio = dio ?? DioClient().dio,
         _tenantId = tenantId,
-        _schemaLoader =
-            schemaLoader ?? (() => rootBundle.loadString(mobileSchemaAsset));
+        _appInitRepo = appInitRepo ?? AppInitRepo();
 
   Future<AssessmentFormResolution> resolveForm({
     required String planFacilityId,
@@ -111,45 +106,192 @@ class AssessmentFormRepository {
   Future<Map<String, dynamic>> loadMobileSchema(
     AssessmentFormType formType,
   ) async {
-    final decoded = jsonDecode(await _schemaLoader());
-    if (decoded is! Map) {
-      throw const FormatException('Invalid assessment mobile schema');
-    }
-    final root = Map<String, dynamic>.from(decoded);
-    final docs = root['mdms'];
-    if (docs is! List) {
-      throw const FormatException('Assessment mobile schema is missing');
-    }
-    final matches = <Map<String, dynamic>>[];
-    for (final value in docs.whereType<Map>()) {
-      final candidate = Map<String, dynamic>.from(value);
-      final data = candidate['data'];
-      if (data is! Map) continue;
-      final dataFormType =
-          AssessmentFormType.fromCode(data['formType']?.toString());
-      final identifierFormType = AssessmentFormType.fromCode(
-        candidate['uniqueIdentifier']?.toString(),
+    final cached = await _loadCompleteTransformedCache();
+    if (cached != null) return cached[formType]!;
+
+    final documents = await _searchMobileSchemas(useCacheRead: true);
+    await _transformAndCache(documents);
+    final refreshed = await _loadCompleteTransformedCache();
+    if (refreshed == null) {
+      throw const FormatException(
+        'Assessment mobile schema cache is incomplete',
       );
-      if (dataFormType == formType || identifierFormType == formType) {
-        if (dataFormType != formType || identifierFormType != formType) {
-          throw FormatException(
-            '${formType.name} mobile schema identifiers do not match',
-          );
+    }
+    return refreshed[formType]!;
+  }
+
+  Future<void> preloadMobileSchemas({bool forceRefresh = true}) async {
+    if (!forceRefresh && await _loadCompleteTransformedCache() != null) {
+      return;
+    }
+
+    if (forceRefresh) {
+      try {
+        final documents = await _searchMobileSchemas();
+        await _transformAndCache(documents);
+        return;
+      } catch (remoteError, stackTrace) {
+        AppLogger.instance.error(
+          title: 'Assessment mobile schema refresh',
+          message: remoteError.toString(),
+          stackTrace: stackTrace,
+        );
+        if (await _loadCompleteTransformedCache() != null) return;
+        try {
+          final cachedDocuments = await _searchMobileSchemas(cacheOnly: true);
+          await _transformAndCache(cachedDocuments);
+          return;
+        } catch (_) {
+          Error.throwWithStackTrace(remoteError, stackTrace);
         }
-        matches.add(candidate);
       }
     }
-    if (matches.isEmpty) {
-      throw FormatException('${formType.name} mobile schema is missing');
+
+    final documents = await _searchMobileSchemas(useCacheRead: true);
+    await _transformAndCache(documents);
+  }
+
+  Future<List<Map<String, dynamic>>> _searchMobileSchemas({
+    bool useCacheRead = false,
+    bool cacheOnly = false,
+  }) {
+    return _appInitRepo.searchAssessmentFormConfigsRaw(
+      MdmsRequestModel(
+        mdmsCriteria: MdmsCriteriaModel(
+          tenantId: _tenantId ?? envConfig.variables.tenantId,
+          schemaCode: mobileSchemaCode,
+          moduleDetails: const [],
+        ),
+      ),
+      useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
+      validator: _validateMobileSchemaDocuments,
+    );
+  }
+
+  void _validateMobileSchemaDocuments(
+    List<Map<String, dynamic>> documents,
+  ) {
+    if (documents.length != AssessmentFormType.values.length) {
+      throw const FormatException(
+        'Assessment mobile schema must contain exactly four forms',
+      );
     }
-    if (matches.length > 1) {
-      throw FormatException('${formType.name} mobile schema is duplicated');
+    final found = <AssessmentFormType>{};
+    for (final document in documents) {
+      if (document['schemaCode']?.toString() != mobileSchemaCode ||
+          document['isActive'] == false) {
+        throw const FormatException('Invalid assessment mobile schema record');
+      }
+      final identifier = AssessmentFormType.fromCode(
+        document['uniqueIdentifier']?.toString(),
+      );
+      final data = document['data'];
+      if (identifier == null || data is! Map) {
+        throw const FormatException('Unknown assessment mobile form');
+      }
+      final form = Map<String, dynamic>.from(data);
+      final dataType = AssessmentFormType.fromCode(
+        form['formType']?.toString(),
+      );
+      if (dataType != identifier ||
+          form['name']?.toString() != identifier.schemaName ||
+          !found.add(identifier)) {
+        throw FormatException(
+          '${identifier.name} mobile schema identifiers do not match',
+        );
+      }
+      _validatePages(identifier, form['pages']);
     }
-    final record = matches.single;
-    final transformed = transformSelcoFormMdmsDocToSchema(record);
-    transformed['name'] = formType.schemaName;
-    transformed['uniqueIdentifier'] = formType.name;
-    return transformed;
+    if (found.length != AssessmentFormType.values.length) {
+      throw const FormatException('Assessment mobile forms are incomplete');
+    }
+  }
+
+  void _validatePages(AssessmentFormType formType, Object? value) {
+    if (value is! List || value.isEmpty) {
+      throw FormatException('${formType.name} mobile schema has no pages');
+    }
+    final pageNames = <String>{};
+    for (final rawPage in value) {
+      if (rawPage is! Map) {
+        throw FormatException('${formType.name} contains an invalid page');
+      }
+      final page = Map<String, dynamic>.from(rawPage);
+      final pageName = page['page']?.toString().trim();
+      final properties = page['properties'];
+      if (pageName == null ||
+          pageName.isEmpty ||
+          !pageNames.add(pageName) ||
+          properties is! List ||
+          properties.isEmpty) {
+        throw FormatException('${formType.name} contains an invalid page');
+      }
+      final fieldNames = <String>{};
+      for (final rawField in properties) {
+        if (rawField is! Map) {
+          throw FormatException('${formType.name} contains an invalid field');
+        }
+        final fieldName = rawField['fieldName']?.toString().trim();
+        if (fieldName == null ||
+            fieldName.isEmpty ||
+            !fieldNames.add(fieldName)) {
+          throw FormatException('${formType.name} contains an invalid field');
+        }
+      }
+    }
+  }
+
+  Future<void> _transformAndCache(
+    List<Map<String, dynamic>> documents,
+  ) async {
+    _validateMobileSchemaDocuments(documents);
+    for (final document in documents) {
+      final formType = AssessmentFormType.fromCode(
+        document['uniqueIdentifier']?.toString(),
+      )!;
+      final transformed = transformSelcoFormMdmsDocToSchema(document);
+      transformed['name'] = formType.schemaName;
+      transformed['uniqueIdentifier'] = formType.name;
+      await _appInitRepo.upsertTransformedSchema(transformed);
+    }
+  }
+
+  Future<Map<AssessmentFormType, Map<String, dynamic>>?>
+      _loadCompleteTransformedCache() async {
+    final result = <AssessmentFormType, Map<String, dynamic>>{};
+    for (final formType in AssessmentFormType.values) {
+      final cached = await _appInitRepo.loadByName(formType.schemaName);
+      if (!_isValidTransformedSchema(cached, formType)) return null;
+      result[formType] = cached!;
+    }
+    return result;
+  }
+
+  bool _isValidTransformedSchema(
+    Map<String, dynamic>? schema,
+    AssessmentFormType formType,
+  ) {
+    if (schema == null ||
+        schema['name']?.toString() != formType.schemaName ||
+        schema['uniqueIdentifier']?.toString() != formType.name) {
+      return false;
+    }
+    final pages = schema['pages'];
+    if (pages is! Map || pages.isEmpty) return false;
+    for (final rawPage in pages.values) {
+      if (rawPage is! Map) return false;
+      final properties = rawPage['properties'];
+      if (properties is! Map || properties.isEmpty) return false;
+      for (final rawProperty in properties.values) {
+        if (rawProperty is! Map ||
+            rawProperty['fieldName']?.toString().trim().isEmpty != false ||
+            rawProperty['type'] == null) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   Future<void> markPhoneUnableToContact({

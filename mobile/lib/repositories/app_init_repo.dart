@@ -24,6 +24,10 @@ EnvironmentConfiguration envConfig = EnvironmentConfiguration.instance;
 
 const String mdmsV2Url = "egov-mdms-service/v2/_search";
 
+typedef MdmsRawDocsValidator = void Function(
+  List<Map<String, dynamic>> documents,
+);
+
 class AppInitRepo {
   Future<MdmsResponseModel> searchAppConfiguration() async {
     final client = Dio();
@@ -181,6 +185,23 @@ class AppInitRepo {
     );
   }
 
+  Future<List<Map<String, dynamic>>> searchAssessmentFormConfigsRaw(
+    MdmsRequestModel mdmsRequestBody, {
+    bool useCacheRead = false,
+    bool cacheOnly = false,
+    MdmsRawDocsValidator? validator,
+  }) async {
+    final storage = SecureStore();
+    return _searchCachedRawDocs(
+      request: mdmsRequestBody,
+      readCache: storage.getAssessmentFormConfigsRaw,
+      writeCache: (list) => storage.setAssessmentFormConfigsRaw(list),
+      useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
+      validator: validator,
+    );
+  }
+
   Future<List<Mdms<InstallationImagesData>>> searchInstallationImages(
       MdmsRequestModel mdmsRequestBody,
       {bool useCacheRead = false,
@@ -307,16 +328,19 @@ class AppInitRepo {
     required Future<void> Function(List<Map<String, dynamic>>) writeCache,
     required bool useCacheRead,
     required bool cacheOnly,
+    MdmsRawDocsValidator? validator,
   }) async {
     if (useCacheRead || cacheOnly) {
       final cachedRaw = await readCache();
       try {
         final cachedList = _readCachedMdmsList(cachedRaw);
         if (cachedList != null && cachedList.isNotEmpty) {
-          return cachedList
+          final result = cachedList
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
+          validator?.call(result);
+          return result;
         }
       } catch (_) {
         if (cacheOnly) {
@@ -335,6 +359,7 @@ class AppInitRepo {
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
 
+    validator?.call(result);
     await writeCache(result);
     return result;
   }

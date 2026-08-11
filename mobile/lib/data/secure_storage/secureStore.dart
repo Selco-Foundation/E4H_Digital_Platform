@@ -31,6 +31,7 @@ class _SecureStorageKeys {
   static const String solutionDesignBom = 'solutionDesignBom';
   static const String formConfigsRaw = 'formConfigsRaw';
   static const String amcFormConfigsRaw = 'amcFormConfigsRaw';
+  static const String assessmentFormConfigsRaw = 'assessmentFormConfigsRaw';
   static const String installationImages = 'installationImages';
   static const String rejectionReasons = 'rejectionReasons';
   static const String requiredBomFormKeys = 'requiredBomFormKeys';
@@ -191,6 +192,21 @@ class SecureStore {
 
   Future<String?> getAMCFormConfigsRaw() async {
     return await storage.read(key: _SecureStorageKeys.amcFormConfigsRaw);
+  }
+
+  Future<void> setAssessmentFormConfigsRaw(
+    List<Map<String, dynamic>> list,
+  ) async {
+    await storage.write(
+      key: _SecureStorageKeys.assessmentFormConfigsRaw,
+      value: json.encode(list),
+    );
+  }
+
+  Future<String?> getAssessmentFormConfigsRaw() async {
+    return await storage.read(
+      key: _SecureStorageKeys.assessmentFormConfigsRaw,
+    );
   }
 
   Future<void> setInstallationImages(
