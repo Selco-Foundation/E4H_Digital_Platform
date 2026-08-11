@@ -174,6 +174,12 @@ public class ActivityValidator {
         if (CollectionUtils.isEmpty(activityAssignments) || activityAssignments.size() <= 1) {
             return;
         }
+        // Field plan: pocNumber is a shared purchase order (PUR-ORD-...).
+        // Assessment: pocNumber is each assessor's mobile — may differ per role.
+        if (activityAssignments.stream()
+                .allMatch(assignment -> "ASSESSMENT".equalsIgnoreCase(assignment.getActivityCode()))) {
+            return;
+        }
         String firstPocNumber = activityAssignments.get(0).getPocNumber();
         boolean allSame = activityAssignments.stream()
                 .allMatch(assignment -> Objects.equals(firstPocNumber, assignment.getPocNumber()));

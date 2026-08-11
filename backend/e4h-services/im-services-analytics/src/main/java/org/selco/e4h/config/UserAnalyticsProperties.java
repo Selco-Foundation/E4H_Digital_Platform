@@ -52,6 +52,14 @@ public class UserAnalyticsProperties {
     @Value("${user.analytics.terms.size}")
     private int termsSize;
 
+    /**
+     * Cap on event-type buckets, kept separate from {@link #termsSize} because the event-type terms
+     * is nested per state and again per state-and-application — a 500-wide cap there would blow the
+     * response up for a vocabulary that only has a few dozen values.
+     */
+    @Value("${user.analytics.event.type.terms.size}")
+    private int eventTypeTermsSize;
+
     /** How many champion users to list per role and per application. */
     @Value("${user.analytics.champion.count}")
     private int championCount;
