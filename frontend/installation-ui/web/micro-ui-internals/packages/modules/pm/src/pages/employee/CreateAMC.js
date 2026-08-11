@@ -584,7 +584,6 @@ const CreateAMC = () => {
               allowedFileTypes: [".xlsx"],
               handleFileUpload: handleFacilityDataUpload,
               invalidDataError: invalidDataError,
-              errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
               heading: "PM_CREATE_AMC_HEAD_UPLOAD_FACILITY_DATA",
               description: "PM_CREATE_AMC_HEAD_UPLOAD_FACILITY_DATA_DESC",
               t,

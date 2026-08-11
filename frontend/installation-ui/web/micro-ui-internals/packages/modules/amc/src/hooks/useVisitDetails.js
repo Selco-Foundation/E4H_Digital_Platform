@@ -123,12 +123,54 @@ const fetchVisitImages = async (visitImageDocuments) => {
   return visitImages;
 }
 
+const formatAmcNumbers = (amcNumbers) => {
+  if (!Array.isArray(amcNumbers) || !amcNumbers.length) return "-";
+  return amcNumbers.join(", ");
+}
+
+const getVisitAmcNumber = (visitData) => {
+  const visitNumber = Number(visitData?.visitNumber);
+  const durationMonths = Number(visitData?.amcConfiguration?.durationMonths);
+  const visitFrequencyMonths = Number(visitData?.amcConfiguration?.visitFrequencyMonths);
+
+  if (!visitNumber || !durationMonths || !visitFrequencyMonths) return "-";
+
+  const totalVisits = durationMonths / visitFrequencyMonths;
+  if (!Number.isFinite(totalVisits) || totalVisits <= 0) return "-";
+
+  return `${visitNumber}/${totalVisits}`;
+}
+
+const fetchFacilityAmcSummary = async (facilityId) => {
+  if (!facilityId) return {};
+
+  try {
+    const amcSummaryResponse = await VisitService.fetchAmcSummary({
+      searchCriteria: {
+        tenantId: Digit.ULBService.getCurrentTenantId(),
+        facilityIds: [facilityId],
+      },
+    });
+    const amcSummary = amcSummaryResponse?.FacilitiesAmcSummary?.[0] || {};
+
+    return {
+      amcNumber: amcSummary?.amcNumber || "-",
+      completedAmcNumbers: formatAmcNumbers(amcSummary?.completedAmcNumbers),
+      lapsedAmcNumbers: formatAmcNumbers(amcSummary?.lapsedAmcNumbers),
+    };
+  } catch (error) {
+    console.error(`Failed to fetch AMC summary for facility ${facilityId}:`, error);
+    return {};
+  }
+}
+
 const fetchVisitDetails = async (filter, limit, offset) => {
 
   const visitsResponse = await VisitService.fetchVisits(filter, limit, offset);
   const visitData = visitsResponse?.ScheduledVisits?.[0];
 
   const facility = visitData?.facility || {};
+  const facilityAmcSummary = await fetchFacilityAmcSummary(facility.id);
   const geography = getFacilityGeography(facility);
   const auditTrail = generateAuditTrail(visitData.processInstances);
   const { reportDocumentAggregation, workflowDocuments } = await getDocumentAggregation(visitData.processInstances);
@@ -148,6 +190,8 @@ const fetchVisitDetails = async (filter, limit, offset) => {
       block: geography.block,
       district: geography.district,
       status: visitData?.status,
+      ...facilityAmcSummary,
+      amcNumber: getVisitAmcNumber(visitData),
       assigned: visitData?.assignments?.[0]?.user?.name,
     },
     visitReport: format,
