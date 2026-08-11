@@ -249,6 +249,12 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok("Script done");
     }
 
+    @GetMapping("/encrypt-poc-phone")
+    public ResponseEntity<String> encryptFacilityPocPhone() {
+        facilityService.encryptFacilityPocPhone();
+        return ResponseEntity.ok("Script done");
+    }
+
     /**
      * Operator script: when {@code hfr_id} is null or blank, sets indexer {@code code} to {@code nin_id} if present,
      * otherwise to {@code facility_poc_username} when both HFR and NIN are absent (existing ES doc patched, or full index).

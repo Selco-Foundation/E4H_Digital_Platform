@@ -1706,6 +1706,58 @@ public class FacilityService {
         }
     }
 
+    /**
+     * The update-facility persister query overwrites facility_name, facility_type, facility_subtype,
+     * addressId, facility_details, additional_details, is_onm_ready, facility_poc_name,
+     * facility_poc_phone, facility_poc_email, facility_poc_username, hfr_id, nin_id, user_id,
+     * facility_status and is_active in a single statement, so every one of those fields must be
+     * carried over from the existing row - only facility_poc_phone actually changes here.
+     */
+    public void encryptFacilityPocPhone() {
+        StringBuilder query = new StringBuilder(
+                "SELECT fac.*, " +
+                        "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r " +
+                        "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
+                        "FROM facility fac WHERE LENGTH(fac.facility_poc_phone) = 10"
+        );
+        List<Facility> facilities = jdbcTemplate.query(query.toString(), facilityRowMapper.rowMapper);
+        log.info("Found {} facilities with unencrypted facility_poc_phone", facilities.size());
+
+        for (Facility facilityDB : facilities) {
+            String encryptedPocPhone = encryptMobileNumber(facilityDB.getFacilityPocPhone());
+            if (encryptedPocPhone == null || encryptedPocPhone.isBlank()) {
+                log.warn("Skipping facilityId={} - encryption returned no value", facilityDB.getFacilityId());
+                continue;
+            }
+
+            FacilityUpdateRequestFacilityUpdate facility = new FacilityUpdateRequestFacilityUpdate();
+            facility.setFacilityId(facilityDB.getFacilityId());
+            facility.setTenantId(facilityDB.getTenantId());
+            facility.setFacilityName(facilityDB.getFacilityName());
+            facility.setFacilityType(facilityDB.getFacilityType());
+            facility.setFacilitySubtype(facilityDB.getFacilitySubtype());
+            facility.setAddress(facilityDB.getAddress());
+            facility.setFacilityDetails(facilityDB.getFacilityDetails());
+            facility.setAdditionalDetails(facilityDB.getAdditionalDetails());
+            facility.setIsOnmReady(facilityDB.getIsOnmReady());
+            facility.setPocName(facilityDB.getFacilityPocName());
+            facility.setPocEmail(facilityDB.getFacilityPocEmail());
+            facility.setFacilityPocUsername(facilityDB.getFacilityPocUsername());
+            facility.setHfrId(facilityDB.getHfrId());
+            facility.setNinId(facilityDB.getNinId());
+            facility.setUserId(facilityDB.getUserId());
+            facility.setStatus(facilityDB.getFacilityStatus());
+            facility.setIsActive(facilityDB.getIsActive());
+            facility.setPocContact(encryptedPocPhone);
+
+            FacilityUpdateRequest request = FacilityUpdateRequest.builder()
+                    .facilityUpdate(facility)
+                    .build();
+            log.info("Pushing encrypted facility_poc_phone for facilityId={}", facilityDB.getFacilityId());
+            facilityRepository.pushUpdateFacility(request);
+        }
+    }
+
     public String encryptMobileNumber(String mobileNumber){
         String encryptedMobileNumber = null;
         if(mobileNumber!=null && !mobileNumber.isBlank()){
