@@ -46,6 +46,11 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
 
   bool get _hasUnableToContactReason => _unableToContactReason != null;
 
+  void _clearUnableToContactReason() {
+    if (_isUpdatingStatus || !_hasUnableToContactReason) return;
+    setState(() => _unableToContactReason = null);
+  }
+
   Future<void> _updateStatus() async {
     final reason = _unableToContactReason;
     if (reason == null || _isUpdatingStatus) return;
@@ -126,39 +131,69 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
                         ),
                       ),
                       const SizedBox(height: spacer2),
-                      RadioList(
-                        groupValue: _unableToContactReason?.name ?? '',
-                        containerPadding: const EdgeInsets.symmetric(
-                          vertical: spacer2,
-                        ),
-                        radioDigitButtons: [
-                          RadioButtonModel(
-                            code: 'NO_ANSWER',
-                            name: context.translate(
-                              i18.assessmentSelectFacility.noAnswerReason,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: RadioList(
+                              groupValue: _unableToContactReason?.name ?? '',
+                              isDisabled: _isUpdatingStatus,
+                              containerPadding: const EdgeInsets.symmetric(
+                                vertical: spacer2,
+                              ),
+                              radioDigitButtons: [
+                                RadioButtonModel(
+                                  code: 'NO_ANSWER',
+                                  name: context.translate(
+                                    i18.assessmentSelectFacility.noAnswerReason,
+                                  ),
+                                ),
+                                RadioButtonModel(
+                                  code: 'WRONG_NUMBER',
+                                  name: context.translate(
+                                    i18.assessmentSelectFacility
+                                        .wrongNumberReason,
+                                  ),
+                                ),
+                              ],
+                              onChanged: (reason) {
+                                if (_isUpdatingStatus) return;
+                                final selectedReason =
+                                    AssessmentUnableToContactReason.fromCode(
+                                  reason.code,
+                                );
+                                if (selectedReason == null) return;
+                                setState(() {
+                                  _unableToContactReason =
+                                      _unableToContactReason == selectedReason
+                                          ? null
+                                          : selectedReason;
+                                });
+                              },
                             ),
                           ),
-                          RadioButtonModel(
-                            code: 'WRONG_NUMBER',
-                            name: context.translate(
-                              i18.assessmentSelectFacility.wrongNumberReason,
+                          if (_hasUnableToContactReason)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: spacer2),
+                              child: Semantics(
+                                button: true,
+                                child: InkWell(
+                                  key: const ValueKey(
+                                    'assessment-unable-to-contact-clear',
+                                  ),
+                                  onTap: _isUpdatingStatus
+                                      ? null
+                                      : _clearUnableToContactReason,
+                                  child: Text(
+                                    context.translate(i18.common.clear),
+                                    style: textTheme.bodyS.copyWith(
+                                      color: theme.colorTheme.primary.primary1,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
                         ],
-                        onChanged: (reason) {
-                          if (_isUpdatingStatus) return;
-                          final selectedReason =
-                              AssessmentUnableToContactReason.fromCode(
-                            reason.code,
-                          );
-                          if (selectedReason == null) return;
-                          setState(() {
-                            _unableToContactReason =
-                                _unableToContactReason == selectedReason
-                                    ? null
-                                    : selectedReason;
-                          });
-                        },
                       ),
                       const SizedBox(height: spacer1),
                     ],
