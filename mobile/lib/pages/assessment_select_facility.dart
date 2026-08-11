@@ -310,7 +310,9 @@ class _AssessmentSelectFacilityViewState
         if (loaded.isLoadingMore)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: spacer2),
-            child: CircularProgressIndicator(),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
           ),
         if (loaded.loadMoreError != null)
           Padding(
