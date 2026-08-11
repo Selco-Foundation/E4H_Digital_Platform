@@ -4,6 +4,7 @@ package org.egov.amc.web.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.service.AmcConfigurationService;
 import org.egov.amc.web.models.AmcConfiguration;
@@ -29,6 +30,7 @@ import java.util.List;
 @Controller
 @RequestMapping("/v1/configuration")
 @Validated
+@Slf4j
 public class AmcConfigurationController {
     private final AmcConfigurationService amcConfigurationService;
 
@@ -54,6 +56,18 @@ public class AmcConfigurationController {
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         AmcConfigurationResponse amcConfigurationResponse = AmcConfigurationResponse.builder().responseInfo(responseInfo).amcConfigurations(enrichedAmcConfigurationRequest.getAmcConfigurations()).build();
+        return new ResponseEntity<AmcConfigurationResponse>(amcConfigurationResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/_delete", method = RequestMethod.POST)
+    public ResponseEntity<AmcConfigurationResponse> deleteAmcConfiguration(@ApiParam(value = "AMC configurations to delete; only id and tenantId are required.", required = true) @Valid @RequestBody AmcConfigurationRequest request) {
+        log.trace("Entering deleteAmcConfiguration controller method");
+        log.info("Received request to delete {} AMC configuration(s)", request.getAmcConfigurations().size());
+        AmcConfigurationRequest deletedAmcConfigurationRequest = amcConfigurationService.deleteAmcConfiguration(request);
+        log.info("Successfully deleted {} AMC configuration(s)", deletedAmcConfigurationRequest.getAmcConfigurations().size());
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        AmcConfigurationResponse amcConfigurationResponse = AmcConfigurationResponse.builder().responseInfo(responseInfo).amcConfigurations(deletedAmcConfigurationRequest.getAmcConfigurations()).build();
         return new ResponseEntity<AmcConfigurationResponse>(amcConfigurationResponse, HttpStatus.OK);
     }
 
