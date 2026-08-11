@@ -32,8 +32,8 @@ Map<String, dynamic> buildAssessmentFacilityDefaults({
     'alternateContactName': isAwc ? '' : '---',
     'alternateContactDesignation': '',
     'alternateContactNumber': isAwc ? '' : '---',
-    'ninId': editable(facility?.ninId),
-    'hfrId': editable(facility?.hfrId),
+    'ninId': display(facility?.ninId),
+    'hfrId': display(facility?.hfrId),
   };
 }
 

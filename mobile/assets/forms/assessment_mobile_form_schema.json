@@ -820,18 +820,7 @@
                 "label": "NIN ID",
                 "order": 4,
                 "includeInForm": true,
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "This field is required"
-                  },
-                  {
-                    "type": "pattern",
-                    "value": "^[0-9]+$",
-                    "message": "Enter a valid value"
-                  }
-                ]
+                "readOnly": true
               },
               {
                 "fieldName": "hfrId",
@@ -840,19 +829,7 @@
                 "label": "HFR ID",
                 "order": 5,
                 "includeInForm": true,
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "This field is required"
-                  },
-                  {
-                    "type": "pattern",
-                    "value": "^(IN[0-9]{10}|0)$",
-                    "message": "Enter a valid value"
-                  }
-                ],
-                "helpText": "Enter an HFR ID such as IN1234567890, or 0 if unavailable."
+                "readOnly": true
               },
               {
                 "fieldName": "mobileNetworks",
@@ -1830,18 +1807,7 @@
                 "label": "NIN ID",
                 "order": 4,
                 "includeInForm": true,
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "This field is required"
-                  },
-                  {
-                    "type": "pattern",
-                    "value": "^[0-9]+$",
-                    "message": "Enter a valid value"
-                  }
-                ]
+                "readOnly": true
               },
               {
                 "fieldName": "hfrId",
@@ -1850,19 +1816,7 @@
                 "label": "HFR ID",
                 "order": 5,
                 "includeInForm": true,
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "This field is required"
-                  },
-                  {
-                    "type": "pattern",
-                    "value": "^(IN[0-9]{10}|0)$",
-                    "message": "Enter a valid value"
-                  }
-                ],
-                "helpText": "Enter an HFR ID such as IN1234567890, or 0 if unavailable."
+                "readOnly": true
               },
               {
                 "fieldName": "mobileNetworks",
@@ -2149,7 +2103,8 @@
                 "format": "text",
                 "label": "NIN ID",
                 "order": 6,
-                "includeInForm": true
+                "includeInForm": true,
+                "readOnly": true
               },
               {
                 "fieldName": "facilityInChargeName",
@@ -2943,7 +2898,8 @@
                 "format": "text",
                 "label": "NIN ID",
                 "order": 6,
-                "includeInForm": true
+                "includeInForm": true,
+                "readOnly": true
               },
               {
                 "fieldName": "facilityInChargeName",
