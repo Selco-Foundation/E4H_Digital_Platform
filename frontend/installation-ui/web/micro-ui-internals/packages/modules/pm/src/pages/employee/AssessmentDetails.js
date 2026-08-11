@@ -19,6 +19,7 @@ import { AssessmentFacilityService } from "../../services/AssessmentFacility";
 import { AssessmentPlanService } from "../../services/AssessmentPlan";
 import { PMService } from "../../services/PMService";
 import { canAssignForOnSiteAssessment, evaluateMarkResultScenario } from "../../utilities/AssessmentPlanData";
+import CommonUtils from "../../utilities/CommonUtils";
 import {useTranslation} from "react-i18next";
 
 const STATUS_BADGE_STYLES = {
@@ -189,7 +190,7 @@ const AssessmentDetails = () => {
       await PMService.downloadAssessmentPlanFacilityExport(assessmentId, projectQueryFilter.facilityFilterQuery);
     } catch (error) {
       console.error("Error exporting assessment plan facilities", error);
-      setToast({ key: "error", label: t("PM_ASSESSMENT_FACILITY_DATA_DOWNLOAD_ERROR") });
+      setToast({ key: "error", label: CommonUtils.getApiErrorMessage(error) || t("PM_ASSESSMENT_FACILITY_DATA_DOWNLOAD_ERROR") });
     } finally {
       setActionLoading(false);
     }
@@ -310,7 +311,7 @@ const AssessmentDetails = () => {
       setToast({ key: "success", label: t("PM_ASSESSMENT_ACTION_SUCCESS") });
     } catch (error) {
       console.error("Error updating assessment facility", error);
-      setToast({ key: "error", label: t("PM_ASSESSMENT_ACTION_ERROR") });
+      setToast({ key: "error", label: CommonUtils.getApiErrorMessage(error) || t("PM_ASSESSMENT_ACTION_ERROR") });
     } finally {
       setActionLoading(false);
     }
@@ -335,7 +336,7 @@ const AssessmentDetails = () => {
       setToast({ key: "success", label: t("PM_ASSESSMENT_COMPLETE_PLAN_SUCCESS") });
     } catch (error) {
       console.error("Error completing assessment plan", error);
-      setToast({ key: "error", label: t("PM_ASSESSMENT_COMPLETE_PLAN_ERROR") });
+      setToast({ key: "error", label: CommonUtils.getApiErrorMessage(error) || t("PM_ASSESSMENT_COMPLETE_PLAN_ERROR") });
     } finally {
       setActionLoading(false);
     }
