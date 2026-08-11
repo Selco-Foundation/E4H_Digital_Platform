@@ -99,18 +99,16 @@ const VisitDetails = ({t}) => {
         />
       )}
 
-      {!!reportDocumentAggregation?.amcInstallationForm && (
-        <Summary
-          t={t}
-          section="AMC_INSTALLATION_REPORT"
-          report={{
-            ...reportDocumentAggregation?.amcInstallationForm,
-            name: `${facilityDetails.facilityName}.pdf`
-          }}
-          supportingDocuments={[]}
-          isDocument={true}
-        />
-      )}
+      <Summary
+        t={t}
+        section="AMC_INSTALLATION_REPORT"
+        report={reportDocumentAggregation?.amcInstallationForm ? {
+          ...reportDocumentAggregation.amcInstallationForm,
+          name: `${facilityDetails.facilityName}.pdf`
+        } : null}
+        supportingDocuments={[]}
+        isDocument={true}
+      />
 
       {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "PENDING_APPROVAL" && (
         <AMCReviewerActions

@@ -153,14 +153,6 @@ const ReportLevelView = ({ t }) => {
           }}>
             {t("CS_COMMON_ERROR")}
           </div>
-          <div style={{
-            color: "#505A5F",
-            fontSize: "16px",
-            maxWidth: "520px",
-            lineHeight: "24px",
-          }}>
-            {t("AMC_REPORT_LEVEL_ERROR")}
-          </div>
         </div>
       );
     }

@@ -167,6 +167,7 @@ const fetchVisitDetails = async (filter, limit, offset) => {
   if (!visitData) return {};
 
   const facility = visitData?.facility || {};
+  // AMC visit search can return facility metadata partly on the visit and partly inside facility.
   const facilityId = facility.id || facility.facility_id || facility.facilityId || visitData?.facilityId;
   const facilityDetails = facility?.facilityDetails || facility?.facility_details || {};
   const facilityAmcSummary = await fetchFacilityAmcSummary(facilityId);
@@ -196,6 +197,7 @@ const fetchVisitDetails = async (filter, limit, offset) => {
       district: geography.district,
       status: visitData?.status,
       ...facilityAmcSummary,
+      // Prefer the current visit's number when cadence data is available; summary API is the fallback.
       amcNumber: visitAmcNumber !== "-" ? visitAmcNumber : facilityAmcSummary.amcNumber || "-",
       assigned: visitData?.assignments?.[0]?.user?.name,
     },
