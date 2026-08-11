@@ -19,11 +19,14 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.selco.e4h.util.UserAnalyticsConstants.APPLICATIONS;
 import static org.selco.e4h.util.UserAnalyticsConstants.OVERALL;
@@ -80,6 +83,7 @@ public class UserAnalyticsReportService {
                 .championsByRole(current.getChampionsByRole())
                 .championsByApplication(current.getChampionsByApplication())
                 .applications(new ArrayList<>(applications))
+                .eventTypes(resolveEventTypes(current))
                 .overall(UserAnalyticsBucket.of(OVERALL, current.getOverall(), previous.getOverall(), applications))
                 .byState(buildDimension(current.getByState().keySet(), previous.getByState().keySet(),
                         current::stateMetrics, previous::stateMetrics, applications))
@@ -109,6 +113,27 @@ public class UserAnalyticsReportService {
                 .comparingLong((UserAnalyticsBucket bucket) -> bucket.getCurrent().getActiveUsersTotal()).reversed()
                 .thenComparing(UserAnalyticsBucket::getKey));
         return buckets;
+    }
+
+    /**
+     * The event types to cross-tab the states against, busiest across all states first so the columns
+     * that carry the week sit nearest the state name.
+     * <p>
+     * Taken from the reported week only — the cross-tabs carry no previous-week comparison, so an
+     * event type that stopped occurring this week has no column to appear in.
+     */
+    private List<String> resolveEventTypes(UserAnalyticsAggregation current) {
+        Map<String, Long> totals = new HashMap<>();
+        if (current.getByState() != null) {
+            for (UserAnalyticsMetrics metrics : current.getByState().values()) {
+                metrics.eventTypeCounts().forEach((eventType, count) -> totals.merge(eventType, count, Long::sum));
+            }
+        }
+        return totals.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
     }
 
     /**
