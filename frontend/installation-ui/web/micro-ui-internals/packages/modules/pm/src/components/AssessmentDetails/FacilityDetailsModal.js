@@ -115,6 +115,7 @@ const FacilityDetailsModal = ({
             <Button
               variation={"secondary"}
               label={t("PM_ASSESSMENT_ACTION_MARK_ELIGIBLE")}
+              isDisabled={facility.result === "ELIGIBLE"}
               onButtonClick={onMarkEligible}
               style={{
                 border: "none",
@@ -122,12 +123,13 @@ const FacilityDetailsModal = ({
                 fontWeight: "bold",
                 fontSize: "16px",
                 color: "white",
-                backgroundColor: "#1B8354",
+                backgroundColor: facility.result === "ELIGIBLE" ? "#D6D5D4" : "#1B8354",
               }}
             />
             <Button
               variation={"secondary"}
               label={t("PM_ASSESSMENT_ACTION_MARK_NOT_ELIGIBLE")}
+              isDisabled={facility.result === "NOT_ELIGIBLE"}
               onButtonClick={onMarkNotEligible}
               style={{
                 border: "none",
@@ -135,7 +137,7 @@ const FacilityDetailsModal = ({
                 fontWeight: "bold",
                 fontSize: "16px",
                 color: "white",
-                backgroundColor: "#B91900",
+                backgroundColor: facility.result === "NOT_ELIGIBLE" ? "#D6D5D4" : "#B91900",
               }}
             />
           </div>
