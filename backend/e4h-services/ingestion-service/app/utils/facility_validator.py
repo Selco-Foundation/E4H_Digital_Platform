@@ -195,20 +195,14 @@ def assessment_plan_include_validation(
     """
     Validate assessment plan include Excel rows marked Include in Assessment Plan = Yes.
     Availability exclusions (ongoing assessment, etc.) are reported as EXCLUDED, not FAILED.
+    Facility snapshot columns (PoC name, address, etc.) are not re-validated — include only
+    selects existing project facilities; apply does not create facilities.
     """
-    from app.ingest.facility_template_service import filter_assessment_include_schema
-
     df = df.reset_index(drop=True)
     errors: List[List[str]] = [[] for _ in range(len(df))]
     exclusions: List[List[str]] = [[] for _ in range(len(df))]
     availability_exclusions = availability_exclusions or {}
     yes_row_count = 0
-
-    schema_response = mdms_client.get_column_definitions_and_row_constraints_with_metadata(
-        request_info, "data-ingestion.FieldPlanFacilityIngestionSchema"
-    )
-    filtered_columns = filter_assessment_include_schema(schema_response.get("column_list", []) or [])
-    schema = {"column_list": filtered_columns}
 
     for pos in range(len(df)):
         row = df.iloc[pos]
@@ -226,12 +220,9 @@ def assessment_plan_include_validation(
         elif facility_id in availability_exclusions:
             exclusions[pos].append(availability_exclusions[facility_id])
 
-        row_frame = pd.DataFrame([row]).reset_index(drop=True)
-        validate_columns(
-            row_frame,
-            schema,
-            lambda i, msg, row_pos=pos: errors[row_pos].append(msg),
-        )
+        include_val_normalized = str(row.get(include_col, "")).strip().lower()
+        if include_val_normalized and include_val_normalized not in {"yes", "no"}:
+            errors[pos].append(f"{include_col} must be Yes or No")
 
     if yes_row_count == 0:
         raise HTTPException(
