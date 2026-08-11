@@ -82,7 +82,7 @@ public class PlanFacilityDecisionService {
                     "Assign for on-site preconditions not met");
         }
 
-        workflowService.transitionPmWorkflow(facility.getPlanFacilityId(), "in",
+        workflowService.transitionWorkflow(facility.getPlanFacilityId(), resolveWorkflowTenantId(requestInfo),
                 AssessmentConstants.WF_ACTION_ASSIGN_FOR_FIELD, requestInfo, null);
 
         long now = System.currentTimeMillis();
@@ -133,8 +133,8 @@ public class PlanFacilityDecisionService {
         String wfAction = AssessmentConstants.OVERALL_ELIGIBLE.equals(targetStatus)
                 ? AssessmentConstants.WF_ACTION_MARK_ELIGIBLE
                 : AssessmentConstants.WF_ACTION_MARK_NOT_ELIGIBLE;
-        workflowService.transitionPmWorkflow(facility.getPlanFacilityId(), "in", wfAction, requestInfo,
-                item.getRemarks());
+        workflowService.transitionWorkflow(facility.getPlanFacilityId(), resolveWorkflowTenantId(requestInfo),
+                wfAction, requestInfo, item.getRemarks());
 
         long now = System.currentTimeMillis();
         Map<String, Object> assessmentUpdates = new HashMap<>();
@@ -200,5 +200,15 @@ public class PlanFacilityDecisionService {
                 .overallStatus(request.getOverallStatus())
                 .remarks(request.getRemarks())
                 .build();
+    }
+
+    private String resolveWorkflowTenantId(RequestInfo requestInfo) {
+        if (requestInfo != null && requestInfo.getUserInfo() != null
+                && StringUtils.isNotBlank(requestInfo.getUserInfo().getTenantId())) {
+            String tenantId = requestInfo.getUserInfo().getTenantId();
+            int dotIndex = tenantId.indexOf('.');
+            return dotIndex > 0 ? tenantId.substring(0, dotIndex) : tenantId;
+        }
+        return "in";
     }
 }

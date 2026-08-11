@@ -66,49 +66,46 @@ public class AssessmentWorkflowService {
         return transitionWorkflow(businessId, tenantId, action, systemRequestInfo(requestInfo, tenantId), comment);
     }
 
-    public ProcessInstance transitionPmWorkflow(String businessId, String tenantId, String action,
-                                                  RequestInfo requestInfo, String comment) {
-        return transitionWorkflow(businessId, tenantId, action, pmRequestInfo(requestInfo, tenantId), comment);
+    private List<Role> normalizeRolesForWorkflowTenant(List<Role> sourceRoles, String workflowTenantId) {
+        List<Role> roles = new ArrayList<>();
+        if (sourceRoles == null) {
+            return roles;
+        }
+        for (Role role : sourceRoles) {
+            if (role == null || role.getCode() == null) {
+                continue;
+            }
+            String roleTenantId = role.getTenantId();
+            if (roleTenantId == null || roleTenantId.isBlank()) {
+                roleTenantId = workflowTenantId;
+            }
+            roles.add(Role.builder()
+                    .name(role.getName())
+                    .code(role.getCode())
+                    .tenantId(roleTenantId)
+                    .build());
+        }
+        return roles;
     }
 
-    private RequestInfo pmRequestInfo(RequestInfo requestInfo, String tenantId) {
-        if (requestInfo == null || requestInfo.getUserInfo() == null) {
-            throw new CustomException(AssessmentConstants.WORKFLOW_TRANSITION_FAILED,
-                    "RequestInfo with userInfo is required for PM workflow transition");
-        }
-        User user = requestInfo.getUserInfo();
-        List<Role> roles = user.getRoles() != null ? new ArrayList<>(user.getRoles()) : new ArrayList<>();
-        boolean hasProjectManager = roles.stream()
-                .anyMatch(role -> AssessmentConstants.ROLE_PROJECT_MANAGER.equals(role.getCode()));
-        if (!hasProjectManager) {
-            throw new CustomException(AssessmentConstants.ASSESSMENT_UNAUTHORIZED_ASSESSOR,
-                    "PROJECT_MANAGER role is required for this action");
-        }
-        boolean hasProjectManagerForTenant = roles.stream()
-                .anyMatch(role -> AssessmentConstants.ROLE_PROJECT_MANAGER.equals(role.getCode())
-                        && tenantId.equals(role.getTenantId()));
-        if (!hasProjectManagerForTenant) {
+    private void ensureRoleForTenant(List<Role> roles, String roleCode, String roleName, String tenantId) {
+        boolean present = roles.stream()
+                .anyMatch(role -> roleCode.equals(role.getCode()) && tenantId.equals(role.getTenantId()));
+        if (!present) {
             roles.add(Role.builder()
-                    .name("Project Manager")
-                    .code(AssessmentConstants.ROLE_PROJECT_MANAGER)
+                    .name(roleName)
+                    .code(roleCode)
                     .tenantId(tenantId)
                     .build());
         }
-        User workflowUser = User.builder()
-                .uuid(user.getUuid())
-                .userName(user.getUserName())
-                .name(user.getName())
-                .type(user.getType())
-                .tenantId(user.getTenantId() != null ? user.getTenantId() : tenantId)
-                .mobileNumber(user.getMobileNumber())
-                .emailId(user.getEmailId())
-                .roles(roles)
-                .build();
-        return RequestInfo.builder()
-                .apiId(requestInfo.getApiId())
-                .authToken(requestInfo.getAuthToken())
-                .userInfo(workflowUser)
-                .build();
+    }
+
+    private String resolveStateLevelTenant(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return "in";
+        }
+        int dotIndex = tenantId.indexOf('.');
+        return dotIndex > 0 ? tenantId.substring(0, dotIndex) : tenantId;
     }
 
     private RequestInfo systemRequestInfo(RequestInfo requestInfo, String tenantId) {
@@ -117,22 +114,15 @@ public class AssessmentWorkflowService {
                     "RequestInfo with userInfo is required for system workflow transition");
         }
         User user = requestInfo.getUserInfo();
-        List<Role> roles = user.getRoles() != null ? new ArrayList<>(user.getRoles()) : new ArrayList<>();
-        boolean hasSystemUser = roles.stream()
-                .anyMatch(role -> AssessmentConstants.ROLE_SYSTEM_USER.equals(role.getCode()));
-        if (!hasSystemUser) {
-            roles.add(Role.builder()
-                    .name("System User")
-                    .code(AssessmentConstants.ROLE_SYSTEM_USER)
-                    .tenantId(tenantId)
-                    .build());
-        }
+        String workflowTenantId = resolveStateLevelTenant(tenantId);
+        List<Role> roles = normalizeRolesForWorkflowTenant(user.getRoles(), workflowTenantId);
+        ensureRoleForTenant(roles, AssessmentConstants.ROLE_SYSTEM_USER, "System User", workflowTenantId);
         User workflowUser = User.builder()
                 .uuid(user.getUuid())
                 .userName(user.getUserName())
                 .name(user.getName())
                 .type(user.getType())
-                .tenantId(user.getTenantId() != null ? user.getTenantId() : tenantId)
+                .tenantId(user.getTenantId() != null ? user.getTenantId() : workflowTenantId)
                 .mobileNumber(user.getMobileNumber())
                 .emailId(user.getEmailId())
                 .roles(roles)
