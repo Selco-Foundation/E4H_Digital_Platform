@@ -1,0 +1,99 @@
+{
+  "BusinessServices": [
+    {
+      "businessService": "AMC_VISIT",
+      "business": "amc-scheduler-service",
+      "businessServiceSla": null,
+      "states": [
+        {
+          "state": null,
+          "sla": null,
+          "applicationStatus": null,
+          "isStartState": true,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "CREATE",
+              "nextState": "DRAFT",
+              "roles": ["SYSTEM_USER"]
+            }
+          ]
+        },
+        {
+          "state": "DRAFT",
+          "sla": null,
+          "applicationStatus": "DRAFT",
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "SCHEDULE",
+              "nextState": "SCHEDULED",
+              "roles": ["AMC_STAFF", "AMC_REVIEWER", "SYSTEM_USER"]
+            },
+            {
+              "action": "EXPIRE",
+              "nextState": "EXPIRED",
+              "roles": ["SYSTEM_USER"]
+            }
+          ]
+        },
+        {
+          "state": "SCHEDULED",
+          "sla": null,
+          "applicationStatus": "SCHEDULED",
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "SUBMIT_VISIT_REPORT",
+              "nextState": "PENDING_OTP_VERIFICATION",
+              "roles": ["AMC_STAFF"]
+            },
+            {
+              "action": "EXPIRE",
+              "nextState": "EXPIRED",
+              "roles": ["SYSTEM_USER"]
+            }
+          ]
+        },
+        {
+          "state": "PENDING_OTP_VERIFICATION",
+          "sla": null,
+          "applicationStatus": "PENDING_OTP_VERIFICATION",
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "SUBMIT_OTP",
+              "nextState": "APPROVED",
+              "roles": ["AMC_STAFF"]
+            }
+          ]
+        },
+        {
+          "state": "EXPIRED",
+          "sla": null,
+          "applicationStatus": "EXPIRED",
+          "isStartState": false,
+          "isTerminateState": true,
+          "isStateUpdatable": false,
+          "actions": []
+        },
+        {
+          "state": "APPROVED",
+          "sla": null,
+          "applicationStatus": "APPROVED",
+          "isStartState": false,
+          "isTerminateState": true,
+          "isStateUpdatable": false,
+          "actions": []
+        }
+      ]
+    }
+  ]
+}

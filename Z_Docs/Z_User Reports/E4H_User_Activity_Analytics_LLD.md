@@ -123,7 +123,7 @@ Analytics are generated from **business activities**, not UI navigation. Events 
 
 | Application    | Event type (examples)                                                                                                                                                                                                              |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Saura-eMitra   | `ticket_created`, `ticket_assigned`, `vendor_response`, `ticket_updated`, `ticket_resolved`, `escalation_raised`, `approval_action`, `tech_poc_action`, `state_spoc_action`                                                        |
+| Saura-eMitra   | `ticket_created`, `ticket_assigned`, `vendor_response(includes reponses and actions)`, `ticket_updated`, `ticket_resolved`, `escalation_raised`, `approval_action`, `tech_poc_action`, `state_spoc_action`                                                        |
 | Field Assist   | `installation_report_submitted`, `amc_report_submitted`, `installation_report_approved`, `installation_report_rejected`, `installation_report_resubmitted`, `amc_report_approved`, `amc_report_resubmitted`, `amc_report_rejected` |
 | Management Hub | `project_created`, `field_plan_scheduled`, `facility_added`, `poc_details_edited`, `boundary_added`, `amc_scheduled`                                                                                                               |
 
@@ -200,6 +200,8 @@ The tables below give the exact backend API each service must hook to publish an
 | Boundary Added | `POST /boundary-service/boundary/_create` | Creates the boundary node itself. |
 
 **Caveat:** in the real UI flow, adding a boundary is a two-call sequence — `_create` is immediately followed by `POST /boundary-service/boundary-relationships/_create` to link the new boundary into the hierarchy. Firing the event on `_create` alone is simplest and matches "Boundary Added" as a single conceptual action, but the boundary isn't actually usable until the relationship call also succeeds; if partial failures matter for data quality, consider publishing only after both calls succeed.
+
+**Note:** in addition to these APIs, the login(for all the applications) and logout events(where possible) are also to be tracked.  
 
 ---
 
@@ -391,15 +393,15 @@ These dashboards visualize Section A activity data. Tracking of users who log in
 
 ---
 
-## A14. Implementation Phases (Section A)
+## A14. Implementation Steps (Section A)
 
 
-| Phase       | Scope                                                                                                   | Outcome                                  |
+| Steps       | Scope                                                                                                   | Outcome                                  |
 | ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| **Phase 1** | Kafka topic, indexer YAML, ES indices, analytics service skeleton, `im-services` ticket activity events | Saura-eMitra activity in ES + dashboards |
-| **Phase 2** | Management Hub domain events (project, facility, boundary, field plan, AMC, PoC edit)                   | Full Management Hub activity catalog     |
-| **Phase 3** | Field Assist Installation/AMC report workflow events (submit / approve / reject / re-submit)            | Full Field Assist activity catalog       |
-| **Phase 4** | Weekly rollup job, configurable champion scoring, Excel report (Monday 06:00 email)                     | Full weekly leadership deliverables      |
+| **Step 1** | Kafka topic, indexer YAML, ES indices, analytics service skeleton, `im-services` ticket activity events | Saura-eMitra activity in ES + dashboards |
+| **Step 2** | Management Hub domain events (project, facility, boundary, field plan, AMC, PoC edit)                   | Full Management Hub activity catalog     |
+| **Step 3** | Field Assist Installation/AMC report workflow events (submit / approve / reject / re-submit)            | Full Field Assist activity catalog       |
+| **Step 4** | Weekly rollup job, configurable champion scoring, Excel report (Monday 06:00 email)                     | Full weekly leadership deliverables      |
 
 
 ---
