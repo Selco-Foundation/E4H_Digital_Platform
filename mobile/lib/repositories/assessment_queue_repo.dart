@@ -25,15 +25,16 @@ class AssessmentQueueRepository {
     int limit = defaultPageSize,
   }) async {
     final normalizedSearch = searchText?.trim();
+    final filters = <String, dynamic>{
+      if (normalizedSearch != null && normalizedSearch.isNotEmpty)
+        'facilityName': normalizedSearch,
+    };
     final response = await _dio.post(
       queueSearchPath,
       data: <String, dynamic>{
         'assessmentPhase': assessmentMode.assessmentPhase,
         'tenantId': _tenantId ?? envConfig.variables.tenantId,
-        if (normalizedSearch != null && normalizedSearch.isNotEmpty)
-          'filters': <String, dynamic>{
-            'facilityName': normalizedSearch,
-          },
+        'filters': filters,
         'sort': <String, dynamic>{
           'sortOrder': sortOrder,
         },
@@ -52,6 +53,16 @@ class AssessmentQueueRepository {
       requestedOffset: offset,
       requestedLimit: limit,
     );
+  }
+
+  Future<int> count({required AssessmentMode assessmentMode}) async {
+    final response = await search(
+      assessmentMode: assessmentMode,
+      sortOrder: 'DESC',
+      offset: 0,
+      limit: 0,
+    );
+    return response.count;
   }
 }
 

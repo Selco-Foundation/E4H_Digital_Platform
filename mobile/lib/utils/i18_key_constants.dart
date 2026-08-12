@@ -27,6 +27,8 @@ const amcSelectFacility = AmcSelectFacility();
 const assessmentSelectFacility = AssessmentSelectFacility();
 const assessmentForm = AssessmentForm();
 const assessmentDraft = AssessmentDraft();
+const assessmentHome = AssessmentHome();
+const assessmentWorkHome = AssessmentWorkHome();
 const home = Home();
 const bomButtons = BomButtons();
 const installationImages = InstallationImages();
@@ -91,6 +93,8 @@ class Common {
   String get state => 'CORE_COMMON_STATE';
   String get district => 'CORE_COMMON_DISTRICT';
   String get block => 'CORE_COMMON_BLOCK';
+  String get back => 'CORE_COMMON_BACK';
+  String get help => 'CORE_COMMON_HELP';
   String get backToHome => 'CORE_COMMON_BACK_TO_HOME';
   String get isRequired => 'CORE_COMMON_IS_REQUIRED';
   String get hasInvalidFormat => 'CORE_COMMON_HAS_INVALID_FORMAT';
@@ -422,6 +426,24 @@ class AssessmentDraft {
   String get syncComplete => 'ASSESSMENT_DRAFT_SYNC_COMPLETE';
   String get syncPartial => 'ASSESSMENT_DRAFT_SYNC_PARTIAL';
   String get loadFailed => 'ASSESSMENT_DRAFT_LOAD_FAILED';
+}
+
+class AssessmentHome {
+  const AssessmentHome();
+
+  String get assessment => 'ASSESSMENT_HOME_ASSESSMENT';
+}
+
+class AssessmentWorkHome {
+  const AssessmentWorkHome();
+
+  String get newRemote => 'ASSESSMENT_WORK_HOME_NEW_REMOTE';
+  String get newRemoteDescription =>
+      'ASSESSMENT_WORK_HOME_NEW_REMOTE_DESCRIPTION';
+  String get newOnSite => 'ASSESSMENT_WORK_HOME_NEW_ON_SITE';
+  String get newOnSiteDescription =>
+      'ASSESSMENT_WORK_HOME_NEW_ON_SITE_DESCRIPTION';
+  String get draftsDescription => 'ASSESSMENT_WORK_HOME_DRAFTS_DESCRIPTION';
 }
 
 class Home {

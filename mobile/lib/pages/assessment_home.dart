@@ -122,14 +122,14 @@ class _AssessmentHomePageState extends State<AssessmentHomePage> {
     final homeItems = [
       (
         icon: Icons.business_center_outlined,
-        label: 'Assessment',
+        label: context.translate(i18.assessmentHome.assessment),
         onPressed: () => context.router.push(
               const AssessmentWorkHomeRoute(),
             ),
       ),
       (
         icon: Icons.autorenew,
-        label: 'Data Sync',
+        label: context.translate(i18.home.dataSync),
         onPressed: () => context.router.push(
               const AssessmentDraftRoute(),
             ),

@@ -82,6 +82,22 @@ class AssessmentDraftRepository {
         .findAll();
   }
 
+  Future<int> countDrafts({
+    required String assessorId,
+    required Set<AssessmentPhase> phases,
+  }) async {
+    final normalizedAssessorId = assessorId.trim();
+    if (normalizedAssessorId.isEmpty || phases.isEmpty) return 0;
+
+    final allowedPhases = phases.map((phase) => phase.name).toSet();
+    final drafts = await listDrafts(normalizedAssessorId);
+    return drafts
+        .where(
+          (draft) => allowedPhases.contains(draft.phase.trim().toUpperCase()),
+        )
+        .length;
+  }
+
   Future<void> delete(
     String tenantId,
     String planFacilityId,

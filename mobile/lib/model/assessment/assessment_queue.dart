@@ -120,10 +120,12 @@ class AssessmentQueuePagination {
 class AssessmentQueueResponse {
   final List<AssessmentQueueFacility> facilities;
   final AssessmentQueuePagination pagination;
+  final int count;
 
   const AssessmentQueueResponse({
     required this.facilities,
     required this.pagination,
+    required this.count,
   });
 
   factory AssessmentQueueResponse.fromJson(
@@ -140,16 +142,19 @@ class AssessmentQueueResponse {
                 ))
             .toList(growable: false)
         : const <AssessmentQueueFacility>[];
-    final legacyTotal = _asInt(json['total']) ?? facilities.length;
+    final responseCount = _asInt(json['count']);
+    final responseTotal = _asInt(json['total']);
+    final pagination = AssessmentQueuePagination.fromJson(
+      json['pagination'],
+      fallbackOffset: requestedOffset,
+      fallbackLimit: requestedLimit,
+      fallbackTotal: responseTotal ?? responseCount ?? facilities.length,
+    );
 
     return AssessmentQueueResponse(
       facilities: facilities,
-      pagination: AssessmentQueuePagination.fromJson(
-        json['pagination'],
-        fallbackOffset: requestedOffset,
-        fallbackLimit: requestedLimit,
-        fallbackTotal: legacyTotal,
-      ),
+      pagination: pagination,
+      count: responseCount ?? responseTotal ?? pagination.total,
     );
   }
 }

@@ -246,7 +246,14 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
                   ),
                 if (_error != null) ...[
                   const SizedBox(height: spacer2),
-                  Text(context.translate(_error!), style: textTheme.bodyS),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Text(
+                      context.translate(_error!),
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyS,
+                    ),
+                  ),
                 ],
               ],
             ),
