@@ -26,21 +26,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.selco.e4h.util.UserAnalyticsConstants.SHEET_BY_ROLE;
 import static org.selco.e4h.util.UserAnalyticsConstants.SHEET_BY_STATE;
 import static org.selco.e4h.util.UserAnalyticsConstants.SHEET_CHAMPIONS;
 import static org.selco.e4h.util.UserAnalyticsConstants.SHEET_SUMMARY;
 
 /**
- * Renders a {@link UserAnalyticsReport} as a four-sheet workbook.
+ * Renders a {@link UserAnalyticsReport} as a three-sheet workbook.
  * <p>
  * <b>Summary</b> is metric-per-row and application-per-column, so it carries the full detail
- * including the previous week and the growth for each application. <b>By State</b> and <b>By Role</b>
- * stack two blocks per sheet — an Active Users table, then a Logins table below it — so each metric
- * reads as its own table rather than as one very wide row. <b>By State</b> additionally carries the
- * event-type cross-tabs: state down the rows against event type across the columns, once for all
- * applications together and once per application. <b>Top Champions</b> ranks the busiest users per
- * role and per application.
+ * including the previous week and the growth for each application. <b>By State</b> carries the
+ * active-user table, one state per row. <b>Top Champions</b> ranks the busiest users per
+ * application.
+ * <p>
+ * Every sheet opens with the report title in column D followed by the two week windows, so a saved
+ * copy of any single sheet is still self-describing.
  */
 @Slf4j
 @Service
@@ -48,9 +47,12 @@ public class UserAnalyticsExcelService {
 
     private static final String TOTAL = "Total";
     private static final String NOT_APPLICABLE = "N/A";
-    private static final String PERCENT_FORMAT = "0.00\"%\"";
     private static final String NO_ACTIVITY = "No activity in either week";
-    private static final String NO_EVENTS = "No events in the reported week";
+    private static final String REPORT_TITLE = "Weekly User Analytics Report";
+    private static final String PERCENT_FORMAT = "0.00\"%\"";
+
+    /** Column D, where the title sits on every sheet. */
+    private static final int TITLE_COLUMN = 3;
 
     /** POI column widths are in 1/256ths of a character, so these are 38 and 18 characters. */
     private static final int FIRST_COLUMN_WIDTH = 38 * 256;
@@ -63,8 +65,7 @@ public class UserAnalyticsExcelService {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Styles styles = new Styles(workbook);
             writeSummarySheet(workbook.createSheet(SHEET_SUMMARY), report, styles);
-            writeDimensionSheet(workbook.createSheet(SHEET_BY_STATE), "State", report.getByState(), report, styles, true);
-            writeDimensionSheet(workbook.createSheet(SHEET_BY_ROLE), "Role", report.getByRole(), report, styles, false);
+            writeStateSheet(workbook.createSheet(SHEET_BY_STATE), report, styles);
             writeChampionsSheet(workbook.createSheet(SHEET_CHAMPIONS), report, styles);
             workbook.write(out);
             byte[] bytes = out.toByteArray();
@@ -102,30 +103,23 @@ public class UserAnalyticsExcelService {
         setColumnWidths(sheet, headers.size());
     }
 
-    /**
-     * One row per state or role, in two stacked blocks: Active Users first, then Logins beneath it.
-     * Each block repeats the dimension column so either table can be read or copied on its own.
-     *
-     * @param eventTypeMatrices appends the event-type cross-tabs below the two blocks — one for all
-     *                          applications together and one per application. Only the state sheet
-     *                          asks for them; the aggregation is not requested for roles.
-     */
-    private void writeDimensionSheet(Sheet sheet, String dimension, List<UserAnalyticsBucket> buckets,
-                                     UserAnalyticsReport report, Styles styles, boolean eventTypeMatrices) {
+    /** One row per state: active users per application, the state total, and week-on-week growth. */
+    private void writeStateSheet(Sheet sheet, UserAnalyticsReport report, Styles styles) {
         List<String> applications = report.getApplications();
+        List<UserAnalyticsBucket> buckets = report.getByState();
         int rowIndex = writeMetadata(sheet, report, styles, 0) + 1;
 
         rowIndex = writeSectionTitle(sheet, rowIndex, "Active Users", styles);
-        List<String> activeUserHeaders = new ArrayList<>();
-        activeUserHeaders.add(dimension);
-        activeUserHeaders.addAll(applications);
-        activeUserHeaders.add(TOTAL);
-        activeUserHeaders.add("Previous Week");
-        activeUserHeaders.add("Growth %");
-        writeHeaderRow(sheet, rowIndex++, activeUserHeaders, styles, true);
+        List<String> headers = new ArrayList<>();
+        headers.add("State");
+        headers.addAll(applications);
+        headers.add(TOTAL);
+        headers.add("Previous Week");
+        headers.add("Growth %");
+        writeHeaderRow(sheet, rowIndex++, headers, styles, true);
 
         if (buckets == null || buckets.isEmpty()) {
-            sheet.createRow(rowIndex++).createCell(0).setCellValue(NO_ACTIVITY);
+            sheet.createRow(rowIndex).createCell(0).setCellValue(NO_ACTIVITY);
         } else {
             for (UserAnalyticsBucket bucket : buckets) {
                 Row row = sheet.createRow(rowIndex++);
@@ -140,134 +134,31 @@ public class UserAnalyticsExcelService {
             }
         }
 
-        rowIndex++;
-        rowIndex = writeSectionTitle(sheet, rowIndex, "Logins", styles);
-        List<String> loginHeaders = new ArrayList<>();
-        loginHeaders.add(dimension);
-        loginHeaders.addAll(applications);
-        loginHeaders.add(TOTAL);
-        loginHeaders.add("Previous Week");
-        writeHeaderRow(sheet, rowIndex++, loginHeaders, styles, false);
-
-        // Every branch leaves rowIndex past the last row it wrote — the event-type blocks are
-        // appended below and would otherwise overwrite it.
-        if (buckets == null || buckets.isEmpty()) {
-            sheet.createRow(rowIndex++).createCell(0).setCellValue(NO_ACTIVITY);
-        } else {
-            for (UserAnalyticsBucket bucket : buckets) {
-                Row row = sheet.createRow(rowIndex++);
-                row.createCell(0).setCellValue(bucket.getKey());
-                int column = 1;
-                for (String application : applications) {
-                    writeNumber(row, column++, bucket.getCurrent().loginsFor(application), styles);
-                }
-                writeNumber(row, column++, bucket.getCurrent().getLoginsTotal(), styles);
-                writeNumber(row, column, bucket.getPrevious().getLoginsTotal(), styles);
-            }
-        }
-
-        int columns = Math.max(activeUserHeaders.size(), loginHeaders.size());
-        if (eventTypeMatrices) {
-            rowIndex++;
-            columns = Math.max(columns, writeEventTypeMatrices(sheet, rowIndex, dimension, buckets, report, styles));
-        }
-        setColumnWidths(sheet, columns);
+        setColumnWidths(sheet, headers.size());
     }
 
-    /**
-     * The event-type cross-tabs: one covering every application, then one per application, each a
-     * dimension value per row and an event type per column.
-     *
-     * @return the widest header written, so the caller can size the columns for the whole sheet
-     */
-    private int writeEventTypeMatrices(Sheet sheet, int rowIndex, String dimension,
-                                       List<UserAnalyticsBucket> buckets, UserAnalyticsReport report,
-                                       Styles styles) {
-        List<String> eventTypes = report.getEventTypes();
-        String title = "Events by " + dimension + " and Event Type";
-        if (eventTypes == null || eventTypes.isEmpty()) {
-            rowIndex = writeSectionTitle(sheet, rowIndex, title, styles);
-            sheet.createRow(rowIndex).createCell(0).setCellValue(NO_EVENTS);
-            return 1;
-        }
-
-        rowIndex = writeEventTypeMatrix(sheet, rowIndex, title + " — All Applications", dimension,
-                buckets, eventTypes, null, styles);
-        for (String application : report.getApplications()) {
-            rowIndex++;
-            rowIndex = writeEventTypeMatrix(sheet, rowIndex, title + " — " + application, dimension,
-                    buckets, eventTypes, application, styles);
-        }
-        return eventTypes.size() + 2;
-    }
-
-    /**
-     * One cross-tab. Every event-type column is written for every dimension value, including the
-     * zeroes, so all the matrices carry the same rows in the same order and can be read or diffed
-     * against each other. Unlike active users these are event counts, so the total column genuinely
-     * is the sum of the columns to its left.
-     *
-     * @param application the application to count within, or null to count across all of them
-     */
-    private int writeEventTypeMatrix(Sheet sheet, int rowIndex, String title, String dimension,
-                                     List<UserAnalyticsBucket> buckets, List<String> eventTypes,
-                                     String application, Styles styles) {
-        rowIndex = writeSectionTitle(sheet, rowIndex, title, styles);
-
-        List<String> headers = new ArrayList<>();
-        headers.add(dimension);
-        headers.addAll(eventTypes);
-        headers.add(TOTAL);
-        writeHeaderRow(sheet, rowIndex++, headers, styles, false);
-
-        if (buckets == null || buckets.isEmpty()) {
-            sheet.createRow(rowIndex++).createCell(0).setCellValue(NO_ACTIVITY);
-            return rowIndex;
-        }
-
-        for (UserAnalyticsBucket bucket : buckets) {
-            Row row = sheet.createRow(rowIndex++);
-            row.createCell(0).setCellValue(bucket.getKey());
-            int column = 1;
-            long total = 0L;
-            for (String eventType : eventTypes) {
-                long count = (application == null)
-                        ? bucket.getCurrent().eventCountFor(eventType)
-                        : bucket.getCurrent().eventCountFor(application, eventType);
-                total += count;
-                writeNumber(row, column++, count, styles);
-            }
-            writeNumber(row, column, total, styles);
-        }
-        return rowIndex;
-    }
-
-    /** The busiest users per role, then per application, each ranked on non-login activity. */
+    /** The busiest users per application, ranked on non-login activity. */
     private void writeChampionsSheet(Sheet sheet, UserAnalyticsReport report, Styles styles) {
         int rowIndex = writeMetadata(sheet, report, styles, 0);
         writeLabelledValue(sheet, rowIndex++, "Ranked on", "events in the reported week, logins excluded", styles);
         rowIndex++;
 
-        rowIndex = writeChampionsSection(sheet, rowIndex, "Top Champion Users by Role", "Role",
-                report.getChampionsByRole(), styles, true);
-        rowIndex++;
         writeChampionsSection(sheet, rowIndex, "Top Champion Users by Application", "Application",
-                report.getChampionsByApplication(), styles, false);
+                report.getChampionsByApplication(), styles);
 
         setColumnWidths(sheet, 5);
     }
 
     /**
      * One block of champions. Groups are ordered by their strongest champion's activity so the most
-     * engaged role or application is at the top, and users within a group keep the ranking
-     * Elasticsearch returned.
+     * engaged application is at the top, and users within a group keep the ranking Elasticsearch
+     * returned.
      */
     private int writeChampionsSection(Sheet sheet, int rowIndex, String title, String groupHeader,
-                                      Map<String, List<ChampionUser>> championsByGroup, Styles styles,
-                                      boolean freeze) {
+                                      Map<String, List<ChampionUser>> championsByGroup, Styles styles) {
         rowIndex = writeSectionTitle(sheet, rowIndex, title, styles);
         writeHeaderRow(sheet, rowIndex++, List.of(groupHeader, "Rank", "Username", "Name", "Activity Count"),
-                styles, freeze);
+                styles, true);
 
         if (championsByGroup == null || championsByGroup.isEmpty()) {
             sheet.createRow(rowIndex++).createCell(0).setCellValue("No non-login activity in the reported week");
@@ -302,24 +193,20 @@ public class UserAnalyticsExcelService {
         return (champions == null || champions.isEmpty()) ? 0L : champions.get(0).getActivityCount();
     }
 
+    /** A missing name or login id is left blank rather than filled in with a placeholder. */
     private String blankIfNull(String value) {
         return (value == null) ? "" : value;
     }
 
-    /** The window the numbers cover, so a saved copy of the sheet is self-describing. */
+    /** The title in column D, then the window the numbers cover. */
     private int writeMetadata(Sheet sheet, UserAnalyticsReport report, Styles styles, int rowIndex) {
-        writeLabelledValue(sheet, rowIndex++, "Weekly User Analytics Report", null, styles);
+        Cell titleCell = sheet.createRow(rowIndex++).createCell(TITLE_COLUMN);
+        titleCell.setCellValue(REPORT_TITLE);
+        titleCell.setCellStyle(styles.reportTitle);
         writeLabelledValue(sheet, rowIndex++, "Reported week",
-                report.getWeekStartDate() + " to " + report.getWeekEndDate()
-                        + (report.isPartialWeek() ? " (in progress — partial week)" : ""), styles);
+                report.getWeekStartDate() + " to " + report.getWeekEndDate(), styles);
         writeLabelledValue(sheet, rowIndex++, "Previous week",
                 report.getPreviousWeekStartDate() + " to " + report.getPreviousWeekEndDate(), styles);
-        writeLabelledValue(sheet, rowIndex++, "Week boundaries in", report.getZone(), styles);
-        if (report.isPartialWeek()) {
-            writeLabelledValue(sheet, rowIndex++, "Note",
-                    "The reported week has not finished, so growth against the full previous week reads low",
-                    styles);
-        }
         return rowIndex;
     }
 
@@ -415,7 +302,7 @@ public class UserAnalyticsExcelService {
     /**
      * Widths are set explicitly rather than through {@code autoSizeColumn}, which measures glyphs
      * through AWT and needs fonts installed — not something a slim service container guarantees.
-     * The first column holds the metric / state / role name and gets the wider allowance.
+     * The first column holds the metric / state name and gets the wider allowance.
      */
     private void setColumnWidths(Sheet sheet, int columns) {
         sheet.setColumnWidth(0, FIRST_COLUMN_WIDTH);
@@ -429,6 +316,7 @@ public class UserAnalyticsExcelService {
 
         private final CellStyle header;
         private final CellStyle label;
+        private final CellStyle reportTitle;
         private final CellStyle sectionTitle;
         private final CellStyle number;
         private final CellStyle percent;
@@ -441,9 +329,13 @@ public class UserAnalyticsExcelService {
             sectionFont.setBold(true);
             sectionFont.setFontHeightInPoints((short) 12);
 
+            Font titleFont = workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 14);
+
             header = workbook.createCellStyle();
             header.setFont(boldFont);
-            header.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            header.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
             header.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             header.setAlignment(HorizontalAlignment.CENTER);
             header.setBorderBottom(BorderStyle.THIN);
@@ -451,6 +343,9 @@ public class UserAnalyticsExcelService {
 
             label = workbook.createCellStyle();
             label.setFont(boldFont);
+
+            reportTitle = workbook.createCellStyle();
+            reportTitle.setFont(titleFont);
 
             sectionTitle = workbook.createCellStyle();
             sectionTitle.setFont(sectionFont);
