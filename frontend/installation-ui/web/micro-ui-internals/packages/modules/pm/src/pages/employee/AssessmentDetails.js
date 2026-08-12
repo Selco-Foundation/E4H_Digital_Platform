@@ -93,6 +93,7 @@ const AssessmentDetails = () => {
   const {
     isLoading: assessmentPlanDataLoading,
     data: assessmentPlanData,
+    revalidate: revalidateAssessmentPlan,
   } = useAssessmentPlan({
     id: [assessmentId]
   });
@@ -158,7 +159,7 @@ const AssessmentDetails = () => {
     }
   }, [toast])
 
-  const planCompleted = assessmentPlan?.status === "COMPLETED";
+  const planCompleted = assessmentPlan?.status === "CLOSED";
 
   const onPageSizeChange = (e) => {
     setPageSize(parseInt(e.target.value));
@@ -332,6 +333,7 @@ const AssessmentDetails = () => {
         setAssessmentPlan(updatedPlan);
         dispatch(populateWorkingAssessmentPlan(updatedPlan));
       }
+      await revalidateAssessmentPlan();
       setCompletePlanModalOpen(false);
       setToast({ key: "success", label: t("PM_ASSESSMENT_COMPLETE_PLAN_SUCCESS") });
     } catch (error) {
@@ -373,6 +375,7 @@ const AssessmentDetails = () => {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <CustomCheckBox
             checked={mainCheck}
+            disable={planCompleted}
             onChange={mainCheckboxChange}
             styles={{ width: "24px", height: "24px" }}
           />
@@ -382,6 +385,7 @@ const AssessmentDetails = () => {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <CustomCheckBox
             checked={selectedFacilityIds.some((facilityId) => facilityId === row.original["id"])}
+            disable={planCompleted}
             onChange={() => sideCheckboxChange(row.original["id"])}
             styles={{ width: "24px", height: "24px" }}
           />
@@ -593,8 +597,17 @@ const AssessmentDetails = () => {
           <button
             type="button"
             className={"jk-digit-secondary-btn"}
-            style={{ height: "40px", padding: "0px 20px", fontSize: "16px", fontWeight: "500", fontFamily: "Roboto", cursor: "pointer" }}
+            disabled={planCompleted}
             onClick={handleEditAssessmentPlan}
+            style={{
+              height: "40px",
+              padding: "0px 20px",
+              fontSize: "16px",
+              fontWeight: "500",
+              fontFamily: "Roboto",
+              cursor: planCompleted ? "default" : "pointer",
+              opacity: planCompleted ? 0.5 : 1,
+            }}
           >
             {t("PM_ACTION_EDIT_ASSESSMENT_PLAN")}
           </button>
