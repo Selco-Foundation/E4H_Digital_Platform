@@ -245,7 +245,12 @@ const AssessmentDetails = () => {
     return selectedFacilities.length > 0 && selectedFacilities.every((facility) => canAssignForOnSiteAssessment(facility));
   };
 
-  const canBulkMarkResult = () => !planCompleted && selectedFacilityIds.length > 0;
+  const canBulkMarkResult = (targetResult) => {
+    if (planCompleted || !selectedFacilityIds.length) return false;
+
+    const selectedFacilities = fetchedData.filter((facility) => selectedFacilityIds.includes(facility.id));
+    return selectedFacilities.length > 0 && selectedFacilities.every((facility) => facility.result !== targetResult);
+  };
 
   // "FACILITY_MODAL" identifies actions triggered from a single facility's detail view, which
   // hit the singular decision-update API instead of the bulk one, regardless of how many rows
@@ -356,14 +361,14 @@ const AssessmentDetails = () => {
       key: "mark-eligible",
       label: t("PM_ASSESSMENT_ACTION_MARK_ELIGIBLE"),
       backgroundColor: "#1B8354",
-      disabled: !canBulkMarkResult(),
+      disabled: !canBulkMarkResult("ELIGIBLE"),
       onClick: () => openMarkEligibleConfirm(selectedFacilityIds),
     },
     {
       key: "mark-not-eligible",
       label: t("PM_ASSESSMENT_ACTION_MARK_NOT_ELIGIBLE"),
       backgroundColor: "#B91900",
-      disabled: !canBulkMarkResult(),
+      disabled: !canBulkMarkResult("NOT_ELIGIBLE"),
       onClick: () => openMarkNotEligibleConfirm(selectedFacilityIds),
     },
   ];
