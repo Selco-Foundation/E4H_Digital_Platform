@@ -25,10 +25,10 @@ public class UserAnalyticsAggregation {
     /** Counts across every document in the week, ignoring state and role. */
     private UserAnalyticsMetrics overall;
 
-    /** Localized state name -> counts. Documents with a null state fall under {@code UNKNOWN}. */
+    /** Localized state name -> counts. Documents with a null state are left out entirely. */
     private Map<String, UserAnalyticsMetrics> byState;
 
-    /** {@code primary_role} -> counts. Documents with a null role fall under {@code UNKNOWN}. */
+    /** {@code primary_role} -> counts. Documents with a null role are left out entirely. */
     private Map<String, UserAnalyticsMetrics> byRole;
 
     /**

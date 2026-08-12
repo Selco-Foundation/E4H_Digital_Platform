@@ -21,9 +21,6 @@ public class UserAnalyticsConstants {
      */
     public static final List<String> APPLICATIONS = List.of("SAURA_EMITRA", "FIELD_ASSIST", "MANAGEMENT_HUB");
 
-    /** Bucket key substituted for documents whose state / role / application is null. */
-    public static final String UNKNOWN = "UNKNOWN";
-
     /** Dimension key of the single all-up bucket, distinguishing it from a state or role name. */
     public static final String OVERALL = "OVERALL";
 
@@ -56,7 +53,6 @@ public class UserAnalyticsConstants {
 
     public static final String SHEET_SUMMARY = "Summary";
     public static final String SHEET_BY_STATE = "By State";
-    public static final String SHEET_BY_ROLE = "By Role";
     public static final String SHEET_CHAMPIONS = "Top Champions";
 
     public static final String XLSX_CONTENT_TYPE =

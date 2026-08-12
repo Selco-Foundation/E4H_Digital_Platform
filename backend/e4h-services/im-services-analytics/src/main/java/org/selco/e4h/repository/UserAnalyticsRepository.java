@@ -33,7 +33,6 @@ import static org.selco.e4h.util.UserAnalyticsConstants.AGG_CHAMPIONS_BY_ROLE;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_LOGINS;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_TOP_USERS;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_USER_DETAILS;
-import static org.selco.e4h.util.UserAnalyticsConstants.UNKNOWN;
 import static org.selco.e4h.util.UserAnalyticsConstants.USER_LOGIN_EVENT_TYPE;
 import static org.selco.e4h.util.UserAnalyticsConstants.USER_NAME_SOURCE_PATH;
 import static org.selco.e4h.util.UserAnalyticsConstants.USER_USERNAME_SOURCE_PATH;
@@ -130,6 +129,9 @@ public class UserAnalyticsRepository {
 
     /**
      * A state / role {@code terms} bucket carrying the same metrics as the top level.
+     * <p>
+     * No {@code missing} bucket is requested: a document whose field is null is left out of the
+     * breakdown altogether rather than being reported under a placeholder key.
      *
      * @param includeEventTypes whether to also break the bucket down by event type
      */
@@ -137,8 +139,7 @@ public class UserAnalyticsRepository {
         return Map.of(
                 "terms", Map.of(
                         "field", field,
-                        "size", properties.getTermsSize(),
-                        "missing", UNKNOWN),
+                        "size", properties.getTermsSize()),
                 "aggs", metricAggregations(includeEventTypes));
     }
 
@@ -164,8 +165,7 @@ public class UserAnalyticsRepository {
         aggregations.put(AGG_BY_APPLICATION, Map.of(
                 "terms", Map.of(
                         "field", properties.getApplicationField(),
-                        "size", properties.getTermsSize(),
-                        "missing", UNKNOWN),
+                        "size", properties.getTermsSize()),
                 "aggs", applicationAggregations));
         if (includeEventTypes) {
             aggregations.put(AGG_BY_EVENT_TYPE, eventTypesAggregation());
@@ -180,8 +180,7 @@ public class UserAnalyticsRepository {
     private Map<String, Object> eventTypesAggregation() {
         return Map.of("terms", Map.of(
                 "field", properties.getEventTypeField(),
-                "size", properties.getEventTypeTermsSize(),
-                "missing", UNKNOWN));
+                "size", properties.getEventTypeTermsSize()));
     }
 
     private Map<String, Object> activeUsersAggregation() {
@@ -220,8 +219,7 @@ public class UserAnalyticsRepository {
                 "aggs", Map.of(AGG_BY_GROUP, Map.of(
                         "terms", Map.of(
                                 "field", groupField,
-                                "size", properties.getTermsSize(),
-                                "missing", UNKNOWN),
+                                "size", properties.getTermsSize()),
                         // topUsers is an aggregation body, so it has to be keyed by its name here —
                         // handing it to "aggs" bare makes Elasticsearch read "terms" as the
                         // aggregation's name rather than its type.
