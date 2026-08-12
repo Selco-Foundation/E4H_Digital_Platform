@@ -49,6 +49,13 @@ public class IMConstants {
     public static final String USER_LOGIN_EVENT_TYPE = "USER_LOGIN";
     public static final String USER_LOGIN_ENTITY_TYPE = "USER";
 
+    // Kibana login user-analytics event constants
+    public static final String KIBANA_LOGIN_EVENT_TYPE = "KIBANA_LOGIN";
+    public static final String KIBANA_APPLICATION = "KIBANA";
+    public static final String KIBANA_LOGIN_ENTITY_TYPE = "KIBANA_USER";
+    /** Value of the {@code event} field on the Kibana audit messages we translate. */
+    public static final String KIBANA_LOGIN_SOURCE_EVENT = "kibana_login";
+
     /**
      * Applications allowed to report a login. Kept as a regex so it can be used directly in the
      * {@code @Pattern} on {@code UserRequest.application} — the caller declares which front-end the
