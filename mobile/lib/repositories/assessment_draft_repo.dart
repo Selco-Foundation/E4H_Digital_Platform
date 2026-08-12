@@ -30,6 +30,7 @@ class AssessmentDraftRepository {
     required String assessorId,
     required bool blocked,
     required String error,
+    Map<String, dynamic>? facilityDefaults,
   }) async {
     final draftKey = key(
       request.tenantId,
@@ -54,6 +55,11 @@ class AssessmentDraftRepository {
             planFacilityId: request.planFacilityId,
             facilityName: facility.facilityName ?? '---',
             facilityType: facility.facilityType ?? '---',
+            state: facility.state,
+            district: facility.district,
+            block: facility.block,
+            facilityDefaultsJson:
+                facilityDefaults == null ? null : jsonEncode(facilityDefaults),
             requestJson: jsonEncode(request.toJson()),
           );
       draft
@@ -64,10 +70,16 @@ class AssessmentDraftRepository {
             : AssessmentDraftStatus.pending
         ..facilityName = facility.facilityName ?? '---'
         ..facilityType = facility.facilityType ?? '---'
+        ..state = facility.state
+        ..district = facility.district
+        ..block = facility.block
         ..requestJson = jsonEncode(request.toJson())
         ..lastError = error
         ..attemptCount += 1
         ..updatedAt = DateTime.now();
+      if (facilityDefaults != null) {
+        draft.facilityDefaultsJson = jsonEncode(facilityDefaults);
+      }
       await isar.cacheAssessmentDrafts.put(draft);
       saved = draft;
     });
@@ -139,4 +151,15 @@ class AssessmentDraftRepository {
       AssessmentSubmissionRequest.fromJson(
         Map<String, dynamic>.from(jsonDecode(draft.requestJson) as Map),
       );
+
+  Map<String, dynamic>? facilityDefaultsOf(CacheAssessmentDraft draft) {
+    final encoded = draft.facilityDefaultsJson;
+    if (encoded == null || encoded.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(encoded);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } catch (_) {
+      return null;
+    }
+  }
 }

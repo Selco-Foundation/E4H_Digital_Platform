@@ -38,12 +38,16 @@ class AssessmentDynamicFormPage extends StatefulWidget {
   final AssessmentQueueFacility facility;
   final AssessmentMode assessmentMode;
   final VoidCallback onSubmissionSucceeded;
+  final AssessmentSubmissionRequest? draftRequest;
+  final Map<String, dynamic>? draftFacilityDefaults;
 
   const AssessmentDynamicFormPage({
     super.key,
     required this.facility,
     required this.assessmentMode,
     required this.onSubmissionSucceeded,
+    this.draftRequest,
+    this.draftFacilityDefaults,
   });
 
   @override
@@ -69,12 +73,19 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
   @override
   void initState() {
     super.initState();
+    _pendingRequest = widget.draftRequest;
+    _isFrozenDraft = widget.draftRequest != null;
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
-    final planFacilityId = widget.facility.planFacilityId?.trim();
-    final category = widget.facility.facilityCategory?.trim();
+    final draftRequest = widget.draftRequest;
+    final planFacilityId =
+        (draftRequest?.planFacilityId ?? widget.facility.planFacilityId)
+            ?.trim();
+    final category =
+        (draftRequest?.facilityCategory ?? widget.facility.facilityCategory)
+            ?.trim();
     if (planFacilityId == null ||
         planFacilityId.isEmpty ||
         category == null ||
@@ -91,20 +102,44 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       _facilityDetails = null;
     });
     try {
-      final facilityDetails = _getFacilityDetails(
-        widget.facility.facilityId,
-      );
-      final resolution = await _repository.resolveForm(
-        planFacilityId: planFacilityId,
-        facilityCategory: category,
-        assessmentMode: widget.assessmentMode,
-      );
-      _resolvedFormType = resolution.formType;
-      _facilityDetails = await facilityDetails;
-      final schema = await _repository.loadMobileSchema(resolution.formType);
+      late final AssessmentFormType formType;
+      late final Map<String, dynamic> schema;
+      if (draftRequest != null) {
+        final draftMode = draftRequest.assessmentPhase == AssessmentPhase.PHONE
+            ? AssessmentMode.remote
+            : AssessmentMode.onSite;
+        final resolved = AssessmentFormType.expectedFor(
+          facilityCategory: category,
+          mode: draftMode,
+        );
+        if (resolved == null) {
+          throw const FormatException(
+            'Unsupported assessment facility category',
+          );
+        }
+        formType = resolved;
+        schema = await _repository.loadCachedMobileSchema(formType);
+      } else {
+        final facilityDetails = _getFacilityDetails(
+          widget.facility.facilityId,
+        );
+        final resolution = await _repository.resolveForm(
+          planFacilityId: planFacilityId,
+          facilityCategory: category,
+          assessmentMode: widget.assessmentMode,
+        );
+        formType = resolution.formType;
+        _facilityDetails = await facilityDetails;
+        schema = await _repository.loadMobileSchema(formType);
+      }
+      _resolvedFormType = formType;
       if (!mounted) return;
       schema['name'] = _schemaKey;
       final bloc = context.read<FormsBloc>();
+      if (bloc.state.cachedSchemas.containsKey(_schemaKey)) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
       final loaded = bloc.stream.firstWhere(
         (state) => state.cachedSchemas.containsKey(_schemaKey),
       );
@@ -149,6 +184,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
     String editable(String? value) => value?.trim() ?? '';
     final formType = _resolvedFormType;
 
+    final draftRequest = widget.draftRequest;
     return {
       'assessorName': display(user?.name ?? user?.userName),
       'assessorContact': editable(user?.mobileNumber),
@@ -157,17 +193,33 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         ...buildAssessmentFacilityDefaults(
           facility: _facilityDetails,
           formType: formType,
+          fallbackFacility: widget.facility,
+        ),
+      if (draftRequest != null)
+        ...buildAssessmentDraftDefaults(
+          request: draftRequest,
+          facility: widget.facility,
+          facilityDefaults: widget.draftFacilityDefaults,
         ),
     };
   }
 
   FormGroup _buildForm(PropertySchema page, Map<String, dynamic> defaults) {
-    final controls = JsonForms.getFormControls(page, defaultValues: defaults);
+    final controlDefaults = _isFrozenDraft
+        ? normalizeAssessmentDraftDefaultsForPage(
+            page: page,
+            defaults: defaults,
+          )
+        : defaults;
+    final controls = JsonForms.getFormControls(
+      page,
+      defaultValues: controlDefaults,
+    );
     final form = fb.group(controls);
     for (final entry
         in page.properties?.entries ?? <MapEntry<String, PropertySchema>>[]) {
       if (!form.contains(entry.key)) continue;
-      final value = entry.value.value ?? defaults[entry.key];
+      final value = entry.value.value ?? controlDefaults[entry.key];
       if (value != null) {
         form.control(entry.key).updateValue(
               coerceForControl(form.control(entry.key), value),
@@ -240,7 +292,15 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
     String pageKey,
     PropertySchema page,
   ) async {
-    if (_isSubmitting || _isFrozenDraft) return;
+    if (_isSubmitting) return;
+    if (_isFrozenDraft) {
+      if (_pageIndex < schema.pages.length - 1) {
+        setState(() => _pageIndex++);
+      } else {
+        await _submit(schema);
+      }
+      return;
+    }
     final updated = _withPageValues(schema, pageKey, page, form);
     final allValues = {
       for (final pageEntry in updated.pages.entries)
@@ -297,6 +357,10 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
     PropertySchema page,
   ) {
     if (_pageIndex == 0) return;
+    if (_isFrozenDraft) {
+      setState(() => _pageIndex--);
+      return;
+    }
     final updated = _withPageValues(schema, pageKey, page, form);
     context.read<FormsBloc>().add(
           FormsUpdateEvent(schema: updated, schemaKey: _schemaKey),
@@ -352,7 +416,19 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         ),
       );
     } on AssessmentApiException catch (error) {
-      if (error.code == 'ASSESSMENT_INVALID_FORM_DATA') {
+      if (_isFrozenDraft) {
+        await _saveDraftFailure(
+          request,
+          user?.uuid ?? user?.userName ?? '',
+          error.message,
+          blocked: error.isAuthorizationFailure || error.isConflict,
+        );
+        if (error.code == 'ASSESSMENT_INVALID_FORM_DATA') {
+          _openBackendError(schema, error);
+        } else if (mounted) {
+          setState(() => _error = error.message);
+        }
+      } else if (error.code == 'ASSESSMENT_INVALID_FORM_DATA') {
         _openBackendError(schema, error);
       } else if (error.isRetryable ||
           error.isAuthorizationFailure ||
@@ -365,6 +441,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
           assessorId: assessorId,
           blocked: error.isAuthorizationFailure || error.isConflict,
           error: error.message,
+          facilityDefaults: _facilityDefaultsForDraft(formType),
         );
         if (mounted) {
           setState(() {
@@ -379,10 +456,47 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         setState(() => _error = error.message);
       }
     } catch (error) {
+      if (_isFrozenDraft) {
+        await _saveDraftFailure(
+          request,
+          user?.uuid ?? user?.userName ?? '',
+          error.toString(),
+        );
+      }
       if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _saveDraftFailure(
+    AssessmentSubmissionRequest request,
+    String assessorId,
+    String error, {
+    bool blocked = false,
+  }) async {
+    final isar = await Constants().isar;
+    await AssessmentDraftRepository(isar).save(
+      request: request,
+      facility: widget.facility,
+      assessorId: assessorId,
+      blocked: blocked,
+      error: error,
+      facilityDefaults: _facilityDefaultsForDraft(_resolvedFormType),
+    );
+  }
+
+  Map<String, dynamic>? _facilityDefaultsForDraft(
+    AssessmentFormType? formType,
+  ) {
+    final cached = widget.draftFacilityDefaults;
+    if (cached != null) return Map<String, dynamic>.from(cached);
+    if (formType == null) return null;
+    return buildAssessmentFacilityDefaults(
+      facility: _facilityDetails,
+      formType: formType,
+      fallbackFacility: widget.facility,
+    );
   }
 
   List<Map<String, Widget>> _customComponents(
@@ -552,19 +666,23 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                     label: _isSubmitting
                         ? context.translate(i18.assessmentForm.submitting)
                         : _isFrozenDraft
-                            ? context.translate(i18.common.retry)
+                            ? context.translate(
+                                _pageIndex == schema.pages.length - 1
+                                    ? i18.dynamicForm.submit
+                                    : i18.common.coreCommonNext,
+                              )
                             : pageEntry.value.actionLabel ??
-                                (_pageIndex == schema.pages.length - 1
-                                    ? 'Submit'
-                                    : 'Next'),
-                    onPressed: () => _isFrozenDraft
-                        ? _submit(schema)
-                        : _continue(
-                            form,
-                            schema,
-                            pageEntry.key,
-                            pageEntry.value,
-                          ),
+                                context.translate(
+                                  _pageIndex == schema.pages.length - 1
+                                      ? i18.dynamicForm.submit
+                                      : i18.common.coreCommonNext,
+                                ),
+                    onPressed: () => _continue(
+                      form,
+                      schema,
+                      pageEntry.key,
+                      pageEntry.value,
+                    ),
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
                   ),
@@ -608,17 +726,23 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                           pageEntry.value,
                           form,
                         );
-                        return JsonForms(
-                          key: ValueKey(
-                            '$_schemaKey:${pageEntry.key}:'
-                            '$visibilitySignature',
+                        return IgnorePointer(
+                          ignoring: _isFrozenDraft,
+                          child: JsonForms(
+                            key: ValueKey(
+                              '$_schemaKey:${pageEntry.key}:'
+                              '$visibilitySignature',
+                            ),
+                            currentSchemaKey: _schemaKey,
+                            propertySchema: pageEntry.value,
+                            pageName: pageEntry.key,
+                            childrens: _customComponents(
+                              pageEntry.value,
+                              form,
+                            ),
+                            defaultValues: defaults,
+                            isView: _isFrozenDraft,
                           ),
-                          currentSchemaKey: _schemaKey,
-                          propertySchema: pageEntry.value,
-                          pageName: pageEntry.key,
-                          childrens: _customComponents(pageEntry.value, form),
-                          defaultValues: defaults,
-                          isView: _isFrozenDraft,
                         );
                       },
                     ),

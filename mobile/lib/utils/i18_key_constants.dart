@@ -426,6 +426,8 @@ class AssessmentDraft {
   String get syncComplete => 'ASSESSMENT_DRAFT_SYNC_COMPLETE';
   String get syncPartial => 'ASSESSMENT_DRAFT_SYNC_PARTIAL';
   String get loadFailed => 'ASSESSMENT_DRAFT_LOAD_FAILED';
+  String get facilityType => 'ASSESSMENT_DRAFT_FACILITY_TYPE';
+  String get failureReason => 'ASSESSMENT_DRAFT_FAILURE_REASON';
 }
 
 class AssessmentHome {

@@ -2,7 +2,6 @@ import 'package:digit_ui_components/theme/ComponentTheme/digit_tab_bar_theme.dar
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_tab.dart';
-import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,6 +11,7 @@ import '../data/nosql/cache_assessment_draft.dart';
 import '../model/assessment/assessment_form.dart';
 import '../model/assessment/assessment_form_type.dart';
 import '../model/assessment/assessment_mode.dart';
+import '../model/assessment/assessment_queue.dart';
 import '../repositories/assessment_draft_repo.dart';
 import '../repositories/assessment_form_repo.dart';
 import '../router/app_router.dart';
@@ -20,6 +20,7 @@ import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/role_login_resolver.dart';
 import '../widgets/button/footer_button.dart';
+import '../widgets/cards/assessment_draft_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -117,6 +118,41 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
           ? context.translate(i18.assessmentDraft.syncComplete)
           : context.translate(i18.assessmentDraft.syncPartial);
     });
+  }
+
+  Future<void> _openDraft(CacheAssessmentDraft draft) async {
+    try {
+      final repository = await _draftRepository();
+      final request = repository.requestOf(draft);
+      final facilityDefaults = repository.facilityDefaultsOf(draft);
+      final mode = request.assessmentPhase == AssessmentPhase.PHONE
+          ? AssessmentMode.remote
+          : AssessmentMode.onSite;
+      final facility = AssessmentQueueFacility(
+        planFacilityId: request.planFacilityId,
+        facilityName: draft.facilityName,
+        facilityCategory: request.facilityCategory,
+        facilityType: draft.facilityType,
+        state: draft.state,
+        district: draft.district,
+        block: draft.block,
+      );
+      if (!mounted) return;
+      await context.router.push<void>(
+        AssessmentDynamicFormRoute(
+          facility: facility,
+          assessmentMode: mode,
+          draftRequest: request,
+          draftFacilityDefaults: facilityDefaults,
+          onSubmissionSucceeded: () => _load(),
+        ),
+      );
+      if (mounted) await _load();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = i18.assessmentDraft.loadFailed);
+      }
+    }
   }
 
   @override
@@ -217,30 +253,15 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
                   ...visibleDrafts.map(
                     (draft) => Padding(
                       padding: const EdgeInsets.only(bottom: spacer3),
-                      child: DigitCard(
-                        children: [
-                          const SizedBox(width: double.infinity),
-                          Text(draft.facilityName, style: textTheme.headingS),
-                          Text(draft.facilityType, style: textTheme.bodyS),
-                          Text(
-                            context.translate(
-                              draft.status == AssessmentDraftStatus.blocked
-                                  ? i18.assessmentDraft.blocked
-                                  : i18.assessmentDraft.pending,
-                            ),
-                            style: textTheme.bodyS.copyWith(
-                              color:
-                                  draft.status == AssessmentDraftStatus.blocked
-                                      ? theme.colorTheme.alert.error
-                                      : theme.colorTheme.text.secondary,
-                            ),
-                          ),
-                          if (draft.lastError?.trim().isNotEmpty == true)
-                            Text(
-                              context.translate(draft.lastError!),
-                              style: textTheme.bodyS,
-                            ),
-                        ],
+                      child: AssessmentDraftCard(
+                        onPressed: () => _openDraft(draft),
+                        facilityName: draft.facilityName,
+                        facilityType: draft.facilityType,
+                        status: draft.status,
+                        state: draft.state,
+                        district: draft.district,
+                        block: draft.block,
+                        failureReason: draft.lastError,
                       ),
                     ),
                   ),

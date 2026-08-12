@@ -120,6 +120,18 @@ class AssessmentFormRepository {
     return refreshed[formType]!;
   }
 
+  Future<Map<String, dynamic>> loadCachedMobileSchema(
+    AssessmentFormType formType,
+  ) async {
+    final cached = await _loadCompleteTransformedCache();
+    if (cached == null) {
+      throw const FormatException(
+        'Assessment mobile schema cache is incomplete',
+      );
+    }
+    return cached[formType]!;
+  }
+
   Future<void> preloadMobileSchemas({bool forceRefresh = true}) async {
     if (!forceRefresh && await _loadCompleteTransformedCache() != null) {
       return;

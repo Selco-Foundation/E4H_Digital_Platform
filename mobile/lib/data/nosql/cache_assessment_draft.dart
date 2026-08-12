@@ -24,6 +24,10 @@ class CacheAssessmentDraft {
   late String planFacilityId;
   late String facilityName;
   late String facilityType;
+  String? state;
+  String? district;
+  String? block;
+  String? facilityDefaultsJson;
   late String requestJson;
   String? lastError;
   int attemptCount = 0;
@@ -39,6 +43,10 @@ class CacheAssessmentDraft {
     required this.planFacilityId,
     required this.facilityName,
     required this.facilityType,
+    this.state,
+    this.district,
+    this.block,
+    this.facilityDefaultsJson,
     required this.requestJson,
     this.lastError,
     this.attemptCount = 0,

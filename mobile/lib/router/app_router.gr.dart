@@ -98,6 +98,8 @@ abstract class _$AppRouter extends RootStackRouter {
           facility: args.facility,
           assessmentMode: args.assessmentMode,
           onSubmissionSucceeded: args.onSubmissionSucceeded,
+          draftRequest: args.draftRequest,
+          draftFacilityDefaults: args.draftFacilityDefaults,
         ),
       );
     },
@@ -608,6 +610,8 @@ class AssessmentDynamicFormRoute
     required AssessmentQueueFacility facility,
     required AssessmentMode assessmentMode,
     required void Function() onSubmissionSucceeded,
+    AssessmentSubmissionRequest? draftRequest,
+    Map<String, dynamic>? draftFacilityDefaults,
     List<PageRouteInfo>? children,
   }) : super(
           AssessmentDynamicFormRoute.name,
@@ -616,6 +620,8 @@ class AssessmentDynamicFormRoute
             facility: facility,
             assessmentMode: assessmentMode,
             onSubmissionSucceeded: onSubmissionSucceeded,
+            draftRequest: draftRequest,
+            draftFacilityDefaults: draftFacilityDefaults,
           ),
           initialChildren: children,
         );
@@ -632,6 +638,8 @@ class AssessmentDynamicFormRouteArgs {
     required this.facility,
     required this.assessmentMode,
     required this.onSubmissionSucceeded,
+    this.draftRequest,
+    this.draftFacilityDefaults,
   });
 
   final Key? key;
@@ -642,9 +650,13 @@ class AssessmentDynamicFormRouteArgs {
 
   final void Function() onSubmissionSucceeded;
 
+  final AssessmentSubmissionRequest? draftRequest;
+
+  final Map<String, dynamic>? draftFacilityDefaults;
+
   @override
   String toString() {
-    return 'AssessmentDynamicFormRouteArgs{key: $key, facility: $facility, assessmentMode: $assessmentMode, onSubmissionSucceeded: $onSubmissionSucceeded}';
+    return 'AssessmentDynamicFormRouteArgs{key: $key, facility: $facility, assessmentMode: $assessmentMode, onSubmissionSucceeded: $onSubmissionSucceeded, draftRequest: $draftRequest, draftFacilityDefaults: $draftFacilityDefaults}';
   }
 }
 

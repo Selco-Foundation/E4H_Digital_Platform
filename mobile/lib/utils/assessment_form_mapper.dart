@@ -4,10 +4,57 @@ import 'package:digit_forms_engine/utils/utils.dart' as forms_utils;
 
 import '../model/assessment/assessment_form.dart';
 import '../model/assessment/assessment_form_type.dart';
+import '../model/assessment/assessment_queue.dart';
+
+Map<String, dynamic> buildAssessmentDraftDefaults({
+  required AssessmentSubmissionRequest request,
+  required AssessmentQueueFacility facility,
+  Map<String, dynamic>? facilityDefaults,
+}) {
+  String display(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? '---' : normalized;
+  }
+
+  final location = [facility.state, facility.district, facility.block]
+      .map((value) => value?.trim())
+      .whereType<String>()
+      .where((value) => value.isNotEmpty)
+      .join(', ');
+  return {
+    'facilityName': display(facility.facilityName),
+    'facilityType': display(facility.facilityType),
+    'facilityAddress': display(
+      facility.address ?? (location.isEmpty ? null : location),
+    ),
+    'facilityCode': display(facility.facilityCode),
+    ...?facilityDefaults,
+    ...request.submissionData,
+  };
+}
+
+Map<String, dynamic> normalizeAssessmentDraftDefaultsForPage({
+  required PropertySchema page,
+  required Map<String, dynamic> defaults,
+}) {
+  final normalized = Map<String, dynamic>.from(defaults);
+  for (final entry
+      in page.properties?.entries ?? <MapEntry<String, PropertySchema>>[]) {
+    final value = normalized[entry.key];
+    if (entry.value.isMultiSelect == true && value is List) {
+      normalized[entry.key] = value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .join('.');
+    }
+  }
+  return normalized;
+}
 
 Map<String, dynamic> buildAssessmentFacilityDefaults({
   required AssessmentFacilityDetails? facility,
   required AssessmentFormType formType,
+  AssessmentQueueFacility? fallbackFacility,
 }) {
   String display(String? value) {
     final normalized = value?.trim();
@@ -15,23 +62,66 @@ Map<String, dynamic> buildAssessmentFacilityDefaults({
   }
 
   String editable(String? value) => value?.trim() ?? '';
+  String? firstValue(Iterable<String?> values) {
+    for (final value in values) {
+      final normalized = value?.trim();
+      if (normalized != null && normalized.isNotEmpty) return normalized;
+    }
+    return null;
+  }
+
+  final fallbackLocation = [
+    fallbackFacility?.state,
+    fallbackFacility?.district,
+    fallbackFacility?.block,
+  ]
+      .map((value) => value?.trim())
+      .whereType<String>()
+      .where((value) => value.isNotEmpty)
+      .join(', ');
   final isAwc = formType == AssessmentFormType.AWC_PHONE ||
       formType == AssessmentFormType.AWC_FIELD;
+  final inChargeName = firstValue([
+    facility?.facilityPocName,
+    fallbackFacility?.facilityInCharge.name,
+  ]);
+  final inChargeContact = firstValue([
+    facility?.facilityPocPhone,
+    fallbackFacility?.facilityInCharge.phone,
+  ]);
+  final alternateName = fallbackFacility?.alternativeContact.name;
+  final alternateContact = fallbackFacility?.alternativeContact.phone;
   return {
-    'facilityName': display(facility?.facilityName),
-    'facilityType': display(facility?.facilityType),
-    'facilityAddress': display(facility?.formattedAddress),
-    'facilityCode': display(facility?.facilityId),
-    'facilityInChargeName': isAwc
-        ? editable(facility?.facilityPocName)
-        : display(facility?.facilityPocName),
-    'facilityInChargeContact': isAwc
-        ? editable(facility?.facilityPocPhone)
-        : display(facility?.facilityPocPhone),
+    'facilityName': display(
+      firstValue([facility?.facilityName, fallbackFacility?.facilityName]),
+    ),
+    'facilityType': display(
+      firstValue([facility?.facilityType, fallbackFacility?.facilityType]),
+    ),
+    'facilityAddress': display(
+      firstValue([
+        facility?.formattedAddress,
+        fallbackFacility?.address,
+        fallbackLocation,
+      ]),
+    ),
+    'facilityCode': display(
+      firstValue([
+        facility?.facilityId,
+        fallbackFacility?.facilityCode,
+        fallbackFacility?.facilityId,
+      ]),
+    ),
+    'facilityInChargeName':
+        isAwc ? editable(inChargeName) : display(inChargeName),
+    'facilityInChargeContact':
+        isAwc ? editable(inChargeContact) : display(inChargeContact),
     'facilityInChargeDesignation': '',
-    'alternateContactName': isAwc ? '' : '---',
+    'alternateContactName':
+        isAwc ? editable(alternateName) : display(alternateName),
     'alternateContactDesignation': '',
-    'alternateContactNumber': isAwc ? '' : '---',
+    'alternateContactNumber':
+        isAwc ? editable(alternateContact) : display(alternateContact),
     'ninId': display(facility?.ninId),
     'hfrId': display(facility?.hfrId),
   };
