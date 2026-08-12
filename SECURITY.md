@@ -18,7 +18,7 @@ If you discover a security vulnerability in this project, **please report it pri
 You can report a vulnerability using one of the following methods:
 
 1. **GitHub Security Advisories (Preferred):** Go to the repository's **Security** tab -> **Advisories** -> Click **"Report a vulnerability"**.
-2. **Email:** Send a report directly to **security@selco-foundation.org**.
+2. **Email:** Send a report directly to **e4hplatform@selcofoundation.org**.
 
 ### What to Include in Your Report
 To help us triage and resolve the issue quickly, please provide:
