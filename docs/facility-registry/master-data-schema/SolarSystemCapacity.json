@@ -1,0 +1,18 @@
+{
+  "tenantId": "in",
+  "module": "facility",
+  "SolarSystemCapacity": [
+    { "active": true, "code": "0.25", "name": "0.25 kWp", "capacityKwp": 0.25 },
+    { "active": true, "code": "0.5", "name": "0.5 kWp", "capacityKwp": 0.5 },
+    { "active": true, "code": "0.63", "name": "0.63 kWp", "capacityKwp": 0.63 },
+    { "active": true, "code": "1", "name": "1 kWp", "capacityKwp": 1 },
+    { "active": true, "code": "2", "name": "2 kWp", "capacityKwp": 2 },
+    { "active": true, "code": "3", "name": "3 kWp", "capacityKwp": 3 },
+    { "active": true, "code": "5", "name": "5 kWp", "capacityKwp": 5 },
+    { "active": true, "code": "6", "name": "6 kWp", "capacityKwp": 6 },
+    { "active": true, "code": "7", "name": "7 kWp", "capacityKwp": 7 },
+    { "active": true, "code": "8", "name": "8 kWp", "capacityKwp": 8 },
+    { "active": true, "code": "10", "name": "10 kWp", "capacityKwp": 10 },
+    { "active": true, "code": "CUSTOM", "name": "Custom Capacity", "capacityKwp": 0 }
+  ]
+}

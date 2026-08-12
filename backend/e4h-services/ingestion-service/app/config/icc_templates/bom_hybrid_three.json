@@ -1,0 +1,1903 @@
+{
+  "key": "ac_hybrid_rms_three_phase",
+  "config": {
+    "content": [
+      { "text": "Bill Of Material(For Solar System)", "style": "header" },
+      {
+        "table": {
+          "widths": ["50%", "50%"],
+          "body": [
+            [
+              {
+                "text": "Health Facility Name & Address",
+                "style": "tableHeader"
+              },
+              { "text": "Project Details", "style": "tableHeader" }
+            ],
+            [
+              { "text": "Name: {{health_facility_name}}" },
+              { "text": "Project Number: {{project_number}}" }
+            ],
+            [
+              { "text": "Address: {{health_facility_address}}" },
+              { "text": "Date: {{project_date}}" }
+            ],
+            [
+              { "text": "Vendor Name: {{vendor_name}}" },
+              { "text": "State: {{project_state}}" }
+            ],
+            [
+              { "text": "PO/WO Number: {{po_wo_number}}" },
+              { "text": "Block: {{project_block}}" }
+            ],
+            [
+              { "text": "Health Facility Type: {{health_facility_type}}" },
+              { "text": "" }
+            ]
+          ]
+        },
+        "layout": "lightHorizontalLines",
+        "margin": [0, 0, 0, 15]
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [50, "*", 100, 100, 80],
+          "body": [
+            [
+              { "text": "Sl. No.", "style": "tableHeader" },
+              { "text": "Product", "style": "tableHeader" },
+              { "text": "Make", "style": "tableHeader" },
+              { "text": "Capacity", "style": "tableHeader" },
+              { "text": "Quantity", "style": "tableHeader" }
+            ],
+            [
+              "1",
+              "Solar Module",
+              "{{solar_module_make}}",
+              "{{solar_module_capacity}}",
+              "{{solar_module_qty}}"
+            ],
+            [
+              "2",
+              "Solar Battery",
+              "{{solar_battery_make}}",
+              "{{solar_battery_capacity}}",
+              "{{solar_battery_qty}}"
+            ],
+            [
+              "3",
+              "Module Mounting structure (MMS)",
+              "{{mms_make}}",
+              "{{mms_capacity}}",
+              "{{mms_qty}}"
+            ],
+            [
+              "4",
+              "Solar Hybrid PCU",
+              "{{solar_hybrid_pcu_make}}",
+              "{{solar_hybrid_pcu_capacity}}",
+              "{{solar_hybrid_pcu_qty}}"
+            ],
+            [
+              "5",
+              "Changeover switch / Bypass switch - 1",
+              "{{ changeover1_make }}",
+              "{{ changeover1_capacity }}",
+              "{{ changeover1_qty }}"
+            ],
+            [
+              "6",
+              "Changeover switch / Bypass switch - 2",
+              "{{ changeover2_make }}",
+              "{{ changeover2_capacity }}",
+              "{{ changeover2_qty }}"
+            ],
+            [
+              "7",
+              "Copper Cable (Red + Black) (Module – Module-AJB) - PV1-F (Solar cables)",
+              "{{ module_ajb_pv1f_make }}",
+              "{{ module_ajb_pv1f_capacity }}",
+              "{{ module_ajb_pv1f_qty }}"
+            ],
+            [
+              "8",
+              "Copper Cable (Red + Black) (AJB - Inverter)- (DC Cables) ",
+              "{{ ajb_inverter_dc_make }}",
+              "{{ ajb_inverter_dc_capacity }}",
+              "{{ ajb_inverter_dc_qty }}"
+            ],
+            [
+              "9",
+              "Cables (or) Strips (Battery -Battery) - (DC Copper Cables)",
+              "{{ battery_battery_dc_make }}",
+              "{{ battery_battery_dc_capacity }}",
+              "{{ battery_battery_dc_qty }}"
+            ],
+            [
+              "10",
+              "Copper Cable (Red + Black) (Battery - Inverter)- (DC Cables)",
+              "{{ battery_inverter_dc_make }}",
+              "{{ battery_inverter_dc_capacity }}",
+              "{{ battery_inverter_dc_qty }}"
+            ],
+            [
+              "11",
+              "DC Earthing (Panels + MMS + Battery rack + Inverter rack)",
+              "{{ dc_earthing_make }}",
+              "{{ dc_earthing_capacity }}",
+              "{{ dc_earthing_qty }}"
+            ],
+            [
+              "12",
+              "Earthing Cable for COS and Switch Disconnector",
+              "{{ earthing_cable_cos_sd_make }}",
+              "{{ earthing_cable_cos_sd_capacity }}",
+              "{{ earthing_cable_cos_sd_qty }}"
+            ],
+            [
+              "13",
+              "Voltage Sensing Cable for Remote Monitoring System (Red)",
+              "{{ voltage_sensing_red_make }}",
+              "{{ voltage_sensing_red_capacity }}",
+              "{{ voltage_sensing_red_qty }}"
+            ],
+            [
+              "14",
+              "Earthing Cable (AJB, GIPB, Inverter & Battery rack)",
+              "{{ earthing_cable_agib_make }}",
+              "{{ earthing_cable_agib_capacity }}",
+              "{{ earthing_cable_agib_qty }}"
+            ],
+            [
+              "15",
+              "Cable / down conductor for Lightning Arrestor",
+              "{{ lightning_down_conductor_make }}",
+              "{{ lightning_down_conductor_capacity }}",
+              "{{ lightning_down_conductor_qty }}"
+            ],
+            [
+              "16",
+              "Earthing Kit",
+              "{{ earthing_kit_make }}",
+              "{{ earthing_kit_capacity }}",
+              "{{ earthing_kit_qty }}"
+            ],
+            [
+              "17",
+              "Lightning Protection System",
+              "{{ lightning_protection_make }}",
+              "{{ lightning_protection_capacity }}",
+              "{{ lightning_protection_qty }}"
+            ],
+            [
+              "18",
+              "Grid Input Protection Box with Relay Contractor and SPD",
+              "{{ gipb_relay_spd_make }}",
+              "{{ gipb_relay_spd_capacity }}",
+              "{{ gipb_relay_spd_qty }}"
+            ],
+            [
+              "19a",
+              "Battery trolley box with wheels – Hard Plastic ",
+              "{{ battery_trolley_box_make }}",
+              "{{ battery_trolley_box_capacity }}",
+              "{{ battery_trolley_box_qty }}"
+            ],
+            [
+              "19b",
+              "Battery rack with the following: 1. Acid absorbent mat",
+              "{{ battery_rack_acid_absorbent_mat_make }}",
+              "{{ battery_rack_acid_absorbent_mat_capacity }}",
+              "{{ battery_rack_acid_absorbent_mat_qty }}"
+            ],
+            [
+              "19b",
+              "Battery rack with the following: 2. Electrical Insulation mat (Minimum (0.4 kV)",
+              "{{ battery_rack_electrical_insulation_mat_make }}",
+              "{{ battery_rack_electrical_insulation_mat_capacity }}",
+              "{{ battery_rack_electrical_insulation_mat_qty }}"
+            ],
+            [
+              "20a",
+              "Inverter Elevation Leg ",
+              "{{ inverter_elevation_leg_make }}",
+              "{{ inverter_elevation_leg_capacity }}",
+              "{{ inverter_elevation_leg_qty }}"
+            ],
+            [
+              "20b",
+              "Inverter Rack with the Following: 1. Electrical Insulation mat (Minimum 0.4 kV) ",
+              "{{ inverter_rack_electrical_insulation_mat_make }}",
+              "{{ inverter_rack_electrical_insulation_mat_capacity }}",
+              "{{ inverter_rack_electrical_insulation_mat_qty }}"
+            ],
+            [
+              "21",
+              "DC Combiner Box ",
+              "{{ dc_combiner_box_make }}",
+              "{{ dc_combiner_box_capacity }}",
+              "{{ dc_combiner_box_qty }}"
+            ],
+            [
+              "22",
+              "Solar Array Junction Box with MCB and SPD and String Fuse ",
+              "{{ solar_array_junction_box_make }}",
+              "{{ solar_array_junction_box_capacity }}",
+              "{{ solar_array_junction_box_qty }}"
+            ],
+            [
+              "23",
+              "Net Meter",
+              "{{ net_meter_make }}",
+              "{{ net_meter_capacity }}",
+              "{{ net_meter_qty }}"
+            ],
+            [
+              "24",
+              "Load side MCB with Conduit box ",
+              "{{ load_side_mcb_conduit_box_make }}",
+              "{{ load_side_mcb_conduit_box_capacity }}",
+              "{{ load_side_mcb_conduit_box_qty }}"
+            ],
+            [
+              "25",
+              "Marking for AC earthing with Elevated Plaques (GIPB + Inverter + Loads + Changeover Switch 1 & 2 + Inverter rack) ",
+              "{{ marking_ac_earthing_make }}",
+              "{{ marking_ac_earthing_capacity }}",
+              "{{ marking_ac_earthing_qty }}"
+            ],
+            [
+              "26",
+              "Marking for DC earthing with Elevated Plaques (AJB + MMS + Panels + Switch Disconnector + Battery Rack) ",
+              "{{ marking_dc_earthing_make }}",
+              "{{ marking_dc_earthing_capacity }}",
+              "{{ marking_dc_earthing_qty }}"
+            ],
+            [
+              "27",
+              "Marking of Lightning Arrester Earthing with Elevated Plaques ",
+              "{{ marking_lightning_arrester_make }}",
+              "{{ marking_lightning_arrester_capacity }}",
+              "{{ marking_lightning_arrester_qty }}"
+            ],
+            [
+              "28",
+              "Single Line Diagram (SLD) for the system ",
+              "{{ sld_make }}",
+              "{{ sld_capacity }}",
+              "{{ sld_qty }}"
+            ],
+            [
+              "29",
+              "Do's and Don'ts Practices Poster (Solar Panels, Battery and Inverter) ",
+              "{{ dos_donts_poster_make }}",
+              "{{ dos_donts_poster_capacity }}",
+              "{{ dos_donts_poster_qty }}"
+            ],
+            [
+              "30",
+              "Signboard for Danger (Electric Shock & High Voltage, No Fire and PASS) ",
+              "{{ signboard_danger_make }}",
+              "{{ signboard_danger_capacity }}",
+              "{{ signboard_danger_qty }}"
+            ],
+            [
+              "31",
+              "I/P and O/P wiring of Grid Connection-ac cable ",
+              "{{ grid_connection_wiring_make }}",
+              "{{ grid_connection_wiring_capacity }}",
+              "{{ grid_connection_wiring_qty }}"
+            ],
+            [
+              "32",
+              "Fire Extinguisher ",
+              "{{ fire_extinguisher_make }}",
+              "{{ fire_extinguisher_capacity }}",
+              "{{ fire_extinguisher_qty }}"
+            ],
+            [
+              "33",
+              "Metallic Enclosure with Isolator’s having minimum gap of 1 inch.(PV, Battery & Grid Input to Inverter) ",
+              "{{ metallic_enclosure_make }}",
+              "{{ metallic_enclosure_capacity }}",
+              "{{ metallic_enclosure_qty }}"
+            ],
+            [
+              "34",
+              "Consumables ",
+              "{{ consumables_make }}",
+              "{{ consumables_capacity }}",
+              "{{ consumables_qty }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Bill of material (For Luminaries & Fans)", "style": "header" },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Sl. No.", "style": "tableHeader" },
+              { "text": "Product", "style": "tableHeader" },
+              { "text": "Make", "style": "tableHeader" },
+              { "text": "Capacity", "style": "tableHeader" },
+              { "text": "Quantity", "style": "tableHeader" },
+              { "text": "Remarks", "style": "tableHeader" }
+            ],
+            [
+              "1",
+              "LED Bulb",
+              "{{led_bulb_1_make}}",
+              "{{led_bulb_1_capacity}}",
+              "{{led_bulb_1_qty}}",
+              "{{led_bulb_1_remarks}}"
+            ],
+            [
+              "2",
+              "LED Bulb",
+              "{{led_bulb_2_make}}",
+              "{{led_bulb_2_capacity}}",
+              "{{led_bulb_2_qty}}",
+              "{{led_bulb_2_remarks}}"
+            ],
+            [
+              "3",
+              "LED Tube light",
+              "{{led_tube_light_1_make}}",
+              "{{led_tube_light_1_capacity}}",
+              "{{led_tube_light_1_qty}}",
+              "{{led_tube_light_1_remarks}}"
+            ],
+            [
+              "4",
+              "LED Tube light",
+              "{{led_tube_light_2_make}}",
+              "{{led_tube_light_2_capacity}}",
+              "{{led_tube_light_2_qty}}",
+              "{{led_tube_light_2_remarks}}"
+            ],
+            [
+              "5",
+              "Ceiling fan with regulators – Two modular",
+              "{{ ceiling_fan_regulators_make }}",
+              "{{ ceiling_fan_regulators_capacity }}",
+              "{{ ceiling_fan_regulators_qty }}",
+              "{{ ceiling_fan_regulators_remarks }}"
+            ],
+            [
+              "6",
+              "Wall Mounted Fan",
+              "{{ wall_mounted_fan_make }}",
+              "{{ wall_mounted_fan_capacity }}",
+              "{{ wall_mounted_fan_qty }}",
+              "{{ wall_mounted_fan_remarks }}"
+            ],
+            [
+              "7",
+              "Outdoor light with automatic control switch (for dusk to dawn operations)",
+              "{{ outdoor_light_auto_control_make }}",
+              "{{ outdoor_light_auto_control_capacity }}",
+              "{{ outdoor_light_auto_control_qty }}",
+              "{{ outdoor_light_auto_control_remarks }}"
+            ],
+            [
+              "8",
+              "Outdoor light arm - Rust free (GI Material)",
+              "{{ outdoor_light_arm_make }}",
+              "{{ outdoor_light_arm_capacity }}",
+              "{{ outdoor_light_arm_qty }}",
+              "{{ outdoor_light_arm_remarks }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Bill of material (For RMS)", "style": "header" },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [50, "*", 100],
+          "body": [
+            [
+              { "text": "Sl. No.", "style": "tableHeader" },
+              { "text": "Items", "style": "tableHeader" },
+              { "text": "Installation Description", "style": "tableHeader" }
+            ],
+            ["1", "Product Model Number", "{{rms_product_model_number}}"],
+            [
+              "2",
+              " RMS Type Installed (Type 1 / Type 2 / Type 3)",
+              "{{rms_type_installed}} : {{rms_type_description}}"
+            ],
+            ["3", "RMS IP Number/MAC ID", "{{ rms_ip_mac_id }}"],
+            ["4", "RMS Serial Number", "{{ rms_serial_number }}"],
+            ["5", "SIM Number", "{{ rms_sim_number }}"],
+            [
+              "6",
+              "Installation status (Completed/Not Completed)",
+              "{{ rms_installation_status }} : {{rms_installation_notes}}"
+            ],
+            [
+              "7",
+              "Meter Status (Active/Inactive)",
+              "{{ rms_meter_status }} - {{rms_meter_status_notes}}"
+            ],
+            [
+              "8",
+              "Date of Installation completed (DD-MM-YYYY)",
+              "{{ rms_installation_date }}"
+            ],
+            [
+              "9",
+              "Time of installation (HH:MM) AM/PM",
+              "{{ rms_installation_date }}"
+            ],
+            ["10", "Name of the person installed", "{{ rms_installer_name }}"],
+            [
+              "11",
+              "Mob No. of the person installed",
+              "{{ rms_installer_mobile }}"
+            ],
+            [
+              "12",
+              "Mobile service Provider of RMS device",
+              "{{ rms_service_provider }}"
+            ],
+            [
+              "13",
+              "Availability of Airtel Network (Yes/No)",
+              "{{ rms_airtel_network_available }}"
+            ],
+            [
+              "14",
+              "Type of RMS (Single phase/Three phase)",
+              "{{ rms_type }} - {{rms_type_notes}}"
+            ],
+            ["15", "RMS - CSQ value (During IP Pinging)", "{{ rms_csq_value }}"]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Bill of material (For Load Wiring)", "style": "header" },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [50, "*", 100, 100, 80],
+          "body": [
+            [
+              { "text": "Sl. No.", "style": "tableHeader" },
+              { "text": "Items", "style": "tableHeader" },
+              { "text": "Description & Make", "style": "tableHeader" },
+              { "text": "Capacity", "style": "tableHeader" },
+              { "text": "Quantity", "style": "tableHeader" }
+            ],
+            [
+              "1",
+              "AC Distribution Box",
+              "{{ac_distribution_box_description}} : {{ac_distribution_box_make}}",
+              "{{ac_distribution_box_capacity}}",
+              "{{ac_distribution_box_qty}}"
+            ],
+            [
+              "2",
+              "RCCB - 1",
+              "{{rccb_1_description}} : {{rccb_1_make}}",
+              "{{rccb_1_capacity}}",
+              "{{rccb_1_qty}}"
+            ],
+            [
+              "3",
+              "RCCB - 2",
+              "{{rccb_2_description}} : {{rccb_2_make}}",
+              "{{rccb_2_capacity}}",
+              "{{rccb_2_qty}}"
+            ],
+            [
+              "4",
+              "RCCB - 3",
+              "{{rccb_3_description}} : {{rccb_3_make}}",
+              "{{rccb_3_capacity}}",
+              "{{rccb_3_qty}}"
+            ],
+            [
+              "5",
+              "Isolator - 1",
+              "{{ isolator_1_description }} : {{ isolator_1_make }}",
+              "{{ isolator_1_capacity }}",
+              "{{ isolator_1_qty }}"
+            ],
+            [
+              "6",
+              "Isolator - 2",
+              "{{ isolator_2_description }} : {{isolator_2_make}} ",
+              "{{ isolator_2_capacity }}",
+              "{{ isolator_2_qty }}"
+            ],
+            [
+              "7",
+              "Isolator - 3",
+              "{{ isolator_3_description }} : {{isolator_3_make}}",
+              "{{ isolator_3_capacity }}",
+              "{{ isolator_3_qty }}"
+            ],
+            [
+              "8",
+              "Main MCB",
+              "{{ main_mcb_description }} : {{main_mcb_make}}",
+              "{{ main_mcb_capacity }}",
+              "{{ main_mcb_qty }}"
+            ],
+            [
+              "9",
+              "MCB Circuit - 1",
+              "{{ mcb_circuit_1_description }} : {{mcb_circuit_1_make}}",
+              "{{ mcb_circuit_1_capacity }}",
+              "{{ mcb_circuit_1_qty }}"
+            ],
+            [
+              "10",
+              "MCB Circuit - 2",
+              "{{ mcb_circuit_2_description }} : {{mcb_circuit_2_make}}",
+              "{{ mcb_circuit_2_capacity }}",
+              "{{ mcb_circuit_2_qty }}"
+            ],
+            [
+              "11",
+              "MCB Circuit - 3",
+              "{{ mcb_circuit_3_description }} : {{mcb_circuit_3_make}}",
+              "{{ mcb_circuit_3_capacity }}",
+              "{{ mcb_circuit_3_qty }}"
+            ],
+            [
+              "12",
+              "MCB Circuit - 4",
+              "{{ mcb_circuit_4_description }} : {{mcb_circuit_4_make}}",
+              "{{ mcb_circuit_4_capacity }}",
+              "{{ mcb_circuit_4_qty }}"
+            ],
+            [
+              "13",
+              "MCB Circuit - 5",
+              "{{ mcb_circuit_5_description }} : {{mcb_circuit_5_make}}",
+              "{{ mcb_circuit_5_capacity }}",
+              "{{ mcb_circuit_5_qty }}"
+            ],
+            [
+              "14",
+              "Fan Regulator",
+              "{{ fan_regulator_description }} : {{fan_regulator_make}}",
+              "{{ fan_regulator_capacity }}",
+              "{{ fan_regulator_qty }}"
+            ],
+            [
+              "15",
+              "Socket (Modular)",
+              "{{ socket_modular_description }} : {{socket_modular_make}}",
+              "{{ socket_modular_capacity }}",
+              "{{ socket_modular_qty }}"
+            ],
+            [
+              "16",
+              "Switch (Modular)",
+              "{{ switch_modular_description }} : {{switch_modular_make}}",
+              "{{ switch_modular_capacity }}",
+              "{{ switch_modular_qty }}"
+            ],
+            [
+              "17",
+              "16 A Combo Socket with indicators",
+              "{{ 16_a_combo_socket_with_indicators_description }} : {{16_a_combo_socket_with_indicators_make}}",
+              "{{ 16_a_combo_socket_with_indicators_capacity }}",
+              "{{ 16_a_combo_socket_with_indicators_qty }}"
+            ],
+            [
+              "18",
+              "Power Cable - 1 (Red)",
+              "{{power_cable_1_red_description}} : {{power_cable_1_red_make}}",
+              "{{ power_cable_1_red_capacity }}",
+              "{{ power_cable_1_red_qty }}"
+            ],
+            [
+              "19",
+              "Power Cable - 1 (Black)",
+              "{{power_cable_1_black_description}} : {{power_cable_1_black_make}}",
+              "{{ power_cable_1_black_capacity }}",
+              "{{ power_cable_1_black_qty }}"
+            ],
+            [
+              "20",
+              "Power Cable - 2 (Red)",
+              "{{ power_cable_2_red_description }} : {{power_cable_2_red_make}}",
+              "{{ power_cable_2_red_capacity }}",
+              "{{ power_cable_2_red_qty }}"
+            ],
+            [
+              "21",
+              "Power Cable - 2 (Black)",
+              "{{ power_cable_2_black_description }} : {{power_cable_2_black_make}}",
+              "{{ power_cable_2_black_capacity }}",
+              "{{ power_cable_2_black_qty }}"
+            ],
+            [
+              "22",
+              "Power Cable - 3 (Red)",
+              "{{ power_cable_3_red_description }} : {{power_cable_3_red_make}}",
+              "{{ power_cable_3_red_capacity }}",
+              "{{ power_cable_3_red_qty }}"
+            ],
+            [
+              "23",
+              "Power Cable - 3 (Black)",
+              "{{ power_cable_3_black_description }} : {{power_cable_3_black_make}}",
+              "{{ power_cable_3_black_capacity }}",
+              "{{ power_cable_3_black_qty }}"
+            ],
+            [
+              "24",
+              "Earthing Cable – 1 (Green)",
+              "{{ earthing_cable_1_green_description }} : {{earthing_cable_1_green_make}}",
+              "{{ earthing_cable_1_green_capacity }}",
+              "{{ earthing_cable_1_green_qty }}"
+            ],
+            [
+              "25",
+              "Earthing Cable – 2 (Green)",
+              "{{ earthing_cable_2_green_description }} : {{earthing_cable_2_green_make}}",
+              "{{ earthing_cable_2_green_capacity }}",
+              "{{ earthing_cable_2_green_qty }}"
+            ],
+            [
+              "26",
+              "Ceiling Rose",
+              "{{ ceiling_rose_description }} : {{ceiling_rose_make}}",
+              "{{ ceiling_rose_capacity }}",
+              "{{ ceiling_rose_qty }}"
+            ],
+            [
+              "27",
+              "Angle Holder",
+              "{{ angle_holder_description }} : {{angle_holder_make}}",
+              "{{ angle_holder_capacity }}",
+              "{{ angle_holder_qty }}"
+            ],
+            [
+              "28",
+              "1 modular Switch Box with plate",
+              "{{ 1_modular_switch_box_with_plate_description }} : {{1_modular_switch_box_with_plate_make}}",
+              "{{ 1_modular_switch_box_with_plate_capacity }}",
+              "{{ 1_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "29",
+              "2 modular Switch Box with plate",
+              "{{ 2_modular_switch_box_with_plate_description }} : {{2_modular_switch_box_with_plate_make}}",
+              "{{ 2_modular_switch_box_with_plate_capacity }}",
+              "{{ 2_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "30",
+              "3 modular Switch Box with plate",
+              "{{ 3_modular_switch_box_with_plate_description }} : {{3_modular_switch_box_with_plate_make}}",
+              "{{ 3_modular_switch_box_with_plate_capacity }}",
+              "{{ 3_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "31",
+              "4 modular Switch Box with plate",
+              "{{ 4_modular_switch_box_with_plate_description }} : {{4_modular_switch_box_with_plate_make}}",
+              "{{ 4_modular_switch_box_with_plate_capacity }}",
+              "{{ 4_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "32",
+              "6 modular Switch Box with plate",
+              "{{ 6_modular_switch_box_with_plate_description }} : {{6_modular_switch_box_with_plate_make}}",
+              "{{ 6_modular_switch_box_with_plate_capacity }}",
+              "{{ 6_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "33",
+              "8 modular Switch Box with plate",
+              "{{ 8_modular_switch_box_with_plate_description }} : {{8_modular_switch_box_with_plate_make}}",
+              "{{ 8_modular_switch_box_with_plate_capacity }}",
+              "{{ 8_modular_switch_box_with_plate_qty }}"
+            ],
+            [
+              "34",
+              "Modular Box Blank plate (Dummy)",
+              "{{ modular_box_blank_plate_dummy_description }} : {{modular_box_blank_plate_dummy_make}}",
+              "{{ modular_box_blank_plate_dummy_capacity }}",
+              "{{ modular_box_blank_plate_dummy_qty }}"
+            ],
+            [
+              "35",
+              "UPVC Conduit Pipe (White)",
+              "{{ upvc_conduit_pipe_white_description }} : {{upvc_conduit_pipe_white_make}}",
+              "{{ upvc_conduit_pipe_white_capacity }}",
+              "{{ upvc_conduit_pipe_white_qty }}"
+            ],
+            [
+              "36",
+              "UPVC - Coupler (White)",
+              "{{ upvc_coupler_white_description }} : {{upvc_coupler_white_make}}",
+              "{{ upvc_coupler_white_capacity }}",
+              "{{ upvc_coupler_white_qty }}"
+            ],
+            [
+              "37",
+              "UPVC Conduit Tee Joint",
+              "{{ upvc_conduit_tee_joint_description }} : {{upvc_conduit_tee_joint_make}}",
+              "{{ upvc_conduit_tee_joint_capacity }}",
+              "{{ upvc_conduit_tee_joint_qty }}"
+            ],
+            [
+              "38",
+              "UPVC - Short & Long Elbow (White)",
+              "{{ upvc_short_long_elbow_white_description }} : {{upvc_short_long_elbow_white_make}}",
+              "{{ upvc_short_long_elbow_white_capacity }}",
+              "{{ upvc_short_long_elbow_white_qty }}"
+            ],
+            [
+              "39",
+              "2-way Junction Box",
+              "{{ 2_way_junction_box_description }} : {{2_way_junction_box_make}}",
+              "{{ 2_way_junction_box_capacity }}",
+              "{{ 2_way_junction_box_qty }}"
+            ],
+            [
+              "40",
+              "3-way Junction Box",
+              "{{ 3_way_junction_box_description }} : {{3_way_junction_box_make}}",
+              "{{ 3_way_junction_box_capacity }}",
+              "{{ 3_way_junction_box_qty }}"
+            ],
+            [
+              "41",
+              "4-way Junction Box",
+              "{{ 4_way_junction_box_description }} : {{4_way_junction_box_make}}",
+              "{{ 4_way_junction_box_capacity }}",
+              "{{ 4_way_junction_box_qty }}"
+            ],
+            [
+              "42",
+              "Square Box",
+              "{{ square_box_description }} : {{square_box_make}}",
+              "{{ square_box_capacity }}",
+              "{{ square_box_qty }}"
+            ],
+            [
+              "43",
+              "Plastic wall lug",
+              "{{ plastic_wall_lug_description }} : {{plastic_wall_lug_make}}",
+              "{{ plastic_wall_lug_capacity }}",
+              "{{ plastic_wall_lug_qty }}"
+            ],
+            [
+              "44",
+              "Plastic wall lug",
+              "{{ plastic_wall_lug_description }} : {{plastic_wall_lug_make}}",
+              "{{ plastic_wall_lug_capacity }}",
+              "{{ plastic_wall_lug_qty }}"
+            ],
+            [
+              "45",
+              "Screw",
+              "{{ screw_description }} : {{screw_make}}",
+              "{{ screw_capacity }}",
+              "{{ screw_qty }}"
+            ],
+            [
+              "46",
+              "Screw",
+              "{{ screw_description }} : {{screw_make}}",
+              "{{ screw_capacity }}",
+              "{{ screw_qty }}"
+            ],
+            [
+              "47",
+              "Electrical Insulating Tape",
+              "{{ electrical_insulating_tape_description }} : {{electrical_insulating_tape_make}}",
+              "{{ electrical_insulating_tape_capacity }}",
+              "{{ electrical_insulating_tape_qty }}"
+            ],
+            [
+              "48",
+              "Pipe Saddle Clamps",
+              "{{ pipe_saddle_clamps_description }} : {{pipe_saddle_clamps_make}}",
+              "{{ pipe_saddle_clamps_capacity }}",
+              "{{ pipe_saddle_clamps_qty }}"
+            ],
+            [
+              "49",
+              "Saddle Nail",
+              "{{ saddle_nail_description }} : {{saddle_nail_make}}",
+              "{{ saddle_nail_capacity }}",
+              "{{ saddle_nail_qty }}"
+            ],
+            [
+              "50",
+              "Cable Tie",
+              "{{ cable_tie_description }} : {{cable_tie_make}}",
+              "{{ cable_tie_capacity }}",
+              "{{ cable_tie_qty }}"
+            ],
+            [
+              "51",
+              "Cable Lugs - 1",
+              "{{ cable_lugs_1_description }} : {{cable_lugs_1_make}}",
+              "{{ cable_lugs_1_capacity }}",
+              "{{ cable_lugs_1_qty }}"
+            ],
+            [
+              "52",
+              "Cable Lugs - 2",
+              "{{ cable_lugs_2_description }} : {{cable_lugs_2_make}}",
+              "{{ cable_lugs_2_capacity }}",
+              "{{ cable_lugs_2_qty }}"
+            ],
+            [
+              "53",
+              "Flexible Pipe",
+              "{{ flexible_pipe_description }} : {{flexible_pipe_make}}",
+              "{{ flexible_pipe_capacity }}",
+              "{{ flexible_pipe_qty }}"
+            ],
+            [
+              "54",
+              "Labelling Tags (Load identification tags)",
+              "{{ labelling_tags_load_identification_tags_description }} : {{labelling_tags_load_identification_tags_make}}",
+              "{{ labelling_tags_load_identification_tags_capacity }}",
+              "{{ labelling_tags_load_identification_tags_qty }}"
+            ],
+            [
+              "55",
+              "Labelling Tags (Cable identification tags)",
+              "{{ labelling_tags_cable_identification_tags_description }} : {{labelling_tags_cable_identification_tags_make}}",
+              "{{ labelling_tags_cable_identification_tags_capacity }}",
+              "{{ labelling_tags_cable_identification_tags_qty }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "SYSTEM FUNCTIONALITY PARAMETERS", "style": "header" },
+      {
+        "table": {
+          "body": [
+            [
+              { "text": "Date of recording", "style": "tableHeader" },
+              { "text": "{{sfp_date}}" },
+              { "text": "Time of recording", "style": "tableHeader" },
+              { "text": "{{ sfp_date }}" }
+            ],
+            [
+              {
+                "text": "Weather Condition at the time of recording",
+                "style": "tableHeader"
+              },
+              { "text": "{{sfp_weather}}" },
+              { "text": "" },
+              { "text": "" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Array Details", "style": "header" },
+      {
+        "table": {
+          "body": [
+            [
+              { "text": "Array Size:(kWp)", "style": "tableHeader" },
+              { "text": "{{array_size_kwp}}" },
+              { "text": "No. of modules: ", "style": "tableHeader" },
+              { "text": "{{ array_no_modules }}" },
+              { "text": "No. of strings: ", "style": "tableHeader" },
+              { "text": "{{ array_no_strings }}" },
+              { "text": "No. of modules per string: ", "style": "tableHeader" },
+              { "text": "{{ array_no_modules_per_string }}" }
+            ],
+            [
+              { "text": "Each module capacity(Wp): ", "style": "tableHeader" },
+              { "text": "{{ array_each_module_wp }}" },
+              { "text": "" },
+              { "text": "" },
+              { "text": "" },
+              { "text": "" },
+              { "text": "" },
+              { "text": "" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "Array Parameters (At the AJB)", "style": "header" },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [100, 50, 70, 80, 100],
+          "body": [
+            [
+              { "text": "Test Condition", "style": "tableHeader" },
+              { "text": "Voltage", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Current", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" }
+            ],
+            [
+              "Measurement with module MCB OFF",
+              "Voc(in Volts)",
+              "String 1: {{ajb_off_voc_string_1}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with module MCB OFF",
+              "Voc(in Volts)",
+              "String 2: {{ajb_off_voc_string_2}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with module MCB OFF",
+              "Voc(in Volts)",
+              "String 3: {{ajb_off_voc_string_3}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with module MCB OFF",
+              "Voc(in Volts)",
+              "String 4: {{ajb_off_voc_string_4}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with module MCB OFF",
+              "Voc(in Volts)",
+              "String 5: {{ajb_off_voc_string_5}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with module MCB OFF",
+              "Voc(in Volts)",
+              "Array: {{ajb_off_voc_mv_anchor}}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with module MCB ON",
+              "Vmp(in Volts)",
+              "String 1: {{ajb_on_vmp_string_1}}",
+              "Imp(in Amperes)",
+              "String 1: {{ajb_on_imp_string_1}}"
+            ],
+            [
+              "Measurement with module MCB ON",
+              "Vmp(in Volts)",
+              "String 2: {{ajb_on_vmp_string_2}}",
+              "Imp(in Amperes)",
+              "String 2: {{ajb_on_imp_string_2}}"
+            ],
+            [
+              "Measurement with module MCB ON",
+              "Vmp(in Volts)",
+              "String 3: {{ajb_on_vmp_string_3}}",
+              "Imp(in Amperes)",
+              "String 3: {{ajb_on_imp_string_3}}"
+            ],
+            [
+              "Measurement with module MCB ON",
+              "Vmp(in Volts)",
+              "String 4: {{ajb_on_vmp_string_4}}",
+              "Imp(in Amperes)",
+              "String 4: {{ajb_on_imp_string_4}}"
+            ],
+            [
+              "Measurement with module MCB ON",
+              "Vmp(in Volts)",
+              "String 5: {{ajb_on_vmp_string_5}}",
+              "Imp(in Amperes)",
+              "String 5: {{ajb_on_imp_string_5}}"
+            ],
+            [
+              "Measurement with module MCB ON",
+              "Vmp(in Volts)",
+              "Array: {{ajb_on_vmp_mv_anchor}}",
+              "Imp(in Amperes)",
+              "Array: {{ajb_on_imp_mv_anchor}}"
+            ],
+            [
+              "Measurement with module MCB ON",
+              "Pmp(in Watts)",
+              "String 1: {{ ajb_on_pmp_string_1 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Grid OFF + AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 2: {{ ajb_on_pmp_string_2 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Grid OFF + AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 3: {{ ajb_on_pmp_string_3 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Grid OFF + AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 4: {{ ajb_on_pmp_string_4 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Grid OFF + AJB MCB ON",
+              "Pmp(in Watts)",
+              "String 5: {{ ajb_on_pmp_string_5 }}",
+              "NA",
+              "NA"
+            ],
+            [
+              "Measurement with Grid OFF + AJB MCB ON",
+              "Pmp(in Watts)",
+              "Array: {{ ajb_on_pmp_array }}",
+              "NA",
+              "NA"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Battery Bank Details",
+        "style": "header"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              { "text": "Bank Size (kWh):", "style": "tableHeader" },
+              { "text": "{{ bbank_size_kwh }}" },
+              { "text": "Bank Capacity:(Ah) ", "style": "tableHeader" },
+              { "text": "{{ bbank_capacity_ah }}" },
+              { "text": "No. of Batteries: ", "style": "tableHeader" },
+              { "text": "{{ bbank_no_batteries }}" },
+              { "text": "No. of Strings: ", "style": "tableHeader" },
+              { "text": "{{ bbank_no_strings }}" }
+            ],
+            [
+              {
+                "text": "No. of Batteries per String: ",
+                "style": "tableHeader"
+              },
+              { "text": "{{ bbank_batteries_per_string }}" },
+              { "text": "Each Battery:Capacity (Ah)", "style": "tableHeader" },
+              { "text": "{{ bbank_each_capacity_ah }}" },
+              { "text": "Each Battery: Voltage (V)", "style": "tableHeader" },
+              { "text": "{{bbank_each_voltage_v}}" },
+              { "text": "Each battery: C-Rating" },
+              { "text": "{{ bbank_each_c_rating }}" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Battery Bank parameters(Load ON)",
+        "style": "header"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" }
+            ],
+            ["Battery Bank Voltage(Volts):", "{{bb_voltage_mv}}"],
+            ["Battery Bank Current(Volts)", "{{bb_current_mv}}"]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "PCU/Inverter details",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "widths": [100, 100, 50],
+          "body": [
+            [
+              { "text": "Number of PCUs/Inverters:", "style": "tableHeader" },
+              { "text": "{{ pcu_inverter_count }}" },
+              { "text": "" }
+            ],
+            [
+              "Ratings of each PCU/Inverter",
+              "kVA: {{ pcu_inverter_rating_kva }}",
+              "Phase: {{ pcu_inverter_rating_phase }}"
+            ],
+            [
+              "Total capacity of the PCU/Inverter(kVA)",
+              "kVA: {{ pcu_inverter_total_capacity_kva }}",
+              "Phase: {{ pcu_inverter_total_capacity_phase }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": " Charge Controller details",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              {
+                "text": "Number of Charge Controllers:",
+                "style": "tableHeader"
+              },
+              { "text": "{{ charge_controller_count }}" }
+            ],
+            ["Charge Controller ratings:", "{{ charge_controller_ratings }}"]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "1-Phase System - PCU/Inverter parameters",
+        "style": "header"
+      },
+      {
+        "text": "Measurement with Grid OFF",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            [
+              "Load voltage/Inverter output voltage",
+              "{{ph1_load_voltage_mv}}",
+              "{{ph1_load_voltage_uom}}"
+            ],
+            [
+              "Inverter output frequency",
+              "{{ph1_output_freq_mv}}",
+              "{{ph1_output_freq_uom}}"
+            ],
+            [
+              "Inverter output current at full load:(All solar loads turned on for 10 minutes)",
+              "{{ph1_output_current_full_load_mv}}",
+              "{{ph1_output_current_full_load_uom}}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Measurement with Grid ON",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "widths": [100, 100, 50],
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            [
+              "Grid voltage (Phase – Neutral)",
+              "{{ph1_grid_input_voltage_mv}}",
+              "{{ph1_grid_input_voltage_uom}}"
+            ],
+            [
+              "Grid frequency",
+              "{{ph1_grid_frequency_mv}}",
+              "{{ph1_grid_frequency_uom}}"
+            ],
+            [
+              "Grid Current",
+              "{{ph1_grid_current_mv}}",
+              "{{ph1_grid_current_uom}}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "3-Phase System - PCU/Inverter parameters",
+        "style": "header"
+      },
+      {
+        "text": "Measurement with Grid OFF",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            [
+              "Load voltage/Inverter output voltage (R & Neutral)",
+              "{{ph3_off_load_inverter_voltage_rn_mv}}",
+              "{{ph3_off_load_inverter_voltage_rn_uom}}"
+            ],
+            [
+              "Inverter output frequency(R & Neutral)",
+              "{{ph3_off_inverter_output_frequency_rn_mv}}",
+              "{{ph3_off_inverter_output_frequency_rn_uom}}"
+            ],
+            [
+              "Inverter output current at full load (R & Neutral)(All solar loads turned on continuously for 10 minutes)",
+              "{{ph3_off_inverter_full_load_current_rn_mv}}",
+              "{{ph3_off_inverter_full_load_current_rn_uom}}"
+            ],
+            [
+              "Load voltage/Inverter output voltage(Y & Neutral)",
+              "{{ ph3_off_load_inverter_voltage_yn_mv }}",
+              "{{ ph3_off_load_inverter_voltage_yn_uom }}"
+            ],
+            [
+              "Inverter output frequency(Y & Neutral)",
+              "{{ ph3_off_inverter_output_frequency_yn_mv }}",
+              "{{ ph3_off_inverter_output_frequency_yn_uom }}"
+            ],
+            [
+              "Inverter output current at full load (Y & Neutral)(All solar loads turned on continuously for 10 minutes)",
+              "{{ ph3_off_inverter_full_load_current_yn_mv }}",
+              "{{ph3_off_inverter_full_load_current_yn_uom}}"
+            ],
+            [
+              "Load voltage/Inverter output voltage (B & Neutral)",
+              "{{ ph3_off_load_inverter_voltage_bn_mv}}",
+              "{{ ph3_off_load_inverter_voltage_bn_uom}}"
+            ],
+            [
+              "Inverter output frequency(B & Neutral)",
+              "{{ph3_off_inverter_output_frequency_bn_mv}}",
+              "{{ph3_off_inverter_output_frequency_bn_uom}}"
+            ],
+            [
+              "Inverter output current at full load (B & Neutral) (All solar loads turned on continuously for 10 minutes)",
+              "{{ ph3_off_inverter_full_load_current_bn_mv }}",
+              "{{ ph3_off_inverter_full_load_current_bn_uom }}"
+            ],
+            [
+              "Inverter output voltage between R & Y",
+              "{{ ph3_off_inverter_output_voltage_ry_mv }}",
+              "{{ ph3_off_inverter_output_voltage_ry_uom }}"
+            ],
+            [
+              "Inverter output frequency between R & Y:",
+              "{{ ph3_off_inverter_output_frequency_ry_mv }}",
+              "{{ ph3_off_inverter_output_frequency_ry_uom }}"
+            ],
+            [
+              "Inverter output voltage between R & B",
+              "{{ ph3_off_inverter_output_voltage_rb_mv }}",
+              "{{ ph3_off_inverter_output_voltage_rb_uom }}"
+            ],
+            [
+              "Inverter output frequency between R & B:",
+              "{{ ph3_off_inverter_output_frequency_rb_mv }}",
+              "{{ ph3_off_inverter_output_frequency_rb_uom }}"
+            ],
+            [
+              "Inverter output voltage between Y & B",
+              "{{ ph3_off_inverter_output_voltage_yb_mv }}",
+              "{{ ph3_off_inverter_output_voltage_yb_uom }}"
+            ],
+            [
+              "Inverter output frequency between Y & B:",
+              "{{ ph3_off_inverter_output_frequency_yb_mv }}",
+              "{{ ph3_off_inverter_output_frequency_yb_uom }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Measurement with Grid ON",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            [
+              "Grid voltage(R & Neutral)",
+              "{{ph3_on_grid_voltage_rn_mv}}",
+              "{{ph3_on_grid_voltage_rn_uom}}"
+            ],
+            [
+              "Grid frequency(R & Neutral)",
+              "{{ph3_on_grid_frequency_rn_mv}}",
+              "{{ph3_on_grid_frequency_rn_uom}}"
+            ],
+            [
+              "Grid current(R & Neutral)",
+              "{{ph3_on_grid_current_rn_mv}}",
+              "{{ph3_on_grid_current_rn_uom}}"
+            ],
+            [
+              "Grid voltage(Y & Neutral)",
+              "{{ ph3_on_grid_voltage_yn_mv}}",
+              "{{ ph3_on_grid_voltage_yn_uom }}"
+            ],
+            [
+              "Grid frequency(Y & Neutral)",
+              "{{ ph3_on_grid_frequency_yn_mv }}",
+              "{{ ph3_on_grid_frequency_yn_uom }}"
+            ],
+            [
+              "Grid current(Y & Neutral)",
+              "{{ ph3_on_grid_current_yn_mv }}",
+              "{{ ph3_on_grid_current_yn_uom }}"
+            ],
+            [
+              "Grid voltage(B & Neutral)",
+              "{{ ph3_on_grid_voltage_bn_mv }}",
+              "{{ ph3_on_grid_voltage_bn_uom }}"
+            ],
+            [
+              "Grid frequency(B & Neutral)",
+              "{{ ph3_on_grid_frequency_bn_mv }}",
+              "{{ ph3_on_grid_frequency_bn_uom }}"
+            ],
+            [
+              "Grid current(B & Neutral)",
+              "{{ ph3_on_grid_current_bn_mv }}",
+              "{{ ph3_on_grid_current_bn_uom }}"
+            ],
+            [
+              "Grid voltage(R & Y)",
+              "{{ ph3_on_grid_voltage_ry_mv }}",
+              "{{ ph3_on_grid_voltage_ry_uom }}"
+            ],
+            [
+              "Grid frequency(R & Y)",
+              "{{ ph3_on_grid_frequency_ry_mv }}",
+              "{{ ph3_on_grid_frequency_ry_uom }}"
+            ],
+            [
+              "Grid voltage(R & B)",
+              "{{ ph3_on_grid_voltage_rb_mv }}",
+              "{{ ph3_on_grid_voltage_rb_uom }}"
+            ],
+            [
+              "Grid frequency(R & B)",
+              "{{ ph3_on_grid_frequency_rb_mv }}",
+              "{{ ph3_on_grid_frequency_rb_uom }}"
+            ],
+            [
+              "Grid voltage(Y & B)",
+              "{{ ph3_on_grid_voltage_yb_mv }}",
+              "{{ ph3_on_grid_voltage_yb_uom }}"
+            ],
+            [
+              "Grid input frequency(Y & B)",
+              "{{ ph3_on_grid_frequency_yb_mv }}",
+              "{{ ph3_on_grid_frequency_yb_uom }}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "PCU/Inverter configuration setting", "style": "header" },
+      {
+        "text": "For both 1-Phase & 3-Phase connectivity",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              { "text": "Inverter Priority Settings:", "style": "tableHeader" },
+              { "text": "{{disp_inverter_priority}}" },
+              { "text": "Grid Export Feature:", "style": "tableHeader" },
+              { "text": "{{ disp_grid_export }}" }
+            ],
+            [
+              { "text": "Battery Settings:", "style": "tableHeader" },
+              { "text": "{{ disp_battery_settings_ah }}" },
+              { "text": "The load is running on:", "style": "tableHeader" },
+              { "text": "{{ disp_load_running_on }}" }
+            ],
+            [
+              { "text": "Battery Type:", "style": "tableHeader" },
+              { "text": "{{ disp_battery_type }}" },
+              { "text": "", "style": "tableHeader" },
+              { "text": "{{ }}" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      { "text": "PCU/Inverter Display", "style": "header" },
+      {
+        "text": "For both 1-Phase & 3-Phase connectivity",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              { "text": "Display:", "style": "tableHeader" },
+              { "text": "{{pcu_display_status}}" },
+              { "text": "Parameters:", "style": "tableHeader" },
+              { "text": "{{ pcu_display_parameters }}" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Isolator & Breaker functionality check",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "widths": ["70%", "30%"],
+          "body": [
+            [
+              { "text": "Array-PCU Isolator Voltage in ON position (Volts):" },
+              { "text": "{{ array_pcu_isolator_on_v }}" }
+            ],
+            [
+              { "text": "Array-PCU Isolator Voltage in OFF position (Volts):" },
+              { "text": "{{ array_pcu_isolator_off_v }}" }
+            ],
+            [
+              {
+                "text": "Battery-PCU Isolator Voltage in ON position (Volts):"
+              },
+              { "text": "{{ battery_pcu_isolator_on_v }}" }
+            ],
+            [
+              {
+                "text": "Battery-PCU Isolator Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ battery_pcu_isolator_off_v }}" }
+            ],
+            [
+              { "text": "Grid-PCU Isolator Voltage in ON position (Volts):" },
+              { "text": "{{ grid_pcu_isolator_on_v }}" }
+            ],
+            [
+              { "text": "Grid-PCU Isolator Voltage in OFF position (Volts):" },
+              { "text": "{{ grid_pcu_isolator_off_v }}" }
+            ],
+            [
+              { "text": "PCU-COS-1 Isolator Voltage in ON position (Volts):" },
+              { "text": "{{ pcu_cos1_isolator_on_v }}" }
+            ],
+            [
+              { "text": "PCU-COS-1 Isolator Voltage in OFF position (Volts):" },
+              { "text": "{{ pcu_cos1_isolator_off_v }}" }
+            ],
+            [
+              { "text": "RCCB(Load ACDB) R Voltage in ON position (Volts):" },
+              { "text": "{{ rccb_load_acdb_r_on_v }}" }
+            ],
+            [
+              { "text": "RCCB(Load ACDB) R Voltage in OFF position (Volts):" },
+              { "text": "{{ rccb_load_acdb_r_off_v }}" }
+            ],
+            [
+              { "text": "RCCB(Load ACDB) Y Voltage in ON position (Volts):" },
+              { "text": "{{ rccb_load_acdb_y_on_v }}" }
+            ],
+            [
+              { "text": "RCCB(Load ACDB) Y Voltage in OFF position (Volts):" },
+              { "text": "{{ rccb_load_acdb_y_off_v }}" }
+            ],
+            [
+              { "text": "RCCB(Load ACDB) B Voltage in ON position (Volts):" },
+              { "text": "{{ rccb_load_acdb_b_on_v }}" }
+            ],
+            [
+              { "text": "RCCB(Load ACDB) B Voltage in OFF position (Volts):" },
+              { "text": "{{ rccb_load_acdb_b_off_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) R Voltage in ON position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_r_on_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) R Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_r_off_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) Y Voltage in ON position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_y_on_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) Y Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_y_off_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) B Voltage in ON position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_b_on_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) B Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_b_off_v }}" }
+            ],
+            [
+              { "text": "Main MCB(Load ACDB) Voltage in ON position (Volts):" },
+              { "text": "{{ main_mcb_load_acdb_on_v }}" }
+            ],
+            [
+              {
+                "text": "Main MCB(Load ACDB) Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ main_mcb_load_acdb_off_v }}" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Power Lines Polarity Check",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "body": [
+            ["Array Junction Box String 1 - Lines ", "NA"],
+            ["Array Junction Box String 2 - Lines ", "NA"],
+            ["Array Junction Box String 3 - Lines ", "NA"],
+            ["Array Junction Box String 4 - Lines ", "NA"],
+            ["Array Junction Box String 5 - Lines ", "NA"],
+            ["Battery Bank (Combiner Box): String 1 - Lines ", "NA"],
+            ["Battery Bank (Combiner Box) String 2 - Lines ", "NA"],
+            ["PCU/Inverter PV Line 1 ", "NA"],
+            ["PCU/Inverter PV Line 2 ", "NA"],
+            ["PCU/Inverter Battery Line ", "NA"],
+            ["PCU/Inverter R-Y-B-N(Grid) ", "NA"],
+            ["Changeover switch-1 Grid IN (R-Y-B-N) ", "NA"],
+            ["Changeover switch-1 PCU IN (R-Y-B-N) ", "NA"],
+            ["Changeover switch-2 Grid IN (R-Y-B-N)", "NA"],
+            ["Changeover switch-2 DG IN (R-Y-B-N)", "NA"],
+            ["Bi-Directional Meter PCU (R-Y-B-N)", "NA"],
+            ["Bi-Directional Meter Grid (R-Y-B-N)", "NA"],
+            ["Solar Check Meter PCU (R-Y-B-N)", "NA"],
+            ["Solar Check Meter Changeover-1 (R-Y-B-N) ", "NA"],
+            ["Sockets Line (Right side) ", "NA"],
+            ["Sockets Neutral (Left side) ", "NA"]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Changeover Switches settings",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "body": [
+            [
+              {
+                "text": "Changeover switch-1 orientation is:",
+                "style": "tableHeader"
+              },
+              { "text": "{{ chg_switch_orientation }}" },
+              {
+                "text": "Change over switch-1 functional for both Solar & Grid:",
+                "style": "tableHeader"
+              },
+              { "text": "{{ chg_switch_functional }}" }
+            ],
+            [
+              {
+                "text": "Change over switch-2 functional for both DG & Grid:",
+                "style": "tableHeader"
+              },
+              { "text": "{{ chg_switch_functional_dg_grid }}" },
+              {
+                "text": "",
+                "style": "tableHeader"
+              },
+              { "text": "" }
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Measurements at Sockets(For both 1-Phase & 3-Phase connectivity)",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" }
+            ],
+            ["Voltage between Phase & Neutral(Volts):", "{{sock_v_pn_mv}}"],
+            ["Voltage between Phase & Earth(Volts)", "{{sock_v_pe_mv}}"],
+            ["Voltage between Earth & Neutral(Volts)", "{{sock_v_en_mv}}"]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Earth pit tests (standalone before connecting to system)",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Earth pit resistance test", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            [
+              "DC Earthing",
+              "{{ept_dc_earthing_mv}}",
+              "{{ept_dc_earthing_uom}}"
+            ],
+            [
+              "AC Earthing",
+              "{{ept_ac_earthing_mv}}",
+              "{{ept_ac_earthing_uom}}"
+            ],
+            [
+              "Lightning arrester-1",
+              "{{ept_lightning_arrester1_mv}}",
+              "{{ept_lightning_arrester1_uom}}"
+            ],
+            [
+              "Lightning arrester-2",
+              "{{ept_lightning_arrester2_mv}}",
+              "{{ept_lightning_arrester2_uom}}"
+            ]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Earth-Down conductor continuity test",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Particulars", "style": "tableHeader" },
+              { "text": "Measured Value", "style": "tableHeader" },
+              { "text": "Unit", "style": "tableHeader" }
+            ],
+            ["DC side Panel - Panel:", "{{ dc_panel_panel_res }}", "Ω"],
+            ["DC side Panel -  MMS:", "{{ dc_panel_mms_res }}", "Ω"],
+            ["DC side MMS - AJB:", "{{ dc_mms_ajb_res }}", "Ω"],
+            ["DC side AJB - Busbar:", "{{ dc_ajb_busbar_res }}", "Ω"],
+            [
+              "DC side Battery Rack - Busbar:",
+              "{{ dc_battery_rack_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "DC side Isolator Box - Busbar:",
+              "{{ dc_isolator_box_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "DC side Busbar - Earth pit:",
+              "{{ dc_busbar_earth_pit_res }}",
+              "Ω"
+            ],
+            ["AC side PCU - Busbar:", "{{ ac_pcu_busbar_res }}", "Ω"],
+            [
+              "AC side Changeover switch 1 - Busbar:",
+              "{{ ac_changeover1_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "AC side Changeover switch 2 - Busbar:",
+              "{{ ac_changeover2_busbar_res }}",
+              "Ω"
+            ],
+            ["AC side GIPD - Busbar:", "{{ ac_gipb_busbar_res }}", "Ω"],
+            [
+              "AC side Load ACDB - Busbar:",
+              "{{ ac_load_acdb_busbar_res }}",
+              "Ω"
+            ],
+            [
+              "AC side Busbar - Earth pit:",
+              "{{ ac_busbar_earth_pit_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 1 LA - Aluminium cable:",
+              "{{ la1_la_aluminium_cable_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 1 Aluminium cable – GI strip:",
+              "{{ la1_aluminium_gi_strip_res }}",
+              "Ω"
+            ],
+            ["GI strip – Earth pit:", "{{ la1_gi_strip_earth_pit_res }}", "Ω"],
+            [
+              "Lightning Arrester 2 LA - Aluminium cable:",
+              "{{ la2_la_aluminium_cable_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 2 Aluminium cable – GI strip:",
+              "{{ la2_aluminium_gi_strip_res }}",
+              "Ω"
+            ],
+            [
+              "Lightning Arrester 2 GI strip – Earth pit:",
+              "{{ la2_gi_strip_earth_pit_res }}",
+              "Ω"
+            ],
+            ["Lightning Arrester LA 1 – LA 2:", "{{la1_la2_res }}", "Ω"]
+          ]
+        },
+        "layout": ""
+      },
+
+      {
+        "text": "Orientation Checklist",
+        "style": "tableHeader"
+      },
+      {
+        "table": {
+          "headerRows": 1,
+          "body": [
+            [
+              { "text": "Checklist", "style": "tableHeader" },
+              { "text": "Status", "style": "tableHeader" },
+              { "text": " Remarks", "style": "tableHeader" }
+            ],
+            [
+              "Is the orientation on solar system’s basic operational instructions given to the health center POC?",
+              "{{orientation_operational_instructions_status}}",
+              "{{orientation_operational_instructions_remarks}}"
+            ],
+            [
+              "Is the orientation on solar system’s basic routine maintenances given to the health center POC?",
+              "{{orientation_routine_maintenance_status}}",
+              "{{orientation_routine_maintenance_remarks}}"
+            ],
+            [
+              "Are the stickers containing POCs pasted in the control room?",
+              "{{stickers_pasted_status}}",
+              "{{stickers_pasted_remarks}}"
+            ],
+            [
+              "Are the Do’s and Don’ts posters with helpline numbers pasted in the control room?",
+              "{{posters_pasted_status}}",
+              "{{posters_pasted_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the solar panel handed over to the health facility?",
+              "{{orientation_warranty_solar_panel_status}}",
+              "{{orientation_warranty_solar_panel_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the batteries handed over to the health facility?",
+              "{{orientation_warranty_batteries_status}}",
+              "{{orientation_warranty_batteries_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the PCU handed over to the health facility?",
+              "{{orientation_warranty_pcu_status}}",
+              "{{orientation_warranty_pcu_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the solar Bi-directional meter handed over to the health facility?",
+              "{{orientation_warranty_bidirectional_meter_status}}",
+              "{{orientation_warranty_bidirectional_meter_remarks}}"
+            ],
+            [
+              "Are the warranty cards for the solar check meter handed over to the health facility?",
+              "{{orientation_warranty_check_meter_status}}",
+              "{{orientation_warranty_check_meter_remarks}}"
+            ],
+            [
+              { "text": "Additional remarks:" },
+              { "text": "{{orientation_additional_remarks}}", "colSpan": 2 },
+              { "text": "" }
+            ]
+          ]
+        },
+        "layout": ""
+      }
+    ],
+    "styles": {
+      "tl-head": {
+        "margin": [-41, -41, -41, 0]
+      },
+      "pt-reciept-citizen-header": {
+        "fontSize": 12,
+        "bold": true,
+        "margin": [0, 8, 0, 0],
+        "color": "#484848"
+      },
+      "header": {
+        "fontSize": 18,
+        "bold": true,
+        "margin": [0, 10, 0, 5],
+        "text-align": "center"
+      },
+      "tableHeader": {
+        "fontSize": 14,
+        "bold": true,
+        "margin": [0, 10, 0, 10]
+      }
+    }
+  }
+}

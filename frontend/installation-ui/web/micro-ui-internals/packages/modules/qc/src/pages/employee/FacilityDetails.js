@@ -6,9 +6,24 @@ import { useDispatch } from "react-redux";
 import { clearRejectionReasons, setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import { Loader } from "@egovernments/digit-ui-react-components";
 import useFieldPlan from "../../hooks/useFieldPlan";
-import useFacilityDetails from "../../hooks/useFacilityDetails";
+import useFacilityDetails, { getAssetAggregation } from "../../hooks/useFacilityDetails";
 import useAsset from "../../hooks/useAsset";
 import InfoCard from "../../components/FacilityDetails/InfoCard";
+import InstallationImageReviewCard from "../../components/FacilityDetails/InstallationImageReviewCard";
+
+const sectionLoaderStyle = {
+  width: "95%",
+  minWidth: "900px",
+  marginTop: "15px",
+  padding: "20px",
+  background: "white",
+  borderRadius: "4px",
+  boxShadow: "0px 0px 4px rgba(0, 0, 0, 0.25)",
+  border: "1px solid #eee",
+  color: "#0B4B66",
+  fontSize: "20px",
+  fontWeight: "bold",
+};
 
 const FacilityDetails = ({t}) => {
 
@@ -24,6 +39,8 @@ const FacilityDetails = ({t}) => {
   const [workflowDocuments, setWorkflowDocuments] = useState([]);
   const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
   const [installationImages, setInstallationImages] = useState([]);
+  const [loadedDocumentSections, setLoadedDocumentSections] = useState({});
+  const [loadingDocumentSections, setLoadingDocumentSections] = useState({});
 
   const {
     isLoading: fieldPlanDataLoading,
@@ -42,7 +59,7 @@ const FacilityDetails = ({t}) => {
     revalidateFacilities
   } = useFacilityDetails(activityFacilityId);
 
-  const { isLoading, data: assetData } = useAsset(activityFacilityId);
+  const { isLoading: assetDataLoading, data: assetData } = useAsset(activityFacilityId);
 
   const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
     tenantId,
@@ -74,25 +91,10 @@ const FacilityDetails = ({t}) => {
     if (facilityData) {
       setAuditTrail(facilityData.auditTrail);
       setFacilityDetails(facilityData.facilityDetails);
-      setAggregatedDocuments(facilityData.documentAggregation);
-      setWorkflowDocuments(facilityData.workflowDocuments);
+      setWorkflowDocuments(facilityData.workflow?.[0]?.documents || []);
       dispatch(setSelectedFacility(facilityData.facilityDetails));
     }
   }, [facilityData]);
-
-  useEffect(() => {
-    const installationImageCriteria = mdmsResponse?.["common-masters"]?.["InstallationImages"]?.[0]?.["InstallationImage"];
-    if (facilityData?.installationImages && installationImageCriteria) {
-      setInstallationImages(
-        installationImageCriteria.map((criterion) => ({
-          description: criterion.description,
-          images: facilityData?.installationImages.filter((image) => image.imageCode === criterion.code),
-          providedImagesCount: facilityData?.installationImages.filter((image) => image.imageCode === criterion.code).length,
-          requiredImagesCount: criterion["required_count"],
-        }))
-      )
-    }
-  }, [facilityData, mdmsResponse]);
 
   useEffect(() => {
     return () => {
@@ -100,7 +102,60 @@ const FacilityDetails = ({t}) => {
     }
   }, []);
 
-  if (isLoading || facilityDataLoading || fieldPlanDataLoading || mdmsLoading) {
+  const updateDocumentAggregation = (documentAggregation = {}) => {
+    setAggregatedDocuments((prev) => ({
+      ...prev,
+      images: {
+        ...(prev.images || {}),
+        ...(documentAggregation.images || {}),
+      },
+      videos: {
+        ...(prev.videos || {}),
+        ...(documentAggregation.videos || {}),
+      },
+      installationReportDocuments: documentAggregation.installationReportDocuments?.length ? documentAggregation.installationReportDocuments : prev.installationReportDocuments,
+      installationCompletionCertificate: documentAggregation.installationCompletionCertificate?.length ? documentAggregation.installationCompletionCertificate : prev.installationCompletionCertificate,
+      assetHandoverDocument: documentAggregation.assetHandoverDocument?.length ? documentAggregation.assetHandoverDocument : prev.assetHandoverDocument,
+      bomCompletionReport: documentAggregation.bomCompletionReport || prev.bomCompletionReport,
+    }));
+  };
+
+  const loadSectionDocuments = async (section) => {
+    if (!section || loadedDocumentSections[section] || loadingDocumentSections[section]) {
+      return;
+    }
+
+    setLoadingDocumentSections((prev) => ({ ...prev, [section]: true }));
+    try {
+      const sectionDocuments = await getAssetAggregation(facilityData?.workflow, section);
+      updateDocumentAggregation(sectionDocuments.documentAggregation);
+
+      if (sectionDocuments.installationImages?.length > 0) {
+        setInstallationImages((prev) => {
+          const loadedImageCodes = sectionDocuments.installationImages.map((image) => image.imageCode?.toUpperCase());
+          const nextImages = prev.filter((image) => !loadedImageCodes.includes(image.imageCode?.toUpperCase()));
+          return [...nextImages, ...sectionDocuments.installationImages];
+        });
+      }
+      setLoadedDocumentSections((prev) => ({ ...prev, [section]: true }));
+    } catch (error) {
+      console.error(`Failed to load documents for section ${section}:`, error);
+    } finally {
+      setLoadingDocumentSections((prev) => ({ ...prev, [section]: false }));
+    }
+  };
+
+  const installationImageCriteria = mdmsResponse?.["common-masters"]?.["InstallationImages"]?.[0]?.["InstallationImage"] || [];
+  const hasInstallationReport = facilityData?.workflow?.[0]?.documents?.some((document) => (
+    [
+      "INSTALLATION_REPORT",
+      "INSTALLATION_REPORT_BOM",
+      "INSTALLATION_COMPLETION_CERTIFICATE",
+      "ASSET_HANDOVER_DOCUMENT",
+    ].includes(document.documentType?.toUpperCase())
+  ));
+
+  if (facilityDataLoading || fieldPlanDataLoading) {
     return <Loader />;
   }
 
@@ -139,6 +194,8 @@ const FacilityDetails = ({t}) => {
 
       {auditTrail?.length > 0 && <AuditTrail t={t} auditTrail={auditTrail} />}
 
+      {assetDataLoading && <div style={sectionLoaderStyle}>{t("CORE_COMMON_LOADING")}</div>}
+
       {assets && assets.map((asset) => {
         return <Summary
           t={t}
@@ -151,25 +208,54 @@ const FacilityDetails = ({t}) => {
           items={asset?.items}
           images={aggregatedDocuments.images?.[asset.assetType]}
           videos={aggregatedDocuments.videos?.[asset.assetType]}
+          isLoadingContent={loadingDocumentSections[asset.assetType]}
+          onExpand={() => loadSectionDocuments(asset.assetType)}
         />
       })}
 
-      {aggregatedDocuments?.bomCompletionReport && (
+      {mdmsLoading && (
+        <div style={sectionLoaderStyle}>{t("CORE_COMMON_LOADING")}</div>
+      )}
+
+      {hasInstallationReport && (
         <Summary
           t={t}
           sectionName="InstallationCompletionReport"
           section="INSTALLATION_COMPLETION_REPORT"
-          report={{
+          report={aggregatedDocuments?.bomCompletionReport ? {
             ...aggregatedDocuments?.bomCompletionReport,
             name: `${facilityDetails.facilityName}.pdf`
-          }}
+          } : null}
           supportingDocuments={aggregatedDocuments.installationReportDocuments}
           installationCompletionCertificate={aggregatedDocuments.installationCompletionCertificate}
           assetHandoverDocument={aggregatedDocuments.assetHandoverDocument}
-          installationImages={installationImages}
+          installationImages={[]}
           isReport={true}
+          isLoadingContent={loadingDocumentSections.INSTALLATION_COMPLETION_REPORT}
+          onExpand={() => loadSectionDocuments("INSTALLATION_COMPLETION_REPORT")}
         />
       )}
+
+      {installationImageCriteria.map((criterion, index) => {
+        const section = `INSTALLATION_IMAGE_${criterion.code}`.toUpperCase();
+        const images = installationImages.filter((image) => image.imageCode?.toUpperCase() === criterion.code?.toUpperCase());
+        return (
+          <InstallationImageReviewCard
+            key={criterion.code || index}
+            t={t}
+            installationImage={{
+              code: criterion.code,
+              description: criterion.description,
+              images,
+              providedImagesCount: images.length,
+              requiredImagesCount: criterion["required_count"],
+            }}
+            index={index}
+            isLoadingContent={loadingDocumentSections[section]}
+            onExpand={() => loadSectionDocuments(section)}
+          />
+        );
+      })}
 
       {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
         <QCActions

@@ -82,5 +82,12 @@ public class FieldPlannerEnrichment {
         log.info("Enriched project audit details for project " + fieldPlan.getId());
     }
 
+    /* Enrich fieldPlanFacility update request with last modified by/time, preserving createdBy/createdTime from DB */
+    public void enrichFieldPlanFacilityRequestOnUpdate(FieldPlanFacility fieldPlanFacility, FieldPlanFacility fieldPlanFacilityFromDb, RequestInfo requestInfo) {
+        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), fieldPlanFacilityFromDb.getAuditDetails(), false);
+        fieldPlanFacility.setAuditDetails(auditDetails);
+        log.info("Enriched fieldPlanFacility audit details for facility " + fieldPlanFacility.getId());
+    }
+
 
 }

@@ -65,6 +65,12 @@ public class ActivityConfiguration {
     @Value("${egov.dc.system.key}")
     private String bomDCSystem;
 
+    @Value("${egov.on.grid.single.phase.key}")
+    private String bomACOnGridSinglePhase;
+
+    @Value("${egov.on.grid.three.phase.key}")
+    private String bomACOnGridSThreePhase;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
