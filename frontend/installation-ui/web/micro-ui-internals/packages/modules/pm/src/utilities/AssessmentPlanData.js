@@ -96,33 +96,37 @@ export const evaluateMarkResultScenario = (facilities, targetResult) => {
   return "BULK_NOT_SUPPORTED";
 };
 
-const REMOTE_ASSESSMENT_QUESTIONS = [
-  "Is the facility functional?",
-  "Does it have adequate supply?",
-  "Are staff present?",
+const RESPONSE_QUESTIONS = [
+  { key: "renovationPlanned", questionKey: "PM_ASSESSMENT_RESPONSE_QUESTION_RENOVATION_PLANNED" },
+  { key: "existingSolar", questionKey: "PM_ASSESSMENT_RESPONSE_QUESTION_EXISTING_SOLAR" },
+  { key: "govtOwned", questionKey: "PM_ASSESSMENT_RESPONSE_QUESTION_GOVT_OWNED" },
 ];
 
-const SITE_ASSESSMENT_QUESTIONS = [
-  "Is the facility physically accessible?",
-  "Is the required equipment available on-site?",
-  "Does the facility meet infrastructure standards?",
-];
+const getLatestSubmission = (submissions, phase) => (
+  (submissions || [])
+    .filter((submission) => submission?.assessmentPhase === phase)
+    .reduce((latest, submission) => (
+      !latest || (submission?.serverReceivedTime || 0) > (latest?.serverReceivedTime || 0) ? submission : latest
+    ), null)
+);
 
-// Dummy Remote Assessor / Field POC responses, derived from the facility's current status
-// until the backend stores actual submitted responses.
-export const getAssessmentResponses = (facility) => {
-  const remoteAnswer = facility?.remoteStatus === "NOT_QUALIFIED" ? "No" : facility?.remoteStatus === "QUALIFIED" ? "Yes" : null;
-  const remoteResponses = remoteAnswer
-    ? REMOTE_ASSESSMENT_QUESTIONS.map((question) => ({ question, answer: remoteAnswer }))
-    : [];
+// answerCode is "YES"/"NO" (translate via TL_COMMON_YES/TL_COMMON_NO) or null when the
+// submission didn't capture that field.
+const getResponsesForSubmission = (submission) => (
+  submission
+    ? RESPONSE_QUESTIONS.map(({ key, questionKey }) => {
+      const value = submission?.submissionData?.[key];
+      return { questionKey, answerCode: value === "YES" || value === "NO" ? value : null };
+    })
+    : []
+);
 
-  const siteAnswer = facility?.onSiteStatus === "NOT_QUALIFIED" ? "No" : facility?.onSiteStatus === "QUALIFIED" ? "Yes" : null;
-  const siteResponses = siteAnswer
-    ? SITE_ASSESSMENT_QUESTIONS.map((question) => ({ question, answer: siteAnswer }))
-    : [];
-
-  return { remoteResponses, siteResponses };
-};
+// Remote (PHONE) and on-site (FIELD) responses, read from the facility's actual submissions
+// via the plan/facility/_detail API.
+export const getAssessmentResponses = (facilityDetail) => ({
+  remoteResponses: getResponsesForSubmission(getLatestSubmission(facilityDetail?.submissions, "PHONE")),
+  siteResponses: getResponsesForSubmission(getLatestSubmission(facilityDetail?.submissions, "FIELD")),
+});
 
 const outcomeFromStatus = (status) => {
   if (status === "QUALIFIED") return "ELIGIBLE";

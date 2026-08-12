@@ -1,6 +1,7 @@
 import React from "react";
 import { Button, PopUp } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
+import useAssessmentFacilityDetail from "../../hooks/useAssessmentFacilityDetail";
 import { getAssessmentResponses, getFieldOutcome, getPhoneOutcome } from "../../utilities/AssessmentPlanData";
 
 const FacilityDetailsModal = ({
@@ -14,9 +15,11 @@ const FacilityDetailsModal = ({
   onMarkNotEligible,
 }) => {
 
+  const { data: facilityDetailData } = useAssessmentFacilityDetail(facility?.id);
+
   if (!facility) return null;
 
-  const { remoteResponses, siteResponses } = getAssessmentResponses(facility);
+  const { remoteResponses, siteResponses } = getAssessmentResponses(facilityDetailData);
   const phoneOutcome = getPhoneOutcome(facility);
   const fieldOutcome = getFieldOutcome(facility);
 
@@ -40,7 +43,7 @@ const FacilityDetailsModal = ({
       <ul style={{ margin: 0, paddingLeft: "20px" }}>
         {responses.map((response, index) => (
           <li key={index} style={{ fontSize: "15px", color: "#0B0C0C", marginBottom: "6px" }}>
-            {response.question} {response.answer}
+            {t(response.questionKey)} {response.answerCode ? t(`TL_COMMON_${response.answerCode}`) : "-"}
           </li>
         ))}
       </ul>
