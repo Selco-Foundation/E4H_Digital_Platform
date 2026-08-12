@@ -40,8 +40,17 @@ public class AssessmentSubmissionService {
         List<String> planIds = assessorService.getAssignedPlanIds(
                 request.getRequestInfo(), request.getTenantId(), role);
         SubmissionQueueFilters effectiveFilters = facilityMetadataService.expandQueueFilters(request.getFilters());
-        int limit = resolveLimit(request.getLimit());
         int offset = request.getOffset() != null && request.getOffset() >= 0 ? request.getOffset() : 0;
+        int total = facilityRepository.countQueueFacilities(planIds, request.getAssessmentPhase(), effectiveFilters);
+        if (request.getLimit() != null && request.getLimit() == 0) {
+            return SubmissionQueueSearchResponse.builder()
+                    .queue(List.of())
+                    .count(total)
+                    .total(total)
+                    .pagination(Pagination.builder().offset(offset).limit(0).total(total).build())
+                    .build();
+        }
+        int limit = resolveLimit(request.getLimit());
         List<PlanFacility> facilities = facilityRepository.findQueueFacilities(
                 planIds, request.getAssessmentPhase(), effectiveFilters, request.getSort(), limit, offset);
         String tenantId = request.getTenantId();
@@ -49,7 +58,6 @@ public class AssessmentSubmissionService {
         List<SubmissionQueueItem> queue = facilities.stream()
                 .map(this::toQueueItem)
                 .toList();
-        int total = facilityRepository.countQueueFacilities(planIds, request.getAssessmentPhase(), effectiveFilters);
         return SubmissionQueueSearchResponse.builder()
                 .queue(queue)
                 .count(total)
@@ -77,7 +85,7 @@ public class AssessmentSubmissionService {
     }
 
     private int resolveLimit(Integer limit) {
-        if (limit == null || limit <= 0) {
+        if (limit == null || limit < 0) {
             return DEFAULT_QUEUE_LIMIT;
         }
         return Math.min(limit, MAX_QUEUE_LIMIT);
