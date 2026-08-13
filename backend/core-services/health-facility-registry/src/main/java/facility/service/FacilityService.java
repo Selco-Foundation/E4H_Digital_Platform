@@ -800,6 +800,11 @@ public class FacilityService {
         if (update.getSolarSystemCapacityKwp() == null) {
             update.setSolarSystemCapacityKwp(existingFacility.getSolarSystemCapacityKwp());
         }
+        // facility_poc_phone is now also set by the persister query; preserve it on payloads that
+        // don't touch it (existingFacility.getFacilityPocPhone() was decrypted above).
+        if (update.getPocContact() == null) {
+            update.setPocContact(existingFacility.getFacilityPocPhone());
+        }
 
         FacilityMappedVendorHelper.mergeMappedVendorFromUpdate(facility, update, existingFacility);
         FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
@@ -1670,6 +1675,11 @@ public class FacilityService {
             // Carried over as-is; the update push encrypts it before persisting.
             if(facilityDB.getFacilityDetails()!=null && facilityDB.getFacilityDetails().getPocContact()!=null && !facilityDB.getFacilityDetails().getPocContact().isBlank()){
                 facility.setPocContact(facilityDB.getFacilityDetails().getPocContact());
+            } else {
+                // facility_poc_phone is now also set by the persister query; fall back to the
+                // current column value so this migration doesn't null it out. Safe to pass through
+                // as-is even if already encrypted: PocPhoneCipher#encrypt is idempotent.
+                facility.setPocContact(facilityDB.getFacilityPocPhone());
             }
 
             if (details != null) {
@@ -1687,6 +1697,49 @@ public class FacilityService {
             log.info("Final HF to migrate : {}", request.getFacilityUpdate());
             facilityRepository.pushUpdateFacility(request);
         }
+    }
+
+    /**
+     * Operator script: finds every facility whose facility_poc_phone is still a plaintext
+     * 10-digit number (an encrypted value from egov-enc-service is always much longer) and
+     * re-persists it through the update-facility persister, which encrypts it on the way through
+     * (see FacilityRepository#pushUpdateFacility). Every other column touched by that persister
+     * query is carried over as-is from the current row so nothing else gets overwritten.
+     */
+    public String encryptFacilityPocPhone() {
+        String query = "SELECT fac.*, " +
+                "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r " +
+                "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
+                "FROM facility fac WHERE LENGTH(fac.facility_poc_phone) = 10";
+        List<Facility> facilities = jdbcTemplate.query(query, facilityRowMapper.rowMapper);
+        log.info("facility_poc_phone encryption script: {} facilities found with a plaintext 10-digit number", facilities.size());
+
+        for (Facility facilityDB : facilities) {
+            FacilityUpdateRequestFacilityUpdate facility = new FacilityUpdateRequestFacilityUpdate();
+            facility.setFacilityId(facilityDB.getFacilityId());
+            facility.setTenantId(facilityDB.getTenantId());
+            facility.setFacilityCategory(facilityDB.getFacilityCategory());
+            facility.setFacilityType(facilityDB.getFacilityType());
+            facility.setFacilitySubtype(facilityDB.getFacilitySubtype());
+            facility.setFacilityName(facilityDB.getFacilityName());
+            facility.setAddress(facilityDB.getAddress());
+            facility.setFacilityDetails(facilityDB.getFacilityDetails());
+            facility.setAdditionalDetails(facilityDB.getAdditionalDetails());
+            facility.setIsOnmReady(facilityDB.getIsOnmReady());
+            facility.setSolarInstallationDate(facilityDB.getSolarInstallationDate());
+            facility.setRmsInstallationDate(facilityDB.getRmsInstallationDate());
+            facility.setSolarSystemCapacityKwp(facilityDB.getSolarSystemCapacityKwp());
+
+            // Plaintext number carried over as-is; the update push encrypts it before persisting.
+            facility.setPocContact(facilityDB.getFacilityPocPhone());
+
+            FacilityUpdateRequest request = FacilityUpdateRequest.builder().facilityUpdate(facility).build();
+            facilityRepository.pushUpdateFacility(request);
+        }
+
+        String summary = "Encrypted facility_poc_phone for " + facilities.size() + " facilities";
+        log.info(summary);
+        return summary;
     }
 
     /**
