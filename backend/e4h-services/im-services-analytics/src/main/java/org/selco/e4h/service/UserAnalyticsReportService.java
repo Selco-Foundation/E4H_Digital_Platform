@@ -61,7 +61,8 @@ public class UserAnalyticsReportService {
         LocalDate previousWeekStart = weekStart.minusWeeks(1);
         boolean partialWeek = weekStart.isEqual(currentWeekStart);
 
-        // Champions are only ranked for the reported week; the previous week exists solely for growth.
+        // Champions and Kibana logins are read off the reported week only; the previous week exists
+        // solely for growth.
         UserAnalyticsAggregation current = repository.aggregate(
                 startOf(weekStart, zone), startOf(weekStart.plusWeeks(1), zone), true);
         UserAnalyticsAggregation previous = repository.aggregate(
@@ -82,6 +83,7 @@ public class UserAnalyticsReportService {
                 .partialWeek(partialWeek)
                 .championsByRole(current.getChampionsByRole())
                 .championsByApplication(current.getChampionsByApplication())
+                .kibanaLoginsByUser(current.getKibanaLoginsByUser())
                 .applications(new ArrayList<>(applications))
                 .eventTypes(resolveEventTypes(current))
                 .overall(UserAnalyticsBucket.of(OVERALL, current.getOverall(), previous.getOverall(), applications))
