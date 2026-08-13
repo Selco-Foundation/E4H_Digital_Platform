@@ -114,4 +114,23 @@ Primary key note: incident/address IDs are `VARCHAR`, not native `UUID` (see Gua
 
 ## Local Setup
 
-See [LOCALSETUP.md](./LOCALSETUP.md)
+Basic build/run (Java 17, Maven, Spring Boot 3.2.2):
+
+1. Ensure Postgres is reachable and update `spring.datasource.*` / `flyway.*` in `src/main/resources/application.properties` if not using local defaults (`localhost:5432/mydb`).
+2. Ensure Kafka is reachable (`kafka.config.bootstrap_server_config`, default `localhost:9092`).
+3. Install `ffmpeg`/`ffprobe` and reachable on the host (or set `ffprobe.path`, default `/usr/bin/ffprobe`) — required for incident video/image upload validation.
+4. Point the dependent service hosts at reachable instances: `egov.localization.host`, `egov.mdms.host`, `egov.hrms.host`, `egov.facility.host`, `egov.boundary.host`, `egov.user.host`, `egov.idgen.host`, `egov.workflow.host`, `egov.url.shortner.host`, `egov.filestore.host`, `egov.rms.host` (ticket status update webhook).
+5. Set `egov.internal.microservice.user.uuid` to a valid system user UUID.
+6. Build:
+   ```bash
+   mvn clean install
+   ```
+7. Run:
+   ```bash
+   mvn spring-boot:run
+   ```
+   or run the packaged jar:
+   ```bash
+   java -jar target/im-services-1.2.0.jar
+   ```
+8. Service listens on port `8880` under context path `/im-services`.

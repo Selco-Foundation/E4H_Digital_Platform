@@ -6,10 +6,9 @@ The notification SMS service consumes SMS messages from Kafka and sends them thr
 
 ## Source location
 
-- Service path: `backend/core-services/egov-notification-sms`
-- README: `backend/core-services/egov-notification-sms/README.md`
-- Local setup: `backend/core-services/egov-notification-sms/LOCALSETUP.md`
-- Changelog: `backend/core-services/egov-notification-sms/CHANGELOG.md`
+- Service path: [`backend/core-services/egov-notification-sms`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/core-services/egov-notification-sms)
+- README: [`backend/core-services/egov-notification-sms/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-notification-sms/README.md)
+- Changelog: [`backend/core-services/egov-notification-sms/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-notification-sms/CHANGELOG.md)
 
 ## Responsibilities
 

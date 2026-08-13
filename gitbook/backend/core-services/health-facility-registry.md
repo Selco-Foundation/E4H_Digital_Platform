@@ -6,9 +6,9 @@ The health facility registry service manages facility registry data and exposes 
 
 ## Source location
 
-- Service path: `backend/core-services/health-facility-registry`
-- README: `backend/core-services/health-facility-registry/README.md`
-- Build file: `backend/core-services/health-facility-registry/pom.xml`
+- Service path: [`backend/core-services/health-facility-registry`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/core-services/health-facility-registry)
+- README: [`backend/core-services/health-facility-registry/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/health-facility-registry/README.md)
+- Build file: [`backend/core-services/health-facility-registry/pom.xml`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/health-facility-registry/pom.xml)
 
 ## Responsibilities
 

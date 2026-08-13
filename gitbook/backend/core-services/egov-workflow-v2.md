@@ -6,10 +6,9 @@ Workflow v2 is the workflow engine used to move applications or entities through
 
 ## Source location
 
-- Service path: `backend/core-services/egov-workflow-v2`
-- README: `backend/core-services/egov-workflow-v2/README.md`
-- Local setup: `backend/core-services/egov-workflow-v2/LOCALSETUP.md`
-- Changelog: `backend/core-services/egov-workflow-v2/CHANGELOG.md`
+- Service path: [`backend/core-services/egov-workflow-v2`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/core-services/egov-workflow-v2)
+- README: [`backend/core-services/egov-workflow-v2/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-workflow-v2/README.md)
+- Changelog: [`backend/core-services/egov-workflow-v2/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-workflow-v2/CHANGELOG.md)
 
 ## Responsibilities
 

@@ -6,10 +6,9 @@ Incident/ticket management service for the E4H platform, derived from DIGIT's PG
 
 ## Source location
 
-- Service path: `backend/e4h-services/im-services`
+- Service path: [`backend/e4h-services/im-services`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/im-services)
 - README: [`backend/e4h-services/im-services/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services/README.md)
 - OpenAPI spec: [`backend/e4h-services/im-services/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services/openapi.json)
-- Local setup: `backend/e4h-services/im-services/LOCALSETUP.md`
 - Changelog: [`backend/e4h-services/im-services/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services/CHANGELOG.md)
 
 ## Responsibilities

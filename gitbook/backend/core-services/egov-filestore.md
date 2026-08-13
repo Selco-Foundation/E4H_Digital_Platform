@@ -6,10 +6,9 @@ The filestore service provides file upload and download capability for other pla
 
 ## Source location
 
-- Service path: `backend/core-services/egov-filestore`
-- README: `backend/core-services/egov-filestore/README.md`
-- Local setup: `backend/core-services/egov-filestore/LOCALSETUP.md`
-- Changelog: `backend/core-services/egov-filestore/CHANGELOG.md`
+- Service path: [`backend/core-services/egov-filestore`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/core-services/egov-filestore)
+- README: [`backend/core-services/egov-filestore/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-filestore/README.md)
+- Changelog: [`backend/core-services/egov-filestore/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-filestore/CHANGELOG.md)
 
 ## Responsibilities
 

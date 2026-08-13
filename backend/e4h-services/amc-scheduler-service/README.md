@@ -92,4 +92,22 @@ All tables use `created_by` / `created_time` / `last_modified_by` / `last_modifi
 
 ## Local Setup
 
-See [LOCALSETUP.md](./LOCALSETUP.md)
+Basic build/run (Java 17, Maven, Spring Boot 3.2.2):
+
+1. Ensure Postgres is reachable and update `spring.datasource.*` / `spring.flyway.*` in `src/main/resources/application.properties` if not using local defaults (`localhost:5432/mydb`).
+2. Ensure Redis is reachable (`spring.redis.host`/`spring.redis.port`, default `localhost:6379`) — used for response caching.
+3. Ensure Kafka is reachable (`kafka.config.bootstrap_server_config`, default `localhost:9092`).
+4. Point the dependent service hosts at reachable instances: `egov.idgen.host`, `egov.mdms.host`, `egov.household.host`, `egov.facility.host`, `egov.location.host`/`egov.boundary.host` (boundary), `egov.product.host`, `egov.localization.host`, `egov.workflow.host`, `egov.hrms.host`, `egov.asset.host`, `egov.vendor.host`, `egov.otp.host`, `egov.enc.host`.
+5. Build:
+   ```bash
+   mvn clean install
+   ```
+6. Run:
+   ```bash
+   mvn spring-boot:run
+   ```
+   or run the packaged jar:
+   ```bash
+   java -jar target/amc-service-1.1.6.jar
+   ```
+7. Service listens on port `8095` under context path `/asset-amc`.

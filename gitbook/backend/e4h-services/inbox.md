@@ -6,10 +6,9 @@ The inbox service aggregates workflow and service data so applications can displ
 
 ## Source location
 
-- Service path: `backend/e4h-services/inbox`
+- Service path: [`backend/e4h-services/inbox`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/inbox)
 - README: [`backend/e4h-services/inbox/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/inbox/README.md)
 - OpenAPI spec: [`backend/e4h-services/inbox/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/inbox/openapi.json)
-- Local setup: `backend/e4h-services/inbox/LOCALSETUP.md`
 - Changelog: [`backend/e4h-services/inbox/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/inbox/CHANGELOG.md)
 
 ## Responsibilities

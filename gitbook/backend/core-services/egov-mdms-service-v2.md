@@ -6,8 +6,8 @@ MDMS is the master-data management service used to serve configuration and refer
 
 ## Source location
 
-- Service path: `backend/core-services/egov-mdms-service-v2`
-- Build file: `backend/core-services/egov-mdms-service-v2/pom.xml`
+- Service path: [`backend/core-services/egov-mdms-service-v2`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/core-services/egov-mdms-service-v2)
+- Build file: [`backend/core-services/egov-mdms-service-v2/pom.xml`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-mdms-service-v2/pom.xml)
 
 ## Responsibilities
 

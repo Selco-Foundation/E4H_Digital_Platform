@@ -70,4 +70,21 @@ No workflow v2 integration. Employee lifecycle (activate/deactivate/reactivate) 
 
 ## Local Setup
 
-See [LOCALSETUP.md](./LOCALSETUP.md)
+Basic build/run (Java 17, Maven, Spring Boot 3.2.2):
+
+1. Ensure Postgres is reachable and update `spring.datasource.*` / `spring.flyway.*` in `src/main/resources/application.properties` if not using local defaults (`localhost:5432/egov_hrms`).
+2. Ensure Kafka is reachable (`spring.kafka.bootstrap.servers`, default `localhost:9092`).
+3. Point the dependent service hosts at reachable instances — these default to the public `https://dev.digit.org` instance, not localhost: `egov.mdms.host`, `egov.filestore.host`, `egov.localization.host`, `egov.otp.host`, `egov.user.host`, `egov.boundary.host`, `egov.idgen.host`. `egov.enc.host` defaults to `http://localhost:8088`.
+4. Build:
+   ```bash
+   mvn clean install
+   ```
+5. Run:
+   ```bash
+   mvn spring-boot:run
+   ```
+   or run the packaged jar:
+   ```bash
+   java -jar target/egov-hrms-2.9.0-SNAPSHOT.jar
+   ```
+6. Service listens on port `9999` under context path `/egov-hrms`.

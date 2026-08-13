@@ -6,10 +6,9 @@ Manages Annual Maintenance Contract (AMC) configurations for facility assets and
 
 ## Source location
 
-- Service path: `backend/e4h-services/amc-scheduler-service`
+- Service path: [`backend/e4h-services/amc-scheduler-service`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/amc-scheduler-service)
 - README: [`backend/e4h-services/amc-scheduler-service/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/amc-scheduler-service/README.md)
 - OpenAPI spec: [`backend/e4h-services/amc-scheduler-service/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/amc-scheduler-service/openapi.json)
-- Local setup: `backend/e4h-services/amc-scheduler-service/LOCALSETUP.md`
 - Changelog: [`backend/e4h-services/amc-scheduler-service/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/amc-scheduler-service/CHANGELOG.md)
 
 ## Responsibilities

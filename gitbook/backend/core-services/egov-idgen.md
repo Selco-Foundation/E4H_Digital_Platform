@@ -6,10 +6,9 @@ The IDGen service generates IDs based on requested ID formats.
 
 ## Source location
 
-- Service path: `backend/core-services/egov-idgen`
-- README: `backend/core-services/egov-idgen/README.md`
-- Local setup: `backend/core-services/egov-idgen/LOCALSETUP.md`
-- Changelog: `backend/core-services/egov-idgen/CHANGELOG.md`
+- Service path: [`backend/core-services/egov-idgen`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/core-services/egov-idgen)
+- README: [`backend/core-services/egov-idgen/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-idgen/README.md)
+- Changelog: [`backend/core-services/egov-idgen/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/egov-idgen/CHANGELOG.md)
 
 ## Responsibilities
 

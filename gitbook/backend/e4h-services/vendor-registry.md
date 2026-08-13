@@ -8,10 +8,9 @@ The service still identifies internally as "Organisation" in most code (`org.ego
 
 ## Source location
 
-- Service path: `backend/e4h-services/vendor-registry`
+- Service path: [`backend/e4h-services/vendor-registry`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/vendor-registry)
 - README: [`backend/e4h-services/vendor-registry/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/vendor-registry/README.md)
 - OpenAPI spec: [`backend/e4h-services/vendor-registry/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/vendor-registry/openapi.json)
-- Local setup: `backend/e4h-services/vendor-registry/LOCALSETUP.md`
 - Changelog: [`backend/e4h-services/vendor-registry/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/vendor-registry/CHANGELOG.md)
 
 ## Responsibilities

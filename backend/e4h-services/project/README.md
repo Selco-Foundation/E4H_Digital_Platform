@@ -171,10 +171,24 @@ Project service APIs - contains create, update, delete and search end point
 
 ## Local Setup
 
-No `LOCALSETUP.md` exists for this service. Build and run with Maven:
+No `LOCALSETUP.md` exists for this service. Basic build/run (Java 17, Maven, Spring Boot 3.2.2):
 
-```bash
-mvn clean install
-mvn spring-boot:run
-```
+1. Ensure Postgres is reachable and update `spring.datasource.*` / `spring.flyway.*` in `src/main/resources/application.properties` if not using local defaults (`localhost:5432/postgres`).
+2. Ensure Redis is reachable (`spring.redis.host`/`spring.redis.port`, default `localhost:6379`) — used for response caching (`spring.cache.type=redis`).
+3. Ensure Kafka is reachable (`kafka.config.bootstrap_server_config`, default `localhost:9092`).
+4. Point the dependent service hosts at reachable instances: `egov.idgen.host`, `egov.user.host`, `egov.mdms.host`, `egov.household.host`, `egov.facility.host`, `egov.location.host` (boundary), `egov.product.host`, `egov.workflow.host`, `egov.asset.host`, `egov.hrms.host`.
+5. Build:
+   ```bash
+   mvn clean install
+   ```
+6. Run:
+   ```bash
+   mvn spring-boot:run
+   ```
+   or run the packaged jar:
+   ```bash
+   java -jar target/project-1.1.6.jar
+   ```
+7. Service listens on port `8080` under context path `/project`.
+
 - Pass list parameters for the search fields mentioned in updates 

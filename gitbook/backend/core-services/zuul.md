@@ -6,7 +6,7 @@ Zuul provides gateway and routing support for backend services.
 
 ## Source location
 
-- Service path: `backend/core-services/zuul`
+- Service path: [`backend/core-services/zuul`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/core-services/zuul)
 
 ## Responsibilities
 

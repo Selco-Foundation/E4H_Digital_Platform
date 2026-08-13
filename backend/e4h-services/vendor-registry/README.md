@@ -112,4 +112,21 @@ Additional collections under `docs/`: `Organisation Registry - Test Scripts.post
 
 ## Local Setup
 
-See [LOCALSETUP.md](./LOCALSETUP.md)
+Basic build/run (Java 17, Maven, Spring Boot 3.2.2):
+
+1. Ensure Postgres is reachable and update `spring.datasource.*` / `spring.flyway.*` in `src/main/resources/application.properties` if not using local defaults (`localhost:5432/works`, user/password `egov`/`egov`; note `spring.flyway.url` points at a differently-named DB, `digit-works`, by default — align these before running).
+2. Ensure Kafka is reachable (`kafka.config.bootstrap_server_config`, default `localhost:9092`).
+3. Most dependent-service hosts default to the public `https://works-dev.digit.org` (or `unified-qa`/`unified-dev`) instances rather than localhost — point them at reachable instances if you want isolated local runs: `egov.localization.host`, `egov.mdms.host`, `egov.hrms.host`, `egov.user.host`, `works.individual.host`, `egov.idgen.host`, `egov.workflow.host`, `egov.url.shortner.host`, `egov.enc.host`, `works.cbo.url.host`. `egov.location.host` (boundary) and `egov.facility.host`/`egov.fieldplan.activity.host` default to `localhost`.
+4. Build:
+   ```bash
+   mvn clean install
+   ```
+5. Run:
+   ```bash
+   mvn spring-boot:run
+   ```
+   or run the packaged jar:
+   ```bash
+   java -jar target/organisation-1.0.1.jar
+   ```
+6. Service listens on port `8035` under context path `/vendor`.

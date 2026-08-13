@@ -6,9 +6,9 @@ IM Services Analytics is the analytics service for the Incident Management (IM) 
 
 ## Source location
 
-- Service path: `backend/e4h-services/im-services-analytics`
+- Service path: [`backend/e4h-services/im-services-analytics`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/im-services-analytics)
 - README: [`backend/e4h-services/im-services-analytics/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services-analytics/README.md)
-- Build file: `backend/e4h-services/im-services-analytics/pom.xml`
+- Build file: [`backend/e4h-services/im-services-analytics/pom.xml`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services-analytics/pom.xml)
 - OpenAPI spec: [`backend/e4h-services/im-services-analytics/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services-analytics/openapi.json)
 
 ## Responsibilities

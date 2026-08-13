@@ -6,10 +6,9 @@ Field Planner manages the lifecycle of field plans for installation campaigns: c
 
 ## Source location
 
-- Service path: `backend/e4h-services/field-planner`
+- Service path: [`backend/e4h-services/field-planner`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/field-planner)
 - README: [`backend/e4h-services/field-planner/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/field-planner/README.md)
 - OpenAPI spec: [`backend/e4h-services/field-planner/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/field-planner/openapi.json)
-- Local setup: `backend/e4h-services/field-planner/LOCALSETUP.md`
 - Changelog: [`backend/e4h-services/field-planner/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/field-planner/CHANGELOG.md)
 
 ## Responsibilities

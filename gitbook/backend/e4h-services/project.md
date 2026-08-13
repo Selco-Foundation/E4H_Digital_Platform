@@ -6,9 +6,8 @@ The project service manages project registry data for health campaign style work
 
 ## Source location
 
-- Service path: `backend/e4h-services/project`
+- Service path: [`backend/e4h-services/project`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/project)
 - README: [`backend/e4h-services/project/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/project/README.md)
-- Local setup: no dedicated `LOCALSETUP.md`; build and run with Maven (`mvn clean install`, `mvn spring-boot:run`)
 - Changelog: [`backend/e4h-services/project/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/project/CHANGELOG.md)
 - OpenAPI spec: [`backend/e4h-services/project/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/project/openapi.json)
 

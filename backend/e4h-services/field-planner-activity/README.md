@@ -105,4 +105,22 @@ Conventions: all primary keys are VARCHAR (not UUID); audit columns (`createdBy`
 
 ## Local Setup
 
-See [LOCALSETUP.md](./LOCALSETUP.md)
+Basic build/run (Java 17, Maven, Spring Boot 3.2.2):
+
+1. Ensure Postgres is reachable and update `spring.datasource.*` in `src/main/resources/application.properties` if not using local defaults (`localhost:5433/SauraeMitraDev`, note the non-standard port `5433`). `spring.flyway.enabled=false` by default — enable it (and set `spring.flyway.url`/`.user`/`.password`) if the schema hasn't already been migrated by another route.
+2. Ensure Redis is reachable (`spring.redis.host`/`spring.redis.port`, default `localhost:6379`).
+3. Ensure Kafka is reachable (`kafka.config.bootstrap_server_config`, default `localhost:9092`).
+4. Point the dependent service hosts at reachable instances: `egov.idgen.host`, `egov.mdms.host`, `egov.fieldplan.host`, `egov.facility.host`, `egov.pdf.host`, `egov.location.host`/`egov.boundary.host` (boundary), `egov.workflow.host`, `egov.hrms.host`, `egov.vendor.user.host`, `egov.asset.host`, `egov.amc.scheduler.host`.
+5. Build:
+   ```bash
+   mvn clean install
+   ```
+6. Run:
+   ```bash
+   mvn spring-boot:run
+   ```
+   or run the packaged jar:
+   ```bash
+   java -jar target/field-planner-activity-1.1.6.jar
+   ```
+7. Service listens on port `8090` under context path `/activity`. **Note:** this is the same default `server.port` (`8090`) as [field-planner](../field-planner) — override one via `--server.port=` if running both locally at once.

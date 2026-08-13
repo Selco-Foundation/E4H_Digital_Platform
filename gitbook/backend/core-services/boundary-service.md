@@ -6,9 +6,9 @@ The boundary service handles boundary and geography-related platform data. In th
 
 ## Source location
 
-- Service path: `backend/core-services/boundary-service`
-- README: `backend/core-services/boundary-service/README.md`
-- Build file: `backend/core-services/boundary-service/pom.xml`
+- Service path: [`backend/core-services/boundary-service`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/core-services/boundary-service)
+- README: [`backend/core-services/boundary-service/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/boundary-service/README.md)
+- Build file: [`backend/core-services/boundary-service/pom.xml`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/core-services/boundary-service/pom.xml)
 
 ## Responsibilities
 

@@ -6,10 +6,9 @@ The field planner activity service supports activity-level execution for field p
 
 ## Source location
 
-- Service path: `backend/e4h-services/field-planner-activity`
+- Service path: [`backend/e4h-services/field-planner-activity`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/field-planner-activity)
 - README: [`backend/e4h-services/field-planner-activity/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/field-planner-activity/README.md)
 - OpenAPI spec: [`backend/e4h-services/field-planner-activity/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/field-planner-activity/openapi.json)
-- Local setup: `backend/e4h-services/field-planner-activity/LOCALSETUP.md`
 - Changelog: [`backend/e4h-services/field-planner-activity/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/field-planner-activity/CHANGELOG.md)
 
 ## Responsibilities

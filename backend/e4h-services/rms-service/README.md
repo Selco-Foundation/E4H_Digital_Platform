@@ -234,5 +234,25 @@ See [README-TESTING.md](README-TESTING.md) and [TESTING.md](TESTING.md) for manu
 
 ## Local Setup
 
-No `LOCALSETUP.md` exists for this service. Build and run with Maven (see [Development](#development) above); see [Testing](#testing) for manual test procedures.
+No `LOCALSETUP.md` exists for this service. Basic build/run (Java 17, Maven, Spring Boot 3.4.4):
+
+1. Ensure Postgres is reachable and set `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` (defaults to `jdbc:postgresql://localhost:5432/mydb` / `postgres` / `postgres` in `src/main/resources/application.properties`) — Flyway migrations run against the same connection on startup.
+2. Set `RMS_API_ACCESS_TOKEN` for the upstream RMS API (`rms.api.base.url=https://selco.theiox.com`) — required for telemetry collection to work.
+3. Point the dependent service hosts at reachable instances: `im.service.base.url` (Saura eMitra/IM service), `facility.service.base.url` (Facility Registry), `egov.mdms.host`, `egov.user.host`.
+4. Set `egov.internal.microservice.user.uuid` to a valid system user UUID (used to attribute auto-created tickets).
+5. Build:
+   ```bash
+   mvn clean install
+   ```
+6. Run:
+   ```bash
+   mvn spring-boot:run
+   ```
+   or run the packaged jar:
+   ```bash
+   java -jar target/rms-service-1.0.0.jar
+   ```
+7. Service listens on port `8885` under context path `/rms-service`. The rule-engine/data-collector schedulers (see [Scheduled Jobs](#scheduled-jobs)) start automatically — disable via the relevant `rms.scheduler.*.enabled` flags if you only want to exercise the manual trigger endpoints.
+
+See [Testing](#testing) for manual test procedures.
 

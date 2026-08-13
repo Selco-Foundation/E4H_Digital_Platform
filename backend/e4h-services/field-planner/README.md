@@ -74,4 +74,23 @@ Conventions: VARCHAR primary keys (not UUID type), `created_time`/`last_modified
 `egov.workflow.host`, `egov.workflow.transition.path`, `egov.workflow.search.path`, `egov.workflow.module.name` and `egov.workflow.business.service` (`FACILITY_INSTALLATION`) are defined in `FieldPlannerConfiguration.java` and `application.properties`, but no class in this service currently calls the workflow-v2 `_transition`/`_search` endpoints — there is no dedicated `WorkflowService`, and `field_plans.status`/`facility_activities.status` are set directly by application code (e.g. `SCHEDULED`, `ACTIVE`, `COMPLETED`) rather than through workflow transitions.
 
 ## Local Setup
-See [LOCALSETUP.md](./LOCALSETUP.md)
+
+Basic build/run (Java 17, Maven, Spring Boot 3.2.2):
+
+1. Ensure Postgres is reachable and update `spring.datasource.*` in `src/main/resources/application.properties` if not using local defaults (`localhost:5432/postgres`). Note `spring.flyway.enabled=false` by default — enable it (and set `spring.flyway.url`/`.user`/`.password`) if the schema hasn't already been migrated by another route.
+2. Ensure Redis is reachable (`spring.redis.host`/`spring.redis.port`, default `localhost:6379`).
+3. Ensure Kafka is reachable (`kafka.config.bootstrap_server_config`, default `localhost:9092`).
+4. Point the dependent service hosts at reachable instances: `egov.idgen.host`, `egov.mdms.host`, `egov.household.host`, `egov.project.host`, `egov.facility.host`, `egov.location.host`/`egov.boundary.host` (boundary), `egov.product.host`, `egov.workflow.host`, `egov.hrms.host`, `egov.fieldplan.activity.host`.
+5. Build:
+   ```bash
+   mvn clean install
+   ```
+6. Run:
+   ```bash
+   mvn spring-boot:run
+   ```
+   or run the packaged jar:
+   ```bash
+   java -jar target/field-planner-1.1.6.jar
+   ```
+7. Service listens on port `8090` under context path `/field-planner`.
