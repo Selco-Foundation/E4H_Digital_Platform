@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Loader, Table, Toast } from "@egovernments/digit-ui-react-components";
 import { useDispatch } from "react-redux";
-import { useHistory, useLocation } from "react-router-dom";
+import { Link, useHistory, useLocation } from "react-router-dom";
 import Filter from "../../components/AssessmentDetails/Filter";
 import InfoCard from "../../components/AssessmentDetails/InfoCard";
 import FacilityActionBar from "../../components/AssessmentDetails/FacilityActionBar";
-import FacilityDetailsModal from "../../components/AssessmentDetails/FacilityDetailsModal";
 import ConfirmActionModal from "../../components/AssessmentDetails/ConfirmActionModal";
 import ReasonRequiredModal from "../../components/AssessmentDetails/ReasonRequiredModal";
 import CompleteAssessmentPlanModal from "../../components/AssessmentDetails/CompleteAssessmentPlanModal";
@@ -41,7 +40,6 @@ const AssessmentDetails = () => {
   const [assessmentPlan, setAssessmentPlan] = useState({});
   const [selectedFacilityIds, setSelectedFacilityIds] = useState([]);
   const [fetchedData, setData] = useState([]);
-  const [facilityDetailsModal, setFacilityDetailsModal] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [completePlanModalOpen, setCompletePlanModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -252,11 +250,8 @@ const AssessmentDetails = () => {
     return selectedFacilities.length > 0 && selectedFacilities.every((facility) => facility.result !== targetResult);
   };
 
-  // "FACILITY_MODAL" identifies actions triggered from a single facility's detail view, which
-  // hit the singular decision-update API instead of the bulk one, regardless of how many rows
-  // happen to be checked in the table.
-  const openAssignOnSiteConfirm = (facilityIds, source = "BULK") => {
-    setPendingAction({ type: "ASSIGN_ONSITE", facilityIds, source });
+  const openAssignOnSiteConfirm = (facilityIds) => {
+    setPendingAction({ type: "ASSIGN_ONSITE", facilityIds });
   };
 
   // Mark Eligible/Mark Not Eligible run through a strict validation order: a blocking modal if
@@ -264,7 +259,7 @@ const AssessmentDetails = () => {
   // facility's on-site assessment is pending/not-initiated, then (only once every selected
   // facility has finalised both assessments) either a single shared reason prompt when every
   // facility needs one, a "not supported" notice when only some do, or a plain confirmation.
-  const openMarkResultConfirm = (facilityIds, targetResult, source = "BULK") => {
+  const openMarkResultConfirm = (facilityIds, targetResult) => {
     const selectedFacilities = fetchedData.filter((facility) => facilityIds.includes(facility.id));
     const scenario = evaluateMarkResultScenario(selectedFacilities, targetResult);
 
@@ -282,13 +277,12 @@ const AssessmentDetails = () => {
       type: scenario === "REASON_REQUIRED" ? "MARK_RESULT_REASON_REQUIRED" : scenario,
       targetResult,
       facilityIds,
-      source,
     });
   };
 
-  const openMarkEligibleConfirm = (facilityIds, source) => openMarkResultConfirm(facilityIds, "ELIGIBLE", source);
+  const openMarkEligibleConfirm = (facilityIds) => openMarkResultConfirm(facilityIds, "ELIGIBLE");
 
-  const openMarkNotEligibleConfirm = (facilityIds, source) => openMarkResultConfirm(facilityIds, "NOT_ELIGIBLE", source);
+  const openMarkNotEligibleConfirm = (facilityIds) => openMarkResultConfirm(facilityIds, "NOT_ELIGIBLE");
 
   const closePendingAction = () => setPendingAction(null);
 
@@ -301,19 +295,14 @@ const AssessmentDetails = () => {
         ? { assignForField: true }
         : { overallStatus: pendingAction.targetResult, ...(reason ? { remarks: reason } : {}) };
 
-      if (pendingAction.source === "FACILITY_MODAL") {
-        await AssessmentFacilityService.updateFacilityDecision(assessmentPlan, pendingAction.facilityIds[0], decisionFields);
-      } else {
-        const decisions = pendingAction.facilityIds.map((facilityId) => ({ planFacilityId: facilityId, ...decisionFields }));
-        await AssessmentFacilityService.bulkUpdateFacilityDecisions(assessmentId, decisions);
-      }
+      const decisions = pendingAction.facilityIds.map((facilityId) => ({ planFacilityId: facilityId, ...decisionFields }));
+      await AssessmentFacilityService.bulkUpdateFacilityDecisions(assessmentId, decisions);
 
       await revalidateFacilities();
       await revalidatePlanDetail();
       setSelectedFacilityIds([]);
       setMainCheck(false);
       setPendingAction(null);
-      setFacilityDetailsModal(null);
       setToast({ key: "success", label: t("PM_ASSESSMENT_ACTION_SUCCESS") });
     } catch (error) {
       console.error("Error updating assessment facility", error);
@@ -400,13 +389,12 @@ const AssessmentDetails = () => {
     {
       Header: t("PM_ASSESSMENT_FACILITY_NAME"),
       Cell: ({ row }) => (
-        <span
-          className="link"
-          style={{ fontWeight: 700, color: "#C84C0E", cursor: "pointer" }}
-          onClick={() => setFacilityDetailsModal(row.original)}
+        <Link
+          to={`/${window.contextPath}/employee/pm/project/${projectId}/assessment/${assessmentId}/facilities/${row.original["id"]}/details`}
+          style={{ fontWeight: 700, color: "#C84C0E" }}
         >
           {row.original["name"]}
-        </span>
+        </Link>
       ),
     },
     {
@@ -659,28 +647,6 @@ const AssessmentDetails = () => {
           {renderFacilities()}
         </div>
       </div>
-
-      {facilityDetailsModal && (
-        <FacilityDetailsModal
-          t={t}
-          facility={facilityDetailsModal}
-          planCompleted={planCompleted}
-          canAssignOnSite={canAssignForOnSiteAssessment(facilityDetailsModal)}
-          onClose={() => setFacilityDetailsModal(null)}
-          onAssignOnSite={() => {
-            openAssignOnSiteConfirm([facilityDetailsModal.id], "FACILITY_MODAL");
-            setFacilityDetailsModal(null);
-          }}
-          onMarkEligible={() => {
-            openMarkEligibleConfirm([facilityDetailsModal.id], "FACILITY_MODAL");
-            setFacilityDetailsModal(null);
-          }}
-          onMarkNotEligible={() => {
-            openMarkNotEligibleConfirm([facilityDetailsModal.id], "FACILITY_MODAL");
-            setFacilityDetailsModal(null);
-          }}
-        />
-      )}
 
       {confirmModalProps && (
         <ConfirmActionModal

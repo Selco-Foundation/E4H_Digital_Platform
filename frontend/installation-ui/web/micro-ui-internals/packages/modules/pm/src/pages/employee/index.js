@@ -12,6 +12,7 @@ import ProjectDetails from "./ProjectDetails";
 import CreateAMC from "./CreateAMC";
 import CreateAssessment from "./CreateAssessment";
 import AssessmentDetails from "./AssessmentDetails";
+import AssessmentFacilityDetails from "./AssessmentFacilityDetails";
 import Translation from "./Translation";
 import FieldPlanList from "./FieldPlanList";
 import FieldPlanFacilities from "./FieldPlanFacilities";
@@ -72,6 +73,11 @@ const PMApp = () => {
     assessmentDetails: {
       content: pmStore?.workingAssessmentPlan?.name,
       internalLink: match.url + `/project/${pmStore?.workingProject?.id}/assessment/${pmStore?.workingAssessmentPlan?.id}/details`,
+      show: true,
+    },
+    assessmentFacilityDetails: {
+      content: pmStore?.workingAssessmentFacility?.name,
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/assessment/${pmStore?.workingAssessmentPlan?.id}/facilities/${pmStore?.workingAssessmentFacility?.id}/details`,
       show: true,
     },
     fieldPlans: {
@@ -188,6 +194,13 @@ const PMApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.assessmentDetails]}
           />
           <AssessmentDetails t={t} />
+        </Route>
+        <Route path={`${path}/project/:projectId/assessment/:assessmentId/facilities/:facilityId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.assessmentDetails, breadCrumbsConfig.assessmentFacilityDetails]}
+          />
+          <AssessmentFacilityDetails t={t} />
         </Route>
         <Route path={`${path}/field-plans`} exact={true}>
           <BreadCrumb
