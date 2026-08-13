@@ -104,10 +104,6 @@ public class ActivityService {
         List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
 
         try {
-            // Pushed one ActivityFacility per Kafka message (rather than the whole bulk request in
-            // one message): each item's additionalDetails can carry a heavy BOM template copy, so
-            // batching them all into a single message can exceed the producer's max.request.size
-            // for field plans with many linked facilities (RecordTooLargeException).
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.info("processing {} valid entities", activityFacility);
                 activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
@@ -155,12 +151,6 @@ public class ActivityService {
                 usersFacility = usersFacility.stream().filter(a -> seenUsers.add(a.getUserId()))
                         .toList();
                 activityFacilityUsers.addAll(usersFacility);
-
-                ActivityFacilityBulkRequest singleFacilityRequest = ActivityFacilityBulkRequest.builder()
-                        .requestInfo(request.getRequestInfo())
-                        .activityFacilities(List.of(activityFacility))
-                        .build();
-                producer.push(activityConfiguration.getCreateActivityFacilityTopic(), singleFacilityRequest);
             }
 
 
@@ -173,12 +163,61 @@ public class ActivityService {
                 facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
             }
 
+            // Batched by actual serialized size, not item count: each item's additionalDetails
+            // carries a BOM template copy whose size varies by systemType, so a fixed item count
+            // can't guarantee staying under the producer's max.request.size for every template.
+            pushActivityFacilitiesInSizeBatches(activityFacilities, request.getRequestInfo());
+
             log.info("successfully created activity facility");
         } catch (Exception exception) {
             log.error("error occurred while creating Activity facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
         return activityFacilities;
+    }
+
+    /**
+     * Splits activityFacilities into consecutive runs whose combined serialized size stays under
+     * {@link ActivityConfiguration#getCreateActivityFacilityBatchMaxBytes()}, and pushes one Kafka
+     * message per run. A single item that alone exceeds the threshold is still pushed alone
+     * (best effort) rather than dropped - that item's own producer.push failure surfaces normally.
+     */
+    private void pushActivityFacilitiesInSizeBatches(List<ActivityFacility> activityFacilities, RequestInfo requestInfo) {
+        int maxBatchBytes = activityConfiguration.getCreateActivityFacilityBatchMaxBytes();
+        List<ActivityFacility> currentBatch = new ArrayList<>();
+        long currentBatchBytes = 0;
+
+        for (ActivityFacility activityFacility : activityFacilities) {
+            long itemBytes = estimateSerializedSize(activityFacility);
+            if (!currentBatch.isEmpty() && currentBatchBytes + itemBytes > maxBatchBytes) {
+                pushActivityFacilityBatch(currentBatch, requestInfo);
+                currentBatch = new ArrayList<>();
+                currentBatchBytes = 0;
+            }
+            currentBatch.add(activityFacility);
+            currentBatchBytes += itemBytes;
+        }
+        if (!currentBatch.isEmpty()) {
+            pushActivityFacilityBatch(currentBatch, requestInfo);
+        }
+    }
+
+    private void pushActivityFacilityBatch(List<ActivityFacility> batch, RequestInfo requestInfo) {
+        ActivityFacilityBulkRequest batchRequest = ActivityFacilityBulkRequest.builder()
+                .requestInfo(requestInfo)
+                .activityFacilities(batch)
+                .build();
+        producer.push(activityConfiguration.getCreateActivityFacilityTopic(), batchRequest);
+        log.info("Pushed activity facility batch of {} items", batch.size());
+    }
+
+    private long estimateSerializedSize(ActivityFacility activityFacility) {
+        try {
+            return mapper.writeValueAsBytes(activityFacility).length;
+        } catch (Exception e) {
+            log.warn("Could not estimate serialized size for activityFacility {}, assuming 0 bytes", activityFacility.getId(), e);
+            return 0;
+        }
     }
 
     public List<ActivityAssignment> createActivityAssignment(ActivityAssignmentBulkRequest request) {
