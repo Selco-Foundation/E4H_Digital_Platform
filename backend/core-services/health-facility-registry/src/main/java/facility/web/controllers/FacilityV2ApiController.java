@@ -250,6 +250,17 @@ public class FacilityV2ApiController {
     }
 
     /**
+     * Operator script: finds every facility whose facility_poc_phone is still a plaintext
+     * 10-digit number and re-persists it through the update-facility persister, which encrypts
+     * it on the way through (see FacilityRepository#pushUpdateFacility).
+     */
+    @GetMapping("/encrypt-poc-phone")
+    public ResponseEntity<String> encryptFacilityPocPhone() {
+        String summary = facilityService.encryptFacilityPocPhone();
+        return ResponseEntity.ok(summary);
+    }
+
+    /**
      * Operator script: when {@code hfr_id} is null or blank, sets indexer {@code code} to {@code nin_id} if present,
      * otherwise to {@code facility_poc_username} when both HFR and NIN are absent (existing ES doc patched, or full index).
      */
