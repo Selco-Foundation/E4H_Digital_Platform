@@ -104,7 +104,7 @@ public class PlanFacilitySearchService {
                                           org.egov.common.contract.request.RequestInfo requestInfo) {
         List<AssessmentSubmission> submissions = submissionRepository.findByPlanFacilityId(facility.getPlanFacilityId());
         for (AssessmentSubmission submission : submissions) {
-            AssessmentFormSchema schema = mdmsService.getFormSchema(
+            AssessmentFormSchema schema = mdmsService.getMobileFormSchema(
                     requestInfo, "in", submission.getFormType());
             List<String> summary = outcomeEngineService.buildResponseSummary(schema, submission.getSubmissionData());
             if (AssessmentConstants.PHASE_PHONE.equals(submission.getAssessmentPhase())) {
