@@ -41,6 +41,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         visit.setActualVisitDate(rs.getLong("sv_actual_visit_date"));
         visit.setLastVisitDate(rs.getLong("sv_last_scheduled_visit_date"));
         visit.setStatus(rs.getString("sv_status"));
+        visit.setIsActive(rs.getBoolean("sv_is_active"));
 
         // visit_report (JSONB → POJO)
         String visitReportJson = rs.getString("sv_visit_report");
@@ -74,6 +75,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         amc.setConfigurationEndDate(rs.getLong("amc_configuration_end_date"));
         amc.setStatus(rs.getString("amc_status"));
         amc.setAssetTypes(getAssetTypes("amc_asset_types", rs));
+        amc.setGeographyDetails(getGeographyDetails("amc_geography_details", rs));
 
         visit.setAmcConfiguration(amc);
 
@@ -130,6 +132,23 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         }
 
         return visit;
+    }
+
+    /**
+     * Convert JSONB column into Map<String,Object>
+     */
+    private Map<String, Object> getGeographyDetails(String columnName, ResultSet rs) throws SQLException {
+        Object obj = rs.getObject(columnName);
+        if (obj == null) {
+            return null;
+        }
+        String json = (obj instanceof PGobject) ? ((PGobject) obj).getValue() : obj.toString();
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (IOException e) {
+//            log.error("Failed to parse geography_details JSON for column: {}", columnName, e);
+            throw new CustomException("PARSING ERROR", "Failed to parse geographyDetails");
+        }
     }
 
     /**

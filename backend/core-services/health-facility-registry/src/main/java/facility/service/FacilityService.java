@@ -43,7 +43,7 @@ public class FacilityService {
     private final Configuration configs;
     private final FacilityKibanaMapper facilityKibanaMapper;
     private final FacilityProjectClient facilityProjectClient;
-    private EncryptionDecryptionUtil encryptionDecryptionUtil;
+    private final PocPhoneCipher pocPhoneCipher;
     private BoundaryUtil boundaryUtil;
 
     private FacilityRowMapperV2 facilityRowMapperV2;
@@ -52,6 +52,7 @@ public class FacilityService {
     private final HRMSService hrmsService;
     private final VendorOrganisationService vendorOrganisationService;
     private final RestTemplate restTemplate;
+    private final FacilityAnalyticsService facilityAnalyticsService;
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
     private static final String LOCALIZATION_LOCALE = "en_IN";
@@ -72,13 +73,14 @@ public class FacilityService {
             Configuration configs,
             FacilityKibanaMapper facilityKibanaMapper,
             FacilityProjectClient facilityProjectClient,
-            EncryptionDecryptionUtil encryptionDecryptionUtil,
+            PocPhoneCipher pocPhoneCipher,
             BoundaryUtil boundaryUtil,
             FacilityRowMapperV2 facilityRowMapperV2,
             HRMSUtils hrmsUtils,
             HRMSService hrmsService,
             VendorOrganisationService vendorOrganisationService,
-            RestTemplate restTemplate) {
+            RestTemplate restTemplate,
+            FacilityAnalyticsService facilityAnalyticsService) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.facilityRowMapper = facilityRowMapper;
@@ -90,13 +92,14 @@ public class FacilityService {
         this.configs = configs;
         this.facilityKibanaMapper = facilityKibanaMapper;
         this.facilityProjectClient = facilityProjectClient;
-        this.encryptionDecryptionUtil = encryptionDecryptionUtil;
+        this.pocPhoneCipher = pocPhoneCipher;
         this.boundaryUtil = boundaryUtil;
         this.facilityRowMapperV2 = facilityRowMapperV2;
         this.hrmsUtils = hrmsUtils;
         this.hrmsService = hrmsService;
         this.vendorOrganisationService = vendorOrganisationService;
         this.restTemplate = restTemplate;
+        this.facilityAnalyticsService = facilityAnalyticsService;
     }
 
     /**
@@ -258,15 +261,9 @@ public class FacilityService {
 
             log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
             for (Facility facility : tenantFacilities) {
-                // Keep original (unencrypted) POC mobile number for HRMS user creation
+                // Keep original (unencrypted) POC mobile number for HRMS user creation — the push
+                // below encrypts facility.facilityPocPhone in place.
                 String originalPocMobileNumber = facility.getFacilityPocPhone();
-                try {
-                    String encryptedPocMobileNumber = encryptMobileNumber(facility.getFacilityPocPhone());
-                    if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                        facility.setFacilityPocPhone(encryptedPocMobileNumber);
-                    }
-                }
-                catch (Exception e){}
 
                 Long time = System.currentTimeMillis();
                 facility.setAuditDetails(AuditDetails.builder().createdBy(request.getRequestInfo().getUserInfo().getUuid()).lastModifiedBy(request.getRequestInfo().getUserInfo().getUuid()).createdTime(time).lastModifiedTime(time).build());
@@ -306,6 +303,8 @@ public class FacilityService {
         }
 
         log.info("Successfully created {} facilities", validatedFacilities.size());
+        // One FACILITY_CREATE analytics event per created facility (best-effort, never throws).
+        facilityAnalyticsService.publishCreateEvents(request.getRequestInfo(), validatedFacilities);
         log.trace("Exiting createFacility method");
         return validatedFacilities;
     }
@@ -853,14 +852,6 @@ public class FacilityService {
         // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
         upsertFacilityBoundaryLocalizations(List.of(facility), request.getRequestInfo());
 
-        try {
-            String encryptedPocMobileNumber = encryptMobileNumber(request.getFacilityUpdate().getPocContact());
-            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                request.getFacilityUpdate().setPocContact(encryptedPocMobileNumber);
-            }
-        }
-        catch (Exception e){}
-
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
         boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendorUpdateInPayload(update);
@@ -991,6 +982,14 @@ public class FacilityService {
         }
         
         log.info("Successfully updated facility {}", update.getFacilityId());
+        // FACILITY_UPDATE analytics event (best-effort, never throws). Built separately rather
+        // than reusing `facility`: boundaryCode is read-only on the update payload, so the state
+        // lookup needs the persisted one, and `facility` is the API response.
+        facilityAnalyticsService.publishUpdateEvent(request.getRequestInfo(), Facility.builder()
+                .facilityId(update.getFacilityId())
+                .tenantId(update.getTenantId())
+                .boundaryCode(firstNonBlank(facility.getBoundaryCode(), existingFacility.getBoundaryCode()))
+                .build());
         log.trace("Exiting updateFacility method");
         return facility;
     }
@@ -1668,12 +1667,9 @@ public class FacilityService {
             facility.setUserId(facilityDB.getUserId());
             facility.setIsOnmReady(facilityDB.getIsOnmReady());
 
+            // Carried over as-is; the update push encrypts it before persisting.
             if(facilityDB.getFacilityDetails()!=null && facilityDB.getFacilityDetails().getPocContact()!=null && !facilityDB.getFacilityDetails().getPocContact().isBlank()){
-                String encryptedMobileNumber = encryptMobileNumber(facilityDB.getFacilityDetails().getPocContact());
-                if (encryptedMobileNumber!=null && !encryptedMobileNumber.isBlank()){
-                    log.info("mobile number {} encrypted to : {}", facilityDB.getFacilityDetails().getPocContact(), encryptedMobileNumber);
-                    facility.setPocContact(encryptedMobileNumber);
-                }
+                facility.setPocContact(facilityDB.getFacilityDetails().getPocContact());
             }
 
             if (details != null) {
@@ -1693,55 +1689,17 @@ public class FacilityService {
         }
     }
 
+    /**
+     * For encrypting a search criterion so it can be compared against the stored ciphertext (see
+     * {@code QueryBuilderUtil}). Write paths must not call this — {@link FacilityRepository} encrypts
+     * {@code facility_poc_phone} on every push.
+     */
     public String encryptMobileNumber(String mobileNumber){
-        String encryptedMobileNumber = null;
-        if(mobileNumber!=null && !mobileNumber.isBlank()){
-            EncryptObject object = EncryptObject.builder()
-                    .mobileNumber(mobileNumber)
-                    .build();
-            Map<String, EncryptObject> userMap = new HashMap<>();
-            userMap.put("userObject", object);
-            EncReqObject encReqObject = EncReqObject.builder()
-                    .tenantId(configs.getEncServiceTenantId())
-                    .type("Normal")
-                    .value(userMap)
-                    .build();
-            EncryptionRequest encryptionRequest = EncryptionRequest.builder()
-                    .encryptionRequests(List.of(encReqObject))
-                    .build();
-            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(encryptionRequest);
-            for (Map<String, EncryptObject> map : response) {
-                EncryptObject user = map.get("userObject"); // clé du JSON
-                if (user != null) {
-                    log.info("Mobile crypté : {}", user.getMobileNumber());
-                    encryptedMobileNumber = user.getMobileNumber();
-                }
-            }
-        }
-        return encryptedMobileNumber;
+        return pocPhoneCipher.encrypt(mobileNumber);
     }
 
     public String decryptMobileNumber(String mobileNumber){
-        String decryptedMobileNumber = null;
-        if(mobileNumber!=null && !mobileNumber.isBlank()){
-            EncryptObject object = EncryptObject.builder()
-                    .mobileNumber(mobileNumber)
-                    .build();
-            Map<String, EncryptObject> userMap = new HashMap<>();
-            userMap.put("userObject", object);
-            DecryptionRequest request = DecryptionRequest.builder()
-                    .decryptionRequests(List.of(userMap))
-                    .build();
-            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.decryptObject(request);
-            for (Map<String, EncryptObject> map : response) {
-                EncryptObject user = map.get("userObject"); // clé du JSON
-                if (user != null) {
-                    log.info("Mobile decrypté : {}", user.getMobileNumber());
-                    decryptedMobileNumber = user.getMobileNumber();
-                }
-            }
-        }
-        return decryptedMobileNumber;
+        return pocPhoneCipher.decrypt(mobileNumber);
     }
 
     public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {

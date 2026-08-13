@@ -1,5 +1,6 @@
 package org.egov.im.util;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.mdms.model.MasterDetail;
 import org.egov.mdms.model.MdmsCriteria;
@@ -13,9 +14,13 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+import static org.egov.im.util.IMConstants.MDMS_MASTER_SEM;
+import static org.egov.im.util.IMConstants.MDMS_MASTER_USER_TYPE;
 import static org.egov.im.util.IMConstants.MDMS_MODULE_NAME;
 import static org.egov.im.util.IMConstants.MDMS_SERVICEDEF;
+import static org.egov.im.util.IMConstants.USER_ANALYTICS_MODULE;
 
+@Slf4j
 @Component
 public class MDMSUtils {
 
@@ -44,6 +49,42 @@ public class MDMSUtils {
         return result;
     }
 
+
+    /**
+     * Calls MDMS service to fetch the USER_ANALYTICS master data (SEM and USER_TYPE)
+     * used to build SEM analytics events.
+     * @param requestInfo
+     * @param tenantId
+     * @return raw MDMS response
+     */
+    public Object getUserAnalyticsMDMSData(RequestInfo requestInfo, String tenantId) {
+        log.trace("MDMSUtils::getUserAnalyticsMDMSData method invoked");
+        MdmsCriteriaReq mdmsCriteriaReq = getUserAnalyticsMDMSRequest(requestInfo, tenantId);
+        return serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
+    }
+
+    /**
+     * Builds the MDMS search criteria for the USER_ANALYTICS module (SEM and USER_TYPE masters).
+     * @param requestInfo
+     * @param tenantId
+     * @return
+     */
+    public MdmsCriteriaReq getUserAnalyticsMDMSRequest(RequestInfo requestInfo, String tenantId) {
+        log.trace("MDMSUtils::getUserAnalyticsMDMSRequest method invoked");
+        List<MasterDetail> masterDetails = new ArrayList<>();
+        masterDetails.add(MasterDetail.builder().name(MDMS_MASTER_SEM).build());
+        masterDetails.add(MasterDetail.builder().name(MDMS_MASTER_USER_TYPE).build());
+
+        ModuleDetail moduleDetail = ModuleDetail.builder().masterDetails(masterDetails)
+                .moduleName(USER_ANALYTICS_MODULE).build();
+
+        MdmsCriteria mdmsCriteria = MdmsCriteria.builder()
+                .moduleDetails(Collections.singletonList(moduleDetail)).tenantId(tenantId)
+                .build();
+
+        return MdmsCriteriaReq.builder().mdmsCriteria(mdmsCriteria)
+                .requestInfo(requestInfo).build();
+    }
 
     /**
      * Returns mdms search criteria based on the tenantId

@@ -52,6 +52,8 @@ public class FieldPlannerService {
 
     private final FieldPlanTemplateService fieldPlanTemplateService;
 
+    private final FieldPlannerAnalyticsService fieldPlannerAnalyticsService;
+
     @Autowired
     @Qualifier("objectMapper")
     ObjectMapper mapper;
@@ -61,7 +63,7 @@ public class FieldPlannerService {
             FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators, FieldPlannerFacilityService facilityService,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
             Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository,
-            FieldPlanTemplateService fieldPlanTemplateService) {
+            FieldPlanTemplateService fieldPlanTemplateService, FieldPlannerAnalyticsService fieldPlannerAnalyticsService) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -73,6 +75,7 @@ public class FieldPlannerService {
             this.serviceRequestRepository = serviceRequestRepository;
             this.facilityService = facilityService;
             this.fieldPlanTemplateService = fieldPlanTemplateService;
+            this.fieldPlannerAnalyticsService = fieldPlannerAnalyticsService;
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
@@ -109,6 +112,10 @@ public class FieldPlannerService {
             producer.push(fieldPlannerConfiguration.getSaveFieldPlanTopic(), fieldPlanRequest);
             log.info("Field plan creation request pushed to Kafka topic: {}", fieldPlannerConfiguration.getSaveFieldPlanTopic());
         }
+
+        // No analytics event here: a create only ever drafts a plan. The FIELD_PLAN_CREATE event is
+        // emitted from the update that moves the plan into SCHEDULED — see
+        // FieldPlannerAnalyticsService#publishScheduledEvent.
 
         log.info("Field plan creation request processed successfully");
         log.trace("Exiting createFieldPlan method");
@@ -394,7 +401,15 @@ public class FieldPlannerService {
              * Handle cases where cascading fieldPlan date update is true
              */
             if (isCascadingFieldPlanDateUpdate) {
+                log.info("Processing cascading field plan date update for field plan ID: {}", fieldPlanId);
+                // Read before the update: analytics only tracks the update that schedules the plan,
+                // so it needs the status the plan came from to ignore the DRAFT edits before it.
+                String priorStatus = fielPlanFromDB.getStatus();
                 handleUpdateFieldPlan(request, fieldPlan, fielPlanFromDB);
+                // Only reached once the update has been pushed to the persister — a plan that failed
+                // validation above threw and never gets here (best-effort, never throws).
+                fieldPlannerAnalyticsService.publishScheduledEvent(request.getRequestInfo(), fieldPlan,
+                        fielPlanFromDB, priorStatus);
             }
         }
     }

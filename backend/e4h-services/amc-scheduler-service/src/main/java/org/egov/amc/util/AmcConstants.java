@@ -18,6 +18,11 @@ public class AmcConstants {
     public static final String APPROVED_STATUS = "APPROVED";
     public static final String SCHEDULE_ACTION = "SCHEDULE";
     public static final String EXPIRE_ACTION = "EXPIRE";
+    // AmcConfiguration.status - a separate vocabulary from the scheduled-visit statuses above.
+    // ux_amc_configuration_unique_installation is scoped to AMC_CONFIGURATION_ACTIVE_STATUS, so any
+    // code that retires a configuration must move it off ACTIVE or the slot stays taken.
+    public static final String AMC_CONFIGURATION_ACTIVE_STATUS = "ACTIVE";
+    public static final String AMC_CONFIGURATION_CANCELLED_STATUS = "CANCELLED";
     public static final String MASTER_ATTENDANCE_SESSION = "AttendanceSessions";
     public static final String CODE = "code";
     public static final String PROJECT_TYPE_FIELDPLAN = "FieldPlan";
@@ -36,5 +41,22 @@ public class AmcConstants {
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
+    // User-analytics event (shared user-analytics-report index, see AmcAnalyticsService)
+    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
+    public static final String MDMS_MASTER_AMC = "AMC";
+    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
+    public static final String ANALYTICS_APPLICATION_MANAGEMENT_HUB = "MANAGEMENT_HUB";
+    public static final String ANALYTICS_APPLICATION_FIELD_ASSIST = "FIELD_ASSIST";
+    public static final String ANALYTICS_MODULE_AMC = "AMC";
+    public static final String ANALYTICS_ENTITY_TYPE_AMC_CONFIGURATION = "AMC_CONFIGURATION";
+    public static final String ANALYTICS_ENTITY_TYPE_AMC_VISIT = "AMC_VISIT";
+    public static final String ANALYTICS_EVENT_AMC_SCHEDULED = "AMC_SCHEDULED";
+    public static final String ANALYTICS_EVENT_AMC_VISIT_SUBMITTED = "AMC_VISIT_SUBMITTED";
+    public static final String ANALYTICS_EVENT_AMC_VISIT_RESUBMITTED = "AMC_VISIT_RESUBMITTED";
+    public static final String ANALYTICS_EVENT_AMC_VISIT_OTP_VERIFIED = "AMC_VISIT_OTP_VERIFIED";
+    // Boundary localizations live in this module at the national tenant.
+    public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
+    public static final String LOCALIZATION_LOCALE = "en_IN";
+    public static final String LOCALIZATION_TENANT_ID = "in";
 
 }

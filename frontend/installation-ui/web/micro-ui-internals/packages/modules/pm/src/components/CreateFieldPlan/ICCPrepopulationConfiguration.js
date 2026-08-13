@@ -80,7 +80,7 @@ const normalizeCapacity = (value) => {
 const getICCReportFormData = (row, file, fieldPlanId, tenantId) => {
   const formData = new FormData();
   const items = [{
-    id: row.template?.id || "",
+    id: isSavedFieldPlanTemplate(row, fieldPlanId) ? row.template.id : "",
     systemType: row.systemType?.code,
     totalSystemCapacity: normalizeCapacity(row.totalSystemCapacity?.code || row.totalSystemCapacity?.name),
     fieldPlanId,
@@ -99,6 +99,12 @@ const getRowKey = (row = {}) => {
 
   return systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "";
 };
+
+const isSavedFieldPlanTemplate = (row = {}, fieldPlanId) => (
+  !!row.template?.id &&
+  !!row.template?.fieldPlanId &&
+  (!fieldPlanId || row.template.fieldPlanId === fieldPlanId)
+);
 
 const getUniqueRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
   const rowKey = getRowKey(row);
@@ -742,7 +748,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       const formData = getICCReportFormData(selectedRow, uploadedFile, fieldPlanId, tenantId);
       let uploadResponse;
 
-      if (selectedRow.template?.id) {
+      if (isSavedFieldPlanTemplate(selectedRow, fieldPlanId)) {
         uploadResponse = await IngestionService.upsertICCReports(formData);
       } else {
         uploadResponse = await IngestionService.uploadICCReports(formData);
