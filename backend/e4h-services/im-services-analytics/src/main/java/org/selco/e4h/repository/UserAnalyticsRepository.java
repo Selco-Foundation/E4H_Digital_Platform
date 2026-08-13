@@ -24,18 +24,23 @@ import java.util.Map;
 
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_ACTIVE_USERS;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_APPLICATION;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_EVENT_TYPE;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_GROUP;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_ROLE;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_STATE;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_BY_USER_NAME;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_CHAMPIONS_BY_APPLICATION;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_CHAMPIONS_BY_ROLE;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_KIBANA_LOGINS;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_LOGINS;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_TOP_USERS;
 import static org.selco.e4h.util.UserAnalyticsConstants.AGG_USER_DETAILS;
-import static org.selco.e4h.util.UserAnalyticsConstants.UNKNOWN;
+import static org.selco.e4h.util.UserAnalyticsConstants.AGG_VENDOR_ACTIONS;
+import static org.selco.e4h.util.UserAnalyticsConstants.KIBANA_LOGIN_EVENT_TYPE;
 import static org.selco.e4h.util.UserAnalyticsConstants.USER_LOGIN_EVENT_TYPE;
 import static org.selco.e4h.util.UserAnalyticsConstants.USER_NAME_SOURCE_PATH;
 import static org.selco.e4h.util.UserAnalyticsConstants.USER_USERNAME_SOURCE_PATH;
+import static org.selco.e4h.util.UserAnalyticsConstants.VENDOR_SYSTEM_ROLE;
 
 /**
  * Aggregates a single week out of the {@code user-analytics-report} index.
@@ -61,17 +66,18 @@ public class UserAnalyticsRepository {
     /**
      * Runs the aggregation over {@code [from, to)}.
      *
-     * @param from              inclusive start of the window, UTC
-     * @param to                exclusive end of the window, UTC
-     * @param includeChampions  whether to also rank champion users; false for the previous week,
-     *                          which is only aggregated to compute growth and whose champions would
-     *                          never be read
+     * @param from          inclusive start of the window, UTC
+     * @param to            exclusive end of the window, UTC
+     * @param reportedWeek  whether this is the week being reported on rather than the one before it.
+     *                      The champion ranking and the Kibana login list are only ever read off the
+     *                      reported week, so they are not asked for on the previous week, which
+     *                      exists solely to compute growth
      */
     @SuppressWarnings("unchecked")
-    public UserAnalyticsAggregation aggregate(Instant from, Instant to, boolean includeChampions) {
+    public UserAnalyticsAggregation aggregate(Instant from, Instant to, boolean reportedWeek) {
         String uri = config.getEsHostName() + ":" + config.getEsPortNo()
                 + "/" + properties.getIndex() + "/" + SEARCH_PATH;
-        Map<String, Object> query = buildQuery(from, to, includeChampions);
+        Map<String, Object> query = buildQuery(from, to, reportedWeek);
         log.info("User analytics: aggregating {} for window [{}, {})", properties.getIndex(), from, to);
         log.debug("User analytics: query {}", query);
 
@@ -100,6 +106,7 @@ public class UserAnalyticsRepository {
                 .byRole(parseDimension(aggregations, AGG_BY_ROLE))
                 .championsByRole(parseChampions(aggregations, AGG_CHAMPIONS_BY_ROLE))
                 .championsByApplication(parseChampions(aggregations, AGG_CHAMPIONS_BY_APPLICATION))
+                .kibanaLoginsByUser(parseKibanaLogins(aggregations))
                 .build();
     }
 
@@ -110,13 +117,14 @@ public class UserAnalyticsRepository {
         return headers;
     }
 
-    private Map<String, Object> buildQuery(Instant from, Instant to, boolean includeChampions) {
-        Map<String, Object> aggregations = new LinkedHashMap<>(metricAggregations());
-        aggregations.put(AGG_BY_STATE, termsAggregation(properties.getStateField()));
-        aggregations.put(AGG_BY_ROLE, termsAggregation(properties.getRoleField()));
-        if (includeChampions) {
+    private Map<String, Object> buildQuery(Instant from, Instant to, boolean reportedWeek) {
+        Map<String, Object> aggregations = new LinkedHashMap<>(metricAggregations(false));
+        aggregations.put(AGG_BY_STATE, termsAggregation(properties.getStateField(), true));
+        aggregations.put(AGG_BY_ROLE, termsAggregation(properties.getRoleField(), false));
+        if (reportedWeek) {
             aggregations.put(AGG_CHAMPIONS_BY_ROLE, championsAggregation(properties.getRoleField()));
             aggregations.put(AGG_CHAMPIONS_BY_APPLICATION, championsAggregation(properties.getApplicationField()));
+            aggregations.put(AGG_KIBANA_LOGINS, kibanaLoginsAggregation());
         }
 
         Map<String, Object> query = new LinkedHashMap<>();
@@ -127,33 +135,82 @@ public class UserAnalyticsRepository {
         return query;
     }
 
-    /** A state / role {@code terms} bucket carrying the same metrics as the top level. */
-    private Map<String, Object> termsAggregation(String field) {
+    /**
+     * A state / role {@code terms} bucket carrying the same metrics as the top level.
+     * <p>
+     * No {@code missing} bucket is requested: a document whose field is null is left out of the
+     * breakdown altogether rather than being reported under a placeholder key.
+     *
+     * @param includeEventTypes whether to also break the bucket down by event type
+     */
+    private Map<String, Object> termsAggregation(String field, boolean includeEventTypes) {
         return Map.of(
                 "terms", Map.of(
                         "field", field,
-                        "size", properties.getTermsSize(),
-                        "missing", UNKNOWN),
-                "aggs", metricAggregations());
+                        "size", properties.getTermsSize()),
+                "aggs", metricAggregations(includeEventTypes));
     }
 
     /**
      * The metrics computed at every level: distinct active users, login count, and both again split
      * by application.
+     *
+     * @param includeEventTypes adds an event-type {@code terms} beside the metrics and again inside
+     *                          the per-application buckets, plus the vendor-action count within each
+     *                          application — between them the numbers the By State event tables read
      */
-    private Map<String, Object> metricAggregations() {
+    private Map<String, Object> metricAggregations(boolean includeEventTypes) {
+        Map<String, Object> applicationAggregations = new LinkedHashMap<>();
+        applicationAggregations.put(AGG_ACTIVE_USERS, activeUsersAggregation());
+        applicationAggregations.put(AGG_LOGINS, loginsAggregation());
+        if (includeEventTypes) {
+            applicationAggregations.put(AGG_BY_EVENT_TYPE, eventTypesAggregation());
+            applicationAggregations.put(AGG_VENDOR_ACTIONS, vendorActionsAggregation());
+        }
+
         Map<String, Object> aggregations = new LinkedHashMap<>();
         aggregations.put(AGG_ACTIVE_USERS, activeUsersAggregation());
         aggregations.put(AGG_LOGINS, loginsAggregation());
         aggregations.put(AGG_BY_APPLICATION, Map.of(
                 "terms", Map.of(
                         "field", properties.getApplicationField(),
-                        "size", properties.getTermsSize(),
-                        "missing", UNKNOWN),
-                "aggs", Map.of(
-                        AGG_ACTIVE_USERS, activeUsersAggregation(),
-                        AGG_LOGINS, loginsAggregation())));
+                        "size", properties.getTermsSize()),
+                "aggs", applicationAggregations));
+        if (includeEventTypes) {
+            aggregations.put(AGG_BY_EVENT_TYPE, eventTypesAggregation());
+        }
         return aggregations;
+    }
+
+    /**
+     * Every event type seen in the bucket with its document count. {@code USER_LOGIN} is included
+     * here — unlike the champions ranking, the cross-tab is a plain census of what happened.
+     */
+    private Map<String, Object> eventTypesAggregation() {
+        return Map.of("terms", Map.of(
+                "field", properties.getEventTypeField(),
+                "size", properties.getEventTypeTermsSize()));
+    }
+
+    /** Every event the vendor role produced in the bucket, regardless of what the action was. */
+    private Map<String, Object> vendorActionsAggregation() {
+        return Map.of("filter", Map.of("term",
+                Map.of(properties.getSystemRoleField(), VENDOR_SYSTEM_ROLE)));
+    }
+
+    /**
+     * Kibana sign-ins per login id, busiest first — {@code terms} orders on {@code doc_count} by
+     * default, which is the ranking the sheet wants. Grouped on the login id rather than the uuid
+     * because Kibana accounts are Elasticsearch-native and carry no egov uuid.
+     */
+    private Map<String, Object> kibanaLoginsAggregation() {
+        return Map.of(
+                "filter", Map.of("term",
+                        Map.of(properties.getEventTypeField(), KIBANA_LOGIN_EVENT_TYPE)),
+                "aggs", Map.of(AGG_BY_USER_NAME, Map.of(
+                        "terms", Map.of(
+                                "field", properties.getUserNameField(),
+                                "size", properties.getTermsSize()))));
     }
 
     private Map<String, Object> activeUsersAggregation() {
@@ -192,8 +249,7 @@ public class UserAnalyticsRepository {
                 "aggs", Map.of(AGG_BY_GROUP, Map.of(
                         "terms", Map.of(
                                 "field", groupField,
-                                "size", properties.getTermsSize(),
-                                "missing", UNKNOWN),
+                                "size", properties.getTermsSize()),
                         // topUsers is an aggregation body, so it has to be keyed by its name here —
                         // handing it to "aggs" bare makes Elasticsearch read "terms" as the
                         // aggregation's name rather than its type.
@@ -217,6 +273,8 @@ public class UserAnalyticsRepository {
     private UserAnalyticsMetrics parseMetrics(Map<String, Object> node) {
         Map<String, Long> activeUsersByApplication = new LinkedHashMap<>();
         Map<String, Long> loginsByApplication = new LinkedHashMap<>();
+        Map<String, Map<String, Long>> eventCountsByApplicationAndType = new LinkedHashMap<>();
+        Map<String, Long> vendorActionsByApplication = new LinkedHashMap<>();
         for (Map<String, Object> bucket : buckets(node, AGG_BY_APPLICATION)) {
             String application = asString(bucket.get("key"));
             if (application == null) {
@@ -224,13 +282,52 @@ public class UserAnalyticsRepository {
             }
             activeUsersByApplication.put(application, cardinality(bucket));
             loginsByApplication.put(application, docCount(bucket));
+            eventCountsByApplicationAndType.put(application, parseEventCounts(bucket));
+            // Absent on the levels that asked for no event breakdown, where it reads as zero.
+            vendorActionsByApplication.put(application,
+                    asLong(child(bucket, AGG_VENDOR_ACTIONS).get("doc_count")));
         }
         return UserAnalyticsMetrics.builder()
                 .activeUsersByApplication(activeUsersByApplication)
                 .activeUsersTotal(cardinality(node))
                 .loginsByApplication(loginsByApplication)
                 .loginsTotal(docCount(node))
+                .eventCountsByType(parseEventCounts(node))
+                .eventCountsByApplicationAndType(eventCountsByApplicationAndType)
+                .vendorActionsByApplication(vendorActionsByApplication)
                 .build();
+    }
+
+    /**
+     * Kibana login id -> sign-in count, in the order Elasticsearch ranked them. Comes back empty for
+     * the previous week, which never asks for the aggregation.
+     */
+    private Map<String, Long> parseKibanaLogins(Map<String, Object> aggregations) {
+        Map<String, Long> byUserName = new LinkedHashMap<>();
+        for (Map<String, Object> bucket : buckets(child(aggregations, AGG_KIBANA_LOGINS), AGG_BY_USER_NAME)) {
+            String userName = asString(bucket.get("key"));
+            if (userName == null) {
+                continue;
+            }
+            byUserName.put(userName, asLong(bucket.get("doc_count")));
+        }
+        return byUserName;
+    }
+
+    /**
+     * Event type -> document count. Comes back empty for the levels that did not ask for the
+     * breakdown — the overall and by-role nodes simply carry no {@code by_event_type} to read.
+     */
+    private Map<String, Long> parseEventCounts(Map<String, Object> node) {
+        Map<String, Long> byEventType = new LinkedHashMap<>();
+        for (Map<String, Object> bucket : buckets(node, AGG_BY_EVENT_TYPE)) {
+            String eventType = asString(bucket.get("key"));
+            if (eventType == null) {
+                continue;
+            }
+            byEventType.put(eventType, asLong(bucket.get("doc_count")));
+        }
+        return byEventType;
     }
 
     /**

@@ -35,6 +35,23 @@ public class UserAnalyticsMetrics {
     /** Count of {@code USER_LOGIN} events in the week, across all applications. */
     private long loginsTotal;
 
+    /**
+     * {@code event_type} -> count of those events in the week, across all applications. Only
+     * populated for the state dimension, which is the only one cross-tabbed against event type;
+     * empty everywhere else.
+     */
+    private Map<String, Long> eventCountsByType;
+
+    /** Application -> {@code event_type} -> count, the same breakdown split per application. */
+    private Map<String, Map<String, Long>> eventCountsByApplicationAndType;
+
+    /**
+     * Application -> count of events produced by the vendor system role, whatever the event type
+     * was. Filled alongside {@link #eventCountsByApplicationAndType}, so for the state dimension
+     * only; empty everywhere else.
+     */
+    private Map<String, Long> vendorActionsByApplication;
+
     /** An all-zero bucket, for a state or role present in one week but absent in the other. */
     public static UserAnalyticsMetrics empty() {
         return UserAnalyticsMetrics.builder()
@@ -42,6 +59,9 @@ public class UserAnalyticsMetrics {
                 .activeUsersTotal(0L)
                 .loginsByApplication(Collections.emptyMap())
                 .loginsTotal(0L)
+                .eventCountsByType(Collections.emptyMap())
+                .eventCountsByApplicationAndType(Collections.emptyMap())
+                .vendorActionsByApplication(Collections.emptyMap())
                 .build();
     }
 
@@ -53,5 +73,32 @@ public class UserAnalyticsMetrics {
     public long loginsFor(String application) {
         return (loginsByApplication == null) ? 0L
                 : loginsByApplication.getOrDefault(application, 0L);
+    }
+
+    /** Count of one event type across all applications. */
+    public long eventCountFor(String eventType) {
+        return (eventCountsByType == null) ? 0L
+                : eventCountsByType.getOrDefault(eventType, 0L);
+    }
+
+    /** Count of one event type within one application. */
+    public long eventCountFor(String application, String eventType) {
+        if (eventCountsByApplicationAndType == null) {
+            return 0L;
+        }
+        return eventCountsByApplicationAndType
+                .getOrDefault(application, Collections.emptyMap())
+                .getOrDefault(eventType, 0L);
+    }
+
+    /** Events the vendor system role produced within one application. */
+    public long vendorActionsFor(String application) {
+        return (vendorActionsByApplication == null) ? 0L
+                : vendorActionsByApplication.getOrDefault(application, 0L);
+    }
+
+    /** Never null, so callers can iterate the event types this bucket saw without guarding. */
+    public Map<String, Long> eventTypeCounts() {
+        return (eventCountsByType == null) ? Collections.emptyMap() : eventCountsByType;
     }
 }

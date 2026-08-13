@@ -45,11 +45,15 @@ public class AmcConstants {
     public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
     public static final String MDMS_MASTER_AMC = "AMC";
     public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
-    public static final String ANALYTICS_APPLICATION = "MANAGEMENT_HUB";
+    public static final String ANALYTICS_APPLICATION_MANAGEMENT_HUB = "MANAGEMENT_HUB";
+    public static final String ANALYTICS_APPLICATION_FIELD_ASSIST = "FIELD_ASSIST";
     public static final String ANALYTICS_MODULE_AMC = "AMC";
     public static final String ANALYTICS_ENTITY_TYPE_AMC_CONFIGURATION = "AMC_CONFIGURATION";
     public static final String ANALYTICS_ENTITY_TYPE_AMC_VISIT = "AMC_VISIT";
     public static final String ANALYTICS_EVENT_AMC_SCHEDULED = "AMC_SCHEDULED";
+    public static final String ANALYTICS_EVENT_AMC_VISIT_SUBMITTED = "AMC_VISIT_SUBMITTED";
+    public static final String ANALYTICS_EVENT_AMC_VISIT_RESUBMITTED = "AMC_VISIT_RESUBMITTED";
+    public static final String ANALYTICS_EVENT_AMC_VISIT_OTP_VERIFIED = "AMC_VISIT_OTP_VERIFIED";
     // Boundary localizations live in this module at the national tenant.
     public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
     public static final String LOCALIZATION_LOCALE = "en_IN";
