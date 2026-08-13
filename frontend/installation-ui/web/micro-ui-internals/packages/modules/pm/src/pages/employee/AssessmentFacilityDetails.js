@@ -5,6 +5,7 @@ import { useQueryClient } from "react-query";
 import { useTranslation } from "react-i18next";
 import InfoCard from "../../components/AssessmentFacilityDetails/InfoCard";
 import ExpandableSection from "../../components/AssessmentFacilityDetails/ExpandableSection";
+import Section from "../../components/AssessmentFacilityDetails/Section";
 import ActionBar from "../../components/AssessmentFacilityDetails/ActionBar";
 import ConfirmActionModal from "../../components/AssessmentDetails/ConfirmActionModal";
 import ReasonRequiredModal from "../../components/AssessmentDetails/ReasonRequiredModal";
@@ -254,9 +255,9 @@ const AssessmentFacilityDetails = () => {
 
   const ResponsePages = ({ sections }) => (
     sections.map((section) => (
-      <ExpandableSection key={section.key} title={t(section.label)} defaultExpanded={true}>
+      <Section key={section.key} title={t(section.label)}>
         <SectionFields fields={section.fields} />
-      </ExpandableSection>
+      </Section>
     ))
   );
 
@@ -289,21 +290,15 @@ const AssessmentFacilityDetails = () => {
       <InfoCard t={t} facility={facility} phoneOutcome={phoneOutcome} fieldOutcome={fieldOutcome} />
 
       {!!remoteSections.length && (
-        <React.Fragment>
-          <div style={{ fontSize: "24px", fontWeight: 700, fontFamily: "Roboto Condensed", color: "#0B0C0C", margin: "20px 0px 10px" }}>
-            {t("PM_ASSESSMENT_RESPONSES")}
-          </div>
+        <ExpandableSection title={t("PM_ASSESSMENT_RESPONSES")} defaultExpanded={true}>
           <ResponsePages sections={remoteSections} />
-        </React.Fragment>
+        </ExpandableSection>
       )}
 
       {!!siteSections.length && (
-        <React.Fragment>
-          <div style={{ fontSize: "24px", fontWeight: 700, fontFamily: "Roboto Condensed", color: "#0B0C0C", margin: "20px 0px 10px" }}>
-            {t("PM_ASSESSMENT_SITE_RESPONSES")}
-          </div>
+        <ExpandableSection title={t("PM_ASSESSMENT_SITE_RESPONSES")} defaultExpanded={true}>
           <ResponsePages sections={siteSections} />
-        </React.Fragment>
+        </ExpandableSection>
       )}
 
       {!planCompleted && (

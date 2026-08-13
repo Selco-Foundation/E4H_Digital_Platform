@@ -4,15 +4,21 @@ const ExpandableSection = ({ title, defaultExpanded = false, children }) => {
 
   const [expanded, setExpanded] = useState(defaultExpanded);
 
+  const toggleExpanded = () => setExpanded((prev) => !prev);
+
   return (
     <div
       style={{
+        marginTop: "15px",
         width: "100%",
+        padding: "20px",
         background: "white",
-        marginBottom: "15px",
         borderRadius: "4px",
         boxShadow: "0px 0px 4px rgba(0, 0, 0, 0.25)",
-        overflow: "hidden",
+        border: "1px solid #eee",
+        borderTop: "none",
+        borderBottom: "none",
+        transition: "all 0.3s ease-in-out",
       }}
     >
       <div
@@ -21,12 +27,24 @@ const ExpandableSection = ({ title, defaultExpanded = false, children }) => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          backgroundColor: "#fff",
           borderBottom: expanded ? "1px solid #eee" : "none",
           cursor: "pointer",
         }}
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={toggleExpanded}
       >
-        <div style={{ fontSize: "18px", fontWeight: 700, color: "#0B0C0C" }}>{title}</div>
+        <div
+          style={{
+            margin: 0,
+            color: "#0B4B66",
+            fontSize: "32px",
+            fontWeight: "bold",
+            maxWidth: "100%",
+            overflowWrap: "break-word",
+          }}
+        >
+          {title}
+        </div>
         <button
           type="button"
           style={{
@@ -46,14 +64,14 @@ const ExpandableSection = ({ title, defaultExpanded = false, children }) => {
           }}
           onClick={(e) => {
             e.stopPropagation();
-            setExpanded((prev) => !prev);
+            toggleExpanded();
           }}
         >
           {expanded ? "−" : "+"}
         </button>
       </div>
       {expanded && (
-        <div style={{ padding: "16px 20px" }}>
+        <div style={{ padding: "20px" }}>
           {children}
         </div>
       )}
