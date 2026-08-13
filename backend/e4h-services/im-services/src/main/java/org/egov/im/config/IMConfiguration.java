@@ -134,6 +134,12 @@ public class IMConfiguration {
     @Value("${im.kafka.user.analytics.topic}")
     private String userAnalyticsTopic;
 
+    @Value("${im.kafka.kibana.login.topic}")
+    private String kibanaLoginTopic;
+
+    @Value("${im.kafka.kibana.login.tenantid}")
+    private String kibanaLoginTenantId;
+
     @Value("${im.default.offset}")
     private Integer defaultOffset;
 
