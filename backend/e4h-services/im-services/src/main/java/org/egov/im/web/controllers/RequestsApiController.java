@@ -144,6 +144,22 @@ public class RequestsApiController{
     }
 
     /**
+     * Re-publishes an incident's current DB state to the indexer-only Kafka topic
+     * (skips persister). Recovery tool for a single incident that persister wrote
+     * successfully but the indexer failed to reflect in Elasticsearch.
+     */
+    @RequestMapping(value = "/request/_reindex", method = RequestMethod.POST)
+    public ResponseEntity<IncidentResponse> requestsReindexPost(@Valid @RequestBody ReindexRequest request) {
+        log.trace("RequestsApiController::requestsReindexPost method invoked");
+        log.info("Received reindex request for tenantId={}, incidentId={}", request.getTenantId(), request.getIncidentId());
+        IncidentWrapper incidentWrapper = imService.reindex(request.getRequestInfo(), request.getTenantId(), request.getIncidentId());
+        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
+        IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.singletonList(incidentWrapper)).build();
+        log.info("Reindex request completed successfully for incidentId={}", request.getIncidentId());
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    /**
      * Triggers theft notification: scans for tickets in state PENDINGFORASSIGNMENT_THEFT
      * that have exceeded the threshold (from MDMS common-masters TheftNotificationThreshold)
      * since filed date, and sends SMS to CRM: "Theft ticket [Ticket No.] requires action".
