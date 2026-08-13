@@ -62,4 +62,7 @@ public class UserAnalyticsReport {
 
     /** Application -> its top champion users for the reported week, most active first. */
     private Map<String, List<ChampionUser>> championsByApplication;
+
+    /** Kibana login id -> sign-ins in the reported week, busiest first; the order is the ranking. */
+    private Map<String, Long> kibanaLoginsByUser;
 }
