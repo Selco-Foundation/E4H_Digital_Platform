@@ -104,6 +104,10 @@ public class ActivityService {
         List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
 
         try {
+            // Pushed one ActivityFacility per Kafka message (rather than the whole bulk request in
+            // one message): each item's additionalDetails can carry a heavy BOM template copy, so
+            // batching them all into a single message can exceed the producer's max.request.size
+            // for field plans with many linked facilities (RecordTooLargeException).
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.info("processing {} valid entities", activityFacility);
                 activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
@@ -151,6 +155,12 @@ public class ActivityService {
                 usersFacility = usersFacility.stream().filter(a -> seenUsers.add(a.getUserId()))
                         .toList();
                 activityFacilityUsers.addAll(usersFacility);
+
+                ActivityFacilityBulkRequest singleFacilityRequest = ActivityFacilityBulkRequest.builder()
+                        .requestInfo(request.getRequestInfo())
+                        .activityFacilities(List.of(activityFacility))
+                        .build();
+                producer.push(activityConfiguration.getCreateActivityFacilityTopic(), singleFacilityRequest);
             }
 
 
@@ -163,7 +173,6 @@ public class ActivityService {
                 facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
             }
 
-            producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
             log.info("successfully created activity facility");
         } catch (Exception exception) {
             log.error("error occurred while creating Activity facility: {}", ExceptionUtils.getStackTrace(exception));
