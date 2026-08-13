@@ -426,6 +426,21 @@ public class WorkflowService {
         return businessIdToWorkflow;
     }
 
+    /**
+     * Returns the most recent ProcessInstance for the incident's current cycle,
+     * without performing a workflow transition. Used to reflect current state
+     * (e.g. when re-publishing to the indexer) rather than advance the workflow.
+     */
+    public ProcessInstance getCurrentProcessInstance(String tenantId, String incidentId, RequestInfo requestInfo) {
+        log.trace("WorkflowService::getCurrentProcessInstance method invoked");
+        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId, incidentId, requestInfo);
+        if (CollectionUtils.isEmpty(processInstances)) {
+            log.debug("No process instances found for incident: {}", incidentId);
+            return null;
+        }
+        return processInstances.get(0);
+    }
+
     private List<ProcessInstance> getAllProcessInstances(String tenantId, String IncidentId, RequestInfo requestInfo){
         log.trace("WorkflowService::getAllProcessInstances method invoked");
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
