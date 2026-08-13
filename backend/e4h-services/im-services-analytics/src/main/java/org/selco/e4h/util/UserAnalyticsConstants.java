@@ -34,6 +34,12 @@ public class UserAnalyticsConstants {
     public static final String AGG_BY_APPLICATION = "by_application";
     public static final String AGG_BY_STATE = "by_state";
     public static final String AGG_BY_ROLE = "by_role";
+    /**
+     * {@code event_type} terms, requested only under the state dimension — the By State sheet
+     * cross-tabs state against event type, and nesting it under role too would multiply the
+     * aggregation out for a breakdown nothing reads.
+     */
+    public static final String AGG_BY_EVENT_TYPE = "by_event_type";
 
     public static final String AGG_CHAMPIONS_BY_ROLE = "champions_by_role";
     public static final String AGG_CHAMPIONS_BY_APPLICATION = "champions_by_application";
