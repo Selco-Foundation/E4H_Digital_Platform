@@ -7,6 +7,7 @@
 * [Platform overview](overview/platform-overview.md)
 * [Architecture](overview/architecture.md)
 * [Repository map](overview/repository-map.md)
+* [User roles and permissions](overview/user-roles-and-permissions.md)
 
 ## Getting started
 

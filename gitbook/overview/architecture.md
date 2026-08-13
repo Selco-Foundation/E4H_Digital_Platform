@@ -2,6 +2,8 @@
 
 The repository is organized as a multi-application platform with backend services, web frontends, a Flutter mobile app, and shared data/API assets.
 
+See the [README.md](../../README.md) for a non-technical overview, the full module list, and quick-start links, and [User roles and permissions](user-roles-and-permissions.md) for who can do what.
+
 ## High-level structure
 
 ```text
@@ -19,7 +21,7 @@ Backend services are Java/Maven services grouped into:
 - `backend/core-services`: shared platform services such as boundary, filestore, ID generation, MDMS, SMS notification, workflow, facility registry, and gateway support.
 - `backend/e4h-services`: E4H domain services such as asset registry, RMS, ingestion, project, field planning, HRMS, inbox, analytics, vendor registry, AMC scheduling, and processor services.
 
-Many services include their own `README.md`, `LOCALSETUP.md`, or `CHANGELOG.md`.
+Many services include their own `README.md` (with a Local Setup section) and `CHANGELOG.md`.
 
 ## Frontend layer
 
