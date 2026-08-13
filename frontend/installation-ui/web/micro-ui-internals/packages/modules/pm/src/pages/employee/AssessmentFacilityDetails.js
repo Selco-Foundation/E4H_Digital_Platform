@@ -10,7 +10,8 @@ import ConfirmActionModal from "../../components/AssessmentDetails/ConfirmAction
 import ReasonRequiredModal from "../../components/AssessmentDetails/ReasonRequiredModal";
 import useAssessmentPlan from "../../hooks/useAssessmentPlan";
 import useAssessmentFacilityDetail from "../../hooks/useAssessmentFacilityDetail";
-import { populateWorkingAssessmentFacility } from "../../redux/actions";
+import useProject from "../../hooks/useProject";
+import { populateWorkingProject, populateWorkingAssessmentPlan, populateWorkingAssessmentFacility } from "../../redux/actions";
 import { AssessmentFacilityService } from "../../services/AssessmentFacility";
 import {
   canAssignForOnSiteAssessment,
@@ -40,12 +41,20 @@ const AssessmentFacilityDetails = () => {
   const queryClient = useQueryClient();
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const url = window.location.href;
+  const projectId = url.split("project/")[1].split("/")[0];
   const assessmentId = url.split("assessment/")[1].split("/")[0];
   const facilityId = url.split("facilities/")[1].split("/")[0].split("?")[0];
 
   const [pendingAction, setPendingAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const {
+    isLoading: projectDataLoading,
+    data: projectData,
+  } = useProject({
+    id: [projectId]
+  });
 
   const {
     isLoading: assessmentPlanDataLoading,
@@ -80,6 +89,19 @@ const AssessmentFacilityDetails = () => {
   const assessmentPlan = assessmentPlanData?.assessmentPlans?.[0];
   const planCompleted = assessmentPlan?.status === "CLOSED";
   const facility = mapFacility(facilityDetailData);
+
+  useEffect(() => {
+    const project = projectData?.projects?.[0];
+    if (project) {
+      dispatch(populateWorkingProject(project));
+    }
+  }, [projectData]);
+
+  useEffect(() => {
+    if (assessmentPlan) {
+      dispatch(populateWorkingAssessmentPlan(assessmentPlan));
+    }
+  }, [assessmentPlanData]);
 
   useEffect(() => {
     if (facility) {
@@ -208,7 +230,7 @@ const AssessmentFacilityDetails = () => {
       : t("PM_ASSESSMENT_REASON_REQUIRED_NOT_ELIGIBLE_DESC")
   );
 
-  if (assessmentPlanDataLoading || facilityDetailLoading || formSchemaLoading) {
+  if (projectDataLoading || assessmentPlanDataLoading || facilityDetailLoading || formSchemaLoading) {
     return <Loader />;
   }
 
