@@ -10,6 +10,7 @@ A FastAPI service (Python, uv-managed) that bulk-loads Excel-based master and tr
 - README: [`backend/e4h-services/ingestion-service/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/ingestion-service/README.md)
 - TODO: [`backend/e4h-services/ingestion-service/TODO.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/ingestion-service/TODO.md)
 - OpenAPI spec: [`backend/e4h-services/ingestion-service/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/ingestion-service/openapi.json)
+- ERD: not applicable — this service has no owned database; it bulk-ingests data into other services (facility, boundary, vendor) rather than storing its own domain data.
 
 ## Responsibilities
 

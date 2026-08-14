@@ -9,6 +9,7 @@ Kafka-driven background worker that transcodes uploaded videos into multi-qualit
 - Service path: [`backend/e4h-services/processor-services`](https://github.com/Selco-Foundation/E4H_Digital_Platform/tree/add-gitbook-docs/backend/e4h-services/processor-services)
 - README: [`backend/e4h-services/processor-services/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/processor-services/README.md)
 - Build file: [`backend/e4h-services/processor-services/pom.xml`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/processor-services/pom.xml)
+- ERD: not applicable — this service has no owned database; it processes video/image uploads (FFmpeg) statelessly via Kafka and egov-filestore.
 
 ## Service dependencies
 

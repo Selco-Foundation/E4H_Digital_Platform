@@ -10,6 +10,7 @@ HRMS manages employees enrolled onto the system, including their assignments, ju
 - README: [`backend/e4h-services/egov-hrms/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/egov-hrms/README.md)
 - OpenAPI spec: [`backend/e4h-services/egov-hrms/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/egov-hrms/openapi.json)
 - Changelog: [`backend/e4h-services/egov-hrms/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/egov-hrms/CHANGELOG.md)
+- ERD: [`backend/e4h-services/egov-hrms/ERD.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/egov-hrms/ERD.md)
 
 ## Responsibilities
 

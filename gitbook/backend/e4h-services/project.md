@@ -10,6 +10,7 @@ The project service manages project registry data for health campaign style work
 - README: [`backend/e4h-services/project/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/project/README.md)
 - Changelog: [`backend/e4h-services/project/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/project/CHANGELOG.md)
 - OpenAPI spec: [`backend/e4h-services/project/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/project/openapi.json)
+- ERD: [`backend/e4h-services/project/ERD.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/project/ERD.md)
 
 ## Responsibilities
 

@@ -10,6 +10,7 @@ The inbox service aggregates workflow and service data so applications can displ
 - README: [`backend/e4h-services/inbox/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/inbox/README.md)
 - OpenAPI spec: [`backend/e4h-services/inbox/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/inbox/openapi.json)
 - Changelog: [`backend/e4h-services/inbox/CHANGELOG.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/inbox/CHANGELOG.md)
+- ERD: not applicable — this service has no owned database; it's an event-based search layer over other workflow-backed services' data.
 
 ## Responsibilities
 

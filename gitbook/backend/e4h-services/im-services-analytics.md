@@ -10,6 +10,7 @@ IM Services Analytics is the analytics service for the Incident Management (IM) 
 - README: [`backend/e4h-services/im-services-analytics/README.md`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services-analytics/README.md)
 - Build file: [`backend/e4h-services/im-services-analytics/pom.xml`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services-analytics/pom.xml)
 - OpenAPI spec: [`backend/e4h-services/im-services-analytics/openapi.json`](https://github.com/Selco-Foundation/E4H_Digital_Platform/blob/add-gitbook-docs/backend/e4h-services/im-services-analytics/openapi.json)
+- ERD: not applicable — this service has no Flyway migrations/owned database of its own; it reads and reports on other services' data (im-services, RMS).
 
 ## Responsibilities
 

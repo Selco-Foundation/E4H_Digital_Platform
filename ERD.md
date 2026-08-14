@@ -257,19 +257,21 @@ erDiagram
 
 ## What this covers, by service
 
-| Entity | Owning service |
-|---|---|
-| `BOUNDARY` | [boundary-service](backend/core-services/boundary-service) |
-| `FACILITY` | [health-facility-registry](backend/core-services/health-facility-registry) |
-| `ASSET` | [asset-registry](backend/e4h-services/asset-registry) |
-| `AMC_CONFIGURATION`, `ASSET_AMC`, `SCHEDULED_VISIT` | [amc-scheduler-service](backend/e4h-services/amc-scheduler-service) |
-| `VENDOR_ORG`, `ORG_USER` | [vendor-registry](backend/e4h-services/vendor-registry) |
-| `EMPLOYEE` | [egov-hrms](backend/e4h-services/egov-hrms) |
-| `PROJECT`, `PROJECT_STAFF`, `PROJECT_FACILITY` | [project](backend/e4h-services/project) |
-| `FIELD_PLAN`, `FIELD_PLAN_FACILITY`, `ACTIVITY`, `ACTIVITY_ASSIGNMENT`, `FACILITY_ACTIVITY` | [field-planner](backend/e4h-services/field-planner) |
-| `BOM` | [field-planner-activity](backend/e4h-services/field-planner-activity) |
-| `INCIDENT` | [im-services](backend/e4h-services/im-services) |
-| `RMS_ALERT`, `RMS_CENTER_MAPPING`, `RMS_TICKET_PAUSE` | [rms-service](backend/e4h-services/rms-service) |
+Each e4h-service with its own database also has a more detailed, service-specific ERD covering every table it owns (not just the trimmed-down view here) — see the "Detailed ERD" column. `boundary-service` and `health-facility-registry` are core-services and don't have one yet.
+
+| Entity | Owning service | Detailed ERD |
+|---|---|---|
+| `BOUNDARY` | [boundary-service](backend/core-services/boundary-service) | — |
+| `FACILITY` | [health-facility-registry](backend/core-services/health-facility-registry) | — |
+| `ASSET` | [asset-registry](backend/e4h-services/asset-registry) | [ERD.md](backend/e4h-services/asset-registry/ERD.md) |
+| `AMC_CONFIGURATION`, `ASSET_AMC`, `SCHEDULED_VISIT` | [amc-scheduler-service](backend/e4h-services/amc-scheduler-service) | [ERD.md](backend/e4h-services/amc-scheduler-service/ERD.md) |
+| `VENDOR_ORG`, `ORG_USER` | [vendor-registry](backend/e4h-services/vendor-registry) | [ERD.md](backend/e4h-services/vendor-registry/ERD.md) |
+| `EMPLOYEE` | [egov-hrms](backend/e4h-services/egov-hrms) | [ERD.md](backend/e4h-services/egov-hrms/ERD.md) |
+| `PROJECT`, `PROJECT_STAFF`, `PROJECT_FACILITY` | [project](backend/e4h-services/project) | [ERD.md](backend/e4h-services/project/ERD.md) |
+| `FIELD_PLAN`, `FIELD_PLAN_FACILITY`, `ACTIVITY`, `ACTIVITY_ASSIGNMENT`, `FACILITY_ACTIVITY` | [field-planner](backend/e4h-services/field-planner) | [ERD.md](backend/e4h-services/field-planner/ERD.md) |
+| `BOM` | [field-planner-activity](backend/e4h-services/field-planner-activity) | [ERD.md](backend/e4h-services/field-planner-activity/ERD.md) |
+| `INCIDENT` | [im-services](backend/e4h-services/im-services) | [ERD.md](backend/e4h-services/im-services/ERD.md) |
+| `RMS_ALERT`, `RMS_CENTER_MAPPING`, `RMS_TICKET_PAUSE` | [rms-service](backend/e4h-services/rms-service) | [ERD.md](backend/e4h-services/rms-service/ERD.md) |
 
 ## Simplifications and omissions
 
