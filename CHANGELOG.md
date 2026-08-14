@@ -2,16 +2,6 @@
 
 All notable repository-wide changes are documented here, one entry per git release tag (`git tag`), newest first. Each entry is derived directly from the commit(s) included in that tag — for tags backed by many commits, the entry summarizes the major themes rather than listing every commit. For changes to a specific backend/frontend service, see that service's own `CHANGELOG.md`.
 
-## Unreleased
-
-Documentation overhaul closing gaps identified in a platform documentation audit — no application code changed.
-
-- **Root README** rewritten: badges, a non-technical platform overview, an architecture diagram, and a full linked module list for every core-service, e4h-service, and frontend app.
-- **Local Setup**: every e4h-service README now has a real "Local Setup" section (DB/Kafka/Redis config, dependent-service hosts, ports) grounded in each service's actual `application.properties`/`pom.xml`; the six per-service `LOCALSETUP.md` files this replaced were removed.
-- **User roles and permissions**: new GitBook page with Can-do/Cannot-do tables for Facility Staff, Vendor/Technician, CRM Operator, and State Coordinator/State POC, based on the real workflow-role code in `im-services`.
-- **CHANGELOG.md**: added this root changelog; added missing per-service changelogs for `rms-service`, `asset-registry`, `ingestion-service`, `processor-services`, `im-services-analytics`, `frontend/installation-ui`, and `frontend/micro-ui`; replaced `amc-scheduler-service`'s changelog, which had been an accidental copy of `field-planner`'s; expanded `im-services`' changelog where a single entry had crammed together ~2 years of unrelated changes.
-- **Entity-Relationship Diagrams**: added a consolidated, cross-service `ERD.md` at the repo root, plus a detailed per-service `ERD.md` for every e4h-service that owns a database, all linked from the corresponding GitBook pages.
-- **GitBook cleanup**: made file-path references clickable throughout `architecture.md` and each service's "Source location" section; fixed a couple of dangling/incorrect links (stale `LOCALSETUP.md` references, `rms-service`'s LLD doc paths) found along the way.
 
 ## v3.14.38 - 2026-08-11
 - Mobile numbers are now encrypted on every write call.
