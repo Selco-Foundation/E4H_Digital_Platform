@@ -238,7 +238,7 @@ const ActivityDetails = ({
       <input
         className={"employee-card-input"}
         value={fieldValue.value}
-        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase())}
+        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.toUpperCase())}
         style={{
           minWidth: "230px",
         }}
