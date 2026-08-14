@@ -18,43 +18,119 @@ ASSESSMENT_PLAN_ID_COLUMN = "Assessment Plan Id"
 ASSESSMENT_PLAN_NAME_COLUMN = "Assessment Plan Name"
 
 
-def should_use_assessment_fieldplan_flow(
+def should_use_assessment_handoff_validation(
     assessment_client: Optional[AssessmentServiceClient],
     request_info: RequestInfo,
     project_id: Optional[str],
     tenant_id: str,
 ) -> bool:
-    """
-    True when the project has assessment plan(s) → use eligible-pool gating.
-    False → legacy project-geography field plan template.
-    """
+    """True when there are eligible, unassigned facilities ready for field-plan handoff."""
     if not project_id or assessment_client is None:
         return False
     try:
-        plans = assessment_client.search_assessment_plans_by_project(
+        response = assessment_client.search_eligible_facilities(
             request_info=request_info,
             project_id=project_id,
             tenant_id=tenant_id,
         )
-        if plans:
+        facilities = response.get("facilities") or []
+        if facilities:
             logger.info(
-                "Project %s has %s assessment plan(s); using eligible-pool field plan flow",
+                "Project %s has %s eligible assessment facility(ies) for handoff validation",
                 project_id,
-                len(plans),
+                len(facilities),
             )
             return True
-        logger.info(
-            "Project %s has no assessment plans; using legacy geography field plan flow",
-            project_id,
-        )
         return False
     except Exception as exc:
         logger.warning(
-            "Could not resolve assessment plans for project %s: %s — falling back to legacy flow",
+            "Could not load eligible assessment facilities for project %s: %s",
             project_id,
             exc,
         )
         return False
+
+
+def fetch_eligible_assessment_facilities(
+    assessment_client: AssessmentServiceClient,
+    request_info: RequestInfo,
+    project_id: str,
+    tenant_id: str,
+) -> List[Dict[str, Any]]:
+    response = assessment_client.search_eligible_facilities(
+        request_info=request_info,
+        project_id=project_id,
+        tenant_id=tenant_id,
+    )
+    return response.get("facilities") or []
+
+
+def append_assessment_handoff_columns(
+    file_path: str,
+    sheet_name: str,
+    eligible_facilities: List[Dict[str, Any]],
+) -> None:
+    """Prepend assessment handoff columns; populate rows that match eligible facility ids."""
+    from openpyxl import load_workbook
+
+    meta_by_facility_id = {
+        str(entry.get("facilityId")): entry
+        for entry in eligible_facilities
+        if entry.get("facilityId")
+    }
+    if not meta_by_facility_id:
+        return
+
+    workbook = load_workbook(file_path)
+    worksheet = workbook[sheet_name]
+    worksheet.insert_cols(1, 3)
+    worksheet.cell(row=1, column=1, value=PLAN_FACILITY_ID_COLUMN)
+    worksheet.cell(row=1, column=2, value=ASSESSMENT_PLAN_ID_COLUMN)
+    worksheet.cell(row=1, column=3, value=ASSESSMENT_PLAN_NAME_COLUMN)
+
+    facility_id_col = None
+    for col_idx in range(1, worksheet.max_column + 1):
+        header = worksheet.cell(row=1, column=col_idx).value
+        if header and "Facility Id" in str(header):
+            facility_id_col = col_idx
+            break
+    if facility_id_col is None:
+        workbook.save(file_path)
+        return
+
+    for row_idx in range(2, worksheet.max_row + 1):
+        raw_facility_id = worksheet.cell(row=row_idx, column=facility_id_col).value
+        facility_id = str(raw_facility_id).strip() if raw_facility_id is not None else ""
+        meta = meta_by_facility_id.get(facility_id, {})
+        worksheet.cell(row=row_idx, column=1, value=meta.get("planFacilityId", ""))
+        worksheet.cell(row=row_idx, column=2, value=meta.get("assessmentPlanId", ""))
+        worksheet.cell(row=row_idx, column=3, value=meta.get("assessmentPlanName", ""))
+    workbook.save(file_path)
+
+
+def merge_eligible_facilities_into_list(
+    all_facilities: List[Dict[str, Any]],
+    eligible_facilities: List[Dict[str, Any]],
+    facilities_by_id: Dict[str, Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Ensure eligible assessment facilities appear even if geography filtering skipped them."""
+    existing_ids = {
+        str(f.get("facility_id") or f.get("facilityId"))
+        for f in all_facilities
+        if f.get("facility_id") or f.get("facilityId")
+    }
+    merged = list(all_facilities)
+    for eligible in eligible_facilities:
+        facility_id = eligible.get("facilityId")
+        if not facility_id or str(facility_id) in existing_ids:
+            continue
+        facility = dict(facilities_by_id.get(facility_id) or {})
+        if not facility.get("facility_id"):
+            facility["facility_id"] = facility_id
+        facility["include_in_fieldplan"] = "No"
+        merged.append(facility)
+        existing_ids.add(str(facility_id))
+    return merged
 
 
 def load_eligible_facility_map(
@@ -96,11 +172,6 @@ def validate_assessment_handoff_rows(
     plan_facility_col = find_column(df, "plan facility id")
     include_col = find_column(df, "included in field plan")
 
-    if not plan_facility_col:
-        for i in range(len(df)):
-            errors[i].append("Missing mandatory column: Plan Facility Id")
-        return errors
-
     for i, row in df.iterrows():
         include_val = ""
         if include_col:
@@ -110,9 +181,11 @@ def validate_assessment_handoff_rows(
         if include_val != "yes":
             continue
 
-        plan_facility_id = str(row.get(plan_facility_col, "")).strip()
+        plan_facility_id = ""
+        if plan_facility_col:
+            plan_facility_id = str(row.get(plan_facility_col, "")).strip()
         if not plan_facility_id or plan_facility_id.lower() in ("nan", "none"):
-            errors[i].append("Plan Facility Id is required for rows marked Included in Field Plan = Yes")
+            # Legacy field-plan include without assessment handoff.
             continue
 
         if plan_facility_id not in eligible_by_plan_facility_id:

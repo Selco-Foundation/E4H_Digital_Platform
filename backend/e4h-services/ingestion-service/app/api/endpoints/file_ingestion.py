@@ -59,7 +59,7 @@ from app.utils.assessment_fieldplan_handoff import (
     extract_assessment_link_meta,
     load_eligible_facility_map,
     merge_assessment_validation_errors,
-    should_use_assessment_fieldplan_flow,
+    should_use_assessment_handoff_validation,
     validate_assessment_handoff_rows,
 )
 from app.utils.icc_report_converter import validate_and_convert, ICCValidationError, SYSTEM_TYPE_TO_INTERNAL
@@ -2608,7 +2608,7 @@ async def validate_facilities_excel_sheet(
         assessment_client = (
             AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
         )
-        use_assessment_flow = should_use_assessment_fieldplan_flow(
+        use_assessment_flow = should_use_assessment_handoff_validation(
             assessment_client=assessment_client,
             request_info=request_info_obj,
             project_id=project_id,
@@ -2618,7 +2618,7 @@ async def validate_facilities_excel_sheet(
             if not project_id:
                 raise HTTPException(
                     status_code=400,
-                    detail="project_id is required when assessment plans exist for the project",
+                    detail="project_id is required when eligible assessment facilities exist for handoff",
                 )
             eligible_map = load_eligible_facility_map(
                 assessment_client,
@@ -3092,7 +3092,7 @@ async def create_fielplan_facilities(
         assessment_client = (
             AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
         )
-        use_assessment_flow = should_use_assessment_fieldplan_flow(
+        use_assessment_flow = should_use_assessment_handoff_validation(
             assessment_client=assessment_client,
             request_info=request_info,
             project_id=project_id,
@@ -3103,7 +3103,7 @@ async def create_fielplan_facilities(
             if not project_id:
                 raise HTTPException(
                     status_code=400,
-                    detail="project_id is required when assessment plans exist for the project",
+                    detail="project_id is required when eligible assessment facilities exist for handoff",
                 )
             assessment_client = AssessmentServiceClient(fieldPlan_service_url)
             eligible_map = load_eligible_facility_map(

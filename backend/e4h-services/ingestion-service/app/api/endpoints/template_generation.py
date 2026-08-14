@@ -24,8 +24,9 @@ from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.assessment_service_client import AssessmentServiceClient
 from app.utils.assessment_fieldplan_handoff import (
-    build_assessment_fieldplan_template_rows,
-    should_use_assessment_fieldplan_flow,
+    append_assessment_handoff_columns,
+    fetch_eligible_assessment_facilities,
+    merge_eligible_facilities_into_list,
 )
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
@@ -392,90 +393,6 @@ async def get_facility_ingestion_template_with_data(
     assessment_client = (
         AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
     )
-    use_assessment_flow = should_use_assessment_fieldplan_flow(
-        assessment_client=assessment_client,
-        request_info=request_info,
-        project_id=project_id,
-        tenant_id=tenant_id,
-    )
-
-    if use_assessment_flow:
-        if not project_id:
-            raise HTTPException(
-                status_code=400,
-                detail="project_id is required when assessment plans exist for the project",
-            )
-        logger.info(
-            "Generating assessment-eligible field plan template: project_id=%s, fieldplan_id=%s",
-            project_id,
-            fieldplan_id,
-        )
-        facility_client = FacilityServiceClient(facility_service_url)
-        try:
-            eligible_response = assessment_client.search_eligible_facilities(
-                request_info=request_info,
-                project_id=project_id,
-                tenant_id=tenant_id,
-            )
-            eligible_facilities = eligible_response.get("facilities") or []
-            facility_ids = [
-                f.get("facilityId") for f in eligible_facilities if f.get("facilityId")
-            ]
-            facilities_by_id = {}
-            if facility_ids:
-                bulk_result = facility_client.bulk_search_facility(
-                    request_info=request_info,
-                    tenant_ids=[tenant_id],
-                    facility_ids=facility_ids,
-                    limit=max(len(facility_ids), 50),
-                    send_non_paginated_response=True,
-                )
-                facilities_by_id = {
-                    f.get("facility_id") or f.get("facilityId"): f
-                    for f in (bulk_result.get("facilities") or [])
-                }
-
-            rows = build_assessment_fieldplan_template_rows(eligible_facilities, facilities_by_id)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
-            output_file_path = create_temp_file(suffix=".xlsx")
-            df = pd.DataFrame(rows)
-            df.to_excel(output_file_path, index=False, sheet_name="FacilityMapping")
-
-            dropdowns = {"Included in Field Plan (Mandatory)": ["Yes", "No"]}
-            try:
-                mdms_client = MDMSClient(mdms_url)
-                schema = mdms_client.get_column_definitions_with_metadata(
-                    request_info, "data-ingestion.FieldPlanFacilityIngestionSchema"
-                )
-                for col in schema:
-                    if col.get("code") == "solar_solution_design_type":
-                        options = [
-                            opt.get("name") for opt in col.get("options", []) if opt.get("name")
-                        ]
-                        if options:
-                            dropdowns["Solution Design Type (Mandatory)"] = options
-                        break
-            except Exception as schema_err:
-                logger.warning(f"Could not load solution design dropdown from MDMS: {schema_err}")
-
-            add_dropdowns_to_excel(
-                file_path=output_file_path,
-                sheet_name="FacilityMapping",
-                dropdowns=dropdowns,
-            )
-            autofit_columns(file_path=output_file_path, sheet_name="FacilityMapping")
-            background_tasks.add_task(cleanup_temp_file, output_file_path)
-            return FileResponse(
-                path=output_file_path,
-                filename=output_filename,
-                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error generating assessment field plan template: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
 
     mdms_client = MDMSClient(mdms_url)
     fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
@@ -617,6 +534,55 @@ async def get_facility_ingestion_template_with_data(
                 facility["include_in_fieldplan"] = "No"
                 logger.info(f"No fieldplan_id provided - marking facility {facility.get('facility_id')} as No")
 
+        eligible_facilities: List[dict] = []
+        if assessment_client and project_id:
+            try:
+                eligible_facilities = fetch_eligible_assessment_facilities(
+                    assessment_client=assessment_client,
+                    request_info=request_info,
+                    project_id=project_id,
+                    tenant_id=tenant_id,
+                )
+                if eligible_facilities and facility_client:
+                    eligible_facility_ids = [
+                        f.get("facilityId") for f in eligible_facilities if f.get("facilityId")
+                    ]
+                    facilities_by_id = {
+                        f.get("facility_id") or f.get("facilityId"): f
+                        for f in all_facilities
+                        if f.get("facility_id") or f.get("facilityId")
+                    }
+                    missing_ids = [
+                        fid for fid in eligible_facility_ids if fid not in facilities_by_id
+                    ]
+                    if missing_ids:
+                        bulk_result = facility_client.bulk_search_facility(
+                            request_info=request_info,
+                            tenant_ids=[tenant_id],
+                            facility_ids=missing_ids,
+                            limit=max(len(missing_ids), 50),
+                            send_non_paginated_response=True,
+                        )
+                        for facility in bulk_result.get("facilities") or []:
+                            fid = facility.get("facility_id") or facility.get("facilityId")
+                            if fid:
+                                facilities_by_id[fid] = facility
+                    all_facilities = merge_eligible_facilities_into_list(
+                        all_facilities,
+                        eligible_facilities,
+                        facilities_by_id,
+                    )
+                    logger.info(
+                        "Merged %s eligible assessment facility(ies) into template (%s total rows)",
+                        len(eligible_facilities),
+                        len(all_facilities),
+                    )
+            except Exception as eligible_err:
+                logger.warning(
+                    "Could not enrich template with eligible assessment facilities: %s",
+                    eligible_err,
+                )
+
         try:
             facility_service.generate_template_file_with_data(
                 output_path=output_file_path,
@@ -627,6 +593,12 @@ async def get_facility_ingestion_template_with_data(
                 extra_append_rows=0,
                 optimize_for_performance=True
             )
+            if eligible_facilities:
+                append_assessment_handoff_columns(
+                    file_path=output_file_path,
+                    sheet_name="FacilityMapping",
+                    eligible_facilities=eligible_facilities,
+                )
             logger.info(f"Successfully created facility ingestion template at {output_file_path}")
         except Exception as e:
             logger.error(f"Error generating template file: {e}")
