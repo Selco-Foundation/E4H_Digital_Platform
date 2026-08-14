@@ -35,6 +35,9 @@ ERR_SOLAR_COLUMNS_MISSING = (
     "Solar configuration columns are missing from the file; "
     "Health Facility Type, System Type, Solution Design Type and Total System Capacity are required."
 )
+ERR_SOLAR_FIELD_MANDATORY_WHEN_INCLUDED = (
+    "{field} is mandatory when Included in Field Plan is Yes."
+)
 ERR_SOLAR_CUSTOM_ONLY_UNCOVERED = (
     "For Health Facility Type '{facility_type}' and System Type '{system_type}', "
     "only Custom Solution Design and Custom Capacity are allowed."
@@ -245,8 +248,21 @@ def validate_facility_solar_configuration_row(
     solution_display = _cell_str(row.get(solution_header, ""))
     capacity_display = _cell_str(row.get(capacity_header, ""))
 
-    if not facility_display or not system_display or not solution_display or not capacity_display:
-        return []
+    # This row is Included in Field Plan = Yes (caller already filtered on that), so all four
+    # combo fields are mandatory here even when the row's Facility Id is already set and skips
+    # the general new-facility mandatory-column checks (validate_columns only runs on new rows).
+    missing_headers = [
+        header
+        for header, value in (
+            (facility_type_header, facility_display),
+            (system_type_header, system_display),
+            (solution_header, solution_display),
+            (capacity_header, capacity_display),
+        )
+        if not value
+    ]
+    if missing_headers:
+        return [ERR_SOLAR_FIELD_MANDATORY_WHEN_INCLUDED.format(field=header) for header in missing_headers]
 
     facility_code = resolve_display_to_code(
         facility_display, name_to_code_by_column.get(COLUMN_CODE_FACILITY_TYPE, {})

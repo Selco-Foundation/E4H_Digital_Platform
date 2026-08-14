@@ -556,6 +556,11 @@ public class IMService {
 				.indexView(new IndexView())
 				.build();
 
+		ProcessInstance currentProcessInstance = workflowService.getCurrentProcessInstance(tenantId, incidentId, requestInfo);
+		if (currentProcessInstance != null) {
+			wrapper.setProcessInstance(imUtils.trimRolesFromProcessInstance(currentProcessInstance));
+		}
+
 		Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(requestInfo, incident.getBoundaryCode(), tenantId);
 		log.trace("Enriching fields for indexing (reindex)");
 		enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
