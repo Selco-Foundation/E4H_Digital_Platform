@@ -6,12 +6,6 @@ import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "../OrganizationUserDropdown";
 import CustomDropdown from "../Custom/CustomDropdown";
 
-const PO_NUMBER_REGEX = /^PUR-ORD-\d{4}-\d{4}-\d{5}$/;
-
-const isValidPoNumber = (poNumber) => {
-  return PO_NUMBER_REGEX.test(poNumber || "");
-};
-
 const ActivityDetails = ({
   data = {},
   setValue,
@@ -121,32 +115,7 @@ const ActivityDetails = ({
   }
 
   const handleActivityDataSave = () => {
-    let faultyData = false;
-
-    const validatedData = activityAssignmentData.map((dataEntry) => ({
-      ...dataEntry,
-      users: dataEntry.users.map((userEntry) => {
-        if (userEntry.deleteAssignment || !userEntry.poNumber?.value || isValidPoNumber(userEntry.poNumber.value)) {
-          return userEntry;
-        }
-
-        faultyData = true;
-        return {
-          ...userEntry,
-          poNumber: {
-            ...userEntry.poNumber,
-            error: t("PO_NUMBER_FORMAT_ERROR"),
-          },
-        };
-      }),
-    }));
-
-    if (faultyData) {
-      setActivityAssignmentData(validatedData);
-      return;
-    }
-
-    onActivityDataSave(validatedData);
+    onActivityDataSave(activityAssignmentData);
   }
 
   const GetHead = (value) => (
@@ -269,8 +238,7 @@ const ActivityDetails = ({
       <input
         className={"employee-card-input"}
         value={fieldValue.value}
-        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.toUpperCase())}
-        maxLength={23}
+        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase())}
         style={{
           minWidth: "230px",
         }}
