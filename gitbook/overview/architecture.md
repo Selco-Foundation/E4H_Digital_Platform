@@ -2,7 +2,7 @@
 
 The repository is organized as a multi-application platform with backend services, web frontends, a Flutter mobile app, and shared data/API assets.
 
-See the [README.md](../../README.md) for a non-technical overview, the full module list, and quick-start links, and [User roles and permissions](user-roles-and-permissions.md) for who can do what.
+See the [README.md](../../README.md) for a non-technical overview, the full module list, and quick-start links; [User roles and permissions](user-roles-and-permissions.md) for who can do what; and the [CHANGELOG.md](../../CHANGELOG.md) for repository-wide release history.
 
 ## High-level structure
 
