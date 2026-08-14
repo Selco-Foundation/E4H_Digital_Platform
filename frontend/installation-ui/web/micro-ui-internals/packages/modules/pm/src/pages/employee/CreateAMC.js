@@ -707,9 +707,6 @@ const CreateAMC = () => {
           vendorId: savedAMCConfiguration.vendorId || savedAMCConfiguration.vendor?.id,
           facilityId: savedAMCConfiguration.facilityId || savedAMCConfiguration.facility?.id,
           projectId: savedAMCConfiguration.projectId || projectId,
-          durationMonths: 1,
-          visitFrequencyMonths: 1,
-          configurationEndDate: 1,
           assignments,
           geographyDetails,
           additionalDetails: {
