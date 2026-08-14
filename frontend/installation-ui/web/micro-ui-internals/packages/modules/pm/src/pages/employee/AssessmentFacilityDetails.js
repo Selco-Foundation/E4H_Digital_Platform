@@ -29,8 +29,8 @@ const mapFacility = (facilityDetail) => (facilityDetail && {
   facilityType: facilityDetail.facilityType,
   district: facilityDetail.district,
   block: facilityDetail.block,
-  remoteStatus: facilityDetail.phoneStatus,
-  onSiteStatus: facilityDetail.fieldStatus,
+  remoteStatus: facilityDetail.phoneStatus || "NOT_INITIATED",
+  onSiteStatus: facilityDetail.fieldStatus || "NOT_INITIATED",
   result: facilityDetail.overallStatus,
   notEligibleReason: facilityDetail.remarks,
 });
