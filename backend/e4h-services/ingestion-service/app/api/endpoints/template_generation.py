@@ -405,7 +405,6 @@ async def get_facility_ingestion_template_with_data(
                 status_code=400,
                 detail="project_id is required when assessment plans exist for the project",
             )
-        fieldplan_label = fieldplan_id or project_id
         logger.info(
             "Generating assessment-eligible field plan template: project_id=%s, fieldplan_id=%s",
             project_id,
@@ -438,7 +437,7 @@ async def get_facility_ingestion_template_with_data(
 
             rows = build_assessment_fieldplan_template_rows(eligible_facilities, facilities_by_id)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_filename = f"assessment_fieldplan_{fieldplan_label}_{timestamp}.xlsx"
+            output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
             output_file_path = create_temp_file(suffix=".xlsx")
             df = pd.DataFrame(rows)
             df.to_excel(output_file_path, index=False, sheet_name="FacilityMapping")
