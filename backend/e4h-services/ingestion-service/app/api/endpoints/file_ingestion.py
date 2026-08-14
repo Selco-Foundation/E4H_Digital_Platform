@@ -59,7 +59,7 @@ from app.utils.assessment_fieldplan_handoff import (
     extract_assessment_link_meta,
     load_eligible_facility_map,
     merge_assessment_validation_errors,
-    parse_assessment_plan_ids,
+    should_use_assessment_fieldplan_flow,
     validate_assessment_handoff_rows,
 )
 from app.utils.icc_report_converter import validate_and_convert, ICCValidationError, SYSTEM_TYPE_TO_INTERNAL
@@ -2557,7 +2557,6 @@ async def validate_facilities_excel_sheet(
                                         description="Name of the sheet containing boundary data"),
         request_info: str = Form(default=""),
         project_id: str = Form(default="", description="Project ID (required for assessment handoff validation)"),
-        assessment_plan_ids: str = Form(default="", description="JSON array or comma-separated assessment plan IDs"),
         tenant_id: str = Form(default="in"),
 ):
     temp_input_file = None
@@ -2606,20 +2605,26 @@ async def validate_facilities_excel_sheet(
             'data-ingestion.FieldPlanFacilityIngestionSchema'
         )
 
-        parsed_assessment_plan_ids = parse_assessment_plan_ids(assessment_plan_ids)
-        if parsed_assessment_plan_ids:
+        assessment_client = (
+            AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
+        )
+        use_assessment_flow = should_use_assessment_fieldplan_flow(
+            assessment_client=assessment_client,
+            request_info=request_info_obj,
+            project_id=project_id,
+            tenant_id=tenant_id,
+        )
+        if use_assessment_flow:
             if not project_id:
                 raise HTTPException(
                     status_code=400,
-                    detail="project_id is required when assessment_plan_ids is provided",
+                    detail="project_id is required when assessment plans exist for the project",
                 )
-            assessment_client = AssessmentServiceClient(fieldPlan_service_url)
             eligible_map = load_eligible_facility_map(
                 assessment_client,
                 request_info_obj,
                 project_id,
                 tenant_id,
-                parsed_assessment_plan_ids,
             )
             assessment_errors = validate_assessment_handoff_rows(df, eligible_map)
             validation_errors = merge_assessment_validation_errors(validation_errors, assessment_errors)
@@ -2973,7 +2978,6 @@ async def create_fielplan_facilities(
         fieldplan_id: str = Form(description="FieldPlan ID"),
         request_info: str = Form(default=""),
         project_id: str = Form(default="", description="Project ID (required for assessment handoff apply)"),
-        assessment_plan_ids: str = Form(default="", description="JSON array or comma-separated assessment plan IDs"),
         tenant_id: str = Form(default="in"),
 ):
     input_temp_file = None
@@ -3085,14 +3089,21 @@ async def create_fielplan_facilities(
         fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
         fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
 
-        parsed_assessment_plan_ids = parse_assessment_plan_ids(assessment_plan_ids)
-        assessment_client = None
+        assessment_client = (
+            AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
+        )
+        use_assessment_flow = should_use_assessment_fieldplan_flow(
+            assessment_client=assessment_client,
+            request_info=request_info,
+            project_id=project_id,
+            tenant_id=tenant_id,
+        )
         eligible_map = {}
-        if parsed_assessment_plan_ids:
+        if use_assessment_flow:
             if not project_id:
                 raise HTTPException(
                     status_code=400,
-                    detail="project_id is required when assessment_plan_ids is provided",
+                    detail="project_id is required when assessment plans exist for the project",
                 )
             assessment_client = AssessmentServiceClient(fieldPlan_service_url)
             eligible_map = load_eligible_facility_map(
@@ -3100,7 +3111,6 @@ async def create_fielplan_facilities(
                 request_info,
                 project_id,
                 tenant_id,
-                parsed_assessment_plan_ids,
             )
 
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
@@ -3265,7 +3275,7 @@ async def create_fielplan_facilities(
                                     plan_facility_id, _ = extract_assessment_link_meta(row, df)
                                     if (
                                         plan_facility_id
-                                        and parsed_assessment_plan_ids
+                                        and use_assessment_flow
                                         and plan_facility_id in eligible_map
                                     ):
                                         pending_assessment_handoffs.append(

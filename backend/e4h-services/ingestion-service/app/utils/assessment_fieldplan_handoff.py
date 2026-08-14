@@ -3,8 +3,7 @@ Helpers for assessment eligible → installation field plan handoff (LLD §2.2.7
 """
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
@@ -19,18 +18,43 @@ ASSESSMENT_PLAN_ID_COLUMN = "Assessment Plan Id"
 ASSESSMENT_PLAN_NAME_COLUMN = "Assessment Plan Name"
 
 
-def parse_assessment_plan_ids(raw: Optional[Any]) -> List[str]:
-    if raw is None:
-        return []
-    if isinstance(raw, list):
-        return [str(x).strip() for x in raw if str(x).strip()]
-    if not str(raw).strip():
-        return []
-    value = str(raw).strip()
-    if value.startswith("["):
-        parsed = json.loads(value)
-        return [str(x).strip() for x in parsed if str(x).strip()]
-    return [part.strip() for part in value.split(",") if part.strip()]
+def should_use_assessment_fieldplan_flow(
+    assessment_client: Optional[AssessmentServiceClient],
+    request_info: RequestInfo,
+    project_id: Optional[str],
+    tenant_id: str,
+) -> bool:
+    """
+    True when the project has assessment plan(s) → use eligible-pool gating.
+    False → legacy project-geography field plan template.
+    """
+    if not project_id or assessment_client is None:
+        return False
+    try:
+        plans = assessment_client.search_assessment_plans_by_project(
+            request_info=request_info,
+            project_id=project_id,
+            tenant_id=tenant_id,
+        )
+        if plans:
+            logger.info(
+                "Project %s has %s assessment plan(s); using eligible-pool field plan flow",
+                project_id,
+                len(plans),
+            )
+            return True
+        logger.info(
+            "Project %s has no assessment plans; using legacy geography field plan flow",
+            project_id,
+        )
+        return False
+    except Exception as exc:
+        logger.warning(
+            "Could not resolve assessment plans for project %s: %s — falling back to legacy flow",
+            project_id,
+            exc,
+        )
+        return False
 
 
 def load_eligible_facility_map(
@@ -38,14 +62,12 @@ def load_eligible_facility_map(
     request_info: RequestInfo,
     project_id: str,
     tenant_id: str,
-    assessment_plan_ids: List[str],
 ) -> Dict[str, Dict[str, Any]]:
-    """Map planFacilityId → eligible facility record."""
+    """Map planFacilityId → eligible facility record (all closed plans in project)."""
     response = assessment_client.search_eligible_facilities(
         request_info=request_info,
         project_id=project_id,
         tenant_id=tenant_id,
-        assessment_plan_ids=assessment_plan_ids,
     )
     facilities = response.get("facilities") or []
     return {
@@ -144,7 +166,7 @@ def build_assessment_fieldplan_template_rows(
     return rows
 
 
-def extract_assessment_link_meta(row: pd.Series, df: pd.DataFrame) -> Tuple[Optional[str], Optional[str]]:
+def extract_assessment_link_meta(row: pd.Series, df: pd.DataFrame) -> tuple[Optional[str], Optional[str]]:
     plan_facility_col = find_column(df, "plan facility id")
     assessment_plan_col = find_column(df, "assessment plan id")
     plan_facility_id = None

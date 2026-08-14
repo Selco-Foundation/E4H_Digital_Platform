@@ -25,7 +25,7 @@ from app.utils.fieldplan_activity_service_client import FieldPlanActivityService
 from app.utils.assessment_service_client import AssessmentServiceClient
 from app.utils.assessment_fieldplan_handoff import (
     build_assessment_fieldplan_template_rows,
-    parse_assessment_plan_ids,
+    should_use_assessment_fieldplan_flow,
 )
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
@@ -389,28 +389,34 @@ async def get_facility_ingestion_template_with_data(
     fieldplan_id = payload.get("fieldplan_id")
     project_id = payload.get("project_id")
     tenant_id = payload.get("tenantId", "in")
-    assessment_plan_ids = parse_assessment_plan_ids(
-        payload.get("assessmentPlanIds") or payload.get("assessment_plan_ids")
+    assessment_client = (
+        AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
+    )
+    use_assessment_flow = should_use_assessment_fieldplan_flow(
+        assessment_client=assessment_client,
+        request_info=request_info,
+        project_id=project_id,
+        tenant_id=tenant_id,
     )
 
-    if assessment_plan_ids:
-        if not project_id or not fieldplan_id:
+    if use_assessment_flow:
+        if not project_id:
             raise HTTPException(
                 status_code=400,
-                detail="project_id and fieldplan_id are required when assessmentPlanIds is provided",
+                detail="project_id is required when assessment plans exist for the project",
             )
+        fieldplan_label = fieldplan_id or project_id
         logger.info(
-            f"Generating assessment-eligible field plan template: project_id={project_id}, "
-            f"fieldplan_id={fieldplan_id}, assessment_plan_ids={assessment_plan_ids}"
+            "Generating assessment-eligible field plan template: project_id=%s, fieldplan_id=%s",
+            project_id,
+            fieldplan_id,
         )
-        assessment_client = AssessmentServiceClient(fieldPlan_service_url)
         facility_client = FacilityServiceClient(facility_service_url)
         try:
             eligible_response = assessment_client.search_eligible_facilities(
                 request_info=request_info,
                 project_id=project_id,
                 tenant_id=tenant_id,
-                assessment_plan_ids=assessment_plan_ids,
             )
             eligible_facilities = eligible_response.get("facilities") or []
             facility_ids = [
@@ -432,7 +438,7 @@ async def get_facility_ingestion_template_with_data(
 
             rows = build_assessment_fieldplan_template_rows(eligible_facilities, facilities_by_id)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_filename = f"assessment_fieldplan_{fieldplan_id}_{timestamp}.xlsx"
+            output_filename = f"assessment_fieldplan_{fieldplan_label}_{timestamp}.xlsx"
             output_file_path = create_temp_file(suffix=".xlsx")
             df = pd.DataFrame(rows)
             df.to_excel(output_file_path, index=False, sheet_name="FacilityMapping")
