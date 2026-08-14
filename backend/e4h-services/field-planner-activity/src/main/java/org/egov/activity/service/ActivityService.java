@@ -451,7 +451,6 @@ public class ActivityService {
                     request.getWorkflow().getComments()
             );
         } catch (Exception e) {
-            e.printStackTrace();
             log.error(e.getMessage());
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for facility: " + request.getActivityFacilityId());
