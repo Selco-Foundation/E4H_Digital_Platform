@@ -77,8 +77,8 @@ const AssessmentDetails = () => {
   });
   const prevSearchParamsRef = useRef(JSON.stringify(projectQueryFilter));
 
-  const [pageSize, setPageSize] = useState(queryParams.get("pageSize") || 10);
-  const [pageOffset, setPageOffset] = useState(queryParams.get("pageOffset") || 0);
+  const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize"), 10) || 10);
+  const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset"), 10) || 0);
   const prevPageSizeRef = useRef(pageSize);
 
   const {
