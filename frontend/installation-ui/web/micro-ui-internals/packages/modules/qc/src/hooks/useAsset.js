@@ -5,11 +5,11 @@ import { FilestoreService } from "../services/Filestore";
 const getAssetName = (assetTypeID) => {
   switch(assetTypeID) {
     case "PANEL":
-      return "Panel";
+      return "QC_INSTALLATION_PANEL";
     case "BATTERY":
-      return "Battery";
+      return "QC_INSTALLATION_BATTERY";
     case "INVERTER":
-      return "Inverter";
+      return "QC_INSTALLATION_INVERTER";
   }
 }
 

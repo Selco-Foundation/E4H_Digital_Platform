@@ -19,12 +19,6 @@ import useActivityAssignment from "../../hooks/useActivityAssignment";
 import CommonUtils from "../../utilities/CommonUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
-const PO_NUMBER_REGEX = /^PUR-ORD-\d{4}-\d{4}-\d{5}$/;
-
-const isValidPoNumber = (poNumber) => {
-  return PO_NUMBER_REGEX.test(poNumber || "");
-};
-
 const getICCTemplates = (fieldPlan, fieldPlanData) => (
   fieldPlan?.iccTemplates ||
   fieldPlan?.additionalDetails?.iccTemplates ||
@@ -129,6 +123,21 @@ const CreateFieldPlan = () => {
   const projectId = url.split("project/")[1].split("/")[0];
   const dispatch = useDispatch();
   const [organizationIds, setOrganizationIds] = useState([""]);
+
+  const setFacilityUploadFile = (uploadedFile) => {
+    setFile(uploadedFile);
+
+    if (uploadedFile === null) {
+      setHasSavedFacilityUpload(false);
+      setPersistedFormData((prevState) => ({
+        ...prevState,
+        facilityData: {
+          ...prevState?.facilityData,
+          uploadFacilityData: undefined,
+        },
+      }));
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -526,12 +535,6 @@ const CreateFieldPlan = () => {
               ...userEntry[key],
               error: t("CORE_COMMON_REQUIRED")
             };
-          } else if (key === "poNumber" && !isValidPoNumber(userEntry[key].value)) {
-            faultyData = true;
-            newUserEntry[key] = {
-              ...userEntry[key],
-              error: t("PO_NUMBER_FORMAT_ERROR"),
-            };
           } else {
             newUserEntry[key] =  {
               ...userEntry[key],
@@ -834,7 +837,6 @@ const CreateFieldPlan = () => {
               allowedFileTypes: [".xlsx"],
               handleFileUpload: handleFacilityDataUpload,
               invalidDataError: invalidDataError,
-              errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
               heading: "PM_CREATE_FIELD_PLAN_HEAD_UPLOAD_FACILITY_DATA",
               description: "PM_CREATE_FIELD_PLAN_HEAD_UPLOAD_FACILITY_DATA_DESC",
               t,
@@ -842,7 +844,7 @@ const CreateFieldPlan = () => {
               setBlockUI,
               setInvalidDataError,
               file,
-              setFile,
+              setFile: setFacilityUploadFile,
             },
             nextRoute: "",
             populators: {
@@ -1334,6 +1336,9 @@ const CreateFieldPlan = () => {
     return <Loader />;
   }
 
+  const isPrepopulationErrorToast = currentKey === 3 && toast?.key === "error";
+  const hasCustomPrepopulationErrorToast = isPrepopulationErrorToast && toast?.translate === false;
+
   return (
     <div style={{padding: mobileView ? "15px" : "0px"}}>
       {blockUI && (
@@ -1410,12 +1415,96 @@ const CreateFieldPlan = () => {
           error={toast.key === "error"}
           warning={toast.key === "warning"}
           style={{
+            width: "480px",
+            maxWidth: "calc(100vw - 32px)",
+            minWidth: "0",
+            left: "50%",
+            transform: "translateX(-50%)",
+            alignItems: isPrepopulationErrorToast ? "flex-start" : "center",
+            ...(isPrepopulationErrorToast ? { paddingTop: "12px" } : {}),
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          label={toast.translate === false ? toast.label : t(toast.label)}
-          isDleteBtn={true}
-          onClose={closeToast}
+          labelstyle={isPrepopulationErrorToast ? {
+            flex: 1,
+            minWidth: "0",
+            position: "relative",
+            overflow: "visible",
+            paddingRight: "0",
+            marginTop: "-4px",
+          } : undefined}
+          label={isPrepopulationErrorToast ? (
+            <div style={{ position: "relative", width: "100%" }}>
+              <style>
+                {`
+                  .field-plan-toast-message-scroll {
+                    scrollbar-color: #FFFFFF transparent;
+                    scrollbar-width: thin;
+                  }
+
+                  .field-plan-toast-message-scroll::-webkit-scrollbar {
+                    width: 8px;
+                  }
+
+                  .field-plan-toast-message-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                  }
+
+                  .field-plan-toast-message-scroll::-webkit-scrollbar-thumb {
+                    background-color: #FFFFFF;
+                    border-radius: 8px;
+                  }
+
+                  .field-plan-toast-message-scroll::-webkit-scrollbar-thumb:hover {
+                    background-color: #F2F2F2;
+                  }
+                `}
+              </style>
+              <div style={{ fontWeight: "700", marginBottom: "4px" }}>Validation error:</div>
+              <div
+                className={hasCustomPrepopulationErrorToast ? "field-plan-toast-message-scroll" : undefined}
+                style={{
+                  ...(hasCustomPrepopulationErrorToast ? {
+                    maxHeight: "calc(1.5em * 6)",
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    marginRight: "36px",
+                    paddingRight: "8px",
+                  } : {}),
+                  whiteSpace: "normal",
+                  overflowWrap: "anywhere",
+                  wordBreak: "normal",
+                }}
+              >
+                {toast.translate === false ? toast.label : t(toast.label)}
+              </div>
+              {hasCustomPrepopulationErrorToast && (
+                <button
+                  type="button"
+                  aria-label="Close validation message"
+                  onClick={closeToast}
+                  style={{
+                    position: "absolute",
+                    top: "0",
+                    right: "0",
+                    width: "24px",
+                    height: "24px",
+                    border: "none",
+                    background: "transparent",
+                    color: "#FFFFFF",
+                    cursor: "pointer",
+                    fontSize: "24px",
+                    lineHeight: "24px",
+                    padding: "0",
+                  }}
+                >
+                  X
+                </button>
+              )}
+            </div>
+          ) : t(toast.label)}
+          isDleteBtn={!hasCustomPrepopulationErrorToast}
+          onClose={hasCustomPrepopulationErrorToast ? undefined : closeToast}
         />
       )}
       {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}

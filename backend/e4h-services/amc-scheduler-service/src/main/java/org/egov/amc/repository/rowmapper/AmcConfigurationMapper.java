@@ -104,6 +104,7 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
                 .build();
 
         JsonNode additionalDetails = getAdditionalDetail("amc_additional_details", rs);
+        JsonNode geographyDetails = getAdditionalDetail("amc_geography_details", rs);
         String assignmentsJson = rs.getString("assignments");
         List<AmcConfigurationAssignment> assignments = new ArrayList<>();
         if (assignmentsJson != null && !assignmentsJson.equals("[]")) {
@@ -130,10 +131,12 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
                 .durationMonths(rs.getInt("amc_duration_months"))
                 .visitFrequencyMonths(rs.getInt("amc_visit_frequency_months"))
                 .status(rs.getString("amc_status"))
+                .isActive(rs.getBoolean("amc_is_active"))
                 .assignments(assignments)
                 .configurationStartDate(rs.getLong("amc_configuration_start_date"))
                 .configurationEndDate(rs.getLong("amc_configuration_end_date"))
                 .assetTypes(getAssetTypes("amc_asset_types", rs))
+                .geographyDetails(objectMapper.convertValue(geographyDetails, Map.class))
                 .additionalDetails(objectMapper.convertValue(additionalDetails, Map.class))
                 .auditDetails(auditDetails)
                 .build();
