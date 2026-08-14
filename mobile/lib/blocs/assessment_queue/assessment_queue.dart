@@ -1,18 +1,31 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../model/assessment/assessment_form_type.dart';
 import '../../model/assessment/assessment_mode.dart';
 import '../../model/assessment/assessment_queue.dart';
+import '../../repositories/assessment_draft_repo.dart';
 import '../../repositories/assessment_queue_repo.dart';
+
+typedef _AssessmentQueuePage = ({
+  List<AssessmentQueueFacility> facilities,
+  int total,
+  int nextOffset,
+  bool hasMore,
+});
 
 class AssessmentQueueBloc
     extends Bloc<AssessmentQueueEvent, AssessmentQueueState> {
   final AssessmentQueueRepository repository;
+  final AssessmentDraftRepository draftRepository;
   final AssessmentMode assessmentMode;
+  final String assessorId;
   int _requestGeneration = 0;
 
   AssessmentQueueBloc({
     required this.repository,
+    required this.draftRepository,
     required this.assessmentMode,
+    required this.assessorId,
   }) : super(const AssessmentQueueInitial()) {
     on<AssessmentQueueLoadInitial>(_onLoadInitial);
     on<AssessmentQueueRefresh>(_onRefresh);
@@ -49,18 +62,18 @@ class AssessmentQueueBloc
     final generation = ++_requestGeneration;
     emit(const AssessmentQueueLoading());
     try {
-      final response = await repository.search(
-        assessmentMode: assessmentMode,
-        searchText: query,
+      final excludedIds = await _draftedPlanFacilityIds();
+      final page = await _loadVisiblePage(
+        query: query,
         sortOrder: sortOrder,
+        excludedIds: excludedIds,
       );
       if (generation != _requestGeneration) return;
       emit(AssessmentQueueLoaded(
-        facilities: response.facilities,
-        total: response.pagination.total,
-        nextOffset: response.pagination.offset + response.facilities.length,
-        hasMore: response.pagination.offset + response.facilities.length <
-            response.pagination.total,
+        facilities: page.facilities,
+        total: page.total,
+        nextOffset: page.nextOffset,
+        hasMore: page.hasMore,
       ));
     } catch (error) {
       if (generation != _requestGeneration) return;
@@ -82,17 +95,18 @@ class AssessmentQueueBloc
     final generation = _requestGeneration;
     emit(current.copyWith(isLoadingMore: true, clearLoadMoreError: true));
     try {
-      final response = await repository.search(
-        assessmentMode: assessmentMode,
-        searchText: event.query,
+      final excludedIds = await _draftedPlanFacilityIds();
+      final page = await _loadVisiblePage(
+        query: event.query,
         sortOrder: event.sortOrder,
         offset: current.nextOffset,
+        excludedIds: excludedIds,
       );
       if (generation != _requestGeneration) return;
 
       final byId = <String, AssessmentQueueFacility>{};
       final withoutId = <AssessmentQueueFacility>[];
-      for (final facility in [...current.facilities, ...response.facilities]) {
+      for (final facility in [...current.facilities, ...page.facilities]) {
         final id = facility.planFacilityId;
         if (id == null || id.isEmpty) {
           withoutId.add(facility);
@@ -103,11 +117,9 @@ class AssessmentQueueBloc
       final facilities = [...byId.values, ...withoutId];
       emit(AssessmentQueueLoaded(
         facilities: facilities,
-        total: response.pagination.total,
-        nextOffset: response.pagination.offset + response.facilities.length,
-        hasMore: response.pagination.offset + response.facilities.length <
-                response.pagination.total &&
-            response.facilities.isNotEmpty,
+        total: page.total,
+        nextOffset: page.nextOffset,
+        hasMore: page.hasMore,
       ));
     } catch (error) {
       if (generation != _requestGeneration) return;
@@ -116,6 +128,56 @@ class AssessmentQueueBloc
         loadMoreError: error.toString(),
       ));
     }
+  }
+
+  Future<Set<String>> _draftedPlanFacilityIds() {
+    final phase = assessmentMode == AssessmentMode.remote
+        ? AssessmentPhase.PHONE
+        : AssessmentPhase.FIELD;
+    return draftRepository.draftedPlanFacilityIds(
+      assessorId: assessorId,
+      phase: phase,
+    );
+  }
+
+  Future<_AssessmentQueuePage> _loadVisiblePage({
+    required String query,
+    required String sortOrder,
+    required Set<String> excludedIds,
+    int offset = 0,
+  }) async {
+    final facilities = <AssessmentQueueFacility>[];
+    var nextOffset = offset;
+    var total = 0;
+    var hasMore = true;
+
+    while (facilities.length < AssessmentQueueRepository.defaultPageSize &&
+        hasMore) {
+      final response = await repository.search(
+        assessmentMode: assessmentMode,
+        searchText: query,
+        sortOrder: sortOrder,
+        offset: nextOffset,
+      );
+      final rawFacilities = response.facilities;
+      facilities.addAll(
+        rawFacilities.where((facility) {
+          final id = facility.planFacilityId?.trim();
+          return id == null || id.isEmpty || !excludedIds.contains(id);
+        }),
+      );
+
+      total = response.pagination.total;
+      nextOffset = response.pagination.offset + rawFacilities.length;
+      hasMore = rawFacilities.isNotEmpty && nextOffset < total;
+    }
+
+    return (
+      facilities: facilities,
+      total: total,
+      nextOffset: nextOffset,
+      hasMore: hasMore,
+    );
   }
 }
 

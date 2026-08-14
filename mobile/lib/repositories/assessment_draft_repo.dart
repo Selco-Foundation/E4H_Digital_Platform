@@ -94,6 +94,24 @@ class AssessmentDraftRepository {
         .findAll();
   }
 
+  Future<Set<String>> draftedPlanFacilityIds({
+    required String assessorId,
+    required AssessmentPhase phase,
+  }) async {
+    final normalizedAssessorId = assessorId.trim();
+    if (normalizedAssessorId.isEmpty) return <String>{};
+
+    final drafts = await isar.cacheAssessmentDrafts
+        .filter()
+        .assessorIdEqualTo(normalizedAssessorId, caseSensitive: false)
+        .phaseEqualTo(phase.name, caseSensitive: false)
+        .findAll();
+    return drafts
+        .map((draft) => draft.planFacilityId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+  }
+
   Future<int> countDrafts({
     required String assessorId,
     required Set<AssessmentPhase> phases,

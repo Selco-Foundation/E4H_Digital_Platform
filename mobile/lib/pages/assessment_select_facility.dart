@@ -14,10 +14,13 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
+import '../blocs/auth/authbloc.dart';
 import '../blocs/assessment_queue/assessment_queue.dart';
 import '../model/assessment/assessment_form.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../model/assessment/assessment_queue.dart';
+import '../repositories/assessment_draft_repo.dart';
 import '../repositories/assessment_form_repo.dart';
 import '../repositories/assessment_queue_repo.dart';
 import '../router/app_router.dart';
@@ -38,10 +41,17 @@ class AssessmentSelectFacilityPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final assessorId = context.read<AuthBloc>().state.maybeWhen(
+          authenticated: (_, __, user) => user?.uuid ?? user?.userName ?? '',
+          orElse: () => '',
+        );
+    final isar = context.read<ActivityFacilityBloc>().isar;
     return BlocProvider(
       create: (_) => AssessmentQueueBloc(
         repository: AssessmentQueueRepository(),
+        draftRepository: AssessmentDraftRepository(isar),
         assessmentMode: assessmentMode,
+        assessorId: assessorId,
       )..add(const AssessmentQueueLoadInitial()),
       child: AssessmentSelectFacilityView(assessmentMode: assessmentMode),
     );
@@ -330,14 +340,15 @@ class _AssessmentSelectFacilityViewState
     );
   }
 
-  void _startAssessment(AssessmentQueueFacility facility) {
-    context.router.push<void>(
+  Future<void> _startAssessment(AssessmentQueueFacility facility) async {
+    await context.router.push<void>(
       AssessmentDynamicFormRoute(
         facility: facility,
         assessmentMode: widget.assessmentMode,
         onSubmissionSucceeded: _requestRefresh,
       ),
     );
+    if (mounted) _requestRefresh();
   }
 
   Future<bool> _updateUnableToContactStatus(
