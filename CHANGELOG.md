@@ -4,13 +4,20 @@ All notable repository-wide changes are documented here, one entry per git relea
 
 ## Unreleased
 
-- GitBook documentation overhaul: root README rewrite, architecture/module/roles pages, per-service GitBook pages, API docs, LLDs, and operations pages; added and corrected several service-level `README.md` "Local Setup" sections and `CHANGELOG.md` files.
+Documentation overhaul closing gaps identified in a platform documentation audit — no application code changed.
+
+- **Root README** rewritten: badges, a non-technical platform overview, an architecture diagram, and a full linked module list for every core-service, e4h-service, and frontend app.
+- **Local Setup**: every e4h-service README now has a real "Local Setup" section (DB/Kafka/Redis config, dependent-service hosts, ports) grounded in each service's actual `application.properties`/`pom.xml`; the six per-service `LOCALSETUP.md` files this replaced were removed.
+- **User roles and permissions**: new GitBook page with Can-do/Cannot-do tables for Facility Staff, Vendor/Technician, CRM Operator, and State Coordinator/State POC, based on the real workflow-role code in `im-services`.
+- **CHANGELOG.md**: added this root changelog; added missing per-service changelogs for `rms-service`, `asset-registry`, `ingestion-service`, `processor-services`, `im-services-analytics`, `frontend/installation-ui`, and `frontend/micro-ui`; replaced `amc-scheduler-service`'s changelog, which had been an accidental copy of `field-planner`'s; expanded `im-services`' changelog where a single entry had crammed together ~2 years of unrelated changes.
+- **Entity-Relationship Diagrams**: added a consolidated, cross-service `ERD.md` at the repo root, plus a detailed per-service `ERD.md` for every e4h-service that owns a database, all linked from the corresponding GitBook pages.
+- **GitBook cleanup**: made file-path references clickable throughout `architecture.md` and each service's "Source location" section; fixed a couple of dangling/incorrect links (stale `LOCALSETUP.md` references, `rms-service`'s LLD doc paths) found along the way.
 
 ## v3.14.38 - 2026-08-11
 - Mobile numbers are now encrypted on every write call.
 
 ## v3.14.37 - 2026-08-05
-- New field planner production deployment.
+- New field planner production deployment: added field-plan/ICC (Installation Completion Certificate) report templates and generation, alongside ingestion-service and AMC scheduler updates.
 
 ## v3.13.37 - 2026-08-03
 - Project name lookup in MDMS now uses boundary code instead of state name.
@@ -25,7 +32,7 @@ All notable repository-wide changes are documented here, one entry per git relea
 - Updated the index payload; fixed a Kibana Anganwadi display issue.
 
 ## v3.11.35 - 2026-07-17
-- Username update (staging).
+- Added an HRMS employee username-update event/persister pipeline, plus encryption-service scaffolding for employee data (staging).
 
 ## v3.10.35 - 2026-07-16
 - Justification code validation now accepts codes prefixed `SFJ-` alongside `JUS-`.
@@ -37,7 +44,7 @@ All notable repository-wide changes are documented here, one entry per git relea
 - AMC expiration handling.
 
 ## v3.8.34 - 2026-07-02
-- RMS bug fixes.
+- RMS bug fixes: alert/data-collector/rule-engine/payload-generator fixes, including renaming the `VOLTAGE_VARIATION_LOW` alert subtype to a "reverse voltage" subtype.
 
 ## v3.8.33 - 2026-07-01
 - Fixed "Assign to me" default filter for State SPOC.
@@ -49,10 +56,10 @@ All notable repository-wide changes are documented here, one entry per git relea
 - Updated the RMS system-user configuration.
 
 ## v3.8.30 - 2026-06-30
-- RMS deployment.
+- CO2 emissions dashboard rollout: added a carbon-emission batch calculation service and seed data migration, plus facility/visit/organization form updates in installation-ui.
 
 ## v3.7.30 - 2026-06-23
-- Production release.
+- Facility Kibana-mapping and activity-assignment refinements in field-planner-activity, plus field-plan creation UI updates.
 
 ## v3.7.29 - 2026-06-17
 - Fixed vendor mapping display in Kibana and the Admin module for Maharashtra.
@@ -64,7 +71,7 @@ All notable repository-wide changes are documented here, one entry per git relea
 - When a facility is marked not O&M-ready, its HCR user is deactivated and removed from the search index.
 
 ## v3.7.26 - 2026-06-11
-- Production release.
+- Project name regeneration migration, theft/workflow SMS notification services in im-services, and RMS CO2 consumption/dashboard API additions; added the RMS ticket-pause and district-MDMS-gating LLD docs.
 
 ## v3.6.26 - 2026-06-09
 - Backfilled missing boundary details (block/district/state) in Kibana; fixed a vendor-mapping issue; added facility fields to the visit search response.
@@ -106,13 +113,13 @@ All notable repository-wide changes are documented here, one entry per git relea
 - Renamed a migration file.
 
 ## v3.4.15 - 2026-05-05
-- Production release.
+- Boundary-service repository/service refactor, the RMS ticket-pause feature build-out (facility eligibility sync, MDMS district-gating, audit events), and a new facility block-update API.
 
 ## v3.3.15 - 2026-04-28
 - Hotfix for a facility update issue.
 
 ## v3.3.14 - 2026-04-27
-- Phase-two production deployment.
+- AMC scheduled-visit refinements: query builder/validator updates, OTP resend support, and a migration adding facility name to scheduled visits.
 
 ## v3.3.13 - 2026-04-24
 - Removed reliance on `tenant.tenants` for the login report.
@@ -121,7 +128,7 @@ All notable repository-wide changes are documented here, one entry per git relea
 - Fixed profile update page UI validations.
 
 ## v3.3.11 - 2026-04-16
-- Production release.
+- installation-ui updates alongside facility bulk-search support (health-facility-registry), boundary/HRMS-jurisdiction indexes, and a new RMS ticket-creation guard service.
 
 ## v3.3.10 - 2026-04-09
 - Fixed a facility-details migration data issue.
@@ -164,7 +171,7 @@ A large squashed release (~528 commits) marking the platform's expansion from th
 - Saura eMitra 3.0.
 
 ## v3.1.2 - 2026-03-17
-- Dashboard release.
+- Added warranty-status tracking and first-round-resolution SLA timestamps to incidents (im-services).
 
 ## v3.0.2b - 2026-02-24
 - Migration fix.
@@ -209,7 +216,7 @@ A large squashed release (~528 commits) marking the platform's expansion from th
 - Added HF-type/age-bucket flow; Java base image update.
 
 ## v2.1.0 - 2025-11-03
-- Staging merge.
+- Built out the im-services-analytics escalation module: scheduler, CSV/weekly-report generation, dynamic email templates, and Elasticsearch-based SLA-breach detection.
 
 ## v2.0.11 - 2025-10-14
 - Reverted a health-care-center-type casing fix that had regressed the ticket details page.
@@ -233,13 +240,13 @@ A large squashed release (~528 commits) marking the platform's expansion from th
 - Deleted dummy health-center tickets from production; search filter fix.
 
 ## v2.0.4 - 2025-09-01
-- Production release.
+- Project service BoundaryV2 integration and bulk project approve/update APIs; im-services-analytics incident status/system-functional reporting; inbox v2 query/service rework.
 
 ## v2.0.3 - 2025-08-14
-- Patch release.
+- Initial import of the `installation-ui` application into this repo (~2,950 files), plus assorted micro-ui and backend service updates.
 
 ## v2.0.2 - 2025-07-23
-- Production hotfix.
+- Business-service-state workflow config/migration fixes in egov-workflow-v2, plus im-services/inbox adjustments.
 
 ## v2.0.1 - 2025-07-22
 - SLA computation and workflow-transition fixes across `im-services`; Maharashtra UI image build.
