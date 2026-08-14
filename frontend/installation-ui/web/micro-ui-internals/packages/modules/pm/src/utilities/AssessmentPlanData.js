@@ -33,11 +33,21 @@ export const isUnanimousOverride = (facility, targetResult) => {
 
 // Evaluates the Mark Eligible/Mark Not Eligible validation scenarios, in strict priority order,
 // for the given selection of facilities and the result the user is trying to apply.
-// Returns one of: "BLOCK_REMOTE_PENDING", "WARN_ONSITE_PENDING", "WARN_ONSITE_NOT_INITIATED",
-// "REASON_REQUIRED", "BULK_NOT_SUPPORTED", or "PROCEED".
+// Returns one of: "BLOCK_REMOTE_PENDING", "REASON_REQUIRED", "BULK_NOT_SUPPORTED",
+// "WARN_ONSITE_PENDING", "WARN_ONSITE_NOT_INITIATED", or "PROCEED".
 export const evaluateMarkResultScenario = (facilities, targetResult) => {
   if (facilities.some((facility) => REMOTE_PENDING_STATUS_CODES.includes(facility?.remoteStatus))) {
     return "BLOCK_REMOTE_PENDING";
+  }
+
+  // isUnanimousOverride only matches facilities that have already finalised BOTH assessments,
+  // so this must be checked before the on-site pending/not-initiated warnings below — otherwise
+  // a mixed selection (some facilities still mid-assessment, one already needing a reason) gets
+  // misclassified as a plain on-site warning and the reason requirement is silently skipped.
+  const overrideFacilities = facilities.filter((facility) => isUnanimousOverride(facility, targetResult));
+
+  if (overrideFacilities.length > 0) {
+    return overrideFacilities.length === facilities.length ? "REASON_REQUIRED" : "BULK_NOT_SUPPORTED";
   }
 
   if (facilities.some((facility) => isFinalRemoteStatus(facility?.remoteStatus) && facility?.onSiteStatus === "PENDING")) {
@@ -48,18 +58,7 @@ export const evaluateMarkResultScenario = (facilities, targetResult) => {
     return "WARN_ONSITE_NOT_INITIATED";
   }
 
-  // Every facility now has a finalised remote and on-site outcome.
-  const overrideFacilities = facilities.filter((facility) => isUnanimousOverride(facility, targetResult));
-
-  if (overrideFacilities.length === 0) {
-    return "PROCEED";
-  }
-
-  if (overrideFacilities.length === facilities.length) {
-    return "REASON_REQUIRED";
-  }
-
-  return "BULK_NOT_SUPPORTED";
+  return "PROCEED";
 };
 
 const getLatestSubmission = (submissions, phase) => (
