@@ -2,6 +2,8 @@
 
 Schemas define API payloads, master-data shapes, ingestion contracts, and database setup files.
 
+For a consolidated, cross-service view of how these schemas relate to each other, see the [Entity-Relationship Diagram](../../ERD.md) at the repository root.
+
 ## JSON schema directories
 
 - `docs/asset-registry/master-data-schema`
