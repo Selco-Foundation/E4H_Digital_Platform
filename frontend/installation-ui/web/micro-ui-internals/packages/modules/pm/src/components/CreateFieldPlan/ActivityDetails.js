@@ -238,7 +238,7 @@ const ActivityDetails = ({
       <input
         className={"employee-card-input"}
         value={fieldValue.value}
-        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.toUpperCase())}
+        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.replace(/\s/g, ""))}
         style={{
           minWidth: "230px",
         }}
@@ -378,14 +378,14 @@ const ActivityDetails = ({
     () => [
       {
         id: "activity",
-        Header: () => GetHead("Activity"),
+        Header: () => GetHead(t("PM_FP_ACTIVITY")),
         Cell: ({ row }) => (
           ActivityCell(row.original["activity"])
         ),
       },
       {
         id: "startDate",
-        Header: () => GetHead("Start Date"),
+        Header: () => GetHead(t("PM_FP_START_DATE")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -398,7 +398,7 @@ const ActivityDetails = ({
       },
       {
         id: "endDate",
-        Header: () => GetHead("End Date"),
+        Header: () => GetHead(t("PM_FP_END_DATE")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -411,7 +411,7 @@ const ActivityDetails = ({
       },
       {
         id: "poNumber",
-        Header: () => GetHead("PO Number"),
+        Header: () => GetHead(t("PM_FP_PO_NUMBER")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -421,7 +421,7 @@ const ActivityDetails = ({
       },
       {
         id: "organization",
-        Header: () => GetHead("Organization"),
+        Header: () => GetHead(t("PM_FP_ORGANIZATION")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -431,7 +431,7 @@ const ActivityDetails = ({
       },
       {
         id: "role",
-        Header: () => GetHead("Role"),
+        Header: () => GetHead(t("PM_FP_ROLE")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -444,7 +444,7 @@ const ActivityDetails = ({
       },
       {
         id: "email",
-        Header: () => GetHead("Email"),
+        Header: () => GetHead(t("PM_FP_EMAIL")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -469,7 +469,7 @@ const ActivityDetails = ({
         ),
       },
     ],
-    [organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate]
+    [organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate, t]
   );
 
   return (
