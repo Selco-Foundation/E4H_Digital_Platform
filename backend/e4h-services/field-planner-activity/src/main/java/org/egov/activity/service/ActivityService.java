@@ -54,6 +54,7 @@ public class ActivityService {
     private final AmcSchedulerService amcSchedulerService;
 
     private final ActivityAnalyticsService activityAnalyticsService;
+    private final BomPdfService bomPdfService;
 
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
@@ -61,7 +62,7 @@ public class ActivityService {
     @Autowired
     public ActivityService(
             ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService) {
+            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService, BomPdfService bomPdfService) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityFacilityRepository = activityFacilityRepository;
@@ -77,6 +78,7 @@ public class ActivityService {
             this.boundaryUtil = boundaryUtil;
             this.amcSchedulerService = amcSchedulerService;
             this.activityAnalyticsService = activityAnalyticsService;
+            this.bomPdfService = bomPdfService;
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
@@ -441,6 +443,12 @@ public class ActivityService {
         // state the action fired FROM to tell a submission apart from a re-submission.
         String priorStatus = existingActivityFacitlity.getStatus();
 
+        // On approval, the BOM installation report PDF must be attached to the workflow's documents
+        // BEFORE the transition call - that call is the only place documents travel to workflow-v2.
+        if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            attachBomInstallationReportDocument(request, existingActivityFacitlity);
+        }
+
         // 2. Call workflow transition
         ProcessInstance updatedWorkflow;
         try {
@@ -518,6 +526,22 @@ public class ActivityService {
 
         log.info("Workflow update completed for activity facility: {}, new status: {}", request.getActivityFacilityId(), updatedWorkflow.getState().getState());
         return new FacilityStatusWrapper(updatedActivityFacility, updatedWorkflow.getState().getState(), null, null);
+    }
+
+    private void attachBomInstallationReportDocument(FacilityWorkflowRequest request, ActivityFacility activityFacility) {
+        log.trace("Entering attachBomInstallationReportDocument method for activityFacilityId: {}", activityFacility.getId());
+        String fileStoreId = bomPdfService.generateInstallationReportPdf(request.getRequestInfo(), activityFacility);
+        AuditDetails auditDetails = activityServiceUtil.getAuditDetails(request.getRequestInfo().getUserInfo().getUuid(), null, true);
+
+        Document pdfDocument = Document.builder()
+                .documentType("INSTALLATION_REPORT_BOM")
+                .fileStoreId(fileStoreId)
+                .documentUid("BOM-" + activityFacility.getId() + "-" + System.currentTimeMillis())
+                .auditDetails(auditDetails)
+                .build();
+
+        request.getWorkflow().addDocumentsItem(pdfDocument);
+        log.info("BOM installation report document attached to workflow for activityFacilityId: {}", activityFacility.getId());
     }
 
     private void handleTransactionsAndComment(FacilityWorkflowRequest request, ProcessInstance updatedWorkflow) {
