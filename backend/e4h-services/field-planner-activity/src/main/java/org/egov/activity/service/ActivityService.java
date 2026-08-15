@@ -445,7 +445,7 @@ public class ActivityService {
 
         // On approval, the BOM installation report PDF must be attached to the workflow's documents
         // BEFORE the transition call - that call is the only place documents travel to workflow-v2.
-        if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
+        if ("SUBMIT_REPORT_A".equalsIgnoreCase(request.getWorkflow().getAction()) || "SUBMIT_REPORT_B".equalsIgnoreCase(request.getWorkflow().getAction())) {
             attachBomInstallationReportDocument(request, existingActivityFacitlity);
         }
 

@@ -107,8 +107,8 @@ public class BomPdfService {
         data.put("health_facility_address", facility != null && facility.getAddress() != null
                 ? facility.getAddress().getAddressLine1() : null);
         data.put("vendor_name", activityFacility.getStaffVendorName());
-        data.put("project_number", facility != null
-                ? (facility.getNinId() != null ? facility.getNinId() : facility.getHfrId()) : null);
+        data.put("project_number", activityFacility.getFieldPlan() != null && activityFacility.getFieldPlan().getProject() != null
+                ? (activityFacility.getFieldPlan().getProject().getProjectNumber() != null ? activityFacility.getFieldPlan().getProject().getProjectNumber() : null) : null);
         data.put("health_facility_type", facility != null ? facility.getFacilityType() : null);
         data.put("project_state", boundary != null
                 ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getState()) : null);
