@@ -94,6 +94,16 @@ public class ActivityConfiguration {
     @Value("${activity.facility.kafka.create.topic}")
     private String createActivityFacilityTopic;
 
+    /**
+     * Max serialized size (bytes) of the ActivityFacility list pushed per Kafka message on
+     * {@link #createActivityFacilityTopic}. Sized by bytes rather than item count because each
+     * item's additionalDetails carries a BOM template copy whose size varies by systemType - a
+     * fixed item count can't guarantee staying under the producer's max.request.size (default
+     * 1 MiB) for every template. Default keeps ~50% margin below that default.
+     */
+    @Value("${activity.facility.create.kafka.batch.max.bytes:500000}")
+    private Integer createActivityFacilityBatchMaxBytes;
+
     @Value("${activity.kafka.create.topic}")
     private String createActivityTopic;
 

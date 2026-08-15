@@ -71,6 +71,8 @@ public class AssetValidator {
 
     private void validateAssetDetails(Asset asset, Map<String, String> errorMap) {
         log.debug("Validating asset details for assetTypeID={}", asset.getAssetTypeID());
+        log.info("Asset received for asset={}", asset);
+        log.info("Asset Details received for asset={}", asset.getAssetDetails());
         if(asset.getAssetTypeID().equalsIgnoreCase("INVERTOR"))
             validateInverterDetails(AssetConverterUtil.convertMapToInverterDetails(asset.getAssetDetails()), asset.getSystem(), errorMap);
         else if(asset.getAssetTypeID().equalsIgnoreCase("BATTERY"))

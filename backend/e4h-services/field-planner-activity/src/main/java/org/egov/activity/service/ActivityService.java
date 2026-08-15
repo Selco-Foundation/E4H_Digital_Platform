@@ -160,13 +160,61 @@ public class ActivityService {
                 facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
             }
 
-            producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
+            // Batched by actual serialized size, not item count: each item's additionalDetails
+            // carries a BOM template copy whose size varies by systemType, so a fixed item count
+            // can't guarantee staying under the producer's max.request.size for every template.
+            pushActivityFacilitiesInSizeBatches(activityFacilities, request.getRequestInfo());
+
             log.info("successfully created activity facility");
         } catch (Exception exception) {
             log.error("error occurred while creating Activity facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
         return activityFacilities;
+    }
+
+    /**
+     * Splits activityFacilities into consecutive runs whose combined serialized size stays under
+     * {@link ActivityConfiguration#getCreateActivityFacilityBatchMaxBytes()}, and pushes one Kafka
+     * message per run. A single item that alone exceeds the threshold is still pushed alone
+     * (best effort) rather than dropped - that item's own producer.push failure surfaces normally.
+     */
+    private void pushActivityFacilitiesInSizeBatches(List<ActivityFacility> activityFacilities, RequestInfo requestInfo) {
+        int maxBatchBytes = activityConfiguration.getCreateActivityFacilityBatchMaxBytes();
+        List<ActivityFacility> currentBatch = new ArrayList<>();
+        long currentBatchBytes = 0;
+
+        for (ActivityFacility activityFacility : activityFacilities) {
+            long itemBytes = estimateSerializedSize(activityFacility);
+            if (!currentBatch.isEmpty() && currentBatchBytes + itemBytes > maxBatchBytes) {
+                pushActivityFacilityBatch(currentBatch, requestInfo);
+                currentBatch = new ArrayList<>();
+                currentBatchBytes = 0;
+            }
+            currentBatch.add(activityFacility);
+            currentBatchBytes += itemBytes;
+        }
+        if (!currentBatch.isEmpty()) {
+            pushActivityFacilityBatch(currentBatch, requestInfo);
+        }
+    }
+
+    private void pushActivityFacilityBatch(List<ActivityFacility> batch, RequestInfo requestInfo) {
+        ActivityFacilityBulkRequest batchRequest = ActivityFacilityBulkRequest.builder()
+                .requestInfo(requestInfo)
+                .activityFacilities(batch)
+                .build();
+        producer.push(activityConfiguration.getCreateActivityFacilityTopic(), batchRequest);
+        log.info("Pushed activity facility batch of {} items", batch.size());
+    }
+
+    private long estimateSerializedSize(ActivityFacility activityFacility) {
+        try {
+            return mapper.writeValueAsBytes(activityFacility).length;
+        } catch (Exception e) {
+            log.warn("Could not estimate serialized size for activityFacility {}, assuming 0 bytes", activityFacility.getId(), e);
+            return 0;
+        }
     }
 
     public List<ActivityAssignment> createActivityAssignment(ActivityAssignmentBulkRequest request) {
@@ -403,7 +451,6 @@ public class ActivityService {
                     request.getWorkflow().getComments()
             );
         } catch (Exception e) {
-            e.printStackTrace();
             log.error(e.getMessage());
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for facility: " + request.getActivityFacilityId());
