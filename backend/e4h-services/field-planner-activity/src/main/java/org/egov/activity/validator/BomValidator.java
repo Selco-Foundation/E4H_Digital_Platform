@@ -15,6 +15,7 @@ import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -38,6 +39,11 @@ public class BomValidator {
     private final ServiceRequestClient serviceRequestRepository;
 
     private ServiceRequestRepository serviceRequest;
+    /**
+     * Injected lazily to break the bean cycle
+     * ActivityService -> BomPdfService -> BomService -> BomValidator -> ActivityService.
+     * Only used at request time (see {@link #getActivityFacilityById}), never during construction.
+     */
     private ActivityService activityService;
 
     private final ActivityConfiguration activityConfiguration;
@@ -57,7 +63,7 @@ public class BomValidator {
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public BomValidator(ServiceRequestClient serviceRequestRepository, ActivityConfiguration activityConfiguration, ServiceRequestRepository serviceRequest, ActivityService activityService){
+    public BomValidator(ServiceRequestClient serviceRequestRepository, ActivityConfiguration activityConfiguration, ServiceRequestRepository serviceRequest, @Lazy ActivityService activityService){
         this.serviceRequestRepository = serviceRequestRepository;
         this.activityConfiguration = activityConfiguration;
         this.serviceRequest = serviceRequest;
