@@ -89,6 +89,31 @@ def merge_eligible_facilities_into_list(
     return merged
 
 
+def restrict_to_eligible_and_linked_facilities(
+    all_facilities: List[Dict[str, Any]],
+    eligible_facilities: List[Dict[str, Any]],
+    fieldplan_linked_facility_ids: Optional[set] = None,
+) -> List[Dict[str, Any]]:
+    """
+    After a closed assessment, the field-plan sheet is the eligible pool only
+    (plus rows already on this field plan). Not Eligible / unassessed HFs are excluded.
+    """
+    keep_ids = {
+        str(entry.get("facilityId"))
+        for entry in eligible_facilities
+        if entry.get("facilityId")
+    }
+    if fieldplan_linked_facility_ids:
+        keep_ids.update(str(fid) for fid in fieldplan_linked_facility_ids if fid)
+    if not keep_ids:
+        return all_facilities
+    return [
+        facility
+        for facility in all_facilities
+        if str(facility.get("facility_id") or facility.get("facilityId") or "") in keep_ids
+    ]
+
+
 def load_eligible_facility_map(
     assessment_client: AssessmentServiceClient,
     request_info: RequestInfo,

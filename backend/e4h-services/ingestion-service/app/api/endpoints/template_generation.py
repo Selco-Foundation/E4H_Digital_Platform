@@ -26,6 +26,7 @@ from app.utils.assessment_service_client import AssessmentServiceClient
 from app.utils.assessment_fieldplan_handoff import (
     fetch_eligible_assessment_facilities,
     merge_eligible_facilities_into_list,
+    restrict_to_eligible_and_linked_facilities,
 )
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
@@ -571,8 +572,14 @@ async def get_facility_ingestion_template_with_data(
                         eligible_facilities,
                         facilities_by_id,
                     )
+                    all_facilities = restrict_to_eligible_and_linked_facilities(
+                        all_facilities,
+                        eligible_facilities,
+                        fieldplan_linked_facility_ids,
+                    )
                     logger.info(
-                        "Merged %s eligible assessment facility(ies) into template (%s total rows)",
+                        "Field plan template restricted to %s eligible assessment facility(ies) "
+                        "(%s total rows after already-linked)",
                         len(eligible_facilities),
                         len(all_facilities),
                     )
