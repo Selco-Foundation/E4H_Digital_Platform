@@ -39,6 +39,12 @@ public class PlanFacility {
     @JsonProperty("block")
     private String block;
 
+    @JsonProperty("state")
+    private String state;
+
+    @JsonProperty("planName")
+    private String planName;
+
     @JsonProperty("phoneStatus")
     private String phoneStatus;
 
@@ -69,11 +75,8 @@ public class PlanFacility {
     @JsonProperty("overallManuallySet")
     private Boolean overallManuallySet;
 
-    @JsonProperty("eligibleReason")
-    private String eligibleReason;
-
-    @JsonProperty("ineligibleReason")
-    private String ineligibleReason;
+    @JsonProperty("remarks")
+    private String remarks;
 
     @JsonProperty("phoneResponseSummary")
     private List<String> phoneResponseSummary;
