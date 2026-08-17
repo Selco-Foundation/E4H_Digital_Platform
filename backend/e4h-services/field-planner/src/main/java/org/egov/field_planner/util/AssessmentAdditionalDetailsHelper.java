@@ -1,5 +1,6 @@
 package org.egov.field_planner.util;
 
+import org.apache.commons.lang3.StringUtils;
 import org.egov.field_planner.web.models.AssessmentAuditEvent;
 
 import java.util.ArrayList;
@@ -41,14 +42,18 @@ public final class AssessmentAdditionalDetailsHelper {
         return value != null ? value.toString() : null;
     }
 
-    public static String getEligibleReason(Map<String, Object> additionalDetails) {
-        Object value = getAssessmentSection(additionalDetails).get("eligibleReason");
-        return value != null ? value.toString() : null;
-    }
-
-    public static String getIneligibleReason(Map<String, Object> additionalDetails) {
-        Object value = getAssessmentSection(additionalDetails).get("ineligibleReason");
-        return value != null ? value.toString() : null;
+    public static String getRemarks(Map<String, Object> additionalDetails) {
+        Map<String, Object> assessment = getAssessmentSection(additionalDetails);
+        Object remarks = assessment.get("remarks");
+        if (remarks != null && StringUtils.isNotBlank(remarks.toString())) {
+            return remarks.toString();
+        }
+        Object legacyEligibleReason = assessment.get("eligibleReason");
+        if (legacyEligibleReason != null && StringUtils.isNotBlank(legacyEligibleReason.toString())) {
+            return legacyEligibleReason.toString();
+        }
+        Object legacyIneligibleReason = assessment.get("ineligibleReason");
+        return legacyIneligibleReason != null ? legacyIneligibleReason.toString() : null;
     }
 
     @SuppressWarnings("unchecked")

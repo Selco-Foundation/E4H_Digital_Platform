@@ -14,7 +14,6 @@ public class AllowedActionsService {
             return AllowedActions.builder().build();
         }
         boolean remotePending = isRemotePending(facility.getPhoneStatus());
-        boolean resultFinal = AssessmentConstants.FINAL_OVERALL_STATUSES.contains(facility.getOverallStatus());
 
         if (remotePending) {
             return AllowedActions.builder()
@@ -24,10 +23,18 @@ public class AllowedActionsService {
                     .build();
         }
 
-        if (resultFinal) {
+        if (AssessmentConstants.OVERALL_ELIGIBLE.equals(facility.getOverallStatus())) {
             return AllowedActions.builder()
                     .assignForField(false)
                     .markEligible(false)
+                    .markNotEligible(true)
+                    .build();
+        }
+
+        if (AssessmentConstants.OVERALL_NOT_ELIGIBLE.equals(facility.getOverallStatus())) {
+            return AllowedActions.builder()
+                    .assignForField(false)
+                    .markEligible(true)
                     .markNotEligible(false)
                     .build();
         }

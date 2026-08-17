@@ -1,6 +1,7 @@
 package org.egov.field_planner.service;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.field_planner.repository.AssessmentFacilityRepository;
 import org.egov.field_planner.repository.AssessmentSubmissionRepository;
 import org.egov.field_planner.util.AssessmentAdditionalDetailsHelper;
@@ -21,17 +22,31 @@ public class PlanFacilitySearchService {
     private final AllowedActionsService allowedActionsService;
     private final OutcomeEngineService outcomeEngineService;
     private final AssessmentMdmsService mdmsService;
+    private final AssessmentFacilityMetadataService facilityMetadataService;
 
     public PlanFacilitySearchResponse search(PlanFacilitySearchRequest request, int limit, int offset) {
-        boolean exportAll = Boolean.TRUE.equals(request.getExportAll());
-        boolean includeSummary = Boolean.TRUE.equals(request.getIncludeResponseSummary());
+        PlanFacilitySearchCriteria criteria = request.getCriteria();
+        String planId = criteria.getPlanId();
+        if (StringUtils.isBlank(planId)) {
+            throw new org.egov.tracer.model.CustomException(
+                    AssessmentConstants.ASSESSMENT_PLAN_NOT_FOUND, "planId is required");
+        }
+        PlanFacilityFilters filters = criteria.getFilters();
+        PlanFacilityFilters effectiveFilters = facilityMetadataService.expandFilters(
+                filters, request.getRequestInfo(), request.getRequestInfo().getUserInfo().getTenantId());
+        boolean exportAll = Boolean.TRUE.equals(criteria.getExportAll());
+        boolean includeSummary = Boolean.TRUE.equals(criteria.getIncludeResponseSummary());
         int effectiveLimit = exportAll ? Math.max(limit, 10000) : limit;
         int effectiveOffset = exportAll ? 0 : offset;
 
         List<PlanFacility> facilities = facilityRepository.searchByPlan(
-                request.getPlanId(), request.getFilters(), effectiveLimit, effectiveOffset);
-        facilities.forEach(f -> enrichFacility(f, includeSummary, request.getRequestInfo()));
-        int total = facilityRepository.countByPlan(request.getPlanId(), request.getFilters());
+                planId, effectiveFilters, effectiveLimit, effectiveOffset);
+        String tenantId = request.getRequestInfo().getUserInfo().getTenantId();
+        facilities.forEach(f -> {
+            facilityMetadataService.enrichDisplayFields(f, request.getRequestInfo(), tenantId);
+            enrichFacility(f, includeSummary, request.getRequestInfo());
+        });
+        int total = facilityRepository.countByPlan(planId, effectiveFilters);
 
         return PlanFacilitySearchResponse.builder()
                 .facilities(facilities)
@@ -44,6 +59,9 @@ public class PlanFacilitySearchService {
                 .orElseThrow(() -> new org.egov.tracer.model.CustomException(
                         AssessmentConstants.ASSESSMENT_PLAN_FACILITY_NOT_FOUND,
                         "Plan facility not found: " + request.getPlanFacilityId()));
+
+        facilityMetadataService.enrichDisplayFields(facility, request.getRequestInfo(),
+                request.getRequestInfo().getUserInfo().getTenantId());
 
         List<AssessmentSubmission> submissions = submissionRepository.findByPlanFacilityId(facility.getPlanFacilityId());
         AllowedActions actions = allowedActionsService.compute(facility);
@@ -63,8 +81,7 @@ public class PlanFacilitySearchService {
                 .phoneOutcome(facility.getPhoneOutcome())
                 .fieldOutcome(facility.getFieldOutcome())
                 .overallManuallySet(facility.getOverallManuallySet())
-                .eligibleReason(facility.getEligibleReason())
-                .ineligibleReason(facility.getIneligibleReason())
+                .remarks(facility.getRemarks())
                 .assessmentCompletionStatus(facility.getAssessmentCompletionStatus())
                 .allowedActions(actions)
                 .submissions(submissions)
@@ -87,7 +104,7 @@ public class PlanFacilitySearchService {
                                           org.egov.common.contract.request.RequestInfo requestInfo) {
         List<AssessmentSubmission> submissions = submissionRepository.findByPlanFacilityId(facility.getPlanFacilityId());
         for (AssessmentSubmission submission : submissions) {
-            AssessmentFormSchema schema = mdmsService.getFormSchema(
+            AssessmentFormSchema schema = mdmsService.getMobileFormSchema(
                     requestInfo, "in", submission.getFormType());
             List<String> summary = outcomeEngineService.buildResponseSummary(schema, submission.getSubmissionData());
             if (AssessmentConstants.PHASE_PHONE.equals(submission.getAssessmentPhase())) {

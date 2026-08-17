@@ -7,6 +7,7 @@ import org.egov.common.models.core.URLParams;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
+import org.egov.field_planner.util.FieldPlannerConstants;
 import org.egov.field_planner.web.models.FieldPlanSearchRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -94,6 +95,7 @@ public class FieldPlannerQueryBuilder {
             queryBuilder.append(" tenant_id like ? ");
             preparedStmtList.add(fieldPlan.getTenantId() + '%');
         }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
         queryBuilder.append("ORDER BY created_time DESC LIMIT 1;");
 
         return queryBuilder.toString();
@@ -105,6 +107,7 @@ public class FieldPlannerQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(query);
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder, criteria);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
 
 //        if (criteria.getFromDate() != null && criteria.getFromDate() != 0) {
@@ -170,6 +173,24 @@ public class FieldPlannerQueryBuilder {
             queryBuilder.append(" ( fp.last_modified_by >= ? )");
             preparedStmtList.add(lastChangedSince);
         }
+    }
+
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" fp.plan_type = ? ");
+        preparedStmtList.add(FieldPlannerConstants.PLAN_TYPE_FIELD_PLAN);
+    }
+
+    /**
+     * List/search queries stay scoped to FIELD_PLAN. ID lookups skip plan_type so internal callers
+     * (e.g. activity assignment for assessment plans) can resolve any row in field_plans.
+     */
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder,
+                                        FieldPlanSearchCriteria criteria) {
+        if (!CollectionUtils.isEmpty(criteria.getIds())) {
+            return;
+        }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
     }
 
     private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {
