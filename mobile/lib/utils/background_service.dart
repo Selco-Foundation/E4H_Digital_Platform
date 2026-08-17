@@ -1506,67 +1506,8 @@ Future<void> _performSubmissionForActivityFacility({
         activityFacilityId: activityFacilityId,
         operationType: OperationTypes.submit,
         status: OperationStatuses.running,
-        stageKey: 'generating_bom_pdf',
-        completedSteps: 6,
-        service: service,
-      );
-
-      final bomCheckpoint = await _getCheckpoint(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        operationType: OperationTypes.submit,
-        checkpointKey: 'bom_pdf',
-        itemKey: activityFacilityId,
-      );
-      String bomFileStoreId = bomCheckpoint?.remoteId ?? '';
-      if (bomFileStoreId.isEmpty) {
-        final installationReportPdfDocuments = <Document>[
-          ...installationImageDocuments,
-          ...assetHandoverDocumentsPayload,
-          ...completionCertificateDocuments,
-        ];
-        bomFileStoreId = await BomRepository().generateBomPdf(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          userType: userType,
-          documents: installationReportPdfDocuments,
-        );
-        await _saveCheckpoint(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          operationType: OperationTypes.submit,
-          checkpointKey: 'bom_pdf',
-          itemKey: activityFacilityId,
-          status: OperationCheckpointStatuses.success,
-          remoteId: bomFileStoreId,
-        );
-      }
-
-      workflowDocuments.removeWhere((d) =>
-          (d.documentType ?? '').toUpperCase().contains(installationReportBom));
-      final lat = workflowDocuments.isNotEmpty
-          ? workflowDocuments.first.geoLocation?.latitude ?? ''
-          : '';
-      final lon = workflowDocuments.isNotEmpty
-          ? workflowDocuments.first.geoLocation?.longitude ?? ''
-          : '';
-      workflowDocuments.add(
-        Document(
-          documentType: installationReportBom,
-          fileStore: bomFileStoreId,
-          documentUid:
-              'BOM-$activityFacilityId-${DateTime.now().millisecondsSinceEpoch}',
-          geoLocation: GeoLocation(latitude: lat, longitude: lon),
-        ),
-      );
-
-      await _writeOperationStage(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        operationType: OperationTypes.submit,
-        status: OperationStatuses.running,
         stageKey: 'submitting_bom',
-        completedSteps: 7,
+        completedSteps: 6,
         service: service,
       );
 
@@ -1605,7 +1546,7 @@ Future<void> _performSubmissionForActivityFacility({
       operationType: OperationTypes.submit,
       status: OperationStatuses.running,
       stageKey: 'submitting_assets',
-      completedSteps: 8,
+      completedSteps: 7,
       service: service,
     );
 
@@ -1731,7 +1672,7 @@ Future<void> _performSubmissionForActivityFacility({
       operationType: OperationTypes.submit,
       status: OperationStatuses.running,
       stageKey: 'finalizing_workflow_submission',
-      completedSteps: 9,
+      completedSteps: 8,
       service: service,
     );
 
@@ -1772,7 +1713,7 @@ Future<void> _performSubmissionForActivityFacility({
       operationType: OperationTypes.submit,
       status: OperationStatuses.running,
       stageKey: 'cleaning_up_local_cache',
-      completedSteps: 10,
+      completedSteps: 9,
       service: service,
     );
 

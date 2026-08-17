@@ -6,15 +6,10 @@ import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_activity_facility_bom_values.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';
-import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_amc_doc.dart';
-import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
-import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
-import '../model/activity_facility/activity_facility.dart';
-import '../model/document/document.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart' as env;
 import '../utils/utils.dart';
@@ -22,294 +17,10 @@ import 'activity_facility_repo.dart';
 
 final envConfigs = env.EnvironmentConfiguration.instance;
 
-Map<String, dynamic> enrichWithFacilityDetails({
-  required Map<String, dynamic> values,
-  Facility? facility,
-  String? projectNumber,
-  String? poWoNumber,
-  DateTime? projectDate,
-}) {
-  final enriched = Map<String, dynamic>.from(values);
-  final locality = parseBoundaryCodeLocality(facility?.boundaryCode);
-
-  _putIfNotBlank(enriched, 'health_facility_name', facility?.facilityName);
-  _putIfNotBlank(enriched, 'health_facility_type', facility?.facilityType);
-  _putIfNotBlank(
-    enriched,
-    'health_facility_address',
-    _formatFacilityAddress(facility?.address),
-  );
-  _putIfNotBlank(enriched, 'project_number', projectNumber);
-  _putIfNotBlank(enriched, 'vendor_name', facility?.vendorName);
-  _putIfNotBlank(enriched, 'po_wo_number', poWoNumber);
-  _putIfNotBlank(enriched, 'project_date', _formatProjectDate(projectDate));
-  _putIfNotBlank(enriched, 'project_state', locality.state);
-  _putIfNotBlank(enriched, 'project_block', locality.block);
-
-  return enriched;
-}
-
-void _putIfNotBlank(
-  Map<String, dynamic> values,
-  String key,
-  String? value,
-) {
-  final cleaned = _blankToNull(value);
-  if (cleaned != null) values[key] = cleaned;
-}
-
-String? _blankToNull(String? value) {
-  final cleaned = value?.trim();
-  return cleaned == null || cleaned.isEmpty ? null : cleaned;
-}
-
-String? _formatProjectDate(DateTime? date) {
-  if (date == null) return null;
-  final year = date.year.toString().padLeft(4, '0');
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '$year-$month-$day';
-}
-
-String? _formatFacilityAddress(FacilityAddress? address) {
-  if (address == null) return null;
-  final parts = <String>[];
-
-  void add(String? value) {
-    final cleaned = _blankToNull(value);
-    if (cleaned != null) parts.add(cleaned);
-  }
-
-  add(address.detail);
-  add(address.landmark);
-  add(address.doorNo);
-  add(address.street);
-  add(address.city);
-  add(address.pincode);
-
-  if (parts.isEmpty) {
-    add(address.addressLine1);
-    add(address.addressLine2);
-  }
-
-  return parts.isEmpty ? null : parts.join(', ');
-}
-
-class _AssetTypeBomSummary {
-  final String? make;
-  final String? capacity;
-  final String? quantity;
-  final String? batteryType;
-
-  const _AssetTypeBomSummary({
-    this.make,
-    this.capacity,
-    this.quantity,
-    this.batteryType,
-  });
-}
-
 class BomRepository {
   final Dio _dio = DioClient().dio;
 
   BomRepository();
-
-  Future<Map<String, dynamic>> enrichWithActivityFacilityContext({
-    required Isar isar,
-    required String activityFacilityId,
-    required Map<String, dynamic> bomData,
-  }) async {
-    try {
-      final row = await isar.cacheActivityFacilityWorkflows
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .findFirst();
-
-      if (row == null) return bomData;
-
-      final af = row.activityFacility;
-      final projectNumber = af.fieldPlan?.project?.projectNumber?.toString();
-      final poWoNumber = af.fieldPlan?.poWoNumber;
-      final projectDate =
-          af.fieldPlan?.startDateTime ?? af.fieldPlan?.project?.startDateTime;
-      final enriched = enrichWithFacilityDetails(
-        values: bomData,
-        facility: af.facility,
-        projectNumber: projectNumber,
-        poWoNumber: poWoNumber,
-        projectDate: projectDate,
-      );
-
-      final panelSummary = await _getAssetTypeBomSummary(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        assetType: ASSET_TYPES.PANEL.name.toLowerCase(),
-        capacitySelector: (asset) => asset.panelCapacity,
-      );
-      final batterySummary = await _getAssetTypeBomSummary(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        assetType: ASSET_TYPES.BATTERY.name.toLowerCase(),
-        capacitySelector: (asset) => asset.batteryCapacity,
-        includeBatteryType: true,
-      );
-      final inverterSummary = await _getAssetTypeBomSummary(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        assetType: ASSET_TYPES.INVERTER.name.toLowerCase(),
-        capacitySelector: (asset) => asset.inverterCapacity,
-      );
-      final panelSerialNumbers = await _getAssetSerialNumbers(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        assetType: ASSET_TYPES.PANEL.name.toLowerCase(),
-      );
-      final batterySerialNumbers = await _getAssetSerialNumbers(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        assetType: ASSET_TYPES.BATTERY.name.toLowerCase(),
-      );
-      final inverterSerialNumbers = await _getAssetSerialNumbers(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        assetType: ASSET_TYPES.INVERTER.name.toLowerCase(),
-      );
-
-      _putIfNotBlank(enriched, 'solar_module_make', panelSummary.make);
-      _putIfNotBlank(enriched, 'solar_module_capacity', panelSummary.capacity);
-      _putIfNotBlank(enriched, 'solar_module_qty', panelSummary.quantity);
-      _putIfNotBlank(enriched, 'solar_battery_make', batterySummary.make);
-      _putIfNotBlank(
-          enriched, 'solar_battery_capacity', batterySummary.capacity);
-      _putIfNotBlank(enriched, 'solar_battery_qty', batterySummary.quantity);
-      _putInverterSummary(
-        enriched,
-        inverterSummary,
-        makeKey: 'inverter_make',
-        capacityKey: 'inverter_capacity',
-        quantityKey: 'inverter_qty',
-      );
-      _putInverterSummary(
-        enriched,
-        inverterSummary,
-        makeKey: 'solar_on_grid_pcu_inverter_make',
-        capacityKey: 'solar_on_grid_pcu_inverter_capacity',
-        quantityKey: 'solar_on_grid_pcu_inverter_qty',
-      );
-      _putInverterSummary(
-        enriched,
-        inverterSummary,
-        makeKey: 'solar_charge_controller_make',
-        capacityKey: 'solar_charge_controller_capacity',
-        quantityKey: 'solar_charge_controller_qty',
-      );
-      _putInverterSummary(
-        enriched,
-        inverterSummary,
-        makeKey: 'solar_hybrid_pcu_make',
-        capacityKey: 'solar_hybrid_pcu_capacity',
-        quantityKey: 'solar_hybrid_pcu_qty',
-      );
-      _putIfNotEmpty(enriched, 'panel_serial_number', panelSerialNumbers);
-      _putIfNotEmpty(enriched, 'battery_serial_number', batterySerialNumbers);
-      _putIfNotEmpty(enriched, 'inverter_serial_number', inverterSerialNumbers);
-
-      return enriched;
-    } catch (_) {
-      return bomData;
-    }
-  }
-
-  Future<_AssetTypeBomSummary> _getAssetTypeBomSummary({
-    required Isar isar,
-    required String activityFacilityId,
-    required String assetType,
-    required String? Function(CacheAddNewAsset asset) capacitySelector,
-    bool includeBatteryType = false,
-  }) async {
-    final assets = await isar.cacheAddNewAssets
-        .where()
-        .activityFacilityIdEqualTo(activityFacilityId)
-        .filter()
-        .assetTypeEqualTo(assetType)
-        .findAll();
-
-    if (assets.isEmpty) return const _AssetTypeBomSummary();
-
-    final detail = await isar.cacheAssetDetails
-        .where()
-        .activityFacilityIdEqualTo(activityFacilityId)
-        .filter()
-        .assetTypeEqualTo(assetType)
-        .findFirst();
-
-    return _AssetTypeBomSummary(
-      make: _blankToNull(detail?.brand),
-      capacity: _firstNonBlank(assets.map(capacitySelector)),
-      quantity: assets.length.toString(),
-      batteryType: includeBatteryType
-          ? _firstNonBlank(assets.map((asset) => asset.batteryType))
-          : null,
-    );
-  }
-
-  void _putInverterSummary(
-    Map<String, dynamic> values,
-    _AssetTypeBomSummary summary, {
-    required String makeKey,
-    required String capacityKey,
-    required String quantityKey,
-  }) {
-    _putIfNotBlank(values, makeKey, summary.make);
-    _putIfNotBlank(values, capacityKey, summary.capacity);
-    _putIfNotBlank(values, quantityKey, summary.quantity);
-  }
-
-  Future<List<Map<String, dynamic>>> _getAssetSerialNumbers({
-    required Isar isar,
-    required String activityFacilityId,
-    required String assetType,
-  }) async {
-    final assets = await isar.cacheAddNewAssets
-        .where()
-        .activityFacilityIdEqualTo(activityFacilityId)
-        .filter()
-        .assetTypeEqualTo(assetType)
-        .findAll();
-
-    assets.sort((a, b) => a.id.compareTo(b.id));
-
-    final serialNumbers = <Map<String, dynamic>>[];
-    final includedSerialNumbers = <String>{};
-    for (final asset in assets) {
-      final serialNumber = asset.serialNumber.trim();
-      if (serialNumber.isEmpty || !includedSerialNumbers.add(serialNumber)) {
-        continue;
-      }
-      serialNumbers.add({
-        'srNo': serialNumbers.length + 1,
-        'serialNumber': serialNumber,
-      });
-    }
-
-    return serialNumbers;
-  }
-
-  void _putIfNotEmpty(
-    Map<String, dynamic> values,
-    String key,
-    List<Map<String, dynamic>> value,
-  ) {
-    if (value.isNotEmpty) values[key] = value;
-  }
-
-  static String? _firstNonBlank(Iterable<String?> values) {
-    for (final value in values) {
-      final cleaned = _blankToNull(value);
-      if (cleaned != null) return cleaned;
-    }
-    return null;
-  }
 
   Future<void> saveLocal({
     required Isar isar,
@@ -505,11 +216,6 @@ class BomRepository {
     final apiName = (solutionName != null && solutionName.trim().isNotEmpty)
         ? solutionName.trim()
         : 'BOM.SolarSystem';
-    final enrichedBomData = await enrichWithActivityFacilityContext(
-      isar: isar,
-      activityFacilityId: activityFacilityId,
-      bomData: mergedKV,
-    );
 
     final payload = {
       "bom": [
@@ -520,7 +226,7 @@ class BomRepository {
           "facilityId": facilityId,
           "activityFacilityId": activityFacilityId,
           "assignUser": assignUserUuid,
-          "data": enrichedBomData,
+          "data": mergedKV,
           "isActive": true,
         }
       ],
@@ -647,92 +353,6 @@ class BomRepository {
           message: e.toString(),
           stackTrace: stack);
       throw Exception("Error syncing bom");
-    }
-  }
-
-  Future<String> generateBomPdf({
-    required Isar isar,
-    required String activityFacilityId,
-    required String userType,
-    required List<Document> documents,
-  }) async {
-    try {
-      final cachedBomData = await getProjectBomKV(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        userType: userType,
-      );
-      final fallbackBomData = await _getModelBomValues(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-      );
-      final bomData = cachedBomData != null && cachedBomData.isNotEmpty
-          ? Map<String, dynamic>.from(cachedBomData)
-          : Map<String, dynamic>.from(fallbackBomData);
-
-      if (bomData.isEmpty) {
-        throw Exception("No BOM values found for project");
-      }
-
-      final spec = await isar.cacheSpecifications
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .findFirst();
-
-      final saved = spec?.system.trim();
-      final workflow = await isar.cacheActivityFacilityWorkflows
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .findFirst();
-      final facilitySystemType =
-          workflow?.activityFacility.facility?.facilityDetails?.systemType;
-      final directSystemType = facilitySystemType?.trim();
-      final system = (saved != null && saved.isNotEmpty)
-          ? saved
-          : (directSystemType != null && directSystemType.isNotEmpty)
-              ? directSystemType
-              : SYSTEM_TYPE.DC.name;
-      final enriched = await enrichWithActivityFacilityContext(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        bomData: bomData,
-      );
-
-      final tenantId = env.envConfig.variables.tenantId;
-      final bomPayload = Map<String, dynamic>.from(enriched)
-        ..['tenantId'] = tenantId
-        ..['documents'] = documents.map((d) => d.toJsonForWorkflow()).toList();
-
-      final body = {
-        "system": system,
-        "bom": bomPayload,
-      };
-
-      final path = "activity/v1/bom/_save_pdf?tenantId=$tenantId";
-
-      final response = await _dio.post(path, data: body);
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception("Generate BOM PDF failed: ${response.statusCode}");
-      }
-
-      String? filestoreId;
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        filestoreId = data["filestoreId"] as String?;
-      } else if (data is String && data.trim().isNotEmpty) {
-        final parsed = jsonDecode(data) as Map<String, dynamic>;
-        filestoreId = parsed["filestoreId"] as String?;
-      }
-
-      if (filestoreId == null || filestoreId.isEmpty) {
-        throw Exception("filestoreId missing in response");
-      }
-
-      return filestoreId;
-    } catch (e) {
-      AppLogger.instance.info("error $e");
-      throw Exception("Failed to generate BOM PDF filestoreId");
     }
   }
 

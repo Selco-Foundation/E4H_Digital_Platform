@@ -86,7 +86,6 @@ const List<OperationStage> submitStages = [
   OperationStage('uploading_asset_media', 'Uploading asset photos and videos'),
   OperationStage('uploading_completion_reports',
       'Uploading installation completion reports'),
-  OperationStage('generating_bom_pdf', 'Generating BOM PDF'),
   OperationStage('submitting_bom', 'Submitting BOM'),
   OperationStage('submitting_assets', 'Submitting assets'),
   OperationStage(
