@@ -10,6 +10,18 @@ import ProjectFieldPlans from "./ProjectFieldPlans";
 import ProjectTable from "./ProjectTable";
 import ProjectDetails from "./ProjectDetails";
 import CreateAMC from "./CreateAMC";
+import CreateAssessment from "./CreateAssessment";
+import AssessmentDetails from "./AssessmentDetails";
+import AssessmentFacilityDetails from "./AssessmentFacilityDetails";
+import Translation from "./Translation";
+import FieldPlanList from "./FieldPlanList";
+import FieldPlanFacilities from "./FieldPlanFacilities";
+import FacilityActivityDetails from "./FacilityActivityDetails";
+import AMCConfigurations from "./AMCConfigurations";
+import AMCVisits from "./AMCVisits";
+import AMCVisitDetails from "./AMCVisitDetails";
+import Facilities from "./Facilities";
+import FacilityDetails from "./FacilityDetails";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -51,6 +63,61 @@ const PMApp = () => {
     amcCreation: {
       content: t("PM_ACTION_SET_UP_AMC"),
       internalLink: match.url + `/project/${pmStore?.workingProject?.id}/amc/create`,
+      show: true,
+    },
+    assessmentCreation: {
+      content: t("PM_ACTION_ADD_ASSESSMENT_PLAN"),
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/assessment/create`,
+      show: true,
+    },
+    assessmentDetails: {
+      content: pmStore?.workingAssessmentPlan?.name,
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/assessment/${pmStore?.workingAssessmentPlan?.id}/details`,
+      show: true,
+    },
+    assessmentFacilityDetails: {
+      content: pmStore?.workingAssessmentFacility?.name,
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/assessment/${pmStore?.workingAssessmentPlan?.id}/facilities/${pmStore?.workingAssessmentFacility?.id}/details`,
+      show: true,
+    },
+    fieldPlans: {
+      content: t("CS_COMMON_FIELD_PLANS"),
+      internalLink: match.url + `/field-plans`,
+      show: true,
+    },
+    fieldPlanFacilities: {
+      content: pmStore?.workingFieldPlan?.name,
+      internalLink: match.url + `/field-plans/${pmStore?.workingFieldPlan?.id}/facilities`,
+      show: true,
+    },
+    facilityActivityDetails: {
+      content: pmStore?.workingFacility?.facilityName || pmStore?.workingFacility?.id,
+      internalLink: match.url + `/field-plans/${pmStore?.workingFieldPlan?.id}/facilities/${pmStore?.workingFacility?.id}/details`,
+      show: true,
+    },
+    amcConfigurations: {
+      content: t("PM_LABEL_AMCS"),
+      internalLink: match.url + `/amc-configurations`,
+      show: true,
+    },
+    amcConfigurationVisits: {
+      content: pmStore?.workingAMCConfiguration?.facilityName,
+      internalLink: match.url + `/amc-configurations/${pmStore?.workingAMCConfiguration?.id}/visits`,
+      show: true,
+    },
+    amcVisitDetails: {
+      content: pmStore?.workingAMCVisit?.facilityDetails?.facilityName,
+      internalLink: match.url + `/amc-configurations/${pmStore?.workingAMCConfiguration?.id}/visits/${pmStore?.workingAMCVisit?.id}/details`,
+      show: true,
+    },
+    facilities: {
+      content: t("FACILITIES"),
+      internalLink: match.url + `/facilities`,
+      show: true,
+    },
+    facilityDetails: {
+      content: pmStore?.workingFacilityDetails?.facilityName || pmStore?.workingFacilityDetails?.id,
+      internalLink: match.url + `/facilities/${encodeURIComponent(pmStore?.workingFacilityDetails?.id || "")}/details`,
       show: true,
     },
     response: {
@@ -108,6 +175,83 @@ const PMApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.amcCreation]}
           />
           <CreateAMC />
+        </Route>
+        <Route path={`${path}/project/:projectId/assessment/create`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.assessmentCreation]}
+          />
+          <CreateAssessment />
+        </Route>
+        <Route path={`${path}/project/:projectId/assessment/:assessmentId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.assessmentDetails]}
+          />
+          <AssessmentDetails t={t} />
+        </Route>
+        <Route path={`${path}/project/:projectId/assessment/:assessmentId/facilities/:facilityId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.assessmentDetails, breadCrumbsConfig.assessmentFacilityDetails]}
+          />
+          <AssessmentFacilityDetails t={t} />
+        </Route>
+        <Route path={`${path}/field-plans`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans]}
+          />
+          <FieldPlanList />
+        </Route>
+        <Route path={`${path}/field-plans/:fieldPlanId/facilities`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans, breadCrumbsConfig.fieldPlanFacilities]}
+          />
+          <FieldPlanFacilities />
+        </Route>
+        <Route path={`${path}/field-plans/:fieldPlanId/facilities/:facilityId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlans, breadCrumbsConfig.fieldPlanFacilities, breadCrumbsConfig.facilityActivityDetails]}
+          />
+          <FacilityActivityDetails />
+        </Route>
+        <Route path={`${path}/amc-configurations`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.amcConfigurations]}
+          />
+          <AMCConfigurations />
+        </Route>
+        <Route path={`${path}/amc-configurations/:configurationId/visits`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.amcConfigurations, breadCrumbsConfig.amcConfigurationVisits]}
+          />
+          <AMCVisits />
+        </Route>
+        <Route path={`${path}/amc-configurations/:configurationId/visits/:visitId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.amcConfigurations, breadCrumbsConfig.amcConfigurationVisits, breadCrumbsConfig.amcVisitDetails]}
+          />
+          <AMCVisitDetails />
+        </Route>
+        <Route path={`${path}/facilities`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities]}
+          />
+          <Facilities />
+        </Route>
+        <Route path={`${path}/facilities/:facilityId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.facilityDetails]}
+          />
+          <FacilityDetails />
         </Route>
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb
