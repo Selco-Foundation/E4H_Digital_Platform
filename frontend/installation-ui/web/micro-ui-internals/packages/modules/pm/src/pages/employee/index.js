@@ -13,7 +13,6 @@ import CreateAMC from "./CreateAMC";
 import CreateAssessment from "./CreateAssessment";
 import AssessmentDetails from "./AssessmentDetails";
 import AssessmentFacilityDetails from "./AssessmentFacilityDetails";
-import Translation from "./Translation";
 import FieldPlanList from "./FieldPlanList";
 import FieldPlanFacilities from "./FieldPlanFacilities";
 import FacilityActivityDetails from "./FacilityActivityDetails";
