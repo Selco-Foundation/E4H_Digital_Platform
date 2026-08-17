@@ -551,7 +551,9 @@ public class ActivityService {
 
     private void attachBomInstallationReportDocument(FacilityWorkflowRequest request, ActivityFacility activityFacility) {
         log.trace("Entering attachBomInstallationReportDocument method for activityFacilityId: {}", activityFacility.getId());
-        String fileStoreId = bomPdfService.generateInstallationReportPdf(request.getRequestInfo(), activityFacility);
+        // Read before addDocumentsItem below, so the report never carries its own previous output.
+        List<Document> workflowDocuments = request.getWorkflow().getDocuments();
+        String fileStoreId = bomPdfService.generateInstallationReportPdf(request.getRequestInfo(), activityFacility, workflowDocuments);
         AuditDetails auditDetails = activityServiceUtil.getAuditDetails(request.getRequestInfo().getUserInfo().getUuid(), null, true);
 
         Document pdfDocument = Document.builder()
