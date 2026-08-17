@@ -36,6 +36,8 @@ import static org.egov.common.utils.CommonUtils.populateErrorDetails;
 @Slf4j
 public class ActivityService {
 
+    private static final String INSTALLATION_REPORT_BOM_DOCUMENT_TYPE = "INSTALLATION_REPORT_BOM";
+
     private final ActivityFacilityRepository activityFacilityRepository;
 
     private final ActivityAssignmentRepository activityAssignmentRepository;
@@ -446,7 +448,12 @@ public class ActivityService {
         // On approval, the BOM installation report PDF must be attached to the workflow's documents
         // BEFORE the transition call - that call is the only place documents travel to workflow-v2.
         if ("SUBMIT_REPORT_A".equalsIgnoreCase(request.getWorkflow().getAction()) || "SUBMIT_REPORT_B".equalsIgnoreCase(request.getWorkflow().getAction())) {
-            attachBomInstallationReportDocument(request, existingActivityFacitlity);
+            if (hasBomInstallationReportDocument(request.getWorkflow())) {
+                log.info("BOM installation report document already present on workflow for activityFacilityId: {}, skipping PDF generation",
+                        request.getActivityFacilityId());
+            } else {
+                attachBomInstallationReportDocument(request, existingActivityFacitlity);
+            }
         }
 
         // 2. Call workflow transition
@@ -528,13 +535,27 @@ public class ActivityService {
         return new FacilityStatusWrapper(updatedActivityFacility, updatedWorkflow.getState().getState(), null, null);
     }
 
+    /**
+     * True when the incoming workflow already carries an INSTALLATION_REPORT_BOM document, meaning
+     * the report PDF was generated on an earlier submission and must not be regenerated.
+     */
+    private boolean hasBomInstallationReportDocument(Workflow workflow) {
+        List<Document> documents = workflow.getDocuments();
+        if (documents == null || documents.isEmpty()) {
+            return false;
+        }
+        return documents.stream()
+                .filter(Objects::nonNull)
+                .anyMatch(document -> INSTALLATION_REPORT_BOM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType()));
+    }
+
     private void attachBomInstallationReportDocument(FacilityWorkflowRequest request, ActivityFacility activityFacility) {
         log.trace("Entering attachBomInstallationReportDocument method for activityFacilityId: {}", activityFacility.getId());
         String fileStoreId = bomPdfService.generateInstallationReportPdf(request.getRequestInfo(), activityFacility);
         AuditDetails auditDetails = activityServiceUtil.getAuditDetails(request.getRequestInfo().getUserInfo().getUuid(), null, true);
 
         Document pdfDocument = Document.builder()
-                .documentType("INSTALLATION_REPORT_BOM")
+                .documentType(INSTALLATION_REPORT_BOM_DOCUMENT_TYPE)
                 .fileStoreId(fileStoreId)
                 .documentUid("BOM-" + activityFacility.getId() + "-" + System.currentTimeMillis())
                 .auditDetails(auditDetails)
