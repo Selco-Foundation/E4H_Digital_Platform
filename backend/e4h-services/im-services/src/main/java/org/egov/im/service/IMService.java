@@ -531,6 +531,15 @@ public class IMService {
 	 * (does not touch the persister topic and does not perform a workflow transition).
 	 * Recovery tool for when persister succeeded but the indexer failed to write a
 	 * given incident to Elasticsearch, leaving it stale.
+	 *
+	 * Mirrors the same enrichment steps update() performs before its indexer push
+	 * (facility category lookup, current ProcessInstance, business service correction)
+	 * so the resulting ES document matches what a real workflow action would have
+	 * produced, instead of the partial payload update() also builds when performing
+	 * an actual transition. Unlike update(), it fetches the ProcessInstance read-only
+	 * (no transition call) and skips every action-triggered side effect (persister
+	 * push, facility-status sync, RMS notify, analytics event) since no action
+	 * actually took place here.
 	 */
 	public IncidentWrapper reindex(RequestInfo requestInfo, String tenantId, String incidentId) {
 		log.trace("IMService::reindex method invoked");
@@ -553,14 +562,35 @@ public class IMService {
 				.workflow(incidentWrapper.getWorkflow())
 				.build();
 
+		log.trace("Fetching MDMS data for reindex");
+		Object mdmsData = mdmsUtils.mDMSCall(incidentRequest);
+
+		String boundaryCode = incident.getBoundaryCode();
+		if (boundaryCode != null && !boundaryCode.isEmpty()) {
+			Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(incidentRequest);
+			if (facilityDetails != null && !facilityDetails.isEmpty()) {
+				String facilityCategory = (String) facilityDetails.get("facility_category");
+				if (facilityCategory != null) {
+					incident.setFacilityCategory(facilityCategory);
+				}
+			}
+		}
+
 		IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
 				.incidentRequest(incidentRequest)
 				.indexView(new IndexView())
 				.build();
 
+		log.trace("Fetching current process instance for reindex");
+		ProcessInstance currentProcessInstance = workflowService.getLatestProcessInstance(tenantId, incidentId, requestInfo);
+		wrapper.setProcessInstance(imUtils.trimRolesFromProcessInstance(currentProcessInstance));
+
 		Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(requestInfo, incident.getBoundaryCode(), tenantId);
 		log.trace("Enriching fields for indexing (reindex)");
 		enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+
+		log.trace("Updating business service (reindex)");
+		imUtils.updateBusinessService(wrapper, mdmsData);
 
 		log.trace("Publishing incident to indexer topic only (reindex)");
 		producer.push(tenantId, config.getUpdateTopicIndexer(), wrapper);
