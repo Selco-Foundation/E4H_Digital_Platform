@@ -30,8 +30,8 @@ const InfoCard = ({ t, facility, phoneOutcome, fieldOutcome }) => {
       {InfoItem(t("PM_ASSESSMENT_ONSITE_STATUS"), facility?.onSiteStatus ? t(`PM_ASSESSMENT_FACILITY_STATUS_${facility.onSiteStatus}`) : "-")}
       {InfoItem(t("PM_ASSESSMENT_FIELD_OUTCOME"), t(`PM_ASSESSMENT_OUTCOME_${fieldOutcome}`))}
       {InfoItem(t("PM_ASSESSMENT_OVERALL_STATUS"), facility?.result ? t(`PM_ASSESSMENT_FACILITY_STATUS_${facility.result}`) : "-")}
-      {facility?.result === "NOT_ELIGIBLE" && facility?.notEligibleReason && (
-        InfoItem(t("PM_ASSESSMENT_NOT_ELIGIBLE_REASON"), facility.notEligibleReason)
+      {facility?.decisionReason && (
+        InfoItem(t("PM_ASSESSMENT_DECISION_REASON"), facility.decisionReason)
       )}
     </div>
   );

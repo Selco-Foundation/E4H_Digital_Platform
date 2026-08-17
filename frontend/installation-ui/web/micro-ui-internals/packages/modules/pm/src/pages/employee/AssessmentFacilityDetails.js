@@ -32,7 +32,7 @@ const mapFacility = (facilityDetail) => (facilityDetail && {
   remoteStatus: facilityDetail.phoneStatus || "NOT_INITIATED",
   onSiteStatus: facilityDetail.fieldStatus || "NOT_INITIATED",
   result: facilityDetail.overallStatus,
-  notEligibleReason: facilityDetail.remarks,
+  decisionReason: facilityDetail.remarks,
 });
 
 const AssessmentFacilityDetails = () => {
