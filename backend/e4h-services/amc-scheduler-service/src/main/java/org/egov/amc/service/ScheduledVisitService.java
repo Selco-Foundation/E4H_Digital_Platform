@@ -61,15 +61,14 @@ public class ScheduledVisitService {
     public ScheduledVisitService(
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
             Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil,
-            FacilityPocPhoneUtil facilityPocPhoneUtil, AmcVisitReportPdfService amcVisitReportPdfService) {
-            FacilityPocPhoneUtil facilityPocPhoneUtil, AmcAnalyticsService amcAnalyticsService) {
-            this.scheduledVisitsValidator = scheduledVisitsValidator;
+            FacilityPocPhoneUtil facilityPocPhoneUtil, AmcVisitReportPdfService amcVisitReportPdfService, AmcAnalyticsService amcAnalyticsService) {
+        this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
         this.producer = producer;
-            this.amcServiceConfiguration = scheduledVisitsConfiguration;
-            this.scheduledVisitsRepository = scheduledVisitsRepository;
-            this.scheduledVisitsEnrichment = scheduledVisitsEnrichment;
-            this.amcConfigurationServiceUtil = scheduledVisitsServiceUtil;
+        this.amcServiceConfiguration = scheduledVisitsConfiguration;
+        this.scheduledVisitsRepository = scheduledVisitsRepository;
+        this.scheduledVisitsEnrichment = scheduledVisitsEnrichment;
+        this.amcConfigurationServiceUtil = scheduledVisitsServiceUtil;
         this.amcConfigurationService = amcConfigurationService;
         this.workflowService = workflowService;
         this.amcVisitReportPdfService = amcVisitReportPdfService;

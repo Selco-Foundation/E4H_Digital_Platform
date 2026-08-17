@@ -526,6 +526,49 @@ public class IMService {
 		return updated;
 	}
 
+	/**
+	 * Re-publishes an incident's CURRENT database state to the indexer-only Kafka topic
+	 * (does not touch the persister topic and does not perform a workflow transition).
+	 * Recovery tool for when persister succeeded but the indexer failed to write a
+	 * given incident to Elasticsearch, leaving it stale.
+	 */
+	public IncidentWrapper reindex(RequestInfo requestInfo, String tenantId, String incidentId) {
+		log.trace("IMService::reindex method invoked");
+		log.info("Reindexing incident tenantId={} incidentId={}", tenantId, incidentId);
+
+		RequestSearchCriteria criteria = RequestSearchCriteria.builder()
+				.tenantId(tenantId)
+				.incidentId(incidentId)
+				.build();
+		List<IncidentWrapper> incidentWrappers = search(requestInfo, criteria);
+		if (CollectionUtils.isEmpty(incidentWrappers)) {
+			throw new CustomException("INCIDENT_NOT_FOUND", "No incident found for incidentId " + incidentId);
+		}
+		IncidentWrapper incidentWrapper = incidentWrappers.get(0);
+		Incident incident = incidentWrapper.getIncident();
+
+		IncidentRequest incidentRequest = IncidentRequest.builder()
+				.requestInfo(requestInfo)
+				.incident(incident)
+				.workflow(incidentWrapper.getWorkflow())
+				.build();
+
+		IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
+				.incidentRequest(incidentRequest)
+				.indexView(new IndexView())
+				.build();
+
+		Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(requestInfo, incident.getBoundaryCode(), tenantId);
+		log.trace("Enriching fields for indexing (reindex)");
+		enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+
+		log.trace("Publishing incident to indexer topic only (reindex)");
+		producer.push(tenantId, config.getUpdateTopicIndexer(), wrapper);
+		log.info("Reindex completed for incidentId={}", incidentId);
+
+		return incidentWrapper;
+	}
+
 	private void validateFacilityAdminOrSystemUser(RequestInfo requestInfo) {
 		User user = requestInfo.getUserInfo();
 		if (user.getRoles() == null || user.getRoles().isEmpty()) {

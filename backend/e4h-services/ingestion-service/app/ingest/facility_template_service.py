@@ -34,6 +34,23 @@ EDITABLE_SOLAR_COLUMN_CODES = {
     "custom_solar_system_capacity",
 }
 
+ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES = {
+    *EDITABLE_SOLAR_COLUMN_CODES,
+    "include_in_fieldplan",
+    "included_in_field_plan",
+}
+
+ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS = (
+    "include in field plan",
+    "included in field plan",
+    "include in project",
+    "system type",
+    "total system capacity",
+    "solution design type",
+    "custom solution design",
+    "custom total system capacity",
+)
+
 FACILITY_TYPE_DROPDOWN_FALLBACK = ["Sub Center", "Primary Health Centre", "Anganwadi"]
 SYSTEM_TYPE_DROPDOWN_FALLBACK = ["DC Off-grid", "AC Off-grid", "AC Hybrid"]
 SOLAR_CAPACITY_DROPDOWN_FALLBACK = [
@@ -44,16 +61,18 @@ SOLUTION_DESIGN_DROPDOWN_FALLBACK = ["Custom Solution Design"]
 
 
 def _skip_column_for_assessment_include(col: Dict[str, Any]) -> bool:
-    """Assessment include template uses only project facilities + Include in Assessment Plan."""
+    """Assessment include template: project facility snapshot + Include in Assessment Plan only."""
     column_code = (col.get("code") or "").strip().lower()
     col_name = (col.get("name") or "").strip().lower()
-    if column_code in {"include_in_fieldplan", "included_in_field_plan"}:
+    if column_code in ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES:
         return True
-    if "include in field plan" in col_name or "included in field plan" in col_name:
-        return True
-    if "include in project" in col_name:
+    if any(fragment in col_name for fragment in ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS):
         return True
     return False
+
+
+def filter_assessment_include_schema(facility_schema: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [col for col in facility_schema if not _skip_column_for_assessment_include(col)]
 
 
 class FacilityTemplateService:
@@ -115,10 +134,7 @@ class FacilityTemplateService:
 
             schema_for_template = facility_schema
             if type == "assessment_include":
-                schema_for_template = [
-                    col for col in facility_schema
-                    if not _skip_column_for_assessment_include(col)
-                ]
+                schema_for_template = filter_assessment_include_schema(facility_schema)
 
             for col in schema_for_template:
                 column_code = col.get("code")
@@ -183,7 +199,7 @@ class FacilityTemplateService:
                     output_list.append(include_column)
                     dropdowns_map[include_column] = ["Yes", "No"]
                     editable_columns.append(include_column)
-                    allow_blank_map[include_column] = True
+                    allow_blank_map[include_column] = False
                     logger.info(f"Added assessment include column: {include_column}")
 
             if type != "assessment_include":

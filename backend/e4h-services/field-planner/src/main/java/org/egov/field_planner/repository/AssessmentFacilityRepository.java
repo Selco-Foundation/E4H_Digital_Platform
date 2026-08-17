@@ -1,10 +1,10 @@
 package org.egov.field_planner.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.field_planner.repository.querybuilder.AssessmentQueryBuilder;
 import org.egov.field_planner.repository.rowmapper.AssessmentFacilityRowMapper;
+import org.egov.field_planner.repository.rowmapper.AssessmentQueueFacilityRowMapper;
 import org.egov.field_planner.repository.rowmapper.EligibleFacilityRowMapper;
 import org.egov.field_planner.util.AssessmentConstants;
 import org.egov.tracer.model.CustomException;
@@ -12,6 +12,9 @@ import org.egov.field_planner.web.models.EligibleFacility;
 import org.egov.field_planner.web.models.PlanFacility;
 import org.egov.field_planner.web.models.PlanFacilityFilters;
 import org.egov.field_planner.web.models.PlanFacilityIncludeItem;
+import org.egov.field_planner.web.models.SubmissionQueueFilters;
+import org.egov.field_planner.web.models.SubmissionQueueSort;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -23,14 +26,29 @@ import java.util.UUID;
 
 @Slf4j
 @Repository
-@RequiredArgsConstructor
 public class AssessmentFacilityRepository {
 
     private final JdbcTemplate jdbcTemplate;
     private final AssessmentQueryBuilder queryBuilder;
     private final AssessmentFacilityRowMapper facilityRowMapper;
+    private final AssessmentQueueFacilityRowMapper queueFacilityRowMapper;
     private final EligibleFacilityRowMapper eligibleFacilityRowMapper;
     private final ObjectMapper objectMapper;
+
+    public AssessmentFacilityRepository(
+            JdbcTemplate jdbcTemplate,
+            AssessmentQueryBuilder queryBuilder,
+            @Qualifier("assessmentFacilityRowMapper") AssessmentFacilityRowMapper facilityRowMapper,
+            AssessmentQueueFacilityRowMapper queueFacilityRowMapper,
+            EligibleFacilityRowMapper eligibleFacilityRowMapper,
+            ObjectMapper objectMapper) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.queryBuilder = queryBuilder;
+        this.facilityRowMapper = facilityRowMapper;
+        this.queueFacilityRowMapper = queueFacilityRowMapper;
+        this.eligibleFacilityRowMapper = eligibleFacilityRowMapper;
+        this.objectMapper = objectMapper;
+    }
 
     public PlanFacility insertFacility(String planId, String tenantId, String facilityId,
                                          PlanFacilityIncludeItem metadata, String userId) {
@@ -103,13 +121,28 @@ public class AssessmentFacilityRepository {
         return count != null ? count : 0;
     }
 
-    public List<PlanFacility> findQueueFacilities(List<String> planIds, String assessmentPhase) {
+    public List<PlanFacility> findQueueFacilities(List<String> planIds, String assessmentPhase,
+                                                  SubmissionQueueFilters filters, SubmissionQueueSort sort,
+                                                  int limit, int offset) {
         if (planIds == null || planIds.isEmpty()) {
             return List.of();
         }
         List<Object> params = new ArrayList<>();
-        String query = queryBuilder.getSubmissionQueueQuery(params, planIds, assessmentPhase);
-        return jdbcTemplate.query(query, facilityRowMapper, params.toArray());
+        String query = queryBuilder.getSubmissionQueueQuery(params, planIds, assessmentPhase, filters, sort);
+        query += " LIMIT ? OFFSET ? ";
+        params.add(limit);
+        params.add(offset);
+        return jdbcTemplate.query(query, queueFacilityRowMapper, params.toArray());
+    }
+
+    public int countQueueFacilities(List<String> planIds, String assessmentPhase, SubmissionQueueFilters filters) {
+        if (planIds == null || planIds.isEmpty()) {
+            return 0;
+        }
+        List<Object> params = new ArrayList<>();
+        String query = queryBuilder.getSubmissionQueueCountQuery(params, planIds, assessmentPhase, filters);
+        Integer count = jdbcTemplate.queryForObject(query, Integer.class, params.toArray());
+        return count != null ? count : 0;
     }
 
     public List<EligibleFacility> findEligibleFacilities(String projectId, List<String> assessmentPlanIds) {
@@ -195,6 +228,16 @@ public class AssessmentFacilityRepository {
         return count != null ? count : 0;
     }
 
+    public int countPendingOverallOnOtherPlans(String facilityId, String targetPlanId) {
+        List<Object> params = new ArrayList<>();
+        Integer count = jdbcTemplate.queryForObject(
+                queryBuilder.getPendingOverallOnOtherPlansCountQuery(params, facilityId, targetPlanId),
+                Integer.class,
+                params.toArray()
+        );
+        return count != null ? count : 0;
+    }
+
     public List<Map<String, Object>> findNonClosedSourcePlans(String facilityId, String targetPlanId) {
         List<Object> params = new ArrayList<>();
         return jdbcTemplate.queryForList(
@@ -238,13 +281,20 @@ public class AssessmentFacilityRepository {
         if (metadata == null) {
             return Map.of();
         }
-        return new java.util.HashMap<>(Map.of(
-                "facilityName", metadata.getFacilityName() != null ? metadata.getFacilityName() : "",
-                "facilityCategory", metadata.getFacilityCategory() != null ? metadata.getFacilityCategory() : "",
-                "facilityType", metadata.getFacilityType() != null ? metadata.getFacilityType() : "",
-                "district", metadata.getDistrict() != null ? metadata.getDistrict() : "",
-                "block", metadata.getBlock() != null ? metadata.getBlock() : ""
-        ));
+        // facilityCategory, facilityType, district, and block are stored as codes (not display names).
+        java.util.HashMap<String, Object> details = new java.util.HashMap<>();
+        putIfPresent(details, "facilityName", metadata.getFacilityName());
+        putIfPresent(details, "facilityCategory", metadata.getFacilityCategory());
+        putIfPresent(details, "facilityType", metadata.getFacilityType());
+        putIfPresent(details, "district", metadata.getDistrict());
+        putIfPresent(details, "block", metadata.getBlock());
+        return details;
+    }
+
+    private void putIfPresent(java.util.HashMap<String, Object> details, String key, String value) {
+        if (value != null) {
+            details.put(key, value);
+        }
     }
 
     private String toJson(Object value) {
