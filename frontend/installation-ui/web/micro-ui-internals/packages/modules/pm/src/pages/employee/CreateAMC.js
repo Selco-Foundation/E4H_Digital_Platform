@@ -542,7 +542,7 @@ const CreateAMC = () => {
           },
         ],
       },
-      ...(amcConfigurationId ? [] : [{
+      {
         key: "3",
         body: [
           {
@@ -600,9 +600,9 @@ const CreateAMC = () => {
             },
           },
         ],
-      }]),
+      },
     ],
-    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError, amcConfigurationId]
+    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -707,6 +707,9 @@ const CreateAMC = () => {
           vendorId: savedAMCConfiguration.vendorId || savedAMCConfiguration.vendor?.id,
           facilityId: savedAMCConfiguration.facilityId || savedAMCConfiguration.facility?.id,
           projectId: savedAMCConfiguration.projectId || projectId,
+          durationMonths: 1,
+          visitFrequencyMonths: 1,
+          configurationEndDate: 1,
           assignments,
           geographyDetails,
           additionalDetails: {
@@ -805,6 +808,7 @@ const CreateAMC = () => {
           );
           history.push(`/${window?.contextPath}/employee/pm/response`);
         }
+        break;
     }
   };
 
