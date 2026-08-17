@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -28,4 +29,12 @@ public class AssessmentFormField {
 
     @JsonProperty("options")
     private List<String> options;
+
+    /** Mobile form page key for nested submissionData (e.g. facilityServices). */
+    @JsonProperty("pageKey")
+    private String pageKey;
+
+    /** Enum code → display label from AssessmentMobileFormSchema. */
+    @JsonProperty("enumLabels")
+    private Map<String, String> enumLabels;
 }
