@@ -25,6 +25,7 @@ from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
     field_plan_facility_validation,
+    assessment_plan_include_validation,
     collect_hfr_nin_errors_for_row,
     collect_anganwadi_poc_username_errors_for_row,
 )
@@ -53,6 +54,14 @@ from app.utils.boundary_service_client import BoundaryServiceClient
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
+from app.utils.assessment_service_client import AssessmentServiceClient
+from app.utils.assessment_fieldplan_handoff import (
+    load_eligible_facility_map,
+    merge_assessment_validation_errors,
+    resolve_plan_facility_id_for_handoff,
+    should_use_assessment_handoff_validation,
+    validate_assessment_handoff_rows,
+)
 from app.utils.icc_report_converter import validate_and_convert, ICCValidationError, SYSTEM_TYPE_TO_INTERNAL
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
@@ -2546,7 +2555,9 @@ async def validate_facilities_excel_sheet(
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
                                         description="Name of the sheet containing boundary data"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        project_id: str = Form(default="", description="Project ID (required for assessment handoff validation)"),
+        tenant_id: str = Form(default="in"),
 ):
     temp_input_file = None
     request_info_obj = request_info_from_json(request_info)
@@ -2593,6 +2604,30 @@ async def validate_facilities_excel_sheet(
             boundary_data_df,
             'data-ingestion.FieldPlanFacilityIngestionSchema'
         )
+
+        assessment_client = (
+            AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
+        )
+        use_assessment_flow = should_use_assessment_handoff_validation(
+            assessment_client=assessment_client,
+            request_info=request_info_obj,
+            project_id=project_id,
+            tenant_id=tenant_id,
+        )
+        if use_assessment_flow:
+            if not project_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="project_id is required when eligible assessment facilities exist for handoff",
+                )
+            eligible_map = load_eligible_facility_map(
+                assessment_client,
+                request_info_obj,
+                project_id,
+                tenant_id,
+            )
+            assessment_errors = validate_assessment_handoff_rows(df, eligible_map)
+            validation_errors = merge_assessment_validation_errors(validation_errors, assessment_errors)
 
         # Mark rows based on validation results
         error_count = 0
@@ -2941,7 +2976,9 @@ async def create_fielplan_facilities(
         facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
         fieldplan_id: str = Form(description="FieldPlan ID"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        project_id: str = Form(default="", description="Project ID (required for assessment handoff apply)"),
+        tenant_id: str = Form(default="in"),
 ):
     input_temp_file = None
 
@@ -3051,6 +3088,30 @@ async def create_fielplan_facilities(
 
         fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
         fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
+
+        assessment_client = (
+            AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
+        )
+        use_assessment_flow = should_use_assessment_handoff_validation(
+            assessment_client=assessment_client,
+            request_info=request_info,
+            project_id=project_id,
+            tenant_id=tenant_id,
+        )
+        eligible_map = {}
+        if use_assessment_flow:
+            if not project_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="project_id is required when eligible assessment facilities exist for handoff",
+                )
+            assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+            eligible_map = load_eligible_facility_map(
+                assessment_client,
+                request_info,
+                project_id,
+                tenant_id,
+            )
 
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
@@ -3199,22 +3260,26 @@ async def create_fielplan_facilities(
                                         df.at[index, 'Field Plan Linking Status'] = error
                                         continue
 
-                                    pending_bulk_fieldplan_links.append(
-                                        (
-                                            index,
-                                            build_field_plan_facility_bulk_entry(
-                                                row,
-                                                facility_id,
-                                                column_list=field_plan_facility_schema,
-                                                facility_type_column=facility_type_col,
-                                                system_type_column=system_type_col,
-                                                total_system_capacity_column=total_system_capacity_col,
-                                                solution_design_type_column=solution_design_type_col,
-                                                custom_solution_design_column=custom_solution_design_col,
-                                                custom_total_system_capacity_column=custom_total_system_capacity_col,
-                                            ),
-                                        )
+                                    bulk_entry = build_field_plan_facility_bulk_entry(
+                                        row,
+                                        facility_id,
+                                        column_list=field_plan_facility_schema,
+                                        facility_type_column=facility_type_col,
+                                        system_type_column=system_type_col,
+                                        total_system_capacity_column=total_system_capacity_col,
+                                        solution_design_type_column=solution_design_type_col,
+                                        custom_solution_design_column=custom_solution_design_col,
+                                        custom_total_system_capacity_column=custom_total_system_capacity_col,
                                     )
+                                    plan_facility_id = resolve_plan_facility_id_for_handoff(
+                                        facility_id, eligible_map
+                                    )
+                                    if use_assessment_flow and plan_facility_id:
+                                        pending_assessment_handoffs.append(
+                                            (index, bulk_entry, plan_facility_id)
+                                        )
+                                    else:
+                                        pending_bulk_fieldplan_links.append((index, bulk_entry))
                                 else:
                                     df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
 
@@ -3887,3 +3952,489 @@ async def bulk_ingest_amc_configurations(
         if output_temp_file and os.path.exists(output_temp_file.name):
             os.unlink(output_temp_file.name)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+def _read_assessment_include_sheet(file_path: str, sheet_name: str = "FacilityMapping") -> pd.DataFrame:
+    wb = load_workbook(file_path, read_only=True)
+    if sheet_name not in wb.sheetnames:
+        for candidate in ("FacilityMapping", "AssessmentInclude"):
+            if candidate in wb.sheetnames:
+                sheet_name = candidate
+                break
+        else:
+            sheet_name = wb.sheetnames[0]
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    df.columns = [str(c).strip() for c in df.columns]
+    return df.loc[:, ~df.columns.str.startswith("Unnamed")]
+
+
+def _find_assessment_include_col(df: pd.DataFrame) -> Optional[str]:
+    for col in df.columns:
+        col_lower = str(col).lower()
+        if "include in assessment plan" in col_lower:
+            return col
+    return None
+
+
+def _find_assessment_facility_id_col(df: pd.DataFrame) -> Optional[str]:
+    for col in df.columns:
+        if "facility id" in str(col).lower():
+            return col
+    return None
+
+
+def _row_value(row, col: Optional[str]) -> str:
+    if not col:
+        return ""
+    val = row.get(col)
+    if pd.isna(val):
+        return ""
+    return str(val).strip()
+
+
+def _normalize_facility_id_from_excel(val) -> str:
+    if pd.isna(val) or val is None:
+        return ""
+    if isinstance(val, bool):
+        return str(val).strip()
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, float):
+        if math.isfinite(val) and val.is_integer():
+            return str(int(val))
+        return str(val).strip()
+    text = str(val).strip()
+    if not text or text.lower() == "nan":
+        return ""
+    if text.endswith(".0") and text[:-2].replace("-", "", 1).isdigit():
+        return text[:-2]
+    return text
+
+
+def _build_assessment_include_facility_payload(row, df: pd.DataFrame, facility_id_col: str) -> Dict[str, str]:
+    payload = {"facilityId": _normalize_facility_id_from_excel(row.get(facility_id_col))}
+    optional_fields = {
+        "facilityName": next(
+            (c for c in df.columns if "health centre name" in str(c).lower() or "facility name" in str(c).lower()),
+            None,
+        ),
+        "facilityCategory": next(
+            (c for c in df.columns if "category of facility" in str(c).lower() or "facility category" in str(c).lower()),
+            None,
+        ),
+        "facilityType": next(
+            (c for c in df.columns if "type of hc" in str(c).lower() or "facility type" in str(c).lower()),
+            None,
+        ),
+        "district": next((c for c in df.columns if str(c).lower().strip() == "district"), None),
+        "block": next((c for c in df.columns if str(c).lower().strip() == "block"), None),
+    }
+    for key, col in optional_fields.items():
+        value = _row_value(row, col)
+        if value:
+            payload[key] = value
+    return payload
+
+
+def _parse_upstream_error_detail(response: Optional[requests.Response]) -> str:
+    if response is None:
+        return "Assessment bulk-create request failed"
+    body = (response.text or "").strip()
+    if not body:
+        return f"Assessment bulk-create failed with HTTP {response.status_code}"
+    try:
+        parsed = response.json()
+    except ValueError:
+        return body
+    errors = parsed.get("Errors") or parsed.get("errors") or []
+    if isinstance(errors, list) and errors:
+        messages = []
+        for err in errors:
+            if isinstance(err, dict):
+                code = err.get("code") or err.get("errorCode") or "ERROR"
+                message = err.get("message") or err.get("description") or code
+                messages.append(f"{code}: {message}")
+            else:
+                messages.append(str(err))
+        return "; ".join(messages)
+    if isinstance(parsed.get("message"), str):
+        return parsed["message"]
+    return body
+
+
+def _apply_validation_results_to_dataframe(
+        df: pd.DataFrame,
+        validation_errors: List[List[str]],
+) -> int:
+    error_count = 0
+    for i, errs in enumerate(validation_errors):
+        if errs:
+            df.at[i, "status"] = "FAILED"
+            df.at[i, "error"] = "; ".join(dict.fromkeys(errs))
+            error_count += 1
+        else:
+            df.at[i, "status"] = "PASSED"
+            df.at[i, "error"] = ""
+    return error_count
+
+
+def _apply_include_validation_results_to_dataframe(
+        df: pd.DataFrame,
+        validation_errors: List[List[str]],
+        exclusion_messages: List[List[str]],
+) -> int:
+    error_count = 0
+    for i in range(len(df)):
+        if validation_errors[i]:
+            df.at[i, "status"] = "FAILED"
+            df.at[i, "error"] = "; ".join(dict.fromkeys(validation_errors[i]))
+            error_count += 1
+        elif exclusion_messages[i]:
+            df.at[i, "status"] = "EXCLUDED"
+            df.at[i, "error"] = "; ".join(dict.fromkeys(exclusion_messages[i]))
+        else:
+            include_col = _find_assessment_include_col(df)
+            if include_col is not None:
+                include_val = str(df.at[i, include_col]).strip().lower()
+                if include_val == "yes":
+                    df.at[i, "status"] = "PASSED"
+                    df.at[i, "error"] = ""
+    return error_count
+
+
+def _build_availability_exclusions(
+        availability_response: dict,
+) -> dict:
+    exclusions = {}
+    for item in availability_response.get("excluded", []) or []:
+        facility_id = _normalize_facility_id_from_excel(item.get("facilityId"))
+        if not facility_id:
+            continue
+        message = item.get("message") or item.get("code") or "Facility excluded from assessment plan"
+        exclusions[facility_id] = message
+    return exclusions
+
+
+def _write_validated_facility_sheet(
+        wb,
+        df: pd.DataFrame,
+        facility_sheet_name: str,
+) -> None:
+    ws = wb[facility_sheet_name]
+    header_values = [cell.value for cell in ws[1]]
+
+    for col_name in ["status", "error"]:
+        if col_name not in header_values:
+            new_col_idx = len(header_values) + 1
+            cell = ws.cell(row=1, column=new_col_idx, value=col_name)
+            cell.font = Font(bold=True)
+            header_values.append(col_name)
+            cell.protection = Protection(locked=True)
+            for r_idx in range(2, ws.max_row + 1):
+                ws.cell(row=r_idx, column=new_col_idx).protection = Protection(locked=True)
+
+    grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    export_df = prepare_dataframe_for_excel_export(df)
+    for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
+        for c_idx, value in enumerate(row, start=1):
+            cell = ws.cell(row=r_idx, column=c_idx, value=value)
+            if ws.cell(1, c_idx).value in ["status", "error"]:
+                cell.protection = Protection(locked=True)
+                cell.fill = grey_fill
+
+    ws.protection.sheet = True
+    ws.protection.enable()
+
+
+@router.post(
+    '/assessmentPlanIncludeValidateData',
+    summary='Validate assessment plan facility include Excel before apply',
+    response_description='Returns validation report Excel with PASSED/FAILED rows',
+)
+async def validate_assessment_plan_include_data(
+        background_tasks: BackgroundTasks,
+        include_file: UploadFile = File(..., description="Assessment plan include Excel file"),
+        plan_id: str = Form(description="Assessment plan ID"),
+        project_id: str = Form(description="Project ID"),
+        tenant_id: str = Form(default="in"),
+        request_info: str = Form(default=""),
+        facility_sheet_name: str = Form(default="FacilityMapping",
+                                        description="Name of the sheet containing facility data"),
+):
+    if not fieldPlan_service_url:
+        raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+    request_info_obj = request_info_from_json(request_info)
+    temp_input_file = None
+    try:
+        temp_input_file, _ = await _save_upload_to_temp_file(include_file, suffix=".xlsx")
+        wb = load_workbook(temp_input_file.name)
+
+        if facility_sheet_name not in wb.sheetnames:
+            for candidate in ("FacilityMapping", "AssessmentInclude"):
+                if candidate in wb.sheetnames:
+                    facility_sheet_name = candidate
+                    break
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Facility sheet '{facility_sheet_name}' not found",
+                )
+
+        df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+
+        include_col = _find_assessment_include_col(df)
+        if include_col is None:
+            raise HTTPException(status_code=400, detail="Include in Assessment Plan column not found")
+
+        facility_id_col = _find_assessment_facility_id_col(df)
+        if facility_id_col is None:
+            raise HTTPException(status_code=400, detail="Facility Id column not found")
+
+        if "status" not in df.columns:
+            df["status"] = ""
+        if "error" not in df.columns:
+            df["error"] = ""
+
+        project_client = ProjectServiceClient(project_service_url)
+        linked = project_client.search_project_facility(request_info_obj, project_id)
+        linked_ids = {
+            pf.get("facilityId") for pf in (linked.get("ProjectFacilities", []) or []) if pf.get("facilityId")
+        }
+
+        assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+        all_facility_ids = [
+            _normalize_facility_id_from_excel(row.get(facility_id_col))
+            for _, row in df.iterrows()
+            if _normalize_facility_id_from_excel(row.get(facility_id_col))
+        ]
+        availability_response = assessment_client.check_include_availability(
+            request_info_obj, plan_id, tenant_id, all_facility_ids
+        )
+        availability_exclusions = _build_availability_exclusions(availability_response)
+
+        mdms_client = MDMSClient(mdms_url)
+        validation_errors, exclusion_messages = assessment_plan_include_validation(
+            df,
+            mdms_client,
+            request_info_obj,
+            include_col,
+            facility_id_col,
+            linked_ids,
+            availability_exclusions,
+        )
+        error_count = _apply_include_validation_results_to_dataframe(
+            df, validation_errors, exclusion_messages
+        )
+        _write_validated_facility_sheet(wb, df, facility_sheet_name)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_temp_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+        wb.save(output_temp_file_path)
+        autofit_columns(output_temp_file_path, facility_sheet_name, auto_fit=True)
+        background_tasks.add_task(cleanup_temp_file, output_temp_file_path)
+
+        response = FileResponse(
+            path=output_temp_file_path,
+            filename=f"assessment_plan_include_validation_results_{timestamp}.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response.headers["X-Error-Count"] = str(error_count)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Assessment include validation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+    finally:
+        if temp_input_file and os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)
+
+
+def _write_facility_apply_results_workbook(
+        wb,
+        df: pd.DataFrame,
+        facility_sheet_name: str,
+        output_path: str,
+) -> None:
+    ws = wb[facility_sheet_name]
+    header_values = [cell.value for cell in ws[1]]
+    for col_name in df.columns:
+        if col_name not in header_values:
+            cell = ws.cell(row=1, column=len(header_values) + 1, value=col_name)
+            cell.font = Font(bold=True)
+            header_values.append(col_name)
+
+    if ws.max_row > 1:
+        ws.delete_rows(2, ws.max_row - 1)
+
+    export_df = prepare_dataframe_for_excel_export(df)
+    for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
+        for c_idx, value in enumerate(row, start=1):
+            ws.cell(row=r_idx, column=c_idx, value=value)
+
+    wb.save(output_path)
+
+
+@router.post(
+    '/assessmentPlanIncludeApply',
+    summary='Apply assessment plan facility include Excel (Yes rows only)',
+    response_description='Returns processed Excel file with assessment include results',
+)
+async def apply_assessment_plan_include_data(
+        background_tasks: BackgroundTasks,
+        include_file: UploadFile = File(..., description="Assessment plan include Excel file"),
+        plan_id: str = Form(description="Assessment plan ID"),
+        project_id: str = Form(description="Project ID"),
+        tenant_id: str = Form(default="in"),
+        request_info: str = Form(default=""),
+        facility_sheet_name: str = Form(default="FacilityMapping",
+                                        description="Name of the sheet containing facility data"),
+):
+    if not fieldPlan_service_url:
+        raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+    request_info_obj = request_info_from_json(request_info)
+    assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+    temp_input_file = None
+    output_file_path = None
+    try:
+        temp_input_file, _ = await _save_upload_to_temp_file(include_file, suffix=".xlsx")
+        wb = load_workbook(temp_input_file.name)
+
+        if facility_sheet_name not in wb.sheetnames:
+            for candidate in ("FacilityMapping", "AssessmentInclude"):
+                if candidate in wb.sheetnames:
+                    facility_sheet_name = candidate
+                    break
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Facility sheet '{facility_sheet_name}' not found",
+                )
+
+        df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+
+        include_col = _find_assessment_include_col(df)
+        if include_col is None:
+            raise HTTPException(status_code=400, detail="Include in Assessment Plan column not found")
+
+        facility_id_col = _find_assessment_facility_id_col(df)
+        if facility_id_col is None:
+            raise HTTPException(status_code=400, detail="Facility Id column not found")
+
+        if "status" not in df.columns or "error" not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing 'status'/'error' columns. Please upload validated file.",
+            )
+
+        failed_rows = df[df["status"].astype(str).str.upper() == "FAILED"]
+        if not failed_rows.empty:
+            raise HTTPException(
+                status_code=400,
+                detail="Validation failed: Some rows are marked as FAILED. Please fix errors and re-validate.",
+            )
+
+        result_col = "Assessment Plan Include Status"
+        if result_col not in df.columns:
+            df[result_col] = ""
+
+        yes_row_indices: List[int] = []
+        facilities = []
+        for index, row in df.iterrows():
+            include_val = str(row.get(include_col, "")).strip().lower()
+            if include_val != "yes":
+                df.at[index, result_col] = "Skipped (Include in Assessment Plan != Yes)"
+                continue
+
+            row_status = str(row.get("status", "")).strip().upper()
+            if row_status == "EXCLUDED":
+                exclusion_msg = str(row.get("error", "")).strip()
+                df.at[index, result_col] = f"Skipped: {exclusion_msg}" if exclusion_msg else "Skipped (excluded)"
+                continue
+
+            facility_id = _normalize_facility_id_from_excel(row.get(facility_id_col))
+            if not facility_id:
+                df.at[index, result_col] = "Skipped (missing Facility Id)"
+                continue
+
+            yes_row_indices.append(index)
+            facilities.append(_build_assessment_include_facility_payload(row, df, facility_id_col))
+
+        if not facilities:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one facility must be marked Include in Assessment Plan = Yes",
+            )
+
+        try:
+            response = assessment_client.bulk_create_plan_facilities(
+                request_info_obj, plan_id, tenant_id, facilities
+            )
+            created = response.get("created", []) or []
+            api_errors = response.get("errors", []) or []
+            api_skipped = response.get("skipped", []) or []
+
+            created_ids = {
+                _normalize_facility_id_from_excel(item.get("facilityId"))
+                for item in created
+                if item.get("facilityId")
+            }
+            error_by_facility_id = {
+                _normalize_facility_id_from_excel(item.get("facilityId")): item
+                for item in api_errors
+                if item.get("facilityId")
+            }
+            skipped_by_facility_id = {
+                _normalize_facility_id_from_excel(item.get("facilityId")): item
+                for item in api_skipped
+                if item.get("facilityId")
+            }
+
+            for index in yes_row_indices:
+                facility_id = _normalize_facility_id_from_excel(df.at[index, facility_id_col])
+                if facility_id in created_ids:
+                    df.at[index, result_col] = "Included"
+                elif facility_id in skipped_by_facility_id:
+                    skip = skipped_by_facility_id[facility_id]
+                    message = skip.get("message") or skip.get("code") or "Facility skipped"
+                    df.at[index, result_col] = f"Skipped: {message}"
+                elif facility_id in error_by_facility_id:
+                    err = error_by_facility_id[facility_id]
+                    message = err.get("message") or err.get("code") or "Include failed"
+                    df.at[index, result_col] = f"Failed: {message}"
+                else:
+                    df.at[index, result_col] = "Not Attempted"
+        except requests.HTTPError as http_err:
+            detail = _parse_upstream_error_detail(http_err.response)
+            for index in yes_row_indices:
+                df.at[index, result_col] = f"Failed: {detail}"
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"assessment_plan_include_apply_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        _write_facility_apply_results_workbook(wb, df, facility_sheet_name, output_file_path)
+        autofit_columns(output_file_path, facility_sheet_name, auto_fit=True)
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Assessment include apply failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Apply failed: {str(e)}")
+    finally:
+        if temp_input_file and os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)

@@ -59,6 +59,9 @@ public class FieldPlannerConfiguration {
     @Value("${egov.fieldplan.activity.update.url}")
     private String fieldPlanActivityUpdateUrl;
 
+    @Value("${egov.fieldplan.activity.unassign.url}")
+    private String fieldPlanActivityUnassignUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
