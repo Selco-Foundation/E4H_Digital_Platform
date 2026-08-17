@@ -12,20 +12,14 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SubmissionQueueSearchResponse {
+public class PlanFacilityIncludeAvailabilityResponse {
 
     @JsonProperty("ResponseInfo")
     private org.egov.common.contract.response.ResponseInfo responseInfo;
 
-    @JsonProperty("queue")
-    private List<SubmissionQueueItem> queue;
+    @JsonProperty("availableFacilityIds")
+    private List<String> availableFacilityIds;
 
-    @JsonProperty("count")
-    private Integer count;
-
-    @JsonProperty("total")
-    private Integer total;
-
-    @JsonProperty("pagination")
-    private Pagination pagination;
+    @JsonProperty("excluded")
+    private List<PlanFacilityIncludeError> excluded;
 }
