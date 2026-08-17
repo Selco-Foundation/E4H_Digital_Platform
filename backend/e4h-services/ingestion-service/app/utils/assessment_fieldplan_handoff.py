@@ -1,5 +1,8 @@
 """
 Helpers for assessment eligible → installation field plan handoff (LLD §2.2.7, §2.2.9, API §8).
+
+Excel does not carry planFacilityId / assessmentPlanId columns — those are resolved
+server-side from Facility Id against the eligible-facilities API.
 """
 from __future__ import annotations
 
@@ -13,10 +16,6 @@ from app.utils.assessment_service_client import AssessmentServiceClient
 
 logger = AppLogger().get_logger()
 
-PLAN_FACILITY_ID_COLUMN = "Plan Facility Id"
-ASSESSMENT_PLAN_ID_COLUMN = "Assessment Plan Id"
-ASSESSMENT_PLAN_NAME_COLUMN = "Assessment Plan Name"
-
 
 def should_use_assessment_handoff_validation(
     assessment_client: Optional[AssessmentServiceClient],
@@ -28,12 +27,12 @@ def should_use_assessment_handoff_validation(
     if not project_id or assessment_client is None:
         return False
     try:
-        response = assessment_client.search_eligible_facilities(
+        facilities = fetch_eligible_assessment_facilities(
+            assessment_client=assessment_client,
             request_info=request_info,
             project_id=project_id,
             tenant_id=tenant_id,
         )
-        facilities = response.get("facilities") or []
         if facilities:
             logger.info(
                 "Project %s has %s eligible assessment facility(ies) for handoff validation",
@@ -63,49 +62,6 @@ def fetch_eligible_assessment_facilities(
         tenant_id=tenant_id,
     )
     return response.get("facilities") or []
-
-
-def append_assessment_handoff_columns(
-    file_path: str,
-    sheet_name: str,
-    eligible_facilities: List[Dict[str, Any]],
-) -> None:
-    """Prepend assessment handoff columns; populate rows that match eligible facility ids."""
-    from openpyxl import load_workbook
-
-    meta_by_facility_id = {
-        str(entry.get("facilityId")): entry
-        for entry in eligible_facilities
-        if entry.get("facilityId")
-    }
-    if not meta_by_facility_id:
-        return
-
-    workbook = load_workbook(file_path)
-    worksheet = workbook[sheet_name]
-    worksheet.insert_cols(1, 3)
-    worksheet.cell(row=1, column=1, value=PLAN_FACILITY_ID_COLUMN)
-    worksheet.cell(row=1, column=2, value=ASSESSMENT_PLAN_ID_COLUMN)
-    worksheet.cell(row=1, column=3, value=ASSESSMENT_PLAN_NAME_COLUMN)
-
-    facility_id_col = None
-    for col_idx in range(1, worksheet.max_column + 1):
-        header = worksheet.cell(row=1, column=col_idx).value
-        if header and "Facility Id" in str(header):
-            facility_id_col = col_idx
-            break
-    if facility_id_col is None:
-        workbook.save(file_path)
-        return
-
-    for row_idx in range(2, worksheet.max_row + 1):
-        raw_facility_id = worksheet.cell(row=row_idx, column=facility_id_col).value
-        facility_id = str(raw_facility_id).strip() if raw_facility_id is not None else ""
-        meta = meta_by_facility_id.get(facility_id, {})
-        worksheet.cell(row=row_idx, column=1, value=meta.get("planFacilityId", ""))
-        worksheet.cell(row=row_idx, column=2, value=meta.get("assessmentPlanId", ""))
-        worksheet.cell(row=row_idx, column=3, value=meta.get("assessmentPlanName", ""))
-    workbook.save(file_path)
 
 
 def merge_eligible_facilities_into_list(
@@ -139,17 +95,17 @@ def load_eligible_facility_map(
     project_id: str,
     tenant_id: str,
 ) -> Dict[str, Dict[str, Any]]:
-    """Map planFacilityId → eligible facility record (all closed plans in project)."""
-    response = assessment_client.search_eligible_facilities(
+    """Map facilityId → eligible facility record (all closed plans in project)."""
+    facilities = fetch_eligible_assessment_facilities(
+        assessment_client=assessment_client,
         request_info=request_info,
         project_id=project_id,
         tenant_id=tenant_id,
     )
-    facilities = response.get("facilities") or []
     return {
-        str(f.get("planFacilityId")): f
+        str(f.get("facilityId")): f
         for f in facilities
-        if f.get("planFacilityId")
+        if f.get("facilityId") and f.get("planFacilityId")
     }
 
 
@@ -163,13 +119,20 @@ def find_column(df: pd.DataFrame, partial: str) -> Optional[str]:
 
 def validate_assessment_handoff_rows(
     df: pd.DataFrame,
-    eligible_by_plan_facility_id: Dict[str, Dict[str, Any]],
+    eligible_by_facility_id: Dict[str, Dict[str, Any]],
 ) -> List[List[str]]:
-    """Return per-row validation error messages (empty list = passed)."""
+    """
+    Validate Include=Yes rows that resolve to an assessment handoff.
+
+    Handoff is detected by Facility Id matching the eligible pool (server-side).
+    Non-eligible Include=Yes rows stay on the legacy field-plan path (no error).
+    """
     df = df.reset_index(drop=True)
     errors: List[List[str]] = [[] for _ in range(len(df))]
+    if not eligible_by_facility_id:
+        return errors
 
-    plan_facility_col = find_column(df, "plan facility id")
+    facility_id_col = find_column(df, "facility id")
     include_col = find_column(df, "included in field plan")
 
     for i, row in df.iterrows():
@@ -181,17 +144,23 @@ def validate_assessment_handoff_rows(
         if include_val != "yes":
             continue
 
-        plan_facility_id = ""
-        if plan_facility_col:
-            plan_facility_id = str(row.get(plan_facility_col, "")).strip()
-        if not plan_facility_id or plan_facility_id.lower() in ("nan", "none"):
-            # Legacy field-plan include without assessment handoff.
+        facility_id = ""
+        if facility_id_col:
+            raw = row.get(facility_id_col)
+            if pd.notna(raw) and str(raw).strip():
+                facility_id = str(raw).strip()
+        if not facility_id:
             continue
 
-        if plan_facility_id not in eligible_by_plan_facility_id:
+        # Only rows in the eligible pool are assessment handoffs; others are legacy includes.
+        if facility_id not in eligible_by_facility_id:
+            continue
+
+        meta = eligible_by_facility_id[facility_id]
+        if not meta.get("planFacilityId"):
             errors[i].append(
-                f"ASSESSMENT_FACILITY_NOT_ELIGIBLE: planFacilityId '{plan_facility_id}' "
-                "is not ELIGIBLE or already handed off"
+                f"ASSESSMENT_FACILITY_NOT_ELIGIBLE: facilityId '{facility_id}' "
+                "is missing planFacilityId for handoff"
             )
 
     return errors
@@ -212,44 +181,15 @@ def merge_assessment_validation_errors(
     return merged
 
 
-def build_assessment_fieldplan_template_rows(
-    eligible_facilities: List[Dict[str, Any]],
-    facilities_by_id: Dict[str, Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    rows: List[Dict[str, Any]] = []
-    for eligible in eligible_facilities:
-        facility_id = eligible.get("facilityId")
-        facility = facilities_by_id.get(facility_id, {})
-        rows.append({
-            PLAN_FACILITY_ID_COLUMN: eligible.get("planFacilityId", ""),
-            ASSESSMENT_PLAN_ID_COLUMN: eligible.get("assessmentPlanId", ""),
-            ASSESSMENT_PLAN_NAME_COLUMN: eligible.get("assessmentPlanName", ""),
-            "Facility Id": facility_id or "",
-            "Health Centre Name (Mandatory)": (
-                eligible.get("facilityName")
-                or facility.get("facility_name")
-                or facility.get("facilityName")
-                or ""
-            ),
-            "Category of Facility (Mandatory)": facility.get("facility_category") or facility.get("facilityCategory") or "",
-            "Type of HC (Mandatory)": facility.get("facility_type") or facility.get("facilityType") or "",
-            "Boundary Code (Mandatory)": facility.get("boundary_code") or facility.get("boundaryCode") or "",
-            "Included in Field Plan (Mandatory)": "",
-        })
-    return rows
-
-
-def extract_assessment_link_meta(row: pd.Series, df: pd.DataFrame) -> tuple[Optional[str], Optional[str]]:
-    plan_facility_col = find_column(df, "plan facility id")
-    assessment_plan_col = find_column(df, "assessment plan id")
-    plan_facility_id = None
-    assessment_plan_id = None
-    if plan_facility_col:
-        val = row.get(plan_facility_col)
-        if pd.notna(val) and str(val).strip():
-            plan_facility_id = str(val).strip()
-    if assessment_plan_col:
-        val = row.get(assessment_plan_col)
-        if pd.notna(val) and str(val).strip():
-            assessment_plan_id = str(val).strip()
-    return plan_facility_id, assessment_plan_id
+def resolve_plan_facility_id_for_handoff(
+    facility_id: Optional[str],
+    eligible_by_facility_id: Dict[str, Dict[str, Any]],
+) -> Optional[str]:
+    """Resolve planFacilityId from Facility Id against the eligible pool (no Excel column)."""
+    if not facility_id or not eligible_by_facility_id:
+        return None
+    meta = eligible_by_facility_id.get(str(facility_id).strip())
+    if not meta:
+        return None
+    plan_facility_id = meta.get("planFacilityId")
+    return str(plan_facility_id).strip() if plan_facility_id else None

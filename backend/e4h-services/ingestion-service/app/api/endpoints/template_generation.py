@@ -24,7 +24,6 @@ from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.assessment_service_client import AssessmentServiceClient
 from app.utils.assessment_fieldplan_handoff import (
-    append_assessment_handoff_columns,
     fetch_eligible_assessment_facilities,
     merge_eligible_facilities_into_list,
 )
@@ -593,12 +592,6 @@ async def get_facility_ingestion_template_with_data(
                 extra_append_rows=0,
                 optimize_for_performance=True
             )
-            if eligible_facilities:
-                append_assessment_handoff_columns(
-                    file_path=output_file_path,
-                    sheet_name="FacilityMapping",
-                    eligible_facilities=eligible_facilities,
-                )
             logger.info(f"Successfully created facility ingestion template at {output_file_path}")
         except Exception as e:
             logger.error(f"Error generating template file: {e}")

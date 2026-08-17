@@ -56,9 +56,9 @@ from app.utils.fieldplan_activity_service_client import FieldPlanActivityService
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.assessment_service_client import AssessmentServiceClient
 from app.utils.assessment_fieldplan_handoff import (
-    extract_assessment_link_meta,
     load_eligible_facility_map,
     merge_assessment_validation_errors,
+    resolve_plan_facility_id_for_handoff,
     should_use_assessment_handoff_validation,
     validate_assessment_handoff_rows,
 )
@@ -3272,12 +3272,10 @@ async def create_fielplan_facilities(
                                         custom_solution_design_column=custom_solution_design_col,
                                         custom_total_system_capacity_column=custom_total_system_capacity_col,
                                     )
-                                    plan_facility_id, _ = extract_assessment_link_meta(row, df)
-                                    if (
-                                        plan_facility_id
-                                        and use_assessment_flow
-                                        and plan_facility_id in eligible_map
-                                    ):
+                                    plan_facility_id = resolve_plan_facility_id_for_handoff(
+                                        facility_id, eligible_map
+                                    )
+                                    if use_assessment_flow and plan_facility_id:
                                         pending_assessment_handoffs.append(
                                             (index, bulk_entry, plan_facility_id)
                                         )
