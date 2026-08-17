@@ -13,9 +13,12 @@ import org.egov.mdms.model.MasterDetail;
 import org.egov.mdms.model.MdmsCriteria;
 import org.egov.mdms.model.MdmsCriteriaReq;
 import org.egov.mdms.model.ModuleDetail;
+import org.apache.commons.lang3.StringUtils;
+import org.egov.field_planner.web.models.AssessmentFormField;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +32,7 @@ public class AssessmentMdmsService {
 
     private static final String MDMS_MODULE = "assessment";
     private static final String FORM_SCHEMA_MASTER = "AssessmentFormSchema";
+    private static final String MOBILE_FORM_SCHEMA_MASTER = "AssessmentMobileFormSchema";
     private static final String OUTCOME_RULES_MASTER = "AssessmentOutcomeRules";
 
     private final ServiceRequestClient serviceRequestClient;
@@ -51,6 +55,92 @@ public class AssessmentMdmsService {
                             + ". Seed assessment.AssessmentFormSchema in MDMS (see docs/assessment-module/master-data-schema).");
         }
         return objectMapper.convertValue(record, AssessmentFormSchema.class);
+    }
+
+    /**
+     * Full mobile form flattened from {@code AssessmentMobileFormSchema} pages/properties.
+     * Used for Excel response summaries. Falls back to criteria {@link #getFormSchema} if absent.
+     */
+    public AssessmentFormSchema getMobileFormSchema(RequestInfo requestInfo, String tenantId, String formType) {
+        Map<String, Object> record = fetchRecord(
+                requestInfo, tenantId, MOBILE_FORM_SCHEMA_MASTER, "formType", formType);
+        if (record != null) {
+            return flattenMobileFormRecord(record);
+        }
+        log.warn("MDMS {} not found for formType {} — falling back to {}", MOBILE_FORM_SCHEMA_MASTER, formType,
+                FORM_SCHEMA_MASTER);
+        return getFormSchema(requestInfo, tenantId, formType);
+    }
+
+    @SuppressWarnings("unchecked")
+    private AssessmentFormSchema flattenMobileFormRecord(Map<String, Object> record) {
+        List<AssessmentFormField> fields = new ArrayList<>();
+        Object pagesObj = record.get("pages");
+        if (pagesObj instanceof List<?> pageList) {
+            for (Object pageObj : pageList) {
+                Map<String, Object> page = objectMapper.convertValue(pageObj, Map.class);
+                String pageKey = page.get("page") != null ? page.get("page").toString() : null;
+                Object propertiesObj = page.get("properties");
+                if (!(propertiesObj instanceof List<?> propertyList)) {
+                    continue;
+                }
+                for (Object propertyObj : propertyList) {
+                    Map<String, Object> property = objectMapper.convertValue(propertyObj, Map.class);
+                    if (!Boolean.TRUE.equals(property.get("includeInForm"))) {
+                        continue;
+                    }
+                    String fieldName = property.get("fieldName") != null
+                            ? property.get("fieldName").toString() : null;
+                    if (StringUtils.isBlank(fieldName)) {
+                        continue;
+                    }
+                    fields.add(AssessmentFormField.builder()
+                            .fieldCode(fieldName)
+                            .label(property.get("label") != null ? property.get("label").toString() : fieldName)
+                            .type(property.get("type") != null ? property.get("type").toString() : null)
+                            .required(hasRequiredValidation(property))
+                            .pageKey(pageKey)
+                            .enumLabels(buildEnumLabels(property))
+                            .build());
+                }
+            }
+        }
+        String formType = record.get("formType") != null ? record.get("formType").toString() : null;
+        return AssessmentFormSchema.builder().formType(formType).fields(fields).build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean hasRequiredValidation(Map<String, Object> property) {
+        Object validationsObj = property.get("validations");
+        if (!(validationsObj instanceof List<?> validations)) {
+            return false;
+        }
+        for (Object validationObj : validations) {
+            Map<String, Object> validation = objectMapper.convertValue(validationObj, Map.class);
+            if ("required".equals(validation.get("type")) && Boolean.TRUE.equals(validation.get("value"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> buildEnumLabels(Map<String, Object> property) {
+        Object enumsObj = property.get("enums");
+        if (!(enumsObj instanceof List<?> enums) || enums.isEmpty()) {
+            return null;
+        }
+        Map<String, String> labels = new LinkedHashMap<>();
+        for (Object enumObj : enums) {
+            Map<String, Object> enumEntry = objectMapper.convertValue(enumObj, Map.class);
+            Object code = enumEntry.get("code");
+            if (code == null) {
+                continue;
+            }
+            Object name = enumEntry.get("name");
+            labels.put(code.toString(), name != null ? name.toString() : code.toString());
+        }
+        return labels.isEmpty() ? null : labels;
     }
 
     public List<AssessmentOutcomeRule> getOutcomeRules(RequestInfo requestInfo, String tenantId, String formType) {

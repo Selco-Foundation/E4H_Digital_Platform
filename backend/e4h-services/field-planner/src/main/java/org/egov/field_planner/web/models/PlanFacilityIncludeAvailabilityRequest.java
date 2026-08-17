@@ -9,35 +9,27 @@ import org.egov.common.contract.request.RequestInfo;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SubmissionQueueSearchRequest {
+public class PlanFacilityIncludeAvailabilityRequest {
 
     @JsonProperty("RequestInfo")
     @NotNull
     @Valid
     private RequestInfo requestInfo;
 
-    @JsonProperty("assessmentPhase")
+    @JsonProperty("planId")
     @NotNull
-    private String assessmentPhase;
+    private String planId;
 
     @JsonProperty("tenantId")
     @NotNull
     private String tenantId;
 
-    @JsonProperty("filters")
-    private SubmissionQueueFilters filters;
-
-    @JsonProperty("sort")
-    private SubmissionQueueSort sort;
-
-    @JsonProperty("limit")
-    private Integer limit;
-
-    @JsonProperty("offset")
-    private Integer offset;
+    @JsonProperty("facilityIds")
+    private List<String> facilityIds;
 }
