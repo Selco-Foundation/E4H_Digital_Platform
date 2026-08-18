@@ -5,6 +5,7 @@ import { Loader } from "@egovernments/digit-ui-react-components";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import useFacilityActivityDetails, { getAssetAggregation } from "../../hooks/useFacilityActivityDetails";
 import useAsset from "../../hooks/useAsset";
+import useMDMS from "../../hooks/useMDMS";
 import InfoCard from "../../components/FacilityActivityDetails/InfoCard";
 import AuditTrail from "../../components/FacilityActivityDetails/AuditTrail";
 import Summary from "../../components/FacilityActivityDetails/Summary";
@@ -58,16 +59,11 @@ const FacilityActivityDetails = () => {
 
   const { isLoading: assetDataLoading, data: assetData } = useAsset(facilityId);
 
-  const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
+  const { data: mdmsResponse, isLoading: mdmsLoading } = useMDMS(
     tenantId,
     "common-masters",
-    [
-      {
-        name: "InstallationImages",
-      },
-    ],
+    ["InstallationImages"],
     {
-      select: (data) => data,
       enabled: !!tenantId,
     }
   );
@@ -235,6 +231,7 @@ const FacilityActivityDetails = () => {
             installationImage={{
               code: criterion.code,
               description: criterion.description,
+              shortTitle: criterion.short_title,
               images,
               providedImagesCount: images.length,
               requiredImagesCount: criterion["required_count"],
