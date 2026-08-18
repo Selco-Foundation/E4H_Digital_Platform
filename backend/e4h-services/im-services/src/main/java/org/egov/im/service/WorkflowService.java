@@ -427,18 +427,48 @@ public class WorkflowService {
     }
 
     /**
-     * Returns the most recent ProcessInstance for the incident's current cycle,
-     * without performing a workflow transition. Used to reflect current state
-     * (e.g. when re-publishing to the indexer) rather than advance the workflow.
+     * Computes and sets SLA remaining fields for a recovery/resync path (e.g. reindex)
+     * that already has the incident's current ProcessInstance but never went through
+     * updateWorkflowStatus(). enrichTotalSla() depends on this.states being populated,
+     * which normally only happens as a side effect of getBusinessService() inside
+     * getProcessInstanceForIM() during a real transition; this wrapper performs that
+     * same lookup first so enrichTotalSla() has valid state-SLA definitions to work with.
      */
-    public ProcessInstance getCurrentProcessInstance(String tenantId, String incidentId, RequestInfo requestInfo) {
-        log.trace("WorkflowService::getCurrentProcessInstance method invoked");
-        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId, incidentId, requestInfo);
-        if (CollectionUtils.isEmpty(processInstances)) {
-            log.debug("No process instances found for incident: {}", incidentId);
-            return null;
+    public void enrichTotalSlaForResync(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+        log.trace("WorkflowService::enrichTotalSlaForResync method invoked");
+        IncidentRequest request = wrapper.getIncidentRequest();
+        Priority priority = slaService.getPriorityFromIMPriorityTable(request.getIncident());
+        getBusinessService(request, priority);
+        enrichTotalSla(wrapper, processInstance);
+    }
+
+    /**
+     * Fetches the CURRENT ProcessInstance for an incident directly from the workflow
+     * engine (read-only search, no transition), preserving full fidelity (state,
+     * assignes as full User objects) unlike {@link #getWorkflow(List)}'s lossy
+     * Workflow conversion. Used by recovery/resync paths (e.g. reindex) that need to
+     * republish an incident's current workflow snapshot without performing an action.
+     */
+    public ProcessInstance getLatestProcessInstance(String tenantId, String incidentId, RequestInfo requestInfo) {
+        log.trace("WorkflowService::getLatestProcessInstance method invoked");
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
+        StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, incidentId);
+        Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
+
+        ProcessInstanceResponse processInstanceResponse;
+        try {
+            processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
+        } catch (IllegalArgumentException e) {
+            log.error("Failed to parse process instance response", e);
+            throw new CustomException("PARSING_ERROR", "Failed to parse response of workflow processInstance search");
         }
-        return processInstances.get(0);
+
+        if (processInstanceResponse == null || CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
+            log.error("No process instance found for incidentId: {}", incidentId);
+            throw new CustomException("WORKFLOW_NOT_FOUND", "The workflow object is not found for incidentId " + incidentId);
+        }
+
+        return processInstanceResponse.getProcessInstances().get(0);
     }
 
     private List<ProcessInstance> getAllProcessInstances(String tenantId, String IncidentId, RequestInfo requestInfo){

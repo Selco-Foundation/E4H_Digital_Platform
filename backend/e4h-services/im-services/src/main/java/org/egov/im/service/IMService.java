@@ -185,7 +185,7 @@ public class IMService {
         producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
         log.trace("Enriching fields for indexing");
-        enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+        enrichmentService.enrichFieldsForIndexing(wrapper, boundary, true);
         log.trace("Publishing incident to indexer topic");
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         log.trace("Enriching fields for audit indexing");
@@ -551,19 +551,38 @@ public class IMService {
 				.workflow(incidentWrapper.getWorkflow())
 				.build();
 
+		log.trace("Fetching MDMS data for reindex");
+		Object mdmsData = mdmsUtils.mDMSCall(incidentRequest);
+
+		String boundaryCode = incident.getBoundaryCode();
+		if (boundaryCode != null && !boundaryCode.isEmpty()) {
+			Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(incidentRequest);
+			if (facilityDetails != null && !facilityDetails.isEmpty()) {
+				String facilityCategory = (String) facilityDetails.get("facility_category");
+				if (facilityCategory != null) {
+					incident.setFacilityCategory(facilityCategory);
+				}
+			}
+		}
+
 		IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
 				.incidentRequest(incidentRequest)
 				.indexView(new IndexView())
 				.build();
 
-		ProcessInstance currentProcessInstance = workflowService.getCurrentProcessInstance(tenantId, incidentId, requestInfo);
-		if (currentProcessInstance != null) {
-			wrapper.setProcessInstance(imUtils.trimRolesFromProcessInstance(currentProcessInstance));
-		}
+		log.trace("Fetching current process instance for reindex");
+		ProcessInstance currentProcessInstance = workflowService.getLatestProcessInstance(tenantId, incidentId, requestInfo);
+		wrapper.setProcessInstance(imUtils.trimRolesFromProcessInstance(currentProcessInstance));
+
+		log.trace("Enriching total SLA for reindex");
+		workflowService.enrichTotalSlaForResync(wrapper, currentProcessInstance);
 
 		Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(requestInfo, incident.getBoundaryCode(), tenantId);
 		log.trace("Enriching fields for indexing (reindex)");
 		enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+
+		log.trace("Updating business service (reindex)");
+		imUtils.updateBusinessService(wrapper, mdmsData);
 
 		log.trace("Publishing incident to indexer topic only (reindex)");
 		producer.push(tenantId, config.getUpdateTopicIndexer(), wrapper);
