@@ -47,7 +47,7 @@ const ActivityTable = ({ t, facilityId }) => {
       },
     },
     {
-      Header: t("FIELD_PLAN_ID"),
+      Header: t("ACTIVITY_ID"),
       Cell: ({ row }) => {
         return GetCell(row.original["fieldPlanCode"] ? row.original["fieldPlanCode"] : "-");
       },
@@ -67,11 +67,15 @@ const ActivityTable = ({ t, facilityId }) => {
     {
       Header: t("ACTIVITY_REPORT"),
       Cell: ({ row }) => {
+        const isAssessment = row.original["activityType"]?.toUpperCase() === "ASSESSMENT";
+        const detailsPath = isAssessment
+          ? `/${window.contextPath}/employee/pm/project/${row.original["projectId"]}/assessment/${row.original["fieldPlanId"]}/facilities/${row.original["id"]}/details`
+          : `/${window.contextPath}/employee/pm/field-plans/${row.original["fieldPlanId"]}/facilities/${row.original["id"]}/details`;
         return (
           <div>
             <span className="link">
               <Link
-                to={`/${window.contextPath}/employee/pm/field-plans/${row.original["fieldPlanId"]}/facilities/${row.original["id"]}/details`}
+                to={detailsPath}
                 style={{ color: "#C84C0E" }}
               >
                 {t("VIEW_REPORTS")}
