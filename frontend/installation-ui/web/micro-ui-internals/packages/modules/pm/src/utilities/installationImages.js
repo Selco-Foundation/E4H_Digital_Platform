@@ -1,11 +1,4 @@
-const SYSTEM_TYPE_ALIASES = {
-  DC_OFF_GRID: "DC",
-};
-
-const normalizeCode = (value) => {
-  const normalizedValue = value?.toString().trim().toUpperCase();
-  return SYSTEM_TYPE_ALIASES[normalizedValue] || normalizedValue;
-};
+const normalizeCode = (value) => value?.toString().trim().toUpperCase();
 
 const getSystemTypeConfig = (criterion = {}, systemType) => {
   const selectedSystemType = normalizeCode(systemType);
