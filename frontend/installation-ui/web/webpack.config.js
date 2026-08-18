@@ -31,7 +31,7 @@ module.exports = {
   output: {
     filename: "[name].bundle.js",
     path: path.resolve(__dirname, "build"),
-    publicPath: "/e4hhub/",
+    publicPath: "/installation-qc/",
   },
   optimization: {
     splitChunks: {
