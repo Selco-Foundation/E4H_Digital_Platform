@@ -35,6 +35,7 @@ public class AmcConstants {
     public static final String OR = " OR ";
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
-
+    /** Role of the Health Centre Representative, the person the AMC visit OTP is sent to. */
+    public static final String ROLE_COMPLAINANT = "COMPLAINANT";
 
 }
