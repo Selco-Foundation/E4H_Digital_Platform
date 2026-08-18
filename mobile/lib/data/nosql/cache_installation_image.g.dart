@@ -43,18 +43,23 @@ const CacheInstallationImageSchema = CollectionSchema(
       name: r'longitude',
       type: IsarType.string,
     ),
-    r'photoPath': PropertySchema(
+    r'order': PropertySchema(
       id: 5,
+      name: r'order',
+      type: IsarType.string,
+    ),
+    r'photoPath': PropertySchema(
+      id: 6,
       name: r'photoPath',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userType': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'userType',
       type: IsarType.string,
     )
@@ -123,6 +128,7 @@ int _cacheInstallationImageEstimateSize(
   bytesCount += 3 + object.code.length * 3;
   bytesCount += 3 + object.latitude.length * 3;
   bytesCount += 3 + object.longitude.length * 3;
+  bytesCount += 3 + object.order.length * 3;
   bytesCount += 3 + object.photoPath.length * 3;
   bytesCount += 3 + object.userType.length * 3;
   return bytesCount;
@@ -139,9 +145,10 @@ void _cacheInstallationImageSerialize(
   writer.writeDateTime(offsets[2], object.createdAt);
   writer.writeString(offsets[3], object.latitude);
   writer.writeString(offsets[4], object.longitude);
-  writer.writeString(offsets[5], object.photoPath);
-  writer.writeDateTime(offsets[6], object.updatedAt);
-  writer.writeString(offsets[7], object.userType);
+  writer.writeString(offsets[5], object.order);
+  writer.writeString(offsets[6], object.photoPath);
+  writer.writeDateTime(offsets[7], object.updatedAt);
+  writer.writeString(offsets[8], object.userType);
 }
 
 CacheInstallationImage _cacheInstallationImageDeserialize(
@@ -155,12 +162,13 @@ CacheInstallationImage _cacheInstallationImageDeserialize(
     code: reader.readString(offsets[1]),
     latitude: reader.readString(offsets[3]),
     longitude: reader.readString(offsets[4]),
-    photoPath: reader.readString(offsets[5]),
-    userType: reader.readString(offsets[7]),
+    order: reader.readStringOrNull(offsets[5]) ?? '',
+    photoPath: reader.readString(offsets[6]),
+    userType: reader.readString(offsets[8]),
   );
   object.createdAt = reader.readDateTime(offsets[2]);
   object.id = id;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[6]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[7]);
   return object;
 }
 
@@ -182,10 +190,12 @@ P _cacheInstallationImageDeserializeProp<P>(
     case 4:
       return (reader.readString(offset)) as P;
     case 5:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset) ?? '') as P;
     case 6:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 7:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 8:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1090,6 +1100,144 @@ extension CacheInstallationImageQueryFilter on QueryBuilder<
   }
 
   QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+      QAfterFilterCondition> orderEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'order',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+      QAfterFilterCondition> orderGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'order',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+      QAfterFilterCondition> orderLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'order',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+      QAfterFilterCondition> orderBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'order',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+      QAfterFilterCondition> orderStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'order',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+      QAfterFilterCondition> orderEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'order',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+          QAfterFilterCondition>
+      orderContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'order',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+          QAfterFilterCondition>
+      orderMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'order',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+      QAfterFilterCondition> orderIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'order',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
+      QAfterFilterCondition> orderIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'order',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage,
       QAfterFilterCondition> photoPathEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1519,6 +1667,20 @@ extension CacheInstallationImageQuerySortBy
   }
 
   QueryBuilder<CacheInstallationImage, CacheInstallationImage, QAfterSortBy>
+      sortByOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'order', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage, QAfterSortBy>
+      sortByOrderDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'order', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage, QAfterSortBy>
       sortByPhotoPath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'photoPath', Sort.asc);
@@ -1648,6 +1810,20 @@ extension CacheInstallationImageQuerySortThenBy on QueryBuilder<
   }
 
   QueryBuilder<CacheInstallationImage, CacheInstallationImage, QAfterSortBy>
+      thenByOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'order', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage, QAfterSortBy>
+      thenByOrderDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'order', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage, QAfterSortBy>
       thenByPhotoPath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'photoPath', Sort.asc);
@@ -1729,6 +1905,13 @@ extension CacheInstallationImageQueryWhereDistinct
   }
 
   QueryBuilder<CacheInstallationImage, CacheInstallationImage, QDistinct>
+      distinctByOrder({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'order', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, CacheInstallationImage, QDistinct>
       distinctByPhotoPath({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'photoPath', caseSensitive: caseSensitive);
@@ -1790,6 +1973,13 @@ extension CacheInstallationImageQueryProperty on QueryBuilder<
       longitudeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'longitude');
+    });
+  }
+
+  QueryBuilder<CacheInstallationImage, String, QQueryOperations>
+      orderProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'order');
     });
   }
 

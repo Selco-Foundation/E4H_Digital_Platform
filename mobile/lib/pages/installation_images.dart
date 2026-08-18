@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
+import '../blocs/app_init/app_init.dart';
 import '../blocs/cache_installation_image/cache_installation_image.dart';
 import '../blocs/installation_images/installation_images.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
@@ -16,7 +17,10 @@ import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../model/comment/comment.dart';
 import '../model/installation_images/installation_images.dart';
+import '../model/mdms/mdms.dart';
+import '../model/solution_design_type/solution_design_type.dart';
 import '../repositories/activity_facility_repo.dart';
+import '../repositories/activity_facility_workflow_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -44,6 +48,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   final Map<String, String> _sectionMessages = {};
   late final String _currentActivityFacilityId;
   String? _userType;
+  String? _systemType;
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
@@ -76,13 +81,52 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
 
     _currentActivityFacilityId = widget.activityFacilityId;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context
-          .read<InstallationImagesBloc>()
-          .add(const InstallationImagesEvent.fetch());
+      await _resolveSystemTypeAndFetch();
       _loadCachedImages();
     });
+  }
+
+  Future<String> _resolveSystemType() async {
+    final isar = context.read<ActivityFacilityBloc>().isar;
+
+    final initState = context.read<AppInitialization>().state;
+    final solutionDesignList =
+        initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+          solutionDesign,
+      orElse: () => const [],
+    );
+
+    final workflow = context
+        .read<SelectedActivityFacilityBloc>()
+        .state
+        .whenOrNull(selected: (wf) => wf);
+
+    final facilityCode = workflow
+        ?.activityFacility.facility?.facilityDetails?.solar_solution_design_type;
+    final facilitySystemType =
+        workflow?.activityFacility.facility?.facilityDetails?.systemType;
+
+    return ActivityFacilityWorkflowRepository().getActivityFacilitySystem(
+      isar: isar,
+      activityFacilityId: _currentActivityFacilityId,
+      solutionDesignList: solutionDesignList,
+      facilitySystemType: facilitySystemType,
+      facilitySolutionDesignCode: facilityCode,
+    );
+  }
+
+  Future<void> _resolveSystemTypeAndFetch() async {
+    final systemType = await _resolveSystemType();
+    if (!mounted) return;
+    setState(() {
+      _systemType = systemType;
+    });
+    context
+        .read<InstallationImagesBloc>()
+        .add(InstallationImagesEvent.fetch(systemType: systemType));
   }
 
   @override
@@ -264,10 +308,12 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
       return;
     }
 
-    _submitSelections();
+    _submitSelections(requirements);
   }
 
-  Future<void> _submitSelections() async {
+  Future<void> _submitSelections(
+    List<InstallationImageItem> requirements,
+  ) async {
     if (_userType == null) return;
     final ok = await _ensureLocationLoaded();
     if (!mounted) return;
@@ -283,6 +329,11 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
       _isSaving = true;
     });
 
+    final orderByCode = <String, String>{
+      for (final requirement in requirements)
+        requirement.code: requirement.orderLabel(_systemType ?? '') ?? '',
+    };
+
     context.read<CacheInstallationImageBloc>().add(
           CacheInstallationImageEvent.saveAll(
             activityFacilityId: _currentActivityFacilityId,
@@ -292,6 +343,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                 (key, value) => MapEntry(key, List<File>.from(value)),
               ),
             ),
+            orderByCode: orderByCode,
             latitude: _latitude.toString(),
             longitude: _longitude.toString(),
           ),
@@ -366,15 +418,18 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
             type: DigitButtonType.primary,
             size: DigitButtonSize.large,
             onPressed: () {
+              if (_systemType == null) return;
               context
                   .read<InstallationImagesBloc>()
-                  .add(const InstallationImagesEvent.fetch());
+                  .add(InstallationImagesEvent.fetch(
+                    systemType: _systemType!,
+                  ));
             },
           ),
         ],
       ),
       loaded: (items) {
-        final requirements = items.where((item) => item.active).toList();
+        final requirements = items;
 
         if (requirements.isEmpty) {
           return DigitCard(
@@ -412,7 +467,8 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                   children: [
                     const SizedBox(width: double.infinity),
                     Text(
-                      '${requirement.code}. ${requirement.description}',
+                      '${requirement.orderLabel(_systemType ?? '') ?? requirement.code}. '
+                      '${requirement.description}',
                       style: textTheme.bodyL.copyWith(
                         color: theme.colorTheme.primary.primary2,
                       ),

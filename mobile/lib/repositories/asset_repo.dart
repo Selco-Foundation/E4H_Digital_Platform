@@ -377,10 +377,14 @@ class AssetRepository {
             if (parts.length != 2) continue;
 
             final codeFromDoc = parts[1];
+            final uidParts = (doc.documentUid ?? '').split('-');
+            final orderFromDoc =
+                uidParts.length == 5 ? uidParts[3] : '';
             await isar.cacheInstallationImages.put(CacheInstallationImage(
               activityFacilityId: activityFacilityId,
               userType: userType,
               code: codeFromDoc,
+              order: orderFromDoc,
               photoPath: doc.fileStore ?? '',
               latitude: doc.geoLocation?.latitude?.toString() ?? '',
               longitude: doc.geoLocation?.longitude?.toString() ?? '',

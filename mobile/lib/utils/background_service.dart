@@ -1365,7 +1365,8 @@ Future<void> _performSubmissionForActivityFacility({
         Document(
           documentType: 'INSTALLATION_IMAGE-${entry.code}',
           fileStore: remoteId,
-          documentUid: 'INSTALLATION-IMAGE-${entry.code}-${entry.id}',
+          documentUid:
+              'INSTALLATION-IMAGE-${entry.code}-${entry.order}-${entry.id}',
           geoLocation: GeoLocation(
             latitude: entry.latitude,
             longitude: entry.longitude,

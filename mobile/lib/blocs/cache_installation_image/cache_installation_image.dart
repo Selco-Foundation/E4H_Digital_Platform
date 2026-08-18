@@ -59,6 +59,7 @@ class CacheInstallationImageBloc
               activityFacilityId: event.activityFacilityId,
               userType: event.userType,
               code: entry.key,
+              order: event.orderByCode[entry.key] ?? '',
               photoPath: copiedPath,
               latitude: event.latitude,
               longitude: event.longitude,
@@ -85,6 +86,7 @@ class CacheInstallationImageEvent with _$CacheInstallationImageEvent {
     required String activityFacilityId,
     required String userType,
     required Map<String, List<File>> selectedImages,
+    required Map<String, String> orderByCode,
     required String latitude,
     required String longitude,
   }) = CacheInstallationImageEventSaveAll;

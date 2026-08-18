@@ -14,6 +14,172 @@ T _$identity<T>(T value) => value;
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
+InstallationImageSystemType _$InstallationImageSystemTypeFromJson(
+    Map<String, dynamic> json) {
+  return _InstallationImageSystemType.fromJson(json);
+}
+
+/// @nodoc
+mixin _$InstallationImageSystemType {
+  String get code => throw _privateConstructorUsedError;
+  num get order => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $InstallationImageSystemTypeCopyWith<InstallationImageSystemType>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $InstallationImageSystemTypeCopyWith<$Res> {
+  factory $InstallationImageSystemTypeCopyWith(
+          InstallationImageSystemType value,
+          $Res Function(InstallationImageSystemType) then) =
+      _$InstallationImageSystemTypeCopyWithImpl<$Res,
+          InstallationImageSystemType>;
+  @useResult
+  $Res call({String code, num order});
+}
+
+/// @nodoc
+class _$InstallationImageSystemTypeCopyWithImpl<$Res,
+        $Val extends InstallationImageSystemType>
+    implements $InstallationImageSystemTypeCopyWith<$Res> {
+  _$InstallationImageSystemTypeCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? code = null,
+    Object? order = null,
+  }) {
+    return _then(_value.copyWith(
+      code: null == code
+          ? _value.code
+          : code // ignore: cast_nullable_to_non_nullable
+              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as num,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$InstallationImageSystemTypeImplCopyWith<$Res>
+    implements $InstallationImageSystemTypeCopyWith<$Res> {
+  factory _$$InstallationImageSystemTypeImplCopyWith(
+          _$InstallationImageSystemTypeImpl value,
+          $Res Function(_$InstallationImageSystemTypeImpl) then) =
+      __$$InstallationImageSystemTypeImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String code, num order});
+}
+
+/// @nodoc
+class __$$InstallationImageSystemTypeImplCopyWithImpl<$Res>
+    extends _$InstallationImageSystemTypeCopyWithImpl<$Res,
+        _$InstallationImageSystemTypeImpl>
+    implements _$$InstallationImageSystemTypeImplCopyWith<$Res> {
+  __$$InstallationImageSystemTypeImplCopyWithImpl(
+      _$InstallationImageSystemTypeImpl _value,
+      $Res Function(_$InstallationImageSystemTypeImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? code = null,
+    Object? order = null,
+  }) {
+    return _then(_$InstallationImageSystemTypeImpl(
+      code: null == code
+          ? _value.code
+          : code // ignore: cast_nullable_to_non_nullable
+              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as num,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$InstallationImageSystemTypeImpl
+    implements _InstallationImageSystemType {
+  const _$InstallationImageSystemTypeImpl(
+      {required this.code, required this.order});
+
+  factory _$InstallationImageSystemTypeImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$InstallationImageSystemTypeImplFromJson(json);
+
+  @override
+  final String code;
+  @override
+  final num order;
+
+  @override
+  String toString() {
+    return 'InstallationImageSystemType(code: $code, order: $order)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$InstallationImageSystemTypeImpl &&
+            (identical(other.code, code) || other.code == code) &&
+            (identical(other.order, order) || other.order == order));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, code, order);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$InstallationImageSystemTypeImplCopyWith<_$InstallationImageSystemTypeImpl>
+      get copyWith => __$$InstallationImageSystemTypeImplCopyWithImpl<
+          _$InstallationImageSystemTypeImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$InstallationImageSystemTypeImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _InstallationImageSystemType
+    implements InstallationImageSystemType {
+  const factory _InstallationImageSystemType(
+      {required final String code,
+      required final num order}) = _$InstallationImageSystemTypeImpl;
+
+  factory _InstallationImageSystemType.fromJson(Map<String, dynamic> json) =
+      _$InstallationImageSystemTypeImpl.fromJson;
+
+  @override
+  String get code;
+  @override
+  num get order;
+  @override
+  @JsonKey(ignore: true)
+  _$$InstallationImageSystemTypeImplCopyWith<_$InstallationImageSystemTypeImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
 InstallationImageItem _$InstallationImageItemFromJson(
     Map<String, dynamic> json) {
   return _InstallationImageItem.fromJson(json);
@@ -24,6 +190,11 @@ mixin _$InstallationImageItem {
   String get code => throw _privateConstructorUsedError;
   bool get active => throw _privateConstructorUsedError;
   String get description => throw _privateConstructorUsedError;
+  @JsonKey(name: 'short_title')
+  String get shortTitle => throw _privateConstructorUsedError;
+  @JsonKey(name: 'system_types')
+  List<InstallationImageSystemType> get systemTypes =>
+      throw _privateConstructorUsedError;
   @JsonKey(name: 'required_count')
   int get requiredCount => throw _privateConstructorUsedError;
 
@@ -43,6 +214,9 @@ abstract class $InstallationImageItemCopyWith<$Res> {
       {String code,
       bool active,
       String description,
+      @JsonKey(name: 'short_title') String shortTitle,
+      @JsonKey(name: 'system_types')
+      List<InstallationImageSystemType> systemTypes,
       @JsonKey(name: 'required_count') int requiredCount});
 }
 
@@ -63,6 +237,8 @@ class _$InstallationImageItemCopyWithImpl<$Res,
     Object? code = null,
     Object? active = null,
     Object? description = null,
+    Object? shortTitle = null,
+    Object? systemTypes = null,
     Object? requiredCount = null,
   }) {
     return _then(_value.copyWith(
@@ -78,6 +254,14 @@ class _$InstallationImageItemCopyWithImpl<$Res,
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
               as String,
+      shortTitle: null == shortTitle
+          ? _value.shortTitle
+          : shortTitle // ignore: cast_nullable_to_non_nullable
+              as String,
+      systemTypes: null == systemTypes
+          ? _value.systemTypes
+          : systemTypes // ignore: cast_nullable_to_non_nullable
+              as List<InstallationImageSystemType>,
       requiredCount: null == requiredCount
           ? _value.requiredCount
           : requiredCount // ignore: cast_nullable_to_non_nullable
@@ -99,6 +283,9 @@ abstract class _$$InstallationImageItemImplCopyWith<$Res>
       {String code,
       bool active,
       String description,
+      @JsonKey(name: 'short_title') String shortTitle,
+      @JsonKey(name: 'system_types')
+      List<InstallationImageSystemType> systemTypes,
       @JsonKey(name: 'required_count') int requiredCount});
 }
 
@@ -117,6 +304,8 @@ class __$$InstallationImageItemImplCopyWithImpl<$Res>
     Object? code = null,
     Object? active = null,
     Object? description = null,
+    Object? shortTitle = null,
+    Object? systemTypes = null,
     Object? requiredCount = null,
   }) {
     return _then(_$InstallationImageItemImpl(
@@ -132,6 +321,14 @@ class __$$InstallationImageItemImplCopyWithImpl<$Res>
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
               as String,
+      shortTitle: null == shortTitle
+          ? _value.shortTitle
+          : shortTitle // ignore: cast_nullable_to_non_nullable
+              as String,
+      systemTypes: null == systemTypes
+          ? _value._systemTypes
+          : systemTypes // ignore: cast_nullable_to_non_nullable
+              as List<InstallationImageSystemType>,
       requiredCount: null == requiredCount
           ? _value.requiredCount
           : requiredCount // ignore: cast_nullable_to_non_nullable
@@ -147,8 +344,12 @@ class _$InstallationImageItemImpl extends _InstallationImageItem {
       {required this.code,
       required this.active,
       required this.description,
+      @JsonKey(name: 'short_title') required this.shortTitle,
+      @JsonKey(name: 'system_types')
+      required final List<InstallationImageSystemType> systemTypes,
       @JsonKey(name: 'required_count') required this.requiredCount})
-      : super._();
+      : _systemTypes = systemTypes,
+        super._();
 
   factory _$InstallationImageItemImpl.fromJson(Map<String, dynamic> json) =>
       _$$InstallationImageItemImplFromJson(json);
@@ -160,12 +361,24 @@ class _$InstallationImageItemImpl extends _InstallationImageItem {
   @override
   final String description;
   @override
+  @JsonKey(name: 'short_title')
+  final String shortTitle;
+  final List<InstallationImageSystemType> _systemTypes;
+  @override
+  @JsonKey(name: 'system_types')
+  List<InstallationImageSystemType> get systemTypes {
+    if (_systemTypes is EqualUnmodifiableListView) return _systemTypes;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_systemTypes);
+  }
+
+  @override
   @JsonKey(name: 'required_count')
   final int requiredCount;
 
   @override
   String toString() {
-    return 'InstallationImageItem(code: $code, active: $active, description: $description, requiredCount: $requiredCount)';
+    return 'InstallationImageItem(code: $code, active: $active, description: $description, shortTitle: $shortTitle, systemTypes: $systemTypes, requiredCount: $requiredCount)';
   }
 
   @override
@@ -177,14 +390,24 @@ class _$InstallationImageItemImpl extends _InstallationImageItem {
             (identical(other.active, active) || other.active == active) &&
             (identical(other.description, description) ||
                 other.description == description) &&
+            (identical(other.shortTitle, shortTitle) ||
+                other.shortTitle == shortTitle) &&
+            const DeepCollectionEquality()
+                .equals(other._systemTypes, _systemTypes) &&
             (identical(other.requiredCount, requiredCount) ||
                 other.requiredCount == requiredCount));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, code, active, description, requiredCount);
+  int get hashCode => Object.hash(
+      runtimeType,
+      code,
+      active,
+      description,
+      shortTitle,
+      const DeepCollectionEquality().hash(_systemTypes),
+      requiredCount);
 
   @JsonKey(ignore: true)
   @override
@@ -206,6 +429,9 @@ abstract class _InstallationImageItem extends InstallationImageItem {
           {required final String code,
           required final bool active,
           required final String description,
+          @JsonKey(name: 'short_title') required final String shortTitle,
+          @JsonKey(name: 'system_types')
+          required final List<InstallationImageSystemType> systemTypes,
           @JsonKey(name: 'required_count') required final int requiredCount}) =
       _$InstallationImageItemImpl;
   const _InstallationImageItem._() : super._();
@@ -219,6 +445,12 @@ abstract class _InstallationImageItem extends InstallationImageItem {
   bool get active;
   @override
   String get description;
+  @override
+  @JsonKey(name: 'short_title')
+  String get shortTitle;
+  @override
+  @JsonKey(name: 'system_types')
+  List<InstallationImageSystemType> get systemTypes;
   @override
   @JsonKey(name: 'required_count')
   int get requiredCount;

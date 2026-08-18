@@ -25,6 +25,7 @@ mixin _$CacheInstallationImageEvent {
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)
         saveAll,
@@ -37,6 +38,7 @@ mixin _$CacheInstallationImageEvent {
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)?
         saveAll,
@@ -49,6 +51,7 @@ mixin _$CacheInstallationImageEvent {
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)?
         saveAll,
@@ -209,6 +212,7 @@ class _$CacheInstallationImageEventGetImpl
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)
         saveAll,
@@ -224,6 +228,7 @@ class _$CacheInstallationImageEventGetImpl
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)?
         saveAll,
@@ -239,6 +244,7 @@ class _$CacheInstallationImageEventGetImpl
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)?
         saveAll,
@@ -312,6 +318,7 @@ abstract class _$$CacheInstallationImageEventSaveAllImplCopyWith<$Res>
       {String activityFacilityId,
       String userType,
       Map<String, List<File>> selectedImages,
+      Map<String, String> orderByCode,
       String latitude,
       String longitude});
 }
@@ -332,6 +339,7 @@ class __$$CacheInstallationImageEventSaveAllImplCopyWithImpl<$Res>
     Object? activityFacilityId = null,
     Object? userType = null,
     Object? selectedImages = null,
+    Object? orderByCode = null,
     Object? latitude = null,
     Object? longitude = null,
   }) {
@@ -348,6 +356,10 @@ class __$$CacheInstallationImageEventSaveAllImplCopyWithImpl<$Res>
           ? _value._selectedImages
           : selectedImages // ignore: cast_nullable_to_non_nullable
               as Map<String, List<File>>,
+      orderByCode: null == orderByCode
+          ? _value._orderByCode
+          : orderByCode // ignore: cast_nullable_to_non_nullable
+              as Map<String, String>,
       latitude: null == latitude
           ? _value.latitude
           : latitude // ignore: cast_nullable_to_non_nullable
@@ -368,9 +380,11 @@ class _$CacheInstallationImageEventSaveAllImpl
       {required this.activityFacilityId,
       required this.userType,
       required final Map<String, List<File>> selectedImages,
+      required final Map<String, String> orderByCode,
       required this.latitude,
       required this.longitude})
-      : _selectedImages = selectedImages;
+      : _selectedImages = selectedImages,
+        _orderByCode = orderByCode;
 
   @override
   final String activityFacilityId;
@@ -384,6 +398,14 @@ class _$CacheInstallationImageEventSaveAllImpl
     return EqualUnmodifiableMapView(_selectedImages);
   }
 
+  final Map<String, String> _orderByCode;
+  @override
+  Map<String, String> get orderByCode {
+    if (_orderByCode is EqualUnmodifiableMapView) return _orderByCode;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_orderByCode);
+  }
+
   @override
   final String latitude;
   @override
@@ -391,7 +413,7 @@ class _$CacheInstallationImageEventSaveAllImpl
 
   @override
   String toString() {
-    return 'CacheInstallationImageEvent.saveAll(activityFacilityId: $activityFacilityId, userType: $userType, selectedImages: $selectedImages, latitude: $latitude, longitude: $longitude)';
+    return 'CacheInstallationImageEvent.saveAll(activityFacilityId: $activityFacilityId, userType: $userType, selectedImages: $selectedImages, orderByCode: $orderByCode, latitude: $latitude, longitude: $longitude)';
   }
 
   @override
@@ -405,6 +427,8 @@ class _$CacheInstallationImageEventSaveAllImpl
                 other.userType == userType) &&
             const DeepCollectionEquality()
                 .equals(other._selectedImages, _selectedImages) &&
+            const DeepCollectionEquality()
+                .equals(other._orderByCode, _orderByCode) &&
             (identical(other.latitude, latitude) ||
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
@@ -417,6 +441,7 @@ class _$CacheInstallationImageEventSaveAllImpl
       activityFacilityId,
       userType,
       const DeepCollectionEquality().hash(_selectedImages),
+      const DeepCollectionEquality().hash(_orderByCode),
       latitude,
       longitude);
 
@@ -436,12 +461,13 @@ class _$CacheInstallationImageEventSaveAllImpl
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)
         saveAll,
   }) {
-    return saveAll(
-        activityFacilityId, userType, selectedImages, latitude, longitude);
+    return saveAll(activityFacilityId, userType, selectedImages, orderByCode,
+        latitude, longitude);
   }
 
   @override
@@ -452,12 +478,13 @@ class _$CacheInstallationImageEventSaveAllImpl
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)?
         saveAll,
   }) {
-    return saveAll?.call(
-        activityFacilityId, userType, selectedImages, latitude, longitude);
+    return saveAll?.call(activityFacilityId, userType, selectedImages,
+        orderByCode, latitude, longitude);
   }
 
   @override
@@ -468,14 +495,15 @@ class _$CacheInstallationImageEventSaveAllImpl
             String activityFacilityId,
             String userType,
             Map<String, List<File>> selectedImages,
+            Map<String, String> orderByCode,
             String latitude,
             String longitude)?
         saveAll,
     required TResult orElse(),
   }) {
     if (saveAll != null) {
-      return saveAll(
-          activityFacilityId, userType, selectedImages, latitude, longitude);
+      return saveAll(activityFacilityId, userType, selectedImages, orderByCode,
+          latitude, longitude);
     }
     return orElse();
   }
@@ -518,6 +546,7 @@ abstract class CacheInstallationImageEventSaveAll
           {required final String activityFacilityId,
           required final String userType,
           required final Map<String, List<File>> selectedImages,
+          required final Map<String, String> orderByCode,
           required final String latitude,
           required final String longitude}) =
       _$CacheInstallationImageEventSaveAllImpl;
@@ -527,6 +556,7 @@ abstract class CacheInstallationImageEventSaveAll
   @override
   String get userType;
   Map<String, List<File>> get selectedImages;
+  Map<String, String> get orderByCode;
   String get latitude;
   String get longitude;
   @override
