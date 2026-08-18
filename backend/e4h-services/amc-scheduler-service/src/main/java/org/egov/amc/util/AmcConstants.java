@@ -53,5 +53,7 @@ public class AmcConstants {
     public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
     public static final String LOCALIZATION_LOCALE = "en_IN";
     public static final String LOCALIZATION_TENANT_ID = "in";
+    /** Role of the Health Centre Representative, the person the AMC visit OTP is sent to. */
+    public static final String ROLE_COMPLAINANT = "COMPLAINANT";
 
 }
