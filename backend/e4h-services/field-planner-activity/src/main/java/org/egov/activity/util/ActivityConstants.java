@@ -12,6 +12,7 @@ public class ActivityConstants {
     public static final String MASTER_INSTALLATION_IMAGES = "InstallationImages";
     public static final String INSTALLATION_IMAGE_FIELD = "InstallationImage";
     public static final String INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX = "INSTALLATION_IMAGE-";
+    public static final String INSTALLATION_IMAGE_SYSTEM_TYPES_FIELD = "system_types";
     public static final String BOM_FORM = "BOM_FORM";
     //location
     public static final String DRAFT_STATUS = "DRAFT";
