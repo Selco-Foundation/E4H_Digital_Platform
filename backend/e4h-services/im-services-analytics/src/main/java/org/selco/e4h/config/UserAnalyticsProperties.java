@@ -37,9 +37,17 @@ public class UserAnalyticsProperties {
     @Value("${user.analytics.field.role}")
     private String roleField;
 
+    /** The role the action itself was matched on, as opposed to the user's programme role. */
+    @Value("${user.analytics.field.system.role}")
+    private String systemRoleField;
+
     /** Field the distinct active-user count is taken over — the user's uuid. */
     @Value("${user.analytics.field.user}")
     private String userField;
+
+    /** Login id the Kibana login sheet groups on; Kibana accounts have no uuid to group by. */
+    @Value("${user.analytics.field.user.name}")
+    private String userNameField;
 
     /**
      * {@code cardinality} is approximate above this many distinct values and exact at or below it,
@@ -51,6 +59,14 @@ public class UserAnalyticsProperties {
     /** Cap on state / role buckets returned per week. */
     @Value("${user.analytics.terms.size}")
     private int termsSize;
+
+    /**
+     * Cap on event-type buckets, kept separate from {@link #termsSize} because the event-type terms
+     * is nested per state and again per state-and-application — a 500-wide cap there would blow the
+     * response up for a vocabulary that only has a few dozen values.
+     */
+    @Value("${user.analytics.event.type.terms.size}")
+    private int eventTypeTermsSize;
 
     /** How many champion users to list per role and per application. */
     @Value("${user.analytics.champion.count}")

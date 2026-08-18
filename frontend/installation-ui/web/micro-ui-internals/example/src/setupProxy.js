@@ -30,6 +30,7 @@ module.exports = function (app) {
     "/localization",
     "/egov-workflow-v2",
     "/pgr-services",
+    "/im-services",
     "/filestore",
     "/egov-hrms",
     "/user-otp",
@@ -105,6 +106,7 @@ module.exports = function (app) {
     "/activity",
     "/asset-amc",
     "/facility-service",
+    "/im-services",
   ].forEach((location) => app.use(location, createProxy));
   ["/pb-egov-assets"].forEach((location) => app.use(location, assetsProxy));
   ["/mdms-v2/v2/_create"].forEach((location) => app.use(location, mdmsProxy));

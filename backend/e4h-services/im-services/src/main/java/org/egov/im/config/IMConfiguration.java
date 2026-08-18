@@ -134,6 +134,26 @@ public class IMConfiguration {
     @Value("${im.kafka.user.analytics.topic}")
     private String userAnalyticsTopic;
 
+    @Value("${im.kafka.kibana.login.topic}")
+    private String kibanaLoginTopic;
+
+    @Value("${im.kafka.kibana.login.tenantid}")
+    private String kibanaLoginTenantId;
+
+    // Elasticsearch read-side config. Used to carry the already-indexed mappedVendor forward on
+    // update, so a re-index does not blank a vendor that was set by an earlier assignment.
+    @Value("${egov.es.host}")
+    private String esHost;
+
+    @Value("${egov.es.username}")
+    private String esUsername;
+
+    @Value("${egov.es.password}")
+    private String esPassword;
+
+    @Value("${egov.es.incident.index}")
+    private String esIncidentIndex;
+
     @Value("${im.default.offset}")
     private Integer defaultOffset;
 

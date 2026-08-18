@@ -222,7 +222,6 @@ public class UserAnalyticsMailService {
         variables.put("PARTIAL_WEEK_NOTE", report.isPartialWeek()
                 ? "This week is still in progress, so the figures below cover it only up to the time the report was generated."
                 : "");
-        variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl());
         variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
         variables.put("SAURA_LOGO", commonUtility.loadLogoAsBase64("SauraEmitra.png"));
 

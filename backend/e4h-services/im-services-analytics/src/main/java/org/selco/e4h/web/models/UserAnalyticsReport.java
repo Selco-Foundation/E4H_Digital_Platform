@@ -43,6 +43,12 @@ public class UserAnalyticsReport {
     /** Applications present across either week, in report column order. */
     private List<String> applications;
 
+    /**
+     * Event types seen in the reported week, busiest first — the column order of the By State
+     * cross-tabs. Empty when the week carried no events at all.
+     */
+    private List<String> eventTypes;
+
     private UserAnalyticsBucket overall;
 
     /** Ordered by descending active users in the reported week. */
@@ -56,4 +62,7 @@ public class UserAnalyticsReport {
 
     /** Application -> its top champion users for the reported week, most active first. */
     private Map<String, List<ChampionUser>> championsByApplication;
+
+    /** Kibana login id -> sign-ins in the reported week, busiest first; the order is the ranking. */
+    private Map<String, Long> kibanaLoginsByUser;
 }
