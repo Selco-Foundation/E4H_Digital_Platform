@@ -10,6 +10,7 @@ import useFacilityDetails, { getAssetAggregation } from "../../hooks/useFacility
 import useAsset from "../../hooks/useAsset";
 import InfoCard from "../../components/FacilityDetails/InfoCard";
 import InstallationImageReviewCard from "../../components/FacilityDetails/InstallationImageReviewCard";
+import { getInstallationImageCriteriaBySystemType } from "../../utilities/installationImages";
 
 const sectionLoaderStyle = {
   width: "95%",
@@ -145,7 +146,10 @@ const FacilityDetails = ({t}) => {
     }
   };
 
-  const installationImageCriteria = mdmsResponse?.["common-masters"]?.["InstallationImages"]?.[0]?.["InstallationImage"] || [];
+  const installationImageCriteria = getInstallationImageCriteriaBySystemType(
+    mdmsResponse?.["common-masters"]?.["InstallationImages"]?.[0]?.["InstallationImage"] || [],
+    facilityDetails.systemType
+  );
   const hasInstallationReport = facilityData?.workflow?.[0]?.documents?.some((document) => (
     [
       "INSTALLATION_REPORT",
@@ -246,6 +250,7 @@ const FacilityDetails = ({t}) => {
             installationImage={{
               code: criterion.code,
               description: criterion.description,
+              shortTitle: criterion.short_title,
               images,
               providedImagesCount: images.length,
               requiredImagesCount: criterion["required_count"],
