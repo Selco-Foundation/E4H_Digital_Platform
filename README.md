@@ -101,6 +101,7 @@ See [Architecture](gitbook/overview/architecture.md) for the full breakdown.
 
 - [GitBook home](gitbook/README.md) — architecture, per-service pages, API reference, LLDs, operations.
 - [Repository map](gitbook/overview/repository-map.md) — what lives where.
+- [Platform Architecture](docs/PLATFORM_ARCHITECTURE.md) — system-level diagram of every service, Kafka topics, Elasticsearch indices, and external dependencies.
 - [Entity-Relationship Diagram](ERD.md) — cross-service data model, grounded in each service's real schema.
 - [CHANGELOG.md](CHANGELOG.md) — repository-wide release history, one entry per git tag.
 - [Security policy](SECURITY.md) — how to report a vulnerability.
