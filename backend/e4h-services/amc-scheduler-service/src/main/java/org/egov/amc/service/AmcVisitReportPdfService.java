@@ -138,9 +138,18 @@ public class AmcVisitReportPdfService {
                 ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getDistrict()) : null);
         data.put("project_block", boundary != null
                 ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getBlock()) : null);
-        data.put("nin_id", facility.getNinId() != null ? facility.getNinId() : (facility.getHfrId() != null ? facility.getHfrId() : facility.getFacilityPocUsername()));
         data.put("po_wo_number", null);
         data.put("documents", buildDocumentsForPdf(visitReport));
+        String ninId = facility.getNinId();
+        if (ninId == null) {
+            ninId = facility.getHfrId();
+
+            if (ninId == null) {
+                ninId = facility.getFacilityPocUsername();
+            }
+        }
+
+        data.put("nin_id", ninId);
 
         return data;
     }
