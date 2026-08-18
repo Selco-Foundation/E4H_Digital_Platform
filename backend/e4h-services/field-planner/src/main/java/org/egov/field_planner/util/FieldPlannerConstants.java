@@ -51,5 +51,6 @@ public class FieldPlannerConstants {
     public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
     public static final String LOCALIZATION_LOCALE = "en_IN";
     public static final String LOCALIZATION_TENANT_ID = "in";
+    public static final String PLAN_TYPE_FIELD_PLAN = "FIELD_PLAN";
 
 }

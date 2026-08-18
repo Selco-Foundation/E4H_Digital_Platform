@@ -857,6 +857,50 @@ public class NotificationService {
         return employeeDetails;
     }
 
+    /**
+     * Looks up a single HRMS employee by uuid, constrained to the given role.
+     *
+     * <p>HRMS applies the role as a filter, so an empty result answers "does this user hold that
+     * role?" - it does not mean the user is unknown. No boundary filter is applied: the caller has an
+     * explicit assignee and wants that user's details, not whoever happens to serve the facility.
+     *
+     * @return name/userName of the employee, or an empty map when the user does not hold the role.
+     */
+    public Map<String, String> getHRMSEmployeeByUuidAndRole(IncidentRequest request, String uuid, String role) {
+        Map<String, String> employeeDetails = new HashMap<>();
+        if (!StringUtils.hasText(uuid)) {
+            return employeeDetails;
+        }
+
+        String tenantId = request.getIncident().getTenantId();
+        StringBuilder url = hrmsUtils.getHRMSURI(Collections.singletonList(uuid), tenantId, role, null);
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder()
+                .requestInfo(request.getRequestInfo())
+                .build();
+
+        try {
+            Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
+            if (response == null) {
+                log.warn("HRMS returned no response for uuid={} role={}", uuid, role);
+                return employeeDetails;
+            }
+
+            List<String> employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
+            List<String> employeeUserName = JsonPath.read(response, HRMS_EMP_USERNAME_JSONPATH);
+
+            if (!CollectionUtils.isEmpty(employeeName)) {
+                employeeDetails.put("employeeName", employeeName.get(0));
+            }
+            if (!CollectionUtils.isEmpty(employeeUserName)) {
+                employeeDetails.put("employeeUserName", employeeUserName.get(0));
+            }
+        } catch (Exception e) {
+            log.error("Failed to resolve HRMS employee for uuid={} role={}", uuid, role, e);
+        }
+
+        return employeeDetails;
+    }
+
 
     private List<SMSRequest> enrichSmsRequest(String mobileNumber, String finalMessage) {
         List<SMSRequest> smsRequest = new ArrayList<>();
