@@ -55,6 +55,9 @@ public class AmcConstants {
     public static final String ANALYTICS_EVENT_AMC_VISIT_RESUBMITTED = "AMC_VISIT_RESUBMITTED";
     public static final String ANALYTICS_EVENT_AMC_VISIT_OTP_VERIFIED = "AMC_VISIT_OTP_VERIFIED";
     // Boundary localizations live in this module at the national tenant.
+    /** Role of the Health Centre Representative, the person the AMC visit OTP is sent to. */
+    public static final String ROLE_COMPLAINANT = "COMPLAINANT";
+
     public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
     public static final String LOCALIZATION_LOCALE = "en_IN";
     public static final String LOCALIZATION_TENANT_ID = "in";

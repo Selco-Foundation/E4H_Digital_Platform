@@ -439,7 +439,7 @@ public class ScheduledVisitService {
         log.info("Resolved HRMS lookup for resend OTP visitId={} facilityId={} boundaryCode={}",
                 existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-        Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+        Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
         if (employee != null && employee.getUser() != null && employee.getUser().getMobileNumber() != null && !employee.getUser().getMobileNumber().isEmpty()) {
             OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
             if (otpResponse != null && otpResponse.getOtp() != null) {
@@ -492,7 +492,7 @@ public class ScheduledVisitService {
             log.info("Resolved HRMS lookup for visitId={} facilityId={} boundaryCode={}",
                     existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-            Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+            Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
             if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                 OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
                 if (otpResponse !=null && otpResponse.getOtp()!=null){
@@ -544,7 +544,7 @@ public class ScheduledVisitService {
                 log.info("Resolved HRMS lookup for OTP validation visitId={} facilityId={} boundaryCode={}",
                         existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-                Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+                Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
                 if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                     OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
                     if (otpResponse !=null && otpResponse.getOtp()!=null){
@@ -1292,20 +1292,34 @@ public class ScheduledVisitService {
     }
 
     public Employee getEmployeeByBoundaryCode(Object request, String boundaryCode) {
+        return getEmployeeByBoundaryCode(request, boundaryCode, null);
+    }
+
+    /**
+     * @param role optional HRMS role code to narrow the search to, e.g. ROLE_COMPLAINANT
+     *             for the HCR. When null every employee of the boundary is eligible.
+     */
+    public Employee getEmployeeByBoundaryCode(Object request, String boundaryCode, String role) {
         if (boundaryCode == null || boundaryCode.trim().isEmpty()) {
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Boundary code is required for employee search");
         }
-        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()
-                + "?tenantId=in&boundaryCodes=" + boundaryCode + "&searchOnlyInBoundary=true";
-        log.debug("Calling HRMS employee search by boundaryCode={}", boundaryCode);
-        Object response = requestRepository.fetchResult(new StringBuilder(url), request);
+        StringBuilder url = new StringBuilder(amcServiceConfiguration.getHrmsHost())
+                .append(amcServiceConfiguration.getHrmsSearchUrl())
+                .append("?tenantId=in&boundaryCodes=").append(boundaryCode)
+                .append("&searchOnlyInBoundary=true");
+        if (role != null && !role.trim().isEmpty()) {
+            url.append("&roles=").append(role);
+        }
+        log.debug("Calling HRMS employee search by boundaryCode={} role={}", boundaryCode, role);
+        Object response = requestRepository.fetchResult(url, request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-            log.warn("No HRMS employee found for boundaryCode={}", boundaryCode);
-            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found for boundaryCode: " + boundaryCode);
+            log.warn("No HRMS employee found for boundaryCode={} role={}", boundaryCode, role);
+            throw new CustomException("EMPLOYEE_NOT_FOUND",
+                    "Employee not found for boundaryCode: " + boundaryCode + (role != null ? " and role: " + role : ""));
         }
-        log.debug("HRMS employee found for boundaryCode={}", boundaryCode);
+        log.debug("HRMS employee found for boundaryCode={} role={}", boundaryCode, role);
         return employeeResponse.getEmployees().get(0);
     }
 
