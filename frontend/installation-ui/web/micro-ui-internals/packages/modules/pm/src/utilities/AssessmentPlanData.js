@@ -75,7 +75,10 @@ const sortByOrder = (items) => [...(items || [])].sort((a, b) => (a?.order || 0)
 // resolves it to the option's display name so callers only ever deal with display text, which
 // they should still route through t() in case it becomes a real translation key later.
 const resolveFieldValue = (property, rawValue) => {
-  const resolveEnumName = (code) => property?.enums?.find((option) => option?.code === code)?.name ?? code;
+  const resolveEnumName = (code) => {
+    const match = property?.enums?.find((option) => option?.code === code)?.name;
+    return match === null || match === undefined ? code : match;
+  };
 
   if (Array.isArray(rawValue)) {
     return rawValue.length ? rawValue.map(resolveEnumName) : null;
