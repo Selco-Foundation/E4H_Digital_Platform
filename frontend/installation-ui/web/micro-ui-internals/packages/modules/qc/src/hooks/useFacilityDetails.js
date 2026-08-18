@@ -236,6 +236,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       block: activityFacilityData?.activityFacility?.facility?.boundary?.block,
       district: activityFacilityData?.activityFacility?.facility?.boundary?.district,
       assigned: assignedVendorName || assigneeDetails.name,
+      systemType: facility.facility_details?.systemType || activityFacilityData?.activityFacility?.additionalDetails?.systemType,
     },
     auditTrail,
     workflow: activityFacilityData?.workflow,
