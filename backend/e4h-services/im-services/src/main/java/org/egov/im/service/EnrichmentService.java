@@ -5,6 +5,7 @@ import org.apache.commons.lang.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IdGenRepository;
+import org.egov.im.repository.IncidentIndexRepository;
 import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.util.HRMSUtil;
 import org.egov.im.util.IMUtils;
@@ -70,12 +71,14 @@ public class EnrichmentService {
 
     private RestTemplate restTemplate;
 
+    private IncidentIndexRepository incidentIndexRepository;
+
     @Autowired
     public EnrichmentService(
             IMUtils utils, HRMSUtil hrmsUtil, MDMSUtils mdmsUtils, IdGenRepository idGenRepository,
             IMConfiguration config, UserService userService, LocalizationService localizationService,
             NotificationService notificationService, @Lazy WorkflowService workflowService,
-            SLAService slaService, RestTemplate restTemplate) {
+            SLAService slaService, RestTemplate restTemplate, IncidentIndexRepository incidentIndexRepository) {
         this.utils = utils;
         this.hrmsUtil = hrmsUtil;
         this.mdmsUtils = mdmsUtils;
@@ -87,6 +90,7 @@ public class EnrichmentService {
         this.workflowService = workflowService;
         this.slaService = slaService;
         this.restTemplate = restTemplate;
+        this.incidentIndexRepository = incidentIndexRepository;
     }
 
 
@@ -274,6 +278,14 @@ public class EnrichmentService {
     }
 
     public void enrichFieldsForIndexing(IncidentRequestWrapper wrapper, Boundary boundary) {
+        enrichFieldsForIndexing(wrapper, boundary, false);
+    }
+
+    /**
+     * @param isCreate {@code true} for the initial indexing of a newly raised ticket, which has no
+     *                 vendor yet; {@code false} for every subsequent re-index.
+     */
+    public void enrichFieldsForIndexing(IncidentRequestWrapper wrapper, Boundary boundary, boolean isCreate) {
         log.info("EnrichmentService::Enriching incident fields for indexing");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
 
@@ -287,17 +299,16 @@ public class EnrichmentService {
             indexView.setWarrantyStatus(incidentRequest.getIncident().getWarrantyStatus().toString());
         }
 
-        // Fetch HCR and Vendor details
+        // Fetch HCR details
         Map<String, String> hcrDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, ROLE_COMPLAINANT);
-        Map<String, String> vendorDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, ROLE_COMPLAINT_RESOLVER);
+
+        enrichMappedVendorForIndexing(wrapper, isCreate);
 
         // Get details of the user who last modified (last action)
         String lastActionTakenByUser = wrapper.getIncidentRequest().getRequestInfo().getUserInfo().getName();
 
         // Set fields in IndexView if values exist
         Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
-        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendorUserName);
-        Optional.ofNullable(vendorDetails.get("employeeName")).ifPresent(indexView::setMappedVendorName);
         indexView.setLastActionTakenBy(lastActionTakenByUser);
         indexView.setComments(
                 (wrapper.getIncidentRequest().getWorkflow().getComments() != null &&
@@ -335,6 +346,60 @@ public class EnrichmentService {
 
         // Enrich localized fields first (will populate IndexView inside the wrapper)
         localizationService.enrichLocalizedFieldsForIndexing(wrapper);
+    }
+
+    /**
+     * Resolves the mapped vendor for a ticket's index document.
+     *
+     * <p>The mapped vendor is a property of the <em>ticket</em>, not of the facility: it is whoever
+     * the ticket was handed to. That gives three cases:
+     *
+     * <ul>
+     *   <li><b>Create</b> - nobody is assigned yet, so the placeholder is indexed.</li>
+     *   <li><b>Update carrying assignees</b> - the first assignee that turns out to hold
+     *       COMPLAINT_RESOLVER becomes the mapped vendor. Assignees who are not resolvers (e.g. a
+     *       facilitator during escalation) are ignored, and the previous value is kept.</li>
+     *   <li><b>Any other update</b> - the value already in the index is carried forward verbatim,
+     *       because indexing replaces the whole document.</li>
+     * </ul>
+     */
+    private void enrichMappedVendorForIndexing(IncidentRequestWrapper wrapper, boolean isCreate) {
+        IndexView indexView = wrapper.getIndexView();
+        IncidentRequest incidentRequest = wrapper.getIncidentRequest();
+
+        if (isCreate) {
+            indexView.setMappedVendorName(MAPPED_VENDOR_NOT_APPLICABLE);
+            indexView.setMappedVendorUserName(MAPPED_VENDOR_NOT_APPLICABLE);
+            return;
+        }
+
+        Workflow workflow = incidentRequest.getWorkflow();
+        List<String> assignes = workflow == null ? null : workflow.getAssignes();
+        if (!CollectionUtils.isEmpty(assignes)) {
+            for (String assignee : assignes) {
+                Map<String, String> resolver = notificationService.getHRMSEmployeeByUuidAndRole(
+                        incidentRequest, assignee, ROLE_COMPLAINT_RESOLVER);
+                if (!resolver.isEmpty()) {
+                    log.info("Mapped vendor updated from assignee uuid={} for incidentId={}",
+                            assignee, incidentRequest.getIncident().getIncidentId());
+                    indexView.setMappedVendorName(
+                            resolver.getOrDefault("employeeName", MAPPED_VENDOR_NOT_APPLICABLE));
+                    indexView.setMappedVendorUserName(
+                            resolver.getOrDefault("employeeUserName", MAPPED_VENDOR_NOT_APPLICABLE));
+                    return;
+                }
+            }
+            log.info("No assignee holds {} for incidentId={}, retaining the indexed mapped vendor",
+                    ROLE_COMPLAINT_RESOLVER, incidentRequest.getIncident().getIncidentId());
+        }
+
+        // No resolver was assigned by this action - carry the indexed value forward unchanged.
+        Map<String, String> indexed = incidentIndexRepository.fetchIndexedVendor(
+                incidentRequest.getIncident().getIncidentId());
+        indexView.setMappedVendorName(
+                indexed.getOrDefault("mappedVendorName", MAPPED_VENDOR_NOT_APPLICABLE));
+        indexView.setMappedVendorUserName(
+                indexed.getOrDefault("mappedVendorUserName", MAPPED_VENDOR_NOT_APPLICABLE));
     }
 
     /**
