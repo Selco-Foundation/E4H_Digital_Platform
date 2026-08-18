@@ -43,7 +43,7 @@ public class FacilityService {
     private final Configuration configs;
     private final FacilityKibanaMapper facilityKibanaMapper;
     private final FacilityProjectClient facilityProjectClient;
-    private EncryptionDecryptionUtil encryptionDecryptionUtil;
+    private final PocPhoneCipher pocPhoneCipher;
     private BoundaryUtil boundaryUtil;
 
     private FacilityRowMapperV2 facilityRowMapperV2;
@@ -73,7 +73,7 @@ public class FacilityService {
             Configuration configs,
             FacilityKibanaMapper facilityKibanaMapper,
             FacilityProjectClient facilityProjectClient,
-            EncryptionDecryptionUtil encryptionDecryptionUtil,
+            PocPhoneCipher pocPhoneCipher,
             BoundaryUtil boundaryUtil,
             FacilityRowMapperV2 facilityRowMapperV2,
             HRMSUtils hrmsUtils,
@@ -92,7 +92,7 @@ public class FacilityService {
         this.configs = configs;
         this.facilityKibanaMapper = facilityKibanaMapper;
         this.facilityProjectClient = facilityProjectClient;
-        this.encryptionDecryptionUtil = encryptionDecryptionUtil;
+        this.pocPhoneCipher = pocPhoneCipher;
         this.boundaryUtil = boundaryUtil;
         this.facilityRowMapperV2 = facilityRowMapperV2;
         this.hrmsUtils = hrmsUtils;
@@ -261,15 +261,9 @@ public class FacilityService {
 
             log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
             for (Facility facility : tenantFacilities) {
-                // Keep original (unencrypted) POC mobile number for HRMS user creation
+                // Keep original (unencrypted) POC mobile number for HRMS user creation — the push
+                // below encrypts facility.facilityPocPhone in place.
                 String originalPocMobileNumber = facility.getFacilityPocPhone();
-                try {
-                    String encryptedPocMobileNumber = encryptMobileNumber(facility.getFacilityPocPhone());
-                    if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                        facility.setFacilityPocPhone(encryptedPocMobileNumber);
-                    }
-                }
-                catch (Exception e){}
 
                 Long time = System.currentTimeMillis();
                 facility.setAuditDetails(AuditDetails.builder().createdBy(request.getRequestInfo().getUserInfo().getUuid()).lastModifiedBy(request.getRequestInfo().getUserInfo().getUuid()).createdTime(time).lastModifiedTime(time).build());
@@ -806,6 +800,11 @@ public class FacilityService {
         if (update.getSolarSystemCapacityKwp() == null) {
             update.setSolarSystemCapacityKwp(existingFacility.getSolarSystemCapacityKwp());
         }
+        // facility_poc_phone is now also set by the persister query; preserve it on payloads that
+        // don't touch it (existingFacility.getFacilityPocPhone() was decrypted above).
+        if (update.getPocContact() == null) {
+            update.setPocContact(existingFacility.getFacilityPocPhone());
+        }
 
         FacilityMappedVendorHelper.mergeMappedVendorFromUpdate(facility, update, existingFacility);
         FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
@@ -857,14 +856,6 @@ public class FacilityService {
 
         // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
         upsertFacilityBoundaryLocalizations(List.of(facility), request.getRequestInfo());
-
-        try {
-            String encryptedPocMobileNumber = encryptMobileNumber(request.getFacilityUpdate().getPocContact());
-            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                request.getFacilityUpdate().setPocContact(encryptedPocMobileNumber);
-            }
-        }
-        catch (Exception e){}
 
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
@@ -1681,12 +1672,14 @@ public class FacilityService {
             facility.setUserId(facilityDB.getUserId());
             facility.setIsOnmReady(facilityDB.getIsOnmReady());
 
+            // Carried over as-is; the update push encrypts it before persisting.
             if(facilityDB.getFacilityDetails()!=null && facilityDB.getFacilityDetails().getPocContact()!=null && !facilityDB.getFacilityDetails().getPocContact().isBlank()){
-                String encryptedMobileNumber = encryptMobileNumber(facilityDB.getFacilityDetails().getPocContact());
-                if (encryptedMobileNumber!=null && !encryptedMobileNumber.isBlank()){
-                    log.info("mobile number {} encrypted to : {}", facilityDB.getFacilityDetails().getPocContact(), encryptedMobileNumber);
-                    facility.setPocContact(encryptedMobileNumber);
-                }
+                facility.setPocContact(facilityDB.getFacilityDetails().getPocContact());
+            } else {
+                // facility_poc_phone is now also set by the persister query; fall back to the
+                // current column value so this migration doesn't null it out. Safe to pass through
+                // as-is even if already encrypted: PocPhoneCipher#encrypt is idempotent.
+                facility.setPocContact(facilityDB.getFacilityPocPhone());
             }
 
             if (details != null) {
@@ -1707,106 +1700,59 @@ public class FacilityService {
     }
 
     /**
-     * The update-facility persister query overwrites facility_name, facility_type, facility_subtype,
-     * addressId, facility_details, additional_details, is_onm_ready, facility_poc_name,
-     * facility_poc_phone, facility_poc_email, facility_poc_username, hfr_id, nin_id, user_id,
-     * facility_status and is_active in a single statement, so every one of those fields must be
-     * carried over from the existing row - only facility_poc_phone actually changes here.
+     * Operator script: finds every facility whose facility_poc_phone is still a plaintext
+     * 10-digit number (an encrypted value from egov-enc-service is always much longer) and
+     * re-persists it through the update-facility persister, which encrypts it on the way through
+     * (see FacilityRepository#pushUpdateFacility). Every other column touched by that persister
+     * query is carried over as-is from the current row so nothing else gets overwritten.
      */
-    public void encryptFacilityPocPhone() {
-        StringBuilder query = new StringBuilder(
-                "SELECT fac.*, " +
-                        "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r " +
-                        "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
-                        "FROM facility fac WHERE LENGTH(fac.facility_poc_phone) = 10"
-        );
-        List<Facility> facilities = jdbcTemplate.query(query.toString(), facilityRowMapper.rowMapper);
-        log.info("Found {} facilities with unencrypted facility_poc_phone", facilities.size());
+    public String encryptFacilityPocPhone() {
+        String query = "SELECT fac.*, " +
+                "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r " +
+                "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
+                "FROM facility fac WHERE LENGTH(fac.facility_poc_phone) = 10";
+        List<Facility> facilities = jdbcTemplate.query(query, facilityRowMapper.rowMapper);
+        log.info("facility_poc_phone encryption script: {} facilities found with a plaintext 10-digit number", facilities.size());
 
         for (Facility facilityDB : facilities) {
-            String encryptedPocPhone = encryptMobileNumber(facilityDB.getFacilityPocPhone());
-            if (encryptedPocPhone == null || encryptedPocPhone.isBlank()) {
-                log.warn("Skipping facilityId={} - encryption returned no value", facilityDB.getFacilityId());
-                continue;
-            }
-
             FacilityUpdateRequestFacilityUpdate facility = new FacilityUpdateRequestFacilityUpdate();
             facility.setFacilityId(facilityDB.getFacilityId());
             facility.setTenantId(facilityDB.getTenantId());
-            facility.setFacilityName(facilityDB.getFacilityName());
+            facility.setFacilityCategory(facilityDB.getFacilityCategory());
             facility.setFacilityType(facilityDB.getFacilityType());
             facility.setFacilitySubtype(facilityDB.getFacilitySubtype());
+            facility.setFacilityName(facilityDB.getFacilityName());
             facility.setAddress(facilityDB.getAddress());
             facility.setFacilityDetails(facilityDB.getFacilityDetails());
             facility.setAdditionalDetails(facilityDB.getAdditionalDetails());
             facility.setIsOnmReady(facilityDB.getIsOnmReady());
-            facility.setPocName(facilityDB.getFacilityPocName());
-            facility.setPocEmail(facilityDB.getFacilityPocEmail());
-            facility.setFacilityPocUsername(facilityDB.getFacilityPocUsername());
-            facility.setHfrId(facilityDB.getHfrId());
-            facility.setNinId(facilityDB.getNinId());
-            facility.setUserId(facilityDB.getUserId());
-            facility.setStatus(facilityDB.getFacilityStatus());
-            facility.setIsActive(facilityDB.getIsActive());
-            facility.setPocContact(encryptedPocPhone);
+            facility.setSolarInstallationDate(facilityDB.getSolarInstallationDate());
+            facility.setRmsInstallationDate(facilityDB.getRmsInstallationDate());
+            facility.setSolarSystemCapacityKwp(facilityDB.getSolarSystemCapacityKwp());
 
-            FacilityUpdateRequest request = FacilityUpdateRequest.builder()
-                    .facilityUpdate(facility)
-                    .build();
-            log.info("Pushing encrypted facility_poc_phone for facilityId={}", facilityDB.getFacilityId());
+            // Plaintext number carried over as-is; the update push encrypts it before persisting.
+            facility.setPocContact(facilityDB.getFacilityPocPhone());
+
+            FacilityUpdateRequest request = FacilityUpdateRequest.builder().facilityUpdate(facility).build();
             facilityRepository.pushUpdateFacility(request);
         }
+
+        String summary = "Encrypted facility_poc_phone for " + facilities.size() + " facilities";
+        log.info(summary);
+        return summary;
     }
 
+    /**
+     * For encrypting a search criterion so it can be compared against the stored ciphertext (see
+     * {@code QueryBuilderUtil}). Write paths must not call this — {@link FacilityRepository} encrypts
+     * {@code facility_poc_phone} on every push.
+     */
     public String encryptMobileNumber(String mobileNumber){
-        String encryptedMobileNumber = null;
-        if(mobileNumber!=null && !mobileNumber.isBlank()){
-            EncryptObject object = EncryptObject.builder()
-                    .mobileNumber(mobileNumber)
-                    .build();
-            Map<String, EncryptObject> userMap = new HashMap<>();
-            userMap.put("userObject", object);
-            EncReqObject encReqObject = EncReqObject.builder()
-                    .tenantId(configs.getEncServiceTenantId())
-                    .type("Normal")
-                    .value(userMap)
-                    .build();
-            EncryptionRequest encryptionRequest = EncryptionRequest.builder()
-                    .encryptionRequests(List.of(encReqObject))
-                    .build();
-            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(encryptionRequest);
-            for (Map<String, EncryptObject> map : response) {
-                EncryptObject user = map.get("userObject"); // clé du JSON
-                if (user != null) {
-                    log.info("Mobile crypté : {}", user.getMobileNumber());
-                    encryptedMobileNumber = user.getMobileNumber();
-                }
-            }
-        }
-        return encryptedMobileNumber;
+        return pocPhoneCipher.encrypt(mobileNumber);
     }
 
     public String decryptMobileNumber(String mobileNumber){
-        String decryptedMobileNumber = null;
-        if(mobileNumber!=null && !mobileNumber.isBlank()){
-            EncryptObject object = EncryptObject.builder()
-                    .mobileNumber(mobileNumber)
-                    .build();
-            Map<String, EncryptObject> userMap = new HashMap<>();
-            userMap.put("userObject", object);
-            DecryptionRequest request = DecryptionRequest.builder()
-                    .decryptionRequests(List.of(userMap))
-                    .build();
-            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.decryptObject(request);
-            for (Map<String, EncryptObject> map : response) {
-                EncryptObject user = map.get("userObject"); // clé du JSON
-                if (user != null) {
-                    log.info("Mobile decrypté : {}", user.getMobileNumber());
-                    decryptedMobileNumber = user.getMobileNumber();
-                }
-            }
-        }
-        return decryptedMobileNumber;
+        return pocPhoneCipher.decrypt(mobileNumber);
     }
 
     public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {

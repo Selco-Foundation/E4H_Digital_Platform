@@ -15,14 +15,28 @@ public class UserAnalyticsConstants {
     public static final String USER_LOGIN_EVENT_TYPE = "USER_LOGIN";
 
     /**
+     * {@code event_type} published by im-services' KibanaLoginConsumer, which translates the raw
+     * Kibana audit log onto the shared topic. These carry {@code application=KIBANA} and no state or
+     * role — the accounts are Elasticsearch-native and have no egov user behind them.
+     */
+    public static final String KIBANA_LOGIN_EVENT_TYPE = "KIBANA_LOGIN";
+
+    /**
+     * {@code system_role} of the vendor acting on a ticket. The Saura eMitra event table counts every
+     * event this role produced as a vendor action, whatever the action itself was.
+     */
+    public static final String VENDOR_SYSTEM_ROLE = "COMPLAINT_RESOLVER";
+
+    /**
      * The three front-ends an event can originate from, in report column order. Any other value
      * found in the index is appended after these so a new application never silently disappears
      * from the report.
      */
-    public static final List<String> APPLICATIONS = List.of("SAURA_EMITRA", "FIELD_ASSIST", "MANAGEMENT_HUB");
+    public static final String SAURA_EMITRA = "SAURA_EMITRA";
+    public static final String FIELD_ASSIST = "FIELD_ASSIST";
+    public static final String MANAGEMENT_HUB = "MANAGEMENT_HUB";
 
-    /** Bucket key substituted for documents whose state / role / application is null. */
-    public static final String UNKNOWN = "UNKNOWN";
+    public static final List<String> APPLICATIONS = List.of(SAURA_EMITRA, FIELD_ASSIST, MANAGEMENT_HUB);
 
     /** Dimension key of the single all-up bucket, distinguishing it from a state or role name. */
     public static final String OVERALL = "OVERALL";
@@ -41,6 +55,16 @@ public class UserAnalyticsConstants {
      */
     public static final String AGG_BY_EVENT_TYPE = "by_event_type";
 
+    /**
+     * Events produced by {@link #VENDOR_SYSTEM_ROLE}, counted inside each state-and-application
+     * bucket. A {@code filter} rather than a {@code terms} — only the one role is reported on.
+     */
+    public static final String AGG_VENDOR_ACTIONS = "vendor_actions";
+
+    /** {@code KIBANA_LOGIN} filter and, nested under it, the per-username terms. */
+    public static final String AGG_KIBANA_LOGINS = "kibana_logins";
+    public static final String AGG_BY_USER_NAME = "by_user_name";
+
     public static final String AGG_CHAMPIONS_BY_ROLE = "champions_by_role";
     public static final String AGG_CHAMPIONS_BY_APPLICATION = "champions_by_application";
     /** The role / application {@code terms} nested inside a champions filter. */
@@ -56,8 +80,8 @@ public class UserAnalyticsConstants {
 
     public static final String SHEET_SUMMARY = "Summary";
     public static final String SHEET_BY_STATE = "By State";
-    public static final String SHEET_BY_ROLE = "By Role";
     public static final String SHEET_CHAMPIONS = "Top Champions";
+    public static final String SHEET_KIBANA_LOGINS = "Kibana Logins";
 
     public static final String XLSX_CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

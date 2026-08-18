@@ -42,6 +42,34 @@ class AssessmentServiceClient:
             response.raise_for_status()
         return response.json()
 
+    def check_include_availability(
+        self,
+        request_info: RequestInfo,
+        plan_id: str,
+        tenant_id: str,
+        facility_ids: List[str],
+    ) -> Dict[str, Any]:
+        url = (
+            f"{self.fieldplan_service_url}/field-planner/assessment/v1/internal/"
+            "plan/facility/_include-availability"
+        )
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "planId": plan_id,
+            "tenantId": tenant_id,
+            "facilityIds": facility_ids,
+        }
+        response = requests.post(url, headers=headers, json=payload)
+        if not response.ok:
+            logger.error(
+                "Assessment include-availability failed: status=%s body=%s",
+                response.status_code,
+                response.text,
+            )
+            response.raise_for_status()
+        return response.json()
+
     def search_assessment_plan(
         self, request_info: RequestInfo, plan_id: str, tenant_id: str = "in"
     ) -> Optional[Dict[str, Any]]:
@@ -92,21 +120,54 @@ class AssessmentServiceClient:
         headers = {"Content-Type": "application/json"}
         payload = {
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "planId": plan_id,
-            "filters": filters or {},
-            "exportAll": export_all,
-            "includeResponseSummary": include_response_summary,
+            "criteria": {
+                "planId": plan_id,
+                "filters": filters or {},
+                "exportAll": export_all,
+                "includeResponseSummary": include_response_summary,
+            },
         }
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         return response.json()
+
+    def search_assessment_plans_by_project(
+        self,
+        request_info: RequestInfo,
+        project_id: str,
+        tenant_id: str = "in",
+        limit: int = 500,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Return assessment plans (plan_type=ASSESSMENT) linked to the project."""
+        url = (
+            f"{self.fieldplan_service_url}/field-planner/assessment/v1/plan/_search"
+            f"?offset={offset}&limit={limit}"
+        )
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "criteria": {
+                "projectId": project_id,
+                "tenantId": tenant_id,
+            },
+        }
+        response = requests.post(url, headers=headers, json=payload)
+        if not response.ok:
+            logger.error(
+                "Assessment plan search failed: status=%s body=%s",
+                response.status_code,
+                response.text,
+            )
+            response.raise_for_status()
+        data = response.json()
+        return data.get("plans") or []
 
     def search_eligible_facilities(
         self,
         request_info: RequestInfo,
         project_id: str,
         tenant_id: str,
-        assessment_plan_ids: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         url = (
             f"{self.fieldplan_service_url}/field-planner/assessment/v1/internal/project/"
@@ -117,7 +178,7 @@ class AssessmentServiceClient:
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
             "projectId": project_id,
             "tenantId": tenant_id,
-            "assessmentPlanIds": assessment_plan_ids or [],
+            "assessmentPlanIds": [],
         }
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()

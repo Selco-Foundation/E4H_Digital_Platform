@@ -49,6 +49,13 @@ public class IMConstants {
     public static final String USER_LOGIN_EVENT_TYPE = "USER_LOGIN";
     public static final String USER_LOGIN_ENTITY_TYPE = "USER";
 
+    // Kibana login user-analytics event constants
+    public static final String KIBANA_LOGIN_EVENT_TYPE = "KIBANA_LOGIN";
+    public static final String KIBANA_APPLICATION = "KIBANA";
+    public static final String KIBANA_LOGIN_ENTITY_TYPE = "KIBANA_USER";
+    /** Value of the {@code event} field on the Kibana audit messages we translate. */
+    public static final String KIBANA_LOGIN_SOURCE_EVENT = "kibana_login";
+
     /**
      * Applications allowed to report a login. Kept as a regex so it can be used directly in the
      * {@code @Pattern} on {@code UserRequest.application} — the caller declares which front-end the
@@ -254,6 +261,9 @@ public class IMConstants {
     // NotificationService.getHRMSEmployee via IMUtils.extractStateBoundaryCode.
     public static final List<String> STATE_LEVEL_ROLES = Arrays.asList(
             ROLE_COMPLAINT_ASSESSOR);
+
+    // Placeholder indexed for a ticket that has never been assigned to a COMPLAINT_RESOLVER.
+    public static final String MAPPED_VENDOR_NOT_APPLICABLE = "Not Applicable";
 
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
 

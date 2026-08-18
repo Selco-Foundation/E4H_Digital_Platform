@@ -57,8 +57,6 @@ public class IncidentService {
             if (message instanceof ConsumerRecord<?, ?> record) {
                 Object recordValue = record.value();
                 IncidentRequest request = null;
-                String mappedVendorName = null;
-                String mappedVendorUserName = null;
 
                 if (recordValue instanceof Map<?, ?> map) {
                     // Try it first as IncidentRequestWrapper
@@ -68,8 +66,6 @@ public class IncidentService {
                         log.info("Message is IncidentRequestWrapper");
 
                         request = wrapper.getIncidentRequest();
-                        mappedVendorName = wrapper.getIndexView().getMappedVendorName();
-                        mappedVendorUserName = wrapper.getIndexView().getMappedVendorUserName();
                     } else {
                         // Otherwise, it's a process-audit-records
                         log.info("Message is Map<String,Object>");
@@ -90,7 +86,7 @@ public class IncidentService {
 
                 if (request == null || request.getIncident() == null) return;
 
-                processIncident(request, mappedVendorName, mappedVendorUserName);
+                processIncident(request);
             }
             else{
                 log.info("Received message is not a consumer object: {}", message);
@@ -101,7 +97,7 @@ public class IncidentService {
         }
     }
 
-    private void processIncident(IncidentRequest request, String mappedVendorName, String mappedVendorUserName) {
+    private void processIncident(IncidentRequest request) {
         String tenantId = request.getIncident().getTenantId();
         String boundaryCode = request.getIncident().getBoundaryCode();
         String facilityId = extractAndEncodeFacilityCode(boundaryCode);
@@ -146,20 +142,15 @@ public class IncidentService {
                         incidentStatusAgregation.setBoundary(boundary);
                         incidentStatusAgregation.setTenantIdLocalized((String) data.get("tenantId_localized"));
                         incidentStatusAgregation.setGeoPoint(parseGeoPoint(data.get("geo-point")));
+                        // The facility's mapped vendor is owned by the facility registry, not by the ticket
+                        // flow. This is a full-document re-index, so copy the already-indexed value straight
+                        // through instead of deriving it from the incident wrapper.
                         incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
                         incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
                         // Resolve projectName from the project service so it is preserved on this full-document
                         // re-index; fall back to the value already indexed when the lookup yields nothing.
                         incidentStatusAgregation.setProjectName(resolveProjectName(
                                 tenantId, (String) data.get("facilityId"), (String) data.get("projectName")));
-
-                        // fields coming only from the wrapper
-                        if (mappedVendorName != null) {
-                            incidentStatusAgregation.setMappedVendorName(mappedVendorName);
-                        }
-                        if (mappedVendorUserName != null) {
-                            incidentStatusAgregation.setMappedVendorUserName(mappedVendorUserName);
-                        }
 
                         log.info("Tickets sent to kafka {}", incidentStatusAgregation);
                         producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
