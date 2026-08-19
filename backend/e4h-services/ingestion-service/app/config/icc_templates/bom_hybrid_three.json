@@ -29,6 +29,10 @@
             [
               { "text": "PO/WO Number: {{po_wo_number}}" },
               { "text": "Block: {{project_block}}" }
+            ],
+            [
+              { "text": "Health Facility Type: {{health_facility_type}}" },
+              { "text": "" }
             ]
           ]
         },
@@ -610,8 +614,8 @@
               "20",
               "Power Cable - 2 (Red)",
               "{{ power_cable_2_red_description }} : {{power_cable_2_red_make}}",
-              "{{ power_cable_2_black_capacity }}",
-              "{{ power_cable_2_black_qty }}"
+              "{{ power_cable_2_red_capacity }}",
+              "{{ power_cable_2_red_qty }}"
             ],
             [
               "21",
@@ -1552,6 +1556,30 @@
                 "text": "Isolator(Load ACDB) R Voltage in OFF position (Volts):"
               },
               { "text": "{{ isolator_load_acdb_r_off_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) Y Voltage in ON position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_y_on_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) Y Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_y_off_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) B Voltage in ON position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_b_on_v }}" }
+            ],
+            [
+              {
+                "text": "Isolator(Load ACDB) B Voltage in OFF position (Volts):"
+              },
+              { "text": "{{ isolator_load_acdb_b_off_v }}" }
             ],
             [
               { "text": "Main MCB(Load ACDB) Voltage in ON position (Volts):" },

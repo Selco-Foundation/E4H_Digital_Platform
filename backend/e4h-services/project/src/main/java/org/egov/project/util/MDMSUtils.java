@@ -17,9 +17,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import static org.egov.project.util.ProjectConstants.*;
 
@@ -51,6 +53,60 @@ public class MDMSUtils {
         }
         log.trace("Exiting mDMSCall");
         return result;
+    }
+
+    /**
+     * Generic MDMS v1 fetch for a single module. Returns the records of {@code masterName} as a
+     * list of raw maps, or an empty list when the master is missing or the call fails — callers
+     * (analytics) are best-effort and must not break the flow they hang off.
+     * <p>
+     * The tenant is reduced to its state prefix, as MDMS masters are state-level.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> fetchMasterData(RequestInfo requestInfo, String tenantId,
+                                                     String moduleName, String masterName) {
+        try {
+            MasterDetail masterDetail = MasterDetail.builder().name(masterName).build();
+            ModuleDetail moduleDetail = ModuleDetail.builder()
+                    .moduleName(moduleName)
+                    .masterDetails(Collections.singletonList(masterDetail))
+                    .build();
+            MdmsCriteria mdmsCriteria = MdmsCriteria.builder()
+                    .tenantId(tenantId.split("\\.")[0])
+                    .moduleDetails(Collections.singletonList(moduleDetail))
+                    .build();
+            MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder()
+                    .mdmsCriteria(mdmsCriteria)
+                    .requestInfo(requestInfo)
+                    .build();
+
+            Object response = serviceRequestRepository.fetchResult(
+                    getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            Object mdmsRes = (response instanceof Map)
+                    ? ((Map<String, Object>) response).get("MdmsRes") : null;
+            if (!(mdmsRes instanceof Map)) {
+                return Collections.emptyList();
+            }
+            Object module = ((Map<String, Object>) mdmsRes).get(moduleName);
+            if (!(module instanceof Map)) {
+                return Collections.emptyList();
+            }
+            Object master = ((Map<String, Object>) module).get(masterName);
+            if (!(master instanceof List)) {
+                return Collections.emptyList();
+            }
+            List<Map<String, Object>> records = new ArrayList<>();
+            for (Object entry : (List<?>) master) {
+                if (entry instanceof Map) {
+                    records.add((Map<String, Object>) entry);
+                }
+            }
+            return records;
+        } catch (Exception e) {
+            log.warn("Failed to fetch MDMS master {}.{} for tenant {}: {}", moduleName, masterName, tenantId,
+                    e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     public MdmsCriteriaReq getMDMSRequest(RequestInfo requestInfo, String tenantId, ProjectRequest request) {

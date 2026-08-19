@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -15,4 +17,5 @@ public class CarbonEmissionKafkaMessage {
     private String tenantId;
     private Integer month;
     private Integer year;
+    private List<String> facilityIds;
 }

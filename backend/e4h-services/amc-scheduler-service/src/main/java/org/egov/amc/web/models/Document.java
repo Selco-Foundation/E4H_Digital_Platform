@@ -48,6 +48,9 @@ public class Document {
         @JsonProperty("additionalDetails")
         private Object additionalDetails = null;
 
+        @JsonProperty("geoLocation")
+        private GeoLocation geoLocation = null;
+
         @Size(max=64)
         @JsonProperty("status")
         private String status = null;

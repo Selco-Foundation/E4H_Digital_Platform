@@ -112,6 +112,20 @@ public class ScheduledVisitController {
         return new ResponseEntity<ScheduledVisitResponse>(visitResponse, HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/amc-summary/_search", method = RequestMethod.POST)
+    public ResponseEntity<FacilityAmcSummaryResponse> searchAmcSummary(
+            @ApiParam(value = "List of facilityIds to build the AMC visit summary for.", required = true) @Valid @RequestBody ScheduledVisitSearchRequest request,
+            @Valid @ModelAttribute URLParams urlParams
+    ) {
+        List<FacilityAmcSummary> facilitiesAmcSummary = scheduledVisitService.getFacilityAmcSummary(request, urlParams.getTenantId());
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        FacilityAmcSummaryResponse response = FacilityAmcSummaryResponse.builder()
+                .responseInfo(responseInfo)
+                .facilitiesAmcSummary(facilitiesAmcSummary)
+                .build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @RequestMapping(value = "/_resend_otp", method = RequestMethod.POST)
     public ResponseEntity<OtpResponse> resendOTP(@ApiParam(value = "Capture details of scheduled visit.", required = true) @Valid @RequestBody ResendOTPRequest request) {
         OtpResponse otpResponse = scheduledVisitService.resendOTP(request);

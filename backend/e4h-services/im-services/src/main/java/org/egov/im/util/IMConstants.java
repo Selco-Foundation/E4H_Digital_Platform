@@ -34,6 +34,31 @@ public class IMConstants {
 
     public static final String MDMS_MODULE_NAME = "Incident";
 
+    // SEM user-analytics MDMS
+    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
+    public static final String MDMS_MASTER_SEM = "SEM";
+    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
+    public static final String SEM_JSONPATH = "$.MdmsRes." + USER_ANALYTICS_MODULE + "." + MDMS_MASTER_SEM;
+    public static final String USER_TYPE_JSONPATH = "$.MdmsRes." + USER_ANALYTICS_MODULE + "." + MDMS_MASTER_USER_TYPE;
+
+    // SEM event constants
+    public static final String SEM_APPLICATION = "SAURA_EMITRA";
+    public static final String SEM_ENTITY_TYPE = "TICKET";
+
+    // Login user-analytics event constants
+    public static final String USER_LOGIN_EVENT_TYPE = "USER_LOGIN";
+    public static final String USER_LOGIN_ENTITY_TYPE = "USER";
+
+    /**
+     * Applications allowed to report a login. Kept as a regex so it can be used directly in the
+     * {@code @Pattern} on {@code UserRequest.application} — the caller declares which front-end the
+     * login came from, and the value is written to the shared user-analytics-report index as-is.
+     */
+    public static final String APPLICATION_PATTERN = "SAURA_EMITRA|FIELD_ASSIST|MANAGEMENT_HUB";
+
+    // Localization module holding the Boundary_* codes used to resolve the localized state name
+    public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
+
     public static final String MDMS_SERVICEDEF_SEARCH = "$.MdmsRes.Incident.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')]";
 
     public static final String MDMS_DEPARTMENT_SEARCH = "$.MdmsRes.RAINMAKER-im.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')].department";

@@ -1,4 +1,4 @@
-import { POPULATE_RESPONSE, POPULATE_WORKING_FACILITY, POPULATE_WORKING_ACTIVITY } from "../../constants/ReduxActions";
+import { POPULATE_RESPONSE, POPULATE_WORKING_FACILITY, POPULATE_WORKING_ACTIVITY, POPULATE_WORKING_ASSESSMENT } from "../../constants/ReduxActions";
 
 const populateWorkingFacility = (facility) => (dispatch) => {
   dispatch({
@@ -21,4 +21,11 @@ const populateWorkingActivity = (facility) => (dispatch) => {
   });
 };
 
-export { populateWorkingFacility, populateWorkingActivity, populateResponsePage };
+const populateWorkingAssessment = (assessment) => (dispatch) => {
+  dispatch({
+    type: POPULATE_WORKING_ASSESSMENT,
+    payload: assessment,
+  });
+};
+
+export { populateWorkingFacility, populateWorkingActivity, populateWorkingAssessment, populateResponsePage };

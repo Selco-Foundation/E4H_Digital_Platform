@@ -12,5 +12,6 @@ public class VisitReportDocument {
     private String fileStoreId;
     private String fileName;
     private Map<String, Object> additionalDetails;
+    private GeoLocation geoLocation;
 }
 

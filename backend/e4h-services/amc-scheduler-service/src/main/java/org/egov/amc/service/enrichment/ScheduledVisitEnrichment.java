@@ -41,6 +41,8 @@ public class ScheduledVisitEnrichment {
         log.trace("Entering enrichScheduledVisitRequestOnCreate method");
         scheduledVisit.setId(UUID.randomUUID().toString());
         log.debug("Generated scheduled visit ID: {}", scheduledVisit.getId());
+        // Always server-controlled: a client cannot create an already soft-deleted visit.
+        scheduledVisit.setIsActive(Boolean.TRUE);
         if (scheduledVisit.getStatus()==null || scheduledVisit.getStatus().isEmpty()) {
             scheduledVisit.setStatus("DRAFT");
             log.debug("Set default status DRAFT for scheduled visit ID: {}", scheduledVisit.getId());

@@ -53,13 +53,15 @@ public class ActivityService {
 
     private final AmcSchedulerService amcSchedulerService;
 
+    private final ActivityAnalyticsService activityAnalyticsService;
+
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
 
     @Autowired
     public ActivityService(
             ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService) {
+            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityFacilityRepository = activityFacilityRepository;
@@ -74,6 +76,7 @@ public class ActivityService {
             this.activityAssignmentRepository = activityAssignmentRepository;
             this.boundaryUtil = boundaryUtil;
             this.amcSchedulerService = amcSchedulerService;
+            this.activityAnalyticsService = activityAnalyticsService;
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
@@ -192,6 +195,10 @@ public class ActivityService {
             log.debug("Pushing activity assignments to topic: {}", activityConfiguration.getCreateActivityAssignmentTopic());
             producer.push(activityConfiguration.getCreateActivityAssignmentTopic(), request);
             log.info("Successfully created {} activity assignments", assignmentCount);
+
+            // One analytics event per staffing row, after the persister push so a failed create
+            // publishes nothing (best-effort, never throws).
+            activityAnalyticsService.publishAssignmentEvents(request.getRequestInfo(), activityAssignments);
         } catch (Exception exception) {
             log.error("Error occurred while creating activity assignments, count: {}", assignmentCount, exception);
         }
@@ -397,6 +404,16 @@ public class ActivityService {
     }
 
     public FacilityStatusWrapper updateFacilityWorkflow(FacilityWorkflowRequest request) throws Exception {
+        return updateFacilityWorkflow(request, activityAnalyticsService.newContext());
+    }
+
+    /**
+     * @param analyticsContext memo for the analytics MDMS + localization lookups, shared across a
+     *                         whole bulk workflow update so those calls are made once per request
+     *                         rather than once per activity facility
+     */
+    private FacilityStatusWrapper updateFacilityWorkflow(FacilityWorkflowRequest request,
+                                                         ActivityAnalyticsService.AnalyticsContext analyticsContext) throws Exception {
         log.trace("updateFacilityWorkflow method invoked for activityFacilityId: {}", request.getActivityFacilityId());
         log.info("Updating workflow for activity facility: {}, action: {}", request.getActivityFacilityId(), request.getWorkflow().getAction());
         // 1. Fetch the existing facility
@@ -420,6 +437,9 @@ public class ActivityService {
         }
 
         ActivityFacility existingActivityFacitlity = activityFacilities.get(0);
+        // Captured before step 3 overwrites it with the post-transition state: analytics needs the
+        // state the action fired FROM to tell a submission apart from a re-submission.
+        String priorStatus = existingActivityFacitlity.getStatus();
 
         // 2. Call workflow transition
         ProcessInstance updatedWorkflow;
@@ -488,6 +508,13 @@ public class ActivityService {
                 addFacilityToComplaintResolverJurisdiction(existingActivityFacitlity, request.getRequestInfo());
             }
         }
+
+        // Step 11: One analytics event per transition — installation report submitted / re-submitted /
+        // approved / rejected / flagged, driven by the action + priorStatus (best-effort, never
+        // throws). Sits here rather than in the controller so the bulk endpoint, which loops over
+        // this method, is instrumented too.
+        activityAnalyticsService.publishWorkflowEvent(request.getRequestInfo(), existingActivityFacitlity,
+                request.getWorkflow().getAction(), priorStatus, analyticsContext);
 
         log.info("Workflow update completed for activity facility: {}, new status: {}", request.getActivityFacilityId(), updatedWorkflow.getState().getState());
         return new FacilityStatusWrapper(updatedActivityFacility, updatedWorkflow.getState().getState(), null, null);
@@ -702,6 +729,9 @@ public class ActivityService {
         log.info("Starting bulk workflow update for {} activity facilities", activityFacilityIds.size());
         List<String> failedActivityFacilityIDs = new ArrayList<>();
         List<String> succeededActivityFacilityIDs = new ArrayList<>();
+        // One analytics memo for the whole batch: the MDMS masters are fetched once and each state
+        // is localized once, instead of once per activity facility in the loop below.
+        ActivityAnalyticsService.AnalyticsContext analyticsContext = activityAnalyticsService.newContext();
         for (String activityFacilityId : activityFacilityIds) {
             try {
                 log.trace("Processing workflow update for activity facility: {}", activityFacilityId);
@@ -711,7 +741,7 @@ public class ActivityService {
                         .workflow(facilityBulkApproveRequest.getWorkflow())
                         .build();
 
-                FacilityStatusWrapper updatedProject = updateFacilityWorkflow(workflowRequest);
+                FacilityStatusWrapper updatedProject = updateFacilityWorkflow(workflowRequest, analyticsContext);
                 log.debug("Successfully updated workflow for activity facility: {}", activityFacilityId);
                 succeededActivityFacilityIDs.add(activityFacilityId);
             } catch (Exception e) {

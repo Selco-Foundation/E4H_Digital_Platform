@@ -326,6 +326,18 @@ export const CitizenSideBar = ({
           userProfile();
           toggleSidebar();
           break;
+        case "privacyPolicy":
+          history.push(`/${window?.contextPath}/privacy-policy`);
+          toggleSidebar();
+          break;
+        case "termsOfUse":
+          history.push(`/${window?.contextPath}/terms-of-use`);
+          toggleSidebar();
+          break;
+        case "logout":
+          onLogout();
+          toggleSidebar();
+          break;
         case "language":
           handleChangeLanguage(item);
           toggleSidebar();
@@ -370,38 +382,36 @@ export const CitizenSideBar = ({
 
   const hamburgerItems = [
     {
-      label: "HOME",
-      value: "HOME",
-      icon: "Home",
-      // children: transformedSelectedCityData?.length>0 ? transformedSelectedCityData : undefined,
-      type: "custom",
-      key: "home",
-    },
-    {
-      label: city,
-      value: city,
-      children: transformedSelectedCityData?.length > 0 ? transformedSelectedCityData : undefined,
-      type: "custom",
-      icon: "LocationCity",
-      key: "city",
-    },
-    {
-      label: t("Language"),
-      children: transformedLanguageData?.length > 0 ? transformedLanguageData : undefined,
-      type: "custom",
-      icon: "Language",
-      key: "language",
-    },
-    {
       label: t("EDIT_PROFILE"),
       type: "custom",
       icon: "Edit",
       key: "editProfile",
     },
     {
-      label: t("Modules"),
-      icon: "DriveFileMove",
-      children: transformedMenuItems,
+      label: t("Privacy & Terms"),
+      type: "custom",
+      icon: "Description",
+      key: "privacyTerms",
+      children: [
+        {
+          label: t("ES_PRIVACY_POLICY"),
+          type: "custom",
+          icon: "Description",
+          key: "privacyPolicy",
+        },
+        {
+          label: t("ES_TERMS_OF_USE"),
+          type: "custom",
+          icon: "Description",
+          key: "termsOfUse",
+        },
+      ],
+    },
+    {
+      label: t("CORE_COMMON_LOGOUT"),
+      type: "custom",
+      icon: "Logout",
+      key: "logout",
     },
   ];
   return isMobile ? (
@@ -412,7 +422,6 @@ export const CitizenSideBar = ({
       theme="dark"
       transitionDuration={0.3}
       styles={{ marginTop: "64px", height: "93%" }}
-      onLogout={onLogout}
       hideUserManuals={true}
       profile={profilePic ? profilePic : undefined}
       isSearchable={true}

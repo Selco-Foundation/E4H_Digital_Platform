@@ -47,6 +47,8 @@ public class AmcConfigurationEnrichment {
         log.trace("Entering enrichAmcConfigurationRequestOnCreate method");
         amcConfiguration.setId(UUID.randomUUID().toString());
         log.debug("Generated AMC configuration ID: {}", amcConfiguration.getId());
+        // Always server-controlled: a client cannot create an already soft-deleted configuration.
+        amcConfiguration.setIsActive(Boolean.TRUE);
         enrichUserAssignmentOnCreate(amcConfiguration, requestInfo);
         AuditDetails auditDetails = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         amcConfiguration.setAuditDetails(auditDetails);

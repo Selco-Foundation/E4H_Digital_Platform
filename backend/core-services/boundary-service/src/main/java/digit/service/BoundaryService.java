@@ -36,16 +36,19 @@ public class BoundaryService {
     private final BoundaryRepositoryImpl repository;
     private HierarchyUtil hierarchyUtil;
     private final BoundaryRelationshipRepository boundaryRelationshipRepository;
+    private final BoundaryAnalyticsService boundaryAnalyticsService;
 
     public BoundaryService(BoundaryEntityValidator boundaryEntityValidator , ResponseUtil responseUtil,
                            BoundaryRepositoryImpl repository, HierarchyUtil hierarchyUtil,
-                           BoundaryRelationshipRepository boundaryRelationshipRepository) {
+                           BoundaryRelationshipRepository boundaryRelationshipRepository,
+                           BoundaryAnalyticsService boundaryAnalyticsService) {
 
         this.boundaryEntityValidator = boundaryEntityValidator;
         this.responseUtil = responseUtil;
         this.repository = repository;
         this.hierarchyUtil = hierarchyUtil;
         this.boundaryRelationshipRepository = boundaryRelationshipRepository;
+        this.boundaryAnalyticsService = boundaryAnalyticsService;
     }
 
     /**
@@ -81,6 +84,11 @@ public class BoundaryService {
         log.info("Persisting boundaries to database");
         repository.create(boundaryRequest);
         log.info("Boundary creation process completed successfully, created {} boundaries", boundaryCount);
+
+        // One BOUNDARY_CREATE analytics event for this request (best-effort, never throws). Published
+        // here rather than before the return so a failing MDMS StateInfo sync below cannot lose it —
+        // the boundaries are already persisted at this point.
+        boundaryAnalyticsService.publishCreateEvent(boundaryRequest);
 
         // Check if new state code code or state boundary code already exist in MDMS common-master.StateInfo module. Only call for state
         boolean isValidSateCode = boundaryEntityValidator.validateStateCode(boundaryRequest);

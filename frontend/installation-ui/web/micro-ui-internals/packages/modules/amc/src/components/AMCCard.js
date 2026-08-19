@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
+import { ListAlt, RateReview } from "@egovernments/digit-ui-svg-components";
 import CustomMenuIcon from "./Custom/CustomMenuIcon";
-import CustomArrowRight from "./Custom/CustomArrowRight";
 
 const AMCCard = () => {
   const history = useHistory();
@@ -16,8 +16,14 @@ const AMCCard = () => {
 
   const userType = "employee";
 
-  const handleClick = () => {
+  // Existing project hierarchy view.
+  const handleProjectLevelView = () => {
     history.push(`/${window?.contextPath}/employee/amc/inbox`);
+  };
+
+  // New direct report listing view.
+  const handleReportLevelView = () => {
+    history.push(`/${window?.contextPath}/employee/amc/reports`);
   };
 
   return (
@@ -64,7 +70,7 @@ const AMCCard = () => {
       </div>
       <div
         style={{
-          marginBottom: "10px",
+          marginBottom: "24px",
           fontFamily: "Roboto",
           fontWeight: 400,
           fontSize: "16px",
@@ -78,35 +84,41 @@ const AMCCard = () => {
       <button
         type="button"
         style={{
-          width: 116,
-          height: 32,
           display: "flex",
           gap: "8px",
-          justifyContent: "center",
           alignItems: "center",
-          paddingTop: "8px",
-          paddingRight: "20px",
-          paddingBottom: "8px",
-          paddingLeft: "20px",
-          background: "#C84C0E",
-          color: "white",
+          color: "#C84C0E",
           cursor: "pointer",
-          position: "absolute",
-          bottom: "24px",
+          marginBottom: "15px",
+          fontSize: "16px",
+          fontWeight: "500",
+          fontFamily: "Roboto",
+          background: "transparent",
           border: "none",
         }}
-        onClick={handleClick}
+        onClick={handleProjectLevelView}
       >
-        <span
-          style={{
-            fontFamily: "Roboto",
-            fontWeight: "500",
-            fontSize: "16px",
-          }}
-        >
-          {t("CORE_COMMON_VIEW")}
-        </span>
-        <CustomArrowRight color={"white"} height={"14px"} width={"14px"} />
+        <ListAlt />
+        <span>{t("PROJECT_VIEW")}</span>
+      </button>
+      <button
+        type="button"
+        style={{
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
+          color: "#C84C0E",
+          cursor: "pointer",
+          fontSize: "16px",
+          fontWeight: "500",
+          fontFamily: "Roboto",
+          background: "transparent",
+          border: "none",
+        }}
+        onClick={handleReportLevelView}
+      >
+        <RateReview />
+        <span>{t("REPORT_VIEW")}</span>
       </button>
     </div>
   );

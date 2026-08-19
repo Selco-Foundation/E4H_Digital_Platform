@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.model.co2.MonthlyConsumptionData;
 import org.egov.rms.model.co2.MonthlyConsumptionRequest;
-import org.egov.rms.repository.CenterIdMappingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -23,7 +21,7 @@ import java.util.Optional;
 public class Co2ElmeasureConsumptionService {
 
     private final DashboardApiClient dashboardApiClient;
-    private final CenterIdMappingRepository centerIdMappingRepository;
+    private final CenterIdResolverService centerIdResolverService;
 
     public List<MonthlyConsumptionData> fetchMonthlyBatch(List<MonthlyConsumptionRequest> requests) {
         if (requests == null || requests.isEmpty()) {
@@ -50,7 +48,8 @@ public class Co2ElmeasureConsumptionService {
         for (MonthlyConsumptionRequest req : requests) {
             String centerId = resolveCenterId(req);
             if (!StringUtils.hasText(centerId)) {
-                log.warn("No centerId for facilityId={} hfrId={}", req.getFacilityId(), req.getHfrId());
+                log.warn("No centerId for facilityId={} hfrId={} ninId={} facilityName={}",
+                        req.getFacilityId(), req.getHfrId(), req.getNinId(), req.getFacilityName());
                 results.add(empty(req, "CENTER_NOT_MAPPED"));
                 continue;
             }
@@ -172,16 +171,9 @@ public class Co2ElmeasureConsumptionService {
     }
 
     private String resolveCenterId(MonthlyConsumptionRequest req) {
-        if (StringUtils.hasText(req.getCenterId())) {
-            return req.getCenterId().trim();
-        }
-        if (StringUtils.hasText(req.getHfrId())) {
-            Optional<String> center = centerIdMappingRepository.findCenterIdByHfrId(req.getHfrId().trim());
-            if (center.isPresent()) {
-                return center.get();
-            }
-        }
-        return null;
+        return centerIdResolverService
+                .resolveCenterId(req.getCenterId(), req.getHfrId(), req.getNinId(), req.getFacilityName())
+                .orElse(null);
     }
 
     private MonthlyConsumptionData empty(MonthlyConsumptionRequest req, String source) {

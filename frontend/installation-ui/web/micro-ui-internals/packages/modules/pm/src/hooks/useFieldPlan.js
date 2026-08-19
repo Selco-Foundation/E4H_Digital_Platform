@@ -12,10 +12,12 @@ const fetchProject = async (filter, limit, offset) => {
 
 const useFieldPlan = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, sortDir = "DESC") => {
 
-  const { tenantId, ids, projectIds } = queryFilter;
+  const { tenantId, ids, projectIds, name } = queryFilter;
 
   const filter = {
-    FieldPlans : {}
+    FieldPlans : {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+    }
   };
 
   if (tenantId) {
@@ -28,6 +30,10 @@ const useFieldPlan = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, s
 
   if (projectIds?.length) {
     filter.FieldPlans.projectIds = projectIds;
+  }
+
+  if (name) {
+    filter.FieldPlans.name = name;
   }
 
   const queryClient = useQueryClient();

@@ -41,7 +41,9 @@ public class RmsConsumptionClient {
             for (YearMonth ym : months) {
                 Map<String, Object> req = new HashMap<>();
                 req.put("facilityId", f.getFacilityId());
+                req.put("facilityName", f.getFacilityName());
                 req.put("hfrId", f.getHfrId());
+                req.put("ninId", f.getNinId());
                 req.put("month", ym.getMonthValue());
                 req.put("year", ym.getYear());
                 requests.add(req);

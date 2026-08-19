@@ -51,9 +51,11 @@ const ChangeCity = (prop) => {
 
   const handleChangeCity = (city) => {
     setDropDownData(city);
-    Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", city.type === "UNIFIED" ? jurisdictionBoundaries : {
+    const currentBoundary = city.type === "UNIFIED" ? jurisdictionBoundaries : {
       [city.type]: city.code.split(","),
-    })
+    };
+    Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", currentBoundary);
+    localStorage.setItem("Jurisdiction.CurrentBoundary", JSON.stringify(currentBoundary));
     if (window.location.href.includes(`/${window.contextPath}/employee/`)) {
       const redirectPath = location.state?.from || `/${window.contextPath}/employee`;
       history.replace(redirectPath);

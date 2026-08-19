@@ -74,9 +74,9 @@ Monthly CronJOB that pushes a trigger message into `carbon-emission-calculate` t
 ==get elmeasure's monthly data update time==
 # Emission Calculation
 
-`carbon-emission-calculate` topic is consumed in `im-services-analytics` service and will fetch facilities marked for carbon emissions avoided visibility from MDMS.
+`carbon-emission-calculate` topic is consumed in `im-services-analytics` service and fetches **all active facilities** from the facility registry via paginated `POST /facility-service/v2/facility/_bulk-search` (ordered by `created_at` ASC, page size `co2.batch.facility.size`).
 
-In the future, all facilities are treated as marked for visibility then the facilities are to be fetched in batches, paginated and ordered by created time asc.
+Facilities missing `solarInstallationDate` or `solarSystemCapacityKwp` are skipped during processing.
 
 fetch the projectIds and projectNames given a list of facility IDs; enhance project service to add `POST /v1/fetchProjectsByFacilities` endpoint that will execute a sql query to fetch this data ( no additional api calls to field-planner or field-planner-activity requried)
 
@@ -93,7 +93,7 @@ for every facility processed:
 use redis if any fetched data is to be used across multiple facilities
 # Facility module changes
 
-- enhance facility search if required for paginated fetch
+- enhance facility search if required for paginated fetch — **done** (CO2 batch uses paginated `_bulk-search`)
 - allow search by list of facility IDs
 - add the fields solarInstallationDate, rmsInstallationDate and solarSystemCapacityKwp (`solar_system_capacity_kwp`) to the facility table
 - archetype_lookup v2 final: seven MDMS facility types per state (no Unknown, no SC/HWC combined row)

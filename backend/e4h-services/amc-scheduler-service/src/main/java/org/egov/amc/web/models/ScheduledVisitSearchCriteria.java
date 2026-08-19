@@ -23,6 +23,12 @@ public class ScheduledVisitSearchCriteria {
     private List<Integer> visitNumbers;
     private List<String> assignedUsers;
     private String facilityName;
+    private List<String> vendorIds;
+    private List<String> states;      // boundary code strings, e.g. "India_Karnataka"
+    private List<String> districts;   // boundary code strings
+    private List<String> blocks;      // boundary code strings
+    private Boolean delayed;
+//    private Boolean rejected;
     @JsonProperty("sort_direction")
     private String sortDirection;
     private Boolean includeExpired;

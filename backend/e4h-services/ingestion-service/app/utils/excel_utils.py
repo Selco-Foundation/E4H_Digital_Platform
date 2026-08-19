@@ -120,7 +120,7 @@ def add_dropdowns_to_excel(
         file_path: str,
         sheet_name: str,
         dropdowns: Dict[str, List[str]],
-        allow_blank_map: Optional[Dict[str, bool]],
+        allow_blank_map: Optional[Dict[str, bool]] = None,
         max_extra_rows: int = 1000
 ):
     logger.trace(f"Adding dropdowns to Excel: file={file_path}, sheet={sheet_name}")

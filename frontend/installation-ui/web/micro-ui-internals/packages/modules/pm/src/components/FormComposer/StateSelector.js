@@ -1,5 +1,5 @@
-import React, {useEffect, useMemo, useState} from "react";
-import {Dropdown, CustomDropdown} from "@egovernments/digit-ui-react-components";
+import React, {useEffect, useMemo, useRef, useState} from "react";
+import {CustomDropdown} from "@egovernments/digit-ui-react-components";
 
 const StateSelector = ({
   data = {},
@@ -8,25 +8,42 @@ const StateSelector = ({
 }) => {
 
   const { t, name, boundaryData, disable } = props;
-  const [stateMenu, setStateMenu] = useState([]);
-  const [selectedState, setSelectedState] = useState(data[name]);
-
-  useEffect(() => {
-    setValue(name, selectedState);
-  }, [name, selectedState]);
-
-  useEffect(() => {
-    if (boundaryData) {
-      setStateMenu(
-        boundaryData.states?.map((state) => ({
-          ...state,
-          name: t(`Boundary_${state.code}`),
-        }))
-      );
+  const [selectedState, setSelectedState] = useState(data?.[name]);
+  const hasAppliedInitialValue = useRef(!!data?.[name]);
+  const hasUserCleared = useRef(false);
+  const stateMenu = useMemo(
+    () => boundaryData?.states?.map((state) => ({
+      ...state,
+      name: t(`Boundary_${state.code}`),
+    })) || [],
+    [t, boundaryData]
+  );
+  const displayState = useMemo(() => {
+    if (!selectedState?.code) {
+      return selectedState;
     }
-  }, [t, boundaryData]);
+
+    return stateMenu.find((option) => option.code === selectedState.code) || {
+      ...selectedState,
+      name: selectedState.name || t(`Boundary_${selectedState.code}`),
+    };
+  }, [selectedState, stateMenu, t]);
+
+  useEffect(() => {
+    if (hasAppliedInitialValue.current || hasUserCleared.current || selectedState || !data?.[name]) {
+      return;
+    }
+
+    hasAppliedInitialValue.current = true;
+    setSelectedState(data[name]);
+  }, [data, name, selectedState]);
+
+  useEffect(() => {
+    setValue(name, displayState);
+  }, [name, displayState, setValue]);
 
   const handleStateSelection = (state) => {
+    hasUserCleared.current = !state;
     setSelectedState(state);
   }
 
@@ -36,7 +53,7 @@ const StateSelector = ({
         disable={disable}
         t={t}
         onChange={handleStateSelection}
-        value={selectedState}
+        value={displayState}
         config={{
           name: "state",
           options: stateMenu,

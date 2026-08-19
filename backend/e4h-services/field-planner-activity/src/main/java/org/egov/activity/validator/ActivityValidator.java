@@ -174,6 +174,11 @@ public class ActivityValidator {
         if (CollectionUtils.isEmpty(activityAssignments) || activityAssignments.size() <= 1) {
             return;
         }
+        // Field plan: pocNumber is a shared purchase order (PUR-ORD-...).
+        // Assessment: pocNumber is each assessor's mobile — may differ per role.
+        if (activityAssignments.stream().allMatch(ActivityValidator::isAssessmentAssignment)) {
+            return;
+        }
         String firstPocNumber = activityAssignments.get(0).getPocNumber();
         boolean allSame = activityAssignments.stream()
                 .allMatch(assignment -> Objects.equals(firstPocNumber, assignment.getPocNumber()));
@@ -181,6 +186,11 @@ public class ActivityValidator {
             log.error("All ActivityAssignment pocNumber values must be identical in the request");
             throw new CustomException("POC_NUMBER", "All PO number values must be identical");
         }
+    }
+
+    private static boolean isAssessmentAssignment(ActivityAssignment assignment) {
+        return "ASSESSMENT".equalsIgnoreCase(assignment.getActivityCode())
+                || "ASSESSMENT".equalsIgnoreCase(assignment.getActivityId());
     }
 
     private void validateUpdateActivityAssignmentRequest(ActivityAssignmentBulkRequest request) {

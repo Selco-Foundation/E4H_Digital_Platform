@@ -394,14 +394,14 @@ public class FieldPlannerValidator {
             log.error(TENANT_ID_IS_MANDATORY_IN_FIELDPLAN_REQUEST_BODY);
             throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
-        if ((fieldPlan.getIds()==null || fieldPlan.getIds().isEmpty()) && (fieldPlan.getProjectId()==null || fieldPlan.getProjectId().isEmpty())
-                && (fieldPlan.getStatuses()==null || fieldPlan.getStatuses().isEmpty())
-                && (fieldPlan.getFromDate() == null || fieldPlan.getFromDate() == 0)
-                && (fieldPlan.getToDate() == null || fieldPlan.getToDate() == 0)
-                && (createdFrom == null || createdFrom == 0)) {
-            log.error("Any one fieldPlan search field is required for FieldPlan Search");
-            throw new CustomException("FIELDPLAN_SEARCH_FIELDS", "Any one fieldplan search field is required");
-        }
+//        if ((fieldPlan.getIds()==null || fieldPlan.getIds().isEmpty()) && (fieldPlan.getProjectId()==null || fieldPlan.getProjectId().isEmpty())
+//                && (fieldPlan.getStatuses()==null || fieldPlan.getStatuses().isEmpty())
+//                && (fieldPlan.getFromDate() == null || fieldPlan.getFromDate() == 0)
+//                && (fieldPlan.getToDate() == null || fieldPlan.getToDate() == 0)
+//                && (createdFrom == null || createdFrom == 0)) {
+//            log.error("Any one fieldPlan search field is required for FieldPlan Search");
+//            throw new CustomException("FIELDPLAN_SEARCH_FIELDS", "Any one fieldplan search field is required");
+//        }
 
         if (!fieldPlan.getTenantId().equals(tenantId)) {
             log.error("Tenant Id must be same in URL param as well as project request body");

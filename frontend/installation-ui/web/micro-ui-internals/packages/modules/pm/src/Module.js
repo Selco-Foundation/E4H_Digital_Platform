@@ -15,6 +15,7 @@ import ActivitySelector from "./components/FormComposer/ActivitySelector";
 import ActivityDetails from "./components/CreateFieldPlan/ActivityDetails";
 import AMCUserManager from "./components/CreateAMC/AMCUserManager";
 import ICCPrepopulationConfiguration from "./components/CreateFieldPlan/ICCPrepopulationConfiguration";
+import AssessmentActivityDetails from "./components/CreateAssessment/ActivityDetails";
 
 export const PMReducers = getRootReducer;
 
@@ -72,7 +73,8 @@ const componentsToRegister = {
   PMActivitySelector: ActivitySelector,
   PMICCPrepopulationConfiguration: ICCPrepopulationConfiguration,
   PMActivityDetails: ActivityDetails,
-  PMAMCUserManager: AMCUserManager
+  PMAMCUserManager: AMCUserManager,
+  PMAssessmentActivityDetails: AssessmentActivityDetails
 };
 
 export const initPMComponents = () => {

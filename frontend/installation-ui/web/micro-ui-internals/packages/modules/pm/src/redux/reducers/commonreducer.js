@@ -1,4 +1,4 @@
-import { POPULATE_RESPONSE, POPULATE_WORKING_FIELD_PLAN, POPULATE_WORKING_PROJECT } from "../../constants/ReduxActions";
+import { POPULATE_RESPONSE, POPULATE_WORKING_FIELD_PLAN, POPULATE_WORKING_PROJECT, POPULATE_WORKING_ASSESSMENT_PLAN, POPULATE_WORKING_FACILITY, POPULATE_WORKING_AMC_CONFIGURATION, POPULATE_WORKING_AMC_VISIT, POPULATE_WORKING_FACILITY_DETAILS, POPULATE_WORKING_ASSESSMENT_FACILITY } from "../../constants/ReduxActions";
 
 export const commonReducer = (defaultData) => (state = defaultData, action) => {
 
@@ -12,6 +12,24 @@ export const commonReducer = (defaultData) => (state = defaultData, action) => {
 
     case POPULATE_WORKING_FIELD_PLAN:
       return {...state, workingFieldPlan: action.payload};
+
+    case POPULATE_WORKING_ASSESSMENT_PLAN:
+      return {...state, workingAssessmentPlan: action.payload};
+
+    case POPULATE_WORKING_FACILITY:
+      return {...state, workingFacility: action.payload};
+
+    case POPULATE_WORKING_AMC_CONFIGURATION:
+      return {...state, workingAMCConfiguration: action.payload};
+
+    case POPULATE_WORKING_AMC_VISIT:
+      return {...state, workingAMCVisit: action.payload};
+
+    case POPULATE_WORKING_FACILITY_DETAILS:
+      return {...state, workingFacilityDetails: action.payload};
+
+    case POPULATE_WORKING_ASSESSMENT_FACILITY:
+      return {...state, workingAssessmentFacility: action.payload};
 
     default:
       return state;

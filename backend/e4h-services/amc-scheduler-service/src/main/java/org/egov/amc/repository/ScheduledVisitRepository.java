@@ -51,7 +51,7 @@ public class ScheduledVisitRepository extends GenericRepository<ScheduledVisit> 
         criteria.setCountQuery(false);
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
-        String query = queryBuilder.getScheduledVisitSearchQuery(criteria, urlParams, preparedStmtList);
+        String query = queryBuilder.getScheduledVisitSearchQuery(request, urlParams, preparedStmtList);
         log.debug("Executing scheduled visit search query for tenantId: {}", tenantId);
         List<ScheduledVisit> scheduledVisitList = jdbcTemplate.query(query, scheduledVisitRowMapper, preparedStmtList.toArray());
 
