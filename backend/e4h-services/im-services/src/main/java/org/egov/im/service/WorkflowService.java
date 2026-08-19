@@ -438,7 +438,8 @@ public class WorkflowService {
         log.trace("WorkflowService::enrichTotalSlaForResync method invoked");
         IncidentRequest request = wrapper.getIncidentRequest();
         Priority priority = slaService.getPriorityFromIMPriorityTable(request.getIncident());
-        getBusinessService(request, priority);
+        BusinessService businessService = getBusinessService(request, priority);
+        this.states = businessService.getStates();
         enrichTotalSla(wrapper, processInstance);
     }
 
