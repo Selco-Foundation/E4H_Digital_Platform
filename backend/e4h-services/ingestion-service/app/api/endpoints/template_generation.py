@@ -31,6 +31,7 @@ from app.utils.assessment_fieldplan_handoff import (
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
+from app.utils.project_category import resolve_project_category, filter_facilities_by_category
 from app.utils.project_service_client import ProjectServiceClient
 import os, tempfile, zipfile, qrcode, shutil
 
@@ -268,6 +269,15 @@ async def get_facility_ingestion_template_with_data(
                 logger.error(f"Error fetching project facilities: {e}")
                 # Continue without project facility data if there's an error
 
+        # Resolve the project's facility category (HEALTH/ANGANWADI) from its projectType via MDMS,
+        # so only facilities of that category are offered for selection (existing links stay visible).
+        project_category = None
+        if project_id and project_service_url:
+            project_category = resolve_project_category(
+                mdms_client, ProjectServiceClient(project_service_url), request_info, project_id
+            )
+            logger.info(f"Resolved project category for project {project_id}: {project_category}")
+
         # Combine boundary facilities with project facilities (avoid duplicates)
         # Only include project facilities that belong to the current boundary codes
         existing_facility_ids = {f.get('facility_id') for f in all_facilities}
@@ -306,6 +316,9 @@ async def get_facility_ingestion_template_with_data(
             logger.debug("No project_id provided - marking all facilities as No")
             for facility in all_facilities:
                 facility["include_in_project"] = "No"
+
+        all_facilities = filter_facilities_by_category(all_facilities, project_category, project_linked_facility_ids)
+        logger.info(f"Facilities after category filter ({project_category}): {len(all_facilities)}")
 
         try:
             logger.info("Generating template file with facility data")
@@ -414,6 +427,11 @@ async def get_facility_ingestion_template_with_data(
         project_facilities = project_facilities_response.get("ProjectFacilities", [])
         project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
         logger.info(f"Found {len(project_linked_facility_ids)} facilities currently linked to project {project_id}")
+
+        # Resolve the project's facility category (HEALTH/ANGANWADI) from its projectType via MDMS,
+        # so only facilities of that category are offered for selection (existing links stay visible).
+        project_category = resolve_project_category(mdms_client, project_client, request_info, project_id)
+        logger.info(f"Resolved project category for project {project_id}: {project_category}")
 
         all_facilities = []
         facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
@@ -588,6 +606,13 @@ async def get_facility_ingestion_template_with_data(
                     "Could not enrich template with eligible assessment facilities: %s",
                     eligible_err,
                 )
+
+        all_facilities = filter_facilities_by_category(
+            all_facilities,
+            project_category,
+            project_linked_facility_ids | fieldplan_linked_facility_ids,
+        )
+        logger.info(f"Facilities after category filter ({project_category}): {len(all_facilities)}")
 
         try:
             facility_service.generate_template_file_with_data(

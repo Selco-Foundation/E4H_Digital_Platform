@@ -66,6 +66,7 @@ from app.utils.icc_report_converter import validate_and_convert, ICCValidationEr
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
+from app.utils.project_category import resolve_project_category
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.project_service_client import ProjectServiceClient
 from app.utils.hrms_service_client import HRMSServiceClient
@@ -3129,6 +3130,40 @@ async def create_fielplan_facilities(
                 fieldplan_data = fieldplan_response.get("FieldPlans", [])
                 fieldplan_status = fieldplan_data[0].get("status") if fieldplan_data else None
 
+                # Resolve the parent project's facility category (HEALTH/ANGANWADI) so new links
+                # can be rejected if the row's facility doesn't match - defense-in-depth against a
+                # hand-edited Facility Id column bypassing the category filter applied at template
+                # generation time (see /fieldplanFacilityIngestionTemplate).
+                resolved_project_id = project_id or (fieldplan_data[0].get("projectId") if fieldplan_data else None)
+                project_category = resolve_project_category(
+                    mdms_client, ProjectServiceClient(project_service_url), request_info, resolved_project_id
+                ) if resolved_project_id and project_service_url else None
+                logger.info(f"Resolved project category for fieldplan {fieldplan_id}: {project_category}")
+
+                facility_category_by_id = {}
+                if project_category and facility_service_url:
+                    sheet_facility_ids = list(dict.fromkeys(
+                        str(row.get(facility_id_col)).strip()
+                        for _, row in df.iterrows()
+                        if pd.notna(row.get(facility_id_col)) and str(row.get(facility_id_col)).strip()
+                    ))
+                    if sheet_facility_ids:
+                        try:
+                            facility_client = FacilityServiceClient(facility_service_url)
+                            bulk_result = facility_client.bulk_search_facility(
+                                request_info=request_info,
+                                tenant_ids=["in"],
+                                facility_ids=sheet_facility_ids,
+                                limit=max(len(sheet_facility_ids), 50),
+                                send_non_paginated_response=True,
+                            )
+                            for f in (bulk_result.get("facilities", []) or []):
+                                f_id = f.get("facility_id")
+                                if f_id:
+                                    facility_category_by_id[f_id] = str(f.get("facility_category") or "").strip().upper()
+                        except Exception as e:
+                            logger.warning(f"Could not bulk fetch facility categories for category check: {e}")
+
                 fieldplan_assignment_response = fieldplan_activity_client.search_fieldplan_activity_assignment(request_info, fieldplan_id)
                 fieldplan_assignment_data = fieldplan_assignment_response.get("ActivitiesAssignments", [])
                 role_to_ids = defaultdict(list)
@@ -3252,6 +3287,13 @@ async def create_fielplan_facilities(
                                         df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
                                 if should_link:
+                                    if (project_category and facility_id in facility_category_by_id
+                                            and facility_category_by_id[facility_id] != project_category):
+                                        df.at[index, 'Field Plan Linking Status'] = (
+                                            "Error: Facility category does not match project type"
+                                        )
+                                        continue
+
                                     custom_capacity_val = row.get(custom_total_system_capacity_col, None) \
                                         if custom_total_system_capacity_col else None
                                     custom_capacity_str = str(custom_capacity_val).strip() \
