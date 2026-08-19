@@ -3136,7 +3136,7 @@ async def create_fielplan_facilities(
                 # generation time (see /fieldplanFacilityIngestionTemplate).
                 resolved_project_id = project_id or (fieldplan_data[0].get("projectId") if fieldplan_data else None)
                 project_category = resolve_project_category(
-                    mdms_client, ProjectServiceClient(project_service_url), request_info, resolved_project_id
+                    ProjectServiceClient(project_service_url), request_info, resolved_project_id
                 ) if resolved_project_id and project_service_url else None
                 logger.info(f"Resolved project category for fieldplan {fieldplan_id}: {project_category}")
 

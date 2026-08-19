@@ -269,12 +269,12 @@ async def get_facility_ingestion_template_with_data(
                 logger.error(f"Error fetching project facilities: {e}")
                 # Continue without project facility data if there's an error
 
-        # Resolve the project's facility category (HEALTH/ANGANWADI) from its projectType via MDMS,
+        # Resolve the project's facility category (HEALTH/ANGANWADI) from its projectType,
         # so only facilities of that category are offered for selection (existing links stay visible).
         project_category = None
         if project_id and project_service_url:
             project_category = resolve_project_category(
-                mdms_client, ProjectServiceClient(project_service_url), request_info, project_id
+                ProjectServiceClient(project_service_url), request_info, project_id
             )
             logger.info(f"Resolved project category for project {project_id}: {project_category}")
 
@@ -430,7 +430,7 @@ async def get_facility_ingestion_template_with_data(
 
         # Resolve the project's facility category (HEALTH/ANGANWADI) from its projectType via MDMS,
         # so only facilities of that category are offered for selection (existing links stay visible).
-        project_category = resolve_project_category(mdms_client, project_client, request_info, project_id)
+        project_category = resolve_project_category(project_client, request_info, project_id)
         logger.info(f"Resolved project category for project {project_id}: {project_category}")
 
         all_facilities = []

@@ -4,11 +4,10 @@ from app.core.logging import AppLogger
 
 logger = AppLogger().get_logger()
 
-PROJECT_TYPE_SCHEMA_CODE = "common-masters.ProjectType"
-
-# ProjectType.name has the shape "<description> - <Category>" (e.g. "DRE for Anganwadis -
-# Anganwadis"); the suffix is title-cased and plural for Anganwadi, while facility_category
-# values are upper-cased and singular ("HEALTH"/"ANGANWADI") - this maps one to the other.
+# project.projectType is stored as the MDMS ProjectType record's `name`, not its `code`
+# (e.g. "DRE for Anganwadis - Anganwadis"), so the category is read directly off that string -
+# no MDMS lookup needed. The suffix after the last " - " is title-cased and plural for
+# Anganwadi, while facility_category values are upper-cased and singular ("HEALTH"/"ANGANWADI").
 _CATEGORY_SUFFIX_MAP = {
     "HEALTH": "HEALTH",
     "ANGANWADI": "ANGANWADI",
@@ -16,13 +15,12 @@ _CATEGORY_SUFFIX_MAP = {
 }
 
 
-def resolve_project_category(mdms_client, project_client, request_info, project_id: str) -> Optional[str]:
+def resolve_project_category(project_client, request_info, project_id: str) -> Optional[str]:
     """
-    Resolve a project's facility category ("HEALTH"/"ANGANWADI") from its projectType via the
-    common-masters.ProjectType MDMS master. Returns None when it can't be determined (project not
-    found, projectType missing, no matching ProjectType record, or an unrecognized name suffix) -
-    callers must treat None as "don't filter", same fail-open posture as every other external
-    service lookup in this file.
+    Resolve a project's facility category ("HEALTH"/"ANGANWADI") from its projectType. Returns
+    None when it can't be determined (project not found, projectType missing, or an unrecognized
+    name suffix) - callers must treat None as "don't filter", same fail-open posture as every
+    other external service lookup in this file.
     """
     if not project_id:
         return None
@@ -33,25 +31,17 @@ def resolve_project_category(mdms_client, project_client, request_info, project_
             logger.warning(f"resolve_project_category: no project found for id {project_id}")
             return None
 
-        project_type_code = project_list[0].get("project", {}).get("projectType")
-        if not project_type_code:
+        project_type_name = project_list[0].get("project", {}).get("projectType")
+        if not project_type_name:
             logger.warning(f"resolve_project_category: project {project_id} has no projectType")
             return None
 
-        records = mdms_client.fetch_mdms_records(request_info, PROJECT_TYPE_SCHEMA_CODE)
-        match = next((r for r in records if r.get("code") == project_type_code), None)
-        if not match or not match.get("name"):
-            logger.warning(
-                f"resolve_project_category: no ProjectType MDMS match for code {project_type_code}"
-            )
-            return None
-
-        suffix = match["name"].rsplit(" - ", 1)[-1].strip().upper()
+        suffix = project_type_name.rsplit(" - ", 1)[-1].strip().upper()
         category = _CATEGORY_SUFFIX_MAP.get(suffix)
         if not category:
             logger.warning(
                 f"resolve_project_category: unrecognized ProjectType category suffix '{suffix}' "
-                f"for code {project_type_code}"
+                f"for projectType '{project_type_name}'"
             )
         return category
     except Exception as e:
