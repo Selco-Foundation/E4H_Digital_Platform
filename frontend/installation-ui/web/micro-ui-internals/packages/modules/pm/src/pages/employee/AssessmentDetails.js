@@ -227,13 +227,12 @@ const AssessmentDetails = () => {
   };
 
   const sideCheckboxChange = (id) => {
-    setMainCheck(false);
+    const updatedSelectedFacilityIds = selectedFacilityIds.some((facilityId) => facilityId === id)
+      ? selectedFacilityIds.filter((facilityId) => facilityId !== id)
+      : [...selectedFacilityIds, id];
 
-    if (selectedFacilityIds.some((facilityId) => facilityId === id)) {
-      setSelectedFacilityIds(selectedFacilityIds.filter((facilityId) => facilityId !== id));
-    } else {
-      setSelectedFacilityIds([...selectedFacilityIds, id]);
-    }
+    setSelectedFacilityIds(updatedSelectedFacilityIds);
+    setMainCheck(fetchedData.length > 0 && fetchedData.every((row) => updatedSelectedFacilityIds.includes(row.id)));
   };
 
   const canBulkAssignOnSite = () => {
@@ -636,7 +635,7 @@ const AssessmentDetails = () => {
           />
         </div>
         <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>
-          <div style={{ padding: "20px" }}>
+          <div style={{ padding: "20px 20px 0" }}>
             <FacilityActionBar
               t={t}
               selectedFacilityIds={selectedFacilityIds}
