@@ -183,8 +183,6 @@ class BomRepository {
     );
 
     final allDocs = await getAllForProject(isar, activityFacilityId);
-    final dirty = allDocs.where((d) => d.isDirty).toList();
-    if (dirty.isEmpty) return;
 
     var mergedKV = await getProjectBomKV(
       isar: isar,
@@ -200,6 +198,15 @@ class BomRepository {
       }
       mergedKV = fallback;
     }
+
+    if (mergedKV.isEmpty) {
+      mergedKV = await _getModelBomValues(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+      );
+    }
+
+    if (mergedKV.isEmpty) return;
 
     final existingId = allDocs
         .firstWhere(
