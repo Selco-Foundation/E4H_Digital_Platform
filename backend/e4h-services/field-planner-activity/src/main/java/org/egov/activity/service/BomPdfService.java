@@ -9,7 +9,9 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,6 +35,14 @@ public class BomPdfService {
 
     private static final String SYSTEM_TYPE_KEY = "systemType";
     private static final DateTimeFormatter PROJECT_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    /**
+     * Workflow actions that (re)submit the installation report - matches the literals
+     * ActivityService.updateFacilityWorkflow branches on to trigger this PDF generation.
+     */
+    private static final String SUBMIT_REPORT_A_ACTION = "SUBMIT_REPORT_A";
+    private static final String SUBMIT_REPORT_B_ACTION = "SUBMIT_REPORT_B";
+    private static final String APPROVE_ACTION = "APPROVE";
 
     private static final String DOCUMENTS_KEY = "documents";
     private static final String DOCUMENT_TYPE_KEY = "documentType";
@@ -65,13 +75,16 @@ public class BomPdfService {
     private final BoundaryLocalizationUtil boundaryLocalizationUtil;
     private final ServiceRequestRepository serviceRequest;
     private final ActivityConfiguration activityConfiguration;
+    private final FacilityWorkflowService facilityWorkflowService;
 
     public BomPdfService(BomService bomService, BoundaryLocalizationUtil boundaryLocalizationUtil,
-                         ServiceRequestRepository serviceRequest, ActivityConfiguration activityConfiguration) {
+                         ServiceRequestRepository serviceRequest, ActivityConfiguration activityConfiguration,
+                         FacilityWorkflowService facilityWorkflowService) {
         this.bomService = bomService;
         this.boundaryLocalizationUtil = boundaryLocalizationUtil;
         this.serviceRequest = serviceRequest;
         this.activityConfiguration = activityConfiguration;
+        this.facilityWorkflowService = facilityWorkflowService;
     }
 
     /**
@@ -160,11 +173,54 @@ public class BomPdfService {
                 ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getState()) : null);
         data.put("project_block", boundary != null
                 ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getBlock()) : null);
-        data.put("project_date", LocalDate.now().format(PROJECT_DATE_FORMATTER));
+        data.put("project_date", resolveProjectDate(requestInfo, activityFacility).format(PROJECT_DATE_FORMATTER));
         data.put("po_wo_number", activityFacility.getFieldPlan() != null
                 ? activityFacility.getFieldPlan().getPocNumber() : null);
 
         return data;
+    }
+
+    /**
+     * "project_date" business rule: the submission date, updated to the latest resubmission date
+     * on every reject-then-resubmit cycle, then frozen once the report is approved.
+     * <p>
+     * This method only ever runs while handling a SUBMIT_REPORT_A/B action (see
+     * ActivityService#updateFacilityWorkflow), i.e. before that action's own transition is
+     * recorded in workflow-v2 - so "now" already IS this submission's date, covering both the
+     * first submission and every later resubmission. The workflow history lookup only matters for
+     * the frozen case: if this ever ran again after approval, it falls back to the last recorded
+     * submission's timestamp instead of today's date.
+     */
+    private LocalDate resolveProjectDate(RequestInfo requestInfo, ActivityFacility activityFacility) {
+        List<ProcessInstance> history;
+        try {
+            history = facilityWorkflowService.getProcessInstanceById(
+                    activityFacility.getId(), activityFacility.getTenantId(), requestInfo);
+        } catch (Exception e) {
+            log.warn("Could not fetch workflow history for activityFacilityId: {}, defaulting project_date to today", activityFacility.getId(), e);
+            return LocalDate.now();
+        }
+        if (history == null) {
+            return LocalDate.now();
+        }
+
+        boolean alreadyApproved = history.stream()
+                .anyMatch(pi -> pi != null && APPROVE_ACTION.equalsIgnoreCase(pi.getAction()));
+        if (!alreadyApproved) {
+            return LocalDate.now();
+        }
+
+        Long latestSubmissionMillis = history.stream()
+                .filter(pi -> pi != null && pi.getAction() != null)
+                .filter(pi -> SUBMIT_REPORT_A_ACTION.equalsIgnoreCase(pi.getAction()) || SUBMIT_REPORT_B_ACTION.equalsIgnoreCase(pi.getAction()))
+                .map(pi -> pi.getAuditDetails() != null ? pi.getAuditDetails().getCreatedTime() : null)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(null);
+
+        return latestSubmissionMillis != null
+                ? Instant.ofEpochMilli(latestSubmissionMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+                : LocalDate.now();
     }
 
     /**
