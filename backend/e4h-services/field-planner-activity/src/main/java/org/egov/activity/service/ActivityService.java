@@ -445,15 +445,13 @@ public class ActivityService {
         // state the action fired FROM to tell a submission apart from a re-submission.
         String priorStatus = existingActivityFacitlity.getStatus();
 
-        // On approval, the BOM installation report PDF must be attached to the workflow's documents
-        // BEFORE the transition call - that call is the only place documents travel to workflow-v2.
+        // On every (re)submission, the BOM installation report PDF is regenerated and attached to
+        // the workflow's documents BEFORE the transition call - that call is the only place
+        // documents travel to workflow-v2. Regenerating every time (rather than skipping when one
+        // is already present) is required so project_date and any BOM/serial-number changes stay
+        // current across a reject-then-resubmit cycle.
         if ("SUBMIT_REPORT_A".equalsIgnoreCase(request.getWorkflow().getAction()) || "SUBMIT_REPORT_B".equalsIgnoreCase(request.getWorkflow().getAction())) {
-            if (hasBomInstallationReportDocument(request.getWorkflow())) {
-                log.info("BOM installation report document already present on workflow for activityFacilityId: {}, skipping PDF generation",
-                        request.getActivityFacilityId());
-            } else {
-                attachBomInstallationReportDocument(request, existingActivityFacitlity);
-            }
+            attachBomInstallationReportDocument(request, existingActivityFacitlity);
         }
 
         // 2. Call workflow transition
@@ -536,21 +534,23 @@ public class ActivityService {
     }
 
     /**
-     * True when the incoming workflow already carries an INSTALLATION_REPORT_BOM document, meaning
-     * the report PDF was generated on an earlier submission and must not be regenerated.
+     * Drops any INSTALLATION_REPORT_BOM document already on the workflow - carried over from an
+     * earlier submission - so a regenerated report never ends up duplicated alongside the stale one.
      */
-    private boolean hasBomInstallationReportDocument(Workflow workflow) {
+    private void removeExistingBomInstallationReportDocument(Workflow workflow) {
         List<Document> documents = workflow.getDocuments();
         if (documents == null || documents.isEmpty()) {
-            return false;
+            return;
         }
-        return documents.stream()
-                .filter(Objects::nonNull)
-                .anyMatch(document -> INSTALLATION_REPORT_BOM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType()));
+        documents.removeIf(document -> document != null
+                && INSTALLATION_REPORT_BOM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType()));
     }
 
     private void attachBomInstallationReportDocument(FacilityWorkflowRequest request, ActivityFacility activityFacility) {
         log.trace("Entering attachBomInstallationReportDocument method for activityFacilityId: {}", activityFacility.getId());
+        // Regenerate on every (re)submission so project_date and any BOM/serial-number changes stay
+        // current - drop any stale BOM report document before generating the fresh one.
+        removeExistingBomInstallationReportDocument(request.getWorkflow());
         // Read before addDocumentsItem below, so the report never carries its own previous output.
         List<Document> workflowDocuments = request.getWorkflow().getDocuments();
         String fileStoreId = bomPdfService.generateInstallationReportPdf(request.getRequestInfo(), activityFacility, workflowDocuments);
