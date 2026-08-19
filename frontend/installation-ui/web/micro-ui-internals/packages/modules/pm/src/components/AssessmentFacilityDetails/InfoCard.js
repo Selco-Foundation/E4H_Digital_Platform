@@ -5,7 +5,7 @@ const InfoCard = ({ t, facility, phoneOutcome, fieldOutcome }) => {
   const InfoItem = (label, value) => (
     <div style={{ marginBottom: "16px" }}>
       <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "4px" }}>{label}</div>
-      <div style={{ fontSize: "16px", fontWeight: 700, color: "#0B0C0C" }}>{value || "-"}</div>
+      <div style={{ fontSize: "16px", fontWeight: 700, color: "#0B0C0C", overflowWrap: "anywhere" }}>{value || "-"}</div>
     </div>
   );
 
