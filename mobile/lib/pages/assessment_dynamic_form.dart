@@ -511,6 +511,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                 entry.key == 'facilityClosingTime'))
           {
             entry.key: ReactiveTextField<String>(
+              key: ValueKey(entry.key),
               formControlName: entry.key,
               readOnly: true,
               validationMessages: {
@@ -536,6 +537,12 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                   helpText: entry.key == 'facilityOpeningTime'
                       ? 'Select opening time'
                       : 'Select closing time',
+                  initialEntryMode: TimePickerEntryMode.dialOnly,
+                  builder: (context, child) => MediaQuery(
+                    data: MediaQuery.of(context)
+                        .copyWith(alwaysUse24HourFormat: true),
+                    child: child!,
+                  ),
                 );
                 if (selected == null) return;
                 control.updateValue(
