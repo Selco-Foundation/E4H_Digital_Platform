@@ -42,6 +42,7 @@ const generateAuditTrail = (workflow, transactions) => {
       assetTypeReasonsMap.forEach((value, key) => {
         comments.push({
           name: key,
+          sectionLabel: value.find((reason) => reason?.sectionLabel)?.sectionLabel,
           reasons: value
         });
       })
@@ -57,8 +58,46 @@ const generateAuditTrail = (workflow, transactions) => {
   return auditTrail;
 }
 
-const getAssetAggregation = async (workflow) => {
+const emptyDocumentAggregation = {
+  images: {},
+  videos: {},
+  installationReportDocuments: [],
+  installationCompletionCertificate: [],
+  assetHandoverDocument: [],
+};
+
+const isReportDocument = (documentType) => {
+  const type = documentType?.toUpperCase();
+
+  return (
+    type === "INSTALLATION_REPORT" ||
+    type === "INSTALLATION_REPORT_BOM" ||
+    type === "INSTALLATION_COMPLETION_CERTIFICATE" ||
+    type === "ASSET_HANDOVER_DOCUMENT"
+  );
+};
+
+const shouldLoadDocument = (documentType, section) => {
+  const type = documentType?.toUpperCase();
+  const selectedSection = section?.toUpperCase();
+
+  if (!selectedSection) return true;
+  if (!type) return false;
+
+  if (selectedSection === "INSTALLATION_COMPLETION_REPORT") {
+    return isReportDocument(type);
+  }
+
+  if (selectedSection.includes("INSTALLATION_IMAGE")) {
+    return type.includes("INSTALLATION_IMAGE") && selectedSection === `INSTALLATION_IMAGE_${type.split("-")[1]}`;
+  }
+
+  return type.split("-")[0] === selectedSection && (type.includes("IMAGE") || type.includes("VIDEO"));
+};
+
+export const getAssetAggregation = async (workflow, section) => {
   const documentAggregation = {
+    ...emptyDocumentAggregation,
     images: {},
     videos: {},
     installationReportDocuments: [],
@@ -73,18 +112,30 @@ const getAssetAggregation = async (workflow) => {
     && Array.isArray(workflow[0].documents)
   ) {
     for (const document of workflow[0].documents) {
+      if (!shouldLoadDocument(document.documentType, section)) {
+        continue;
+      }
 
-      let fileUrl, fileDetails;
+      let fileUrl;
       try {
         const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(document.fileStoreId);
         fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
-        fileDetails = await QCService.fetchDocumentDetails(fileUrl);
       } catch (error) {
         console.error(`Failed to fetch document ${document.fileStoreId}:`, error);
         continue;
       }
 
       const documentType = document.documentType;
+      const isMediaDocument = documentType.toUpperCase().includes("IMAGE") || documentType.toUpperCase().includes("VIDEO");
+      let fileDetails = {};
+      if (!isMediaDocument) {
+        try {
+          fileDetails = await QCService.fetchDocumentDetails(fileUrl);
+        } catch (error) {
+          console.error(`Failed to fetch document details ${document.fileStoreId}:`, error);
+        }
+      }
+
       let documentRequired = false;
 
       if (documentType.toUpperCase().includes("INSTALLATION_IMAGE")) {
@@ -174,7 +225,6 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
     facility?.additionalDetails?.mappedVendorName ||
     activityFacilityData?.facility?.additionalDetails?.mappedVendorName;
   const auditTrail = generateAuditTrail(activityFacilityData.workflow, activityFacilityData.transactions);
-  const { documentAggregation, installationImages, workflowDocuments } = await getAssetAggregation(activityFacilityData.workflow);
 
   return {
     facilityDetails: {
@@ -186,11 +236,10 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       block: activityFacilityData?.activityFacility?.facility?.boundary?.block,
       district: activityFacilityData?.activityFacility?.facility?.boundary?.district,
       assigned: assignedVendorName || assigneeDetails.name,
+      systemType: facility.facility_details?.systemType || activityFacilityData?.activityFacility?.additionalDetails?.systemType,
     },
     auditTrail,
-    documentAggregation,
-    installationImages,
-    workflowDocuments,
+    workflow: activityFacilityData?.workflow,
   }
 }
 
@@ -214,7 +263,9 @@ const useFacilityDetails = (facilityAssignmentId) => {
 
   return {
     isLoading, isFetching, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["FACILITY_DETAILS"]),
+    revalidate: () => {
+      queryClient.invalidateQueries(["FACILITY_DETAILS"]);
+    },
     revalidateFacilities: () => queryClient.invalidateQueries(["FACILITY"])
   }
 }

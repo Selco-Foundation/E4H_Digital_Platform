@@ -120,7 +120,7 @@ def add_dropdowns_to_excel(
         file_path: str,
         sheet_name: str,
         dropdowns: Dict[str, List[str]],
-        allow_blank_map: Optional[Dict[str, bool]],
+        allow_blank_map: Optional[Dict[str, bool]] = None,
         max_extra_rows: int = 1000
 ):
     logger.trace(f"Adding dropdowns to Excel: file={file_path}, sheet={sheet_name}")
@@ -128,6 +128,9 @@ def add_dropdowns_to_excel(
     ws = wb[sheet_name]
     header_row = 1
     max_row = ws.max_row + max_extra_rows  # extend range
+    # Guard against a header-only sheet (0 data rows) with no extra rows requested,
+    # which would otherwise produce an inverted range like "X2:X1" and crash below.
+    max_row = max(max_row, 2)
 
     dropdown_count = 0
 

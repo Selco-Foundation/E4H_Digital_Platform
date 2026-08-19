@@ -133,6 +133,22 @@ public class ActivityApiController {
                 status = activityFacility.getStatus();
             }
 
+            // Surface the systemType stored in the activityFacility's additionalDetails (set at
+            // field plan scheduling time, see FieldPlannerService#buildActivityFacilityAdditionalDetails)
+            // onto facility_details, so consumers reading the facility object see it there too.
+            if (activityFacility != null && activityFacility.getFacility() != null
+                    && activityFacility.getAdditionalDetails() != null) {
+                Object systemType = activityFacility.getAdditionalDetails().get("systemType");
+                if (systemType != null) {
+                    Map<String, Object> facilityDetails = activityFacility.getFacility().getFacilityDetails();
+                    if (facilityDetails == null) {
+                        facilityDetails = new HashMap<>();
+                        activityFacility.getFacility().setFacilityDetails(facilityDetails);
+                    }
+                    facilityDetails.put("systemType", systemType);
+                }
+            }
+
             List<Transaction> txns = txnsByActivityFacilityId.getOrDefault(activityFacility.getId(), Collections.emptyList());
             for (Transaction txn : txns) {
                 txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));

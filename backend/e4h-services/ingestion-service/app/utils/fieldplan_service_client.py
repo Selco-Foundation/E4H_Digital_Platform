@@ -1,6 +1,7 @@
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
+import pandas as pd
 import requests
 
 from app.core.logging import AppLogger
@@ -14,62 +15,83 @@ class FieldPlanServiceClient:
     def __init__(self, fieldPlan_service_url: str):
         self.fieldPlan_service_url = fieldPlan_service_url
 
-    def create_fieldPlan_facility(self, request_info: RequestInfo, fieldPlan_id: str, facility_id: str):
+    def create_fieldPlan_facility(
+        self,
+        request_info: RequestInfo,
+        fieldPlan_id: str,
+        facility_id: str,
+        source_plan_facility_id: Optional[str] = None,
+        assessment_plan_id: Optional[str] = None,
+        additional_fields: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/_create"
         headers = {
             "Content-Type": "application/json"
         }
 
+        field_plan_facility: Dict[str, Any] = {
+            'facilityId': facility_id,
+            'fieldPlanId': fieldPlan_id,
+            'isdeleted': False,
+            'tenantId': 'in'
+        }
+        if source_plan_facility_id:
+            field_plan_facility['sourcePlanFacilityId'] = source_plan_facility_id
+        if additional_fields:
+            field_plan_facility['additionalFields'] = additional_fields
+
         payload = {
             'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-            'FieldPlanFacility': {
-                'facilityId': facility_id,
-                'fieldPlanId': fieldPlan_id,
-                'isdeleted': False,
-                'tenantId': 'in'
-            }
+            'FieldPlanFacility': field_plan_facility,
         }
         logger.trace(f"Creating field plan facility: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            logger.info(f"Field plan facility created successfully: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
-            logger.debug(f"Create response: {json.loads(response.text)}")
-            return response
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
 
-        except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error creating field plan facility: {http_err}", exc_info=True)
-            raise http_err
-        except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error creating field plan facility: {conn_err}", exc_info=True)
-            raise conn_err
-        except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error creating field plan facility: {timeout_err}", exc_info=True)
-            raise timeout_err
-        except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error creating field plan facility: {req_err}", exc_info=True)
-            raise req_err
+    def create_fieldPlan_facility_bulk(
+        self,
+        request_info: RequestInfo,
+        fieldPlan_id: str,
+        facilities: List[Dict[str, Any]],
+    ):
+        """
+        Bulk-link facilities to a field plan.
 
-    def create_fieldPlan_facility_bulk(self, request_info: RequestInfo, fieldPlan_id: str, facility_ids: list[str]):
+        Each item in ``facilities`` must contain ``facilityId`` and may include
+        ``additionalFields`` (schema/version/fields).
+        """
         url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/bulk/_create"
         headers = {
             "Content-Type": "application/json"
         }
+
+        field_plan_facilities = []
+        for facility in facilities:
+            entry: Dict[str, Any] = {
+                "facilityId": facility["facilityId"],
+                "fieldPlanId": fieldPlan_id,
+                "isdeleted": False,
+                "tenantId": "in",
+            }
+            additional_fields = facility.get("additionalFields")
+            if additional_fields:
+                entry["additionalFields"] = additional_fields
+            source_plan_facility_id = facility.get("sourcePlanFacilityId")
+            if source_plan_facility_id:
+                entry["sourcePlanFacilityId"] = source_plan_facility_id
+            field_plan_facilities.append(entry)
+
         payload = {
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "FieldPlanFacilities": [
-                {
-                    "facilityId": facility_id,
-                    "fieldPlanId": fieldPlan_id,
-                    "isdeleted": False,
-                    "tenantId": "in"
-                }
-                for facility_id in facility_ids
-            ]
+            "FieldPlanFacilities": field_plan_facilities,
         }
-        logger.trace(f"Bulk creating field plan facilities: fieldplan_id={fieldPlan_id}, count={len(facility_ids)}")
+        logger.trace(
+            f"Bulk creating field plan facilities: fieldplan_id={fieldPlan_id}, count={len(facilities)}"
+        )
         try:
             response = requests.post(url, headers=headers, json=payload)
-            logger.info(f"Field plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facility_ids)}")
+            logger.info(f"Field plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facilities)}")
             logger.debug(f"Bulk create response status: {response.status_code}")
             return response
         except requests.exceptions.HTTPError as http_err:
@@ -83,6 +105,65 @@ class FieldPlanServiceClient:
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
             logger.error(f"Request error bulk creating field plan facilities: {req_err}", exc_info=True)
+            raise req_err
+
+    def update_fieldPlan_facility_bulk(
+        self,
+        request_info: RequestInfo,
+        updates: List[Dict[str, Any]],
+    ):
+        """
+        Bulk-update editable fields (systemType, solarSolutionDesignType, totalSystemCapacity,
+        customSolarSolutionDesignType, customTotalSystemCapacity) of already-linked
+        FieldPlanFacilities via POST /field-planner/v1/field-plans/facility/bulk/_update.
+
+        Each item in ``updates`` must contain the existing FieldPlanFacility's ``id``,
+        ``facilityId`` and ``fieldPlanId`` (FieldPlanFacility's tenantId/facilityId/fieldPlanId
+        are @NotNull on the shared model even on this update path, so they must be resent even
+        though field-planner overwrites them from the DB record right after validation) and may
+        include ``additionalFields`` (schema/version/fields) carrying the new values - any key
+        other than the 5 editable ones is ignored by field-planner, which merges onto the DB
+        record rather than replacing it wholesale.
+        """
+        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/bulk/_update"
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        field_plan_facilities = []
+        for update in updates:
+            entry: Dict[str, Any] = {
+                "id": update["id"],
+                "facilityId": update["facilityId"],
+                "fieldPlanId": update["fieldPlanId"],
+                "tenantId": "in",
+            }
+            additional_fields = update.get("additionalFields")
+            if additional_fields:
+                entry["additionalFields"] = additional_fields
+            field_plan_facilities.append(entry)
+
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "FieldPlanFacilities": field_plan_facilities,
+        }
+        logger.trace(f"Bulk updating field plan facilities: count={len(updates)}")
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            logger.info(f"Field plan facility bulk update accepted: count={len(updates)}")
+            logger.debug(f"Bulk update response status: {response.status_code}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error bulk updating field plan facilities: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error bulk updating field plan facilities: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error bulk updating field plan facilities: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error bulk updating field plan facilities: {req_err}", exc_info=True)
             raise req_err
 
     def search_fieldPlan(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
@@ -278,4 +359,141 @@ class FieldPlanServiceClient:
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
             logger.error(f"Request error unlinking field plan facility: {req_err}", exc_info=True)
+            raise req_err
+
+    def create_field_plan_templates(
+        self,
+        request_info: RequestInfo,
+        items: List[Dict[str, Any]],
+        files: List[tuple],
+    ):
+        """
+        Store N ICC reports' converted JSON (plus their uploaded Excel files) via the bulk
+        endpoint POST /field-planner/v1/field-plan-templates/_create.
+
+        Sends:
+          - "request": one FieldPlanTemplateBulkRequest JSON object with an N-element
+            FieldPlanTemplates list.
+          - "excelFiles": the N uploaded Excel files as N separate multipart parts all sharing
+            the same field name "excelFiles" (not indexed) - matched positionally to
+            FieldPlanTemplates[i] on the Java side.
+
+        `items` and `files` must be the same length and already paired positionally; `files` is
+        a list of (file_name, file_bytes) tuples.
+        """
+        if len(items) != len(files):
+            raise ValueError(f"items ({len(items)}) and files ({len(files)}) must be the same length")
+
+        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plan-templates/_create"
+
+        bulk_request = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "FieldPlanTemplates": [
+                {
+                    "tenantId": item["tenant_id"],
+                    "fieldPlanId": item["field_plan_id"],
+                    "systemType": item["system_type"],
+                    "totalCapacity": item["total_capacity"],
+                    "templateData": item["template_data"],
+                }
+                for item in items
+            ],
+        }
+
+        # `requests` accepts `files` as a list of (field_name, value_tuple) pairs, not just a
+        # dict - this is the only way to send multiple parts under the SAME field name
+        # ("excelFiles" repeated N times), which a dict cannot express.
+        multipart_fields = [
+            ("request", (None, json.dumps(bulk_request), "application/json")),
+        ]
+        for file_name, file_bytes in files:
+            multipart_fields.append((
+                "excelFiles",
+                (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            ))
+
+        logger.trace(f"Creating {len(items)} field plan template(s) in one bulk call")
+        try:
+            response = requests.post(url, files=multipart_fields)
+            logger.info(f"Field plan template bulk request sent: count={len(items)}, status={response.status_code}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error creating field plan templates: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error creating field plan templates: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error creating field plan templates: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error creating field plan templates: {req_err}", exc_info=True)
+            raise req_err
+
+    def update_field_plan_templates(
+        self,
+        request_info: RequestInfo,
+        items: List[Dict[str, Any]],
+        files: List[tuple],
+    ):
+        """
+        Update N existing field plan templates via the bulk endpoint
+        POST /field-planner/v1/field-plan-templates/_update.
+
+        Sends:
+          - "request": one FieldPlanTemplateBulkRequest JSON object with an N-element
+            FieldPlanTemplates list, each carrying the existing template's "id".
+          - "excelFiles": omitted entirely when `files` is empty (metadata-only update, every
+            template keeps its existing file), otherwise exactly N multipart parts sharing the
+            field name "excelFiles" - field-planner rejects a partial list that doesn't match
+            the template count 1:1.
+
+        `items` each need an "id" key identifying the template being updated. `files` is a list
+        of (file_name, file_bytes) tuples; if non-empty it must be the same length as `items`.
+        """
+        if files and len(items) != len(files):
+            raise ValueError(f"items ({len(items)}) and files ({len(files)}) must be the same length")
+
+        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plan-templates/_update"
+
+        bulk_request = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "FieldPlanTemplates": [
+                {
+                    "id": item["id"],
+                    "tenantId": item["tenant_id"],
+                    "fieldPlanId": item["field_plan_id"],
+                    "systemType": item["system_type"],
+                    "totalCapacity": item["total_capacity"],
+                    "templateData": item.get("template_data"),
+                }
+                for item in items
+            ],
+        }
+
+        multipart_fields = [
+            ("request", (None, json.dumps(bulk_request), "application/json")),
+        ]
+        for file_name, file_bytes in files:
+            multipart_fields.append((
+                "excelFiles",
+                (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            ))
+
+        logger.trace(f"Updating {len(items)} field plan template(s) in one bulk call, files={len(files)}")
+        try:
+            response = requests.post(url, files=multipart_fields)
+            logger.info(f"Field plan template bulk update sent: count={len(items)}, status={response.status_code}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error updating field plan templates: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error updating field plan templates: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error updating field plan templates: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error updating field plan templates: {req_err}", exc_info=True)
             raise req_err

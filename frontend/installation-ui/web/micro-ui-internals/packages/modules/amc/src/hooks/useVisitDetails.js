@@ -2,6 +2,7 @@ import {useQuery, useQueryClient} from "react-query";
 import { AMCService } from "../services/AMC";
 import { FilestoreService } from "../services/Filestore";
 import {VisitService} from "../services/VisitService";
+import {getFacilityGeography} from "../utilities/GeographyUtils";
 
 const generateAuditTrail = (processInstances) => {
   const auditTrail = [];
@@ -34,13 +35,13 @@ const fetchDocument = async (fileStoreId, fetchFileDetails = true) => {
   try {
     const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(fileStoreId);
     const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[fileStoreId]);
-    let fileDetails;
-    if (fetchFileDetails) {
-      fileDetails = await AMCService.fetchDocumentDetails(fileUrl);
-    }
+    if (!fileUrl || !fetchFileDetails) return { fileUrl };
+
+    const fileDetails = await AMCService.fetchDocumentDetails(fileUrl).catch(() => undefined);
     return { fileUrl, fileDetails };
   } catch (error) {
     console.error(`Failed to fetch document ${fileStoreId}:`, error);
+    return {};
   }
 }
 
@@ -82,22 +83,29 @@ const generateVisitReport = (userResponses, format) => {
 
 const getDocumentAggregation = async (processInstances) => {
   const reportDocumentAggregation = {};
-  const workflowDocuments = [];
+  const workflowDocuments = (processInstances || []).flatMap((processInstance) => processInstance?.documents || []);
+  const installationForm = (processInstances || [])
+    .flatMap((processInstance) =>
+      (processInstance?.documents || []).map((document) => ({
+        ...document,
+        processModifiedTime: processInstance?.auditDetails?.lastModifiedTime || 0,
+        workflowAction: processInstance?.action,
+      }))
+    )
+    .filter(
+      (document) =>
+        document.documentType?.toUpperCase() === "AMC_INSTALLATION_FORM" &&
+        document.workflowAction?.toUpperCase() === "SUBMIT_VISIT_REPORT"
+    )
+    .sort((first, second) => Number(second.processModifiedTime) - Number(first.processModifiedTime))[0];
 
-  const recentProcessInstance = processInstances?.[0];
-  if (Array.isArray(recentProcessInstance?.documents)) {
-    for (const document of recentProcessInstance.documents) {
-      const { fileUrl, fileDetails } = await fetchDocument(document.fileStoreId);
-      if (!fileUrl) continue;
-
-      if (document.documentType.toUpperCase() === "AMC_INSTALLATION_FORM") {
-        reportDocumentAggregation.amcInstallationForm = {
-          fileUrl,
-          ...fileDetails
-        };
-      }
-
-      workflowDocuments.push(document);
+  if (installationForm) {
+    const { fileUrl, fileDetails } = await fetchDocument(installationForm.fileStoreId);
+    if (fileUrl) {
+      reportDocumentAggregation.amcInstallationForm = {
+        fileUrl,
+        ...fileDetails,
+      };
     }
   }
 
@@ -122,13 +130,55 @@ const fetchVisitImages = async (visitImageDocuments) => {
   return visitImages;
 }
 
+const formatAmcNumbers = (amcNumbers) => {
+  if (!Array.isArray(amcNumbers) || !amcNumbers.length) return "-";
+  return amcNumbers.join(", ");
+}
+
+const getVisitAmcNumber = (visitData) => {
+  const visitNumber = Number(visitData?.visitNumber);
+  const durationMonths = Number(visitData?.amcConfiguration?.durationMonths);
+  const visitFrequencyMonths = Number(visitData?.amcConfiguration?.visitFrequencyMonths);
+
+  if (!visitNumber || !durationMonths || !visitFrequencyMonths) return "-";
+
+  const totalVisits = durationMonths / visitFrequencyMonths;
+  if (!Number.isFinite(totalVisits) || totalVisits <= 0) return "-";
+
+  return `${visitNumber}/${totalVisits}`;
+}
+
+const fetchFacilityAmcSummary = async (facilityId) => {
+  if (!facilityId) return {};
+
+  try {
+    const amcSummaryResponse = await VisitService.fetchAmcSummary({
+      searchCriteria: {
+        tenantId: Digit.ULBService.getCurrentTenantId(),
+        facilityIds: [facilityId],
+      },
+    });
+    const amcSummary = amcSummaryResponse?.FacilitiesAmcSummary?.[0] || {};
+
+    return {
+      amcNumber: amcSummary?.amcNumber || "-",
+      completedAmcNumbers: formatAmcNumbers(amcSummary?.completedAmcNumbers),
+      lapsedAmcNumbers: formatAmcNumbers(amcSummary?.lapsedAmcNumbers),
+    };
+  } catch (error) {
+    console.error(`Failed to fetch AMC summary for facility ${facilityId}:`, error);
+    return {};
+  }
+}
+
 const fetchVisitDetails = async (filter, limit, offset) => {
 
   const visitsResponse = await VisitService.fetchVisits(filter, limit, offset);
   const visitData = visitsResponse?.ScheduledVisits?.[0];
 
   const facility = visitData?.facility || {};
-  const assigneeDetails = visitData?.processInstances?.[0]?.assignes?.[0] || {};
+  const facilityAmcSummary = await fetchFacilityAmcSummary(facility.id);
+  const geography = getFacilityGeography(facility);
   const auditTrail = generateAuditTrail(visitData.processInstances);
   const { reportDocumentAggregation, workflowDocuments } = await getDocumentAggregation(visitData.processInstances);
   const mdmsConfigResponse = await Digit.MDMSService.getMultipleTypes(Digit.ULBService.getCurrentTenantId(), "AMC", ["FormConfig"]);
@@ -142,10 +192,14 @@ const fetchVisitDetails = async (filter, limit, offset) => {
       facilityName: facility.facility_name,
       facilityId: facility.id,
       facilityType: facility.facility_type,
-      block: facility.additionalDetails?.block,
-      district: facility.additionalDetails?.district,
+      // Use normalized location fields in visit details.
+      state: geography.state,
+      block: geography.block,
+      district: geography.district,
       status: visitData?.status,
-      assigned: assigneeDetails.name,
+      ...facilityAmcSummary,
+      amcNumber: getVisitAmcNumber(visitData),
+      assigned: visitData?.assignments?.[0]?.user?.name,
     },
     visitReport: format,
     visitImages,

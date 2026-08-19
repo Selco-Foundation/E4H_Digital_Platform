@@ -7,6 +7,7 @@ import org.egov.common.models.core.URLParams;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
+import org.egov.field_planner.util.FieldPlannerConstants;
 import org.egov.field_planner.web.models.FieldPlanSearchRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -37,6 +38,8 @@ public class FieldPlannerQueryBuilder {
             " " +
             "from field_plans fp LEFT JOIN project prj ON prj.id = fp.project_id ";
     private static final String FIELDPLAN_COUNT_QUERY = "SELECT COUNT(*) FROM field_plans fp ";
+
+    private static final String FETCH_ICC_TEMPLATE_QUERY = "SELECT * FROM icc_templates ";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY fp_lastModifiedTime DESC , fieldPlanId) offset_ FROM " +
@@ -98,6 +101,7 @@ public class FieldPlannerQueryBuilder {
             queryBuilder.append(" tenant_id like ? ");
             preparedStmtList.add(fieldPlan.getTenantId() + '%');
         }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
         queryBuilder.append("ORDER BY created_time DESC LIMIT 1;");
 
         log.trace("Exiting getHighestFielPlanNameQuery method");
@@ -113,6 +117,7 @@ public class FieldPlannerQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(query);
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder, criteria);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
 
 //        if (criteria.getFromDate() != null && criteria.getFromDate() != 0) {
@@ -185,6 +190,24 @@ public class FieldPlannerQueryBuilder {
         log.trace("Exiting extracted method");
     }
 
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" fp.plan_type = ? ");
+        preparedStmtList.add(FieldPlannerConstants.PLAN_TYPE_FIELD_PLAN);
+    }
+
+    /**
+     * List/search queries stay scoped to FIELD_PLAN. ID lookups skip plan_type so internal callers
+     * (e.g. activity assignment for assessment plans) can resolve any row in field_plans.
+     */
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder,
+                                        FieldPlanSearchCriteria criteria) {
+        if (!CollectionUtils.isEmpty(criteria.getIds())) {
+            return;
+        }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
+    }
+
     private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {
         log.trace("Entering addIsDeletedCondition method, includeDeleted: {}", includeDeleted);
         if (!includeDeleted) {
@@ -241,6 +264,26 @@ public class FieldPlannerQueryBuilder {
         }
         log.trace("Exiting createQuery method");
         return builder.toString();
+    }
+
+    public String getIccTemplateQuery(String systemType, String totalSystemCapacity, List<Object> preparedStmtList) {
+        log.info("Entering getIccTemplateQuery method");
+
+        StringBuilder queryBuilder = new StringBuilder(FETCH_ICC_TEMPLATE_QUERY);
+        if (StringUtils.isNotBlank(systemType)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" system_type = ? ");
+            preparedStmtList.add(systemType);
+            log.debug("Added name filter to query");
+        }
+        if (StringUtils.isNotBlank(totalSystemCapacity)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" total_system_capacity = ? ");
+            preparedStmtList.add(totalSystemCapacity);
+        }
+
+        log.trace("Exiting getIccTemplateQuery method");
+        return queryBuilder.toString();
     }
 
 }

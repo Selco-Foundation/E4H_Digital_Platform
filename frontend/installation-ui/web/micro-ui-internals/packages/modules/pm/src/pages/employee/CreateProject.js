@@ -148,7 +148,8 @@ const CreateProject = () => {
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
           key: "error",
-          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
+          label: response.apiErrorMessage || t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR"),
+          translate: false,
         })
         setInvalidDataError(null);
 
@@ -223,7 +224,7 @@ const CreateProject = () => {
               name: "justificationCode",
               error: t("JUSTIFICATION_CODE_VALIDATION_ERROR"),
               validation: {
-                pattern: /^JUS-\d{5}(?:-\d)?$/,
+                pattern: /^(?:JUS|SFJ)-\d{5}(?:-\d)?$/,
               },
             },
           },
@@ -361,7 +362,6 @@ const CreateProject = () => {
               allowedFileTypes: [".csv", ".xls", ".xlsx"],
               handleFileUpload: handleFacilityDataUpload,
               invalidDataError: invalidDataError,
-              errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
               heading: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA",
               description: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA_DESC",
               t,
@@ -573,7 +573,7 @@ const CreateProject = () => {
         message: !!createdProject?.status ? t("PM_COMMON_PROJECT_UPDATED") : t("PM_COMMON_PROJECT_CREATED"),
         createdId: upsertedProject.name,
         info: t("PM_COMMON_PROJECT_NAME"),
-        secondaryRedirectionLabel: t("PM_LABEL_CREATE_FIELD_PLAN"),
+        secondaryRedirectionLabel: t("PM_LABEL_MANAGE_PROJECT"),
         onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
       }))
       history.push(`/${window?.contextPath}/employee/pm/response`);
@@ -620,6 +620,7 @@ const CreateProject = () => {
         break;
       case 3:
         await handleCompleteProjectCreation();
+        break;
     }
   }
 
@@ -761,7 +762,7 @@ const CreateProject = () => {
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          label={t(toast.label)}
+          label={toast.translate === false ? toast.label : t(toast.label)}
           isDleteBtn={true}
           onClose={() => setToast(null)}
         />

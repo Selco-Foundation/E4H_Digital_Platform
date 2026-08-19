@@ -1,0 +1,21 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /translator
+
+spring:
+  application:
+    name: translator-service
+
+gemini:
+  apiKey: ${GEMINI_API_KEY}
+  model: gemini-flash-latest
+  baseUrl: https://generativelanguage.googleapis.com
+  connectTimeout: 5s
+  readTimeout: 20s
+
+logging:
+  level:
+    com.translator: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

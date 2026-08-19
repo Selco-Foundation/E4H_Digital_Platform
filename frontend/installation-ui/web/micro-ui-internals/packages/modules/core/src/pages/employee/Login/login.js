@@ -6,6 +6,8 @@ import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import Carousel from "./Carousel/Carousel";
 import ImageComponent from "../../../components/ImageComponent";
+import { UserAccessReportService } from "../../../services/UserAccessReportService";
+import { CONSENT_COOKIE_KEYS, getConsentCookie, rememberRequiredConsents } from "../../../utilities/consentCookies";
 
 const setEmployeeDetail = (userObject, token) => {
   if (Digit.Utils.getMultiRootTenant() && process.env.NODE_ENV !== "development") {
@@ -38,29 +40,47 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
     if (!user) {
       return;
     }
-    Digit.SessionStorage.set("citizen.userRequestObject", user);
-    const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
-    if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
-    Digit.UserService.setUser(user);
-    setEmployeeDetail(user?.info, user?.access_token);
-    let redirectPath = `/${window?.contextPath}/employee`;
+    let cancelled = false;
 
-    /* logic to redirect back to same screen where we left off */
-    if (window?.location?.href?.includes("from=")) {
-      redirectPath = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || `/${window?.contextPath}/employee`;
-    }
+    (async () => {
+      Digit.SessionStorage.set("citizen.userRequestObject", user);
+      const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
+      if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
+      Digit.UserService.setUser(user);
+      setEmployeeDetail(user?.info, user?.access_token);
+      let redirectPath = `/${window?.contextPath}/employee`;
 
-    /*  RAIN-6489 Logic to navigate to National DSS home in case user has only one role [NATADMIN]*/
-    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
-      redirectPath = `/${window?.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
-    }
-    /*  RAIN-6489 Logic to navigate to National DSS home in case user has only one role [NATADMIN]*/
-    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "STADMIN")) {
-      redirectPath = `/${window?.contextPath}/employee/dss/landing/home`;
-    }
+      try {
+        await UserAccessReportService.userLoginReport({
+          User: user?.info,
+        });
+      } catch (err) {
+        console.error("Login report failed", err);
+      }
 
-    history.replace(redirectPath); // Replaced history.replace with navigate
-  }, [user]);
+      /* logic to redirect back to same screen where we left off */
+      if (window?.location?.href?.includes("from=")) {
+        redirectPath = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || `/${window?.contextPath}/employee`;
+      }
+
+      /*  RAIN-6489 Logic to navigate to National DSS home in case user has only one role [NATADMIN]*/
+      if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
+        redirectPath = `/${window?.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
+      }
+      /*  RAIN-6489 Logic to navigate to National DSS home in case user has only one role [NATADMIN]*/
+      if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "STADMIN")) {
+        redirectPath = `/${window?.contextPath}/employee/dss/landing/home`;
+      }
+
+      if (!cancelled) {
+        history.replace(redirectPath); // Replaced history.replace with navigate
+      }
+    })().catch((err) => console.error("login effect failed", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, history]);
 
   const onLogin = async (data) => {
     // if (!data.city) {
@@ -72,6 +92,10 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
     }
     if (data?.password) {
       data.password = data.password.trim();
+    }
+
+    if (data?.check && data?.touCheck) {
+      rememberRequiredConsents();
     }
 
     setDisable(true);
@@ -109,6 +133,10 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
   const mutation = Digit.Hooks.useCustomAPIMutationHook(reqCreate);
 
   const onOtpLogin = async (data) => {
+    if (data?.check && data?.touCheck) {
+      rememberRequiredConsents();
+    }
+
     const inputEmail = data.email;
     await mutation.mutate(
       {
@@ -154,7 +182,87 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
     name: Digit.Utils.locale.getTransformedLocale(`TENANT_TENANTS_${defaultTenant}`),
   };
 
-  let config = [{ body: propsConfig?.inputs }];
+  const buildConsentAwareInputs = (inputs = []) => {
+    const hasPrivacyConsent = getConsentCookie(CONSENT_COOKIE_KEYS.privacy);
+    const hasTermsConsent = getConsentCookie(CONSENT_COOKIE_KEYS.terms);
+    if (hasPrivacyConsent && hasTermsConsent) {
+      return inputs.filter((field) => field?.component !== "PrivacyComponent" && field?.component !== "TOUComponent" && field?.key !== "touCheck" && field?.populators?.name !== "touCheck");
+    }
+
+    const hasTermsField = inputs.some((field) => field?.component === "TOUComponent" || field?.key === "touCheck" || field?.populators?.name === "touCheck");
+    const consentModule = inputs.find((field) => field?.component === "PrivacyComponent")?.customProps?.module || "HCM";
+    const normalizedInputs = inputs.map((field) => {
+      if (field?.component !== "PrivacyComponent") {
+        return field;
+      }
+
+      return {
+        ...field,
+        isMandatory: true,
+        disable: hasPrivacyConsent,
+        populators: {
+          ...field.populators,
+          name: "check",
+          defaultValue: hasPrivacyConsent,
+        },
+      };
+    });
+
+    if (hasTermsField) {
+      return normalizedInputs.map((field) => {
+        if (field?.component !== "TOUComponent" && field?.key !== "touCheck" && field?.populators?.name !== "touCheck") {
+          return field;
+        }
+
+        return {
+          ...field,
+          key: "touCheck",
+          component: "TOUComponent",
+          isMandatory: true,
+          disable: hasTermsConsent,
+          withoutLabel: true,
+          customProps: {
+            ...(field.customProps || {}),
+            module: field?.customProps?.module || consentModule,
+          },
+          populators: {
+            ...field.populators,
+            name: "touCheck",
+            defaultValue: hasTermsConsent,
+          },
+        };
+      });
+    }
+
+    const privacyIndex = normalizedInputs.findIndex((field) => field?.component === "PrivacyComponent");
+    const termsField = {
+      key: "touCheck",
+      type: "component",
+      component: "TOUComponent",
+      disable: hasTermsConsent,
+      customProps: {
+        module: consentModule,
+      },
+      populators: {
+        name: "touCheck",
+        defaultValue: hasTermsConsent,
+      },
+      isMandatory: true,
+      withoutLabel: true,
+    };
+
+    if (privacyIndex < 0) {
+      return [...normalizedInputs, termsField];
+    }
+
+    return [
+      ...normalizedInputs.slice(0, privacyIndex + 1),
+      termsField,
+      ...normalizedInputs.slice(privacyIndex + 1),
+    ];
+  };
+
+  let config = [{ body: buildConsentAwareInputs(propsConfig?.inputs) }];
 
   const { mode } = Digit.Hooks.useQueryParams();
   if (mode === "admin" && config?.[0]?.body?.[2]?.disable == false && config?.[0]?.body?.[2]?.populators?.defaultValue == undefined) {
@@ -170,12 +278,14 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
   ),[])
 
   const onFormValueChange = (setValue, formData, formState) => {
+    const mandatoryFields = config[0].body.filter(field => field?.isMandatory);
 
-    // Extract keys from the config    
-    const keys = config[0].body.filter(field => field?.isMandatory).map((field) => field?.key);
-
-    const hasEmptyFields = keys.some((key) => {
-      const value = formData[key];
+    const hasEmptyFields = mandatoryFields.some((field) => {
+      const key = field?.key;
+      const name = field?.populators?.name;
+      const formValue = formData[key] != null ? formData[key] : formData[name];
+      const input = document.querySelector(`[name="${name || key}"]`);
+      const value = formValue != null ? formValue : input && input.value;
       return value == null || value === "" || value === false;
     });
 
