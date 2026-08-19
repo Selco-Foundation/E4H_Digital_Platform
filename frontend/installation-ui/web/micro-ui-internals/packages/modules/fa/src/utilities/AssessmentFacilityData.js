@@ -8,9 +8,22 @@ const getLatestSubmission = (submissions, phase) => (
 
 const sortByOrder = (items) => [...(items || [])].sort((a, b) => (a?.order || 0) - (b?.order || 0));
 
+const formatDateValue = (rawValue) => {
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) return rawValue;
+
+  const month = date.toLocaleString("en-US", { month: "long" });
+  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
 // Enum-backed fields (dropdown/select/radio) store the option's code in submissionData; this
 // resolves it to the option's display name so callers only ever deal with display text, which
-// they should still route through t() in case it becomes a real translation key later.
+// they should still route through t() in case it becomes a real translation key later. Plain
+// text/numeric/date/time values are never translation keys and must never be passed through
+// t() — i18next's default nsSeparator treats ":" as a namespace separator, so a raw value like
+// "19:02" or an ISO timestamp gets silently mangled (e.g. t("19:02") returns just "02").
 const resolveFieldValue = (property, rawValue) => {
   const resolveEnumName = (code) => {
     const match = property?.enums?.find((option) => option?.code === code)?.name;
@@ -25,7 +38,15 @@ const resolveFieldValue = (property, rawValue) => {
     return null;
   }
 
-  return property?.enums?.length ? resolveEnumName(rawValue) : String(rawValue);
+  if (property?.enums?.length) {
+    return resolveEnumName(rawValue);
+  }
+
+  if (property?.format === "date") {
+    return formatDateValue(rawValue);
+  }
+
+  return String(rawValue);
 };
 
 // A page only shows up if at least one of its properties was actually answered in the
@@ -45,6 +66,7 @@ const buildResponseSections = (submission, formSchemas) => {
         .map((property) => ({
           label: property.label,
           value: resolveFieldValue(property, submission?.submissionData?.[property.fieldName]),
+          translateValue: !!property?.enums?.length,
         }))
         .filter((field) => field.value !== null),
     }))

@@ -246,7 +246,7 @@ const AssessmentFacilityDetails = () => {
         <div key={index} style={{ marginBottom: "16px" }}>
           <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "4px" }}>{t(field.label)}</div>
           <div style={{ fontSize: "16px", fontWeight: 700, color: "#0B0C0C" }}>
-            {Array.isArray(field.value) ? field.value.map((value) => t(value)).join(", ") : t(field.value)}
+            {Array.isArray(field.value) ? field.value.map((value) => t(value)).join(", ") : (field.translateValue ? t(field.value) : field.value)}
           </div>
         </div>
       ))}
