@@ -38,6 +38,13 @@ import static org.egov.amc.util.AmcConstants.*;
 @Slf4j
 public class ScheduledVisitService {
 
+    /**
+     * Number of visits whose workflow history is fetched per egov-workflow-v2 search during a reindex.
+     * Kept well under the service's 100-record page cap (a visit has only a handful of transitions) so a
+     * batch normally resolves in a single call while still cutting the round trips by an order of magnitude.
+     */
+    private static final int WORKFLOW_HISTORY_VISIT_BATCH_SIZE = 20;
+
     private final ScheduledVisitValidator scheduledVisitsValidator;
     private final ScheduledVisitRepository scheduledVisitsRepository;
     private final ServiceRequestRepository requestRepository;
@@ -155,6 +162,7 @@ public class ScheduledVisitService {
                 break;
             }
 
+            enrichActualVisitDateFromWorkflow(requestInfo, visits);
             int indexedInBatch = pushNonDraftVisitsToIndex(requestInfo, visits, amcServiceConfiguration.getSaveScheduledVisitIndexTopic());
             totalIndexed += indexedInBatch;
             log.info("Reindex batch offset={} fetched={} indexed={} totalIndexed={}",
@@ -168,6 +176,77 @@ public class ScheduledVisitService {
 
         log.info("Reindex complete for tenantId={}. Total non-DRAFT visits pushed to index: {}", tenantId, totalIndexed);
         return totalIndexed;
+    }
+
+    /**
+     * Resolve the actual AMC visit date for a reindex batch from workflow history.
+     *
+     * <p>actual_visit_date only started being stamped when SUBMIT_VISIT_REPORT is handled, so visits
+     * submitted before that change hold NULL in the visits table and would be indexed without a date.
+     * egov-workflow-v2 still has the transition history, and the SUBMIT_VISIT_REPORT transition's
+     * createdTime is exactly the instant the runtime stamp records - so it is used as the authoritative
+     * value here, taking the latest one when a visit was re-submitted out of REJECTED (mirroring the
+     * overwrite the runtime does).
+     *
+     * <p>When workflow has no such transition - never submitted, or history pruned - the visit keeps the
+     * date already in the visits table (possibly none). Nothing is guessed from scheduled_date, and a
+     * workflow failure degrades to that same stored value rather than aborting the reindex.
+     *
+     * <p>DRAFT visits are skipped: they are never indexed and by definition have not been submitted.
+     */
+    private void enrichActualVisitDateFromWorkflow(RequestInfo requestInfo, List<ScheduledVisit> visits) {
+        // Grouped by the visit's own tenantId, not the reindex tenantId param, because the workflow search
+        // filters on an exact tenantid match and a batch may span sub-tenants.
+        Map<String, List<ScheduledVisit>> visitsByTenant = visits.stream()
+                .filter(visit -> visit.getId() != null && visit.getTenantId() != null)
+                .filter(visit -> visit.getStatus() != null && !DRAFT_STATUS.equalsIgnoreCase(visit.getStatus()))
+                .collect(Collectors.groupingBy(ScheduledVisit::getTenantId));
+
+        visitsByTenant.forEach((tenantId, tenantVisits) -> {
+            for (int from = 0; from < tenantVisits.size(); from += WORKFLOW_HISTORY_VISIT_BATCH_SIZE) {
+                List<ScheduledVisit> batch = tenantVisits.subList(from,
+                        Math.min(from + WORKFLOW_HISTORY_VISIT_BATCH_SIZE, tenantVisits.size()));
+                Map<String, Long> submittedAtByVisitId;
+                try {
+                    submittedAtByVisitId = getVisitReportSubmissionTimes(requestInfo, tenantId, batch);
+                } catch (Exception e) {
+                    log.error("Workflow history lookup failed for {} visits in tenantId={}. Falling back to the "
+                            + "actual_visit_date already stored on those visits.", batch.size(), tenantId, e);
+                    continue;
+                }
+
+                for (ScheduledVisit visit : batch) {
+                    Long submittedAt = submittedAtByVisitId.get(visit.getId());
+                    if (submittedAt != null) {
+                        visit.setActualVisitDate(submittedAt);
+                    } else if (visit.getActualVisitDate() == null) {
+                        log.info("No {} transition in workflow and no stored actual_visit_date for visitId={}; "
+                                + "indexing it without an actual visit date.", SUBMIT_VISIT_REPORT_ACTION, visit.getId());
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Map visitId -> createdTime of its latest SUBMIT_VISIT_REPORT transition. Visits with no such
+     * transition are simply absent from the map.
+     */
+    private Map<String, Long> getVisitReportSubmissionTimes(RequestInfo requestInfo, String tenantId, List<ScheduledVisit> visits) {
+        List<String> visitIds = visits.stream().map(ScheduledVisit::getId).toList();
+        List<ProcessInstance> history = workflowService.getProcessInstanceHistory(visitIds, tenantId, requestInfo);
+
+        Map<String, Long> submittedAtByVisitId = new HashMap<>();
+        for (ProcessInstance instance : history) {
+            if (!SUBMIT_VISIT_REPORT_ACTION.equalsIgnoreCase(instance.getAction())
+                    || instance.getBusinessId() == null
+                    || instance.getAuditDetails() == null
+                    || instance.getAuditDetails().getCreatedTime() == null) {
+                continue;
+            }
+            submittedAtByVisitId.merge(instance.getBusinessId(), instance.getAuditDetails().getCreatedTime(), Math::max);
+        }
+        return submittedAtByVisitId;
     }
 
     /**
@@ -472,9 +551,16 @@ public class ScheduledVisitService {
         String priorStatus = existingVisit.getStatus();
 
         // Step 2: if action is SUBMIT_VISIT_REPORT, check if send OTP is successful or not
-        if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
+        if (SUBMIT_VISIT_REPORT_ACTION.equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to update visit report on existing visit
             existingVisit.setVisitReport(request.getVisitReport());
+            // The report is filled in on site, so this submission is the moment the visit actually
+            // happened - the only point in the workflow that stands for it. Stamped here, at the top
+            // of the branch, because attachAmcInstallationFormDocument below renders it into the AMC
+            // report PDF (actual_scheduled_amc_date); stamping any later would leave the PDF blank.
+            // A re-submission out of REJECTED intentionally overwrites it, so the stored date always
+            // matches the PDF generated in the same call.
+            existingVisit.setActualVisitDate(System.currentTimeMillis());
             log.info("SUBMIT_VISIT_REPORT started for visitId={} tenantId={}", existingVisit.getId(), existingVisit.getTenantId());
             // We need to send OTP to facility POC resolved by facility boundary (HCR user)
             if (existingVisit.getFacilityId() == null || existingVisit.getFacilityId().trim().isEmpty()) {
