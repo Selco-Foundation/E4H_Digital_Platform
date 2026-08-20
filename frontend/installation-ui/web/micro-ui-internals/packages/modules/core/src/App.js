@@ -13,17 +13,7 @@ import TermsPrivacyPolicy from "./pages/TermsPrivacyPolicy";
 
 const normalizeBasePath = (path) => path?.replace(/^\/+|\/+$/g, "");
 
-const getBasePaths = () => {
-  return Array.from(
-    new Set(
-      [window?.contextPath, window?.globalPath, window?.globalConfigs?.getConfig?.("CONTEXT_PATH")]
-        .map(normalizeBasePath)
-        .filter(Boolean)
-    )
-  );
-};
-
-const getRoutePaths = (route) => getBasePaths().map((basePath) => `/${basePath}/${route}`);
+const getRoutePaths = (route) => `/${normalizeBasePath(window?.contextPath)}/employee/${route}`;
 
 const useMobileView = () => {
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
@@ -131,7 +121,7 @@ export const DigitAppWrapper = ({ stateCode, modules, appTenants, logoUrl, logoU
   const { stateInfo } = storeData || {};
   const userScreensExempted = ["user/error"];
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
-  const isPublicPolicyPage = ["privacy-policy", "terms-of-use"].some((url) => getRoutePaths(url).includes(location?.pathname));
+  const isPublicPolicyPage = ["privacy-policy", "terms-of-use"].some((url) => getRoutePaths(url) === location?.pathname);
   const userDetails = Digit.UserService.getUser();
   let CITIZEN = userDetails?.info?.type === "CITIZEN" || !window.location.pathname.split("/").includes("employee") ? true : false;
   const mobileView = useMobileView();
