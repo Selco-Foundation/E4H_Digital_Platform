@@ -66,7 +66,11 @@ from app.utils.icc_report_converter import validate_and_convert, ICCValidationEr
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
-from app.utils.project_category import resolve_project_category
+from app.utils.project_category import (
+    category_from_project_type_name,
+    resolve_project_category,
+    validate_facility_category_matches_project,
+)
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.project_service_client import ProjectServiceClient
 from app.utils.hrms_service_client import HRMSServiceClient
@@ -2429,6 +2433,11 @@ async def validate_facilities_excel_sheet(
         project = projects["Project"][0]["project"]
         geography = project.get("additionalDetails", {}).get("geographyDetails", {})
 
+        # Only Health/Anganwadi facilities matching the project's own type category may be
+        # selected - re-checked here in case a row's Category of Facility was hand-edited after
+        # the template (already filtered to this category) was downloaded.
+        project_category = category_from_project_type_name(project.get("projectType"))
+
         # Valid codes directly as a set (no loop needed)
         valid_boundary_codes = {str(block["code"]).strip() for block in geography.get("blocks", []) if
                                 block.get("code")}
@@ -2474,6 +2483,8 @@ async def validate_facilities_excel_sheet(
             boundary_data_df,
             'data-ingestion.FacilityIngestionSchema'
         )
+        category_errors = validate_facility_category_matches_project(df, project_category)
+        validation_errors = merge_assessment_validation_errors(validation_errors, category_errors)
 
         # Mark rows based on validation results
         error_count = 0
@@ -2565,6 +2576,15 @@ async def validate_facilities_excel_sheet(
     mdms_client = MDMSClient(mdms_url)
     facility_client = FacilityServiceClient(facility_service_url)
 
+    # Only Health/Anganwadi facilities matching the project's own type category may be selected -
+    # re-checked here in case a row's Category of Facility was hand-edited after the template
+    # (already filtered to this category) was downloaded.
+    project_category = None
+    if project_id and project_service_url:
+        project_category = resolve_project_category(
+            ProjectServiceClient(project_service_url), request_info_obj, project_id
+        )
+
     try:
         # Save uploaded Excel to a temp file
         temp_input_file, _ = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
@@ -2605,6 +2625,8 @@ async def validate_facilities_excel_sheet(
             boundary_data_df,
             'data-ingestion.FieldPlanFacilityIngestionSchema'
         )
+        category_errors = validate_facility_category_matches_project(df, project_category)
+        validation_errors = merge_assessment_validation_errors(validation_errors, category_errors)
 
         assessment_client = (
             AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
@@ -3324,7 +3346,7 @@ async def create_fielplan_facilities(
                                     else:
                                         pending_bulk_fieldplan_links.append((index, bulk_entry))
                                 else:
-                                    df.at[index, 'Installation Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
+                                    df.at[index, 'Installation Plan Linking Status'] = "Skipped (Include in Installation Plan != Yes)"
 
                                 # continue to next row
                                 continue

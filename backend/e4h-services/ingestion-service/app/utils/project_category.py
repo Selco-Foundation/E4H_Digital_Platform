@@ -1,6 +1,9 @@
 from typing import List, Optional, Set
 
+import pandas as pd
+
 from app.core.logging import AppLogger
+from app.utils.facility_validator import normalize_facility_category_value
 
 logger = AppLogger().get_logger()
 
@@ -13,6 +16,23 @@ _CATEGORY_SUFFIX_MAP = {
     "ANGANWADI": "ANGANWADI",
     "ANGANWADIS": "ANGANWADI",
 }
+
+
+def category_from_project_type_name(project_type_name: Optional[str]) -> Optional[str]:
+    """
+    Derive the facility category ("HEALTH"/"ANGANWADI") from a project's projectType name.
+    Returns None for a missing or unrecognized suffix.
+    """
+    if not project_type_name:
+        return None
+    suffix = project_type_name.rsplit(" - ", 1)[-1].strip().upper()
+    category = _CATEGORY_SUFFIX_MAP.get(suffix)
+    if not category:
+        logger.warning(
+            f"category_from_project_type_name: unrecognized ProjectType category suffix '{suffix}' "
+            f"for projectType '{project_type_name}'"
+        )
+    return category
 
 
 def resolve_project_category(project_client, request_info, project_id: str) -> Optional[str]:
@@ -36,17 +56,34 @@ def resolve_project_category(project_client, request_info, project_id: str) -> O
             logger.warning(f"resolve_project_category: project {project_id} has no projectType")
             return None
 
-        suffix = project_type_name.rsplit(" - ", 1)[-1].strip().upper()
-        category = _CATEGORY_SUFFIX_MAP.get(suffix)
-        if not category:
-            logger.warning(
-                f"resolve_project_category: unrecognized ProjectType category suffix '{suffix}' "
-                f"for projectType '{project_type_name}'"
-            )
-        return category
+        return category_from_project_type_name(project_type_name)
     except Exception as e:
         logger.warning(f"resolve_project_category: failed for project {project_id}: {e}")
         return None
+
+
+def validate_facility_category_matches_project(
+        df: pd.DataFrame,
+        project_category: Optional[str],
+) -> List[List[str]]:
+    """
+    Per-row check: the uploaded 'Category of Facility' must match the project's own category
+    (HEALTH/ANGANWADI) - enforces, at validation time, the same category restriction already
+    applied when generating the facility template, in case a row was hand-edited afterward.
+    Blank category cells are left to the mandatory-field validation elsewhere; this only flags
+    a genuine mismatch when both values are present.
+    """
+    df = df.reset_index(drop=True)
+    errors: List[List[str]] = [[] for _ in range(len(df))]
+    if not project_category:
+        return errors
+    for i, row in df.iterrows():
+        row_category = normalize_facility_category_value(row)
+        if row_category and row_category != project_category:
+            errors[i].append(
+                f"Category of Facility '{row_category}' does not match the project type category '{project_category}'"
+            )
+    return errors
 
 
 def filter_facilities_by_category(
