@@ -22,11 +22,14 @@ const InfoCard = ({ t, facilityDetails }) => {
       border: "1px solid #eee",
       minWidth: "900px"
     }}>
+      {InfoCardItem(t("INSTALLATION_PLAN_NAME"), facilityDetails.fieldPlanName || "-")}
       {InfoCardItem(t("CS_DISTRICT"), facilityDetails.district ? t(`Boundary_${facilityDetails.district}`) : "-")}
       {InfoCardItem(t("CS_BLOCK"), facilityDetails.block ? t(`Boundary_${facilityDetails.block}`) : "-")}
       {InfoCardItem(t("CS_HEALTH_FACILITY_TYPE"), facilityDetails.facilityType ? facilityDetails.facilityType : "-")}
       {InfoCardItem(t("CS_STATUS"), facilityDetails.status ? t(`CS_${facilityDetails.status}`) : "-")}
       {InfoCardItem(t("PM_SYSTEM_TYPE"), facilityDetails.systemType ? t(facilityDetails.systemType) : "-")}
+      {InfoCardItem(t("PM_SOLUTION_DESIGN_TYPE"), facilityDetails.solarSolutionDesignType ? t(facilityDetails.solarSolutionDesignType) : "-")}
+      {InfoCardItem(t("PM_SYSTEM_CAPACITY"), facilityDetails.totalSystemCapacity ? `${t(facilityDetails.totalSystemCapacity)} kWp` : "-")}
     </div>
   );
 }
