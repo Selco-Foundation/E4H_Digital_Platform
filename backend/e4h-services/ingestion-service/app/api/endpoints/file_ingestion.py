@@ -2991,11 +2991,11 @@ async def create_fielplan_facilities(
         # ---------- save uploaded file ----------
         input_temp_file, uploaded_size = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
         facility_file_path = input_temp_file.name
-        logger.info(f"Received createFieldPlanFacility file of size {uploaded_size} bytes")
+        logger.info(f"Received createInstallationFacility file of size {uploaded_size} bytes")
 
         # ---------- prepare output path & load workbook ----------
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"facility_fieldplan_update_results_{timestamp}.xlsx"
+        output_filename = f"facility_installationplan_update_results_{timestamp}.xlsx"
         output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
         output_temp_file.close()
         output_file_path = output_temp_file.name
