@@ -147,6 +147,7 @@ Every new key gets recorded in a small local git repo on the developer's own mac
   };
   ```
 - `CommonUtils.getApiErrorMessage(error)` (utilities/CommonUtils.js) extracts a human-readable message from the backend's error envelope, falling back to a generic translated message — always prefer it over a hardcoded error string when a real backend call could fail.
+- For a `responseType: "blob"` call (see §5), use `await CommonUtils.getBlobApiErrorMessage(error)` instead in the `catch` block — `getApiErrorMessage` can't read a Blob-typed `error.response.data` and will silently fall through to axios's generic status-code message.
 - Don't add error handling for cases that can't happen (e.g. validating a value that's already guaranteed non-null by the calling context) — only guard real boundaries (API calls, user input).
 
 ## 12. Business-rule code
