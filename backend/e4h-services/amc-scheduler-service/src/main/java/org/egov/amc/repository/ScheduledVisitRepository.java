@@ -59,6 +59,37 @@ public class ScheduledVisitRepository extends GenericRepository<ScheduledVisit> 
         return scheduledVisitList;
     }
 
+    /**
+     * Fetches the facility's latest non-DRAFT, non-deleted visit, or empty if the facility has none
+     * (no AMC configured yet, or every visit still a draft).
+     */
+    public Optional<ScheduledVisit> getLatestNonDraftVisitByFacility(String tenantId, String facilityId) {
+        log.trace("Entering getLatestNonDraftVisitByFacility method, tenantId: {}, facilityId: {}", tenantId, facilityId);
+        List<Object> preparedStmtList = new ArrayList<>();
+        String query = queryBuilder.getLatestNonDraftVisitByFacilityQuery(tenantId, facilityId, preparedStmtList);
+        List<ScheduledVisit> visits = jdbcTemplate.query(query, scheduledVisitRowMapper, preparedStmtList.toArray());
+        return visits.isEmpty() ? Optional.empty() : Optional.of(visits.get(0));
+    }
+
+    /**
+     * Merges {@code totalTickets} into the visit's additional_details, leaving every other key intact.
+     *
+     * <p>Written with a targeted UPDATE rather than pushed through egov-persister on purpose: the
+     * update-scheduled-visit persister config rewrites the whole row and re-upserts assignments, which
+     * would churn audit history on every ticket raised for the facility.
+     *
+     * @return number of rows updated (0 if the visit disappeared between lookup and write)
+     */
+    public int updateTotalTicketsOnVisit(String visitId, Integer totalTickets) {
+        log.trace("Entering updateTotalTicketsOnVisit method, visitId: {}, totalTickets: {}", visitId, totalTickets);
+        String query = "UPDATE scheduled_visits SET additional_details = " +
+                "COALESCE(additional_details, '{}'::jsonb) || jsonb_build_object('totalTickets', ?::int) " +
+                "WHERE id = ?";
+        int updated = jdbcTemplate.update(query, totalTickets, visitId);
+        log.debug("Stamped totalTickets={} on {} scheduled visit row(s) for visitId={}", totalTickets, updated, visitId);
+        return updated;
+    }
+
     public Integer getScheduledVisitCount(ScheduledVisitSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         log.trace("Entering getScheduledVisitCount method, tenantId: {}", tenantId);
         List<Object> preparedStatement = new ArrayList<>();

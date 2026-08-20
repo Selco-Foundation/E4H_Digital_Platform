@@ -54,6 +54,8 @@ public class IMService {
 
     private SemAnalyticsService semAnalyticsService;
 
+    private FacilityTicketCountService facilityTicketCountService;
+
     @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
     private Set<String> openTicketStatuses;
 
@@ -70,7 +72,7 @@ public class IMService {
             IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils,
             LocalizationService localizationService, BoundaryService boundaryService,
             RmsStatusUpdateService rmsStatusUpdateService, RmsInactiveIncidentService rmsInactiveIncidentService,
-            SemAnalyticsService semAnalyticsService
+            SemAnalyticsService semAnalyticsService, FacilityTicketCountService facilityTicketCountService
     ) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
@@ -87,6 +89,7 @@ public class IMService {
         this.rmsStatusUpdateService = rmsStatusUpdateService;
         this.rmsInactiveIncidentService = rmsInactiveIncidentService;
         this.semAnalyticsService = semAnalyticsService;
+        this.facilityTicketCountService = facilityTicketCountService;
     }
 
 
@@ -199,6 +202,14 @@ public class IMService {
             rmsInactiveIncidentService.onIncidentCreated(request);
         } catch (Exception e) {
             log.error("Failed to sync facility_rms_inactive_incident for incidentId={}", request.getIncident().getIncidentId(), e);
+        }
+
+        // Publish the facility's running ticket total for amc-scheduler-service. Best-effort: a failure
+        // here must not fail ticket creation, and the next ticket for the facility re-publishes the total.
+        try {
+            facilityTicketCountService.onIncidentCreated(request);
+        } catch (Exception e) {
+            log.error("Failed to publish facility ticket count for incidentId={}", request.getIncident().getIncidentId(), e);
         }
 
         // Publish SEM user-analytics event for the indexer.

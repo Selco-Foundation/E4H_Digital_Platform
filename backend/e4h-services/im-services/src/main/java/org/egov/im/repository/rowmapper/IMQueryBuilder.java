@@ -43,6 +43,8 @@ public class IMQueryBuilder {
 
     private static final String AVERAGE_RESOLUTION_TIME_QUERY = "select round(avg(lastmodifiedtime-createdtime)/86400000) from {schema}.eg_incident_v2 where applicationstatus='CLOSEDAFTERRESOLUTION' and tenantid=? ";
 
+    private static final String TICKET_COUNT_BY_FACILITY_QUERY = "select count(*) from {schema}.eg_incident_v2 where facilityid=? and tenantid=? ";
+
 
 
     public String getPGRSearchQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList) {
@@ -317,6 +319,16 @@ public class IMQueryBuilder {
 		preparedStmtListAverageResolutionTime.add(tenantId);
 
 		return query.toString();
+	}
+
+	/**
+	 * Counts every ticket ever raised for a facility, regardless of status - this is the "total
+	 * tickets" figure surfaced against the facility, not an open-ticket count.
+	 */
+	public String getTicketCountByFacility(String facilityId, String tenantId, List<Object> preparedStmtList) {
+		preparedStmtList.add(facilityId);
+		preparedStmtList.add(tenantId);
+		return TICKET_COUNT_BY_FACILITY_QUERY;
 	}
 
 }

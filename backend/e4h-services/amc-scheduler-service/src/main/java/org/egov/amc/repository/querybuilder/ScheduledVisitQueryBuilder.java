@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.egov.amc.util.AmcConstants.DOT;
+import static org.egov.amc.util.AmcConstants.DRAFT_STATUS;
 import static org.egov.amc.util.AmcConstants.PROJECT_MANAGER;
 
 @Component
@@ -28,7 +29,7 @@ public class ScheduledVisitQueryBuilder {
 
     private static final String FETCH_SCHEDULED_VISIT_QUERY = "SELECT sv.id AS sv_visit_id, sv.tenant_id AS sv_tenant_id, sv.amc_configuration_id AS sv_amc_configuration_id, sv.facility_id AS sv_facility_id, " +
             "sv.facility_name AS sv_facility_name, sv.project_id AS sv_project_id, sv.visit_number AS sv_visit_number, sv.scheduled_date AS sv_scheduled_date, sv.actual_visit_date AS sv_actual_visit_date, sv.last_scheduled_visit_date AS sv_last_scheduled_visit_date," +
-            " sv.status AS sv_status, sv.is_active AS sv_is_active, sv.visit_report AS sv_visit_report, sv.created_by AS sv_created_by, sv.created_time AS sv_created_time, sv.last_modified_by AS sv_last_modified_by, sv.last_modified_time AS sv_last_modified_time, " +
+            " sv.status AS sv_status, sv.is_active AS sv_is_active, sv.visit_report AS sv_visit_report, sv.additional_details AS sv_additional_details, sv.created_by AS sv_created_by, sv.created_time AS sv_created_time, sv.last_modified_by AS sv_last_modified_by, sv.last_modified_time AS sv_last_modified_time, " +
             "ac.id AS amc_id, ac.tenant_id AS amc_tenant_id, ac.vendor_id as amc_vendor_id, ac.facility_id as amc_facility_id, ac.project_id as amc_project_id, ac.asset_types as amc_asset_types, ac.duration_months as amc_duration_months, " +
             "ac.visit_frequency_months as amc_visit_frequency_months, ac.configuration_start_date as amc_configuration_start_date, ac.configuration_end_date as amc_configuration_end_date, ac.status AS amc_status, ac.additional_details AS amc_additional_details, ac.geography_details AS amc_geography_details, ac.created_by AS amc_created_by," +
             "ac.created_time AS amc_created_time, ac.last_modified_by AS amc_last_modified_by, ac.last_modified_time AS amc_last_modified_time, " +
@@ -55,6 +56,20 @@ public class ScheduledVisitQueryBuilder {
             "LEFT JOIN scheduled_visits sv_next ON sv_next.amc_configuration_id = sv.amc_configuration_id AND sv_next.visit_number = sv.visit_number + 1 ";
     private static final String SCHEDULED_VISIT_COUNT_QUERY = "SELECT COUNT(DISTINCT sv.id) FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id LEFT JOIN scheduled_visit_assignments sva ON sv.id = sva.scheduled_visit_id " +
             "LEFT JOIN scheduled_visits sv_next ON sv_next.amc_configuration_id = sv.amc_configuration_id AND sv_next.visit_number = sv.visit_number + 1 ";
+
+    /** Every non-aggregated column selected by {@link #FETCH_SCHEDULED_VISIT_QUERY}, for the jsonb_agg of assignments. */
+    private static final String SCHEDULED_VISIT_GROUP_BY = " GROUP BY sv.id, sv.tenant_id, sv.amc_configuration_id, sv.facility_id,sv.project_id,  " +
+            "    sv.facility_name, sv.visit_number, sv.scheduled_date, sv.actual_visit_date, sv.status, sv.is_active, sv.last_scheduled_visit_date, " +
+            "    sv.visit_report, sv.additional_details, sv.created_by, sv.created_time, sv.last_modified_by, sv.last_modified_time, " +
+            "\n" +
+            "    ac.id, ac.tenant_id, ac.vendor_id, ac.facility_id, ac.project_id, " +
+            "    ac.asset_types, ac.duration_months, ac.visit_frequency_months, " +
+            "    ac.configuration_start_date, ac.configuration_end_date, ac.status, " +
+            "    ac.additional_details, ac.geography_details, ac.created_by, ac.created_time, ac.last_modified_by, ac.last_modified_time," +
+            "    f.id, f.facility_name, f.facility_type, f.facility_category, " +
+            "    f.facility_subtype, f.facility_ownership, f.facility_region, " +
+            "    f.facility_details, f.boundary_code, f.is_active, " +
+            "    f.facility_poc_name, f.facility_poc_phone, f.facility_poc_email, f.facility_status, f.hfr_id, f.nin_id";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (" +
@@ -154,20 +169,7 @@ public class ScheduledVisitQueryBuilder {
             return queryBuilder.toString();
         }
 
-        String groupBy = " GROUP BY sv.id, sv.tenant_id, sv.amc_configuration_id, sv.facility_id,sv.project_id,  " +
-                "    sv.facility_name, sv.visit_number, sv.scheduled_date, sv.actual_visit_date, sv.status, sv.is_active, sv.last_scheduled_visit_date, " +
-                "    sv.visit_report, sv.created_by, sv.created_time, sv.last_modified_by, sv.last_modified_time, " +
-                "\n" +
-                "    ac.id, ac.tenant_id, ac.vendor_id, ac.facility_id, ac.project_id, " +
-                "    ac.asset_types, ac.duration_months, ac.visit_frequency_months, " +
-                "    ac.configuration_start_date, ac.configuration_end_date, ac.status, " +
-                "    ac.additional_details, ac.geography_details, ac.created_by, ac.created_time, ac.last_modified_by, ac.last_modified_time," +
-                "    f.id, f.facility_name, f.facility_type, f.facility_category, " +
-                "    f.facility_subtype, f.facility_ownership, f.facility_region, " +
-                "    f.facility_details, f.boundary_code, f.is_active, " +
-                "    f.facility_poc_name, f.facility_poc_phone, f.facility_poc_email, f.facility_status, f.hfr_id, f.nin_id";
-
-        queryBuilder.append(groupBy);
+        queryBuilder.append(SCHEDULED_VISIT_GROUP_BY);
 
         //Wrap constructed SQL query with where criteria in pagination query
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset(), criteria.getSortDirection());
@@ -361,6 +363,37 @@ public class ScheduledVisitQueryBuilder {
 
 
         return finalQuery;
+    }
+
+    /**
+     * Builds a query for the single most recent non-DRAFT, non-deleted visit of one facility.
+     *
+     * <p>Deliberately not routed through {@link #getScheduledVisitSearchQuery}: that path requires a
+     * user UUID (it scopes non-PROJECT_MANAGER callers to their own assignments) and orders by
+     * workflow-status priority, neither of which applies to a system-driven lookup off a Kafka event.
+     *
+     * <p>"Latest" is the highest {@code scheduled_date} - the furthest-along visit in the facility's
+     * plan - with visit_number and id as tie-breakers so the pick is deterministic when a facility has
+     * several visits on the same date.
+     */
+    public String getLatestNonDraftVisitByFacilityQuery(String tenantId, String facilityId, List<Object> preparedStmtList) {
+        StringBuilder queryBuilder = new StringBuilder(FETCH_SCHEDULED_VISIT_QUERY);
+
+        addClause(tenantId, preparedStmtList, queryBuilder);
+
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" sv.facility_id = ? ");
+        preparedStmtList.add(facilityId);
+
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" sv.status <> ? ");
+        preparedStmtList.add(DRAFT_STATUS);
+
+        addIsActiveConfigurationCondition(queryBuilder, preparedStmtList, false);
+
+        queryBuilder.append(SCHEDULED_VISIT_GROUP_BY)
+                .append(" ORDER BY sv.scheduled_date DESC, sv.visit_number DESC, sv.id DESC LIMIT 1");
+        return queryBuilder.toString();
     }
 
     /* Returns query to get total projects count based on project search params */

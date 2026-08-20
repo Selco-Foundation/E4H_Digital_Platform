@@ -106,6 +106,30 @@ public class IMRepository {
     }
 
 
+	/**
+	 * Counts the tickets already persisted against a facility (all statuses).
+	 *
+	 * <p>Note for callers running inside the create/update flow: the incident being handled is
+	 * persisted asynchronously by egov-persister off {@code save-im-request}, so it is not yet
+	 * included in this count.
+	 *
+	 * @return the number of persisted tickets for the facility, 0 if the query yields no row
+	 */
+	public Integer countTicketsByFacility(String tenantId, String facilityId) {
+		log.trace("IMRepository::countTicketsByFacility method invoked");
+		List<Object> preparedStmtList = new ArrayList<>();
+		String query = queryBuilder.getTicketCountByFacility(facilityId, tenantId, preparedStmtList);
+		try {
+			query = utils.replaceSchemaPlaceholder(query, tenantId);
+		} catch (Exception e) {
+			throw new CustomException("PGR_REQUEST_COUNT_ERROR",
+					"TenantId length is not sufficient to replace query schema in a multi state instance");
+		}
+		Integer count = jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
+		log.debug("Persisted ticket count for facilityId={} tenantId={} is {}", facilityId, tenantId, count);
+		return count == null ? 0 : count;
+	}
+
 	public Map<String, Integer> fetchDynamicData(String tenantId) {
 		List<Object> preparedStmtListCompalintsResolved = new ArrayList<>();
 		String query = queryBuilder.getResolvedComplaints(tenantId,preparedStmtListCompalintsResolved );

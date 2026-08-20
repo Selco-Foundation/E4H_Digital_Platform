@@ -134,6 +134,9 @@ public class IMConfiguration {
     @Value("${im.kafka.user.analytics.topic}")
     private String userAnalyticsTopic;
 
+    @Value("${im.kafka.facility.ticket.count.topic}")
+    private String facilityTicketCountTopic;
+
     @Value("${im.kafka.kibana.login.topic}")
     private String kibanaLoginTopic;
 

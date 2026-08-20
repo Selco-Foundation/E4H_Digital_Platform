@@ -11,6 +11,8 @@ public class AmcConstants {
     public static final String MDMS_HCM_ATTENDANCE_MODULE_NAME = "HCM-ATTENDANCE";
     public static final String MASTER_STATE_INFO = "StateInfo";
     public static final String MASTER_ACTIVITIES = "Activities";
+    /** additionalDetails key holding the facility's running ticket total, fed by im-services. */
+    public static final String TOTAL_TICKETS = "totalTickets";
     //location
     public static final String DRAFT_STATUS = "DRAFT";
     public static final String SCHEDULED_STATUS = "SCHEDULED";

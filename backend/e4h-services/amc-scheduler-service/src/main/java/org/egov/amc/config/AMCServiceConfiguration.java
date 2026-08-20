@@ -108,6 +108,22 @@ public class AMCServiceConfiguration {
     @Value("${scheduled.visit.index.update.topic}")
     private String updateScheduledVisitIndexTopic;
 
+    @Value("${amc.facility.ticket.count.topic}")
+    private String facilityTicketCountTopic;
+
+    // Elasticsearch write-side config, for the totalTickets partial update on the scheduled-visit index.
+    @Value("${egov.es.host}")
+    private String esHost;
+
+    @Value("${egov.es.username}")
+    private String esUsername;
+
+    @Value("${egov.es.password}")
+    private String esPassword;
+
+    @Value("${egov.es.scheduled.visit.index}")
+    private String esScheduledVisitIndex;
+
     @Value("${scheduled.visit.delete.topic}")
     private String deleteScheduledVisitTopic;
 

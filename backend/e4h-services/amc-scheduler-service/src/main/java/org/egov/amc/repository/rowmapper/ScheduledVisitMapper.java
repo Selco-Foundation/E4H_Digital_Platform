@@ -57,6 +57,10 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
             }
         }
 
+        // additional_details (JSONB → Map). Read so values stamped on the row - e.g. the facility's
+        // totalTickets - are carried back onto the visit and survive a re-index.
+        visit.setAdditionalDetails(getJsonbAsMap("sv_additional_details", rs));
+
         // Audit
         AuditDetails auditDetails = new AuditDetails();
         auditDetails.setCreatedBy(rs.getString("sv_created_by"));
@@ -150,6 +154,14 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
      * Convert JSONB column into Map<String,Object>
      */
     private Map<String, Object> getGeographyDetails(String columnName, ResultSet rs) throws SQLException {
+        return getJsonbAsMap(columnName, rs, "geographyDetails");
+    }
+
+    private Map<String, Object> getJsonbAsMap(String columnName, ResultSet rs) throws SQLException {
+        return getJsonbAsMap(columnName, rs, columnName);
+    }
+
+    private Map<String, Object> getJsonbAsMap(String columnName, ResultSet rs, String label) throws SQLException {
         Object obj = rs.getObject(columnName);
         if (obj == null) {
             return null;
@@ -158,8 +170,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         try {
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (IOException e) {
-//            log.error("Failed to parse geography_details JSON for column: {}", columnName, e);
-            throw new CustomException("PARSING ERROR", "Failed to parse geographyDetails");
+            throw new CustomException("PARSING ERROR", "Failed to parse " + label);
         }
     }
 
