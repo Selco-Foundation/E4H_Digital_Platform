@@ -141,6 +141,14 @@ public class AMCServiceConfiguration {
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
 
+    /**
+     * HRMS role code identifying an AMC field staff member. Used to pick which of a visit's assignees
+     * becomes the mapped vendor on the search index. Configurable because role codes are MDMS data and
+     * can differ per environment.
+     */
+    @Value("${amc.mapped.vendor.role.code}")
+    private String mappedVendorRoleCode;
+
     @Value("${egov.vendor.host}")
     private String vendorHost;
 

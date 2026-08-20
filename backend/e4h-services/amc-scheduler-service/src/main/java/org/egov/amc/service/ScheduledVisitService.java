@@ -14,6 +14,7 @@ import org.egov.amc.util.MDMSUtils;
 import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
 import org.egov.tracer.model.CustomException;
@@ -44,6 +45,21 @@ public class ScheduledVisitService {
      * batch normally resolves in a single call while still cutting the round trips by an order of magnitude.
      */
     private static final int WORKFLOW_HISTORY_VISIT_BATCH_SIZE = 20;
+
+    /**
+     * Number of distinct assignee uuids resolved per egov-hrms search when working out each visit's
+     * mapped vendor. Kept under the service's default page size (egov.hrms.default.pagination.limit,
+     * 200) so a batch always comes back in one page, while still collapsing what would otherwise be
+     * one HRMS call per assignment into a handful per index push.
+     */
+    private static final int MAPPED_VENDOR_UUID_BATCH_SIZE = 100;
+
+    /**
+     * Tenant used for every egov-hrms lookup in this service - employees and their roles are held at
+     * the state level, not per sub-tenant. Matches the literal already used by {@link #getUserById}
+     * and {@link #getEmployeeByBoundaryCode}.
+     */
+    private static final String HRMS_TENANT_ID = "in";
 
     private final ScheduledVisitValidator scheduledVisitsValidator;
     private final ScheduledVisitRepository scheduledVisitsRepository;
@@ -138,6 +154,7 @@ public class ScheduledVisitService {
             return 0;
         }
         enrichBoundaryLocalization(requestInfo, nonDraftVisits);
+        enrichMappedVendor(requestInfo, nonDraftVisits);
         ScheduledVisitRequest indexRequest = ScheduledVisitRequest.builder()
                 .requestInfo(requestInfo)
                 .scheduledVisits(nonDraftVisits)
@@ -305,6 +322,129 @@ public class ScheduledVisitService {
             visit.setDistrict(labels.getOrDefault(boundary.getDistrict(), boundary.getDistrict()));
             visit.setBlock(labels.getOrDefault(boundary.getBlock(), boundary.getBlock()));
         }
+    }
+
+    /**
+     * Stamps each visit with the AMC field staff it is mapped to: the first active assignment whose
+     * HRMS user holds the role in {@code amc.mapped.vendor.role.code}.
+     *
+     * <p>Called from {@link #pushNonDraftVisitsToIndex}, which every route to the index funnels
+     * through, so create/update/expire and the {@code /index/_reindex} backfill all derive the value
+     * the same way.
+     *
+     * <p>Roles are fetched from HRMS rather than read off any user object already hanging on the
+     * assignment: create-flow assignments carry nothing but an {@code assignedUser} uuid, so that
+     * object is often absent. One search per {@value #MAPPED_VENDOR_UUID_BATCH_SIZE} distinct
+     * assignees covers the whole page instead of one call per assignment.
+     *
+     * <p>A visit whose assignees include no field staff keeps both fields null - the index then
+     * distinguishes "nobody mapped" from a real name. An HRMS failure degrades the affected batch to
+     * that same null rather than aborting the push, since an unmapped visit is still worth indexing.
+     */
+    private void enrichMappedVendor(RequestInfo requestInfo, List<ScheduledVisit> visits) {
+        String roleCode = amcServiceConfiguration.getMappedVendorRoleCode();
+        if (roleCode == null || roleCode.trim().isEmpty()) {
+            log.warn("amc.mapped.vendor.role.code is not configured; indexing {} visit(s) without a mapped vendor.",
+                    visits.size());
+            return;
+        }
+
+        List<String> assigneeUuids = visits.stream()
+                .filter(visit -> visit.getAssignments() != null)
+                .flatMap(visit -> visit.getAssignments().stream())
+                .filter(ScheduledVisitAssignment::isActive)
+                .map(ScheduledVisitAssignment::getAssignedUser)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (assigneeUuids.isEmpty()) {
+            return;
+        }
+
+        Map<String, User> fieldStaffByUuid = getFieldStaffByUuid(requestInfo, assigneeUuids, roleCode);
+        if (fieldStaffByUuid.isEmpty()) {
+            log.info("None of the {} active assignee(s) in this batch hold role {}; indexing them without a "
+                    + "mapped vendor.", assigneeUuids.size(), roleCode);
+            return;
+        }
+
+        for (ScheduledVisit visit : visits) {
+            if (visit.getAssignments() == null) {
+                continue;
+            }
+            for (ScheduledVisitAssignment assignment : visit.getAssignments()) {
+                if (!assignment.isActive()) {
+                    continue;
+                }
+                User fieldStaff = fieldStaffByUuid.get(assignment.getAssignedUser());
+                if (fieldStaff == null) {
+                    continue;
+                }
+                visit.setMappedVendorName(fieldStaff.getName());
+                visit.setMappedVendorUserName(fieldStaff.getUserName());
+                // First active field-staff assignee wins; later ones (e.g. a reviewer also on the visit)
+                // are ignored so the index carries a single, stable mapped vendor.
+                break;
+            }
+        }
+    }
+
+    /**
+     * uuid -> HRMS user, restricted to those of {@code assigneeUuids} holding {@code roleCode}, so
+     * every entry in the returned map is field staff and callers need no further check.
+     *
+     * <p>The search is by uuid only and the role is matched here, deliberately rather than through
+     * HRMS's own {@code roles} parameter: that parameter makes HRMS list <em>every</em> user holding
+     * the role and intersect, a page-capped query that would quietly drop assignees once the role has
+     * more members than egov-user returns. Searching by the uuids we already hold is bounded by the
+     * batch and cannot truncate. HRMS populates {@code user.roles} on the way out either way.
+     *
+     * <p>A failing batch is logged and skipped rather than propagated: the assignees it covered simply
+     * end up without a mapped vendor.
+     */
+    private Map<String, User> getFieldStaffByUuid(RequestInfo requestInfo, List<String> assigneeUuids, String roleCode) {
+        RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
+        requestInfoWrapper.setRequestInfo(requestInfo);
+
+        Map<String, User> fieldStaffByUuid = new HashMap<>();
+        for (int from = 0; from < assigneeUuids.size(); from += MAPPED_VENDOR_UUID_BATCH_SIZE) {
+            List<String> batch = assigneeUuids.subList(from,
+                    Math.min(from + MAPPED_VENDOR_UUID_BATCH_SIZE, assigneeUuids.size()));
+            String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()
+                    + "?tenantId=" + HRMS_TENANT_ID
+                    + "&uuids=" + String.join(",", batch)
+                    // Explicit limit: HRMS would otherwise fall back to its own default page size, which
+                    // an environment is free to configure below the batch size and silently truncate.
+                    + "&limit=" + MAPPED_VENDOR_UUID_BATCH_SIZE;
+
+            try {
+                Object response = requestRepository.fetchResult(new StringBuilder(url), requestInfoWrapper);
+                EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+                if (employeeResponse == null || employeeResponse.getEmployees() == null) {
+                    continue;
+                }
+                for (Employee employee : employeeResponse.getEmployees()) {
+                    User user = employee.getUser();
+                    if (user != null && user.getUuid() != null && hasRole(user, roleCode)) {
+                        fieldStaffByUuid.put(user.getUuid(), user);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("HRMS lookup failed for {} assignee(s). Those visits will be indexed without a "
+                        + "mapped vendor.", batch.size(), e);
+            }
+        }
+        return fieldStaffByUuid;
+    }
+
+    /** Case-insensitive because MDMS role codes are not consistently cased across environments. */
+    private boolean hasRole(User user, String roleCode) {
+        if (user.getRoles() == null) {
+            return false;
+        }
+        return user.getRoles().stream()
+                .filter(Objects::nonNull)
+                .anyMatch(role -> roleCode.equalsIgnoreCase(role.getCode()));
     }
 
     public ScheduledVisitResponse generateScheduledVisits(VisitGenerationRequest request) {
