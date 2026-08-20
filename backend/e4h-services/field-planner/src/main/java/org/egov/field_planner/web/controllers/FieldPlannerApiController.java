@@ -65,7 +65,7 @@ public class FieldPlannerApiController {
     @RequestMapping(value = "/_create", method = RequestMethod.POST)
     public ResponseEntity<FieldPlanResponse> fieldPlanBeneficiaryV1CreatePost(@ApiParam(value = "Capture details of benificiary type.", required = true) @Valid @RequestBody FieldPlanRequest fieldPlanRequest) {
         log.trace("Entering fieldPlanBeneficiaryV1CreatePost endpoint");
-        log.info("Received field plan creation request, field plan count: {}", fieldPlanRequest.getFieldPlans().size());
+        log.info("Received installation plan creation request, installation plan count: {}", fieldPlanRequest.getFieldPlans().size());
 
         FieldPlanRequest enrichedFieldPlanRequest = fieldPlannerService.createFieldPlan(fieldPlanRequest);
         FieldPlanResponse response = FieldPlanResponse.builder()
@@ -73,32 +73,32 @@ public class FieldPlannerApiController {
                 .responseInfo(ResponseInfoFactory
                         .createResponseInfo(fieldPlanRequest.getRequestInfo(), true))
                 .build();
-        log.info("Field plan creation request processed successfully");
+        log.info("Installation plan creation request processed successfully");
         log.trace("Exiting fieldPlanBeneficiaryV1CreatePost endpoint");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
-    public ResponseEntity<FieldPlanResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Field Plan.", required = true) @Valid @RequestBody FieldPlanRequest fieldPlanRequest) {
+    public ResponseEntity<FieldPlanResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Installation Plan.", required = true) @Valid @RequestBody FieldPlanRequest fieldPlanRequest) {
         log.trace("Entering updateFieldPlan endpoint");
-        log.info("Received field plan update request, field plan count: {}", fieldPlanRequest.getFieldPlans().size());
+        log.info("Received installation plan update request, installation plan count: {}", fieldPlanRequest.getFieldPlans().size());
 
         FieldPlanRequest enrichedFieldPlanRequest = fieldPlannerService.updateFieldPlan(fieldPlanRequest);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(fieldPlanRequest.getRequestInfo(), true);
         FieldPlanResponse fieldPlanResponse = FieldPlanResponse.builder().responseInfo(responseInfo).fieldPlans(enrichedFieldPlanRequest.getFieldPlans()).build();
-        log.info("Field plan update request processed successfully");
+        log.info("Installation plan update request processed successfully");
         log.trace("Exiting updateFieldPlan endpoint");
         return new ResponseEntity<FieldPlanResponse>(fieldPlanResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<FieldPlanResponse> searchfieldPlanV2(
-            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody FieldPlanSearchRequest request,
+            @ApiParam(value = "Details for the installation plan.", required = true) @Valid @RequestBody FieldPlanSearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
         log.trace("Entering searchfieldPlanV2 endpoint");
-        log.info("Received field plan search request for tenant: {}, limit: {}, offset: {}",
+        log.info("Received installation plan search request for tenant: {}, limit: {}, offset: {}",
                 urlParams.getTenantId(), urlParams.getLimit(), urlParams.getOffset());
 
         List<FieldPlan> fieldPlans = fieldPlannerService.searchFieldPlan(
@@ -114,15 +114,15 @@ public class FieldPlannerApiController {
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         Integer count = fieldPlannerService.countAllFieldPlans(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
         FieldPlanResponse fieldPlanResponse = FieldPlanResponse.builder().responseInfo(responseInfo).fieldPlans(fieldPlans).totalCount(count).build();
-        log.info("Field plan search completed, found {} results out of {} total", fieldPlans.size(), count);
+        log.info("Installation plan search completed, found {} results out of {} total", fieldPlans.size(), count);
         log.trace("Exiting searchfieldPlanV2 endpoint");
         return new ResponseEntity<FieldPlanResponse>(fieldPlanResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/facility/_create", method = RequestMethod.POST)
-    public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityV1CreatePost(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
+    public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityV1CreatePost(@ApiParam(value = "Capture linkage of Installation Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
         log.trace("Entering fieldPlanFacilityV1CreatePost endpoint");
-        log.info("Received field plan facility creation request");
+        log.info("Received installation plan facility creation request");
 
         FieldPlanFacility fieldPlanFacility = fieldPlannerFacilityService.create(request);
         FieldPlanFacilityResponse response = FieldPlanFacilityResponse.builder()
@@ -130,19 +130,19 @@ public class FieldPlannerApiController {
                 .responseInfo(ResponseInfoFactory
                         .createResponseInfo(request.getRequestInfo(), true))
                 .build();
-        log.info("Field plan facility creation request processed successfully");
+        log.info("Installation plan facility creation request processed successfully");
         log.trace("Exiting fieldPlanFacilityV1CreatePost endpoint");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
     @RequestMapping(value = "/facility/bulk/_create", method = RequestMethod.POST)
-    public ResponseEntity<ResponseInfo> fieldPlanFacilityV1BulkCreatePost(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
+    public ResponseEntity<ResponseInfo> fieldPlanFacilityV1BulkCreatePost(@ApiParam(value = "Capture linkage of Installation Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
         log.trace("Entering fieldPlanFacilityV1BulkCreatePost endpoint");
-        log.info("Received bulk field plan facility creation request, count: {}", request.getFieldPlanFacilities().size());
+        log.info("Received bulk installation plan facility creation request, count: {}", request.getFieldPlanFacilities().size());
         request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
         log.debug("Pushing bulk create request to Kafka topic: {}", fieldPlannerConfiguration.getBulkCreateFieldPlanFacilityTopic());
         producer.push(fieldPlannerConfiguration.getBulkCreateFieldPlanFacilityTopic(), request);
-        log.info("Bulk field plan facility creation request pushed to Kafka successfully");
+        log.info("Bulk installation plan facility creation request pushed to Kafka successfully");
         log.trace("Exiting fieldPlanFacilityV1BulkCreatePost endpoint");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
                 .createResponseInfo(request.getRequestInfo(), true));
@@ -151,11 +151,11 @@ public class FieldPlannerApiController {
     @RequestMapping(value = "/facility/bulk/_update", method = RequestMethod.POST)
     public ResponseEntity<ResponseInfo> fieldPlanFacilityV1BulkUpdatePost(@ApiParam(value = "Update editable fields (systemType, solarSolutionDesignType, totalSystemCapacity, customSolarSolutionDesignType, customTotalSystemCapacity) of already-linked FieldPlanFacilities - each item must carry its existing id.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
         log.trace("Entering fieldPlanFacilityV1BulkUpdatePost endpoint");
-        log.info("Received bulk field plan facility update request, count: {}", request.getFieldPlanFacilities().size());
+        log.info("Received bulk installation plan facility update request, count: {}", request.getFieldPlanFacilities().size());
         request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
         log.debug("Pushing bulk update request to Kafka topic: {}", fieldPlannerConfiguration.getBulkUpdateFieldPlanFacilityTopic());
         producer.push(fieldPlannerConfiguration.getBulkUpdateFieldPlanFacilityTopic(), request);
-        log.info("Bulk field plan facility update request pushed to Kafka successfully");
+        log.info("Bulk installation plan facility update request pushed to Kafka successfully");
         log.trace("Exiting fieldPlanFacilityV1BulkUpdatePost endpoint");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
                 .createResponseInfo(request.getRequestInfo(), true));
@@ -167,7 +167,7 @@ public class FieldPlannerApiController {
             @ApiParam(value = "Capture details of Project facility.", required = true) @Valid @RequestBody FieldPlanFacilitySearchRequest request
     ) throws Exception {
         log.trace("Entering fieldPlanFacilityV2SearchPost endpoint");
-        log.info("Received field plan facility search request for tenant: {}, limit: {}, offset: {}",
+        log.info("Received installation plan facility search request for tenant: {}, limit: {}, offset: {}",
                 urlParams.getTenantId(), urlParams.getLimit(), urlParams.getOffset());
 
         SearchResponse<FieldPlanFacility> searchResponse = fieldPlannerFacilityService.search(
@@ -184,7 +184,7 @@ public class FieldPlannerApiController {
                 .responseInfo(ResponseInfoFactory
                         .createResponseInfo(request.getRequestInfo(), true))
                 .build();
-        log.info("Field plan facility search completed, found {} results out of {} total",
+        log.info("Installation plan facility search completed, found {} results out of {} total",
                 searchResponse.getResponse().size(), searchResponse.getTotalCount());
         log.trace("Exiting fieldPlanFacilityV2SearchPost endpoint");
         return ResponseEntity.status(HttpStatus.OK).body(response);
@@ -193,10 +193,10 @@ public class FieldPlannerApiController {
     @RequestMapping(value = "/facility/system_type_capacity/_search", method = RequestMethod.POST)
     public ResponseEntity<SystemTypeCapacityResponse> searchFieldPlanFacilitySystemTypeCapacity(
             @Valid @ModelAttribute URLParams urlParams,
-            @ApiParam(value = "Search field plan facilities by fieldPlanId and return the systemType/totalSystemCapacity combination from each facility's additionalDetails.", required = true) @Valid @RequestBody FieldPlanFacilitySearchRequest request
+            @ApiParam(value = "Search installation plan facilities by fieldPlanId and return the systemType/totalSystemCapacity combination from each facility's additionalDetails.", required = true) @Valid @RequestBody FieldPlanFacilitySearchRequest request
     ) throws Exception {
         log.trace("Entering searchFieldPlanFacilitySystemTypeCapacity endpoint");
-        log.info("Received field plan facility systemType/totalSystemCapacity search request for tenant: {}",
+        log.info("Received installation plan facility systemType/totalSystemCapacity search request for tenant: {}",
                 urlParams.getTenantId());
 
         List<SystemTypeCapacity> systemTypeCapacities = fieldPlannerFacilityService.searchSystemTypeCapacity(
@@ -212,16 +212,16 @@ public class FieldPlannerApiController {
                 .responseInfo(responseInfo)
                 .systemTypeCapacities(systemTypeCapacities)
                 .build();
-        log.info("Field plan facility systemType/totalSystemCapacity search completed, found {} results",
+        log.info("Installation plan facility systemType/totalSystemCapacity search completed, found {} results",
                 systemTypeCapacities.size());
         log.trace("Exiting searchFieldPlanFacilitySystemTypeCapacity endpoint");
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @RequestMapping(value = "/facility/_unassign", method = RequestMethod.POST)
-    public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityUnassign(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
+    public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityUnassign(@ApiParam(value = "Capture linkage of Installation Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
         log.trace("Entering fieldPlanFacilityUnassign endpoint");
-        log.info("Received field plan facility unassign request");
+        log.info("Received installation plan facility unassign request");
 
         FieldPlanFacility fieldPlanFacility = fieldPlannerFacilityService.unassign(request);
         FieldPlanFacilityResponse response = FieldPlanFacilityResponse.builder()
@@ -229,19 +229,19 @@ public class FieldPlannerApiController {
                 .responseInfo(ResponseInfoFactory
                         .createResponseInfo(request.getRequestInfo(), true))
                 .build();
-        log.info("Field plan facility unassign request processed successfully");
+        log.info("Installation plan facility unassign request processed successfully");
         log.trace("Exiting fieldPlanFacilityUnassign endpoint");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
     @RequestMapping(value = "/facility/bulk/_unassign", method = RequestMethod.POST)
-    public ResponseEntity<ResponseInfo> fieldPlanFacilityUnassignBulk(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
+    public ResponseEntity<ResponseInfo> fieldPlanFacilityUnassignBulk(@ApiParam(value = "Capture linkage of Installation Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
         log.trace("Entering fieldPlanFacilityUnassignBulk endpoint");
-        log.info("Received bulk field plan facility unassign request, count: {}", request.getFieldPlanFacilities().size());
+        log.info("Received bulk installation plan facility unassign request, count: {}", request.getFieldPlanFacilities().size());
         request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
         log.debug("Pushing bulk unassign request to Kafka topic: {}", fieldPlannerConfiguration.getBulkUnassignFieldPlanFacilityTopic());
         producer.push(fieldPlannerConfiguration.getBulkUnassignFieldPlanFacilityTopic(), request);
-        log.info("Bulk field plan facility unassign request pushed to Kafka successfully");
+        log.info("Bulk installation plan facility unassign request pushed to Kafka successfully");
         log.trace("Exiting fieldPlanFacilityUnassignBulk endpoint");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
                 .createResponseInfo(request.getRequestInfo(), true));

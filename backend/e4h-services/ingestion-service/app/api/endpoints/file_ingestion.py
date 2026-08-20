@@ -635,7 +635,7 @@ async def upload_facilities_excel_sheet(
         facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
                                         description="Name of the sheet containing facility data"),
         request_info: str = Form(default=""),
-        are_facilities_onm_ready: bool = Form(description="FieldPlan ID")
+        are_facilities_onm_ready: bool = Form(description="Installation Plan ID")
 ):
     input_temp_file = None
     output_temp_file = None
@@ -714,7 +714,7 @@ async def upload_facilities_excel_sheet(
              summary='Upload and process workstream with facilities excel file.',
              response_description='Returns processed Excel file with validation results')
 async def upload_facilities_with_workstream(
-        project_id_with_type_field_plan: str = Form(default="Project id of the project with type field plan"),
+        project_id_with_type_field_plan: str = Form(default="Project id of the project with type installation plan"),
         request_info: str = Form(default=""),
         installation_spoc_user_name:str = Form(default=""),
         installation_spoc_user_mobile_number:str = Form(default=""),
@@ -724,14 +724,14 @@ async def upload_facilities_with_workstream(
     #get_authorized_request_info(request_info)
 
     try:
-        # Fetch project of type Field Plan using project_id
+        # Fetch project of type Installation Plan using project_id
         if project_service_url and hrms_service_url:
             project_client = ProjectServiceClient(project_service_url)
             hrms_client = HRMSServiceClient(hrms_service_url)
             field_plan_project = project_client.search_project(request_info, project_id_with_type_field_plan)
             project = field_plan_project["Project"][0]
             if not project:
-                raise Exception("Field plan id is not correct.")
+                raise Exception("Installation plan id is not correct.")
             field_plan_project_facilities = project_client.search_project_facility(request_info,
                                                                                    project_id_with_type_field_plan)
             work_stream_creation_payload = get_project_creation_payload(
@@ -1304,11 +1304,11 @@ async def upload_projects_excel_sheet(
                         email_value = df.at[index, 'Email']
                         if pd.isna(email_value) or not email_value:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = 'Email is required for Field Plan projects'
+                            df.at[index, 'error'] = 'Email is required for Installation Plan projects'
                             continue
                         if pd.isna(mobile_number_raw) or not mobile_number_raw:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = 'Mobile Number is required for Field Plan projects'
+                            df.at[index, 'error'] = 'Mobile Number is required for Installation Plan projects'
                             continue
 
 
@@ -1363,7 +1363,7 @@ async def upload_projects_excel_sheet(
                                     if len(staff_list) == 1:
                                         sms_request = {
                                             "mobileNumber": mobile_number,
-                                            "message": "Yor are assigned to the field plan",
+                                            "message": "Yor are assigned to the installation plan",
                                             "expiryTime": None
                                         }
                                         producer = Producer()
@@ -1649,7 +1649,7 @@ async def upload_icc_reports(
 
 
 @router.post('/icc-reports/_update',
-             summary='Bulk-update existing ICC report field plan templates, optionally replacing '
+             summary='Bulk-update existing ICC report installation plan templates, optionally replacing '
                      'their Excel files, via field-planner in one call',
              response_description='Returns the field-planner bulk template update response')
 async def update_icc_reports(
@@ -2976,7 +2976,7 @@ async def create_fielplan_facilities(
         facility_file: UploadFile = File(description="Validated Excel file with PASSED/FAILED status"),
         facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
-        fieldplan_id: str = Form(description="FieldPlan ID"),
+        fieldplan_id: str = Form(description="Installation Plan ID"),
         request_info: str = Form(default=""),
         project_id: str = Form(default="", description="Project ID (required for assessment handoff apply)"),
         tenant_id: str = Form(default="in"),
@@ -3061,7 +3061,7 @@ async def create_fielplan_facilities(
                 if f.get("key")
             }
 
-        include_col = find_col("Included in Field Plan")
+        include_col = find_col("Included in Installation Plan")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
         facility_type_col = find_col("Type of HC")
@@ -3084,8 +3084,8 @@ async def create_fielplan_facilities(
             logger.warning(f"Could not fetch FieldPlanFacilityIngestionSchema for code lookup: {e}")
 
         # add result columns if missing
-        if 'Field Plan Linking Status' not in df.columns:
-            df['Field Plan Linking Status'] = ''
+        if 'Installation Plan Linking Status' not in df.columns:
+            df['Installation Plan Linking Status'] = ''
 
         fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
         fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
@@ -3114,7 +3114,7 @@ async def create_fielplan_facilities(
                 tenant_id,
             )
 
-        # Fetch fieldplan-linked facilities if fieldplan_id is provided
+        # Fetch installation-plan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
         if fieldplan_id:
             try:
@@ -3123,7 +3123,7 @@ async def create_fielplan_facilities(
                 fieldplan_linked_facility_ids = {pf.get("facilityId") for pf in fieldplan_facilities if
                                                  pf.get("facilityId")}
                 logger.info(
-                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
+                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to installation plan {fieldplan_id}")
 
                 # Get FieldPlan status
                 fieldplan_response = fieldplan_client.search_fieldPlan(request_info, fieldplan_id)
@@ -3138,7 +3138,7 @@ async def create_fielplan_facilities(
                 project_category = resolve_project_category(
                     ProjectServiceClient(project_service_url), request_info, resolved_project_id
                 ) if resolved_project_id and project_service_url else None
-                logger.info(f"Resolved project category for fieldplan {fieldplan_id}: {project_category}")
+                logger.info(f"Resolved project category for installation plan {fieldplan_id}: {project_category}")
 
                 facility_category_by_id = {}
                 if project_category and facility_service_url:
@@ -3191,7 +3191,7 @@ async def create_fielplan_facilities(
                         if include_col:
                             include_val = str(row.get(include_col, "")).strip().lower()
                         else:
-                            include_val = str(row.get("Included in Field Plan (Mandatory)", "")).strip().lower()
+                            include_val = str(row.get("Included in Installation Plan (Mandatory)", "")).strip().lower()
 
                         should_link = include_val == "yes"
 
@@ -3229,14 +3229,14 @@ async def create_fielplan_facilities(
                                     }
 
                                     if not changed_keys:
-                                        df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                        df.at[index, 'Installation Plan Linking Status'] = "Already Linked"
                                     elif fieldplan_status != DRAFT_FIELD_PLAN_STATUS:
-                                        df.at[index, 'Field Plan Linking Status'] = (
+                                        df.at[index, 'Installation Plan Linking Status'] = (
                                             f"Error: Cannot update - FieldPlan status must be DRAFT "
                                             f"(current status: {fieldplan_status})"
                                         )
                                     elif fieldPlan_facility_data is None or not fieldPlan_facility_data.get("id"):
-                                        df.at[index, 'Field Plan Linking Status'] = (
+                                        df.at[index, 'Installation Plan Linking Status'] = (
                                             "Error: Cannot update - FieldPlanFacility record id not found"
                                         )
                                     else:
@@ -3246,7 +3246,7 @@ async def create_fielplan_facilities(
                                                 row_values.get("customTotalSystemCapacity")
                                             )
                                         if error:
-                                            df.at[index, 'Field Plan Linking Status'] = error
+                                            df.at[index, 'Installation Plan Linking Status'] = error
                                         else:
                                             additional_fields = build_field_plan_facility_additional_fields(
                                                 {key: row_values.get(key) for key in changed_keys}
@@ -3281,15 +3281,15 @@ async def create_fielplan_facilities(
                                         facility_activity_ids = list({fa.get("activityFacility").get("id") for fa in facilities_activity if fa.get("activityFacility").get("id")})
                                         fieldplan_activity_client.delete_facility_activity(request_info=request_info, facility_activity_id=facility_activity_ids)
 
-                                        df.at[index, 'Field Plan Linking Status'] = "Unlinked"
+                                        df.at[index, 'Installation Plan Linking Status'] = "Unlinked"
                                         fieldplan_linked_facility_ids.remove(facility_id)
                                     except Exception as e:
-                                        df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
+                                        df.at[index, 'Installation Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
                                 if should_link:
                                     if (project_category and facility_id in facility_category_by_id
                                             and facility_category_by_id[facility_id] != project_category):
-                                        df.at[index, 'Field Plan Linking Status'] = (
+                                        df.at[index, 'Installation Plan Linking Status'] = (
                                             "Error: Facility category does not match project type"
                                         )
                                         continue
@@ -3300,7 +3300,7 @@ async def create_fielplan_facilities(
                                         if pd.notna(custom_capacity_val) else ""
                                     error = validate_custom_capacity_numeric(custom_capacity_str)
                                     if error:
-                                        df.at[index, 'Field Plan Linking Status'] = error
+                                        df.at[index, 'Installation Plan Linking Status'] = error
                                         continue
 
                                     bulk_entry = build_field_plan_facility_bulk_entry(
@@ -3324,14 +3324,14 @@ async def create_fielplan_facilities(
                                     else:
                                         pending_bulk_fieldplan_links.append((index, bulk_entry))
                                 else:
-                                    df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
+                                    df.at[index, 'Installation Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
 
                                 # continue to next row
                                 continue
 
                     except Exception as e:
                         # any unexpected error per row
-                        df.at[index, 'Field Plan Linking Status'] = "Not Attempted"
+                        df.at[index, 'Installation Plan Linking Status'] = "Not Attempted"
                         continue
 
                 if pending_bulk_fieldplan_links:
@@ -3349,7 +3349,7 @@ async def create_fielplan_facilities(
                             if fieldplan_resp.status_code in (200, 201, 202):
                                 for row_idx, entry in chunk:
                                     facility_id = entry["facilityId"]
-                                    df.at[row_idx, 'Field Plan Linking Status'] = "Linked"
+                                    df.at[row_idx, 'Installation Plan Linking Status'] = "Linked"
                                     fieldplan_linked_facility_ids.add(facility_id)
 
                                     if fieldplan_data:
@@ -3368,10 +3368,10 @@ async def create_fielplan_facilities(
                                                 logger.error(f"Error creating facility activity for {facility_id}: {activity_exc}", exc_info=True)
                             else:
                                 for row_idx, _ in chunk:
-                                    df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
+                                    df.at[row_idx, 'Installation Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
                         except Exception as bulk_exc:
                             for row_idx, _ in chunk:
-                                df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+                                df.at[row_idx, 'Installation Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
 
                 if pending_assessment_handoffs and assessment_client:
                     for row_idx, bulk_entry, plan_facility_id in pending_assessment_handoffs:
@@ -3407,7 +3407,7 @@ async def create_fielplan_facilities(
                                 installation_field_plan_id=fieldplan_id,
                                 field_plan_facility_id=field_plan_facility_id,
                             )
-                            df.at[row_idx, 'Field Plan Linking Status'] = "Linked + Assessment Handoff"
+                            df.at[row_idx, 'Installation Plan Linking Status'] = "Linked + Assessment Handoff"
                             fieldplan_linked_facility_ids.add(facility_id)
 
                             if fieldplan_data:
@@ -3430,7 +3430,7 @@ async def create_fielplan_facilities(
                                 f"Assessment handoff failed for planFacilityId={plan_facility_id}: {handoff_exc}",
                                 exc_info=True,
                             )
-                            df.at[row_idx, 'Field Plan Linking Status'] = f"Handoff failed: {handoff_exc}"
+                            df.at[row_idx, 'Installation Plan Linking Status'] = f"Handoff failed: {handoff_exc}"
 
                 if pending_bulk_fieldplan_updates:
                     chunk_size = BULK_INGEST_CHUNK_SIZE
@@ -3445,23 +3445,23 @@ async def create_fielplan_facilities(
 
                             if update_resp.status_code in (200, 201, 202):
                                 for row_idx, _ in chunk:
-                                    df.at[row_idx, 'Field Plan Linking Status'] = "Updated"
+                                    df.at[row_idx, 'Installation Plan Linking Status'] = "Updated"
                             else:
                                 for row_idx, _ in chunk:
-                                    df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {update_resp.status_code} {update_resp.text}"
+                                    df.at[row_idx, 'Installation Plan Linking Status'] = f"Failed: {update_resp.status_code} {update_resp.text}"
                         except Exception as bulk_exc:
                             for row_idx, _ in chunk:
-                                df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+                                df.at[row_idx, 'Installation Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
 
             except Exception as e:
-                logger.error(f"Error fetching fieldplan facilities: {e}")
-                # Continue without fieldplan facility data if there's an error
+                logger.error(f"Error fetching installation plan facilities: {e}")
+                # Continue without installation plan facility data if there's an error
 
         # ---------- write results back into workbook preserving formatting ----------
         # Ensure headers exist in sheet (without wiping template)
         header_values = [cell.value for cell in ws[1]]
 
-        for col_name in ["Field Plan Linking Status"]:
+        for col_name in ["Installation Plan Linking Status"]:
             if col_name not in header_values:
                 cell = ws.cell(row=1, column=len(header_values) + 1, value=col_name)
                 cell.font = Font(bold=True)
@@ -4186,7 +4186,7 @@ async def bulk_ingest_amc_configurations(
                     "configurationEndDate": configuration_end_date,
                     "assetTypes": asset_types_formatted,
                     "assignments": assignments,
-                    # Same state/districts/blocks scope for every AMC configuration in this batch, same as field plan
+                    # Same state/districts/blocks scope for every AMC configuration in this batch, same as installation plan
                     "geographyDetails": geography_details_data
                 })
                 row_indexes_for_configs.append(index)

@@ -52,7 +52,7 @@ public class BomValidator {
     public static final String IS_NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     public static final String TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY = "Tenant ID is mandatory in Activity request body";
     public static final String DATA_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY = "Data are mandatory in BOM request body";
-    public static final String DOES_NOT_EXISTS_FOR_THE_FIELDPLAN = " that you are trying to update does not exists for the FieldPlan ";
+    public static final String DOES_NOT_EXISTS_FOR_THE_FIELDPLAN = " that you are trying to update does not exists for the Installation Plan ";
     @Autowired
     MDMSUtils mdmsUtils;
 
@@ -100,7 +100,7 @@ public class BomValidator {
             }
 
             if (billOfMaterial.getName() == null) {
-                log.error("Name is mandatory in FieldPlans");
+                log.error("Name is mandatory in Installation Plans");
                 throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
             }
 
@@ -110,7 +110,7 @@ public class BomValidator {
             }
 
 //            if (billOfMaterial.getFacilityId() == null) {
-//                log.error("Facility ID is mandatory in FieldPlans");
+//                log.error("Facility ID is mandatory in Installation Plans");
 //                throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
 //            }
 //
@@ -122,7 +122,7 @@ public class BomValidator {
 //            }
 
             if (billOfMaterial.getActivityFacilityId() == null) {
-                log.error("Activity Facility ID is mandatory in FieldPlans");
+                log.error("Activity Facility ID is mandatory in Installation Plans");
                 throw new CustomException("Activity_FACILITY", "Activity Facility ID is mandatory");
             }
 
@@ -209,16 +209,16 @@ public class BomValidator {
     }
 
 
-    /* Validates search FieldPlan request body and parameters*/
+    /* Validates search Installation Plan request body and parameters*/
     public void validateSearchBOMRequest(BomSearchRequest request, Integer limit, Integer offset, String tenantId) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
-        //Verify if search fieldplan request parameters are valid
+        //Verify if search installation plan request parameters are valid
         validateSearchBOMRequestParams(limit, offset, tenantId);
-        //Verify if search fieldplan request is valid
+        //Verify if search installation plan request is valid
         validateSearchRequest(request.getCriteria(), tenantId);
         //Verify MDMS Data
         // TODO: Uncomment and fix as per HCM once we get clarity
@@ -262,8 +262,8 @@ public class BomValidator {
 
     private static void doNullAndEmptyChecks(String tenantId, BomSearchCriteria criteria) {
         if (criteria == null) {
-            log.error("fieldPlan is mandatory in FieldPlans");
-            throw new CustomException("FIELDPLAN", "FieldPlan is mandatory");
+            log.error("installation plan is mandatory in Installation Plans");
+            throw new CustomException("FIELDPLAN", "Installation Plan is mandatory");
         }
         if (StringUtils.isBlank(criteria.getTenantId())) {
             log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
@@ -273,7 +273,7 @@ public class BomValidator {
                 && (criteria.getName()==null || criteria.getName().isEmpty()) && (criteria.getActivityFacilityId()==null || criteria.getActivityFacilityId().isEmpty())
                 && StringUtils.isBlank(criteria.getAssignUser()))
         {
-            log.error("Any one Activity search field is required for FieldPlan Search");
+            log.error("Any one Activity search field is required for Installation Plan Search");
             throw new CustomException("ACTIVITY_SEARCH_FIELDS", "Any one activity search field is required");
         }
 
@@ -283,12 +283,12 @@ public class BomValidator {
         }
     }
 
-    /* Validates if all FieldPlans have same tenant Id */
+    /* Validates if all Installation Plans have same tenant Id */
     private void validateMultipleTenantIds(ActivityRequest request) {
         List<ActivityFacility> activityFacilities = request.getActivityFacilities();
         String firstTenantId = activityFacilities.get(0).getTenantId();
         if (activityFacilities.stream().anyMatch(p -> !p.getTenantId().equals(firstTenantId))) {
-            log.error("All fieldplans in FieldPlan request must have same tenant Id");
+            log.error("All installation plans in Installation Plan request must have same tenant Id");
             throw new CustomException("MULTIPLE_TENANTS", "All Activities must have same tenant Id. Please create new request for different tentant id");
         }
     }

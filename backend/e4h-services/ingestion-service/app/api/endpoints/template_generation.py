@@ -453,7 +453,7 @@ async def get_facility_ingestion_template_with_data(
             except Exception as e:
                 logger.error(f"Error fetching boundary facilities in bulk: {e}", exc_info=True)
 
-        # Fetch fieldplan-linked facilities if fieldplan_id is provided
+        # Fetch installation-plan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
         fieldplan_facilities_data = []
         fieldplan_facility_by_id = {}
@@ -468,9 +468,9 @@ async def get_facility_ingestion_template_with_data(
                     pf.get("facilityId"): pf for pf in fieldplan_facilities if pf.get("facilityId")
                 }
                 logger.info(
-                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
+                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to installation plan {fieldplan_id}")
 
-                # Fetch all fieldplan-linked facility details in one bulk call
+                # Fetch all installation-plan-linked facility details in one bulk call
                 if facility_client and fieldplan_linked_facility_ids:
                     facility_ids = list(fieldplan_linked_facility_ids)
                     try:
@@ -483,14 +483,14 @@ async def get_facility_ingestion_template_with_data(
                         )
                         fieldplan_facilities_data.extend(facilities_bulk_result.get("facilities", []) or [])
                     except Exception as e:
-                        logger.error(f"Error bulk fetching fieldplan facilities: {e}")
+                        logger.error(f"Error bulk fetching installation plan facilities: {e}")
 
             except Exception as e:
-                logger.error(f"Error fetching fieldplan facilities: {e}")
-                # Continue without fieldplan facility data if there's an error
+                logger.error(f"Error fetching installation plan facilities: {e}")
+                # Continue without installation plan facility data if there's an error
 
-        # Combine boundary facilities with fieldplan facilities (avoid duplicates)
-        # Only include fieldplan facilities that belong to the current boundary codes
+        # Combine boundary facilities with installation plan facilities (avoid duplicates)
+        # Only include installation plan facilities that belong to the current boundary codes
         existing_facility_ids = {f.get('facility_id') for f in all_facilities}
         valid_boundary_codes = {boundary.code for boundary in boundary_list}
 
@@ -502,7 +502,7 @@ async def get_facility_ingestion_template_with_data(
             if (facility_id not in existing_facility_ids and facility_id in project_linked_facility_ids and facility_boundary_code in valid_boundary_codes):
                 all_facilities.append(pf_facility)
                 logger.info(
-                    f"Added fieldplan facility {facility_id} to template (boundary: {facility_boundary_code})")
+                    f"Added installation plan facility {facility_id} to template (boundary: {facility_boundary_code})")
             elif (facility_id not in project_linked_facility_ids): # In case the facility is no longer mapped to project, so unlink the facility
                 fieldPlan_facility_data = next(
                     (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
@@ -523,19 +523,19 @@ async def get_facility_ingestion_template_with_data(
                                                                    facility_activity_id=facility_activity_ids)
             elif facility_boundary_code not in valid_boundary_codes:
                 logger.info(
-                    f"Skipped fieldplan facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
+                    f"Skipped installation plan facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
 
         logger.info(
-            f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, fieldplan: {len(fieldplan_facilities_data)})")
+            f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, installation plan: {len(fieldplan_facilities_data)})")
 
-        # Mark facilities as included in fieldplan if they are already linked
+        # Mark facilities as included in installation plan if they are already linked
         if fieldplan_id:
             for facility in all_facilities:
                 facility_id = facility.get("facility_id")
                 if facility_id in fieldplan_linked_facility_ids:
                     facility["include_in_fieldplan"] = "Yes"
-                    logger.info(f"Facility {facility_id} is linked to fieldplan - marking as Yes")
-                    # Overlay the field-plan-specific solar config (facilityType/systemType/
+                    logger.info(f"Facility {facility_id} is linked to installation plan - marking as Yes")
+                    # Overlay the installation-plan-specific solar config (facilityType/systemType/
                     # solarSolutionDesignType/totalSystemCapacity) from the FieldPlanFacility's
                     # additionalFields, resolved to labels by generate_template_file_with_data's
                     # existing code->name lookup against facility_schema.
@@ -545,7 +545,7 @@ async def get_facility_ingestion_template_with_data(
                 else:
 
                     facility["include_in_fieldplan"] = "No"
-                    logger.info(f"Facility {facility_id} is NOT linked to fieldplan - marking as No")
+                    logger.info(f"Facility {facility_id} is NOT linked to installation plan - marking as No")
         else:
             # If no fieldplan_id provided, set all facilities to "No"
             for facility in all_facilities:
@@ -596,7 +596,7 @@ async def get_facility_ingestion_template_with_data(
                         fieldplan_linked_facility_ids,
                     )
                     logger.info(
-                        "Field plan template restricted to %s eligible assessment facility(ies) "
+                        "Installation plan template restricted to %s eligible assessment facility(ies) "
                         "(%s total rows after already-linked)",
                         len(eligible_facilities),
                         len(all_facilities),

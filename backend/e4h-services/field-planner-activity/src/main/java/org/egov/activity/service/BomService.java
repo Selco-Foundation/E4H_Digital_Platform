@@ -125,7 +125,7 @@ public class BomService {
         log.debug("Bill of materials update request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
         log.debug("Fetching existing bill of materials from database");
         List<BillOfMaterial> bomListFromDB = searchBillOfMaterials(
@@ -135,7 +135,7 @@ public class BomService {
         log.debug("Retrieved {} bill of materials from database for update", bomListFromDB != null ? bomListFromDB.size() : 0);
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         bomValidator.validateUpdateAgainstDB(request.getBillOfMaterials(), bomListFromDB);
 
@@ -350,7 +350,7 @@ public class BomService {
         if (!isValidCascadingUpdate(bomFromDB, billOfMaterial)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 

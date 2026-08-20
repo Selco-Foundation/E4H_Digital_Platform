@@ -56,7 +56,7 @@ def filter_facilities_by_category(
 ) -> List[dict]:
     """
     Restrict `facilities` to those matching `category`, except facilities already linked
-    (to a project/field-plan) which stay visible regardless of category so existing
+    (to a project/installation plan) which stay visible regardless of category so existing
     associations never silently disappear from the template.
     """
     if not category:

@@ -164,16 +164,16 @@ class FieldPlanActivityServiceClient:
             }
 
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error searching field plan activity assignment: {http_err}", exc_info=True)
+            logger.error(f"HTTP error searching installation plan activity assignment: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error searching field plan activity assignment: {conn_err}", exc_info=True)
+            logger.error(f"Connection error searching installation plan activity assignment: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error searching field plan activity assignment: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error searching installation plan activity assignment: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error searching field plan activity assignment: {req_err}", exc_info=True)
+            logger.error(f"Request error searching installation plan activity assignment: {req_err}", exc_info=True)
             raise req_err
 
     def delete_facility_activity(self, request_info: RequestInfo, facility_activity_id: List[str]):

@@ -118,7 +118,7 @@ public class ActivityService {
                 log.trace("Enriching activity facility with id: {}", activityFacility.getId());
                 activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
                 List<ActivityFacilityUser> usersFacility = new ArrayList<>();
-                // Get reviewer users. Can see facility activity on UI directly by getting field plan first
+                // Get reviewer users. Can see facility activity on UI directly by getting installation plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
                     for (String userId : activityFacility.getReviewerUser()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
@@ -832,7 +832,7 @@ public class ActivityService {
         log.debug("Activity facility update request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
         log.debug("Fetching existing activity facilities from database");
         List<ActivityFacility> activityFacilityListFromDB = searchActivityFacility(
@@ -842,7 +842,7 @@ public class ActivityService {
         log.debug("Retrieved {} activity facilities from database for update", activityFacilityListFromDB != null ? activityFacilityListFromDB.size() : 0);
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         activityValidator.validateUpdateAgainstDB(request.getActivityFacilities(), activityFacilityListFromDB);
 
@@ -867,7 +867,7 @@ public class ActivityService {
         log.debug("Activity assignment update request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
         log.debug("Fetching existing activity assignments from database");
         List<ActivityAssignment> activityAssignmentListFromDB = searchAssignedActivity(
@@ -877,7 +877,7 @@ public class ActivityService {
         log.debug("Retrieved {} activity assignments from database for update", activityAssignmentListFromDB != null ? activityAssignmentListFromDB.size() : 0);
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         activityValidator.validateUpdateActivityAssignmentAgainstDB(request.getActivityAssignments(), activityAssignmentListFromDB);
 
@@ -964,7 +964,7 @@ public class ActivityService {
         if (!isValidCascadingUpdateActivityFacility(activityFacilityFromDB, activityFacility)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 
@@ -987,7 +987,7 @@ public class ActivityService {
         if (!isValidCascadingUpdateActivityAssignment(activityAssignmentFromDB, activityAssignment)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 
@@ -1336,7 +1336,7 @@ public class ActivityService {
 
     /**
      * Resolves vendor organisation names for users assigned as INSTALLATION_REPORT_PART_B_EDITOR
-     * on the same field plan (via activity assignment search criteria).
+     * on the same installation plan (via activity assignment search criteria).
      */
     private Map<String, String> fetchVendorNamesByUserIds(List<String> userIds, String tenantId, RequestInfo requestInfo) {
         if (userIds == null || userIds.isEmpty()) {
@@ -1543,17 +1543,17 @@ public class ActivityService {
         try {
             log.info("Triggering installation completion side effects for activity facility: {}", activityFacilityId);
 
-            // Get project ID from field plan
+            // Get project ID from installation plan
             String projectId = null;
             if (activityFacility.getFieldPlanId() != null) {
-                log.debug("Fetching field plan for fieldPlanId: {}", activityFacility.getFieldPlanId());
+                log.debug("Fetching installation plan for fieldPlanId: {}", activityFacility.getFieldPlanId());
                 FieldPlan fieldPlan = activityValidator.getFieldPlanById(
                         requestInfo,
                         activityFacility.getFieldPlanId(),
                         activityFacility.getTenantId());
                 if (fieldPlan != null) {
                     projectId = fieldPlan.getProjectId();
-                    log.debug("Retrieved projectId: {} from field plan", projectId);
+                    log.debug("Retrieved projectId: {} from installation plan", projectId);
                 }
             }
 
