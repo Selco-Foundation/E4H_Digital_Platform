@@ -338,12 +338,9 @@ public class ScheduledVisitService {
             return;
         }
 
-        List<String> assigneeUuids = visits.stream()
-                .filter(visit -> visit.getAssignments() != null)
-                .flatMap(visit -> visit.getAssignments().stream())
-                .filter(ScheduledVisitAssignment::isActive)
-                .map(ScheduledVisitAssignment::getAssignedUser)
-                .filter(Objects::nonNull)
+        Map<String, List<String>> assigneesByVisitId = resolveAssigneesForIndexing(visits);
+        List<String> assigneeUuids = assigneesByVisitId.values().stream()
+                .flatMap(List::stream)
                 .distinct()
                 .toList();
         if (assigneeUuids.isEmpty()) {
@@ -358,14 +355,8 @@ public class ScheduledVisitService {
         }
 
         for (ScheduledVisit visit : visits) {
-            if (visit.getAssignments() == null) {
-                continue;
-            }
-            for (ScheduledVisitAssignment assignment : visit.getAssignments()) {
-                if (!assignment.isActive()) {
-                    continue;
-                }
-                User fieldStaff = fieldStaffByUuid.get(assignment.getAssignedUser());
+            for (String assigneeUuid : assigneesByVisitId.getOrDefault(visit.getId(), List.of())) {
+                User fieldStaff = fieldStaffByUuid.get(assigneeUuid);
                 if (fieldStaff == null) {
                     continue;
                 }
@@ -376,6 +367,56 @@ public class ScheduledVisitService {
                 break;
             }
         }
+    }
+
+    /**
+     * visitId -> the assignee uuids the mapped-vendor lookup should consider, read from the
+     * assignments table rather than from {@code visit.getAssignments()}.
+     *
+     * <p>The visits reaching the index come from {@link #searchScheduledVisit}, which scopes
+     * non-PROJECT_MANAGER callers to their own assignment row - and since that same row feeds the
+     * query's {@code jsonb_agg}, the assignments hanging off the visit are just the caller's. Indexing
+     * off that list means the mapped vendor can only ever be the caller, and a visit scheduled by an
+     * AMC SPOC on behalf of field staff resolves to nothing. The API keeps that scoping (callers must
+     * not see each other's assignments); the index simply reads the full roster separately.
+     *
+     * <p>Falls back to the in-memory assignments per visit when the table has no rows for it - on the
+     * create path the visit has only just been pushed onto the persister topic and is not in the
+     * database yet, so the request object is the only source there.
+     */
+    private Map<String, List<String>> resolveAssigneesForIndexing(List<ScheduledVisit> visits) {
+        List<String> visitIds = visits.stream()
+                .map(ScheduledVisit::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<String, List<String>> assigneesByVisitId;
+        try {
+            assigneesByVisitId = new HashMap<>(
+                    scheduledVisitsRepository.getActiveAssigneeUuidsByVisitIds(visitIds));
+        } catch (Exception e) {
+            log.error("Could not read assignments for {} visit(s) while resolving the mapped vendor; "
+                    + "falling back to the assignments on the request.", visitIds.size(), e);
+            assigneesByVisitId = new HashMap<>();
+        }
+
+        for (ScheduledVisit visit : visits) {
+            if (visit.getId() == null || assigneesByVisitId.containsKey(visit.getId())
+                    || visit.getAssignments() == null) {
+                continue;
+            }
+            List<String> fromRequest = visit.getAssignments().stream()
+                    .filter(ScheduledVisitAssignment::isActive)
+                    .map(ScheduledVisitAssignment::getAssignedUser)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            if (!fromRequest.isEmpty()) {
+                assigneesByVisitId.put(visit.getId(), fromRequest);
+            }
+        }
+        return assigneesByVisitId;
     }
 
     /**
