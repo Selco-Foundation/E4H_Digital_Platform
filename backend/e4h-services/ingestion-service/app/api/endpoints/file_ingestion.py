@@ -2569,6 +2569,7 @@ async def validate_facilities_excel_sheet(
                                         description="Name of the sheet containing boundary data"),
         request_info: str = Form(default=""),
         project_id: str = Form(default="", description="Project ID (required for assessment handoff validation)"),
+        fieldplan_id: str = Form(default="", description="Installation Plan ID (used to resolve the parent project when project_id is not provided)"),
         tenant_id: str = Form(default="in"),
 ):
     temp_input_file = None
@@ -2576,13 +2577,27 @@ async def validate_facilities_excel_sheet(
     mdms_client = MDMSClient(mdms_url)
     facility_client = FacilityServiceClient(facility_service_url)
 
+    # The frontend calls this endpoint with fieldplan_id, not project_id (see /createFieldPlanFacility
+    # for the same fallback) - resolve the parent project through the installation plan when
+    # project_id itself isn't supplied.
+    resolved_project_id = project_id
+    if not resolved_project_id and fieldplan_id and fieldPlan_service_url:
+        try:
+            fieldplan_response = FieldPlanServiceClient(fieldPlan_service_url).search_fieldPlan(
+                request_info_obj, fieldplan_id
+            )
+            fieldplan_data = fieldplan_response.get("FieldPlans", [])
+            resolved_project_id = fieldplan_data[0].get("projectId") if fieldplan_data else None
+        except Exception as e:
+            logger.warning(f"Could not resolve project id from fieldplan_id {fieldplan_id}: {e}")
+
     # Only Health/Anganwadi facilities matching the project's own type category may be selected -
     # re-checked here in case a row's Category of Facility was hand-edited after the template
     # (already filtered to this category) was downloaded.
     project_category = None
-    if project_id and project_service_url:
+    if resolved_project_id and project_service_url:
         project_category = resolve_project_category(
-            ProjectServiceClient(project_service_url), request_info_obj, project_id
+            ProjectServiceClient(project_service_url), request_info_obj, resolved_project_id
         )
 
     try:
