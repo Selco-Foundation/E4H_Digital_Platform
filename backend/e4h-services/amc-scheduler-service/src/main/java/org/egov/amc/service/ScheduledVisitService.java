@@ -415,6 +415,10 @@ public class ScheduledVisitService {
                     + "&uuids=" + String.join(",", batch)
                     // Explicit limit: HRMS would otherwise fall back to its own default page size, which
                     // an environment is free to configure below the batch size and silently truncate.
+                    // offset must be sent alongside it: egov-hrms computes its page bound as
+                    // limit + offset (EmployeeQueryBuilder#paginationClause) and neither the controller
+                    // nor its validator defaults offset, so a limit without one NPEs the whole search.
+                    + "&offset=0"
                     + "&limit=" + MAPPED_VENDOR_UUID_BATCH_SIZE;
 
             try {
