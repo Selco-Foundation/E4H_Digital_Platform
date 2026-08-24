@@ -255,8 +255,10 @@ public class AssetValidator {
 
     public static void validatePanelDetails(PanelDetails panelDetails, String systemType, Map<String, String> errorMap) {
         log.info("AssetValidator::ValidatingPanelDetails");
-        if (panelDetails == null)
+        if (panelDetails == null) {
             errorMap.put(ErrorConstants.ASSET_PANEL_DETAILS_NULL_CODE, ErrorConstants.ASSET_PANEL_DETAILS_NULL_MSG);
+            return;
+        }
 
         // Common validations for total capacity
         if (panelDetails.getTotalCapacity() == null)

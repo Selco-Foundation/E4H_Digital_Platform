@@ -118,7 +118,7 @@ def format_facility_data_for_template(
             # Add "Include in Project" column value (find the actual column name)
             include_column_name = None
             for header in headers:
-                if "Included in Field Plan" in header:
+                if "Included in Installation Plan" in header:
                     include_column_name = header
                     break
 
@@ -668,7 +668,7 @@ def apply_field_plan_facility_additional_fields(
     Overlay a linked FieldPlanFacility's additionalFields codes (facilityType/systemType/
     solarSolutionDesignType/totalSystemCapacity/customSolarSolutionDesignType/
     customTotalSystemCapacity, as written by build_field_plan_facility_additional_fields
-    when the facility was included in the field plan) onto `facility`, in place, at the same
+    when the facility was included in the installation plan) onto `facility`, in place, at the same
     schema-code paths format_facility_data_for_template already resolves code -> label from via
     facility_schema's mdms_values - so the Excel template shows the label, not the raw code.
     """
