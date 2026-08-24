@@ -327,4 +327,23 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Writes a facility's AMC snapshot onto the health facility index only - the facility table is
+     * not touched. Called by amc-scheduler-service, which owns AMC data; see
+     * {@code FacilityAmcIndexUpdateRequest}. Requires FACILITY_ADMIN or SYSTEM_USER.
+     */
+    @PostMapping("/_update-amc-index")
+    public ResponseEntity<FacilityAmcIndexUpdateResponse> updateAmcIndexFields(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Facility AMC index update (facilityId plus the AMC fields to write)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityAmcIndexUpdateRequest request) {
+        log.info("Received AMC index update request for facilityId: {}", request.getFacilityId());
+        FacilityAmcIndexUpdateResponse result = facilityService.updateAmcIndexFields(request);
+        log.info("AMC index update finished for facilityId={}: updated={}",
+                result.getFacilityId(), result.getUpdated());
+        return ResponseEntity.ok(result);
+    }
+
 }
