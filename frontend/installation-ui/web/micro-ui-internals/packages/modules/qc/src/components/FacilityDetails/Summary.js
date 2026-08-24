@@ -8,6 +8,57 @@ import { setRejectionReasons } from "../../redux/actions";
 import { ImageViewer, Loader } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
+const AssetImageViewer = ({ t, image, onClose }) => {
+  return (
+    <div
+      className="image-viewer-wrap"
+      style={{
+        paddingTop: "100px",
+        paddingBottom: "100px",
+        overflow: "auto",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        gap: "16px"
+      }}
+    >
+      <CustomCloseSvg onClick={onClose} fill="none" iconFill="white" />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: "16px",
+          width: "min(90vw, 900px)"
+        }}
+      >
+        <img src={image?.src} style={{ margin: 0, width: "100%", height: "auto" }} />
+        <div
+          style={{
+            background: "white",
+            color: "#0B0C0C",
+            padding: "12px 16px",
+            borderRadius: "4px",
+            boxSizing: "border-box",
+            width: "max(100%, 360px)",
+            maxWidth: "90vw"
+          }}
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(170px, 1fr) auto", columnGap: "24px", marginBottom: "8px" }}>
+            <strong>{t("QC_INSTALLATION_ASSET_SERIAL_NUMBER")}</strong>
+            <span style={{ whiteSpace: "nowrap", textAlign: "right" }}>{image?.serialNumber || "-"}</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(170px, 1fr) auto", columnGap: "24px" }}>
+            <strong>{t("QC_INSTALLATION_ASSET_CAPACITY")}</strong>
+            <span style={{ whiteSpace: "nowrap", textAlign: "right" }}>{image?.capacity || "-"}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Summary = ({
   t,
   sectionName,
@@ -84,10 +135,18 @@ const Summary = ({
     </div>
   )
 
-  const AssetImages = (images) => (
+  const AssetImages = (images, item) => (
     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
       {images.map((doc, idx) => (
-        <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(doc)}>
+        <div
+          key={idx}
+          style={{ cursor: "pointer" }}
+          onClick={() => setImageToView({
+            src: doc,
+            serialNumber: item?.serialNumber,
+            capacity: item?.capacity
+          })}
+        >
           <img loading="lazy" decoding="async" src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
         </div>
       ))}
@@ -218,7 +277,7 @@ const Summary = ({
                   <div style={{display: "flex", gap: "10px"}}>
                     {AssetInfoItem(
                       t(`QC_INSTALLATION_ASSET_IMAGE`),
-                      AssetImages(item.documents)
+                      AssetImages(item.documents, item)
                     )}
                   </div>
                 )}
@@ -285,7 +344,10 @@ const Summary = ({
           </div>
         ))}
 
-      {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
+      {imageToView && typeof imageToView !== "string" && (
+        <AssetImageViewer t={t} image={imageToView} onClose={() => setImageToView(null)} />
+      )}
+      {typeof imageToView === "string" && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
 
       {showRejectionModal && (
         <AddRejectionReasonModal
