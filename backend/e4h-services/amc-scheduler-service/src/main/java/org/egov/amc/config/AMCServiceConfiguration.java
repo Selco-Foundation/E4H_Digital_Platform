@@ -69,6 +69,14 @@ public class AMCServiceConfiguration {
     @Value("${egov.v2.bulk.search.facility.url}")
     private String facilityBulkSearchUrl;
 
+    /**
+     * Index-only endpoint on facility-service for a facility's AMC snapshot. Deliberately not the
+     * facility {@code _update} API: that would persist the AMC fields into the facility table's
+     * additional_details, and AMC data is meant to exist on the search index only.
+     */
+    @Value("${egov.v2.facility.amc.index.update.url}")
+    private String facilityAmcIndexUpdateUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 

@@ -6,6 +6,7 @@ import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.web.models.BoundaryInfo;
 import facility.web.models.Facility;
+import facility.util.FacilityAmcFieldsHelper;
 import facility.util.FacilityMappedVendorHelper;
 import facility.web.models.FacilityKibanaIndex;
 import lombok.RequiredArgsConstructor;
@@ -123,6 +124,9 @@ public class FacilityKibanaMapper {
         builder.solarPanelStatus(solarPanelStatus);
 
         applyMappedVendorFields(facility, builder);
+        if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {
+            builder.solutionDesignType(facility.getFacilityDetails().getSolarSolutionDesignType().name());
+        }
 
         // Fetch boundary hierarchy and extract codes
         BoundaryCodes boundaryCodes = fetchBoundaryHierarchy(facility, requestInfo);
@@ -160,6 +164,11 @@ public class FacilityKibanaMapper {
         FacilityKibanaIndex result = builder.build();
         // Populate the project name mapped to this facility so it lands in the index.
         result.setProjectName(resolveProjectName(facility, requestInfo, null));
+        // AMC fields live only on the index (amc-scheduler-service owns them and they are never
+        // persisted here), so this freshly-built document has no source to rebuild them from - carry
+        // whatever is already indexed forward, otherwise an operator re-index would wipe them.
+        FacilityAmcFieldsHelper.copyAmcFields(
+                fetchExistingKibanaIndex(facility.getFacilityId(), facility.getTenantId()), result);
         // Log the full boundary object in the result
         if (result.getBoundary() != null) {
             log.info("Boundary in FacilityKibanaIndex: {}", result.getBoundary());
@@ -209,6 +218,11 @@ public class FacilityKibanaMapper {
         existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
         log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
                 facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
+        if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {
+            existingDoc.setSolutionDesignType(facility.getFacilityDetails().getSolarSolutionDesignType().name());
+        }
+        // AMC fields need no handling here: existingDoc was deserialized from the indexed document, so
+        // it already carries them and they round-trip untouched.
         // Refresh projectName from the project service; keep the already-indexed value when the
         // lookup yields nothing so it is never lost on a re-index.
         existingDoc.setProjectName(resolveProjectName(facility, requestInfo, existingDoc.getProjectName()));
@@ -1123,6 +1137,74 @@ public class FacilityKibanaMapper {
             return updated;
         } catch (Exception e) {
             log.error("Unable to update projectName for facilityId={} tenantId={}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
+        }
+    }
+
+    /**
+     * Writes AMC fields onto the indexed document(s) for a facility via {@code _update_by_query},
+     * touching nothing else. This is deliberately index-only: AMC data belongs to
+     * amc-scheduler-service and is <em>not</em> persisted in the facility table, so it never goes
+     * through the facility {@code _update} API (whose payload the persister would write to
+     * {@code additional_details}) nor through the indexer Kafka topic.
+     *
+     * <p>Keys mapped to {@code null} are written as null, which is how a cleared AMC or a shortened
+     * cadence clears the previously indexed value instead of leaving an orphan behind.
+     *
+     * <p>{@code _update_by_query} only touches documents that already exist: a facility that is not
+     * indexed yet (e.g. not ONM-ready) is a no-op, reported as 0 updated.
+     *
+     * @return number of documents updated, or {@code -1} when the update call failed
+     */
+    public int updateAmcFieldsByFacilityId(String facilityId, String tenantId, Map<String, Object> amcFields) {
+        if (facilityId == null || facilityId.isBlank()) {
+            log.warn("Skipping AMC index update: facilityId is null or blank");
+            return -1;
+        }
+        if (amcFields == null || amcFields.isEmpty()) {
+            log.debug("Skipping AMC index update for facilityId={}: no fields supplied", facilityId);
+            return 0;
+        }
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            // HashMap, not Map.of: the values are intentionally nullable.
+            Map<String, Object> params = new HashMap<>();
+            params.put("amcFields", amcFields);
+
+            Map<String, Object> body = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses)),
+                    "script", Map.of(
+                            "source", "if (ctx._source.Data == null) { ctx._source.Data = [:]; } "
+                                    + "for (entry in params.amcFields.entrySet()) { "
+                                    + "ctx._source.Data[entry.getKey()] = entry.getValue(); }",
+                            "lang", "painless",
+                            "params", params)
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_update_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(body, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> respBody = response != null ? response.getBody() : null;
+            int updated = 0;
+            if (respBody != null && respBody.get("updated") instanceof Number) {
+                updated = ((Number) respBody.get("updated")).intValue();
+            }
+            if (updated == 0) {
+                log.info("AMC index update matched no document for facilityId={} tenantId={} "
+                        + "(facility not indexed yet?)", facilityId, tenantId);
+            } else {
+                log.info("Updated AMC fields on {} indexed document(s) for facilityId={}", updated, facilityId);
+            }
+            return updated;
+        } catch (Exception e) {
+            log.error("Unable to update AMC fields for facilityId={} tenantId={}: {}",
                     facilityId, tenantId, e.getMessage(), e);
             return -1;
         }
