@@ -126,8 +126,8 @@ def field_plan_facility_validation(
     df, mdms_client, request_info, facility_client, boundary_data, schemaName
 ):
     """
-    Field plan facility Excel validation: standard project checks for new rows,
-    plus solar configuration rules for rows marked Included in Field Plan = Yes.
+    Installation plan facility Excel validation: standard project checks for new rows,
+    plus solar configuration rules for rows marked Included in Installation Plan = Yes.
     """
     from app.utils.facility_solar_config_validator import validate_facility_solar_configuration
 
