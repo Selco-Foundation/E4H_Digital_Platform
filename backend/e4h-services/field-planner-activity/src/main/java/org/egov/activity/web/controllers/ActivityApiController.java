@@ -134,7 +134,7 @@ public class ActivityApiController {
             }
 
             // Surface the systemType stored in the activityFacility's additionalDetails (set at
-            // field plan scheduling time, see FieldPlannerService#buildActivityFacilityAdditionalDetails)
+            // installation plan scheduling time, see FieldPlannerService#buildActivityFacilityAdditionalDetails)
             // onto facility_details, so consumers reading the facility object see it there too.
             if (activityFacility != null && activityFacility.getFacility() != null
                     && activityFacility.getAdditionalDetails() != null) {
@@ -229,7 +229,7 @@ public class ActivityApiController {
     }
 
     @RequestMapping(value = "/_unassign-activity", method = RequestMethod.POST)
-    public ResponseEntity<ActivityAssignmentResponse> activityAssignmentUnassign(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody ActivityAssignmentBulkRequest request) {
+    public ResponseEntity<ActivityAssignmentResponse> activityAssignmentUnassign(@ApiParam(value = "Capture linkage of Installation Plan and facility.", required = true) @Valid @RequestBody ActivityAssignmentBulkRequest request) {
         log.trace("activityAssignmentUnassign endpoint invoked");
         int assignmentCount = request.getActivityAssignments() != null ? request.getActivityAssignments().size() : 0;
         log.info("Received request to unassign {} activity assignments", assignmentCount);

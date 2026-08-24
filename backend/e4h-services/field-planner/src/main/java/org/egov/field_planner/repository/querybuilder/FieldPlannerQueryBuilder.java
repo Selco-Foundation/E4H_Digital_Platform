@@ -86,7 +86,7 @@ public class FieldPlannerQueryBuilder {
 
     public String getHighestFielPlanNameQuery(FieldPlan fieldPlan, List<Object> preparedStmtList) {
         log.trace("Entering getHighestFielPlanNameQuery method");
-        log.debug("Building query for highest field plan name, tenant: {}", fieldPlan.getTenantId());
+        log.debug("Building query for highest installation plan name, tenant: {}", fieldPlan.getTenantId());
         
         StringBuilder queryBuilder = new StringBuilder(FETCH_FIELDPLAN_QUERY);
         if (StringUtils.isNotBlank(fieldPlan.getName())) {
@@ -110,7 +110,7 @@ public class FieldPlannerQueryBuilder {
 
     public String getFieldPlanSearchQuery(FieldPlanSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
         log.trace("Entering getFieldPlanSearchQuery method");
-        log.debug("Building field plan search query, isCountQuery: {}", criteria.isCountQuery());
+        log.debug("Building installation plan search query, isCountQuery: {}", criteria.isCountQuery());
         
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? FIELDPLAN_COUNT_QUERY : FETCH_FIELDPLAN_QUERY;

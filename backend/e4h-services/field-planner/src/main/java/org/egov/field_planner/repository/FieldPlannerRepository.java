@@ -44,20 +44,20 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
 
     public List<FieldPlan> getHighestFielPlanName(FieldPlan fieldPlan) {
         log.trace("Entering getHighestFielPlanName method");
-        log.debug("Fetching highest field plan name for tenant: {}", fieldPlan.getTenantId());
+        log.debug("Fetching highest installation plan name for tenant: {}", fieldPlan.getTenantId());
         
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getHighestFielPlanNameQuery(fieldPlan, preparedStmtList);
         List<FieldPlan> fieldPlans = jdbcTemplate.query(query, fieldPlanRowMapper, preparedStmtList.toArray());
-        log.info("Fetched {} field plans with highest names based on given criteria", fieldPlans.size());
+        log.info("Fetched {} installation plans with highest names based on given criteria", fieldPlans.size());
         log.trace("Exiting getHighestFielPlanName method");
         return fieldPlans;
     }
 
     public List<FieldPlan> getFieldPlans(FieldPlanSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
         log.trace("Entering getFieldPlans method");
-        log.debug("Fetching field plans with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
-        //Fetch FieldPlans based on search criteria
+        log.debug("Fetching installation plans with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
+        //Fetch Installation Plans based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         FieldPlanSearchCriteria criteria = request.getFieldPlan();
         criteria.setCountQuery(false);
@@ -66,14 +66,14 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
         String query = queryBuilder.getFieldPlanSearchQuery(criteria, urlParams, preparedStmtList);
         List<FieldPlan> fieldPlanList = jdbcTemplate.query(query, fieldPlanRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched {} field plans based on search criteria", fieldPlanList.size());
+        log.info("Fetched {} installation plans based on search criteria", fieldPlanList.size());
         log.trace("Exiting getFieldPlans method");
         return fieldPlanList;
     }
 
     public Integer getFieldPlanCount(FieldPlanSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         log.trace("Entering getFieldPlanCount method");
-        log.debug("Getting field plan count for tenant: {}", tenantId);
+        log.debug("Getting installation plan count for tenant: {}", tenantId);
         
         List<Object> preparedStatement = new ArrayList<>();
         String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);
@@ -84,7 +84,7 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
         }
 
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total field plans count: {}", count);
+        log.info("Total installation plans count: {}", count);
         log.trace("Exiting getFieldPlanCount method");
         return count;
     }
