@@ -854,15 +854,41 @@ public class FieldPlannerService {
         }
     }
 
+    /**
+     * Fetches every FieldPlanFacility linked to the field plan, paginating past
+     * fieldPlannerConfiguration.getMaxLimit() rather than returning a single capped page - a field
+     * plan with more linked facilities than that limit (e.g. 210 facilities vs a limit of 200)
+     * would otherwise silently lose the remainder: handleUpdateFieldPlan builds one ActivityFacility
+     * per row returned here, so a truncated page means the missing facilities never get scheduled.
+     */
     public SearchResponse<FieldPlanFacility> getFieldPlanFacilities(FieldPlanRequest request, FieldPlan fieldPlan) throws Exception {
         List<String> listFieldPlanId = new ArrayList<>();
         listFieldPlanId.add(fieldPlan.getId());
         FieldPlanFacilitySearch criteria = FieldPlanFacilitySearch.builder().field_plan_id(listFieldPlanId).build();
-        FieldPlanFacilitySearchRequest searchRequest =  FieldPlanFacilitySearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(criteria).build();
-        SearchResponse<FieldPlanFacility> response = facilityService.search(searchRequest, fieldPlannerConfiguration.getMaxLimit(), fieldPlannerConfiguration.getDefaultOffset(),
-                request.getFieldPlans().get(0).getTenantId(), null, false);
+        FieldPlanFacilitySearchRequest searchRequest = FieldPlanFacilitySearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(criteria).build();
+        String tenantId = request.getFieldPlans().get(0).getTenantId();
+        int pageSize = fieldPlannerConfiguration.getMaxLimit();
 
-        return response;
+        List<FieldPlanFacility> allFacilities = new ArrayList<>();
+        long totalCount = 0;
+        int offset = 0;
+        while (true) {
+            SearchResponse<FieldPlanFacility> page = facilityService.search(searchRequest, pageSize, offset, tenantId, null, false);
+            if (page == null || page.getResponse() == null || page.getResponse().isEmpty()) {
+                break;
+            }
+            allFacilities.addAll(page.getResponse());
+            totalCount = page.getTotalCount();
+            offset += page.getResponse().size();
+            if (allFacilities.size() >= totalCount) {
+                break;
+            }
+        }
+
+        return SearchResponse.<FieldPlanFacility>builder()
+                .response(allFacilities)
+                .totalCount(totalCount)
+                .build();
     }
 
     /**

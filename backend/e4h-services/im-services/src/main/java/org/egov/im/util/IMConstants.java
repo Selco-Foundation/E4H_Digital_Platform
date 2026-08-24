@@ -262,6 +262,9 @@ public class IMConstants {
     public static final List<String> STATE_LEVEL_ROLES = Arrays.asList(
             ROLE_COMPLAINT_ASSESSOR);
 
+    // Placeholder indexed for a ticket that has never been assigned to a COMPLAINT_RESOLVER.
+    public static final String MAPPED_VENDOR_NOT_APPLICABLE = "Not Applicable";
+
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
 
     public static final String OUT_OF_WARRANTY_ACTION = "OUT_OF_WARRANTY";

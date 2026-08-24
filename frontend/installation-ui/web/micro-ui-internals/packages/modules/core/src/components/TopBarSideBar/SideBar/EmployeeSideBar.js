@@ -13,7 +13,7 @@ const EmployeeSideBar = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const tenantId = Digit.ULBService.getStateId();
-  const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "installation-qc";
+  const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "e4hhub";
   const policyRoutes = {
     privacy: `/${window?.contextPath}/privacy-policy`,
     terms: `/${window?.contextPath}/terms-of-use`,

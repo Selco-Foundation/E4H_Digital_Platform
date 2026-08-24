@@ -18,6 +18,12 @@ public class AmcConstants {
     public static final String APPROVED_STATUS = "APPROVED";
     public static final String SCHEDULE_ACTION = "SCHEDULE";
     public static final String EXPIRE_ACTION = "EXPIRE";
+    /**
+     * Workflow action taken when the field team submits the visit report on site. Its transition timestamp
+     * is what scheduled_visits.actual_visit_date records, so the reindex uses it to recover the date for
+     * visits submitted before that column was being stamped.
+     */
+    public static final String SUBMIT_VISIT_REPORT_ACTION = "SUBMIT_VISIT_REPORT";
     // AmcConfiguration.status - a separate vocabulary from the scheduled-visit statuses above.
     // ux_amc_configuration_unique_installation is scoped to AMC_CONFIGURATION_ACTIVE_STATUS, so any
     // code that retires a configuration must move it off ACTIVE or the slot stays taken.
@@ -55,6 +61,9 @@ public class AmcConstants {
     public static final String ANALYTICS_EVENT_AMC_VISIT_RESUBMITTED = "AMC_VISIT_RESUBMITTED";
     public static final String ANALYTICS_EVENT_AMC_VISIT_OTP_VERIFIED = "AMC_VISIT_OTP_VERIFIED";
     // Boundary localizations live in this module at the national tenant.
+    /** Role of the Health Centre Representative, the person the AMC visit OTP is sent to. */
+    public static final String ROLE_COMPLAINANT = "COMPLAINANT";
+
     public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
     public static final String LOCALIZATION_LOCALE = "en_IN";
     public static final String LOCALIZATION_TENANT_ID = "in";

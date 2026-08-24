@@ -56,11 +56,8 @@ public class PlanFacilityDetail {
     @JsonProperty("overallManuallySet")
     private Boolean overallManuallySet;
 
-    @JsonProperty("eligibleReason")
-    private String eligibleReason;
-
-    @JsonProperty("ineligibleReason")
-    private String ineligibleReason;
+    @JsonProperty("remarks")
+    private String remarks;
 
     @JsonProperty("assessmentCompletionStatus")
     private String assessmentCompletionStatus;
