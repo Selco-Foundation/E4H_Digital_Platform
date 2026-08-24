@@ -275,6 +275,16 @@ const CreateFieldPlan = () => {
     setToastQueue([]);
   }, []);
 
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const toastTimeout = setTimeout(closeToast, 4000);
+
+    return () => clearTimeout(toastTimeout);
+  }, [toast, closeToast]);
+
   const showToastMessages = (messages, key = "error") => {
     const formattedToasts = messages.filter(Boolean).map((message) => ({
       key,
