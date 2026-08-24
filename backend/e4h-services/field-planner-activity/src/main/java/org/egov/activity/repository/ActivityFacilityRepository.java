@@ -76,7 +76,7 @@ public class ActivityFacilityRepository extends GenericRepository<ActivityFacili
             return 0;
 
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total FieldPlans count is : " + count);
+        log.info("Total Installation Plans count is : " + count);
         return count;
     }
 

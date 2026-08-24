@@ -9,6 +9,10 @@ public class ActivityConstants {
     public static final String MDMS_HCM_ATTENDANCE_MODULE_NAME = "HCM-ATTENDANCE";
     public static final String MASTER_STATE_INFO = "StateInfo";
     public static final String MASTER_ACTIVITIES = "Activities";
+    public static final String MASTER_INSTALLATION_IMAGES = "InstallationImages";
+    public static final String INSTALLATION_IMAGE_FIELD = "InstallationImage";
+    public static final String INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX = "INSTALLATION_IMAGE-";
+    public static final String INSTALLATION_IMAGE_SYSTEM_TYPES_FIELD = "system_types";
     public static final String BOM_FORM = "BOM_FORM";
     //location
     public static final String DRAFT_STATUS = "DRAFT";
@@ -47,7 +51,7 @@ public class ActivityConstants {
      * from Field Assist; the QC review actions carry MANAGEMENT_HUB on their own MDMS records.
      */
     public static final String ANALYTICS_APPLICATION_DEFAULT = "FIELD_ASSIST";
-    /** Staffing a field plan is a Management Hub action, unlike the Field Assist report submissions. */
+    /** Staffing an installation plan is a Management Hub action, unlike the Field Assist report submissions. */
     public static final String ANALYTICS_APPLICATION_MANAGEMENT_HUB = "MANAGEMENT_HUB";
     /** Always FIELD_PLANNER, to separate these events from the FACILITY/BOUNDARY/AMC/PROJECT ones. */
     public static final String ANALYTICS_MODULE_FIELD_PLANNER = "FIELD_PLANNER";
@@ -55,7 +59,7 @@ public class ActivityConstants {
     public static final String ANALYTICS_ENTITY_TYPE_ACTIVITY_ASSIGNMENT = "ACTIVITY_ASSIGNMENT";
     /** Fixed event type for /_assign-activity — there is no workflow action to map it from. */
     public static final String ANALYTICS_EVENT_ACTIVITY_ASSIGNED = "ACTIVITY_ASSIGNED";
-    /** Key holding the field plan's state boundary code inside FieldPlan.geographyDetails. */
+    /** Key holding the installation plan's state boundary code inside FieldPlan.geographyDetails. */
     public static final String GEOGRAPHY_DETAILS_STATE = "state";
     public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
     public static final String LOCALIZATION_LOCALE = "en_IN";
