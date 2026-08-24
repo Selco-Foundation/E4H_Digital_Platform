@@ -1,5 +1,5 @@
 """
-Helpers for assessment eligible → installation field plan handoff (LLD §2.2.7, §2.2.9, API §8).
+Helpers for assessment eligible → installation plan handoff (LLD §2.2.7, §2.2.9, API §8).
 
 Excel does not carry planFacilityId / assessmentPlanId columns — those are resolved
 server-side from Facility Id against the eligible-facilities API.
@@ -23,7 +23,7 @@ def should_use_assessment_handoff_validation(
     project_id: Optional[str],
     tenant_id: str,
 ) -> bool:
-    """True when there are eligible, unassigned facilities ready for field-plan handoff."""
+    """True when there are eligible, unassigned facilities ready for installation plan handoff."""
     if not project_id or assessment_client is None:
         return False
     try:
@@ -95,8 +95,8 @@ def restrict_to_eligible_and_linked_facilities(
     fieldplan_linked_facility_ids: Optional[set] = None,
 ) -> List[Dict[str, Any]]:
     """
-    After a closed assessment, the field-plan sheet is the eligible pool only
-    (plus rows already on this field plan). Not Eligible / unassessed HFs are excluded.
+    After a closed assessment, the installation plan sheet is the eligible pool only
+    (plus rows already on this installation plan). Not Eligible / unassessed HFs are excluded.
     """
     keep_ids = {
         str(entry.get("facilityId"))
@@ -150,7 +150,7 @@ def validate_assessment_handoff_rows(
     Validate Include=Yes rows that resolve to an assessment handoff.
 
     Handoff is detected by Facility Id matching the eligible pool (server-side).
-    Non-eligible Include=Yes rows stay on the legacy field-plan path (no error).
+    Non-eligible Include=Yes rows stay on the legacy installation plan path (no error).
     """
     df = df.reset_index(drop=True)
     errors: List[List[str]] = [[] for _ in range(len(df))]
@@ -164,8 +164,8 @@ def validate_assessment_handoff_rows(
         include_val = ""
         if include_col:
             include_val = str(row.get(include_col, "")).strip().lower()
-        elif "Included in Field Plan (Mandatory)" in df.columns:
-            include_val = str(row.get("Included in Field Plan (Mandatory)", "")).strip().lower()
+        elif "Included in Installation Plan (Mandatory)" in df.columns:
+            include_val = str(row.get("Included in Installation Plan (Mandatory)", "")).strip().lower()
         if include_val != "yes":
             continue
 
