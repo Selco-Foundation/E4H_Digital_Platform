@@ -2,8 +2,8 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import { HeaderComponent, Loader } from "@egovernments/digit-ui-components";
-import PolicyDocumentContent from "../../components/PolicyDocumentContent";
-import usePolicyDocument from "../../hooks/usePolicyDocument";
+import PolicyDocumentContent from "../../../components/PolicyDocumentContent";
+import usePolicyDocument from "../../../hooks/usePolicyDocument";
 
 const POLICY_CONFIG = {
   privacy: {
