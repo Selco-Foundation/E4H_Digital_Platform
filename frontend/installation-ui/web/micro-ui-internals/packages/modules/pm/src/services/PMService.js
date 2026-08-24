@@ -1,4 +1,5 @@
 import {IngestionService} from "./Ingestion";
+import CommonUtils from "../utilities/CommonUtils";
 
 const formatBoundaryData = (boundaryData, t) => {
   const formatDistricts = (districts, blocks) => {
@@ -186,6 +187,7 @@ export const PMService = {
       if (error?.response?.status === 400) {
         return {
           errorCode: "INVALID_TEMPLATE",
+          apiErrorMessage: await CommonUtils.getBlobApiErrorMessage(error),
         }
       }
 
@@ -257,6 +259,7 @@ export const PMService = {
       if (error?.response?.status === 400) {
         return {
           errorCode: "INVALID_TEMPLATE",
+          apiErrorMessage: await CommonUtils.getBlobApiErrorMessage(error),
         }
       }
 
@@ -338,6 +341,7 @@ export const PMService = {
       if (error?.response?.status === 400) {
         return {
           errorCode: "INVALID_TEMPLATE",
+          apiErrorMessage: await CommonUtils.getBlobApiErrorMessage(error),
         }
       }
 
@@ -433,6 +437,7 @@ export const PMService = {
       if (error?.response?.status === 400) {
         return {
           errorCode: "INVALID_TEMPLATE",
+          apiErrorMessage: await CommonUtils.getBlobApiErrorMessage(error),
         }
       }
 

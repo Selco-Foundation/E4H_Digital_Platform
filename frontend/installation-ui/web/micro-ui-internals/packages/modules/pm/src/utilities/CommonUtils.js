@@ -44,6 +44,12 @@ const getApiErrorMessages = (e) => {
     return [data.Errors[0].message];
   }
 
+  // The ingestion service (facility data validate/upload) returns { detail: "<message>" }
+  // as a plain string, rather than the { detail: { message } } shape below.
+  if (typeof data?.detail === "string" && data.detail) {
+    return [data.detail];
+  }
+
   if (detailErrors?.length) {
     return detailErrors
       .map((error) => `${error.fileName ? `${error.fileName} ` : ""}${error.error}`);
@@ -60,8 +66,27 @@ const getApiErrorMessage = (e) => {
   return getApiErrorMessages(e)?.[0] || "";
 };
 
+// Requests made with `responseType: "blob"` (e.g. the ingestion service's validate/upload
+// calls, which stream a file back on success) get the error body back as a Blob too, so
+// e.response.data isn't the parsed JSON payload yet — it has to be read out of the blob first.
+const getBlobApiErrorMessage = async (e) => {
+  const data = e?.response?.data;
+
+  if (typeof Blob !== "undefined" && data instanceof Blob) {
+    try {
+      const parsedData = JSON.parse(await data.text());
+      return getApiErrorMessage({ ...e, response: { ...e.response, data: parsedData } });
+    } catch (parseError) {
+      console.error("Error parsing blob error response", parseError);
+    }
+  }
+
+  return getApiErrorMessage(e);
+};
+
 export default {
   isNotEqual,
   getApiErrorMessage,
   getApiErrorMessages,
+  getBlobApiErrorMessage,
 }

@@ -14,6 +14,7 @@ import org.egov.amc.util.MDMSUtils;
 import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
 import org.egov.tracer.model.CustomException;
@@ -37,6 +38,28 @@ import static org.egov.amc.util.AmcConstants.*;
 @Service
 @Slf4j
 public class ScheduledVisitService {
+
+    /**
+     * Number of visits whose workflow history is fetched per egov-workflow-v2 search during a reindex.
+     * Kept well under the service's 100-record page cap (a visit has only a handful of transitions) so a
+     * batch normally resolves in a single call while still cutting the round trips by an order of magnitude.
+     */
+    private static final int WORKFLOW_HISTORY_VISIT_BATCH_SIZE = 20;
+
+    /**
+     * Number of distinct assignee uuids resolved per egov-hrms search when working out each visit's
+     * mapped vendor. Kept under the service's default page size (egov.hrms.default.pagination.limit,
+     * 200) so a batch always comes back in one page, while still collapsing what would otherwise be
+     * one HRMS call per assignment into a handful per index push.
+     */
+    private static final int MAPPED_VENDOR_UUID_BATCH_SIZE = 100;
+
+    /**
+     * Tenant used for every egov-hrms lookup in this service - employees and their roles are held at
+     * the state level, not per sub-tenant. Matches the literal already used by {@link #getUserById}
+     * and {@link #getEmployeeByBoundaryCode}.
+     */
+    private static final String HRMS_TENANT_ID = "in";
 
     private final ScheduledVisitValidator scheduledVisitsValidator;
     private final ScheduledVisitRepository scheduledVisitsRepository;
@@ -120,6 +143,7 @@ public class ScheduledVisitService {
             return 0;
         }
         enrichBoundaryLocalization(requestInfo, nonDraftVisits);
+        enrichMappedVendor(requestInfo, nonDraftVisits);
         ScheduledVisitRequest indexRequest = ScheduledVisitRequest.builder()
                 .requestInfo(requestInfo)
                 .scheduledVisits(nonDraftVisits)
@@ -155,6 +179,7 @@ public class ScheduledVisitService {
                 break;
             }
 
+            enrichActualVisitDateFromWorkflow(requestInfo, visits);
             int indexedInBatch = pushNonDraftVisitsToIndex(requestInfo, visits, amcServiceConfiguration.getSaveScheduledVisitIndexTopic());
             totalIndexed += indexedInBatch;
             log.info("Reindex batch offset={} fetched={} indexed={} totalIndexed={}",
@@ -168,6 +193,77 @@ public class ScheduledVisitService {
 
         log.info("Reindex complete for tenantId={}. Total non-DRAFT visits pushed to index: {}", tenantId, totalIndexed);
         return totalIndexed;
+    }
+
+    /**
+     * Resolve the actual AMC visit date for a reindex batch from workflow history.
+     *
+     * <p>actual_visit_date only started being stamped when SUBMIT_VISIT_REPORT is handled, so visits
+     * submitted before that change hold NULL in the visits table and would be indexed without a date.
+     * egov-workflow-v2 still has the transition history, and the SUBMIT_VISIT_REPORT transition's
+     * createdTime is exactly the instant the runtime stamp records - so it is used as the authoritative
+     * value here, taking the latest one when a visit was re-submitted out of REJECTED (mirroring the
+     * overwrite the runtime does).
+     *
+     * <p>When workflow has no such transition - never submitted, or history pruned - the visit keeps the
+     * date already in the visits table (possibly none). Nothing is guessed from scheduled_date, and a
+     * workflow failure degrades to that same stored value rather than aborting the reindex.
+     *
+     * <p>DRAFT visits are skipped: they are never indexed and by definition have not been submitted.
+     */
+    private void enrichActualVisitDateFromWorkflow(RequestInfo requestInfo, List<ScheduledVisit> visits) {
+        // Grouped by the visit's own tenantId, not the reindex tenantId param, because the workflow search
+        // filters on an exact tenantid match and a batch may span sub-tenants.
+        Map<String, List<ScheduledVisit>> visitsByTenant = visits.stream()
+                .filter(visit -> visit.getId() != null && visit.getTenantId() != null)
+                .filter(visit -> visit.getStatus() != null && !DRAFT_STATUS.equalsIgnoreCase(visit.getStatus()))
+                .collect(Collectors.groupingBy(ScheduledVisit::getTenantId));
+
+        visitsByTenant.forEach((tenantId, tenantVisits) -> {
+            for (int from = 0; from < tenantVisits.size(); from += WORKFLOW_HISTORY_VISIT_BATCH_SIZE) {
+                List<ScheduledVisit> batch = tenantVisits.subList(from,
+                        Math.min(from + WORKFLOW_HISTORY_VISIT_BATCH_SIZE, tenantVisits.size()));
+                Map<String, Long> submittedAtByVisitId;
+                try {
+                    submittedAtByVisitId = getVisitReportSubmissionTimes(requestInfo, tenantId, batch);
+                } catch (Exception e) {
+                    log.error("Workflow history lookup failed for {} visits in tenantId={}. Falling back to the "
+                            + "actual_visit_date already stored on those visits.", batch.size(), tenantId, e);
+                    continue;
+                }
+
+                for (ScheduledVisit visit : batch) {
+                    Long submittedAt = submittedAtByVisitId.get(visit.getId());
+                    if (submittedAt != null) {
+                        visit.setActualVisitDate(submittedAt);
+                    } else if (visit.getActualVisitDate() == null) {
+                        log.info("No {} transition in workflow and no stored actual_visit_date for visitId={}; "
+                                + "indexing it without an actual visit date.", SUBMIT_VISIT_REPORT_ACTION, visit.getId());
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Map visitId -> createdTime of its latest SUBMIT_VISIT_REPORT transition. Visits with no such
+     * transition are simply absent from the map.
+     */
+    private Map<String, Long> getVisitReportSubmissionTimes(RequestInfo requestInfo, String tenantId, List<ScheduledVisit> visits) {
+        List<String> visitIds = visits.stream().map(ScheduledVisit::getId).toList();
+        List<ProcessInstance> history = workflowService.getProcessInstanceHistory(visitIds, tenantId, requestInfo);
+
+        Map<String, Long> submittedAtByVisitId = new HashMap<>();
+        for (ProcessInstance instance : history) {
+            if (!SUBMIT_VISIT_REPORT_ACTION.equalsIgnoreCase(instance.getAction())
+                    || instance.getBusinessId() == null
+                    || instance.getAuditDetails() == null
+                    || instance.getAuditDetails().getCreatedTime() == null) {
+                continue;
+            }
+            submittedAtByVisitId.merge(instance.getBusinessId(), instance.getAuditDetails().getCreatedTime(), Math::max);
+        }
+        return submittedAtByVisitId;
     }
 
     /**
@@ -215,6 +311,174 @@ public class ScheduledVisitService {
             visit.setDistrict(labels.getOrDefault(boundary.getDistrict(), boundary.getDistrict()));
             visit.setBlock(labels.getOrDefault(boundary.getBlock(), boundary.getBlock()));
         }
+    }
+
+    /**
+     * Stamps each visit with the AMC field staff it is mapped to: the first active assignment whose
+     * HRMS user holds the role in {@code amc.mapped.vendor.role.code}.
+     *
+     * <p>Called from {@link #pushNonDraftVisitsToIndex}, which every route to the index funnels
+     * through, so create/update/expire and the {@code /index/_reindex} backfill all derive the value
+     * the same way.
+     *
+     * <p>Roles are fetched from HRMS rather than read off any user object already hanging on the
+     * assignment: create-flow assignments carry nothing but an {@code assignedUser} uuid, so that
+     * object is often absent. One search per {@value #MAPPED_VENDOR_UUID_BATCH_SIZE} distinct
+     * assignees covers the whole page instead of one call per assignment.
+     *
+     * <p>A visit whose assignees include no field staff keeps both fields null - the index then
+     * distinguishes "nobody mapped" from a real name. An HRMS failure degrades the affected batch to
+     * that same null rather than aborting the push, since an unmapped visit is still worth indexing.
+     */
+    private void enrichMappedVendor(RequestInfo requestInfo, List<ScheduledVisit> visits) {
+        String roleCode = amcServiceConfiguration.getMappedVendorRoleCode();
+        if (roleCode == null || roleCode.trim().isEmpty()) {
+            log.warn("amc.mapped.vendor.role.code is not configured; indexing {} visit(s) without a mapped vendor.",
+                    visits.size());
+            return;
+        }
+
+        Map<String, List<String>> assigneesByVisitId = resolveAssigneesForIndexing(visits);
+        List<String> assigneeUuids = assigneesByVisitId.values().stream()
+                .flatMap(List::stream)
+                .distinct()
+                .toList();
+        if (assigneeUuids.isEmpty()) {
+            return;
+        }
+
+        Map<String, User> fieldStaffByUuid = getFieldStaffByUuid(requestInfo, assigneeUuids, roleCode);
+        if (fieldStaffByUuid.isEmpty()) {
+            log.info("None of the {} active assignee(s) in this batch hold role {}; indexing them without a "
+                    + "mapped vendor.", assigneeUuids.size(), roleCode);
+            return;
+        }
+
+        for (ScheduledVisit visit : visits) {
+            for (String assigneeUuid : assigneesByVisitId.getOrDefault(visit.getId(), List.of())) {
+                User fieldStaff = fieldStaffByUuid.get(assigneeUuid);
+                if (fieldStaff == null) {
+                    continue;
+                }
+                visit.setMappedVendorName(fieldStaff.getName());
+                visit.setMappedVendorUserName(fieldStaff.getUserName());
+                // First active field-staff assignee wins; later ones (e.g. a reviewer also on the visit)
+                // are ignored so the index carries a single, stable mapped vendor.
+                break;
+            }
+        }
+    }
+
+    /**
+     * visitId -> the assignee uuids the mapped-vendor lookup should consider, read from the
+     * assignments table rather than from {@code visit.getAssignments()}.
+     *
+     * <p>The visits reaching the index come from {@link #searchScheduledVisit}, which scopes
+     * non-PROJECT_MANAGER callers to their own assignment row - and since that same row feeds the
+     * query's {@code jsonb_agg}, the assignments hanging off the visit are just the caller's. Indexing
+     * off that list means the mapped vendor can only ever be the caller, and a visit scheduled by an
+     * AMC SPOC on behalf of field staff resolves to nothing. The API keeps that scoping (callers must
+     * not see each other's assignments); the index simply reads the full roster separately.
+     *
+     * <p>Falls back to the in-memory assignments per visit when the table has no rows for it - on the
+     * create path the visit has only just been pushed onto the persister topic and is not in the
+     * database yet, so the request object is the only source there.
+     */
+    private Map<String, List<String>> resolveAssigneesForIndexing(List<ScheduledVisit> visits) {
+        List<String> visitIds = visits.stream()
+                .map(ScheduledVisit::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<String, List<String>> assigneesByVisitId;
+        try {
+            assigneesByVisitId = new HashMap<>(
+                    scheduledVisitsRepository.getActiveAssigneeUuidsByVisitIds(visitIds));
+        } catch (Exception e) {
+            log.error("Could not read assignments for {} visit(s) while resolving the mapped vendor; "
+                    + "falling back to the assignments on the request.", visitIds.size(), e);
+            assigneesByVisitId = new HashMap<>();
+        }
+
+        for (ScheduledVisit visit : visits) {
+            if (visit.getId() == null || assigneesByVisitId.containsKey(visit.getId())
+                    || visit.getAssignments() == null) {
+                continue;
+            }
+            List<String> fromRequest = visit.getAssignments().stream()
+                    .filter(ScheduledVisitAssignment::isActive)
+                    .map(ScheduledVisitAssignment::getAssignedUser)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            if (!fromRequest.isEmpty()) {
+                assigneesByVisitId.put(visit.getId(), fromRequest);
+            }
+        }
+        return assigneesByVisitId;
+    }
+
+    /**
+     * uuid -> HRMS user, restricted to those of {@code assigneeUuids} holding {@code roleCode}, so
+     * every entry in the returned map is field staff and callers need no further check.
+     *
+     * <p>The search is by uuid only and the role is matched here, deliberately rather than through
+     * HRMS's own {@code roles} parameter: that parameter makes HRMS list <em>every</em> user holding
+     * the role and intersect, a page-capped query that would quietly drop assignees once the role has
+     * more members than egov-user returns. Searching by the uuids we already hold is bounded by the
+     * batch and cannot truncate. HRMS populates {@code user.roles} on the way out either way.
+     *
+     * <p>A failing batch is logged and skipped rather than propagated: the assignees it covered simply
+     * end up without a mapped vendor.
+     */
+    private Map<String, User> getFieldStaffByUuid(RequestInfo requestInfo, List<String> assigneeUuids, String roleCode) {
+        RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
+        requestInfoWrapper.setRequestInfo(requestInfo);
+
+        Map<String, User> fieldStaffByUuid = new HashMap<>();
+        for (int from = 0; from < assigneeUuids.size(); from += MAPPED_VENDOR_UUID_BATCH_SIZE) {
+            List<String> batch = assigneeUuids.subList(from,
+                    Math.min(from + MAPPED_VENDOR_UUID_BATCH_SIZE, assigneeUuids.size()));
+            String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()
+                    + "?tenantId=" + HRMS_TENANT_ID
+                    + "&uuids=" + String.join(",", batch)
+                    // Explicit limit: HRMS would otherwise fall back to its own default page size, which
+                    // an environment is free to configure below the batch size and silently truncate.
+                    // offset must be sent alongside it: egov-hrms computes its page bound as
+                    // limit + offset (EmployeeQueryBuilder#paginationClause) and neither the controller
+                    // nor its validator defaults offset, so a limit without one NPEs the whole search.
+                    + "&offset=0"
+                    + "&limit=" + MAPPED_VENDOR_UUID_BATCH_SIZE;
+
+            try {
+                Object response = requestRepository.fetchResult(new StringBuilder(url), requestInfoWrapper);
+                EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+                if (employeeResponse == null || employeeResponse.getEmployees() == null) {
+                    continue;
+                }
+                for (Employee employee : employeeResponse.getEmployees()) {
+                    User user = employee.getUser();
+                    if (user != null && user.getUuid() != null && hasRole(user, roleCode)) {
+                        fieldStaffByUuid.put(user.getUuid(), user);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("HRMS lookup failed for {} assignee(s). Those visits will be indexed without a "
+                        + "mapped vendor.", batch.size(), e);
+            }
+        }
+        return fieldStaffByUuid;
+    }
+
+    /** Case-insensitive because MDMS role codes are not consistently cased across environments. */
+    private boolean hasRole(User user, String roleCode) {
+        if (user.getRoles() == null) {
+            return false;
+        }
+        return user.getRoles().stream()
+                .filter(Objects::nonNull)
+                .anyMatch(role -> roleCode.equalsIgnoreCase(role.getCode()));
     }
 
     public ScheduledVisitResponse generateScheduledVisits(VisitGenerationRequest request) {
@@ -439,7 +703,7 @@ public class ScheduledVisitService {
         log.info("Resolved HRMS lookup for resend OTP visitId={} facilityId={} boundaryCode={}",
                 existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-        Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+        Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
         if (employee != null && employee.getUser() != null && employee.getUser().getMobileNumber() != null && !employee.getUser().getMobileNumber().isEmpty()) {
             OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
             if (otpResponse != null && otpResponse.getOtp() != null) {
@@ -472,9 +736,16 @@ public class ScheduledVisitService {
         String priorStatus = existingVisit.getStatus();
 
         // Step 2: if action is SUBMIT_VISIT_REPORT, check if send OTP is successful or not
-        if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
+        if (SUBMIT_VISIT_REPORT_ACTION.equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to update visit report on existing visit
             existingVisit.setVisitReport(request.getVisitReport());
+            // The report is filled in on site, so this submission is the moment the visit actually
+            // happened - the only point in the workflow that stands for it. Stamped here, at the top
+            // of the branch, because attachAmcInstallationFormDocument below renders it into the AMC
+            // report PDF (actual_scheduled_amc_date); stamping any later would leave the PDF blank.
+            // A re-submission out of REJECTED intentionally overwrites it, so the stored date always
+            // matches the PDF generated in the same call.
+            existingVisit.setActualVisitDate(System.currentTimeMillis());
             log.info("SUBMIT_VISIT_REPORT started for visitId={} tenantId={}", existingVisit.getId(), existingVisit.getTenantId());
             // We need to send OTP to facility POC resolved by facility boundary (HCR user)
             if (existingVisit.getFacilityId() == null || existingVisit.getFacilityId().trim().isEmpty()) {
@@ -492,7 +763,7 @@ public class ScheduledVisitService {
             log.info("Resolved HRMS lookup for visitId={} facilityId={} boundaryCode={}",
                     existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-            Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+            Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
             if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                 OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
                 if (otpResponse !=null && otpResponse.getOtp()!=null){
@@ -544,7 +815,7 @@ public class ScheduledVisitService {
                 log.info("Resolved HRMS lookup for OTP validation visitId={} facilityId={} boundaryCode={}",
                         existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-                Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+                Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
                 if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                     OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
                     if (otpResponse !=null && otpResponse.getOtp()!=null){
@@ -1292,20 +1563,34 @@ public class ScheduledVisitService {
     }
 
     public Employee getEmployeeByBoundaryCode(Object request, String boundaryCode) {
+        return getEmployeeByBoundaryCode(request, boundaryCode, null);
+    }
+
+    /**
+     * @param role optional HRMS role code to narrow the search to, e.g. ROLE_COMPLAINANT
+     *             for the HCR. When null every employee of the boundary is eligible.
+     */
+    public Employee getEmployeeByBoundaryCode(Object request, String boundaryCode, String role) {
         if (boundaryCode == null || boundaryCode.trim().isEmpty()) {
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Boundary code is required for employee search");
         }
-        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()
-                + "?tenantId=in&boundaryCodes=" + boundaryCode + "&searchOnlyInBoundary=true";
-        log.debug("Calling HRMS employee search by boundaryCode={}", boundaryCode);
-        Object response = requestRepository.fetchResult(new StringBuilder(url), request);
+        StringBuilder url = new StringBuilder(amcServiceConfiguration.getHrmsHost())
+                .append(amcServiceConfiguration.getHrmsSearchUrl())
+                .append("?tenantId=in&boundaryCodes=").append(boundaryCode)
+                .append("&searchOnlyInBoundary=true");
+        if (role != null && !role.trim().isEmpty()) {
+            url.append("&roles=").append(role);
+        }
+        log.debug("Calling HRMS employee search by boundaryCode={} role={}", boundaryCode, role);
+        Object response = requestRepository.fetchResult(url, request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-            log.warn("No HRMS employee found for boundaryCode={}", boundaryCode);
-            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found for boundaryCode: " + boundaryCode);
+            log.warn("No HRMS employee found for boundaryCode={} role={}", boundaryCode, role);
+            throw new CustomException("EMPLOYEE_NOT_FOUND",
+                    "Employee not found for boundaryCode: " + boundaryCode + (role != null ? " and role: " + role : ""));
         }
-        log.debug("HRMS employee found for boundaryCode={}", boundaryCode);
+        log.debug("HRMS employee found for boundaryCode={} role={}", boundaryCode, role);
         return employeeResponse.getEmployees().get(0);
     }
 
