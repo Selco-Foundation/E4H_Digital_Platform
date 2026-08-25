@@ -14,6 +14,7 @@ import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 import { AMCService } from "../../services/AMC";
+import { LOCALE } from "../../constants/Localization";
 
 const getCurrentStepFromURL = () => {
   const key = parseInt(new URLSearchParams(window.location.search).get("key"), 10);
@@ -651,6 +652,15 @@ const CreateAMC = () => {
     return allRolesPresent;
   }
 
+  const validatePONumberConsistency = (activityFormData) => {
+    const poNumbers = activityFormData
+      .flatMap((dataEntry) => dataEntry.users || [])
+      .filter((userEntry) => !userEntry?.deleteAssignment && userEntry?.poNumber?.value)
+      .map((userEntry) => userEntry.poNumber.value);
+
+    return new Set(poNumbers).size <= 1;
+  }
+
   const buildUpdateAMCConfigurationRequest = (formData) => {
     const geographyDetails = formatAMCGeographyDetailsForUpdate(formData.geographyDetails);
     const assignmentRows = formData?.activityDetails?.activityUserAssignment?.flatMap((activityAssignment) => (
@@ -734,6 +744,12 @@ const CreateAMC = () => {
           activityUserAssignment: validatedData,
         },
       }));
+
+    } else if (!validatePONumberConsistency(activityData)) {
+      setToast({
+        key: "error",
+        label: t("PM_ALL_PO_NUMBER_MUST_BE_SAME"),
+      })
 
     } else if (!validateRolesPresence(activityData)) {
       setToast({
