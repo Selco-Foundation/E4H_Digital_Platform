@@ -69,6 +69,14 @@ public class AMCServiceConfiguration {
     @Value("${egov.v2.bulk.search.facility.url}")
     private String facilityBulkSearchUrl;
 
+    /**
+     * Index-only endpoint on facility-service for a facility's AMC snapshot. Deliberately not the
+     * facility {@code _update} API: that would persist the AMC fields into the facility table's
+     * additional_details, and AMC data is meant to exist on the search index only.
+     */
+    @Value("${egov.v2.facility.amc.index.update.url}")
+    private String facilityAmcIndexUpdateUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
@@ -152,6 +160,14 @@ public class AMCServiceConfiguration {
 
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
+
+    /**
+     * HRMS role code identifying an AMC field staff member. Used to pick which of a visit's assignees
+     * becomes the mapped vendor on the search index. Configurable because role codes are MDMS data and
+     * can differ per environment.
+     */
+    @Value("${amc.mapped.vendor.role.code}")
+    private String mappedVendorRoleCode;
 
     @Value("${egov.vendor.host}")
     private String vendorHost;

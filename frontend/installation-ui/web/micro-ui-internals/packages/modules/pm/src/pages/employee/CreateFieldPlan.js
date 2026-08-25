@@ -275,6 +275,16 @@ const CreateFieldPlan = () => {
     setToastQueue([]);
   }, []);
 
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const toastTimeout = setTimeout(closeToast, 4000);
+
+    return () => clearTimeout(toastTimeout);
+  }, [toast, closeToast]);
+
   const showToastMessages = (messages, key = "error") => {
     const formattedToasts = messages.filter(Boolean).map((message) => ({
       key,
@@ -450,7 +460,8 @@ const CreateFieldPlan = () => {
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
           key: "error",
-          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
+          label: response.apiErrorMessage || t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR"),
+          translate: false,
         })
         setInvalidDataError(null);
 
@@ -1508,7 +1519,7 @@ const CreateFieldPlan = () => {
                 </button>
               )}
             </div>
-          ) : t(toast.label)}
+          ) : (toast.translate === false ? toast.label : t(toast.label))}
           isDleteBtn={!hasCustomPrepopulationErrorToast}
           onClose={hasCustomPrepopulationErrorToast ? undefined : closeToast}
         />

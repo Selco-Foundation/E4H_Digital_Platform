@@ -43,6 +43,7 @@ public class AmcConfigurationService {
     private final AssetAmcRepository assetAmcRepository;
     private final AmcAnalyticsService amcAnalyticsService;
     private final AmcVisitRegenerationService amcVisitRegenerationService;
+    private final FacilityAmcIndexSyncService facilityAmcIndexSyncService;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -52,7 +53,8 @@ public class AmcConfigurationService {
     public AmcConfigurationService(
             AmcConfigurationRepository amcConfigurationRepository, AmcConfigurationValidator amcConfigurationValidator, ScheduledVisitRepository scheduledVisitRepository, AmcConfigurationEnrichment amcConfigurationEnrichment, AMCServiceConfiguration amcConfigurationConfiguration,
             Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil, ServiceRequestRepository requestRepository, AssetAmcRepository assetAmcRepository,
-            AmcAnalyticsService amcAnalyticsService, AmcVisitRegenerationService amcVisitRegenerationService) {
+            AmcAnalyticsService amcAnalyticsService, AmcVisitRegenerationService amcVisitRegenerationService,
+            FacilityAmcIndexSyncService facilityAmcIndexSyncService) {
             this.amcConfigurationValidator = amcConfigurationValidator;
         this.scheduledVisitRepository = scheduledVisitRepository;
         this.producer = producer;
@@ -64,6 +66,7 @@ public class AmcConfigurationService {
         this.assetAmcRepository = assetAmcRepository;
         this.amcAnalyticsService = amcAnalyticsService;
         this.amcVisitRegenerationService = amcVisitRegenerationService;
+        this.facilityAmcIndexSyncService = facilityAmcIndexSyncService;
     }
 
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
@@ -107,6 +110,13 @@ public class AmcConfigurationService {
 
         // Creating a configuration is the AMC scheduling action - best-effort, never breaks create.
         amcAnalyticsService.publishConfigurationCreateEvents(request);
+
+        // Push the AMC snapshot (installation date, applicability, due dates, ...) to
+        // health-facility-index so the AMC Data Dump report reflects it - best-effort.
+        for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
+            facilityAmcIndexSyncService.syncFacilityAmcSnapshot(
+                    amcConfiguration.getFacilityId(), amcConfiguration.getTenantId(), request.getRequestInfo());
+        }
         return request;
     }
 
@@ -448,11 +458,19 @@ public class AmcConfigurationService {
          * Best-effort - the configuration update itself is already committed and must not be lost if
          * regeneration fails.
          */
+        List<ScheduledVisit> regeneratedVisits = List.of();
         try {
-            amcVisitRegenerationService.regenerateIfCadenceChanged(amcConfigurationFromDB, amcConfiguration, request.getRequestInfo());
+            regeneratedVisits = amcVisitRegenerationService.regenerateIfCadenceChanged(amcConfigurationFromDB, amcConfiguration, request.getRequestInfo());
         } catch (Exception e) {
             log.error("Failed to regenerate scheduled visits for configurationId: {}", amcConfiguration.getId(), e);
         }
+
+        // Cadence changes reshuffle due dates - push the refreshed AMC snapshot to
+        // health-facility-index. Best-effort. The regenerated visits are handed over because they are
+        // only persisted asynchronously, so the snapshot must not re-read them from the DB.
+        facilityAmcIndexSyncService.syncFacilityAmcSnapshot(
+                amcConfigurationFromDB.getFacilityId(), amcConfigurationFromDB.getTenantId(), request.getRequestInfo(),
+                regeneratedVisits);
     }
 
     private boolean isValidCascadingUpdate(AmcConfiguration amcConfigurationFromDB, AmcConfiguration amcConfiguration) {

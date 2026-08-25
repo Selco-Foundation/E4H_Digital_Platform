@@ -36,6 +36,10 @@ EDITABLE_SOLAR_COLUMN_CODES = {
 
 ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES = {
     *EDITABLE_SOLAR_COLUMN_CODES,
+    # "isActive" is the real MDMS code for "Included in Installation Plan" in
+    # data-ingestion.FieldPlanFacilityIngestionSchema; the other two are kept for older/other
+    # schema versions that might still use them.
+    "isActive",
     "include_in_fieldplan",
     "included_in_field_plan",
 }
@@ -43,6 +47,8 @@ ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES = {
 ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS = (
     "include in field plan",
     "included in field plan",
+    "include in installation plan",
+    "included in installation plan",
     "include in project",
     "system type",
     "total system capacity",
