@@ -3546,11 +3546,23 @@ async def validate_amc_configurations_excel_sheet(
         background_tasks: BackgroundTasks,
         amc_file: UploadFile = File(..., description="Excel file containing AMC configuration data"),
         amc_sheet_name: str = Form(default="amc-configurations", description="Name of the sheet containing AMC data"),
+        user_info_list: str = Form(default="", description="Optional JSON array of user info objects with vendor mapping, for pocNumber validation"),
         request_info: str = Form(default="")
 ):
     input_temp_file = None
     output_temp_file = None
     request_info_obj = request_info_from_json(request_info)
+
+    # All assignments in this batch must share one pocNumber - same rule enforced server-side in
+    # AmcConfigurationValidator, checked here too so the caller sees it before /amcConfigurationBulkIngest.
+    if user_info_list:
+        try:
+            user_info_data = json.loads(user_info_list)
+            if not isinstance(user_info_data, list):
+                raise HTTPException(status_code=400, detail="user_info_list must be a JSON array")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON in user_info_list: {str(e)}")
+        validate_poc_numbers_consistent(user_info_data)
 
     try:
         input_temp_file, _ = await _save_upload_to_temp_file(amc_file, suffix=".xlsx")
@@ -3859,6 +3871,42 @@ def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
             detail="Multiple vendors have the AMC_FIELD_STAFF role; user_info_list must identify a single vendor",
         )
     return next(iter(candidates))
+
+
+def validate_poc_numbers_consistent(user_info_data: List[dict]) -> None:
+    """
+    All AMC configuration assignments in one batch represent the same PO/work-order, so every
+    user in user_info_list must carry a pocNumber (its own, or its vendor_mapping's - same
+    fallback used when building assignments for /amcConfigurationBulkIngest) and they must all
+    be identical. Mirrors AmcConfigurationValidator's pocNumber check on the Java side.
+    """
+    poc_numbers: Set[str] = set()
+    missing = False
+
+    for vendor_mapping in user_info_data:
+        users = vendor_mapping.get("users", [])
+        if not users and "userId" in vendor_mapping:
+            users = [{"userId": vendor_mapping.get("userId")}]
+        if not isinstance(users, list):
+            continue
+
+        for user in users:
+            poc_number = str(user.get("pocNumber") or vendor_mapping.get("pocNumber") or "").strip()
+            if not poc_number:
+                missing = True
+            else:
+                poc_numbers.add(poc_number)
+
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail="pocNumber is mandatory for every user in user_info_list",
+        )
+    if len(poc_numbers) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail=f"All users in user_info_list must have the same pocNumber; found: {sorted(poc_numbers)}",
+        )
 
 
 @router.post('/amcConfigurationBulkIngest',

@@ -269,6 +269,10 @@ public class AmcConfigurationValidator {
             throw new CustomException("Amc Configuration Assignment", "Assignment are mandatory");
         }
 
+        // All assignments on one AMC configuration represent the same PO/work-order, so pocNumber
+        // must be present on every assignment and identical across the list - collected here and
+        // checked once after the loop rather than per-assignment.
+        Set<String> distinctPocNumbers = new LinkedHashSet<>();
         for (AmcConfigurationAssignment assignment : request) {
             if (assignment == null) {
                 log.error("Amc Configuration Assignment is mandatory in AmcConfiguration");
@@ -284,6 +288,19 @@ public class AmcConfigurationValidator {
                 log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
                 errorMap.put("TENANT_ID_ASSIGNMENT", "Tenant ID is mandatory");
             }
+
+            if (StringUtils.isBlank(assignment.getPocNumber())) {
+                log.error("pocNumber is mandatory in Amc Configuration Assignment for assignedUser: {}", assignment.getAssignedUser());
+                errorMap.put("POC_NUMBER_ASSIGNMENT", " PO/WO/CNT is mandatory for every AMC configuration assignment");
+            } else {
+                distinctPocNumbers.add(assignment.getPocNumber().trim());
+            }
+        }
+
+        if (distinctPocNumbers.size() > 1) {
+            log.error("AMC configuration assignments have differing pocNumber values: {}", distinctPocNumbers);
+            errorMap.put("POC_NUMBER_MISMATCH",
+                    "All AMC configuration assignments must have the same  PO/WO/CNT; found: " + distinctPocNumbers);
         }
 
         if (!errorMap.isEmpty())
