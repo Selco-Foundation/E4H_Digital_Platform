@@ -89,8 +89,13 @@ public class FacilityKibanaIndex {
     @JsonProperty("solutionDesignType")
     private String solutionDesignType;
 
+    /**
+     * {@code DD-MM-YYYY} in IST, not epoch millis - amc-scheduler-service formats every AMC
+     * installation/valid-till/due/visit date before pushing it here so the dumps read as calendar dates.
+     * See {@code FacilityAmcIndexSyncService#toIndexDate}.
+     */
     @JsonProperty("amcInstallationDate")
-    private Long amcInstallationDate;
+    private String amcInstallationDate;
 
     @JsonProperty("amcApplicable")
     private String amcApplicable;
@@ -102,7 +107,7 @@ public class FacilityKibanaIndex {
     private Integer amcFrequencyMonths;
 
     @JsonProperty("amcValidTill")
-    private Long amcValidTill;
+    private String amcValidTill;
 
     /**
      * The AMC field staff assigned on the AMC configuration - distinct from {@code mappedVendorName},
@@ -115,46 +120,46 @@ public class FacilityKibanaIndex {
     private String amcMappedVendorUserName;
 
     @JsonProperty("amcDueDate1")
-    private Long amcDueDate1;
+    private String amcDueDate1;
     @JsonProperty("amcDueDate2")
-    private Long amcDueDate2;
+    private String amcDueDate2;
     @JsonProperty("amcDueDate3")
-    private Long amcDueDate3;
+    private String amcDueDate3;
     @JsonProperty("amcDueDate4")
-    private Long amcDueDate4;
+    private String amcDueDate4;
     @JsonProperty("amcDueDate5")
-    private Long amcDueDate5;
+    private String amcDueDate5;
     @JsonProperty("amcDueDate6")
-    private Long amcDueDate6;
+    private String amcDueDate6;
     @JsonProperty("amcDueDate7")
-    private Long amcDueDate7;
+    private String amcDueDate7;
     @JsonProperty("amcDueDate8")
-    private Long amcDueDate8;
+    private String amcDueDate8;
     @JsonProperty("amcDueDate9")
-    private Long amcDueDate9;
+    private String amcDueDate9;
     @JsonProperty("amcDueDate10")
-    private Long amcDueDate10;
+    private String amcDueDate10;
 
     @JsonProperty("amcVisitDate1")
-    private Long amcVisitDate1;
+    private String amcVisitDate1;
     @JsonProperty("amcVisitDate2")
-    private Long amcVisitDate2;
+    private String amcVisitDate2;
     @JsonProperty("amcVisitDate3")
-    private Long amcVisitDate3;
+    private String amcVisitDate3;
     @JsonProperty("amcVisitDate4")
-    private Long amcVisitDate4;
+    private String amcVisitDate4;
     @JsonProperty("amcVisitDate5")
-    private Long amcVisitDate5;
+    private String amcVisitDate5;
     @JsonProperty("amcVisitDate6")
-    private Long amcVisitDate6;
+    private String amcVisitDate6;
     @JsonProperty("amcVisitDate7")
-    private Long amcVisitDate7;
+    private String amcVisitDate7;
     @JsonProperty("amcVisitDate8")
-    private Long amcVisitDate8;
+    private String amcVisitDate8;
     @JsonProperty("amcVisitDate9")
-    private Long amcVisitDate9;
+    private String amcVisitDate9;
     @JsonProperty("amcVisitDate10")
-    private Long amcVisitDate10;
+    private String amcVisitDate10;
 
     @JsonProperty("lastModifiedTime")
     private Long lastModifiedTime;
