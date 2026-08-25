@@ -1,4 +1,5 @@
 import {IngestionService} from "./Ingestion";
+import CommonUtils from "../utilities/CommonUtils";
 
 const formatBoundaryData = (boundaryData, t) => {
   const formatDistricts = (districts, blocks) => {
@@ -186,6 +187,7 @@ export const PMService = {
       if (error?.response?.status === 400) {
         return {
           errorCode: "INVALID_TEMPLATE",
+          apiErrorMessage: await CommonUtils.getBlobApiErrorMessage(error),
         }
       }
 
@@ -257,6 +259,7 @@ export const PMService = {
       if (error?.response?.status === 400) {
         return {
           errorCode: "INVALID_TEMPLATE",
+          apiErrorMessage: await CommonUtils.getBlobApiErrorMessage(error),
         }
       }
 
@@ -276,6 +279,90 @@ export const PMService = {
 
     } catch (error) {
       console.error("Error uploading facility data", error);
+      throw error;
+    }
+  },
+
+  downloadAssessmentPlanFacilityDataTemplate: async (projectId, planId, boundaryData, t) => {
+    return await IngestionService.downloadAssessmentFacilityDataTemplate({
+      boundary_data: formatBoundaryData(boundaryData, t),
+      planId: planId,
+      projectId: projectId,
+      tenantId: "in",
+    });
+  },
+
+  downloadAssessmentPlanFacilityExport: async (planId, filters) => {
+    return await IngestionService.downloadAssessmentFacilityExport({
+      planId: planId,
+      filters: filters || {},
+    });
+  },
+
+  uploadAssessmentPlanFacilityDataTemplate: async (file, projectId, planId) => {
+
+    const extractBlobFile = (response) => {
+      const disposition = response.headers["content-disposition"];
+      const filename = disposition?.split("filename=")[1]?.replace(/"/g, "");
+
+      const blobData = new Blob([response.data], {
+        type: response.headers["content-type"],
+      });
+
+      return {
+        name: filename,
+        data: blobData,
+      }
+    }
+
+    let validatedFile;
+
+    try {
+      const validationRequest = new FormData();
+      validationRequest.append("include_file", file);
+      validationRequest.append("plan_id", planId);
+      validationRequest.append("project_id", projectId);
+      validationRequest.append("tenant_id", "in");
+      const validationResponse = await IngestionService.validateAssessmentPlanFacilityData(validationRequest);
+
+      validatedFile = extractBlobFile(validationResponse);
+      const errorCount = parseInt(validationResponse.headers["x-error-count"] || "0", 10);
+      if (errorCount) {
+        return {
+          errorCode: "INVALID_DATA",
+          file: validatedFile,
+          errorCount: errorCount
+        };
+      }
+
+    } catch (error) {
+      console.error("Error validating assessment plan facility data", error);
+
+      if (error?.response?.status === 400) {
+        return {
+          errorCode: "INVALID_TEMPLATE",
+          apiErrorMessage: await CommonUtils.getBlobApiErrorMessage(error),
+        }
+      }
+
+      throw error;
+    }
+
+    try {
+      const uploadRequest = new FormData();
+      uploadRequest.append("include_file", validatedFile.data);
+      uploadRequest.append("plan_id", planId);
+      uploadRequest.append("project_id", projectId);
+      uploadRequest.append("tenant_id", "in");
+      const uploadResponse = await IngestionService.uploadAssessmentPlanFacilityData(uploadRequest)
+
+      const uploadedFile = extractBlobFile(uploadResponse);
+      return {
+        file: uploadedFile,
+      };
+
+    } catch (error) {
+      console.error("Error uploading assessment plan facility data", error);
       throw error;
     }
   },
@@ -350,6 +437,7 @@ export const PMService = {
       if (error?.response?.status === 400) {
         return {
           errorCode: "INVALID_TEMPLATE",
+          apiErrorMessage: await CommonUtils.getBlobApiErrorMessage(error),
         }
       }
 

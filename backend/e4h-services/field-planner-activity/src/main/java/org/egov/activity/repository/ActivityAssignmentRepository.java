@@ -43,7 +43,7 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
     }
 
     public List<ActivityAssignment> getActivitiesAssignment(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
-        //Fetch FieldPlans based on search criteria
+        //Fetch Installation Plans based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         ActivityAssignmentSearchCriteria criteria = request.getCriteria();
         criteria.setCountQuery(false);

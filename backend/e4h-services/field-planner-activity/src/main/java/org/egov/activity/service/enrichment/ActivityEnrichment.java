@@ -50,7 +50,7 @@ public class ActivityEnrichment {
         log.debug("Enriched activity assignment with id and audit details, id: {}", activityAssignment.getId());
     }
 
-    /* Enrich FieldPlan with id and audit details */
+    /* Enrich Installation Plan with id and audit details */
     private void enrichActivityAssignmentRequestOnCreate(ActivityAssignment activityAssignment, RequestInfo requestInfo) {
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityAssignment.getActivityId())).build();
         Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
@@ -90,7 +90,7 @@ public class ActivityEnrichment {
         }
 
         if (activityAssignment.getFieldPlanId() != null && !activityAssignment.getFieldPlanId().isEmpty()) {
-            log.debug("Enriching activity assignment with field plan details, fieldPlanId: {}", activityAssignment.getFieldPlanId());
+            log.debug("Enriching activity assignment with installation plan details, fieldPlanId: {}", activityAssignment.getFieldPlanId());
             FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(requestInfo, activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
             if (existingFieldPlan != null) {
                 activityAssignment.setFieldPlan(existingFieldPlan);
@@ -98,7 +98,7 @@ public class ActivityEnrichment {
 
             FieldPlanFacilityBulkResponse fieldPlanFacilityList = activityValidator.getFieldPlanFacilityById(requestInfo, activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
             if (fieldPlanFacilityList != null) {
-                log.debug("Adding field plan facility count to additional details, count: {}", fieldPlanFacilityList.getTotalCount());
+                log.debug("Adding installation plan facility count to additional details, count: {}", fieldPlanFacilityList.getTotalCount());
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "countFieldPlanFacilities", fieldPlanFacilityList.getTotalCount());
                 activityAssignment.setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
             }
@@ -124,7 +124,7 @@ public class ActivityEnrichment {
             }
         }
 
-        // Get Field plan infos from fieldplan service
+        // Get Installation plan infos from fieldplan service
         if (activityFacility.getFieldPlanId() != null && !activityFacility.getFieldPlanId().isEmpty()) {
             FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(request.getRequestInfo(), activityFacility.getFieldPlanId(), activityFacility.getTenantId());
             if (existingFieldPlan != null) {

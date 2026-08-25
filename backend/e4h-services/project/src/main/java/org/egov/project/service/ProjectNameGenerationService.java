@@ -34,12 +34,13 @@ public class ProjectNameGenerationService {
     private static final Pattern REVISED_PROJECT_ID_PATTERN =
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]{5}(-[0-9])?)$");
     private static final Pattern JUSTIFICATION_CODE_PATTERN =
-            Pattern.compile("^JUS-[0-9]{5}(-[0-9])?$", Pattern.CASE_INSENSITIVE);
-    private static final String JUS_PREFIX = "JUS-";
+            Pattern.compile("^(?:JUS|SFJ)-([0-9]{5}(?:-[0-9])?)$", Pattern.CASE_INSENSITIVE);
     private static final String SCHEDULED_STATUS = "SCHEDULED";
     public static final String JUSTIFICATION_CODE_MESSAGE =
-            "Justification code is required and must follow the format JUS-00000 or JUS-00000-0 "
-                    + "(5 digits after JUS-, optional single-digit suffix after hyphen, e.g., JUS-00120, JUS-00120-1).";
+            "Justification code is required and must follow the format JUS-00000 or JUS-00000-0, "
+                    + "or SFJ-00000 or SFJ-00000-0 "
+                    + "(5 digits after the prefix, optional single-digit suffix after hyphen, "
+                    + "e.g., JUS-00120, JUS-00120-1, SFJ-00120, SFJ-00120-1).";
     public static String duplicateJustificationCodeMessage(String justificationCode) {
         return String.format(
                 "Justification code %s is already assigned to another project. Please use a different justification code.",
@@ -77,9 +78,9 @@ public class ProjectNameGenerationService {
         try {
             if (project.getAddress() != null && StringUtils.isNotBlank(project.getAddress().getBoundary())) {
                 String boundary = project.getAddress().getBoundary();
-                String stateName = extractStateNameFromBoundary(boundary);
-                if (stateName != null) {
-                    String stateCode = getCodeFromMDMS(project, requestInfo, project.getTenantId(), "State", stateName);
+                String stateBoundaryCode = extractStateBoundaryCodeFromBoundary(boundary);
+                if (stateBoundaryCode != null) {
+                    String stateCode = getCodeFromMDMS(project, requestInfo, project.getTenantId(), "State", stateBoundaryCode);
                     if (stateCode != null) {
                         return stateCode.toUpperCase();
                     }
@@ -185,11 +186,11 @@ public class ProjectNameGenerationService {
             throw new CustomException("JUSTIFICATION_CODE_REQUIRED", JUSTIFICATION_CODE_MESSAGE);
         }
         validateJustificationCodeFormat(justificationCode);
-        String trimmed = justificationCode.trim().toUpperCase().substring(JUS_PREFIX.length());
-        if (trimmed.startsWith("-")) {
-            trimmed = trimmed.substring(1);
+        Matcher matcher = JUSTIFICATION_CODE_PATTERN.matcher(justificationCode.trim());
+        if (!matcher.matches()) {
+            throw new CustomException("INVALID_JUSTIFICATION_CODE", JUSTIFICATION_CODE_MESSAGE);
         }
-        return trimmed;
+        return matcher.group(1);
     }
 
     public String extractJustificationCode(Object additionalDetails) {
@@ -261,22 +262,30 @@ public class ProjectNameGenerationService {
         return projectRepository.countProjectFacilitiesByProjectId(projectId, tenantId);
     }
 
-    private String extractStateNameFromBoundary(String boundary) {
+    /**
+     * Boundary is a hierarchy code such as India_ArunachalPradesh_PapumPare_Doimukh.
+     * Returns the state-level prefix (India_ArunachalPradesh) which is the MDMS boundaryCode,
+     * or the bare state segment when the boundary carries no country prefix.
+     */
+    private String extractStateBoundaryCodeFromBoundary(String boundary) {
         if (StringUtils.isBlank(boundary)) {
             return null;
         }
         String[] boundaryParts = boundary.split("_");
-        String stateName = null;
+        String countryPart = null;
+        String statePart = null;
         if (boundaryParts.length >= 2 && "India".equalsIgnoreCase(boundaryParts[0])) {
-            stateName = boundaryParts[1];
+            countryPart = boundaryParts[0];
+            statePart = boundaryParts[1];
         } else if (boundaryParts.length >= 1) {
-            stateName = boundaryParts[0];
+            statePart = boundaryParts[0];
         }
-        if (stateName != null && !stateName.equalsIgnoreCase("nan")
-                && !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
-            return stateName.trim();
+        if (statePart == null || statePart.trim().isEmpty()
+                || statePart.equalsIgnoreCase("nan") || statePart.equalsIgnoreCase("XYZ")) {
+            return null;
         }
-        return null;
+        statePart = statePart.trim();
+        return countryPart == null ? statePart : countryPart.trim() + "_" + statePart;
     }
 
     private String getCodeFromMDMS(Project project, RequestInfo requestInfo, String tenantId, String masterType, String searchName) {
@@ -314,9 +323,10 @@ public class ProjectNameGenerationService {
             return null;
         }
         for (LinkedHashMap<String, Object> item : masterList) {
-            String name = (String) item.get("name");
-            Boolean active = (Boolean) item.get("active");
-            if (searchName.equalsIgnoreCase(name) && Boolean.TRUE.equals(active)) {
+            if (!Boolean.TRUE.equals(item.get("active"))) {
+                continue;
+            }
+            if (matchesMaster(item, masterType, searchName)) {
                 String code = (String) item.get("code");
                 if (StringUtils.isNotBlank(code)) {
                     return code;
@@ -324,5 +334,25 @@ public class ProjectNameGenerationService {
             }
         }
         return null;
+    }
+
+    /**
+     * State entries are matched on boundaryCode (India_ArunachalPradesh) rather than the display
+     * name ("Arunachal Pradesh"), because boundary strings and tenant segments carry the
+     * space-less form. Name matching is kept as a fallback for other masters.
+     */
+    private boolean matchesMaster(LinkedHashMap<String, Object> item, String masterType, String searchName) {
+        if ("State".equals(masterType)) {
+            String boundaryCode = (String) item.get("boundaryCode");
+            if (StringUtils.isNotBlank(boundaryCode)
+                    && (searchName.equalsIgnoreCase(boundaryCode)
+                    || searchName.equalsIgnoreCase(StringUtils.substringAfterLast(boundaryCode, "_")))) {
+                return true;
+            }
+        }
+        String name = (String) item.get("name");
+        return StringUtils.isNotBlank(name)
+                && (searchName.equalsIgnoreCase(name)
+                || searchName.equalsIgnoreCase(StringUtils.deleteWhitespace(name)));
     }
 }

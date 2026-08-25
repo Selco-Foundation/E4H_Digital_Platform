@@ -7,6 +7,7 @@ import org.egov.common.models.core.URLParams;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
+import org.egov.field_planner.util.FieldPlannerConstants;
 import org.egov.field_planner.web.models.FieldPlanSearchRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -85,7 +86,7 @@ public class FieldPlannerQueryBuilder {
 
     public String getHighestFielPlanNameQuery(FieldPlan fieldPlan, List<Object> preparedStmtList) {
         log.trace("Entering getHighestFielPlanNameQuery method");
-        log.debug("Building query for highest field plan name, tenant: {}", fieldPlan.getTenantId());
+        log.debug("Building query for highest installation plan name, tenant: {}", fieldPlan.getTenantId());
         
         StringBuilder queryBuilder = new StringBuilder(FETCH_FIELDPLAN_QUERY);
         if (StringUtils.isNotBlank(fieldPlan.getName())) {
@@ -100,6 +101,7 @@ public class FieldPlannerQueryBuilder {
             queryBuilder.append(" tenant_id like ? ");
             preparedStmtList.add(fieldPlan.getTenantId() + '%');
         }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
         queryBuilder.append("ORDER BY created_time DESC LIMIT 1;");
 
         log.trace("Exiting getHighestFielPlanNameQuery method");
@@ -108,13 +110,14 @@ public class FieldPlannerQueryBuilder {
 
     public String getFieldPlanSearchQuery(FieldPlanSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
         log.trace("Entering getFieldPlanSearchQuery method");
-        log.debug("Building field plan search query, isCountQuery: {}", criteria.isCountQuery());
+        log.debug("Building installation plan search query, isCountQuery: {}", criteria.isCountQuery());
         
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? FIELDPLAN_COUNT_QUERY : FETCH_FIELDPLAN_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder, criteria);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
 
 //        if (criteria.getFromDate() != null && criteria.getFromDate() != 0) {
@@ -185,6 +188,24 @@ public class FieldPlannerQueryBuilder {
             preparedStmtList.add(lastChangedSince);
         }
         log.trace("Exiting extracted method");
+    }
+
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" fp.plan_type = ? ");
+        preparedStmtList.add(FieldPlannerConstants.PLAN_TYPE_FIELD_PLAN);
+    }
+
+    /**
+     * List/search queries stay scoped to FIELD_PLAN. ID lookups skip plan_type so internal callers
+     * (e.g. activity assignment for assessment plans) can resolve any row in field_plans.
+     */
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder,
+                                        FieldPlanSearchCriteria criteria) {
+        if (!CollectionUtils.isEmpty(criteria.getIds())) {
+            return;
+        }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
     }
 
     private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {

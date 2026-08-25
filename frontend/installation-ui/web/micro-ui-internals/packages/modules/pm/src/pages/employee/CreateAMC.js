@@ -346,7 +346,8 @@ const CreateAMC = () => {
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
           key: "error",
-          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
+          label: response.apiErrorMessage || t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR"),
+          translate: false,
         })
         setUploadedValidFile(false);
         setInvalidDataError(null);
@@ -542,7 +543,7 @@ const CreateAMC = () => {
           },
         ],
       },
-      ...(amcConfigurationId ? [] : [{
+      {
         key: "3",
         body: [
           {
@@ -600,9 +601,9 @@ const CreateAMC = () => {
             },
           },
         ],
-      }]),
+      },
     ],
-    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError, amcConfigurationId]
+    [t, activityData, boundaryData, createdProject, organizationData, handleFacilityDataDownload, handleFacilityDataUpload, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -707,6 +708,9 @@ const CreateAMC = () => {
           vendorId: savedAMCConfiguration.vendorId || savedAMCConfiguration.vendor?.id,
           facilityId: savedAMCConfiguration.facilityId || savedAMCConfiguration.facility?.id,
           projectId: savedAMCConfiguration.projectId || projectId,
+          durationMonths: 1,
+          visitFrequencyMonths: 1,
+          configurationEndDate: 1,
           assignments,
           geographyDetails,
           additionalDetails: {
@@ -805,6 +809,7 @@ const CreateAMC = () => {
           );
           history.push(`/${window?.contextPath}/employee/pm/response`);
         }
+        break;
     }
   };
 
@@ -969,7 +974,7 @@ const CreateAMC = () => {
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          label={t(toast.label)}
+          label={toast.translate === false ? toast.label : t(toast.label)}
           isDleteBtn={true}
           onClose={() => setToast(null)}
         />

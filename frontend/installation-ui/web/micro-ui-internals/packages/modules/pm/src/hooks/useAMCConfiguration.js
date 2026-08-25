@@ -1,48 +1,21 @@
 import { useQuery, useQueryClient } from "react-query";
 import { AMCService } from "../services/AMC";
 
-const getAMCGroupKey = (amcConfiguration) => {
-  return [
-    amcConfiguration?.projectId,
-    amcConfiguration?.vendorId,
-    amcConfiguration?.configurationStartDate,
-    amcConfiguration?.configurationEndDate,
-    amcConfiguration?.durationMonths,
-    amcConfiguration?.visitFrequencyMonths,
-    amcConfiguration?.status,
-  ].join("|");
-};
-
 const formatAMCConfigurations = (amcConfigurations = []) => {
-  const amcConfigurationGroupMap = new Map();
-
-  amcConfigurations.forEach((amcConfiguration) => {
-    const groupKey = getAMCGroupKey(amcConfiguration);
-    const existingGroup = amcConfigurationGroupMap.get(groupKey);
-    const facilityIds = new Set(existingGroup?.facilityIds || []);
-
-    if (amcConfiguration?.facilityId) {
-      facilityIds.add(amcConfiguration.facilityId);
-    }
-
-    amcConfigurationGroupMap.set(groupKey, {
-      id: existingGroup?.id || amcConfiguration?.id,
-      name: amcConfiguration?.project?.name || existingGroup?.name || "-",
-      activities: [
-        {
-          code: "AMC",
-          name: "AMC",
-        },
-      ],
-      startDate: amcConfiguration?.configurationStartDate || existingGroup?.startDate,
-      endDate: amcConfiguration?.configurationEndDate || existingGroup?.endDate,
-      healthFacilityNumber: facilityIds.size,
-      status: amcConfiguration?.status || existingGroup?.status,
-      facilityIds: [...facilityIds],
-    });
-  });
-
-  return [...amcConfigurationGroupMap.values()].map(({ facilityIds, ...amcConfiguration }) => amcConfiguration);
+  return amcConfigurations.map((amcConfiguration) => ({
+    id: amcConfiguration?.id,
+    name: amcConfiguration?.project?.name || "-",
+    activities: [
+      {
+        code: "AMC",
+        name: "AMC",
+      },
+    ],
+    startDate: amcConfiguration?.configurationStartDate,
+    endDate: amcConfiguration?.configurationEndDate,
+    healthFacilityNumber: amcConfiguration?.facilityId ? 1 : 0,
+    status: amcConfiguration?.status,
+  }));
 };
 
 const fetchAMCConfigurations = async (filter, limit, offset) => {
