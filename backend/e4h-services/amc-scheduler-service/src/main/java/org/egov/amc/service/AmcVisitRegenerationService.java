@@ -72,13 +72,16 @@ public class AmcVisitRegenerationService {
      * {@code ux_scheduled_visits_unique_visit_per_amc (amc_configuration_id, visit_number)} forbids
      * restarting at 1.
      *
-     * @return true when the visit series was actually rewritten
+     * @return the visits whose rows were rewritten - deactivated ones carry {@code isActive = false},
+     *         regenerated ones are active - or an empty list when the series was left as-is. Callers
+     *         need these to index the new schedule without re-reading it: the rows are persisted
+     *         asynchronously through Kafka, so the DB does not hold them yet on return.
      */
-    public boolean regenerateIfCadenceChanged(AmcConfiguration configurationFromDB,
-                                              AmcConfiguration updatedConfiguration,
-                                              RequestInfo requestInfo) {
+    public List<ScheduledVisit> regenerateIfCadenceChanged(AmcConfiguration configurationFromDB,
+                                                           AmcConfiguration updatedConfiguration,
+                                                           RequestInfo requestInfo) {
         if (configurationFromDB == null || updatedConfiguration == null) {
-            return false;
+            return List.of();
         }
 
         boolean cadenceChanged =
@@ -86,7 +89,7 @@ public class AmcVisitRegenerationService {
                         || !Objects.equals(configurationFromDB.getVisitFrequencyMonths(), updatedConfiguration.getVisitFrequencyMonths());
         if (!cadenceChanged) {
             log.debug("Cadence unchanged for configurationId: {}, visits left as-is", updatedConfiguration.getId());
-            return false;
+            return List.of();
         }
 
         Long startDate = updatedConfiguration.getConfigurationStartDate() != null
@@ -103,7 +106,7 @@ public class AmcVisitRegenerationService {
             log.warn("Skipping visit regeneration for configurationId: {} - incomplete schedule "
                             + "(startDate: {}, endDate: {}, frequencyMonths: {})",
                     updatedConfiguration.getId(), startDate, endDate, frequencyMonths);
-            return false;
+            return List.of();
         }
 
         long now = System.currentTimeMillis();
@@ -140,8 +143,10 @@ public class AmcVisitRegenerationService {
 
         if (visitsToDelete.isEmpty() && futureDates.isEmpty()) {
             log.info("Cadence changed for configurationId: {} but no future visit to rewrite", updatedConfiguration.getId());
-            return false;
+            return List.of();
         }
+
+        List<ScheduledVisit> rewrittenVisits = new ArrayList<>();
 
         if (!visitsToDelete.isEmpty()) {
             log.info("Deactivating {} not-yet-due visit(s) of configurationId: {} before regeneration",
@@ -149,6 +154,7 @@ public class AmcVisitRegenerationService {
             deactivate(visitsToDelete, requestInfo);
             producer.push(amcServiceConfiguration.getDeleteScheduledVisitTopic(),
                     ScheduledVisitRequest.builder().requestInfo(requestInfo).scheduledVisits(visitsToDelete).build());
+            rewrittenVisits.addAll(visitsToDelete);
         }
 
         if (!futureDates.isEmpty()) {
@@ -158,9 +164,10 @@ public class AmcVisitRegenerationService {
             log.info("Creating {} regenerated visit(s) for configurationId: {}", newVisits.size(), updatedConfiguration.getId());
             producer.push(amcServiceConfiguration.getSaveScheduledVisitTopic(),
                     ScheduledVisitRequest.builder().requestInfo(requestInfo).scheduledVisits(newVisits).build());
+            rewrittenVisits.addAll(newVisits);
         }
 
-        return true;
+        return rewrittenVisits;
     }
 
     /**
