@@ -158,14 +158,15 @@ def validate_assessment_handoff_rows(
         return errors
 
     facility_id_col = find_column(df, "facility id")
-    include_col = find_column(df, "included in field plan")
+    # "Included in Field Plan" is the legacy header text; "Included in Installation Plan" is the
+    # current one (MDMS-driven label, with or without a "(Mandatory)" suffix) - substring match
+    # on either so this doesn't silently stop matching whenever the label wording changes upstream.
+    include_col = find_column(df, "included in field plan") or find_column(df, "included in installation plan")
 
     for i, row in df.iterrows():
         include_val = ""
         if include_col:
             include_val = str(row.get(include_col, "")).strip().lower()
-        elif "Included in Installation Plan (Mandatory)" in df.columns:
-            include_val = str(row.get("Included in Installation Plan (Mandatory)", "")).strip().lower()
         if include_val != "yes":
             continue
 
