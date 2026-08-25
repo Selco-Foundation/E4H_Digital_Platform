@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Table } from "@egovernments/digit-ui-react-components";
-import { MobileNumber } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "../OrganizationUserDropdown";
@@ -195,10 +194,11 @@ const AMCUserManager = ({
         borderBottom: isLast ? "none" : "1px solid #EEEEEE",
       }}
     >
-      <MobileNumber
+      <input
+        type="text"
+        className={"employee-card-input"}
         value={fieldValue.value}
-        onChange={(value) => handleUserDataChange(activity, index, fieldName, value)}
-        hideSpan={true}
+        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value)}
         style={{
           minWidth: "170px",
         }}
