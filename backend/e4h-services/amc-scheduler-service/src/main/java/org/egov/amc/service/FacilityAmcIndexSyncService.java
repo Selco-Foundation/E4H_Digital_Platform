@@ -26,6 +26,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -57,6 +60,16 @@ import java.util.UUID;
 public class FacilityAmcIndexSyncService {
 
     private static final int MAX_CYCLES = 10;
+
+    /**
+     * The AMC dates are indexed as {@code DD-MM-YYYY} strings in IST rather than epoch millis, so the
+     * Kibana data dumps read as calendar dates without a per-visualisation timezone conversion. IST is
+     * pinned explicitly instead of using the JVM default: a UTC-running pod would otherwise roll a
+     * date scheduled at 00:00 IST back to the previous day.
+     */
+    private static final ZoneId INDEX_DATE_ZONE = ZoneId.of("Asia/Kolkata");
+
+    private static final DateTimeFormatter INDEX_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     /**
      * How many of a facility's AMC configurations are pulled before picking the latest. Sized at the
@@ -510,11 +523,11 @@ public class FacilityAmcIndexSyncService {
         }
 
         fields.put("amcApplicable", AMC_APPLICABLE_YES);
-        fields.put("amcInstallationDate", config.getConfigurationStartDate());
+        fields.put("amcInstallationDate", toIndexDate(config.getConfigurationStartDate()));
         Integer durationMonths = config.getDurationMonths();
         fields.put("amcApplicableYears", durationMonths != null ? durationMonths / 12 : null);
         fields.put("amcFrequencyMonths", config.getVisitFrequencyMonths());
-        fields.put("amcValidTill", config.getConfigurationEndDate());
+        fields.put("amcValidTill", toIndexDate(config.getConfigurationEndDate()));
         // Written unconditionally, null included, so clearing an AMC's assignment actually clears the
         // indexed value rather than leaving a stale name behind.
         fields.put("amcMappedVendorName", mappedVendor == null ? null : mappedVendor.getName());
@@ -533,10 +546,21 @@ public class FacilityAmcIndexSyncService {
             if (visitNumber == null || visitNumber < 1 || visitNumber > MAX_CYCLES) {
                 continue;
             }
-            fields.put("amcDueDate" + visitNumber, visit.getScheduledDate());
-            fields.put("amcVisitDate" + visitNumber, visit.getActualVisitDate());
+            fields.put("amcDueDate" + visitNumber, toIndexDate(visit.getScheduledDate()));
+            fields.put("amcVisitDate" + visitNumber, toIndexDate(visit.getActualVisitDate()));
         }
         return fields;
+    }
+
+    /**
+     * Renders an epoch-millis timestamp as the {@code DD-MM-YYYY} IST string the index carries.
+     * Null in, null out, so an unrecorded visit date stays absent rather than becoming an epoch date.
+     */
+    private String toIndexDate(Long epochMillis) {
+        if (epochMillis == null) {
+            return null;
+        }
+        return Instant.ofEpochMilli(epochMillis).atZone(INDEX_DATE_ZONE).format(INDEX_DATE_FORMATTER);
     }
 
     /** Every AMC key this service owns, mapped to null - the baseline a snapshot fills in. */
