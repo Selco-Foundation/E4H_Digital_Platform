@@ -14,7 +14,6 @@ import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 import { AMCService } from "../../services/AMC";
-import { LOCALE } from "../../constants/Localization";
 
 const getCurrentStepFromURL = () => {
   const key = parseInt(new URLSearchParams(window.location.search).get("key"), 10);

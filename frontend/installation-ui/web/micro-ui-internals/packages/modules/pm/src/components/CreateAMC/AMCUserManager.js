@@ -338,14 +338,14 @@ const AMCUserManager = ({
     () => [
       {
         id: "activity",
-        Header: () => GetHead("Activity"),
+        Header: () => GetHead(t("PM_FP_ACTIVITY")),
         Cell: ({ row }) => (
           ActivityCell(row.original["activity"])
         ),
       },
       {
         id: "poNumber",
-        Header: () => GetHead("PO Number"),
+        Header: () => GetHead(t("PM_FP_PO_NUMBER")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -355,7 +355,7 @@ const AMCUserManager = ({
       },
       {
         id: "organization",
-        Header: () => GetHead("Organization"),
+        Header: () => GetHead(t("PM_FP_ORGANIZATION")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -365,7 +365,7 @@ const AMCUserManager = ({
       },
       {
         id: "role",
-        Header: () => GetHead("Role"),
+        Header: () => GetHead(t("PM_FP_ROLE")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -378,7 +378,7 @@ const AMCUserManager = ({
       },
       {
         id: "email",
-        Header: () => GetHead("Email"),
+        Header: () => GetHead(t("PM_FP_EMAIL")),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
@@ -403,7 +403,7 @@ const AMCUserManager = ({
         ),
       },
     ],
-    [organizationOptions, activityData]
+    [organizationOptions, activityData, t]
   );
 
   return (
