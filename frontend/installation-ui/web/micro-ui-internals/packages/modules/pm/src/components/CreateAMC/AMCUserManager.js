@@ -198,7 +198,7 @@ const AMCUserManager = ({
         type="text"
         className={"employee-card-input"}
         value={fieldValue.value}
-        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value)}
+        onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.replace(/\s/g, ""))}
         style={{
           minWidth: "170px",
         }}
