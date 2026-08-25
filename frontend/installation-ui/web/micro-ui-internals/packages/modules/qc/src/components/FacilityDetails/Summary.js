@@ -30,10 +30,12 @@ const AssetImageViewer = ({ t, image, onClose }) => {
           flexDirection: "column",
           alignItems: "stretch",
           gap: "16px",
-          width: "min(90vw, 900px)"
+          width: "100%",
+          maxWidth: "700px",
+          boxSizing: "border-box"
         }}
       >
-        <img src={image?.src} style={{ margin: 0, width: "100%", height: "auto" }} />
+        <img src={image?.src} style={{ margin: 0, width: "100%", maxWidth: "100%", height: "auto", display: "block" }} />
         <div
           style={{
             background: "white",
@@ -41,16 +43,15 @@ const AssetImageViewer = ({ t, image, onClose }) => {
             padding: "12px 16px",
             borderRadius: "4px",
             boxSizing: "border-box",
-            width: "max(100%, 360px)",
-            maxWidth: "90vw"
+            width: "100%"
           }}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(170px, 1fr) auto", columnGap: "24px", marginBottom: "8px" }}>
-            <strong>{t("QC_INSTALLATION_ASSET_SERIAL_NUMBER")}</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", columnGap: "16px", marginBottom: "8px" }}>
+            <strong style={{ minWidth: 0, overflowWrap: "break-word" }}>{t("QC_INSTALLATION_ASSET_SERIAL_NUMBER")}</strong>
             <span style={{ whiteSpace: "nowrap", textAlign: "right" }}>{image?.serialNumber || "-"}</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(170px, 1fr) auto", columnGap: "24px" }}>
-            <strong>{t("QC_INSTALLATION_ASSET_CAPACITY")}</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", columnGap: "16px" }}>
+            <strong style={{ minWidth: 0, overflowWrap: "break-word" }}>{t("QC_INSTALLATION_ASSET_CAPACITY")}</strong>
             <span style={{ whiteSpace: "nowrap", textAlign: "right" }}>{image?.capacity || "-"}</span>
           </div>
         </div>
