@@ -39,6 +39,7 @@ const Summary = ({
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const rejectionReasons = rejectionData?.[section] || [];
   const [imageToView, setImageToView] = useState(null);
+  const [assetImageToView, setAssetImageToView] = useState(null);
   const rejectionSectionLabel = customTitle || t(`QC_${section}_SUMMARY`);
 
   const toggleExpanded = () => {
@@ -91,7 +92,7 @@ const Summary = ({
         <div
           key={idx}
           style={{ cursor: "pointer" }}
-          onClick={() => setImageToView({
+          onClick={() => setAssetImageToView({
             src: doc,
             serialNumber: item?.serialNumber,
             capacity: item?.capacity
@@ -294,10 +295,10 @@ const Summary = ({
           </div>
         ))}
 
-      {imageToView && typeof imageToView !== "string" && (
-        <AssetImageViewer t={t} image={imageToView} onClose={() => setImageToView(null)} />
+      {assetImageToView && (
+        <AssetImageViewer t={t} image={assetImageToView} onClose={() => setAssetImageToView(null)} />
       )}
-      {typeof imageToView === "string" && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
+      {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
 
       {showRejectionModal && (
         <AddRejectionReasonModal
