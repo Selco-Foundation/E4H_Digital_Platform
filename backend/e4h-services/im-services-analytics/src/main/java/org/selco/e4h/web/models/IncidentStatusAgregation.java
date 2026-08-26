@@ -1,5 +1,6 @@
 package org.selco.e4h.web.models;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -7,7 +8,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -85,70 +88,32 @@ public class IncidentStatusAgregation {
     @JsonProperty("projectName")
     private String projectName;
 
-    // AMC fields. Owned by amc-scheduler-service and living only on the health facility index - this
-    // service has no source to rebuild them from. They are carried here purely so the full-document
-    // re-index this object drives writes them back unchanged instead of dropping them, exactly as
-    // mappedVendorName and projectName above are. See FacilityAmcFieldsHelper.
-    @JsonProperty("amcApplicable")
-    private String amcApplicable;
+    /**
+     * The AMC namespace exactly as the health facility index currently holds it, keyed by index field
+     * name ({@code amcApplicable}, {@code amcDueDate1..10}, {@code amcVisitDate1..10}, and the rest).
+     *
+     * <p>AMC data is owned by amc-scheduler-service and lives only on the index - this service has no
+     * source to rebuild it from. It is carried here purely so the full-document re-index this object
+     * drives writes it back unchanged instead of dropping it, exactly as {@code mappedVendorName} and
+     * {@code projectName} above are. See {@code FacilityAmcFieldsHelper}.
+     *
+     * <p>Held as an opaque map rather than as ~27 declared fields on purpose. The values are only ever
+     * read from the index and written straight back, so naming and typing each one here would buy
+     * nothing while duplicating the whole block of {@code FacilityKibanaIndex} in health-facility-registry
+     * - and it would force a lossy conversion on values whose indexed type this service has no business
+     * asserting (the numeric AMC fields, and legacy documents whose dates are still epoch millis).
+     * Passing them through untouched is both simpler and more faithful.
+     */
+    private Map<String, Object> amcFields;
 
-    @JsonProperty("amcApplicableYears")
-    private Integer amcApplicableYears;
-
-    @JsonProperty("amcFrequencyMonths")
-    private Integer amcFrequencyMonths;
-
-    @JsonProperty("amcInstallationDate")
-    private String amcInstallationDate;
-
-    @JsonProperty("amcValidTill")
-    private String amcValidTill;
-
-    @JsonProperty("amcMappedVendorName")
-    private String amcMappedVendorName;
-
-    @JsonProperty("amcMappedVendorUserName")
-    private String amcMappedVendorUserName;
-
-    @JsonProperty("amcDueDate1")
-    private String amcDueDate1;
-    @JsonProperty("amcDueDate2")
-    private String amcDueDate2;
-    @JsonProperty("amcDueDate3")
-    private String amcDueDate3;
-    @JsonProperty("amcDueDate4")
-    private String amcDueDate4;
-    @JsonProperty("amcDueDate5")
-    private String amcDueDate5;
-    @JsonProperty("amcDueDate6")
-    private String amcDueDate6;
-    @JsonProperty("amcDueDate7")
-    private String amcDueDate7;
-    @JsonProperty("amcDueDate8")
-    private String amcDueDate8;
-    @JsonProperty("amcDueDate9")
-    private String amcDueDate9;
-    @JsonProperty("amcDueDate10")
-    private String amcDueDate10;
-
-    @JsonProperty("amcVisitDate1")
-    private String amcVisitDate1;
-    @JsonProperty("amcVisitDate2")
-    private String amcVisitDate2;
-    @JsonProperty("amcVisitDate3")
-    private String amcVisitDate3;
-    @JsonProperty("amcVisitDate4")
-    private String amcVisitDate4;
-    @JsonProperty("amcVisitDate5")
-    private String amcVisitDate5;
-    @JsonProperty("amcVisitDate6")
-    private String amcVisitDate6;
-    @JsonProperty("amcVisitDate7")
-    private String amcVisitDate7;
-    @JsonProperty("amcVisitDate8")
-    private String amcVisitDate8;
-    @JsonProperty("amcVisitDate9")
-    private String amcVisitDate9;
-    @JsonProperty("amcVisitDate10")
-    private String amcVisitDate10;
+    /**
+     * Flattens {@link #amcFields} into the top level of the emitted JSON, so each entry lands as its
+     * own index field rather than nested under an {@code amcFields} object.
+     *
+     * <p>Never returns null: Jackson rejects a null any-getter.
+     */
+    @JsonAnyGetter
+    public Map<String, Object> getAmcFields() {
+        return amcFields == null ? Collections.emptyMap() : amcFields;
+    }
 }
