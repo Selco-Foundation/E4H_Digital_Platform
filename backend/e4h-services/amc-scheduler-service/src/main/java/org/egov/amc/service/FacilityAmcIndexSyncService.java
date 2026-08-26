@@ -108,6 +108,8 @@ public class FacilityAmcIndexSyncService {
     /** Fallback page size for the prefetch queries when no repository cap is configured. */
     private static final int BACKFILL_DB_PAGE_SIZE_FALLBACK = 100;
 
+    /** Index field name carrying {@link #AMC_APPLICABLE_YES} / {@link #AMC_APPLICABLE_NO}. */
+    private static final String AMC_APPLICABLE_FIELD = "amcApplicable";
     private static final String AMC_APPLICABLE_YES = "Yes";
     private static final String AMC_APPLICABLE_NO = "No";
     private static final String ACTIVE_STATUS = "ACTIVE";
@@ -535,11 +537,11 @@ public class FacilityAmcIndexSyncService {
         // dates behind in the index.
         Map<String, Object> fields = blankAmcFields();
         if (config == null) {
-            fields.put("amcApplicable", AMC_APPLICABLE_NO);
+            fields.put(AMC_APPLICABLE_FIELD, AMC_APPLICABLE_NO);
             return fields;
         }
 
-        fields.put("amcApplicable", AMC_APPLICABLE_YES);
+        fields.put(AMC_APPLICABLE_FIELD, AMC_APPLICABLE_YES);
         fields.put("amcInstallationDate", toIndexDate(config.getConfigurationStartDate()));
         Integer durationMonths = config.getDurationMonths();
         fields.put("amcApplicableYears", durationMonths != null ? durationMonths / 12 : null);
@@ -607,7 +609,7 @@ public class FacilityAmcIndexSyncService {
         fields.put("amcApplicableYears", null);
         fields.put("amcFrequencyMonths", null);
 
-        fields.put("amcApplicable", NOT_APPLICABLE);
+        fields.put(AMC_APPLICABLE_FIELD, NOT_APPLICABLE);
         fields.put("amcMappedVendorName", NOT_APPLICABLE);
         fields.put("amcMappedVendorUserName", NOT_APPLICABLE);
         fields.put("amcInstallationDate", NOT_APPLICABLE);
