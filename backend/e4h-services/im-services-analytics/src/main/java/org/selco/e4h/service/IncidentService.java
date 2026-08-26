@@ -18,9 +18,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.selco.e4h.config.ServiceConstants.FUNCTIONAL;
 import static org.selco.e4h.config.ServiceConstants.NON_FUNCTIONAL;
@@ -133,12 +133,18 @@ public class IncidentService {
      * <p>Shared by the ticket-event flow and the backfill scripts so both publish an identical,
      * lossless document - the two used to maintain separate copy lists that had already drifted.
      *
+     * @param data     the facility's current {@code _source.Data}; must be non-null. There is no
+     *                 meaningful document to republish without it, and publishing a partial one would
+     *                 wipe the facility's index entry - so both callers check for it and skip the
+     *                 facility entirely rather than letting a null reach here.
      * @param tenantId tenant to stamp on the document; when null the indexed value is kept
      */
     private void applyIndexedDocumentAndStatus(IncidentStatusAgregation target,
                                                Map<String, Object> data,
                                                String boundaryCode,
                                                String tenantId) {
+        Objects.requireNonNull(data, "indexed facility Data must not be null");
+
         // Carry the whole indexed document forward first: the indexer replaces the document at this
         // id, so any field not republished here is dropped from the index.
         FacilityIndexPassthrough.copyInto(data, target);
