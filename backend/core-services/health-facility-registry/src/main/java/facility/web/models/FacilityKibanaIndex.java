@@ -72,7 +72,17 @@ public class FacilityKibanaIndex {
     
     @JsonProperty("solarPanelStatus")
     private String solarPanelStatus;
-    
+
+    /**
+     * When the facility went non-functional: creation time (epoch millis) of the oldest still-open
+     * ticket reporting the system as non-functional. Always {@code null} while
+     * {@link #solarPanelStatus} is {@code FUNCTIONAL} - the two are derived together so they cannot
+     * disagree. See {@code IncidentStatusDao#resolveSolarPanelState}.
+     */
+    @JsonProperty("nonFunctionalTimestamp")
+    private Long nonFunctionalTimestamp;
+
+
     @JsonProperty("mappedVendorUserName")
     private String mappedVendorUserName;
     
