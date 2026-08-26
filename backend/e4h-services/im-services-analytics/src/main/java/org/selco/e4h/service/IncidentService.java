@@ -9,7 +9,7 @@ import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.kafka.consumer.KafkaProducerService;
 import org.selco.e4h.repository.IncidentRepository;
 import org.selco.e4h.util.ElasticSearchClient;
-import org.selco.e4h.util.FacilityAmcFieldsHelper;
+import org.selco.e4h.util.FacilityIndexPassthrough;
 import org.selco.e4h.web.models.Boundary;
 import org.selco.e4h.web.models.IncidentRequest;
 import org.selco.e4h.web.models.IncidentRequestWrapper;
@@ -103,22 +103,10 @@ public class IncidentService {
         String boundaryCode = request.getIncident().getBoundaryCode();
         String facilityId = extractAndEncodeFacilityCode(boundaryCode);
         List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
-        List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
         log.info("Status aggregation result size: {}", statusAgregations.size());
-        log.info("systemFunctional aggregation result size: {}", systemFunctional.size());
-
 
         if (statusAgregations != null && !statusAgregations.isEmpty()) {
             IncidentStatusAgregation incidentStatusAgregation = statusAgregations.get(0);
-
-            // systemFunctional=NON_FUNCTIONAL if at least one NON_FUNCTIONAL, otherwise FUNCTIONAL
-            boolean hasNonFunctional = false;
-            if (systemFunctional != null) {
-                hasNonFunctional = systemFunctional.stream()
-                        .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
-            }
-            incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
-            incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
 
             Map<String, Object> tickets = esClient.getHFByBoundaryCode(facilityId);
             log.info("Ticket with facilityID {} found: {}", facilityId, tickets);
@@ -127,34 +115,7 @@ public class IncidentService {
                 if (source != null) {
                     Map<String, Object> data = (Map<String, Object>) source.get("Data");
                     if (data != null) {
-                        Boundary boundary = objectMapper.convertValue(data.get("boundary"), Boundary.class);
-                        incidentStatusAgregation.setBlock((String) data.get("block"));
-                        incidentStatusAgregation.setCode(String.valueOf(data.get("code")));
-                        incidentStatusAgregation.setState((String) data.get("state"));
-                        incidentStatusAgregation.setDistrict((String) data.get("district"));
-                        incidentStatusAgregation.setLive(!Boolean.FALSE.equals(data.get("isLive")));
-                        Boolean synced = (Boolean) data.get("synced");
-                        incidentStatusAgregation.setSynced(Boolean.TRUE.equals(synced));
-                        incidentStatusAgregation.setName((String) data.get("name"));
-                        incidentStatusAgregation.setPhcType((String) data.get("phcType"));
-                        incidentStatusAgregation.setType((String) data.get("type"));
-                        incidentStatusAgregation.setFacilityId((String) data.get("facilityId"));
-                        incidentStatusAgregation.setTenantId(tenantId);
-                        incidentStatusAgregation.setBoundary(boundary);
-                        incidentStatusAgregation.setTenantIdLocalized((String) data.get("tenantId_localized"));
-                        incidentStatusAgregation.setGeoPoint(parseGeoPoint(data.get("geo-point")));
-                        // The facility's mapped vendor is owned by the facility registry, not by the ticket
-                        // flow. This is a full-document re-index, so copy the already-indexed value straight
-                        // through instead of deriving it from the incident wrapper.
-                        incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
-                        incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
-                        // Resolve projectName from the project service so it is preserved on this full-document
-                        // re-index; fall back to the value already indexed when the lookup yields nothing.
-                        incidentStatusAgregation.setProjectName(resolveProjectName(
-                                tenantId, (String) data.get("facilityId"), (String) data.get("projectName")));
-                        // AMC data lives only on the index and this is a full-document re-index, so
-                        // carry the indexed values forward or the next ticket event wipes them.
-                        FacilityAmcFieldsHelper.copyAmcFields(data, incidentStatusAgregation);
+                        applyIndexedDocumentAndStatus(incidentStatusAgregation, data, boundaryCode, tenantId);
 
                         log.info("Tickets sent to kafka {}", incidentStatusAgregation);
                         producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
@@ -162,6 +123,46 @@ public class IncidentService {
                 }
             }
         }
+    }
+
+    /**
+     * Fills {@code target} with everything the index already holds for the facility, then overlays the
+     * fields this service derives: solar panel status, the timestamp the facility went non-functional,
+     * a freshly resolved project name, and the modification stamp.
+     *
+     * <p>Shared by the ticket-event flow and the backfill scripts so both publish an identical,
+     * lossless document - the two used to maintain separate copy lists that had already drifted.
+     *
+     * @param tenantId tenant to stamp on the document; when null the indexed value is kept
+     */
+    private void applyIndexedDocumentAndStatus(IncidentStatusAgregation target,
+                                               Map<String, Object> data,
+                                               String boundaryCode,
+                                               String tenantId) {
+        // Carry the whole indexed document forward first: the indexer replaces the document at this
+        // id, so any field not republished here is dropped from the index.
+        FacilityIndexPassthrough.copyInto(data, target);
+
+        target.setFacilityId((String) data.get("facilityId"));
+        target.setTenantId(tenantId != null ? tenantId : (String) data.get("tenantId"));
+
+        // solarPanelStatus=NON_FUNCTIONAL if at least one open ticket reports NON_FUNCTIONAL.
+        List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
+        boolean hasNonFunctional = systemFunctional != null && systemFunctional.stream()
+                .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
+        target.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
+
+        // Derived from the same open/non-functional ticket set as the status above, so the two can
+        // never disagree: a timestamp exactly when non-functional, null when functional.
+        target.setNonFunctionalTimestamp(hasNonFunctional
+                ? incidentRepository.getOldestOpenNonFunctionalCreatedTime(boundaryCode)
+                : null);
+
+        // Resolve projectName from the project service so it is preserved on this full-document
+        // re-index; fall back to the value already indexed when the lookup yields nothing.
+        target.setProjectName(resolveProjectName(
+                target.getTenantId(), target.getFacilityId(), (String) data.get("projectName")));
+        target.setLastModifiedTime(System.currentTimeMillis());
     }
 
     public static String extractAndEncodeFacilityCode(String boundaryCode) {
@@ -179,6 +180,9 @@ public class IncidentService {
         return facilityCode;
     }
 
+
+    /** Documents fetched per Elasticsearch request by the backfill scripts. */
+    private static final int BACKFILL_PAGE_SIZE = 1000;
 
     public void scriptUpdatePHCAgregation() {
         log.info("Script function called");
@@ -199,71 +203,85 @@ public class IncidentService {
         }
     }
 
-    private void processSinglePhcDocument(Map<String, Object> phc) {
+    /**
+     * Backfills {@code nonFunctionalTimestamp} onto every document in the health facility index.
+     *
+     * <p>Republishes each facility's full document with the field derived from its current open
+     * tickets, so facilities that are non-functional get the creation time of the ticket that took
+     * them down and functional ones get an explicit null. Every other field is carried through from
+     * the index untouched (see {@code FacilityIndexPassthrough}), so this is safe to re-run.
+     *
+     * <p>Pages through the index rather than requesting every document at once: the facility count
+     * will eventually cross Elasticsearch's {@code max_result_window} (10k by default), at which
+     * point a single oversized request starts failing outright.
+     *
+     * @return the number of facility documents republished
+     */
+    public int scriptPopulateNonFunctionalTimestamp() {
+        log.info("Non-functional timestamp backfill started");
+        int processed = 0;
         try {
-            Map<String, Object> data = (Map<String, Object>)phc.get("Data");
+            int totalDocs = esClient.getPHCDocsSize();
+            log.info("Non-functional timestamp backfill: {} facility documents to process", totalDocs);
+
+            for (int from = 0; from < totalDocs; from += BACKFILL_PAGE_SIZE) {
+                List<Map<String, Object>> page = esClient.getAllPHC(from, BACKFILL_PAGE_SIZE);
+                if (page == null || page.isEmpty()) {
+                    log.warn("Non-functional timestamp backfill: empty page at from={}, stopping early", from);
+                    break;
+                }
+                for (Map<String, Object> phc : page) {
+                    if (processSinglePhcDocument(phc)) {
+                        processed++;
+                    }
+                }
+                log.info("Non-functional timestamp backfill: {}/{} documents processed",
+                        Math.min(from + BACKFILL_PAGE_SIZE, totalDocs), totalDocs);
+            }
+        } catch (Exception e) {
+            log.error("Error while processing non-functional timestamp backfill", e);
+        }
+        log.info("Non-functional timestamp backfill finished, {} documents republished", processed);
+        return processed;
+    }
+
+    /**
+     * Republishes one indexed facility document with freshly derived ticket counts, solar panel
+     * status and non-functional timestamp.
+     *
+     * @return {@code true} when the document was published, {@code false} when it was skipped
+     */
+    private boolean processSinglePhcDocument(Map<String, Object> phc) {
+        try {
+            Map<String, Object> data = (Map<String, Object>) phc.get("Data");
+            if (data == null) {
+                return false;
+            }
             Boundary boundary = objectMapper.convertValue(data.get("boundary"), Boundary.class);
-            String block = (String)data.get("block");
-            String code = String.valueOf(data.get("code"));
-            String state = (String)data.get("state");
-            String district = (String)data.get("district");
-            Boolean isLive = (Boolean) data.get("isLive");
-            String name = (String)data.get("name");
-            String phcType = (String)data.get("phcType");
-            String type = (String)data.get("type");
-            String tenantId = (String)data.get("tenantId");
-            String tenantIdLocalized = (String)data.get("tenantId_localized");
-            List<Double> geoPoint = parseGeoPoint(data.get("geo-point"));
-
-            IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
-            incidentStatusAgregation.setBlock(block);
-            incidentStatusAgregation.setCode(code);
-            incidentStatusAgregation.setDistrict(district);
-            incidentStatusAgregation.setLive(!Boolean.FALSE.equals(isLive));
-            Boolean synced = (Boolean) data.get("synced");
-            incidentStatusAgregation.setSynced(Boolean.TRUE.equals(synced));
-            incidentStatusAgregation.setName(name);
-            incidentStatusAgregation.setBoundary(boundary);
-            incidentStatusAgregation.setPhcType(phcType);
-            incidentStatusAgregation.setType(type);
-            incidentStatusAgregation.setFacilityId((String) data.get("facilityId"));
-            incidentStatusAgregation.setTenantId(tenantId);
-            incidentStatusAgregation.setTenantIdLocalized(tenantIdLocalized);
-            incidentStatusAgregation.setGeoPoint(geoPoint);
-            incidentStatusAgregation.setState(state);
-            incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
-            incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
-            incidentStatusAgregation.setProjectName(resolveProjectName(
-                    tenantId, (String) data.get("facilityId"), (String) data.get("projectName")));
-            // AMC data lives only on the index and this is a full-document re-index, so carry the
-            // indexed values forward or this republish wipes them.
-            FacilityAmcFieldsHelper.copyAmcFields(data, incidentStatusAgregation);
-
-            if(boundary ==null || boundary.getFacilityCode()==null || boundary.getFacilityCode().isEmpty()){
-                return;
+            if (boundary == null || boundary.getFacilityCode() == null || boundary.getFacilityCode().isEmpty()) {
+                return false;
             }
             String boundaryCode = boundary.getFacilityCode();
+
+            IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
             List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
-            List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
-            if(statusAgregations !=null && !statusAgregations.isEmpty()){
+            if (statusAgregations != null && !statusAgregations.isEmpty()) {
                 IncidentStatusAgregation incidentStatusAgregationDB = statusAgregations.get(0);
                 incidentStatusAgregation.setTotalOccurences(incidentStatusAgregationDB.getTotalOccurences());
                 incidentStatusAgregation.setTotalOpenOccurrences(incidentStatusAgregationDB.getTotalOpenOccurrences());
                 incidentStatusAgregation.setTotalCloseOccurrences(incidentStatusAgregationDB.getTotalCloseOccurrences());
             }
 
-            boolean hasNonFunctional = false;
-            if (systemFunctional !=null){
-                hasNonFunctional = systemFunctional.stream()
-                        .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
-            }
-            incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
-            incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
+            // Keep the indexed tenantId: unlike the ticket flow there is no incoming incident to take
+            // a tenant from here.
+            applyIndexedDocumentAndStatus(incidentStatusAgregation, data, boundaryCode, null);
 
             log.info("Tickets sent to kafka {}", incidentStatusAgregation);
             producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
+            return true;
         } catch (Exception e) {
             log.error("Error processing PHC document, skipping: {}", phc, e);
+            return false;
         }
     }
 
@@ -287,74 +305,5 @@ public class IncidentService {
             log.warn("projectName lookup failed for facilityId={}: {}", facilityId, e.getMessage());
         }
         return existingProjectName;
-    }
-
-    private List<Double> parseGeoPoint(Object geoPointValue) {
-        if (geoPointValue == null) {
-            return null;
-        }
-
-        try {
-            if (geoPointValue instanceof List<?> listValue) {
-                return toDoubleList(listValue);
-            }
-
-            if (geoPointValue instanceof String stringValue) {
-                String trimmed = stringValue.trim();
-                if (trimmed.isEmpty()) {
-                    return null;
-                }
-                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-                    trimmed = trimmed.substring(1, trimmed.length() - 1);
-                }
-                if (trimmed.isBlank()) {
-                    return null;
-                }
-
-                String[] tokens = trimmed.split(",");
-                List<Object> rawValues = new ArrayList<>();
-                for (String token : tokens) {
-                    rawValues.add(token.trim());
-                }
-                return toDoubleList(rawValues);
-            }
-
-            return objectMapper.convertValue(geoPointValue, new TypeReference<List<Double>>() {});
-        } catch (Exception e) {
-            log.warn("Unable to parse geo-point value: {}", geoPointValue, e);
-            return null;
-        }
-    }
-
-    private List<Double> toDoubleList(List<?> rawValues) {
-        List<Double> parsedValues = new ArrayList<>();
-        for (Object value : rawValues) {
-            Double parsedValue = toDouble(value);
-            if (parsedValue != null) {
-                parsedValues.add(parsedValue);
-            }
-        }
-        return parsedValues.isEmpty() ? null : parsedValues;
-    }
-
-    private Double toDouble(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Number numberValue) {
-            return numberValue.doubleValue();
-        }
-        if (value instanceof String stringValue) {
-            String trimmed = stringValue.trim();
-            if (trimmed.isEmpty()) {
-                return null;
-            }
-            try {
-                return Double.parseDouble(trimmed);
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
-        }
-        return null;
     }
 }

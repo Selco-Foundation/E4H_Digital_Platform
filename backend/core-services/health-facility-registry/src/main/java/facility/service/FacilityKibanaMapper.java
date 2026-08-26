@@ -114,14 +114,23 @@ public class FacilityKibanaMapper {
         // Derive solar panel status the same way the im-services-analytics Kafka listener does:
         // NON_FUNCTIONAL when any open incident for this boundary code is non-functional, else FUNCTIONAL.
         // An explicit value in additionalDetails still takes precedence.
-        String solarPanelStatus = incidentStatusDao.resolveSolarPanelStatus(facility.getBoundaryCode());
+        IncidentStatusDao.SolarPanelState solarPanelState =
+                incidentStatusDao.resolveSolarPanelState(facility.getBoundaryCode());
+        String solarPanelStatus = solarPanelState.status();
+        Long nonFunctionalTimestamp = solarPanelState.nonFunctionalSince();
         if (facility.getAdditionalDetails() != null) {
             Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
             if (solarStatus != null && !solarStatus.toString().isBlank()) {
                 solarPanelStatus = solarStatus.toString();
+                // The override replaces the incident-derived status, so the incident-derived timestamp
+                // no longer describes it. Keep it only while the override still says non-functional.
+                if (!IncidentStatusDao.NON_FUNCTIONAL.equals(solarPanelStatus)) {
+                    nonFunctionalTimestamp = null;
+                }
             }
         }
         builder.solarPanelStatus(solarPanelStatus);
+        builder.nonFunctionalTimestamp(nonFunctionalTimestamp);
 
         applyMappedVendorFields(facility, builder);
         if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {

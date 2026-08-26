@@ -9,9 +9,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
+/**
+ * The full health facility document this service republishes to the indexer topic
+ * {@code save-phc-master-list-indexer} on every ticket event.
+ *
+ * <p>Only the fields this service actually derives are declared here. Everything else the index
+ * holds is carried opaquely in {@link #indexPassthrough} - see {@code FacilityIndexPassthrough} for
+ * why. Declaring a field here means claiming ownership of it, so anything added below must also be
+ * added to that helper's recomputed-key set or it will be emitted twice.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,9 +33,6 @@ public class IncidentStatusAgregation {
     @JsonProperty("facilityId")
     private String facilityId;
 
-    @JsonProperty("phcName")
-    private String phcName;
-
     @JsonProperty("totalTickets")
     private int totalOccurences;
 
@@ -40,80 +45,39 @@ public class IncidentStatusAgregation {
     @JsonProperty("solarPanelStatus")
     private String systemFunctional;
 
+    /**
+     * When the facility went non-functional: the creation time (epoch millis) of the oldest still-open
+     * ticket reporting the system as non-functional.
+     *
+     * <p>{@code null} whenever {@link #systemFunctional} is {@code FUNCTIONAL}. The null is published
+     * rather than omitted - the indexer replaces the whole document, so a facility that has just been
+     * restored must overwrite its previous timestamp instead of leaving a stale one behind.
+     */
+    @JsonProperty("nonFunctionalTimestamp")
+    private Long nonFunctionalTimestamp;
+
     @JsonProperty("lastModifiedTime")
     private long lastModifiedTime;
-
-    @JsonProperty("block")
-    private String block;
-
-    @JsonProperty("code")
-    private String code;
-
-    @JsonProperty("state")
-    private String state;
-
-    @JsonProperty("district")
-    private String district;
-
-    @JsonProperty("isLive")
-    private boolean isLive;
-
-    @JsonProperty("synced")
-    private boolean synced;
-
-    @JsonProperty("name")
-    private String name;
-
-    @JsonProperty("phcType")
-    private String phcType;
-
-    @JsonProperty("type")
-    private String type;
-
-    @JsonProperty("tenantIdLocalized")
-    private String tenantIdLocalized;
-
-    @JsonProperty("geoPoint")
-    private List<Double> geoPoint;
-
-    @JsonProperty("boundary")
-    private Boundary boundary;
-
-    @JsonProperty("mappedVendorUserName")
-    private String mappedVendorUserName;
-
-    @JsonProperty("mappedVendorName")
-    private String mappedVendorName;
 
     @JsonProperty("projectName")
     private String projectName;
 
     /**
-     * The AMC namespace exactly as the health facility index currently holds it, keyed by index field
-     * name ({@code amcApplicable}, {@code amcDueDate1..10}, {@code amcVisitDate1..10}, and the rest).
-     *
-     * <p>AMC data is owned by amc-scheduler-service and lives only on the index - this service has no
-     * source to rebuild it from. It is carried here purely so the full-document re-index this object
-     * drives writes it back unchanged instead of dropping it, exactly as {@code mappedVendorName} and
-     * {@code projectName} above are. See {@code FacilityAmcFieldsHelper}.
-     *
-     * <p>Held as an opaque map rather than as ~27 declared fields on purpose. The values are only ever
-     * read from the index and written straight back, so naming and typing each one here would buy
-     * nothing while duplicating the whole block of {@code FacilityKibanaIndex} in health-facility-registry
-     * - and it would force a lossy conversion on values whose indexed type this service has no business
-     * asserting (the numeric AMC fields, and legacy documents whose dates are still epoch millis).
-     * Passing them through untouched is both simpler and more faithful.
+     * Every other field of the facility's current index document, keyed by outbound payload field
+     * name. Populated by {@code FacilityIndexPassthrough} and written straight back unchanged so this
+     * full-document republish does not drop fields owned by health-facility-registry and
+     * amc-scheduler-service.
      */
-    private Map<String, Object> amcFields;
+    private Map<String, Object> indexPassthrough;
 
     /**
-     * Flattens {@link #amcFields} into the top level of the emitted JSON, so each entry lands as its
-     * own index field rather than nested under an {@code amcFields} object.
+     * Flattens {@link #indexPassthrough} into the top level of the emitted JSON, so each entry lands
+     * as its own index field rather than nested under an {@code indexPassthrough} object.
      *
      * <p>Never returns null: Jackson rejects a null any-getter.
      */
     @JsonAnyGetter
-    public Map<String, Object> getAmcFields() {
-        return amcFields == null ? Collections.emptyMap() : amcFields;
+    public Map<String, Object> getIndexPassthrough() {
+        return indexPassthrough == null ? Collections.emptyMap() : indexPassthrough;
     }
 }
