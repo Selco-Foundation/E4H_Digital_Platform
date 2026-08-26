@@ -67,17 +67,17 @@ public final class FacilityIndexPassthrough {
 
     /**
      * Copies every non-recomputed field from an indexed document's {@code Data} map onto
-     * {@code target}. No-op when either side is null; a facility with no indexed document simply
-     * contributes nothing, which is the correct outcome.
+     * {@code target}.
      *
-     * @param data   the {@code _source.Data} map of the facility's current index document
-     * @param target the aggregation about to be published to the indexer topic
+     * <p>Both arguments are required. A facility with no indexed document has no document to
+     * republish at all, so callers skip it entirely rather than passing a null through here -
+     * quietly no-op'ing instead would let the caller publish a document stripped of every field
+     * this helper exists to preserve, wiping the facility's index entry.
+     *
+     * @param data   the {@code _source.Data} map of the facility's current index document; non-null
+     * @param target the aggregation about to be published to the indexer topic; non-null
      */
     public static void copyInto(Map<String, Object> data, IncidentStatusAgregation target) {
-        if (data == null || target == null) {
-            return;
-        }
-
         Map<String, Object> passthrough = new LinkedHashMap<>();
         data.forEach((indexKey, value) -> {
             if (indexKey == null) {
