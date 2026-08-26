@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static org.selco.e4h.config.ServiceConstants.FUNCTIONAL;
 import static org.selco.e4h.config.ServiceConstants.NON_FUNCTIONAL;
@@ -143,7 +142,10 @@ public class IncidentService {
                                                Map<String, Object> data,
                                                String boundaryCode,
                                                String tenantId) {
-        Objects.requireNonNull(data, "indexed facility Data must not be null");
+        if (data == null) {
+            throw new IllegalStateException(
+                    "indexed facility Data must not be null; caller must guard before invoking");
+        }
 
         // Carry the whole indexed document forward first: the indexer replaces the document at this
         // id, so any field not republished here is dropped from the index.
