@@ -72,6 +72,23 @@ public class FacilityAmcIndexSyncService {
     private static final DateTimeFormatter INDEX_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     /**
+     * What every string-typed AMC field carries when its value cannot be determined - a facility with
+     * no AMC, a cadence shorter than 10 cycles, a visit not yet carried out, or an AMC with nobody
+     * assigned. That is 25 of the 27 indexed AMC fields: the 22 dates ({@code amcInstallationDate},
+     * {@code amcValidTill}, {@code amcDueDate1..10}, {@code amcVisitDate1..10}), plus
+     * {@code amcApplicable} and the two {@code amcMappedVendor*} names.
+     *
+     * <p>A literal rather than null so the Kibana data dumps render an explicit "Not Applicable"
+     * instead of a blank cell that reads as missing data. Safe against the index mapping because all
+     * 25 are typed as strings on {@code FacilityKibanaIndex}; the dates hold {@code DD-MM-YYYY} text
+     * rather than dates or epoch numbers.
+     *
+     * <p>The remaining two ({@code amcApplicableYears}, {@code amcFrequencyMonths}) are numeric and
+     * deliberately keep writing null - see {@link #blankAmcFields()}.
+     */
+    private static final String NOT_APPLICABLE = "Not Applicable";
+
+    /**
      * How many of a facility's AMC configurations are pulled before picking the latest. Sized at the
      * repository's own page cap: a facility realistically holds a handful, and reading them all is
      * what makes {@link #pickLatestConfiguration} able to judge on start date rather than inheriting
@@ -239,8 +256,8 @@ public class FacilityAmcIndexSyncService {
      * <p>One value can legitimately differ: the backfill recovers a missing {@code actualVisitDate}
      * from workflow history, which the live sync does not do (it would cost a workflow call on every
      * AMC transition, and the visit it was triggered by already carries a freshly stamped date). So a
-     * backfilled document can hold an {@code amcVisitDate} the live sync would have left null, for
-     * legacy visits whose date was never written to the visits table.
+     * backfilled document can hold a real {@code amcVisitDate} where the live sync would have written
+     * "Not Applicable", for legacy visits whose date was never written to the visits table.
      */
     private void backfillFacilityBatch(RequestInfo requestInfo, String tenantId, List<Facility> facilities,
                                        FacilityAmcBackfillResponse result) {
@@ -512,8 +529,8 @@ public class FacilityAmcIndexSyncService {
      */
     Map<String, Object> buildAmcIndexFields(AmcConfiguration config, List<ScheduledVisit> visits,
                                             org.egov.amc.web.models.User mappedVendor) {
-        // Every AMC key is seeded to null first so the snapshot fully replaces the AMC namespace.
-        // Without this, keys omitted from a later snapshot would keep their previously indexed value:
+        // Every AMC key is seeded first so the snapshot fully replaces the AMC namespace. Without
+        // this, keys omitted from a later snapshot would keep their previously indexed value:
         // deleting an AMC, or shortening a cadence from 10 cycles to 5, would leave orphaned due/visit
         // dates behind in the index.
         Map<String, Object> fields = blankAmcFields();
@@ -528,10 +545,11 @@ public class FacilityAmcIndexSyncService {
         fields.put("amcApplicableYears", durationMonths != null ? durationMonths / 12 : null);
         fields.put("amcFrequencyMonths", config.getVisitFrequencyMonths());
         fields.put("amcValidTill", toIndexDate(config.getConfigurationEndDate()));
-        // Written unconditionally, null included, so clearing an AMC's assignment actually clears the
-        // indexed value rather than leaving a stale name behind.
-        fields.put("amcMappedVendorName", mappedVendor == null ? null : mappedVendor.getName());
-        fields.put("amcMappedVendorUserName", mappedVendor == null ? null : mappedVendor.getUserName());
+        // Written unconditionally, so clearing an AMC's assignment actually clears the indexed value
+        // rather than leaving a stale name behind - it lands as "Not Applicable", not as a blank.
+        fields.put("amcMappedVendorName", orNotApplicable(mappedVendor == null ? null : mappedVendor.getName()));
+        fields.put("amcMappedVendorUserName",
+                orNotApplicable(mappedVendor == null ? null : mappedVendor.getUserName()));
 
         // Copied before sorting: the bulk backfill shares one visit list per configuration across the
         // facilities it fans out to, so sorting in place would mutate a caller's collection.
@@ -554,28 +572,49 @@ public class FacilityAmcIndexSyncService {
 
     /**
      * Renders an epoch-millis timestamp as the {@code DD-MM-YYYY} IST string the index carries.
-     * Null in, null out, so an unrecorded visit date stays absent rather than becoming an epoch date.
+     * An absent timestamp becomes {@link #NOT_APPLICABLE} rather than null, so a visit that has not
+     * happened yet reads as an explicit "Not Applicable" in the dump instead of an empty cell.
      */
     private String toIndexDate(Long epochMillis) {
         if (epochMillis == null) {
-            return null;
+            return NOT_APPLICABLE;
         }
         return Instant.ofEpochMilli(epochMillis).atZone(INDEX_DATE_ZONE).format(INDEX_DATE_FORMATTER);
     }
 
-    /** Every AMC key this service owns, mapped to null - the baseline a snapshot fills in. */
+    /**
+     * The value itself, or {@link #NOT_APPLICABLE} when there is nothing to index. Blank counts as
+     * nothing: an assignee whose HRMS record carries an empty name would otherwise reach the index as
+     * an empty string, which reads as missing data in the dump just like a null does.
+     */
+    private static String orNotApplicable(String value) {
+        return value == null || value.isBlank() ? NOT_APPLICABLE : value;
+    }
+
+    /**
+     * Every AMC key this service owns - the baseline a snapshot fills in.
+     *
+     * <p>The 25 string fields start at {@link #NOT_APPLICABLE} rather than null, so anything a
+     * snapshot never fills in (a 4-visit cadence leaves cycles 5-10 untouched, a facility with no AMC
+     * leaves all 10) is published as "Not Applicable" instead of a blank.
+     */
     private Map<String, Object> blankAmcFields() {
         Map<String, Object> fields = new HashMap<>();
-        fields.put("amcApplicable", null);
-        fields.put("amcInstallationDate", null);
+        // The only two AMC fields that keep writing null. They are numeric on the index (no index
+        // template exists, so they were dynamically mapped to long on first write); a "Not Applicable"
+        // string would be rejected with a mapper_parsing_exception and fail the whole AMC update for
+        // the facility - strictly worse than the null it was meant to replace.
         fields.put("amcApplicableYears", null);
         fields.put("amcFrequencyMonths", null);
-        fields.put("amcValidTill", null);
-        fields.put("amcMappedVendorName", null);
-        fields.put("amcMappedVendorUserName", null);
+
+        fields.put("amcApplicable", NOT_APPLICABLE);
+        fields.put("amcMappedVendorName", NOT_APPLICABLE);
+        fields.put("amcMappedVendorUserName", NOT_APPLICABLE);
+        fields.put("amcInstallationDate", NOT_APPLICABLE);
+        fields.put("amcValidTill", NOT_APPLICABLE);
         for (int cycle = 1; cycle <= MAX_CYCLES; cycle++) {
-            fields.put("amcDueDate" + cycle, null);
-            fields.put("amcVisitDate" + cycle, null);
+            fields.put("amcDueDate" + cycle, NOT_APPLICABLE);
+            fields.put("amcVisitDate" + cycle, NOT_APPLICABLE);
         }
         return fields;
     }

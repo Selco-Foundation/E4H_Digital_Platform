@@ -9,6 +9,7 @@ import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.kafka.consumer.KafkaProducerService;
 import org.selco.e4h.repository.IncidentRepository;
 import org.selco.e4h.util.ElasticSearchClient;
+import org.selco.e4h.util.FacilityAmcFieldsHelper;
 import org.selco.e4h.web.models.Boundary;
 import org.selco.e4h.web.models.IncidentRequest;
 import org.selco.e4h.web.models.IncidentRequestWrapper;
@@ -151,6 +152,9 @@ public class IncidentService {
                         // re-index; fall back to the value already indexed when the lookup yields nothing.
                         incidentStatusAgregation.setProjectName(resolveProjectName(
                                 tenantId, (String) data.get("facilityId"), (String) data.get("projectName")));
+                        // AMC data lives only on the index and this is a full-document re-index, so
+                        // carry the indexed values forward or the next ticket event wipes them.
+                        FacilityAmcFieldsHelper.copyAmcFields(data, incidentStatusAgregation);
 
                         log.info("Tickets sent to kafka {}", incidentStatusAgregation);
                         producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
@@ -231,6 +235,9 @@ public class IncidentService {
             incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
             incidentStatusAgregation.setProjectName(resolveProjectName(
                     tenantId, (String) data.get("facilityId"), (String) data.get("projectName")));
+            // AMC data lives only on the index and this is a full-document re-index, so carry the
+            // indexed values forward or this republish wipes them.
+            FacilityAmcFieldsHelper.copyAmcFields(data, incidentStatusAgregation);
 
             if(boundary ==null || boundary.getFacilityCode()==null || boundary.getFacilityCode().isEmpty()){
                 return;
