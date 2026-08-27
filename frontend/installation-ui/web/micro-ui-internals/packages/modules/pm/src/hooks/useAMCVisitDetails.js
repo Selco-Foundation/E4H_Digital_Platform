@@ -84,7 +84,7 @@ const generateVisitReport = (userResponses, format) => {
 const getDocumentAggregation = async (processInstances) => {
   const reportDocumentAggregation = {};
   const workflowDocuments = (processInstances || []).flatMap((processInstance) => processInstance?.documents || []);
-  const installationForm = (processInstances || [])
+  const installationFormDocuments = (processInstances || [])
     .flatMap((processInstance) =>
       (processInstance?.documents || []).map((document) => ({
         ...document,
@@ -94,10 +94,13 @@ const getDocumentAggregation = async (processInstances) => {
     )
     .filter(
       (document) =>
-        document.documentType?.toUpperCase() === "AMC_INSTALLATION_FORM" &&
-        document.workflowAction?.toUpperCase() === "SUBMIT_VISIT_REPORT"
+        document.documentType?.toUpperCase() === "AMC_INSTALLATION_FORM"
     )
-    .sort((first, second) => Number(second.processModifiedTime) - Number(first.processModifiedTime))[0];
+    .sort((first, second) => Number(second.processModifiedTime) - Number(first.processModifiedTime));
+
+  const installationForm =
+    installationFormDocuments.find((document) => document.workflowAction?.toUpperCase() === "SUBMIT_VISIT_REPORT") ||
+    installationFormDocuments[0];
 
   if (installationForm) {
     const { fileUrl, fileDetails } = await fetchDocument(installationForm.fileStoreId);
