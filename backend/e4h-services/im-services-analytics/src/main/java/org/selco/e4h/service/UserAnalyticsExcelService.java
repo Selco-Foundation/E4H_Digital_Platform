@@ -117,7 +117,7 @@ public class UserAnalyticsExcelService {
         headers.add("Metric");
         headers.addAll(applications);
         headers.add(TOTAL);
-        writer.headerRow(headers, true);
+        writer.headerRow(headers);
 
         UserAnalyticsBucket overall = report.getOverall();
         writeCountRow(writer, "Active Users (reported week)", overall.getCurrent(), applications, true);
@@ -146,7 +146,7 @@ public class UserAnalyticsExcelService {
         headers.add(TOTAL);
         headers.add("Previous Week");
         headers.add("Growth %");
-        writer.headerRow(headers, true);
+        writer.headerRow(headers);
 
         if (buckets == null || buckets.isEmpty()) {
             writer.text(writer.row(), 0, NO_ACTIVITY);
@@ -187,7 +187,7 @@ public class UserAnalyticsExcelService {
         headers.add("State");
         table.columns().forEach(column -> headers.add(column.label()));
         headers.add(TOTAL);
-        writer.headerRow(headers, false);
+        writer.headerRow(headers);
 
         if (buckets == null || buckets.isEmpty()) {
             writer.text(writer.row(), 0, NO_ACTIVITY);
@@ -208,13 +208,16 @@ public class UserAnalyticsExcelService {
         }
     }
 
-    /** The busiest users per application, ranked on non-login activity. */
+    /**
+     * The busiest users per application, ranked on non-login activity. A user is listed once per role
+     * they worked under — the role and the user together are what gets ranked.
+     */
     private void writeChampionsSheet(SheetWriter writer, UserAnalyticsReport report) {
         writeMetadata(writer, report);
         writer.blankRow();
 
         writer.sectionTitle("Top Champion Users by Application");
-        writer.headerRow(List.of("Application", "Rank", "Username", "Name", "Activity Count"), true);
+        writer.headerRow(List.of("Application", "Rank", "Name", "Role", "Activity Count"));
 
         Map<String, List<ChampionUser>> championsByGroup = report.getChampionsByApplication();
         if (championsByGroup == null || championsByGroup.isEmpty()) {
@@ -237,8 +240,8 @@ public class UserAnalyticsExcelService {
                 // filterable and pivotable in Excel.
                 writer.text(row, 0, group);
                 writer.number(row, 1, rank++);
-                writer.text(row, 2, blankIfNull(champion.getUserName()));
-                writer.text(row, 3, blankIfNull(champion.getName()));
+                writer.text(row, 2, blankIfNull(champion.getName()));
+                writer.text(row, 3, blankIfNull(champion.getRole()));
                 writer.number(row, 4, champion.getActivityCount());
             }
         }
@@ -254,7 +257,7 @@ public class UserAnalyticsExcelService {
         writer.blankRow();
 
         writer.sectionTitle("Kibana Logins");
-        writer.headerRow(List.of("Username", "Logins"), true);
+        writer.headerRow(List.of("Username", "Logins"));
 
         Map<String, Long> loginsByUser = report.getKibanaLoginsByUser();
         if (loginsByUser == null || loginsByUser.isEmpty()) {
@@ -399,21 +402,13 @@ public class UserAnalyticsExcelService {
             row.createCell(1).setCellValue(value);
         }
 
-        /**
-         * @param freeze pins everything above and including this header. Only the first header on a
-         *               sheet may freeze — a sheet has one freeze pane, and a later call would move
-         *               it down past the rows of the block above.
-         */
-        void headerRow(List<String> headers, boolean freeze) {
+        void headerRow(List<String> headers) {
             Row row = row();
             for (int column = 0; column < headers.size(); column++) {
                 Cell cell = row.createCell(column);
                 cell.setCellValue(headers.get(column));
                 cell.setCellStyle(styles.header);
                 measure(column, headers.get(column));
-            }
-            if (freeze) {
-                sheet.createFreezePane(1, row.getRowNum() + 1);
             }
         }
 
