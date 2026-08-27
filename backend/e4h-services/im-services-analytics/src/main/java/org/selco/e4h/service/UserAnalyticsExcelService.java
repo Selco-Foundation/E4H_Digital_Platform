@@ -42,7 +42,8 @@ import static org.selco.e4h.util.UserAnalyticsConstants.SHEET_SUMMARY;
  * including the previous week and the growth for each application. <b>By State</b> leads with the
  * active-user table and then stacks one event table per application, each state down the rows
  * against the actions that application reports on. <b>Top Champions</b> ranks the busiest users per
- * application, and <b>Kibana Logins</b> ranks the Kibana accounts by sign-ins.
+ * application, and <b>Kibana Logins</b> leads with the week's dashboard-view total and then ranks the
+ * Kibana accounts by sign-ins.
  * <p>
  * Every sheet opens with the report title in column D followed by the two week windows, so a saved
  * copy of any single sheet is still self-describing.
@@ -249,11 +250,21 @@ public class UserAnalyticsExcelService {
     }
 
     /**
-     * Kibana sign-ins per account, busiest first. These records carry no state, role or egov user —
-     * the accounts are Elasticsearch-native — so the login id is all there is to group them by.
+     * The week's dashboard-view total, then Kibana sign-ins per account, busiest first. These records
+     * carry no state, role or egov user — the accounts are Elasticsearch-native — so the login id is
+     * all there is to group the sign-ins by, and the views, which carry no username at all, are only
+     * a total.
      */
     private void writeKibanaLoginsSheet(SheetWriter writer, UserAnalyticsReport report) {
         writeMetadata(writer, report);
+        writer.blankRow();
+
+        // Counted out of the separate kibana-dashboard-report index, so this is the reported week's
+        // total with no application or user breakdown to sit beside it.
+        writer.sectionTitle("Kibana Dashboard Views");
+        Row viewsRow = writer.row();
+        writer.label(viewsRow, 0, "Views");
+        writer.number(viewsRow, 1, report.getKibanaDashboardViews());
         writer.blankRow();
 
         writer.sectionTitle("Kibana Logins");
