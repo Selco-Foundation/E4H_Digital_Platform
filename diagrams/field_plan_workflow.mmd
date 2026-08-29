@@ -1,0 +1,67 @@
+sequenceDiagram
+    participant PM as Project Manager
+    participant UI as Web Interface
+    participant API as API Gateway
+    participant PS as Project Service
+    participant WF as Workflow Service
+    participant NS as Notification Service
+    participant DB as Database
+    
+    PM->>UI: Navigate to Create Field Plan
+    UI->>API: GET /api/v1/projects (fetch available projects)
+    API->>PS: Forward request
+    PS->>DB: Query projects for user
+    DB-->>PS: Return projects
+    PS-->>API: Return project list
+    API-->>UI: Return project list
+    UI-->>PM: Display project selection
+    
+    PM->>UI: Fill field plan details
+    PM->>UI: Upload facilities Excel file
+    UI->>API: POST /api/v1/field-plans (create field plan)
+    API->>PS: Forward request
+    PS->>DB: Validate and create field plan
+    DB-->>PS: Return created field plan
+    PS-->>API: Return field plan details
+    API-->>UI: Return success response
+    UI-->>PM: Show field plan created
+    
+    PM->>UI: Assign activities to SPOCs
+    UI->>API: POST /api/v1/field-plans/{id}/assign-activities
+    API->>PS: Forward assignment request
+    PS->>DB: Create activity assignments
+    DB-->>PS: Return assignment records
+    PS->>WF: Initialize facility activities
+    WF->>DB: Create facility activities (SCHEDULED status)
+    DB-->>WF: Return facility activities
+    WF->>NS: Send assignment notifications
+    NS->>NS: Send emails to assigned SPOCs
+    PS-->>API: Return assignment success
+    API-->>UI: Return success response
+    UI-->>PM: Show assignment completed
+    
+    Note over PM,DB: Activity SPOCs receive notifications and can now log in to manage their assignments
+    
+    participant AS as Activity SPOC
+    AS->>UI: Login and view assignments
+    UI->>API: GET /api/v1/activity-assignments/assigned-to-me
+    API->>PS: Forward request
+    PS->>DB: Query assignments for user
+    DB-->>PS: Return assignments
+    PS-->>API: Return assignment list
+    API-->>UI: Return assignment list
+    UI-->>AS: Display assigned activities
+    
+    AS->>UI: Assign facilities to field staff
+    UI->>API: POST /api/v1/facility-activities/{id}/assign-user
+    API->>WF: Forward assignment
+    WF->>DB: Update facility activity with assigned user
+    DB-->>WF: Return updated record
+    WF->>WF: Check activation conditions
+    WF->>DB: Update status to ACTIVE if conditions met
+    DB-->>WF: Return updated status
+    WF->>NS: Notify field staff if activated
+    NS->>NS: Send notification to field staff
+    WF-->>API: Return assignment success
+    API-->>UI: Return success response
+    UI-->>AS: Show assignment completed 

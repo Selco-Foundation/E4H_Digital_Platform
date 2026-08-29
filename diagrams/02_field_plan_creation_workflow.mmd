@@ -1,0 +1,244 @@
+sequenceDiagram
+    participant PM as Project Manager
+    participant UI as E4H Web UI (Extended)
+    participant GW as E4H API Gateway (Existing)
+    participant AUTH as E4H Auth Service (Existing)
+    participant FPS as Field Planner Service (NEW)
+    participant AMS as Activity Management Service (NEW)
+    participant PS as Project Service (Existing)
+    participant HFR as Health Facility Registry (Existing)
+    participant HRMS as eGov HRMS (Existing)
+    participant EGOV_FS as eGov Filestore (Existing)
+    participant MDMS as eGov MDMS v2 (Existing)
+    participant WF as eGov Workflow v2 (Existing)
+    participant DB as E4H PostgreSQL (Shared)
+    participant QUEUE as Kafka Queue (Shared)
+    
+    Note over PM,QUEUE: E4H Integrated Field Plan Creation and Activity Assignment
+    
+    PM->>UI: Navigate to Create Field Plan (E4H UI)
+    UI->>GW: GET /user/oauth/me
+    GW->>AUTH: Validate PM JWT token
+    AUTH-->>GW: PM authenticated with project creation permissions
+    GW-->>UI: User authenticated
+    
+    UI->>GW: GET /project/v1/_search?assignedToMe=true
+    GW->>PS: Fetch projects for user (existing service)
+    PS->>HRMS: GET /egov-hrms/employees/_search
+    Note over PS,HRMS: Validate PM employee and get assignments
+    HRMS-->>PS: PM employee validated with project assignments
+    
+    PS->>DB: Query existing project table where user is PM or assigned
+    DB-->>PS: Return project list
+    PS-->>GW: Return projects
+    GW-->>UI: Return project options
+    UI-->>PM: Display project selection dropdown
+    
+    PM->>UI: Select project and fill field plan details
+    Note over PM,UI: Project, Dates, Geography, Activities
+    
+    PM->>UI: Click "Generate Facility Template"
+    UI->>GW: POST /field-planner/v1/field-plans/facility-template
+    GW->>FPS: Generate facility template request (new service)
+    
+    FPS->>PS: GET /project/v1/{projectId}
+    Note over FPS,PS: Get project facility associations
+    PS-->>FPS: Project with facility associations
+    
+    FPS->>HFR: GET /facility/v1/_search
+    Note over FPS,HFR: Get facility details by geography filter
+    HFR->>DB: Query existing facility table with geography filter
+    DB-->>HFR: Return filtered facilities
+    HFR-->>FPS: Facility details with location, type, status
+    
+    FPS->>MDMS: POST /egov-mdms-service/v1/_search
+    Note over FPS,MDMS: Get boundary data for template dropdowns
+    MDMS-->>FPS: Boundary hierarchy data
+    
+    FPS->>EGOV_FS: POST /filestore/v1/files (generate template)
+    Note over FPS,EGOV_FS: All facilities pre-selected with Yes/No column
+    EGOV_FS->>EGOV_FS: Create Excel with validation dropdowns
+    EGOV_FS-->>FPS: Return template UUID and URL
+    FPS-->>GW: Return template download link
+    GW-->>UI: Return template URL
+    UI-->>PM: Download facility template from eGov Filestore
+    
+    PM->>PM: Review and modify facility selections
+    PM->>UI: Upload modified facility list
+    
+    UI->>GW: POST /field-planner/v1/field-plans/_create (with facility file)
+    GW->>FPS: Create field plan request (new service)
+    
+    FPS->>HRMS: GET /egov-hrms/employees/_search
+    Note over FPS,HRMS: Validate PM employee creating field plan
+    HRMS-->>FPS: PM validated
+    
+    FPS->>EGOV_FS: POST /filestore/v1/files (process uploaded file)
+    EGOV_FS->>EGOV_FS: Validate file format and structure
+    
+    alt Invalid File Format
+        EGOV_FS-->>FPS: Return format error
+        FPS-->>GW: Return validation error
+        GW-->>UI: Show error message
+        UI-->>PM: Display "Invalid file format" error
+    else Valid File Format
+        EGOV_FS->>EGOV_FS: Parse facility selections
+        EGOV_FS-->>FPS: Return facility selection data
+        
+        FPS->>HFR: GET /facility/v1/_search
+        Note over FPS,HFR: Validate selected facilities exist and are active
+        HFR-->>FPS: Validated facility data
+        
+        FPS->>DB: Begin transaction
+        FPS->>DB: Create field_plans record (new table)
+        DB-->>FPS: Return field plan UUID
+        
+        loop For each selected facility
+            FPS->>DB: Create field_plan_facilities record (new table)
+            DB-->>FPS: Confirm facility association
+        end
+        
+        FPS->>DB: Commit transaction
+        DB-->>FPS: Transaction committed
+        
+        FPS-->>GW: Field plan created successfully
+        GW-->>UI: Return success response
+        UI-->>PM: Show "Field plan created, now assign activities"
+    end
+    
+    Note over PM,QUEUE: Activity Assignment Phase (E4H Integration)
+    
+    PM->>UI: Assign activities to Activity SPOCs
+    UI->>GW: GET /field-planner/v1/activities/_search?active=true
+    GW->>AMS: Fetch available activities (new service)
+    AMS->>MDMS: POST /egov-mdms-service/v1/_search
+    Note over AMS,MDMS: Get activity master data with required roles
+    MDMS-->>AMS: Return activity list with required roles
+    AMS-->>GW: Return activities
+    GW-->>UI: Display activity assignment form
+    
+    loop For each selected activity
+        PM->>UI: Select activity and assign SPOCs
+        
+        PM->>UI: Search for Installation SPOC
+        UI->>GW: GET /egov-hrms/employees/_search?role=INSTALLATION_SPOC
+        GW->>HRMS: Search employees with role (existing service)
+        HRMS->>DB: Query eg_hrms_employee table with specified designation
+        DB-->>HRMS: Return matching employees
+        HRMS-->>GW: Return employee list
+        GW-->>UI: Display employee dropdown
+        
+        PM->>UI: Select Installation SPOC
+        PM->>UI: Search for QC SPOC (Installation Reviewer)
+        UI->>GW: GET /egov-hrms/employees/_search?role=QC_SPOC
+        GW->>HRMS: Search QC employees (existing service)
+        HRMS->>DB: Query eg_hrms_employee table for QC roles
+        DB-->>HRMS: Return QC employees
+        HRMS-->>GW: Return QC employee list
+        GW-->>UI: Display QC employee dropdown
+        
+        PM->>UI: Select QC SPOC and set dates
+        PM->>UI: Confirm activity assignment
+    end
+    
+    PM->>UI: Submit all activity assignments
+    UI->>GW: POST /field-planner/v1/field-plans/{id}/assign-activities
+    GW->>AMS: Process activity assignments (new service)
+    
+    AMS->>HRMS: GET /egov-hrms/employees/_search
+    Note over AMS,HRMS: Validate all assigned SPOCs exist and are active
+    HRMS-->>AMS: All SPOCs validated
+    
+    AMS->>DB: Begin transaction
+    
+    loop For each activity assignment
+        AMS->>DB: Create activity_assignments record (new table)
+        DB-->>AMS: Return assignment UUID
+        
+        loop For each facility in field plan
+            AMS->>DB: Create facility_activities record (new table, SCHEDULED status)
+            DB-->>AMS: Return facility activity UUID
+            
+            AMS->>AMS: Evaluate activation conditions
+            Note over AMS: Check if conditions are met for immediate activation
+            
+            alt Conditions Met
+                AMS->>DB: Update status to ACTIVE
+                AMS->>DB: Set activated_at timestamp
+                DB-->>AMS: Status updated
+            else Conditions Not Met
+                Note over AMS: Facility remains SCHEDULED
+            end
+        end
+    end
+    
+    AMS->>WF: POST /egov-wf-v2/process/_initiate
+    Note over AMS,WF: Initialize activity assignment workflows
+    WF-->>AMS: Workflows initiated
+    
+    AMS->>DB: Commit transaction
+    DB-->>AMS: All assignments created
+    
+    Note over AMS,QUEUE: Send Notifications via E4H Kafka Events
+    
+    loop For each assigned SPOC
+        AMS->>QUEUE: Publish ActivityAssignmentEvent
+        Note over QUEUE: E4H notification consumers will handle email/in-app notifications
+        
+        AMS->>HRMS: GET /egov-hrms/employees/_search
+        Note over AMS,HRMS: Get SPOC employee details for notification
+        HRMS->>DB: Query eg_hrms_employee table
+        DB-->>HRMS: Return employee details
+        HRMS-->>AMS: Return employee data
+        
+        Note over AMS: E4H notification system handles:
+        Note over AMS: - Email notifications
+        Note over AMS: - In-app notifications
+        Note over AMS: - WebSocket real-time updates
+    end
+    
+    Note over AMS: E4H audit patterns handle assignment logging automatically
+    
+    AMS-->>GW: All assignments completed successfully
+    GW-->>UI: Return success response
+    UI-->>PM: Show "Activities assigned successfully"
+    
+    UI->>UI: Display assignment summary
+    Note over UI: Show assigned SPOCs, facility counts, active vs scheduled
+    
+    Note over PM,QUEUE: Activity SPOCs receive E4H notifications and can begin work
+    
+    participant SPOC as Activity SPOC
+    
+    SPOC->>UI: Login to E4H system
+    UI->>GW: POST /user/oauth/authenticate
+    GW->>AUTH: Authenticate SPOC employee
+    AUTH->>HRMS: GET /egov-hrms/employees/_search
+    Note over AUTH,HRMS: Validate SPOC employee credentials
+    HRMS-->>AUTH: Employee validated
+    AUTH-->>GW: Return E4H JWT token
+    GW-->>UI: Authentication successful
+    
+    UI->>GW: GET /field-planner/v1/notifications?unread=true
+    Note over UI,GW: E4H notification system integration
+    GW-->>UI: Display notifications from E4H notification service
+    UI-->>SPOC: Show "New field plan assignment" notification
+    
+    SPOC->>UI: Click on assignment notification
+    UI->>GW: GET /field-planner/v1/activity-assignments/_search?assignedToMe=true
+    GW->>AMS: Get assignments for SPOC employee
+    AMS->>DB: Query activity_assignments table for SPOC
+    DB-->>AMS: Return assignment details with field plan context
+    
+    AMS->>HFR: GET /facility/v1/_search
+    Note over AMS,HFR: Get facility details for assignment dashboard
+    HFR-->>AMS: Facility details for each assignment
+    
+    AMS-->>GW: Return assignments with facility counts
+    GW-->>UI: Display assignment dashboard
+    UI-->>SPOC: Show assigned field plans and facility counts
+    
+    Note over PM,SPOC: E4H Platform Integration Complete
+    Note over PM,SPOC: Field plan created via new Field Planner Service
+    Note over PM,SPOC: SPOCs validated and notified via eGov HRMS and E4H notifications
+    Note over PM,SPOC: All data stored in shared E4H PostgreSQL database 

@@ -1,0 +1,253 @@
+sequenceDiagram
+    participant SPOC as Activity SPOC
+    participant UI as E4H Web UI (Extended)
+    participant GW as E4H API Gateway (Existing)
+    participant AUTH as E4H Auth Service (Existing)
+    participant AMS as Activity Management Service (NEW)
+    participant FPS as Field Planner Service (NEW)
+    participant HFR as Health Facility Registry (Existing)
+    participant HRMS as eGov HRMS (Existing)
+    participant EGOV_FS as eGov Filestore (Existing)
+    participant WF as eGov Workflow v2 (Existing)
+    participant DB as E4H PostgreSQL (Shared)
+    participant MOBILE as Mobile App
+    participant FS as Field Staff
+    
+    Note over SPOC,FS: E4H Integrated Health Facility Assignment by Activity SPOC
+    
+    SPOC->>UI: Login and view assignment dashboard (E4H)
+    UI->>GW: GET /user/oauth/me
+    GW->>AUTH: Validate SPOC JWT token
+    AUTH->>HRMS: GET /egov-hrms/employees/_search
+    Note over AUTH,HRMS: Validate SPOC employee with activity roles
+    HRMS-->>AUTH: SPOC validated with activity permissions
+    AUTH-->>GW: User authenticated as Activity SPOC
+    GW-->>UI: User authenticated
+    
+    UI->>GW: GET /field-planner/v1/activity-assignments/_search?assignedToMe=true&status=active
+    GW->>AMS: Fetch active assignments for SPOC (new service)
+    AMS->>DB: Query activity_assignments table with facility counts (new table)
+    DB-->>AMS: Return assignments with statistics
+    AMS-->>GW: Return assignment data
+    GW-->>UI: Display assignment dashboard
+    UI-->>SPOC: Show assigned field plans and progress
+    
+    SPOC->>UI: Click on specific field plan assignment
+    UI->>GW: GET /field-planner/v1/facility-activities/_search?fieldPlanId={id}&activityId={activityId}&assignedToMe=true
+    GW->>AMS: Get facilities for activity assignment (new service)
+    AMS->>DB: Query facility_activities table for field plan and activity (new table)
+    DB-->>AMS: Return facility list with assignment status
+    
+    AMS->>HFR: GET /facility/v1/_search
+    Note over AMS,HFR: Get facility details from existing registry
+    HFR-->>AMS: Facility details (name, location, type, status)
+    
+    AMS-->>GW: Return facilities with integrated data
+    GW-->>UI: Display facility assignment interface
+    UI-->>SPOC: Show facilities with assignment status
+    
+    Note over SPOC,UI: SPOC sees unassigned facilities that need team assignment
+    
+    SPOC->>UI: Check team members availability
+    UI->>GW: GET /egov-hrms/employees/_search?supervisorId={spocId}&designation=FIELD_STAFF
+    GW->>HRMS: Get team members for activity (existing service)
+    HRMS->>DB: Query eg_hrms_employee table for employees under SPOC with required skills
+    DB-->>HRMS: Return team member list
+    HRMS-->>GW: Return team data
+    GW-->>UI: Display team members
+    UI-->>SPOC: Show available field staff
+    
+    alt No Team Members Available
+        SPOC->>UI: Click "Add Team Members"
+        UI->>GW: GET /egov-hrms/employees/_search?employeeType=FIELD_STAFF&tenantId={tenantId}
+        GW->>HRMS: Search for field staff employees (existing service)
+        HRMS->>DB: Query eg_hrms_employee table for available field staff
+        DB-->>HRMS: Return potential team members
+        HRMS-->>GW: Return employee list
+        GW-->>UI: Display available staff
+        
+        SPOC->>UI: Select staff members to add to team
+        UI->>GW: POST /field-planner/v1/teams/add-members
+        GW->>AMS: Add members to SPOC's team (new service)
+        AMS->>HRMS: POST /egov-hrms/employees/_update
+        Note over AMS,HRMS: Update employee assignments to link with SPOC
+        HRMS->>DB: Create/update eg_hrms_assignment records
+        DB-->>HRMS: Team associations updated
+        HRMS-->>AMS: Employee assignments updated
+        
+        Note over AMS: E4H notification system handles team invitations
+        AMS->>AMS: Publish TeamAssignmentEvent via Kafka
+        
+        AMS-->>GW: Team members added
+        GW-->>UI: Show success message
+        UI-->>SPOC: "Team members added successfully"
+    end
+    
+    SPOC->>UI: Assign facilities to field staff
+    Note over SPOC,UI: Can assign individual or bulk assign
+    
+    alt Individual Assignment
+        SPOC->>UI: Select facility and field staff member
+        UI->>GW: POST /field-planner/v1/facility-activities/{id}/assign-user
+        GW->>AMS: Assign facility to field staff (new service)
+        
+        AMS->>HRMS: GET /egov-hrms/employees/_search
+        Note over AMS,HRMS: Validate field staff employee exists and is active
+        HRMS-->>AMS: Field staff validated
+        
+        AMS->>DB: Check if facility can be assigned (facility_activities table)
+        alt Facility Already Assigned
+            DB-->>AMS: Return assignment conflict
+            AMS-->>GW: Return error
+            GW-->>UI: Show error message
+            UI-->>SPOC: "Facility already assigned to another user"
+        else Assignment Valid
+            AMS->>DB: Update facility_activities record (new table)
+            AMS->>DB: Set assigned_user and status
+            DB-->>AMS: Assignment completed
+            
+            AMS->>AMS: Check activation conditions
+            Note over AMS: Evaluate if facility should be activated
+            
+            alt Conditions Met for Activation
+                AMS->>DB: Update status to ACTIVE
+                AMS->>DB: Set activated_at timestamp
+                DB-->>AMS: Status updated to ACTIVE
+                
+                Note over AMS: Send activation notification via Kafka
+                AMS->>AMS: Publish FacilityActivationEvent
+                Note over MOBILE: E4H notification consumers send push to mobile
+                MOBILE-->>FS: Show "New facility activated"
+                
+            else Conditions Not Met
+                Note over AMS: Status remains SCHEDULED
+                Note over AMS: Send assignment notification via Kafka
+                AMS->>AMS: Publish FacilityAssignmentEvent
+                Note over MOBILE: E4H notification system handles delivery
+                MOBILE-->>FS: Show "Facility assigned, waiting for activation"
+            end
+            
+            AMS-->>GW: Assignment successful
+            GW-->>UI: Return success response
+            UI-->>SPOC: Show assignment confirmation
+        end
+        
+    else Bulk Assignment via Excel
+        SPOC->>UI: Click "Bulk Assign Facilities"
+        UI->>GW: GET /field-planner/v1/facility-activities/assignment-template?fieldPlanId={id}
+        GW->>AMS: Generate assignment template (new service)
+        AMS->>DB: Get facilities and team members from new tables
+        DB-->>AMS: Return data for template
+        
+        AMS->>HRMS: GET /egov-hrms/employees/_search
+        Note over AMS,HRMS: Get team members for dropdown
+        HRMS-->>AMS: Team member data
+        
+        AMS->>EGOV_FS: POST /filestore/v1/files (generate template)
+        EGOV_FS->>EGOV_FS: Generate Excel with dropdowns
+        EGOV_FS-->>AMS: Return template UUID and URL
+        AMS-->>GW: Return template download link
+        GW-->>UI: Download template from eGov Filestore
+        UI-->>SPOC: Template downloaded
+        
+        SPOC->>SPOC: Fill assignment data in Excel
+        SPOC->>UI: Upload completed assignment file
+        
+        UI->>GW: POST /field-planner/v1/facility-activities/bulk-assign (multipart)
+        GW->>AMS: Process bulk assignment (new service)
+        AMS->>EGOV_FS: POST /filestore/v1/files (validate uploaded file)
+        EGOV_FS->>EGOV_FS: Validate uploaded file format
+        
+        alt Invalid File Format
+            EGOV_FS-->>AMS: Return format error
+            AMS-->>GW: Return validation error
+            GW-->>UI: Show error message
+            UI-->>SPOC: "Invalid file format"
+        else Valid File
+            EGOV_FS->>EGOV_FS: Parse assignment data
+            EGOV_FS-->>AMS: Return assignment list
+            
+            AMS->>HRMS: GET /egov-hrms/employees/_search
+            Note over AMS,HRMS: Validate all assigned employees exist and are active
+            HRMS-->>AMS: Employee validation results
+            
+            AMS->>DB: Begin transaction
+            
+            loop For each facility assignment
+                AMS->>DB: Validate assignment (no conflicts, facility_activities table)
+                alt Assignment Conflict
+                    DB-->>AMS: Return conflict error
+                    AMS->>AMS: Add to error list
+                else Valid Assignment
+                    AMS->>DB: Update facility_activities record (new table)
+                    DB-->>AMS: Assignment updated
+                    
+                    AMS->>AMS: Check activation conditions
+                    alt Conditions Met
+                        AMS->>DB: Set status to ACTIVE
+                        AMS->>DB: Set activated_at timestamp
+                        DB-->>AMS: Status activated
+                    else Conditions Not Met
+                        Note over AMS: Remains SCHEDULED
+                    end
+                end
+            end
+            
+            alt Assignment Errors Found
+                AMS->>DB: Rollback transaction
+                AMS->>EGOV_FS: POST /filestore/v1/files (generate error report)
+                EGOV_FS-->>AMS: Return error report UUID and URL
+                AMS-->>GW: Return bulk assignment errors
+                GW-->>UI: Show error summary with download link
+                UI-->>SPOC: "Some assignments failed, download error report"
+                
+            else All Assignments Successful
+                AMS->>DB: Commit transaction
+                DB-->>AMS: All assignments committed
+                
+                Note over AMS: E4H audit patterns handle bulk assignment logging
+                
+                Note over AMS: Send notifications via E4H Kafka events
+                loop For each assigned field staff
+                    AMS->>AMS: Publish FacilityAssignmentEvent
+                    Note over MOBILE: E4H notification consumers handle mobile push
+                    MOBILE-->>FS: Show facility assignment notification
+                end
+                
+                AMS-->>GW: Bulk assignment successful
+                GW-->>UI: Return success summary
+                UI-->>SPOC: Show "X facilities assigned successfully"
+            end
+        end
+    end
+    
+    Note over SPOC,FS: Field Staff receives E4H notifications
+    
+    FS->>MOBILE: Open mobile app
+    MOBILE->>GW: GET /field-planner/v1/facility-activities/_search?assignedToMe=true&status=active
+    GW->>AMS: Get active facilities for field staff (new service)
+    AMS->>DB: Query facility_activities table for active assignments (new table)
+    DB-->>AMS: Return active facility activities
+    
+    AMS->>HFR: GET /facility/v1/_search
+    Note over AMS,HFR: Get facility details from existing registry
+    HFR-->>AMS: Facility details for mobile display
+    
+    AMS-->>GW: Return facility list with integrated data
+    GW-->>MOBILE: Display assigned facilities
+    MOBILE-->>FS: Show active facilities ready for work
+    
+    SPOC->>UI: Monitor assignment progress
+    UI->>GW: GET /field-planner/v1/field-plans/{id}/progress?activityId={activityId}
+    GW->>AMS: Get assignment and progress statistics (new service)
+    AMS->>DB: Query facility_activities table for status counts (new table)
+    DB-->>AMS: Return progress data
+    AMS-->>GW: Return progress statistics
+    GW-->>UI: Display progress dashboard
+    UI-->>SPOC: Show assignment progress (Assigned: X, Active: Y, Completed: Z)
+    
+    Note over SPOC,FS: E4H Platform Integration Complete
+    Note over SPOC,FS: Facilities assigned via Activity Management Service
+    Note over SPOC,FS: Team management via eGov HRMS integration
+    Note over SPOC,FS: Field staff can begin work with mobile app sync
+    Note over SPOC,FS: All data stored in shared E4H PostgreSQL database 

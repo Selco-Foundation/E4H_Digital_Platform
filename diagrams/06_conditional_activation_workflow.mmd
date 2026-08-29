@@ -1,0 +1,261 @@
+sequenceDiagram
+    participant SYSTEM as System Scheduler
+    participant WS as Workflow Service
+    participant CE as Condition Evaluator
+    participant DB as Database
+    participant NS as Notification Service
+    participant MOBILE as Mobile App
+    participant FS as Field Staff
+    participant AS as Audit Service
+    participant CACHE as Redis Cache
+    
+    Note over SYSTEM,CACHE: Conditional Health Facility Activation Workflow
+    
+    SYSTEM->>WS: Trigger periodic activation check
+    Note over SYSTEM: Runs every 15 minutes via cron job
+    
+    WS->>DB: Query facilities with SCHEDULED status
+    DB-->>WS: Return scheduled facility activities
+    
+    loop For each scheduled facility activity
+        WS->>CE: Evaluate activation conditions
+        CE->>DB: Check activity dependencies
+        
+        Note over CE,DB: Evaluating different condition types
+        
+        alt Installation Activity Conditions
+            CE->>DB: Check if Assessment completed with "GO" recommendation
+            DB-->>CE: Return assessment status
+            
+            alt Assessment Status = "GO"
+                CE->>CE: Mark condition as MET
+            else Assessment Status != "GO" or Not Found
+                CE->>CE: Mark condition as NOT_MET
+            end
+            
+        else Field QC Activity Conditions
+            CE->>DB: Check if Installation report flagged for Field QC
+            DB-->>CE: Return installation flag status
+            
+            alt Installation Flagged for Field QC
+                CE->>CE: Mark condition as MET
+            else Not Flagged for Field QC
+                CE->>CE: Mark condition as NOT_MET
+            end
+            
+        else Handover Activity Conditions
+            CE->>DB: Check if Installation AND Field QC completed
+            DB-->>CE: Return completion status
+            
+            alt Both Installation and Field QC Complete
+                CE->>CE: Mark condition as MET
+            else Prerequisites Not Complete
+                CE->>CE: Mark condition as NOT_MET
+            end
+            
+        else Custom Project Conditions
+            CE->>DB: Evaluate custom conditions defined for project
+            DB-->>CE: Return condition evaluation results
+            CE->>CE: Apply custom business rules
+        end
+        
+        CE->>CE: Aggregate all condition results
+        CE-->>WS: Return overall condition status
+        
+        alt All Conditions Met for Activation
+            WS->>DB: Begin transaction
+            WS->>DB: Update facility_activities status to ACTIVE
+            WS->>DB: Set activated_at timestamp
+            WS->>DB: Update conditions_met JSONB field
+            DB-->>WS: Activation recorded
+            
+            WS->>CACHE: Update facility status cache
+            CACHE-->>WS: Cache updated
+            
+            WS->>AS: Log activation event
+            AS->>DB: Store activation audit
+            DB-->>AS: Audit logged
+            
+            WS->>DB: Commit transaction
+            DB-->>WS: Activation committed
+            
+            WS->>NS: Send activation notification
+            NS->>NS: Prepare activation message
+            NS->>MOBILE: Send push notification to assigned field staff
+            
+            Note over NS,MOBILE: Real-time notification if field staff online
+            MOBILE-->>FS: Show "New facility activated for [Activity]"
+            
+            WS->>WS: Add to activation summary
+            
+        else Conditions Not Met
+            Note over WS: Facility remains SCHEDULED
+            WS->>WS: Continue to next facility
+            
+        else Conditions Changed (Previously Active)
+            Note over WS,DB: Handle edge case where conditions no longer met
+            WS->>DB: Check if facility should be deactivated
+            
+            alt Deactivation Required
+                WS->>DB: Begin transaction
+                WS->>DB: Update status to SCHEDULED
+                WS->>DB: Clear activated_at timestamp
+                DB-->>WS: Deactivation recorded
+                
+                WS->>AS: Log deactivation event
+                AS->>DB: Store deactivation audit
+                DB-->>AS: Audit logged
+                
+                WS->>DB: Commit transaction
+                DB-->>WS: Deactivation committed
+                
+                WS->>NS: Send deactivation notification
+                NS->>MOBILE: Notify field staff of deactivation
+                MOBILE-->>FS: Show "Facility deactivated - conditions changed"
+            end
+        end
+    end
+    
+    WS->>WS: Generate activation summary report
+    Note over WS: Summary: X facilities activated, Y remain scheduled
+    
+    WS->>AS: Log batch processing audit
+    AS->>DB: Store batch audit record
+    DB-->>AS: Batch audit logged
+    
+    WS-->>SYSTEM: Return activation summary
+    
+    Note over SYSTEM,CACHE: Manual Activation Triggers
+    
+    participant PM as Project Manager
+    participant UI as Web Interface
+    participant API as API Gateway
+    
+    PM->>UI: Manually trigger activation check
+    UI->>API: POST /api/v1/field-plans/{id}/check-activation
+    API->>WS: Trigger manual activation check
+    
+    WS->>CE: Evaluate conditions for specific field plan
+    CE->>DB: Check conditions for field plan facilities
+    
+    loop For each facility in field plan
+        CE->>CE: Evaluate all activation conditions
+        CE-->>WS: Return condition status
+        
+        alt Conditions Met
+            WS->>DB: Begin transaction
+            WS->>DB: Update facility status to ACTIVE
+            WS->>DB: Set activation timestamp and conditions
+            DB-->>WS: Facility activated
+            
+            WS->>CACHE: Update cache
+            WS->>AS: Log manual activation
+            AS->>DB: Store audit with "MANUAL_TRIGGER" flag
+            DB-->>AS: Manual audit logged
+            
+            WS->>DB: Commit transaction
+            
+            WS->>NS: Send activation notifications
+            NS->>MOBILE: Notify assigned field staff
+            MOBILE-->>FS: Show activation notification
+            
+        else Conditions Not Met
+            Note over WS: Log reason for non-activation
+            WS->>AS: Log failed activation attempt
+            AS->>DB: Store failed activation reason
+            DB-->>AS: Failed activation logged
+        end
+    end
+    
+    WS->>WS: Generate manual activation report
+    WS-->>API: Return activation results
+    API-->>UI: Display activation summary
+    UI-->>PM: Show "X facilities activated, Y conditions not met"
+    
+    Note over SYSTEM,CACHE: Condition Configuration Management
+    
+    participant ADMIN as System Admin
+    
+    ADMIN->>UI: Configure activity conditions
+    UI->>API: PUT /api/v1/activities/{id}/conditions
+    API->>WS: Update activity conditions
+    
+    WS->>DB: Begin transaction
+    WS->>DB: Update activity default_conditions
+    WS->>DB: Version the condition changes
+    DB-->>WS: Conditions updated
+    
+    WS->>CACHE: Clear condition cache
+    CACHE-->>WS: Cache cleared
+    
+    WS->>AS: Log condition configuration change
+    AS->>DB: Store configuration audit
+    DB-->>AS: Configuration audit logged
+    
+    WS->>DB: Commit transaction
+    DB-->>WS: Configuration committed
+    
+    WS-->>API: Conditions updated successfully
+    API-->>UI: Return success response
+    UI-->>ADMIN: Show "Activity conditions updated"
+    
+    Note over ADMIN: Changes apply to new facility activities
+    
+    Note over SYSTEM,CACHE: Project-Specific Condition Overrides
+    
+    PM->>UI: Override conditions for specific project
+    UI->>API: PUT /api/v1/projects/{id}/activity-conditions
+    API->>WS: Update project-specific conditions
+    
+    WS->>DB: Begin transaction
+    WS->>DB: Store project condition overrides
+    WS->>DB: Version the override changes
+    DB-->>WS: Overrides stored
+    
+    WS->>AS: Log project condition override
+    AS->>DB: Store override audit
+    DB-->>AS: Override audit logged
+    
+    WS->>DB: Commit transaction
+    DB-->>WS: Overrides committed
+    
+    WS->>CACHE: Update project condition cache
+    CACHE-->>WS: Cache updated
+    
+    WS-->>API: Project conditions updated
+    API-->>UI: Return success response
+    UI-->>PM: Show "Project-specific conditions applied"
+    
+    Note over PM: Overrides affect only this project's facilities
+    
+    Note over SYSTEM,CACHE: Error Handling and Recovery
+    
+    alt Condition Evaluation Error
+        CE->>CE: Handle evaluation exception
+        CE->>AS: Log condition evaluation error
+        AS->>DB: Store error details
+        DB-->>AS: Error logged
+        
+        CE-->>WS: Return evaluation failed
+        WS->>WS: Skip facility and continue processing
+        WS->>NS: Send error notification to admin
+        NS->>ADMIN: Alert about condition evaluation failure
+        
+    else Database Transaction Error
+        WS->>DB: Rollback failed transaction
+        WS->>AS: Log transaction failure
+        AS->>DB: Store transaction error
+        DB-->>AS: Error logged
+        
+        WS->>NS: Send system error notification
+        NS->>ADMIN: Alert about system error
+        
+    else Cache Error
+        WS->>CACHE: Handle cache failure gracefully
+        WS->>WS: Continue processing without cache
+        WS->>AS: Log cache error
+        AS->>DB: Store cache error details
+        DB-->>AS: Cache error logged
+    end
+    
+    Note over SYSTEM,CACHE: Conditional activation system ensures proper workflow sequencing 
