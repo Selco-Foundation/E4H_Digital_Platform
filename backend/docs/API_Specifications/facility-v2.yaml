@@ -1,0 +1,382 @@
+openapi: 3.1.0
+info:
+  title: Health Facility Registry API
+  version: "2.0.0"
+  description: >
+    API specification for managing a registry of health facilities. It supports creating, updating & searching for facilities individually as well as in bulk. Also has APIs to manage assessments of facilities.
+
+servers:
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: Facilities
+    description: Endpoints related to the health facility registry
+  - name: Assessment
+    description: Assessment APIs for facilities
+
+paths:
+  /v2/facility/create:
+    post:
+      tags:
+        - Facilities
+      summary: Create a new health facility
+      operationId: createFacility
+      requestBody:
+        description: Health facility data to add to the registry
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacilityCreateRequest'
+      responses:
+        '201':
+          description: Facility created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Facility'
+        '400':
+          description: Invalid input data
+  
+  /v2/facility/update:
+    post:
+      tags:
+        - Facilities
+      summary: Update an existing health facility
+      operationId: updateFacility
+      requestBody:
+        description: Health facility data with updates (facility_id must be provided in the payload)
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacilityUpdateRequest'
+      responses:
+        '200':
+          description: Facility updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Facility'
+        '400':
+          description: Invalid input data
+        '404':
+          description: Facility not found
+ 
+  /v2/facility/search:  
+    get:
+      tags:
+        - Facilities
+      summary: Search facilities
+      operationId: searchFacilities
+      parameters:
+        - in: query
+          name: tenant_id
+          schema:
+            type: string
+          description: Filter facilities by tenant
+        - in: query
+          name: facility_id
+          schema:
+            type: string
+          description: Filter facilities by id
+        - in: query
+          name: facility_name
+          schema:
+            type: string
+          description: Filter facilities by name (partial or full match)
+        - in: query
+          name: hfr_id
+          schema:
+            type: string
+          description: Filter facilities by HFR Id
+         - in: query
+          name: nin_id
+          schema:
+            type: string
+          description: Filter facilities by NIN id
+      responses:
+        '200':
+          description: A list of facilities matching search criteria
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Facility'
+        '400':
+          description: Invalid query parameters
+  
+  /v2/facility/summary:
+    get:
+      tags:
+        - Facilities
+      summary: Get the health facility summary data
+      operationId: getFacilitiesSummary
+      parameters: 
+        $ref: '#/components/parameters/FacilityId'
+      responses:
+        '200':
+          description: Concise information about a health facility
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilitySummary'
+        '400':
+          description: Invalid request
+
+  /v2/facility/assessment/create:
+    post:
+      tags:
+        - Assessment
+      summary: Create a new health facility assessment
+      operationId: createHFAssessment
+      requestBody:
+        description: Health facility assessment data created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacilityAssessmentCreateRequest'
+      responses:
+        '201':
+          description: Facility assessment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilityAssessment'
+        '400':
+          description: Invalid input data
+  
+  /v2/facility/assessment/_update:
+    post:
+      tags:
+        - Assessment
+      summary: Create a new health facility assessment
+      operationId: createHFAssessment
+      requestBody:
+        description: Health facility assessment data created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacilityAssessmentCreateRequest'
+      responses:
+        '201':
+          description: Facility assessment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilityAssessment'
+        '400':
+          description: Invalid input data
+  
+components:
+  schemas:
+    Facility:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          minLength: 2
+          maxLength: 128
+          example: state1.phc1
+        facility_id:
+          type: string
+          format: uuid
+          readOnly: true
+          minLength: 4
+          maxLength: 36
+          example: 44e128a5-ac7a-4c9a-be4c-224b6bf81b20
+          description: System generated unique identifier for the facility
+        facility_category:
+          type: string
+          description: Master code indicating the facility category. For PHCs, the category is HEALTH
+          examples: STORAGE, HEALTH 
+        facility_type:
+          type: string
+          description: The exact facility type under a category.
+          examples: PHC, SC etc..
+        facility_subtype:
+          type: string
+          description: Optional facility sub-type
+        facility_name:
+          type: string
+          description: Name of the facility
+          example: Gejjalgetta PHC
+          minLength: 2
+          maxLength: 256
+        facility_ownership:
+          type: string
+          description: The facility ownership code as defined in master data. The values to be defined in master data are listed below.
+          examples: PPP, Government, Private
+        facility_region:
+          type: string
+          description: Region code where the facility is located. Eg. rural or urban
+          example: RURAL
+          enum: 
+            - RURAL
+            - URBAN
+        address:
+          $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Address'
+        facility_details:
+          type: jsonb
+          description: A store of key value pairs per facility type. The exact set of key value pairs will be specific to the facility type. The schema can be defined as a master schema. Code should validate the payload against the appropriate schema as per the facility type.
+        wfStatus: 
+          type: string
+          description: The workflow status of the facility creation. Facilities may need to be approved for creates and edits before they become active in the system. 
+        additionalDetails:
+          type: jsonb
+          description: Extra details to be added as key value attribute pairs as needed. To be used only post release by implementation teams for customization requirements. Not to be used to store UI values etc..
+        isActive:
+          type: boolean
+          description: Whether a facility is active or not.
+
+    HealthFacilityDetails:
+      description: These are health facility specific attributes. This needs to be converted into a JSON schema and added to MDMS. All facilities of type "Health" to be verified against this schema.
+      hfr_id:
+          type: string
+          description: 12 digit alphanumeric unique Health Facility Registry ID as defined by the Ayushman Bharat Digital Mission (ABDM). Not all health facilities may have HFR ID. Instead, they may have NIN ID.
+          example: IN0123456789
+          minLength: 12
+          maxLength: 12
+      nin_id:
+        type: string
+        description: National Identification Number (NIN) for Health facilities of India is a random 10-digit number generated for each facility and will be unique within India. NIN is generated on the basis of LUHN algorithm where the last digit is the checksum and the rest nine digit are the random number generated. 
+        minLength: 10
+        maxLength: 10
+        example: "1234567891"
+      solar_solution_design_type:
+        type: string
+        description: Master data code of the installation type. Based on this type, solution design will be selected
+        examples: 
+          - SC - without labour room + Refrigerator & without cold chain point
+          - SC + Staff Quarters - only lights & fans;
+      required:
+        - solar_solution_design_type
+          
+    FacilityAssessment:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          minLength: 2
+          maxLength: 128
+          example: state1.phc1
+        assessment_id:
+          type: string
+          format: uuid
+          readOnly: true
+          minLength: 4
+          maxLength: 36
+          example: 44e128a5-ac7a-4c9a-be4c-224b6bf81b20
+          description: System generated unique identifier for the assessment created in the survey service
+        facility_id:
+          type: string
+          format: uuid
+          readOnly: true
+          minLength: 4
+          maxLength: 36
+          example: 44e128a5-ac7a-4c9a-be4c-224b6bf81b20
+          description: Facility ID for which assessment is being created
+        rowVersion:
+          $ref: 'https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/rowVersion'
+        assessment_type:
+          type: string
+          enum:
+            - SOLUTION_DESIGN_TYPE
+            - SOLAR_SUITABILITY_ASSESSMENT
+        date_of_assessment:
+          type: string
+          description: Date in epoch time
+        assessed_by:
+          type: string
+          description: Name of the person who conducted the assessment
+        final_result:
+          type: string
+          description: Final result or assessment of the survey if applicable
+          example: GO
+          enum: 
+            - GO
+            - NO_GO
+        isActive:
+          type: boolean
+
+    FacilityUpdateRequest:
+      type: object
+      properties:       
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        FacilityUpdate:
+          type: object
+          properties:
+            tenant_id:
+              type: string
+              minLength: 2
+              maxLength: 128
+              example: state1.phc1
+            facilityId:
+              type: string
+              readOnly: true
+              description: The facility to be updated. This cannot be overritten.
+            facility_type:
+              type: string
+              description: The exact facility type under a category.
+              examples: PHC, SC etc..
+            facility_subtype:
+              type: string
+              description: Optional facility sub-type
+            facility_name:
+              type: string
+              description: Name of the facility
+              example: Gejjalgetta PHC
+              minLength: 2
+              maxLength: 256
+            address:
+              $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Address'
+            additionalDetails:
+              type: jsonb
+              description: Extra details to be added as key value attribute pairs as needed. To be used only post release by implementation teams for customization requirements. Not to be used to store UI values etc..  
+      required:
+        - RequestInfo
+        - Facility
+
+    FacilityCreateRequest:
+      type: object
+      properties:       
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        facilities:
+          items:
+            $ref: '#/components/schemas/Facility'
+      required:
+        - RequestInfo
+        - Facility
+
+    FacilityCreateResponse:
+      type: object
+      properties: 
+        ResponseInfo:
+          $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/ResponseInfo'
+        facilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Facility'
+      required:
+        - ResponseInfo
+        - Facility
+    
+  parameters:
+    FacilityId:
+      name: facilityId
+      in: path
+      description: System generated unique identifier for a PHC
+      required: true
+      schema:
+        type: string
+        format: uuid
+        example: dad4bce8-f5cb-4078-a211-995864315e39
+  
