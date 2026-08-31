@@ -20,7 +20,7 @@ import AssessmentActivityDetails from "./components/CreateAssessment/ActivityDet
 export const PMReducers = getRootReducer;
 
 const PMModule = ({ stateCode, userType, tenants }) => {
-  const moduleCode = ["PM", "AMC"];
+  const moduleCode = "PM";
   const language = Digit.StoreData.getCurrentLanguage();
   const { isLoading, data: store } = Digit.Services.useStore({ stateCode, moduleCode, language });
   const { info } = Digit.UserService.getUser();
