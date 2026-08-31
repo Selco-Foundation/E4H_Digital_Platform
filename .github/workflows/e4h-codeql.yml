@@ -219,9 +219,9 @@ jobs:
         if: matrix.language == 'javascript-typescript' && steps.check.outputs.should_analyze == 'true'
         working-directory: frontend
         run: |
-          if [ -d "installation-ui" ] && [ -f "installation-ui/package.json" ]; then
-            cd installation-ui && npm install --legacy-peer-deps 2>/dev/null || npm install --force 2>/dev/null || true
-            cd ..
+          if [ -d "installation-ui/web" ] && [ -f "installation-ui/web/package.json" ]; then
+            cd installation-ui/web && npm install --legacy-peer-deps 2>/dev/null || npm install --force 2>/dev/null || true
+            cd ../..
           fi
           if [ -d "micro-ui/web" ] && [ -f "micro-ui/web/package.json" ]; then
             cd micro-ui/web && npm install --legacy-peer-deps 2>/dev/null || npm install --force 2>/dev/null || true
