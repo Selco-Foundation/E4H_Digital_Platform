@@ -70,4 +70,15 @@ public class IndexView {
     @JsonProperty("sendBackSubReason")
     private String sendBackSubReason;
 
+    /**
+     * Program role the ticket is currently waiting on, derived by im-services from the roles allowed
+     * to act on its current workflow state. Null once the ticket reaches a terminal state.
+     */
+    @JsonProperty("currentOwner")
+    private String currentOwner;
+
+    /** Workflow system role {@link #currentOwner} was derived from. */
+    @JsonProperty("currentOwnerSystemRole")
+    private String currentOwnerSystemRole;
+
 }
