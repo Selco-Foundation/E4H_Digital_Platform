@@ -3594,16 +3594,18 @@ async def validate_amc_configurations_excel_sheet(
             "Facility Id",
             "Health Facility Name",
             # "Vendor",
+            "AMC Start Date",
             "AMC-Frequency",
             "AMC-Duration"
         ]
 
         # Column names
         # vendor_col = "Vendor" if required_columns else "vendor"
+        start_date_col = "AMC Start Date" if "AMC Start Date" in df.columns else "amc start date"
         frequency_col = "AMC-Frequency" if required_columns else "amc-frequency"
         duration_col = "AMC-Duration" if required_columns else "amc-duration"
 
-        # Validate each row - only check vendor, AMC frequency, and AMC duration
+        # Validate each row - only check vendor, AMC start date, AMC frequency, and AMC duration
         error_count = 0
         for index, row in df.iterrows():
             validation_errors = []
@@ -3613,6 +3615,7 @@ async def validate_amc_configurations_excel_sheet(
                 # vendor_name = str(row.get(vendor_col, "")).strip() if not pd.isna(row.get(vendor_col)) else ""
                 amc_frequency = str(row.get(frequency_col, "")).strip() if not pd.isna(row.get(frequency_col)) else ""
                 amc_duration = str(row.get(duration_col, "")).strip() if not pd.isna(row.get(duration_col)) else ""
+                amc_start_date = _parse_amc_start_date(row.get(start_date_col)) if start_date_col in df.columns else None
 
                 # A row left entirely blank means the user does not want an AMC on that facility - and
                 # is how an existing configuration gets removed at ingest time. Only a half-filled row
@@ -3624,6 +3627,14 @@ async def validate_amc_configurations_excel_sheet(
                 elif amc_duration and not amc_frequency:
                     validation_errors.append(
                         "Please ensure AMC frequency is selected when an AMC duration is set."
+                    )
+
+                # AMC Start Date is the reference date the schedule is calculated from, so it is
+                # required whenever the row opts into an AMC (mirrors the frequency/duration pairing
+                # above) - a blank row is still a valid opt-out.
+                if (amc_frequency or amc_duration) and amc_start_date is None:
+                    validation_errors.append(
+                        "AMC Start Date is required and must be a valid date (dd-mm-yyyy) when an AMC frequency/duration is set."
                     )
 
                 # Set status and error
@@ -3771,6 +3782,29 @@ def _add_months(start: datetime, months: int) -> datetime:
     return start.replace(year=year, month=month, day=day)
 
 
+def _parse_amc_start_date(value) -> Optional[datetime]:
+    """
+    Parses the "AMC Start Date" Excel cell. Accepts a native Excel date (pandas reads a
+    date-formatted cell as a Timestamp) or the dd-mm-yyyy text the template pre-fills, since the
+    Project Manager may retype the value instead of keeping the cell's original format.
+    """
+    if value is None:
+        return None
+    if isinstance(value, float) and pd.isna(value):
+        return None
+    if isinstance(value, pd.Timestamp):
+        return None if pd.isna(value) else value.to_pydatetime()
+    if isinstance(value, datetime):
+        return value
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return None
+    parsed = pd.to_datetime(text, format="%d-%m-%Y", errors="coerce")
+    if pd.isna(parsed):
+        parsed = pd.to_datetime(text, dayfirst=True, errors="coerce")
+    return None if pd.isna(parsed) else parsed.to_pydatetime()
+
+
 def _normalize_amc_assignments(assignments) -> List[dict]:
     """
     Rebuilds the nested auditDetails the AMC model expects on each assignment.
@@ -3803,9 +3837,11 @@ def build_amc_configuration_update_payload(
         existing_config: dict,
         duration_months: int,
         frequency_months: int,
+        start_date_ms: Optional[int] = None,
 ) -> dict:
     """
-    Full update payload for an existing AMC configuration, carrying only a new duration/frequency.
+    Full update payload for an existing AMC configuration, carrying a new duration/frequency and
+    (when the Project Manager edited it) a new AMC Start Date.
 
     The AMC service replays the entire create validation on update, so a partial payload is rejected:
     everything it validated on create has to be sent back. Two fields are easy to get wrong -
@@ -3814,7 +3850,9 @@ def build_amc_configuration_update_payload(
       * geographyDetails: its state is read-only, so the stored value is reused rather than the one
         from the upload form.
     Search-only enrichments (vendor, facility, project, assetsAmc, totalVisits, completedVisits) are
-    deliberately left out. configurationEndDate is recomputed server-side from durationMonths.
+    deliberately left out. configurationStartDate defaults to the value already on file when the
+    upload does not carry one; configurationEndDate is recomputed server-side (AmcConfigurationService.
+    applyDurationDrivenEndDates) whenever durationMonths or configurationStartDate changed.
     """
     return {
         "id": existing_config.get("id"),
@@ -3825,7 +3863,7 @@ def build_amc_configuration_update_payload(
         "durationMonths": duration_months,
         "visitFrequencyMonths": frequency_months,
         "status": existing_config.get("status") or "ACTIVE",
-        "configurationStartDate": existing_config.get("configurationStartDate"),
+        "configurationStartDate": start_date_ms if start_date_ms is not None else existing_config.get("configurationStartDate"),
         "configurationEndDate": existing_config.get("configurationEndDate"),
         "assetTypes": existing_config.get("assetTypes"),
         "assignments": _normalize_amc_assignments(existing_config.get("assignments")),
@@ -4042,7 +4080,8 @@ async def bulk_ingest_amc_configurations(
                 df[_col] = df[_col].map(lambda x: "" if pd.isna(x) else str(x))
             df[_col] = df[_col].astype("object")
 
-        required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
+        required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC Start Date", "AMC-Frequency", "AMC-Duration"]
+        start_date_col = "AMC Start Date" if "AMC Start Date" in df.columns else "amc start date"
 
         # Initialize clients
         facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
@@ -4093,6 +4132,19 @@ async def bulk_ingest_amc_configurations(
             except Exception as e:
                 logger.error(f"Error bulk searching facilities for AMC ingest: {e}", exc_info=True)
                 raise HTTPException(status_code=502, detail=f"Facility lookup failed: {str(e)}")
+
+        # Fallback reference date for a new configuration whose row has no usable AMC Start Date cell
+        # (e.g. an older template re-uploaded as-is). The template always pre-fills this column, so in
+        # practice this only backstops a blank/corrupted cell rather than driving the common path.
+        installation_submission_dates_by_facility: Dict[str, int] = {}
+        if fieldPlan_activity_service_url and facility_ids_from_file:
+            try:
+                fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
+                installation_submission_dates_by_facility = fieldplan_activity_client.get_installation_report_submission_dates(
+                    request_info_obj, facility_ids_from_file
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching installation report submission dates for AMC ingest: {e}")
 
         # District/block scope selected in the UI. Rows outside it are never created, and existing
         # configurations inside it that disappeared from the file are deleted (see reconciliation below).
@@ -4173,6 +4225,8 @@ async def bulk_ingest_amc_configurations(
                 duration_col = "AMC-Duration" if "AMC-Duration" in df.columns else "amc-duration"
                 amc_frequency = "" if pd.isna(row.get(frequency_col)) else str(row.get(frequency_col, "")).strip()
                 amc_duration = "" if pd.isna(row.get(duration_col)) else str(row.get(duration_col, "")).strip()
+                parsed_start_date = _parse_amc_start_date(row.get(start_date_col)) if start_date_col in df.columns else None
+                parsed_start_date_ms = int(parsed_start_date.timestamp() * 1000) if parsed_start_date is not None else None
 
                 # A row left blank means the user does not want an AMC on this facility. That is a
                 # deliberate choice, not an error - and it is what drives the deletion pass below.
@@ -4209,15 +4263,20 @@ async def bulk_ingest_amc_configurations(
                 # allows only one configuration per (tenant, facility, project, vendor).
                 existing_config = existing_config_by_facility.get(facility_id)
                 if existing_config:
+                    start_date_changed = (
+                        parsed_start_date_ms is not None
+                        and parsed_start_date_ms != existing_config.get("configurationStartDate")
+                    )
                     if (existing_config.get("durationMonths") == duration_months
                             and existing_config.get("visitFrequencyMonths") == frequency_months
+                            and not start_date_changed
                             and str(existing_config.get("status") or "").strip().upper() == "ACTIVE"):
                         df.at[index, 'status'] = 'skipped'
                         df.at[index, 'error'] = 'No change'
                         continue
 
                     configs_to_update.append(build_amc_configuration_update_payload(
-                        existing_config, duration_months, frequency_months
+                        existing_config, duration_months, frequency_months, start_date_ms=parsed_start_date_ms
                     ))
                     row_indexes_for_updates.append(index)
                     continue
@@ -4252,12 +4311,18 @@ async def bulk_ingest_amc_configurations(
                         "name": asset_type_names.get(asset_type, asset_type.title())
                     })
 
-                # Calculate configuration dates (start date = now, end date = start + duration).
-                # Calendar months, not 30-day months: the AMC scheduler generates visits with calendar
-                # arithmetic, so an approximation would place the last visit past the contract end.
-                now = datetime.now()
-                configuration_start_date = int(now.timestamp() * 1000)  # Convert to milliseconds
-                configuration_end_date = int(_add_months(now, duration_months).timestamp() * 1000)
+                # Start date = the (possibly Project Manager-edited) AMC Start Date cell, defaulting to
+                # the Installation Report Submission Date fetched above, with "now" only as a last
+                # resort when neither is available. End date = start + duration, in calendar months
+                # (not 30-day months): the AMC scheduler generates visits with calendar arithmetic, so
+                # an approximation would place the last visit past the contract end.
+                if parsed_start_date is not None:
+                    start_dt = parsed_start_date
+                else:
+                    fallback_ms = installation_submission_dates_by_facility.get(facility_id)
+                    start_dt = datetime.fromtimestamp(fallback_ms / 1000) if fallback_ms else datetime.now()
+                configuration_start_date = int(start_dt.timestamp() * 1000)  # Convert to milliseconds
+                configuration_end_date = int(_add_months(start_dt, duration_months).timestamp() * 1000)
 
                 configs_to_create.append({
                     "tenantId": tenant_id,

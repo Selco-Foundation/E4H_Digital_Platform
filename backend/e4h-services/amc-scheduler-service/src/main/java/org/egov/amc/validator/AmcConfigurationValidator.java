@@ -722,18 +722,15 @@ public class AmcConfigurationValidator {
         }
     }
 
+    /**
+     * configurationStartDate is intentionally NOT restricted to "not already started"/"24h in
+     * advance" here (unlike configurationEndDate below): it now reflects an external fact - the
+     * Installation Report Submission Date - which is virtually always in the past by the time an
+     * AMC configuration is set up or corrected, so a forward-planning-style restriction would block
+     * legitimate updates. Only presence is still required.
+     */
     private static String getErrorMessage(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
-        if (amcConfiguration.getConfigurationStartDate() != null) {
-            // Check if the project start date is different from the one in the database
-            if (amcConfiguration.getConfigurationStartDate().compareTo(amcConfigurationFromDB.getConfigurationStartDate()) != 0) {
-                // Check if the project start date is before the current timestamp or within 24 hours from the next date's midnight
-                if (amcConfigurationFromDB.getConfigurationStartDate().compareTo(currentTimestamp) < 0) {
-                    errorMessage = "The amcConfiguration start date cannot be updated as the amcConfiguration has already started.";
-                } else if (amcConfiguration.getConfigurationStartDate().compareTo(nextDateTimestampUTC) < 0) {
-                    errorMessage = "The amcConfiguration start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
-                }
-            }
-        } else {
+        if (amcConfiguration.getConfigurationStartDate() == null) {
             errorMessage = "The project start date cannot be updated as it is null.";
         }
         return errorMessage;
