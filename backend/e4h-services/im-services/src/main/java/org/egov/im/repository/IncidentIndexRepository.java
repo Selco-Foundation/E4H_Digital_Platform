@@ -4,18 +4,28 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.TrustAllStrategy;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
+import org.apache.hc.core5.util.Timeout;
 import org.egov.im.config.IMConfiguration;
 import org.egov.tracer.model.CustomException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
+import javax.net.ssl.SSLContext;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
@@ -74,11 +84,47 @@ public class IncidentIndexRepository {
         this.bulkRestTemplate = buildRestTemplate(BULK_CONNECT_TIMEOUT_MS, BULK_READ_TIMEOUT_MS);
     }
 
+    /**
+     * A secured ES8 cluster only speaks https and serves a self-signed certificate, which the JDK's
+     * default trust store rejects — every call would fail the handshake before reaching the index.
+     * Both the ES Flyway migrations in this service and im-services-analytics get around this the
+     * same way: trust all certificates and skip hostname verification on the client talking to the
+     * cluster. Unlike im-services-analytics this is scoped to these two clients instead of the JVM
+     * default SSLContext, so nothing else this service calls loses certificate validation.
+     */
     private RestTemplate buildRestTemplate(int connectTimeoutMs, int readTimeoutMs) {
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(connectTimeoutMs);
-        requestFactory.setReadTimeout(readTimeoutMs);
-        return new RestTemplate(requestFactory);
+        try {
+            SSLContext sslContext = SSLContextBuilder.create()
+                    .loadTrustMaterial(null, new TrustAllStrategy())
+                    .build();
+
+            SSLConnectionSocketFactory sslSocketFactory =
+                    new SSLConnectionSocketFactory(sslContext, (hostname, session) -> true);
+
+            HttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
+                    .setSSLSocketFactory(sslSocketFactory)
+                    .build();
+
+            // The read budget is the response timeout: SimpleClientHttpRequestFactory's setReadTimeout
+            // has no equivalent on the HttpClient5 request factory.
+            RequestConfig requestConfig = RequestConfig.custom()
+                    .setResponseTimeout(Timeout.ofMilliseconds(readTimeoutMs))
+                    .build();
+
+            CloseableHttpClient httpClient = HttpClients.custom()
+                    .setConnectionManager(connectionManager)
+                    .setDefaultRequestConfig(requestConfig)
+                    .build();
+
+            HttpComponentsClientHttpRequestFactory requestFactory =
+                    new HttpComponentsClientHttpRequestFactory(httpClient);
+            requestFactory.setConnectTimeout(connectTimeoutMs);
+            requestFactory.setConnectionRequestTimeout(connectTimeoutMs);
+            return new RestTemplate(requestFactory);
+        } catch (Exception e) {
+            throw new CustomException("ES_CLIENT_INIT_FAILED",
+                    "Failed to build the Elasticsearch client: " + e.getMessage());
+        }
     }
 
     /**
