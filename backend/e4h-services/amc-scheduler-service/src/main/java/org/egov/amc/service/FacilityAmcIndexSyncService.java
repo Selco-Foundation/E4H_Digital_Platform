@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.AmcConfigurationRepository;
 import org.egov.amc.repository.ScheduledVisitRepository;
+import org.egov.amc.util.FacilitySystemTypeUtil;
 import org.egov.amc.util.MappedVendorUtil;
 import org.egov.amc.web.models.AmcConfiguration;
 import org.egov.amc.web.models.AmcConfigurationAssignment;
@@ -38,6 +39,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -46,6 +48,10 @@ import java.util.UUID;
  * so it reaches {@code health-facility-index-v0001} via facility-registry's existing Kibana push -
  * the same pattern vendor-registry uses to sync mapped-vendor fields
  * ({@code org.egov.util.FacilityUtil} in vendor-registry).
+ *
+ * <p>Also carries the facility's {@code systemType}, which AMC does not own - field-planner does. It
+ * is pushed from here because this AMC update is the only index-only write path a facility document
+ * has; see {@link #putSystemType}.
  *
  * <p>Best-effort: the per-facility sync catches and logs, never rethrows, so a facility-service or
  * search outage never breaks the AMC create/update/visit flow that triggered the sync.
@@ -114,6 +120,12 @@ public class FacilityAmcIndexSyncService {
     private static final String AMC_APPLICABLE_NO = "No";
     private static final String ACTIVE_STATUS = "ACTIVE";
 
+    /**
+     * Index field name for the facility's system type. Deliberately not {@code amc}-prefixed: it is
+     * not AMC data, it merely travels with the AMC snapshot - see {@link #putSystemType}.
+     */
+    private static final String SYSTEM_TYPE_FIELD = "systemType";
+
     private static final String INTERNAL_REQUEST_API_ID = "Rainmaker";
     private static final String INTERNAL_REQUEST_DID = "amc-scheduler-service-facility-sync";
     private static final String INTERNAL_REQUEST_KEY = "cronjob-key";
@@ -135,6 +147,7 @@ public class FacilityAmcIndexSyncService {
     private final ScheduledVisitRepository scheduledVisitRepository;
     private final ServiceRequestRepository requestRepository;
     private final MappedVendorUtil mappedVendorUtil;
+    private final FacilitySystemTypeUtil facilitySystemTypeUtil;
     private final ActualVisitDateEnricher actualVisitDateEnricher;
     private final ObjectMapper mapper;
 
@@ -144,6 +157,7 @@ public class FacilityAmcIndexSyncService {
                                         ScheduledVisitRepository scheduledVisitRepository,
                                         ServiceRequestRepository requestRepository,
                                         MappedVendorUtil mappedVendorUtil,
+                                        FacilitySystemTypeUtil facilitySystemTypeUtil,
                                         ActualVisitDateEnricher actualVisitDateEnricher,
                                         @Qualifier("objectMapper") ObjectMapper mapper) {
         this.amcServiceConfiguration = amcServiceConfiguration;
@@ -151,6 +165,7 @@ public class FacilityAmcIndexSyncService {
         this.scheduledVisitRepository = scheduledVisitRepository;
         this.requestRepository = requestRepository;
         this.mappedVendorUtil = mappedVendorUtil;
+        this.facilitySystemTypeUtil = facilitySystemTypeUtil;
         this.actualVisitDateEnricher = actualVisitDateEnricher;
         this.mapper = mapper;
     }
@@ -186,7 +201,8 @@ public class FacilityAmcIndexSyncService {
             List<ScheduledVisit> visits = latestConfig == null ? List.of()
                     : fetchActiveScheduledVisits(latestConfig.getId(), tenantId, requestInfo, visitsInFlight);
             Map<String, Object> amcFields =
-                    buildAmcIndexFields(latestConfig, visits, resolveMappedVendor(latestConfig, requestInfo));
+                    buildAmcIndexFields(latestConfig, visits, resolveMappedVendor(latestConfig, requestInfo),
+                            facilitySystemTypeUtil.resolveSystemType(requestInfo, facilityId, tenantId));
             pushToFacilityIndex(facilityId, tenantId, amcFields);
         } catch (Exception e) {
             log.error("Best-effort AMC facility-index sync failed for facilityId={}: {}", facilityId, e.getMessage(), e);
@@ -280,6 +296,10 @@ public class FacilityAmcIndexSyncService {
                 fetchActiveVisitsByConfigurationId(configByFacilityId.values(), tenantId, requestInfo);
         Map<String, org.egov.amc.web.models.User> vendorByConfigId =
                 resolveMappedVendors(configByFacilityId.values(), requestInfo);
+        // One field-planner call for the whole page rather than one per facility. An empty Optional
+        // means the lookup failed, and every facility on the page keeps its indexed system type.
+        Optional<Map<String, String>> systemTypeByFacilityId =
+                facilitySystemTypeUtil.getSystemTypeByFacilityId(requestInfo, facilityIds, tenantId);
 
         for (Map.Entry<String, Facility> entry : facilityById.entrySet()) {
             String facilityId = entry.getKey();
@@ -299,8 +319,11 @@ public class FacilityAmcIndexSyncService {
                 // exactly, so pushing "in" for a facility living in "in.karnataka" would hit nothing.
                 String facilityTenantId = entry.getValue().getTenantId() != null
                         ? entry.getValue().getTenantId() : tenantId;
+                FacilitySystemTypeUtil.Lookup systemType = systemTypeByFacilityId
+                        .map(byFacilityId -> FacilitySystemTypeUtil.Lookup.of(byFacilityId.get(facilityId)))
+                        .orElseGet(FacilitySystemTypeUtil.Lookup::failed);
                 int updated = pushToFacilityIndex(facilityId, facilityTenantId,
-                        buildAmcIndexFields(config, visits, mappedVendor));
+                        buildAmcIndexFields(config, visits, mappedVendor, systemType));
                 if (updated > 0) {
                     result.setFacilitiesIndexed(result.getFacilitiesIndexed() + 1);
                 } else {
@@ -528,14 +551,17 @@ public class FacilityAmcIndexSyncService {
      * @param config       the facility's latest AMC configuration, or null when it has none
      * @param visits       the configuration's active scheduled visits (ignored when config is null)
      * @param mappedVendor the resolved AMC field staff, or null when there is none
+     * @param systemType   the field-planner system type lookup for this facility
      */
     Map<String, Object> buildAmcIndexFields(AmcConfiguration config, List<ScheduledVisit> visits,
-                                            org.egov.amc.web.models.User mappedVendor) {
+                                            org.egov.amc.web.models.User mappedVendor,
+                                            FacilitySystemTypeUtil.Lookup systemType) {
         // Every AMC key is seeded first so the snapshot fully replaces the AMC namespace. Without
         // this, keys omitted from a later snapshot would keep their previously indexed value:
         // deleting an AMC, or shortening a cadence from 10 cycles to 5, would leave orphaned due/visit
         // dates behind in the index.
         Map<String, Object> fields = blankAmcFields();
+        putSystemType(fields, systemType);
         if (config == null) {
             fields.put(AMC_APPLICABLE_FIELD, AMC_APPLICABLE_NO);
             return fields;
@@ -570,6 +596,28 @@ public class FacilityAmcIndexSyncService {
             fields.put("amcVisitDate" + visitNumber, toIndexDate(visit.getActualVisitDate()));
         }
         return fields;
+    }
+
+    /**
+     * Writes the facility's system type onto the snapshot - the one indexed field here that AMC does
+     * not own. It is sourced from field-planner (captured on the facility's installation plan) and
+     * rides along with the AMC push because the AMC index update is the only index-only write path a
+     * facility document has.
+     *
+     * <p>Written outside the {@code config == null} early return, so a facility with no AMC still gets
+     * its system type: the value has nothing to do with whether an AMC exists.
+     *
+     * <p>The key is <em>omitted entirely</em> when the lookup failed, rather than seeded in
+     * {@link #blankAmcFields()} like the AMC fields are. The painless script only assigns the keys it
+     * is handed, so omitting one leaves the previously indexed value in place - which is what a
+     * field-planner outage should cost. Seeding it "Not Applicable" instead would let one unreachable
+     * field-planner erase a real system type from every facility a sync touches during the outage.
+     */
+    private static void putSystemType(Map<String, Object> fields, FacilitySystemTypeUtil.Lookup systemType) {
+        if (systemType == null || !systemType.resolved()) {
+            return;
+        }
+        fields.put(SYSTEM_TYPE_FIELD, orNotApplicable(systemType.systemType()));
     }
 
     /**
