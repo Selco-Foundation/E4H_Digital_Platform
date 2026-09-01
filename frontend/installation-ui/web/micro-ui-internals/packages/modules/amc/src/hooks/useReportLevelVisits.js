@@ -4,8 +4,6 @@ import {AMCService} from "../services/AMC";
 import {getFacilityGeography} from "../utilities/GeographyUtils";
 
 const SUBMITTED_STATUSES = ["PENDING_APPROVAL", "APPROVED", "REJECTED"];
-// Backend search max limit is 200, used for searchable filter options.
-const REPORT_LEVEL_FETCH_LIMIT = 200;
 
 const formatDate = (timestamp) => {
   if (!timestamp) return "";
@@ -41,6 +39,7 @@ const getEpochMilliseconds = (date) => {
 
 const getAssignedVendor = (visit, vendorByConfigurationId) => {
   return (
+    // Prefer vendor data already enriched on the visit response before falling back to configuration search.
     visit?.amcConfiguration?.vendor?.name ||
     vendorByConfigurationId?.[visit?.amcConfigurationId]?.name ||
     vendorByConfigurationId?.[visit?.amcConfigurationId]?.id ||
@@ -153,14 +152,6 @@ const hasSearchableFilters = (filters = {}) => {
   return ["state", "district", "block", "vendor"].some((key) => filters?.[key]?.code);
 };
 
-const getFilterWithVisitIds = (filter, visitIds) => ({
-  ...filter,
-  searchCriteria: {
-    ...filter.searchCriteria,
-    ids: visitIds,
-  },
-});
-
 // Visit search has vendor id; configuration search gives vendor name.
 const fetchVendorByConfigurationId = async (visits = []) => {
   const amcConfigurationIds = [...new Set(visits.map((visit) => visit?.amcConfigurationId).filter(Boolean))];
@@ -190,52 +181,24 @@ const fetchVendorByConfigurationId = async (visits = []) => {
   }, {});
 };
 
-const fetchAllScheduledVisits = async (filter) => {
-  const firstResponse = await VisitService.fetchVisits(filter, REPORT_LEVEL_FETCH_LIMIT, 0);
-  const allVisits = [...(firstResponse?.ScheduledVisits || [])];
-  const totalCount = firstResponse?.TotalCount !== undefined && firstResponse?.TotalCount !== null ? firstResponse.TotalCount : allVisits.length;
-  const requests = [];
-
-  for (let nextOffset = REPORT_LEVEL_FETCH_LIMIT; nextOffset < totalCount; nextOffset += REPORT_LEVEL_FETCH_LIMIT) {
-    requests.push(VisitService.fetchVisits(filter, REPORT_LEVEL_FETCH_LIMIT, nextOffset));
-  }
-
-  const responses = await Promise.all(requests);
-  responses.forEach((response) => {
-    allVisits.push(...(response?.ScheduledVisits || []));
-  });
-
-  return allVisits;
-};
-
-// Fetch all AMC visits for reviewer report-level view.
+// Fetch AMC visits for reviewer report-level view.
 const fetchReportLevelVisits = async (filter, limit, offset, searchableFilters) => {
-  const allScheduledVisits = await fetchAllScheduledVisits(filter);
-  const allVendorByConfigurationId = await fetchVendorByConfigurationId(allScheduledVisits);
-  const allVisits = formatVisits(allScheduledVisits, allVendorByConfigurationId);
-  const filterOptions = getFilterOptions(allVisits, searchableFilters);
-  const activeSearchableFilters = hasSearchableFilters(searchableFilters);
-  const filteredVisitIds = activeSearchableFilters ? applySearchableFilters(allVisits, searchableFilters).map((visit) => visit.id).filter(Boolean) : [];
-
-  if (activeSearchableFilters && !filteredVisitIds.length) {
-    return {
-      visits: [],
-      totalCount: 0,
-      filterOptions,
-    };
-  }
-
-  const visitsResponse = await VisitService.fetchVisits(
-    activeSearchableFilters ? getFilterWithVisitIds(filter, filteredVisitIds) : filter,
-    limit,
-    offset
-  );
+  // Fetch only the visible table page; pagination controls provide limit and offset.
+  const visitsResponse = await VisitService.fetchVisits(filter, limit, offset);
   const scheduledVisits = visitsResponse?.ScheduledVisits || [];
   const vendorByConfigurationId = await fetchVendorByConfigurationId(scheduledVisits);
+  const visits = formatVisits(scheduledVisits, vendorByConfigurationId);
+  const filterOptions = getFilterOptions(visits, searchableFilters);
+  const activeSearchableFilters = hasSearchableFilters(searchableFilters);
+  const filteredVisits = activeSearchableFilters ? applySearchableFilters(visits, searchableFilters) : visits;
 
   return {
-    visits: formatVisits(scheduledVisits, vendorByConfigurationId),
-    totalCount: visitsResponse?.TotalCount !== undefined && visitsResponse?.TotalCount !== null ? visitsResponse.TotalCount : scheduledVisits.length,
+    visits: filteredVisits,
+    totalCount: activeSearchableFilters
+      ? filteredVisits.length
+      : visitsResponse?.TotalCount !== undefined && visitsResponse?.TotalCount !== null
+        ? visitsResponse.TotalCount
+        : scheduledVisits.length,
     filterOptions,
   };
 };
@@ -260,7 +223,12 @@ const useReportLevelVisits = (pageSize, pageOffset, statuses = [], searchableFil
   const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, error, data } = useQuery(
     ["AMC_REPORT_LEVEL_VISITS", filter, limit, offset, searchableFilters],
-    () => fetchReportLevelVisits(filter, limit, offset, searchableFilters)
+    () => fetchReportLevelVisits(filter, limit, offset, searchableFilters),
+    {
+      // Keep the existing rows visible during pagination and avoid refetches when DevTools/window focus changes.
+      keepPreviousData: true,
+      refetchOnWindowFocus: false,
+    }
   );
 
   return {

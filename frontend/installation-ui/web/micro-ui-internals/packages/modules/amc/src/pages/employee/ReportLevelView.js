@@ -1,16 +1,74 @@
 import React, { useState } from "react";
 import {Loader, Table} from "@egovernments/digit-ui-react-components";
-import { Link } from "react-router-dom";
+import { Link, useHistory, useLocation } from "react-router-dom";
 import useReportLevelVisits from "../../hooks/useReportLevelVisits";
 import StatusFilter from "../../components/ReportLevelView/StatusFilter";
 
+const getQueryParams = (search) => new URLSearchParams(search || "");
+
+// Restore selected status filters from the URL after refresh or shared link navigation.
+const getInitialStatuses = (search) => {
+  const statuses = getQueryParams(search).get("statuses");
+  return statuses ? statuses.split(",").filter(Boolean) : [];
+};
+
+const getBoundaryFilter = (code, t) => code ? {
+  code,
+  name: t(`Boundary_${code}`),
+  type: "boundary",
+} : undefined;
+
+// Rehydrate location and vendor dropdown selections from query params.
+const getInitialSearchableFilters = (search, t) => {
+  const params = getQueryParams(search);
+  const filters = {};
+  const state = getBoundaryFilter(params.get("state"), t);
+  const district = getBoundaryFilter(params.get("district"), t);
+  const block = getBoundaryFilter(params.get("block"), t);
+  const vendor = params.get("vendor");
+
+  if (state) filters.state = state;
+  if (district) filters.district = district;
+  if (block) filters.block = block;
+  if (vendor) {
+    filters.vendor = {
+      code: vendor,
+      name: params.get("vendorName") || vendor,
+    };
+  }
+
+  return filters;
+};
+
 const ReportLevelView = ({ t }) => {
+  const history = useHistory();
+  const location = useLocation();
   const [pageSize, setPageSize] = useState(10);
   const [pageOffset, setPageOffset] = useState(0);
-  const [selectedStatuses, setSelectedStatuses] = useState([]);
-  const [searchableFilters, setSearchableFilters] = useState({});
+  const [selectedStatuses, setSelectedStatuses] = useState(() => getInitialStatuses(location.search));
+  const [searchableFilters, setSearchableFilters] = useState(() => getInitialSearchableFilters(location.search, t));
   const { isLoading, isError, data } = useReportLevelVisits(pageSize, pageOffset, selectedStatuses, searchableFilters);
   const reportLevelLabel = t("AMC_REPORT_LEVEL_VIEW");
+
+  // Store only active filters in the URL so refresh keeps the reviewer report state.
+  const persistFilters = (statuses = selectedStatuses, filters = searchableFilters) => {
+    const params = new URLSearchParams();
+
+    if (statuses.length) params.set("statuses", statuses.join(","));
+    if (filters.state?.code) params.set("state", filters.state.code);
+    if (filters.district?.code) params.set("district", filters.district.code);
+    if (filters.block?.code) params.set("block", filters.block.code);
+    if (filters.vendor?.code) {
+      params.set("vendor", filters.vendor.code);
+      if (filters.vendor.name) params.set("vendorName", filters.vendor.name);
+    }
+
+    const search = params.toString();
+    history.replace({
+      pathname: location.pathname,
+      search: search ? `?${search}` : "",
+    });
+  };
 
   const onNextPage = () => {
     setPageOffset(pageOffset + pageSize);
@@ -39,12 +97,14 @@ const ReportLevelView = ({ t }) => {
     // Reset pagination whenever report status filters change.
     setSelectedStatuses(statuses);
     setPageOffset(0);
+    persistFilters(statuses, searchableFilters);
   };
 
   const handleSearchableFilterChange = (filters) => {
     // Reset pagination whenever location/vendor filters change.
     setSearchableFilters(filters);
     setPageOffset(0);
+    persistFilters(selectedStatuses, filters);
   };
 
   const columns = [
