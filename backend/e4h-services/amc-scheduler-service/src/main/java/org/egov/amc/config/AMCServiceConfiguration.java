@@ -77,6 +77,18 @@ public class AMCServiceConfiguration {
     @Value("${egov.v2.facility.amc.index.update.url}")
     private String facilityAmcIndexUpdateUrl;
 
+    @Value("${egov.field.planner.host:}")
+    private String fieldPlannerHost;
+
+    /**
+     * Resolves a facility's system type, which field-planner owns - the value is captured on the
+     * installation plan a facility is linked to. Published to the health facility index alongside the
+     * AMC snapshot. Defaulted to blank so an environment that has not configured field-planner
+     * degrades to indexing without a system type instead of failing to start.
+     */
+    @Value("${egov.field.planner.facility.system.type.search.url:}")
+    private String fieldPlannerFacilitySystemTypeSearchUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
