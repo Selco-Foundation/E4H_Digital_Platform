@@ -218,6 +218,40 @@ public class FieldPlannerApiController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    /**
+     * Resolves the system type of specific facilities. Unlike its
+     * {@code /facility/system_type_capacity/_search} sibling, the result is keyed by facilityId and is
+     * not deduplicated, so a caller syncing per-facility data (the AMC index sync) can tell whose
+     * value is whose.
+     *
+     * <p>{@code limit}/{@code offset} do not bound the result - the service walks every matching row,
+     * because a truncated page would report "no system type" for a facility that has one. They still
+     * have to be sent: {@link URLParams} declares both {@code @NotNull}, so omitting them fails
+     * validation before this method is reached.
+     */
+    @RequestMapping(value = "/facility/system_type/_search", method = RequestMethod.POST)
+    public ResponseEntity<FacilitySystemTypeResponse> searchFacilitySystemType(
+            @Valid @ModelAttribute URLParams urlParams,
+            @ApiParam(value = "Resolve the systemType of each facility in the criteria's facilityId list, as captured on the installation plan the facility is linked to.", required = true) @Valid @RequestBody FieldPlanFacilitySearchRequest request
+    ) throws Exception {
+        log.trace("Entering searchFacilitySystemType endpoint");
+        log.info("Received facility systemType search request for tenant: {}", urlParams.getTenantId());
+
+        List<FacilitySystemType> facilitySystemTypes = fieldPlannerFacilityService.searchSystemTypeByFacilityIds(
+                request,
+                urlParams.getTenantId(),
+                urlParams.getLastChangedSince(),
+                urlParams.getIncludeDeleted()
+        );
+        FacilitySystemTypeResponse response = FacilitySystemTypeResponse.builder()
+                .responseInfo(ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true))
+                .facilitySystemTypes(facilitySystemTypes)
+                .build();
+        log.info("Facility systemType search completed, resolved {} facility/facilities", facilitySystemTypes.size());
+        log.trace("Exiting searchFacilitySystemType endpoint");
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
     @RequestMapping(value = "/facility/_unassign", method = RequestMethod.POST)
     public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityUnassign(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
         log.trace("Entering fieldPlanFacilityUnassign endpoint");
