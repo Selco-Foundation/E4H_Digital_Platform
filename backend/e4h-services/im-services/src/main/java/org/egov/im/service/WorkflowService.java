@@ -37,6 +37,8 @@ public class WorkflowService {
 
     private SLAService slaService;
 
+    private CurrentOwnerService currentOwnerService;
+
     private static final Map<Priority, String> PRIORITY_BUSINESS_SERVICE_MAP = Map.of(
             Priority.HIGH, IM_BUSINESSSERVICE_HIGH,
             Priority.MEDIUM, IM_BUSINESSSERVICE_MEDIUM,
@@ -49,13 +51,15 @@ public class WorkflowService {
     @Autowired
     public WorkflowService(IMConfiguration imConfiguration,
                            ServiceRequestRepository repository,
-                           ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils, SLAService slaService) {
+                           ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils, SLAService slaService,
+                           CurrentOwnerService currentOwnerService) {
         this.imConfiguration = imConfiguration;
         this.repository = repository;
         this.mapper = mapper;
         this.notificationService = notificationService;
         this.mdmsUtils = mdmsUtils;
         this.slaService = slaService;
+        this.currentOwnerService = currentOwnerService;
     }
 
     /*
@@ -69,10 +73,20 @@ public class WorkflowService {
         String businessService = PRIORITY_BUSINESS_SERVICE_MAP.getOrDefault(priority, IM_BUSINESSSERVICE);
         log.info("Fetching business service for tenant: {}, priority: {}, businessService: {}",
                 tenantId, priority, businessService);
-        log.trace("Building search URL and fetching business service");
+        return getBusinessServiceByName(incidentRequest.getRequestInfo(), tenantId, businessService);
+    }
+
+    /**
+     * Fetches a BusinessService definition (states, their actions and the roles on them) by name.
+     * <p>
+     * Unlike {@link #getBusinessService(IncidentRequest, Priority)} this needs no incident, so a
+     * batch caller can load each of the incident business services once instead of per ticket.
+     * Leaves {@link #states} alone: only a real transition should publish that.
+     */
+    public BusinessService getBusinessServiceByName(RequestInfo requestInfo, String tenantId, String businessService) {
+        log.trace("WorkflowService::getBusinessServiceByName method invoked");
         StringBuilder url = getSearchURLWithParams(tenantId, businessService);
-        RequestInfoWrapper requestInfoWrapper
-                = RequestInfoWrapper.builder().requestInfo(incidentRequest.getRequestInfo()).build();
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
         Object result = repository.fetchResult(url, requestInfoWrapper);
         BusinessServiceResponse response = null;
         try {
@@ -83,8 +97,8 @@ public class WorkflowService {
         }
 
         if (CollectionUtils.isEmpty(response.getBusinessServices())) {
-            log.error("Business service not found for tenant: {}, businessService: {}", tenantId, IM_BUSINESSSERVICE);
-            throw new CustomException("BUSINESSSERVICE_NOT_FOUND", "The businessService " + IM_BUSINESSSERVICE + " is not found");
+            log.error("Business service not found for tenant: {}, businessService: {}", tenantId, businessService);
+            throw new CustomException("BUSINESSSERVICE_NOT_FOUND", "The businessService " + businessService + " is not found");
         }
 
         log.debug("Business service fetched successfully");
@@ -115,6 +129,8 @@ public class WorkflowService {
         log.info("Workflow status updated for incident: {}. New status: {}", incidentRequest.getIncident().getIncidentId(), newStatus);
         log.trace("Enriching total SLA");
         enrichTotalSla(wrapper, updatedProcessInstance);
+        log.trace("Enriching current owner");
+        currentOwnerService.enrichCurrentOwner(wrapper, updatedProcessInstance, this.states);
         return updatedProcessInstance;
     }
 
@@ -427,12 +443,12 @@ public class WorkflowService {
     }
 
     /**
-     * Computes and sets SLA remaining fields for a recovery/resync path (e.g. reindex)
-     * that already has the incident's current ProcessInstance but never went through
-     * updateWorkflowStatus(). enrichTotalSla() depends on this.states being populated,
+     * Computes and sets the workflow-derived index fields (SLA remaining, current owner) for a
+     * recovery/resync path (e.g. reindex) that already has the incident's current ProcessInstance
+     * but never went through updateWorkflowStatus(). Both depend on this.states being populated,
      * which normally only happens as a side effect of getBusinessService() inside
      * getProcessInstanceForIM() during a real transition; this wrapper performs that
-     * same lookup first so enrichTotalSla() has valid state-SLA definitions to work with.
+     * same lookup first so they have valid state definitions to work with.
      */
     public void enrichTotalSlaForResync(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
         log.trace("WorkflowService::enrichTotalSlaForResync method invoked");
@@ -441,6 +457,8 @@ public class WorkflowService {
         BusinessService businessService = getBusinessService(request, priority);
         this.states = businessService.getStates();
         enrichTotalSla(wrapper, processInstance);
+        log.trace("Enriching current owner for resync");
+        currentOwnerService.enrichCurrentOwner(wrapper, processInstance, this.states);
     }
 
     /**

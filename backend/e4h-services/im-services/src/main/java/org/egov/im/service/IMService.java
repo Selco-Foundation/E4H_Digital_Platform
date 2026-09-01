@@ -185,7 +185,7 @@ public class IMService {
         producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
         log.trace("Enriching fields for indexing");
-        enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+        enrichmentService.enrichFieldsForIndexing(wrapper, boundary, true);
         log.trace("Publishing incident to indexer topic");
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         log.trace("Enriching fields for audit indexing");

@@ -973,6 +973,7 @@ public class FacilityService {
                     .facilityCategory(firstNonBlank(facility.getFacilityCategory(), existingFacility.getFacilityCategory()))
                     .mappedVendorName(facility.getMappedVendorName())
                     .mappedVendorUserName(facility.getMappedVendorUserName())
+                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails())
                     .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
                     .build();
@@ -1919,6 +1920,31 @@ public class FacilityService {
         if (patch != null) {
             facilityRepository.pushToKibana(patch);
         }
+    }
+
+    /**
+     * Writes a facility's AMC snapshot onto the health facility index, and nowhere else.
+     *
+     * <p>Called by amc-scheduler-service, which owns this data. Deliberately index-only: it does not
+     * touch the facility table and does not go through the indexer Kafka topic, so no AMC field is
+     * ever persisted in {@code additional_details}. Authorization matches the facility edit APIs
+     * (FACILITY_ADMIN or SYSTEM_USER).
+     */
+    public FacilityAmcIndexUpdateResponse updateAmcIndexFields(FacilityAmcIndexUpdateRequest request) {
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+        if (request.getFacilityId() == null || request.getFacilityId().isBlank()) {
+            throw new IllegalArgumentException("facilityId is required");
+        }
+        validateFacilityEditAuthorization(request.getRequestInfo());
+
+        int updated = facilityKibanaMapper.updateAmcFieldsByFacilityId(
+                request.getFacilityId(), request.getTenantId(), request.getAmcFields());
+        return FacilityAmcIndexUpdateResponse.builder()
+                .facilityId(request.getFacilityId())
+                .updated(Math.max(updated, 0))
+                .build();
     }
 
     private void validateFacilityEditAuthorization(RequestInfo requestInfo) {
