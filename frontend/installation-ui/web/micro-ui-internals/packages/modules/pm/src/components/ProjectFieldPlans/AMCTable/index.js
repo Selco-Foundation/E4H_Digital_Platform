@@ -61,7 +61,7 @@ const AMCTable = ({ t, projectId }) => {
         Header: () => GetHead(t("AMC_PLAN_NAME")),
         Cell: ({ row }) => (
           <Link
-            to={`/${window.contextPath}/employee/pm/project/${projectId}/amc/create?amcConfigurationId=${row.original["id"]}&key=1`}
+            to={`/${window.contextPath}/employee/pm/project/${projectId}/amc/create?amc_plan_id=${row.original["id"]}&key=1`}
             style={{ color: "#C84C0E" }}
           >
             {row.original["name"]}
