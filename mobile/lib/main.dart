@@ -55,6 +55,7 @@ import 'router/app_router.dart';
 import 'utils/background_service.dart';
 import 'utils/constants.dart';
 import 'utils/app_logger.dart';
+import 'utils/intl_locale.dart';
 
 late Isar _isar;
 late Dio _dio;
@@ -177,6 +178,7 @@ class _MainAppState extends State<MainApp> {
                       final selectedLocale =
                           AppSharedPreferences().getSelectedLocale ??
                               firstLanguage;
+                      syncIntlDefaultLocale(selectedLocale);
 
                       return MaterialApp.router(
                         scaffoldMessengerKey: scaffoldMessengerKey,
