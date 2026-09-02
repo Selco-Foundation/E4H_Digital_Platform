@@ -12,6 +12,11 @@ const getInitialStatuses = (search) => {
   return statuses ? statuses.split(",").filter(Boolean) : [];
 };
 
+const getInitialPaginationValue = (search, key, fallback, allowZero = true) => {
+  const value = Number(getQueryParams(search).get(key));
+  return Number.isFinite(value) && value >= (allowZero ? 0 : 1) ? value : fallback;
+};
+
 const getBoundaryFilter = (code, t) => code ? {
   code,
   name: t(`Boundary_${code}`),
@@ -43,18 +48,20 @@ const getInitialSearchableFilters = (search, t) => {
 const ReportLevelView = ({ t }) => {
   const history = useHistory();
   const location = useLocation();
-  const [pageSize, setPageSize] = useState(10);
-  const [pageOffset, setPageOffset] = useState(0);
+  const [pageSize, setPageSize] = useState(() => getInitialPaginationValue(location.search, "pageSize", 10, false));
+  const [pageOffset, setPageOffset] = useState(() => getInitialPaginationValue(location.search, "pageOffset", 0));
   const [selectedStatuses, setSelectedStatuses] = useState(() => getInitialStatuses(location.search));
   const [searchableFilters, setSearchableFilters] = useState(() => getInitialSearchableFilters(location.search, t));
   const { isLoading, isError, data } = useReportLevelVisits(pageSize, pageOffset, selectedStatuses, searchableFilters);
   const reportLevelLabel = t("AMC_REPORT_LEVEL_VIEW");
 
-  // Store only active filters in the URL so refresh keeps the reviewer report state.
-  const persistFilters = (statuses = selectedStatuses, filters = searchableFilters) => {
+  // Store active filters and pagination in the URL so refresh/detail-back keeps the report state.
+  const persistReportState = (statuses = selectedStatuses, filters = searchableFilters, nextPageSize = pageSize, nextPageOffset = pageOffset) => {
     const params = new URLSearchParams();
 
     if (statuses.length) params.set("statuses", statuses.join(","));
+    params.set("pageSize", nextPageSize);
+    params.set("pageOffset", nextPageOffset);
     if (filters.state?.code) params.set("state", filters.state.code);
     if (filters.district?.code) params.set("district", filters.district.code);
     if (filters.block?.code) params.set("block", filters.block.code);
@@ -71,16 +78,23 @@ const ReportLevelView = ({ t }) => {
   };
 
   const onNextPage = () => {
-    setPageOffset(pageOffset + pageSize);
+    const nextPageOffset = pageOffset + pageSize;
+    setPageOffset(nextPageOffset);
+    persistReportState(selectedStatuses, searchableFilters, pageSize, nextPageOffset);
   };
 
   const onPrevPage = () => {
-    setPageOffset(pageOffset - pageSize);
+    const nextPageOffset = Math.max(pageOffset - pageSize, 0);
+    setPageOffset(nextPageOffset);
+    persistReportState(selectedStatuses, searchableFilters, pageSize, nextPageOffset);
   };
 
   const onPageSizeChange = (event) => {
-    setPageSize(parseInt(event.target.value, 10));
+    const nextPageSize = parseInt(event.target.value, 10);
+    if (!Number.isFinite(nextPageSize) || nextPageSize <= 0) return;
     setPageOffset(0);
+    setPageSize(nextPageSize);
+    persistReportState(selectedStatuses, searchableFilters, nextPageSize, 0);
   };
 
   const getCell = (value) => <span className="cell-text" style={{ color: "#000000" }}>{value || "-"}</span>;
@@ -97,14 +111,14 @@ const ReportLevelView = ({ t }) => {
     // Reset pagination whenever report status filters change.
     setSelectedStatuses(statuses);
     setPageOffset(0);
-    persistFilters(statuses, searchableFilters);
+    persistReportState(statuses, searchableFilters, pageSize, 0);
   };
 
   const handleSearchableFilterChange = (filters) => {
     // Reset pagination whenever location/vendor filters change.
     setSearchableFilters(filters);
     setPageOffset(0);
-    persistFilters(selectedStatuses, filters);
+    persistReportState(selectedStatuses, filters, pageSize, 0);
   };
 
   const columns = [
@@ -114,7 +128,10 @@ const ReportLevelView = ({ t }) => {
         <span className="link">
           {/* Open existing AMC report detail page from report-level view. */}
           <Link
-            to={`/${window.contextPath}/employee/amc/reports/${row.original.id}`}
+            to={{
+              pathname: `/${window.contextPath}/employee/amc/reports/${row.original.id}`,
+              search: location.search,
+            }}
             style={{ color: "#C84C0E" }}
           >
             {row.original.facilityName || "-"}
