@@ -102,9 +102,37 @@ public class AmcPlanService {
                 amcPlan.setName(amcPlanFromDB.getName());
             }
 
-            // projectId is immutable (validated above); carry it forward since the update payload may omit it.
+            // The persister writes every column in the UPDATE query unconditionally, so any field left
+            // null here is not "left unchanged" - it overwrites the DB value with NULL. A caller (e.g.
+            // ingestion-service's /amcConfigurationBulkIngest) is not required to resend every field on
+            // every update, so anything omitted from the request must be carried forward from the DB
+            // row explicitly. projectId/tenantId are additionally immutable (validated above).
             if (amcPlan.getProjectId() == null) {
                 amcPlan.setProjectId(amcPlanFromDB.getProjectId());
+            }
+            if (amcPlan.getTenantId() == null) {
+                amcPlan.setTenantId(amcPlanFromDB.getTenantId());
+            }
+            if (amcPlan.getHealthFacilityNumber() == null) {
+                amcPlan.setHealthFacilityNumber(amcPlanFromDB.getHealthFacilityNumber());
+            }
+            if (amcPlan.getStartDate() == null) {
+                amcPlan.setStartDate(amcPlanFromDB.getStartDate());
+            }
+            if (amcPlan.getEndDate() == null) {
+                amcPlan.setEndDate(amcPlanFromDB.getEndDate());
+            }
+            if (amcPlan.getGeographyScope() == null) {
+                amcPlan.setGeographyScope(amcPlanFromDB.getGeographyScope());
+            }
+            if (amcPlan.getSelectedActivities() == null) {
+                amcPlan.setSelectedActivities(amcPlanFromDB.getSelectedActivities());
+            }
+            if (amcPlan.getStatus() == null) {
+                amcPlan.setStatus(amcPlanFromDB.getStatus());
+            }
+            if (amcPlan.getAdditionalDetails() == null) {
+                amcPlan.setAdditionalDetails(amcPlanFromDB.getAdditionalDetails());
             }
 
             amcPlanEnrichment.enrichAmcPlanOnUpdate(amcPlan, amcPlanFromDB, request.getRequestInfo());
