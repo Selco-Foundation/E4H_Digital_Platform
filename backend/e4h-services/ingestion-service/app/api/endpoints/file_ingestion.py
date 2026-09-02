@@ -3957,6 +3957,7 @@ async def bulk_ingest_amc_configurations(
         project_id: str = Form(..., description="Project ID"),
         user_info_list: str = Form(..., description="JSON array of user info objects with vendor mapping"),
         geography_details: str = Form(..., description="JSON object with state, districts and blocks for the AMC configurations being created"),
+        amc_plan_id: Optional[str] = Form(default=None, description="Existing AMC Plan to add/update configurations under. A project can have several AMC Plans (e.g. one per subset of facilities); omit to create a new AMC Plan for this batch."),
         request_info: str = Form(default="")
 ):
     input_temp_file = None
@@ -4093,6 +4094,23 @@ async def bulk_ingest_amc_configurations(
         if not facility_client:
             raise HTTPException(status_code=500, detail="Facility Service is not configured")
 
+        # Fail fast on a bogus/mismatched amc_plan_id, before processing the whole file. A project can
+        # have several AMC Plans (e.g. one per subset of facilities), so this is a targeted lookup by
+        # id, not "the project's plan".
+        if amc_plan_id:
+            try:
+                matching_plans = amc_client.search_amc_plans(
+                    request_info_obj, project_id=project_id, plan_ids=[amc_plan_id], tenant_id=tenant_id
+                )
+            except Exception as e:
+                logger.error(f"Error validating AMC Plan {amc_plan_id} for project {project_id}: {e}", exc_info=True)
+                raise HTTPException(status_code=502, detail=f"AMC Plan lookup failed: {str(e)}")
+            if not matching_plans:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"AMC Plan {amc_plan_id} was not found for project {project_id}",
+                )
+
         facility_ids_from_file = []
         for _, row in df.iterrows():
             if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
@@ -4183,6 +4201,11 @@ async def bulk_ingest_amc_configurations(
         # Facilities the user kept in the file with a usable AMC selection. Anything already configured
         # inside the selected districts/blocks but missing from this set loses its configuration.
         facility_ids_kept_in_file: Set[str] = set()
+        # AMC Plan aggregates for this batch (see the AmcPlan search-or-create/update block below):
+        # the earliest/latest effective start/end date "dans le fichier excel" across every row that
+        # results in a create or update.
+        batch_min_start_ms: Optional[int] = None
+        batch_max_end_ms: Optional[int] = None
 
         for index, row in df.iterrows():
             try:
@@ -4257,19 +4280,53 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC duration value: {amc_duration}'
                     continue
 
-                facility_ids_kept_in_file.add(facility_id)
-
                 # An existing configuration is updated in place rather than duplicated - the database
                 # allows only one configuration per (tenant, facility, project, vendor).
                 existing_config = existing_config_by_facility.get(facility_id)
+
+                # A facility can belong to at most one AMC Plan: reject the row rather than silently
+                # reassigning it or letting the DB's unique-installation constraint fail it later. A
+                # legacy config with no amcPlanId yet (created before AMC Plan existed) is not a
+                # conflict - it gets adopted into whichever plan this batch targets.
+                existing_plan_id = existing_config.get("amcPlanId") if existing_config else None
+                if existing_plan_id and existing_plan_id != amc_plan_id:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = (
+                        f'Facility already has an active AMC configuration under a different AMC Plan '
+                        f'({existing_plan_id})'
+                    )
+                    continue
+
+                facility_ids_kept_in_file.add(facility_id)
+
+                # This row's effective start date, for the AMC Plan aggregates - same precedence the
+                # create/update branches below already apply individually (parsed cell > existing
+                # config's start date > installation submission date > now), just tracked as a running
+                # min/max across the whole batch instead of being resolved once per row in isolation.
+                if parsed_start_date is not None:
+                    row_start_dt = parsed_start_date
+                elif existing_config is not None and existing_config.get("configurationStartDate"):
+                    row_start_dt = datetime.fromtimestamp(existing_config["configurationStartDate"] / 1000)
+                else:
+                    fallback_ms = installation_submission_dates_by_facility.get(facility_id)
+                    row_start_dt = datetime.fromtimestamp(fallback_ms / 1000) if fallback_ms else datetime.now()
+                row_start_ms = int(row_start_dt.timestamp() * 1000)
+                row_end_ms = int(_add_months(row_start_dt, duration_months).timestamp() * 1000)
+                batch_min_start_ms = row_start_ms if batch_min_start_ms is None else min(batch_min_start_ms, row_start_ms)
+                batch_max_end_ms = row_end_ms if batch_max_end_ms is None else max(batch_max_end_ms, row_end_ms)
+
                 if existing_config:
                     start_date_changed = (
                         parsed_start_date_ms is not None
                         and parsed_start_date_ms != existing_config.get("configurationStartDate")
                     )
+                    # A legacy config with no AMC Plan yet counts as "changed" once this batch adopts
+                    # it into one - otherwise it would be silently skipped and never get amcPlanId set.
+                    plan_assignment_changed = amc_plan_id is not None and existing_config.get("amcPlanId") != amc_plan_id
                     if (existing_config.get("durationMonths") == duration_months
                             and existing_config.get("visitFrequencyMonths") == frequency_months
                             and not start_date_changed
+                            and not plan_assignment_changed
                             and str(existing_config.get("status") or "").strip().upper() == "ACTIVE"):
                         df.at[index, 'status'] = 'skipped'
                         df.at[index, 'error'] = 'No change'
@@ -4380,13 +4437,21 @@ async def bulk_ingest_amc_configurations(
         # configurations are deactivated (soft delete - the AMC service clears isActive, no row is
         # removed and the visit history is preserved). Facilities outside the selected
         # districts/blocks are never touched - another upload owns them.
+        #
+        # Scoped to amc_plan_id: a project can have several AMC Plans, each covering a different
+        # subset of facilities, so "missing from this file" must only reconcile against the plan this
+        # batch targets - never against configurations that belong to a different plan. When this
+        # batch is creating a brand-new plan (amc_plan_id not given), there is nothing to reconcile
+        # against yet, so the deletion pass is skipped entirely.
         configs_to_delete = []
+        deleted_facility_ids: Set[str] = set()
         candidate_facility_ids = [
             facility_id for facility_id, config in existing_config_by_facility.items()
             if str(config.get("status") or "").strip().upper() == "ACTIVE"
             and facility_id not in facility_ids_kept_in_file
-        ] if has_geography_scope else []
-        if not has_geography_scope and existing_config_by_facility:
+            and config.get("amcPlanId") == amc_plan_id
+        ] if (has_geography_scope and amc_plan_id) else []
+        if not has_geography_scope and existing_config_by_facility and amc_plan_id:
             logger.warning(
                 "Skipping AMC deletion pass for project %s: geography_details defines no districts or "
                 "blocks, so the upload's scope cannot be bounded and every configuration would qualify",
@@ -4412,6 +4477,51 @@ async def bulk_ingest_amc_configurations(
                     "id": config.get("id"),
                     "tenantId": config.get("tenantId") or tenant_id,
                 })
+                deleted_facility_ids.add(facility_id)
+
+        # AMC Plan: groups this batch's AmcConfigurations together (amc_plan_id FK). A project can have
+        # several AMC Plans - e.g. 300 facilities split across several plans - so this either updates
+        # the plan the caller targeted (amc_plan_id given, already validated to belong to this project
+        # above) or creates a brand-new one for this batch. healthFacilityNumber/startDate/endDate are
+        # scoped to that one plan: this batch's kept facilities, plus (only when updating an existing
+        # plan) whichever of that plan's own facilities are not being deleted - never facilities that
+        # belong to a different plan. This is a blocking step (raises on failure, aborts before any
+        # config is sent) - proceeding without a plan link would defeat the point of the feature.
+        final_active_facility_ids: Set[str] = set(facility_ids_kept_in_file)
+        if amc_plan_id:
+            for fid, cfg in existing_config_by_facility.items():
+                if fid in final_active_facility_ids or fid in deleted_facility_ids:
+                    continue
+                if cfg.get("amcPlanId") == amc_plan_id and str(cfg.get("status") or "").strip().upper() == "ACTIVE":
+                    final_active_facility_ids.add(fid)
+        health_facility_number = len(final_active_facility_ids)
+
+        if health_facility_number > 0 and amc_scheduler_service_url:
+            plan_start_ms = batch_min_start_ms or int(datetime.now().timestamp() * 1000)
+            plan_end_ms = batch_max_end_ms or plan_start_ms
+            plan_payload = {
+                "tenantId": tenant_id,
+                "projectId": project_id,
+                "healthFacilityNumber": health_facility_number,
+                "startDate": plan_start_ms,
+                "endDate": plan_end_ms,
+                "geographyScope": geography_details_data,
+                "createdBy": request_info_obj.user_info.uuid if request_info_obj.user_info else None,
+            }
+            try:
+                if amc_plan_id:
+                    plan_payload["id"] = amc_plan_id
+                    amc_plan = amc_client.update_amc_plan(request_info_obj, plan_payload)
+                else:
+                    amc_plan = amc_client.create_amc_plan(request_info_obj, plan_payload)
+                    amc_plan_id = amc_plan.get("id")
+                logger.info(f"AMC Plan '{amc_plan.get('name')}' ({amc_plan_id}) linked for project {project_id}")
+            except Exception as e:
+                logger.error(f"Error creating/updating AMC Plan for project {project_id}: {e}", exc_info=True)
+                raise HTTPException(status_code=502, detail=f"AMC Plan creation failed: {str(e)}")
+
+            for cfg in configs_to_create + configs_to_update:
+                cfg["amcPlanId"] = amc_plan_id
 
         deleted_count = 0
         with requests.Session() as http_session:
@@ -4463,6 +4573,8 @@ async def bulk_ingest_amc_configurations(
         )
         # Deletions do not show up as rows in the returned file, so the UI needs them out of band.
         response.headers["X-Deleted-Count"] = str(deleted_count)
+        if amc_plan_id:
+            response.headers["X-Amc-Plan-Id"] = amc_plan_id
         return response
 
     except HTTPException:

@@ -128,6 +128,7 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
                 .facilityId(rs.getString("amc_facility_id"))
                 .tenantId(rs.getString("amc_tenant_id"))
                 .projectId(rs.getString("amc_project_id"))
+                .amcPlanId(rs.getString("amc_amc_plan_id"))
                 .durationMonths(rs.getInt("amc_duration_months"))
                 .visitFrequencyMonths(rs.getInt("amc_visit_frequency_months"))
                 .status(rs.getString("amc_status"))
