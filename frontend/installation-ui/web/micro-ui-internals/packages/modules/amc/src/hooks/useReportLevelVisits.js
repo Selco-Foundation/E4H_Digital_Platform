@@ -1,6 +1,5 @@
 import {useQuery, useQueryClient} from "react-query";
 import {VisitService} from "../services/VisitService";
-import {AMCService} from "../services/AMC";
 import {getFacilityGeography} from "../utilities/GeographyUtils";
 
 const SUBMITTED_STATUSES = ["PENDING_APPROVAL", "APPROVED", "REJECTED"];
@@ -37,16 +36,7 @@ const getEpochMilliseconds = (date) => {
   return Number.isNaN(epochMilliseconds) ? 0 : epochMilliseconds;
 };
 
-const getAssignedVendor = (visit, vendorByConfigurationId) => {
-  return (
-    // Prefer vendor data already enriched on the visit response before falling back to configuration search.
-    visit?.amcConfiguration?.vendor?.name ||
-    vendorByConfigurationId?.[visit?.amcConfigurationId]?.name ||
-    vendorByConfigurationId?.[visit?.amcConfigurationId]?.id ||
-    visit?.amcConfiguration?.vendorId ||
-    ""
-  );
-};
+const getAssignedVendor = (visit) => visit?.amcConfiguration?.vendor?.name || "";
 
 const sortReportLevelVisits = (visits = []) => {
   return [...visits].sort((first, second) => {
@@ -66,7 +56,7 @@ const sortReportLevelVisits = (visits = []) => {
 };
 
 // Format the API response for report-level table columns.
-const formatVisits = (visits, vendorByConfigurationId = {}) => {
+const formatVisits = (visits) => {
   return sortReportLevelVisits(visits)?.map((visit) => {
     const geography = getFacilityGeography(visit?.facility);
     const submittedOn = getSubmittedOnTimestamp(visit);
@@ -80,8 +70,9 @@ const formatVisits = (visits, vendorByConfigurationId = {}) => {
       status: visit?.status || "",
       submittedOn,
       submittedOnFormatted: formatDate(submittedOn),
-      assignedVendor: getAssignedVendor(visit, vendorByConfigurationId),
-      assignedVendorId: visit?.amcConfiguration?.vendorId || vendorByConfigurationId?.[visit?.amcConfigurationId]?.id || "",
+      // Vendor is enriched by visit search under ScheduledVisits[].amcConfiguration.vendor.
+      assignedVendor: getAssignedVendor(visit),
+      assignedVendorId: visit?.amcConfiguration?.vendorId || "",
     };
   }) || [];
 };
@@ -152,42 +143,12 @@ const hasSearchableFilters = (filters = {}) => {
   return ["state", "district", "block", "vendor"].some((key) => filters?.[key]?.code);
 };
 
-// Visit search has vendor id; configuration search gives vendor name.
-const fetchVendorByConfigurationId = async (visits = []) => {
-  const amcConfigurationIds = [...new Set(visits.map((visit) => visit?.amcConfigurationId).filter(Boolean))];
-
-  if (!amcConfigurationIds.length) {
-    return {};
-  }
-
-  const tenantId = Digit.ULBService.getCurrentTenantId();
-  const response = await AMCService.fetchAMCConfigurations(
-    {
-      searchCriteria: {
-        tenantId,
-        ids: amcConfigurationIds,
-      },
-    },
-    amcConfigurationIds.length,
-    0
-  );
-
-  return (response?.AmcConfigurations || []).reduce((vendorByConfigurationId, configuration) => {
-    vendorByConfigurationId[configuration.id] = {
-      id: configuration.vendorId,
-      name: configuration.vendor?.name,
-    };
-    return vendorByConfigurationId;
-  }, {});
-};
-
 // Fetch AMC visits for reviewer report-level view.
 const fetchReportLevelVisits = async (filter, limit, offset, searchableFilters) => {
   // Fetch only the visible table page; pagination controls provide limit and offset.
   const visitsResponse = await VisitService.fetchVisits(filter, limit, offset);
   const scheduledVisits = visitsResponse?.ScheduledVisits || [];
-  const vendorByConfigurationId = await fetchVendorByConfigurationId(scheduledVisits);
-  const visits = formatVisits(scheduledVisits, vendorByConfigurationId);
+  const visits = formatVisits(scheduledVisits);
   const filterOptions = getFilterOptions(visits, searchableFilters);
   const activeSearchableFilters = hasSearchableFilters(searchableFilters);
   const filteredVisits = activeSearchableFilters ? applySearchableFilters(visits, searchableFilters) : visits;
