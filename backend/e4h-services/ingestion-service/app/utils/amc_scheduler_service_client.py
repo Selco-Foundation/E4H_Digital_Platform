@@ -295,3 +295,129 @@ class AMCSchedulerServiceClient:
         except requests.exceptions.RequestException as req_err:
             logger.error(f"Request error searching AMC configurations: {req_err}", exc_info=True)
             raise Exception(f"Request error: {str(req_err)}")
+
+    def _amc_plan_action(
+        self,
+        action: str,
+        request_info: RequestInfo,
+        plan_payload: Dict[str, Any],
+        session: Optional[requests.Session] = None,
+    ) -> Dict[str, Any]:
+        """_create / _update take the same envelope ({"RequestInfo": ..., "AmcPlans": [...]})."""
+        url = f"{self.amc_scheduler_service_url}/asset-amc/v1/amc-plan/{action}"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "AmcPlans": [plan_payload],
+        }
+        try:
+            response = self._post(
+                session, url, headers=headers, json=payload, timeout=_AMC_HTTP_TIMEOUT
+            )
+            response.raise_for_status()
+            result = response.json()
+            plans = result.get("AmcPlans", []) or []
+            logger.info(f"AMC plan {action} succeeded: projectId={plan_payload.get('projectId')}")
+            return plans[0] if plans else {}
+        except requests.exceptions.HTTPError as http_err:
+            error_detail = ""
+            if http_err.response is not None and hasattr(http_err.response, "text"):
+                try:
+                    error_json = http_err.response.json()
+                    error_detail = error_json.get("Errors", [{}])[0].get("message", str(http_err))
+                except Exception:
+                    error_detail = http_err.response.text
+            logger.error(
+                f"HTTP error on AMC plan {action}: {http_err.response.status_code} - {error_detail}",
+                exc_info=True,
+            )
+            raise Exception(f"HTTP error {http_err.response.status_code}: {error_detail or str(http_err)}")
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error on AMC plan {action}: {conn_err}", exc_info=True)
+            raise Exception(f"Connection error: {str(conn_err)}")
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error on AMC plan {action}: {timeout_err}", exc_info=True)
+            raise Exception(f"Timeout error: {str(timeout_err)}")
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error on AMC plan {action}: {req_err}", exc_info=True)
+            raise Exception(f"Request error: {str(req_err)}")
+
+    def create_amc_plan(
+        self,
+        request_info: RequestInfo,
+        plan_payload: Dict[str, Any],
+        session: Optional[requests.Session] = None,
+    ) -> Dict[str, Any]:
+        """Create an AMC plan. Returns the created AmcPlan (server-generated id and name)."""
+        return self._amc_plan_action("_create", request_info, plan_payload, session)
+
+    def update_amc_plan(
+        self,
+        request_info: RequestInfo,
+        plan_payload: Dict[str, Any],
+        session: Optional[requests.Session] = None,
+    ) -> Dict[str, Any]:
+        """Update an AMC plan. plan_payload must include "id"."""
+        return self._amc_plan_action("_update", request_info, plan_payload, session)
+
+    def search_amc_plans(
+        self,
+        request_info: RequestInfo,
+        project_id: Optional[str] = None,
+        plan_ids: Optional[List[str]] = None,
+        tenant_id: str = "in",
+        session: Optional[requests.Session] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        AmcPlans for a project, or a specific set of plan ids (e.g. to validate a caller-supplied
+        amc_plan_id belongs to the given project before using it). A project can have several plans -
+        each covering a different subset of facilities - so this is not expected to return at most one.
+        """
+        url = f"{self.amc_scheduler_service_url}/asset-amc/v1/amc-plan/_search"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        search_criteria: Dict[str, Any] = {"tenantId": tenant_id}
+        if project_id:
+            search_criteria["projectIds"] = [project_id]
+        if plan_ids:
+            search_criteria["ids"] = plan_ids
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "searchCriteria": search_criteria,
+        }
+        params = {"tenantId": tenant_id, "limit": 100, "offset": 0}
+
+        try:
+            response = self._post(
+                session, url, headers=headers, json=payload, params=params, timeout=_AMC_HTTP_TIMEOUT
+            )
+            response.raise_for_status()
+            result = response.json()
+            plans = result.get("AmcPlans", []) or []
+            logger.info(f"AMC plan search for project {project_id}: {len(plans)} found")
+            return plans
+        except requests.exceptions.HTTPError as http_err:
+            error_detail = ""
+            if http_err.response is not None and hasattr(http_err.response, "text"):
+                try:
+                    error_json = http_err.response.json()
+                    error_detail = error_json.get("Errors", [{}])[0].get("message", str(http_err))
+                except Exception:
+                    error_detail = http_err.response.text
+            logger.error(
+                f"HTTP error searching AMC plans: {http_err.response.status_code} - {error_detail}",
+                exc_info=True,
+            )
+            raise Exception(f"HTTP error {http_err.response.status_code}: {error_detail or str(http_err)}")
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error searching AMC plans: {conn_err}", exc_info=True)
+            raise Exception(f"Connection error: {str(conn_err)}")
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error searching AMC plans: {timeout_err}", exc_info=True)
+            raise Exception(f"Timeout error: {str(timeout_err)}")
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error searching AMC plans: {req_err}", exc_info=True)
+            raise Exception(f"Request error: {str(req_err)}")
