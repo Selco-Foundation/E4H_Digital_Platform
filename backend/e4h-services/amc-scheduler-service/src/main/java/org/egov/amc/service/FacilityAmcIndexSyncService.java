@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.AmcConfigurationRepository;
 import org.egov.amc.repository.ScheduledVisitRepository;
+import org.egov.amc.util.FacilitySystemTypeUtil;
 import org.egov.amc.util.MappedVendorUtil;
 import org.egov.amc.web.models.AmcConfiguration;
 import org.egov.amc.web.models.AmcConfigurationAssignment;
@@ -38,6 +39,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -46,6 +48,10 @@ import java.util.UUID;
  * so it reaches {@code health-facility-index-v0001} via facility-registry's existing Kibana push -
  * the same pattern vendor-registry uses to sync mapped-vendor fields
  * ({@code org.egov.util.FacilityUtil} in vendor-registry).
+ *
+ * <p>Also carries the facility's {@code systemType}, which AMC does not own - field-planner does. It
+ * is pushed from here because this AMC update is the only index-only write path a facility document
+ * has; see {@link #putSystemType}.
  *
  * <p>Best-effort: the per-facility sync catches and logs, never rethrows, so a facility-service or
  * search outage never breaks the AMC create/update/visit flow that triggered the sync.
@@ -72,6 +78,23 @@ public class FacilityAmcIndexSyncService {
     private static final DateTimeFormatter INDEX_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     /**
+     * What every string-typed AMC field carries when its value cannot be determined - a facility with
+     * no AMC, a cadence shorter than 10 cycles, a visit not yet carried out, or an AMC with nobody
+     * assigned. That is 25 of the 27 indexed AMC fields: the 22 dates ({@code amcInstallationDate},
+     * {@code amcValidTill}, {@code amcDueDate1..10}, {@code amcVisitDate1..10}), plus
+     * {@code amcApplicable} and the two {@code amcMappedVendor*} names.
+     *
+     * <p>A literal rather than null so the Kibana data dumps render an explicit "Not Applicable"
+     * instead of a blank cell that reads as missing data. Safe against the index mapping because all
+     * 25 are typed as strings on {@code FacilityKibanaIndex}; the dates hold {@code DD-MM-YYYY} text
+     * rather than dates or epoch numbers.
+     *
+     * <p>The remaining two ({@code amcApplicableYears}, {@code amcFrequencyMonths}) are numeric and
+     * deliberately keep writing null - see {@link #blankAmcFields()}.
+     */
+    private static final String NOT_APPLICABLE = "Not Applicable";
+
+    /**
      * How many of a facility's AMC configurations are pulled before picking the latest. Sized at the
      * repository's own page cap: a facility realistically holds a handful, and reading them all is
      * what makes {@link #pickLatestConfiguration} able to judge on start date rather than inheriting
@@ -91,9 +114,17 @@ public class FacilityAmcIndexSyncService {
     /** Fallback page size for the prefetch queries when no repository cap is configured. */
     private static final int BACKFILL_DB_PAGE_SIZE_FALLBACK = 100;
 
+    /** Index field name carrying {@link #AMC_APPLICABLE_YES} / {@link #AMC_APPLICABLE_NO}. */
+    private static final String AMC_APPLICABLE_FIELD = "amcApplicable";
     private static final String AMC_APPLICABLE_YES = "Yes";
     private static final String AMC_APPLICABLE_NO = "No";
     private static final String ACTIVE_STATUS = "ACTIVE";
+
+    /**
+     * Index field name for the facility's system type. Deliberately not {@code amc}-prefixed: it is
+     * not AMC data, it merely travels with the AMC snapshot - see {@link #putSystemType}.
+     */
+    private static final String SYSTEM_TYPE_FIELD = "systemType";
 
     private static final String INTERNAL_REQUEST_API_ID = "Rainmaker";
     private static final String INTERNAL_REQUEST_DID = "amc-scheduler-service-facility-sync";
@@ -116,6 +147,7 @@ public class FacilityAmcIndexSyncService {
     private final ScheduledVisitRepository scheduledVisitRepository;
     private final ServiceRequestRepository requestRepository;
     private final MappedVendorUtil mappedVendorUtil;
+    private final FacilitySystemTypeUtil facilitySystemTypeUtil;
     private final ActualVisitDateEnricher actualVisitDateEnricher;
     private final ObjectMapper mapper;
 
@@ -125,6 +157,7 @@ public class FacilityAmcIndexSyncService {
                                         ScheduledVisitRepository scheduledVisitRepository,
                                         ServiceRequestRepository requestRepository,
                                         MappedVendorUtil mappedVendorUtil,
+                                        FacilitySystemTypeUtil facilitySystemTypeUtil,
                                         ActualVisitDateEnricher actualVisitDateEnricher,
                                         @Qualifier("objectMapper") ObjectMapper mapper) {
         this.amcServiceConfiguration = amcServiceConfiguration;
@@ -132,6 +165,7 @@ public class FacilityAmcIndexSyncService {
         this.scheduledVisitRepository = scheduledVisitRepository;
         this.requestRepository = requestRepository;
         this.mappedVendorUtil = mappedVendorUtil;
+        this.facilitySystemTypeUtil = facilitySystemTypeUtil;
         this.actualVisitDateEnricher = actualVisitDateEnricher;
         this.mapper = mapper;
     }
@@ -167,7 +201,8 @@ public class FacilityAmcIndexSyncService {
             List<ScheduledVisit> visits = latestConfig == null ? List.of()
                     : fetchActiveScheduledVisits(latestConfig.getId(), tenantId, requestInfo, visitsInFlight);
             Map<String, Object> amcFields =
-                    buildAmcIndexFields(latestConfig, visits, resolveMappedVendor(latestConfig, requestInfo));
+                    buildAmcIndexFields(latestConfig, visits, resolveMappedVendor(latestConfig, requestInfo),
+                            facilitySystemTypeUtil.resolveSystemType(requestInfo, facilityId, tenantId));
             pushToFacilityIndex(facilityId, tenantId, amcFields);
         } catch (Exception e) {
             log.error("Best-effort AMC facility-index sync failed for facilityId={}: {}", facilityId, e.getMessage(), e);
@@ -239,8 +274,8 @@ public class FacilityAmcIndexSyncService {
      * <p>One value can legitimately differ: the backfill recovers a missing {@code actualVisitDate}
      * from workflow history, which the live sync does not do (it would cost a workflow call on every
      * AMC transition, and the visit it was triggered by already carries a freshly stamped date). So a
-     * backfilled document can hold an {@code amcVisitDate} the live sync would have left null, for
-     * legacy visits whose date was never written to the visits table.
+     * backfilled document can hold a real {@code amcVisitDate} where the live sync would have written
+     * "Not Applicable", for legacy visits whose date was never written to the visits table.
      */
     private void backfillFacilityBatch(RequestInfo requestInfo, String tenantId, List<Facility> facilities,
                                        FacilityAmcBackfillResponse result) {
@@ -261,6 +296,10 @@ public class FacilityAmcIndexSyncService {
                 fetchActiveVisitsByConfigurationId(configByFacilityId.values(), tenantId, requestInfo);
         Map<String, org.egov.amc.web.models.User> vendorByConfigId =
                 resolveMappedVendors(configByFacilityId.values(), requestInfo);
+        // One field-planner call for the whole page rather than one per facility. An empty Optional
+        // means the lookup failed, and every facility on the page keeps its indexed system type.
+        Optional<Map<String, String>> systemTypeByFacilityId =
+                facilitySystemTypeUtil.getSystemTypeByFacilityId(requestInfo, facilityIds, tenantId);
 
         for (Map.Entry<String, Facility> entry : facilityById.entrySet()) {
             String facilityId = entry.getKey();
@@ -280,8 +319,11 @@ public class FacilityAmcIndexSyncService {
                 // exactly, so pushing "in" for a facility living in "in.karnataka" would hit nothing.
                 String facilityTenantId = entry.getValue().getTenantId() != null
                         ? entry.getValue().getTenantId() : tenantId;
+                FacilitySystemTypeUtil.Lookup systemType = systemTypeByFacilityId
+                        .map(byFacilityId -> FacilitySystemTypeUtil.Lookup.of(byFacilityId.get(facilityId)))
+                        .orElseGet(FacilitySystemTypeUtil.Lookup::failed);
                 int updated = pushToFacilityIndex(facilityId, facilityTenantId,
-                        buildAmcIndexFields(config, visits, mappedVendor));
+                        buildAmcIndexFields(config, visits, mappedVendor, systemType));
                 if (updated > 0) {
                     result.setFacilitiesIndexed(result.getFacilitiesIndexed() + 1);
                 } else {
@@ -509,29 +551,33 @@ public class FacilityAmcIndexSyncService {
      * @param config       the facility's latest AMC configuration, or null when it has none
      * @param visits       the configuration's active scheduled visits (ignored when config is null)
      * @param mappedVendor the resolved AMC field staff, or null when there is none
+     * @param systemType   the field-planner system type lookup for this facility
      */
     Map<String, Object> buildAmcIndexFields(AmcConfiguration config, List<ScheduledVisit> visits,
-                                            org.egov.amc.web.models.User mappedVendor) {
-        // Every AMC key is seeded to null first so the snapshot fully replaces the AMC namespace.
-        // Without this, keys omitted from a later snapshot would keep their previously indexed value:
+                                            org.egov.amc.web.models.User mappedVendor,
+                                            FacilitySystemTypeUtil.Lookup systemType) {
+        // Every AMC key is seeded first so the snapshot fully replaces the AMC namespace. Without
+        // this, keys omitted from a later snapshot would keep their previously indexed value:
         // deleting an AMC, or shortening a cadence from 10 cycles to 5, would leave orphaned due/visit
         // dates behind in the index.
         Map<String, Object> fields = blankAmcFields();
+        putSystemType(fields, systemType);
         if (config == null) {
-            fields.put("amcApplicable", AMC_APPLICABLE_NO);
+            fields.put(AMC_APPLICABLE_FIELD, AMC_APPLICABLE_NO);
             return fields;
         }
 
-        fields.put("amcApplicable", AMC_APPLICABLE_YES);
+        fields.put(AMC_APPLICABLE_FIELD, AMC_APPLICABLE_YES);
         fields.put("amcInstallationDate", toIndexDate(config.getConfigurationStartDate()));
         Integer durationMonths = config.getDurationMonths();
         fields.put("amcApplicableYears", durationMonths != null ? durationMonths / 12 : null);
         fields.put("amcFrequencyMonths", config.getVisitFrequencyMonths());
         fields.put("amcValidTill", toIndexDate(config.getConfigurationEndDate()));
-        // Written unconditionally, null included, so clearing an AMC's assignment actually clears the
-        // indexed value rather than leaving a stale name behind.
-        fields.put("amcMappedVendorName", mappedVendor == null ? null : mappedVendor.getName());
-        fields.put("amcMappedVendorUserName", mappedVendor == null ? null : mappedVendor.getUserName());
+        // Written unconditionally, so clearing an AMC's assignment actually clears the indexed value
+        // rather than leaving a stale name behind - it lands as "Not Applicable", not as a blank.
+        fields.put("amcMappedVendorName", orNotApplicable(mappedVendor == null ? null : mappedVendor.getName()));
+        fields.put("amcMappedVendorUserName",
+                orNotApplicable(mappedVendor == null ? null : mappedVendor.getUserName()));
 
         // Copied before sorting: the bulk backfill shares one visit list per configuration across the
         // facilities it fans out to, so sorting in place would mutate a caller's collection.
@@ -553,29 +599,72 @@ public class FacilityAmcIndexSyncService {
     }
 
     /**
+     * Writes the facility's system type onto the snapshot - the one indexed field here that AMC does
+     * not own. It is sourced from field-planner (captured on the facility's installation plan) and
+     * rides along with the AMC push because the AMC index update is the only index-only write path a
+     * facility document has.
+     *
+     * <p>Written outside the {@code config == null} early return, so a facility with no AMC still gets
+     * its system type: the value has nothing to do with whether an AMC exists.
+     *
+     * <p>The key is <em>omitted entirely</em> when the lookup failed, rather than seeded in
+     * {@link #blankAmcFields()} like the AMC fields are. The painless script only assigns the keys it
+     * is handed, so omitting one leaves the previously indexed value in place - which is what a
+     * field-planner outage should cost. Seeding it "Not Applicable" instead would let one unreachable
+     * field-planner erase a real system type from every facility a sync touches during the outage.
+     */
+    private static void putSystemType(Map<String, Object> fields, FacilitySystemTypeUtil.Lookup systemType) {
+        if (systemType == null || !systemType.resolved()) {
+            return;
+        }
+        fields.put(SYSTEM_TYPE_FIELD, orNotApplicable(systemType.systemType()));
+    }
+
+    /**
      * Renders an epoch-millis timestamp as the {@code DD-MM-YYYY} IST string the index carries.
-     * Null in, null out, so an unrecorded visit date stays absent rather than becoming an epoch date.
+     * An absent timestamp becomes {@link #NOT_APPLICABLE} rather than null, so a visit that has not
+     * happened yet reads as an explicit "Not Applicable" in the dump instead of an empty cell.
      */
     private String toIndexDate(Long epochMillis) {
         if (epochMillis == null) {
-            return null;
+            return NOT_APPLICABLE;
         }
         return Instant.ofEpochMilli(epochMillis).atZone(INDEX_DATE_ZONE).format(INDEX_DATE_FORMATTER);
     }
 
-    /** Every AMC key this service owns, mapped to null - the baseline a snapshot fills in. */
+    /**
+     * The value itself, or {@link #NOT_APPLICABLE} when there is nothing to index. Blank counts as
+     * nothing: an assignee whose HRMS record carries an empty name would otherwise reach the index as
+     * an empty string, which reads as missing data in the dump just like a null does.
+     */
+    private static String orNotApplicable(String value) {
+        return value == null || value.isBlank() ? NOT_APPLICABLE : value;
+    }
+
+    /**
+     * Every AMC key this service owns - the baseline a snapshot fills in.
+     *
+     * <p>The 25 string fields start at {@link #NOT_APPLICABLE} rather than null, so anything a
+     * snapshot never fills in (a 4-visit cadence leaves cycles 5-10 untouched, a facility with no AMC
+     * leaves all 10) is published as "Not Applicable" instead of a blank.
+     */
     private Map<String, Object> blankAmcFields() {
         Map<String, Object> fields = new HashMap<>();
-        fields.put("amcApplicable", null);
-        fields.put("amcInstallationDate", null);
+        // The only two AMC fields that keep writing null. They are numeric on the index (no index
+        // template exists, so they were dynamically mapped to long on first write); a "Not Applicable"
+        // string would be rejected with a mapper_parsing_exception and fail the whole AMC update for
+        // the facility - strictly worse than the null it was meant to replace.
         fields.put("amcApplicableYears", null);
         fields.put("amcFrequencyMonths", null);
-        fields.put("amcValidTill", null);
-        fields.put("amcMappedVendorName", null);
-        fields.put("amcMappedVendorUserName", null);
+
+        fields.put(AMC_APPLICABLE_FIELD, NOT_APPLICABLE);
+        fields.put("amcMappedVendorName", NOT_APPLICABLE);
+        fields.put("amcMappedVendorUserName", NOT_APPLICABLE);
+        fields.put("amcInstallationDate", NOT_APPLICABLE);
+        fields.put("amcValidTill", NOT_APPLICABLE);
         for (int cycle = 1; cycle <= MAX_CYCLES; cycle++) {
-            fields.put("amcDueDate" + cycle, null);
-            fields.put("amcVisitDate" + cycle, null);
+            fields.put("amcDueDate" + cycle, NOT_APPLICABLE);
+            fields.put("amcVisitDate" + cycle, NOT_APPLICABLE);
         }
         return fields;
     }

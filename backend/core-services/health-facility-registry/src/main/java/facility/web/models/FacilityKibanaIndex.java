@@ -72,7 +72,17 @@ public class FacilityKibanaIndex {
     
     @JsonProperty("solarPanelStatus")
     private String solarPanelStatus;
-    
+
+    /**
+     * When the facility went non-functional: creation time (epoch millis) of the oldest still-open
+     * ticket reporting the system as non-functional. Always {@code null} while
+     * {@link #solarPanelStatus} is {@code FUNCTIONAL} - the two are derived together so they cannot
+     * disagree. See {@code IncidentStatusDao#resolveSolarPanelState}.
+     */
+    @JsonProperty("nonFunctionalTimestamp")
+    private Long nonFunctionalTimestamp;
+
+
     @JsonProperty("mappedVendorUserName")
     private String mappedVendorUserName;
     
@@ -85,9 +95,20 @@ public class FacilityKibanaIndex {
     @JsonProperty("boundary")
     private BoundaryInfo boundary;
 
-    /** Also used for the AMC Data Dump's "System Type" column - same underlying facility attribute. */
     @JsonProperty("solutionDesignType")
     private String solutionDesignType;
+
+    /**
+     * The facility's system type, owned by field-planner (it is captured on the installation plan the
+     * facility is linked to) and pushed here by amc-scheduler-service alongside the AMC snapshot.
+     * Facility-registry has no source of its own for it, so it is carried forward on re-index by
+     * {@code FacilityAmcFieldsHelper} exactly like the AMC fields.
+     *
+     * <p>The AMC Data Dump's "System Type" column previously reused {@code solutionDesignType} for
+     * want of a real value; the two are distinct attributes, and this is the real one.
+     */
+    @JsonProperty("systemType")
+    private String systemType;
 
     /**
      * {@code DD-MM-YYYY} in IST, not epoch millis - amc-scheduler-service formats every AMC

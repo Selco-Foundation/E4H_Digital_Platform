@@ -185,6 +185,136 @@ public class FieldPlannerFacilityService {
                 .build();
     }
 
+    /**
+     * Resolves the system type of each requested facility, for callers that need the value keyed by
+     * facility rather than the plan-wide combinations {@link #searchSystemTypeCapacity} returns.
+     *
+     * <p>Walks every matching row rather than honouring a caller-supplied page: this answers "what is
+     * this facility's system type", and a truncated page would report no system type for facilities
+     * that have one - which, for the AMC index sync that consumes this, means overwriting a good
+     * indexed value with "Not Applicable". Facility ids are therefore mandatory, so the walk can never
+     * degrade into a scan of every installation plan facility in the tenant.
+     *
+     * @return one entry per requested facility that is linked to an installation plan. Facilities with
+     *         no linked plan are absent rather than present-with-null, so a caller can tell "nothing
+     *         recorded" apart from "nothing to record against".
+     */
+    public List<FacilitySystemType> searchSystemTypeByFacilityIds(FieldPlanFacilitySearchRequest request,
+                                                                  String tenantId,
+                                                                  Long lastChangedSince,
+                                                                  Boolean includeDeleted) throws Exception {
+        log.trace("Entering searchSystemTypeByFacilityIds method for installation plan facility");
+        List<String> facilityIds = request.getCriteria() == null ? null : request.getCriteria().getFacility_id();
+        if (facilityIds == null || facilityIds.isEmpty()) {
+            throw new CustomException("FACILITY_ID_REQUIRED",
+                    "At least one facilityId is required to resolve a facility's system type");
+        }
+        log.info("Received request to resolve systemType for {} facility/facilities, tenant: {}",
+                facilityIds.size(), tenantId);
+
+        Map<String, FieldPlanFacility> winnerByFacilityId = new LinkedHashMap<>();
+        int pageSize = systemTypePageSize();
+        int offset = 0;
+        while (true) {
+            SearchResponse<FieldPlanFacility> page =
+                    search(request, pageSize, offset, tenantId, lastChangedSince, includeDeleted);
+            List<FieldPlanFacility> rows = page == null ? null : page.getResponse();
+            if (rows == null || rows.isEmpty()) {
+                break;
+            }
+            for (FieldPlanFacility row : rows) {
+                String facilityId = row.getFacilityId();
+                if (facilityId == null || facilityId.isBlank()) {
+                    continue;
+                }
+                winnerByFacilityId.merge(facilityId, row,
+                        FieldPlannerFacilityService::preferredSystemTypeRow);
+            }
+            if (rows.size() < pageSize) {
+                break;
+            }
+            offset += pageSize;
+        }
+
+        List<FacilitySystemType> result = winnerByFacilityId.entrySet().stream()
+                .map(entry -> FacilitySystemType.builder()
+                        .facilityId(entry.getKey())
+                        .systemType(additionalFieldValue(entry.getValue(), "systemType"))
+                        .build())
+                .toList();
+        log.info("SystemType resolution completed, resolved {} of {} requested facility/facilities",
+                result.size(), facilityIds.size());
+        log.trace("Exiting searchSystemTypeByFacilityIds method");
+        return result;
+    }
+
+    /**
+     * Rows per page for the systemType walk, read from the service's own search cap rather than
+     * hardcoded. Asking for more than {@code project.search.max.limit} would come back clamped to
+     * exactly the cap, and the "a short page means the last page" check would read that as the end of
+     * the data and silently drop every row after it.
+     */
+    private int systemTypePageSize() {
+        Integer maxLimit = fieldPlannerConfiguration.getMaxLimit();
+        return maxLimit == null || maxLimit < 1 ? SYSTEM_TYPE_PAGE_SIZE_FALLBACK : maxLimit;
+    }
+
+    /** Fallback page size for the systemType walk when no search cap is configured. */
+    private static final int SYSTEM_TYPE_PAGE_SIZE_FALLBACK = 100;
+
+    /**
+     * Which of two installation-plan links a facility's system type should come from.
+     *
+     * <p>A row carrying no system type never wins, even when it is the more recent: a facility newly
+     * linked to a plan that has not captured a system type yet must keep reporting the value that was
+     * actually recorded, instead of suddenly reporting nothing. Among rows that do carry one, the most
+     * recently modified wins, with created time then id breaking ties so repeated calls resolve to the
+     * same plan rather than flipping between two equally recent ones - which would otherwise make the
+     * indexed system type change for no real reason.
+     */
+    private static FieldPlanFacility preferredSystemTypeRow(FieldPlanFacility current, FieldPlanFacility candidate) {
+        boolean currentHasValue = additionalFieldValue(current, "systemType") != null;
+        boolean candidateHasValue = additionalFieldValue(candidate, "systemType") != null;
+        if (currentHasValue != candidateHasValue) {
+            return currentHasValue ? current : candidate;
+        }
+        return SYSTEM_TYPE_ROW_RECENCY.compare(candidate, current) > 0 ? candidate : current;
+    }
+
+    private static final Comparator<FieldPlanFacility> SYSTEM_TYPE_ROW_RECENCY = Comparator
+            .comparing(FieldPlannerFacilityService::lastModifiedTimeOf, Comparator.nullsFirst(Long::compareTo))
+            .thenComparing(FieldPlannerFacilityService::createdTimeOf, Comparator.nullsFirst(Long::compareTo))
+            .thenComparing(FieldPlanFacility::getId, Comparator.nullsFirst(String::compareTo));
+
+    private static Long lastModifiedTimeOf(FieldPlanFacility fieldPlanFacility) {
+        return fieldPlanFacility.getAuditDetails() == null
+                ? null : fieldPlanFacility.getAuditDetails().getLastModifiedTime();
+    }
+
+    private static Long createdTimeOf(FieldPlanFacility fieldPlanFacility) {
+        return fieldPlanFacility.getAuditDetails() == null
+                ? null : fieldPlanFacility.getAuditDetails().getCreatedTime();
+    }
+
+    /**
+     * The value of one {@code additionalFields} key, or null when the row does not carry it. Blank
+     * counts as absent: a plan saved with an empty system type must read as "nothing recorded" rather
+     * than reaching the caller as an empty string.
+     */
+    private static String additionalFieldValue(FieldPlanFacility fieldPlanFacility, String key) {
+        AdditionalFields additionalFields = fieldPlanFacility.getAdditionalFields();
+        if (additionalFields == null || additionalFields.getFields() == null) {
+            return null;
+        }
+        for (Field field : additionalFields.getFields()) {
+            if (key.equals(field.getKey())) {
+                String value = field.getValue();
+                return value == null || value.isBlank() ? null : value;
+            }
+        }
+        return null;
+    }
+
     public FieldPlanFacility unassign(FieldPlanFacilityRequest request) {
         log.trace("Entering unassign method for installation plan facility");
         log.info("Received request to unassign installation plan facility");
