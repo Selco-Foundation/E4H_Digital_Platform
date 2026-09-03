@@ -632,8 +632,20 @@ public class ScheduledVisitService {
         List<ScheduledVisit> amcConfigurationList = scheduledVisitsRepository.getScheduledVisit(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
         log.debug("Found {} scheduled visits matching search criteria", amcConfigurationList.size());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        // Cache Organisation lookups within this search call: many visits share the same AMC
+        // configuration/vendor, and getVendorById is one vendor-registry call per id.
+        Map<String, Organisation> vendorOrganisationCache = new HashMap<>();
         log.info("Enriching {} scheduled visits with boundary and employee data", amcConfigurationList.size());
         for (ScheduledVisit scheduledVisit : amcConfigurationList){
+            AmcConfiguration amcConfiguration = scheduledVisit.getAmcConfiguration();
+            if (amcConfiguration != null && amcConfiguration.getVendorId() != null) {
+                Organisation organisation = vendorOrganisationCache.computeIfAbsent(
+                        amcConfiguration.getVendorId(),
+                        vendorId -> amcConfigurationService.getVendorById(request.getRequestInfo(), vendorId));
+                if (organisation != null) {
+                    amcConfiguration.setVendor(organisation);
+                }
+            }
             Facility facility = scheduledVisit.getFacility();
             if (facility != null) {
                 facilityPocPhoneUtil.decryptPocPhoneIfPresent(facility);

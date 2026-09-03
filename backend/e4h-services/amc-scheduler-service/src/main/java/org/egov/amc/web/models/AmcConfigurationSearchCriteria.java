@@ -14,6 +14,7 @@ public class AmcConfigurationSearchCriteria {
     private List<String> vendorIds;
     private List<String> facilityIds;
     private List<String> projectIds;
+    private List<String> amcPlanIds;
     private List<String> statuses;
     private String activeOnDate;
     private Long configurationStartDate;

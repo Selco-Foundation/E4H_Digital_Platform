@@ -22,7 +22,7 @@ import static org.egov.amc.util.AmcConstants.DOT;
 public class AmcConfigurationQueryBuilder {
 
     private static final String FETCH_AMC_CONFIGURATION_QUERY = "SELECT ac.id AS amc_id, ac.tenant_id AS amc_tenant_id, ac.vendor_id as amc_vendor_id, ac.facility_id as amc_facility_id, ac.project_id as amc_project_id, ac.asset_types as amc_asset_types, ac.duration_months as amc_duration_months, " +
-            "ac.visit_frequency_months as amc_visit_frequency_months, ac.configuration_start_date as amc_configuration_start_date, ac.configuration_end_date as amc_configuration_end_date, ac.status AS amc_status, ac.is_active AS amc_is_active, ac.geography_details AS amc_geography_details, ac.additional_details AS amc_additional_details, ac.created_by AS amc_created_by, " +
+            "ac.visit_frequency_months as amc_visit_frequency_months, ac.configuration_start_date as amc_configuration_start_date, ac.configuration_end_date as amc_configuration_end_date, ac.status AS amc_status, ac.is_active AS amc_is_active, ac.geography_details AS amc_geography_details, ac.additional_details AS amc_additional_details, ac.amc_plan_id AS amc_amc_plan_id, ac.created_by AS amc_created_by, " +
             "ac.created_time AS amc_created_time, ac.last_modified_by AS amc_last_modified_by, ac.last_modified_time AS amc_last_modified_time, " +
             "f.id as facility_id, f.facility_name, f.facility_type, f.facility_category, f.facility_subtype, f.facility_ownership, f.facility_region, " +
             "f.facility_details, f.boundary_code, f.is_active AS facility_is_active, " +
@@ -113,7 +113,7 @@ public class AmcConfigurationQueryBuilder {
                 "    ac.id, ac.tenant_id, ac.vendor_id, ac.facility_id, ac.project_id,\n" +
                 "    ac.asset_types, ac.duration_months, ac.visit_frequency_months,\n" +
                 "    ac.configuration_start_date, ac.configuration_end_date, ac.status, ac.is_active,\n" +
-                "    ac.geography_details, ac.additional_details, ac.created_by, ac.created_time,\n" +
+                "    ac.geography_details, ac.additional_details, ac.amc_plan_id, ac.created_by, ac.created_time,\n" +
                 "    ac.last_modified_by, ac.last_modified_time,\n" +
                 "    f.id, f.facility_name, f.facility_type, f.facility_category,\n" +
                 "    f.facility_subtype, f.facility_ownership, f.facility_region,\n" +
@@ -140,6 +140,12 @@ public class AmcConfigurationQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" ac.project_id IN (").append(createQuery(criteria.getProjectIds())).append(")");
             preparedStmtList.addAll(criteria.getProjectIds());
+        }
+
+        if (!CollectionUtils.isEmpty(criteria.getAmcPlanIds())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" ac.amc_plan_id IN (").append(createQuery(criteria.getAmcPlanIds())).append(")");
+            preparedStmtList.addAll(criteria.getAmcPlanIds());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getFacilityIds())) {
