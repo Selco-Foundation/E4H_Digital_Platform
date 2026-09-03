@@ -1,11 +1,8 @@
 import {useQuery, useQueryClient} from "react-query";
 import {VisitService} from "../services/VisitService";
-import {AMCService} from "../services/AMC";
 import {getFacilityGeography} from "../utilities/GeographyUtils";
 
 const SUBMITTED_STATUSES = ["PENDING_APPROVAL", "APPROVED", "REJECTED"];
-// Backend search max limit is 200, used for searchable filter options.
-const REPORT_LEVEL_FETCH_LIMIT = 200;
 
 const formatDate = (timestamp) => {
   if (!timestamp) return "";
@@ -39,15 +36,7 @@ const getEpochMilliseconds = (date) => {
   return Number.isNaN(epochMilliseconds) ? 0 : epochMilliseconds;
 };
 
-const getAssignedVendor = (visit, vendorByConfigurationId) => {
-  return (
-    visit?.amcConfiguration?.vendor?.name ||
-    vendorByConfigurationId?.[visit?.amcConfigurationId]?.name ||
-    vendorByConfigurationId?.[visit?.amcConfigurationId]?.id ||
-    visit?.amcConfiguration?.vendorId ||
-    ""
-  );
-};
+const getAssignedVendor = (visit) => visit?.amcConfiguration?.vendor?.name || "";
 
 const sortReportLevelVisits = (visits = []) => {
   return [...visits].sort((first, second) => {
@@ -67,7 +56,7 @@ const sortReportLevelVisits = (visits = []) => {
 };
 
 // Format the API response for report-level table columns.
-const formatVisits = (visits, vendorByConfigurationId = {}) => {
+const formatVisits = (visits) => {
   return sortReportLevelVisits(visits)?.map((visit) => {
     const geography = getFacilityGeography(visit?.facility);
     const submittedOn = getSubmittedOnTimestamp(visit);
@@ -81,8 +70,9 @@ const formatVisits = (visits, vendorByConfigurationId = {}) => {
       status: visit?.status || "",
       submittedOn,
       submittedOnFormatted: formatDate(submittedOn),
-      assignedVendor: getAssignedVendor(visit, vendorByConfigurationId),
-      assignedVendorId: visit?.amcConfiguration?.vendorId || vendorByConfigurationId?.[visit?.amcConfigurationId]?.id || "",
+      // Vendor is enriched by visit search under ScheduledVisits[].amcConfiguration.vendor.
+      assignedVendor: getAssignedVendor(visit),
+      assignedVendorId: visit?.amcConfiguration?.vendorId || "",
     };
   }) || [];
 };
@@ -104,11 +94,10 @@ const getVendorOptions = (visits) => {
   const options = {};
 
   visits.forEach((visit) => {
-    const code = visit?.assignedVendorId || visit?.assignedVendor;
-    if (code) {
-      options[code] = {
-        code,
-        name: visit?.assignedVendor || code,
+    if (visit?.assignedVendorId && visit?.assignedVendor) {
+      options[visit.assignedVendorId] = {
+        code: visit.assignedVendorId,
+        name: visit.assignedVendor,
       };
     }
   });
@@ -139,103 +128,19 @@ const getFilterOptions = (visits, filters = {}) => {
   };
 };
 
-const applySearchableFilters = (visits, filters = {}) => {
-  return visits.filter((visit) => {
-    if (filters.state?.code && visit.state !== filters.state.code) return false;
-    if (filters.district?.code && visit.district !== filters.district.code) return false;
-    if (filters.block?.code && visit.block !== filters.block.code) return false;
-    if (filters.vendor?.code && ![visit.assignedVendorId, visit.assignedVendor].includes(filters.vendor.code)) return false;
-    return true;
-  });
-};
-
-const hasSearchableFilters = (filters = {}) => {
-  return ["state", "district", "block", "vendor"].some((key) => filters?.[key]?.code);
-};
-
-const getFilterWithVisitIds = (filter, visitIds) => ({
-  ...filter,
-  searchCriteria: {
-    ...filter.searchCriteria,
-    ids: visitIds,
-  },
-});
-
-// Visit search has vendor id; configuration search gives vendor name.
-const fetchVendorByConfigurationId = async (visits = []) => {
-  const amcConfigurationIds = [...new Set(visits.map((visit) => visit?.amcConfigurationId).filter(Boolean))];
-
-  if (!amcConfigurationIds.length) {
-    return {};
-  }
-
-  const tenantId = Digit.ULBService.getCurrentTenantId();
-  const response = await AMCService.fetchAMCConfigurations(
-    {
-      searchCriteria: {
-        tenantId,
-        ids: amcConfigurationIds,
-      },
-    },
-    amcConfigurationIds.length,
-    0
-  );
-
-  return (response?.AmcConfigurations || []).reduce((vendorByConfigurationId, configuration) => {
-    vendorByConfigurationId[configuration.id] = {
-      id: configuration.vendorId,
-      name: configuration.vendor?.name,
-    };
-    return vendorByConfigurationId;
-  }, {});
-};
-
-const fetchAllScheduledVisits = async (filter) => {
-  const firstResponse = await VisitService.fetchVisits(filter, REPORT_LEVEL_FETCH_LIMIT, 0);
-  const allVisits = [...(firstResponse?.ScheduledVisits || [])];
-  const totalCount = firstResponse?.TotalCount !== undefined && firstResponse?.TotalCount !== null ? firstResponse.TotalCount : allVisits.length;
-  const requests = [];
-
-  for (let nextOffset = REPORT_LEVEL_FETCH_LIMIT; nextOffset < totalCount; nextOffset += REPORT_LEVEL_FETCH_LIMIT) {
-    requests.push(VisitService.fetchVisits(filter, REPORT_LEVEL_FETCH_LIMIT, nextOffset));
-  }
-
-  const responses = await Promise.all(requests);
-  responses.forEach((response) => {
-    allVisits.push(...(response?.ScheduledVisits || []));
-  });
-
-  return allVisits;
-};
-
-// Fetch all AMC visits for reviewer report-level view.
+// Fetch AMC visits for reviewer report-level view.
 const fetchReportLevelVisits = async (filter, limit, offset, searchableFilters) => {
-  const allScheduledVisits = await fetchAllScheduledVisits(filter);
-  const allVendorByConfigurationId = await fetchVendorByConfigurationId(allScheduledVisits);
-  const allVisits = formatVisits(allScheduledVisits, allVendorByConfigurationId);
-  const filterOptions = getFilterOptions(allVisits, searchableFilters);
-  const activeSearchableFilters = hasSearchableFilters(searchableFilters);
-  const filteredVisitIds = activeSearchableFilters ? applySearchableFilters(allVisits, searchableFilters).map((visit) => visit.id).filter(Boolean) : [];
-
-  if (activeSearchableFilters && !filteredVisitIds.length) {
-    return {
-      visits: [],
-      totalCount: 0,
-      filterOptions,
-    };
-  }
-
-  const visitsResponse = await VisitService.fetchVisits(
-    activeSearchableFilters ? getFilterWithVisitIds(filter, filteredVisitIds) : filter,
-    limit,
-    offset
-  );
+  // Fetch only the visible table page; pagination controls provide limit and offset.
+  const visitsResponse = await VisitService.fetchVisits(filter, limit, offset);
   const scheduledVisits = visitsResponse?.ScheduledVisits || [];
-  const vendorByConfigurationId = await fetchVendorByConfigurationId(scheduledVisits);
+  const visits = formatVisits(scheduledVisits);
+  const filterOptions = getFilterOptions(visits, searchableFilters);
 
   return {
-    visits: formatVisits(scheduledVisits, vendorByConfigurationId),
-    totalCount: visitsResponse?.TotalCount !== undefined && visitsResponse?.TotalCount !== null ? visitsResponse.TotalCount : scheduledVisits.length,
+    visits,
+    totalCount: visitsResponse?.TotalCount !== undefined && visitsResponse?.TotalCount !== null
+      ? visitsResponse.TotalCount
+      : scheduledVisits.length,
     filterOptions,
   };
 };
@@ -254,13 +159,34 @@ const useReportLevelVisits = (pageSize, pageOffset, statuses = [], searchableFil
     filter.searchCriteria.statuses = statuses;
   }
 
+  if (searchableFilters.state?.code) {
+    filter.searchCriteria.states = [searchableFilters.state.code];
+  }
+
+  if (searchableFilters.district?.code) {
+    filter.searchCriteria.districts = [searchableFilters.district.code];
+  }
+
+  if (searchableFilters.block?.code) {
+    filter.searchCriteria.blocks = [searchableFilters.block.code];
+  }
+
+  if (searchableFilters.vendor?.code) {
+    filter.searchCriteria.vendorIds = [searchableFilters.vendor.code];
+  }
+
   const limit = pageSize || 10;
   const offset = pageOffset || 0;
 
   const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, error, data } = useQuery(
     ["AMC_REPORT_LEVEL_VISITS", filter, limit, offset, searchableFilters],
-    () => fetchReportLevelVisits(filter, limit, offset, searchableFilters)
+    () => fetchReportLevelVisits(filter, limit, offset, searchableFilters),
+    {
+      // Keep the existing rows visible during pagination and avoid refetches when DevTools/window focus changes.
+      keepPreviousData: true,
+      refetchOnWindowFocus: false,
+    }
   );
 
   return {
