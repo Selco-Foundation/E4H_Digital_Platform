@@ -110,6 +110,12 @@ public class AMCServiceConfiguration {
     @Value("${amc.configuration.delete.topic}")
     private String deleteAmcConfigurationTopic;
 
+    @Value("${amc.plan.create.topic}")
+    private String saveAmcPlanTopic;
+
+    @Value("${amc.plan.update.topic}")
+    private String updateAmcPlanTopic;
+
     @Value("${asset.amc.create.topic}")
     private String saveAssetAmcTopic;
 
