@@ -137,9 +137,6 @@ public class AMCServiceConfiguration {
     @Value("${scheduled.visit.index.update.topic}")
     private String updateScheduledVisitIndexTopic;
 
-    @Value("${scheduled.visit.delete.topic}")
-    private String deleteScheduledVisitTopic;
-
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
 

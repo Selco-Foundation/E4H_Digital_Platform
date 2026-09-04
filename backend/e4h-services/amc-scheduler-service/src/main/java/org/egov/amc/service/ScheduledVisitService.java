@@ -23,10 +23,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.net.URLEncoder;
 import java.sql.Array;
 import java.sql.Timestamp;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -74,7 +72,7 @@ public class ScheduledVisitService {
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
             Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, ActualVisitDateEnricher actualVisitDateEnricher, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil,
             FacilityPocPhoneUtil facilityPocPhoneUtil,
-            LocalizationUtil localizationUtil, AmcAnalyticsService amcAnalyticsService,
+            AmcVisitReportPdfService amcVisitReportPdfService, LocalizationUtil localizationUtil, AmcAnalyticsService amcAnalyticsService,
             FacilityAmcIndexSyncService facilityAmcIndexSyncService, MappedVendorUtil mappedVendorUtil) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
@@ -90,6 +88,7 @@ public class ScheduledVisitService {
         this.mdmsUtils = mdmsUtils;
         this.boundaryUtil = boundaryUtil;
         this.facilityPocPhoneUtil = facilityPocPhoneUtil;
+        this.amcVisitReportPdfService = amcVisitReportPdfService;
         this.localizationUtil = localizationUtil;
         this.amcAnalyticsService = amcAnalyticsService;
         this.facilityAmcIndexSyncService = facilityAmcIndexSyncService;
