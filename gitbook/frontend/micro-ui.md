@@ -100,6 +100,11 @@ Common scripts include:
 - `build:webpack`
 - `clean`
 
+## Recent additions
+
+- **Terms/Privacy Policy consent.** `core` module gained `PolicyDocumentContent.js`, a `usePolicyDocument` hook, a `TermsPrivacyPolicy` page, a `consentCookies` utility, and an expanded `TOUComponent.js`/`PrivacyComponent.js`, wired into `Login/login.js` so users see and accept the terms/privacy policy before proceeding. A parallel `UserAccessReportService` was added under `core/src/services`. The same consent flow was added independently to [Installation UI](installation-ui.md#recent-additions).
+- **ICC prepopulation.** The `pm` module's `CreateFieldPlan` flow gained `ICCPrepopulationConfiguration.js`, plus new `services/ICC.js` and `services/Filestore.js`, letting field staff pick a system type/capacity and prepopulate BOM data from a saved ICC template — see the backend feature described in [E4H services](../backend/e4h-services.md#recent-platform-wide-additions).
+
 ## Documentation updates
 
 When adding or changing a web module, update:

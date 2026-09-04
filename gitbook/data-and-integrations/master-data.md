@@ -23,6 +23,10 @@ The facility registry includes schemas for:
 - Facility region.
 - Facility type.
 - Solar solution design type.
+- System type (`SystemType.json`) — the new facility system-type classification used by AMC Scheduler Service and Field Planner to categorize solar installations.
+- Solar system capacity (`SolarSystemCapacity.json`) — capacity tiers paired with system type for BOM/ICC template matching.
+- Facility solar configuration rule (`FacilitySolarConfigurationRule.schema.json` / `.data.json`) — validation rules tying system type and capacity together.
+- Solar solution design type for field plan (`SolarSolutionDesignType.fieldplan.json`).
 
 Files live under `docs/facility-registry/master-data-schema`.
 

@@ -26,6 +26,7 @@ Known manifests include:
 - `rms-rule-engine-cron.yaml`
 - `visit-scheduling-cronjob.yaml`
 - `weekly-escalation-cronjob.yaml`
+- `run_user_analytics_report.py` — weekly trigger for the platform-wide user analytics report (`POST /im-services-analytics/v1/user-analytics/_report`); see [E4H services](e4h-services.md#recent-platform-wide-additions).
 
 ## Operational guidance
 

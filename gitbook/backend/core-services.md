@@ -24,6 +24,13 @@ They provide reusable platform functions that domain services depend on: geograp
 - Facility SQL schema: `docs/facility-registry/schema/V1__create_facility_registry_schema.sql`.
 - Facility sequence diagrams: `docs/facility-registry/sequence-diagrams`.
 
+## Recent additions
+
+- **Health Facility Registry** now encrypts POC (point-of-contact) mobile numbers at rest via `facility/util/PocPhoneCipher.java` (backed by `egov-enc-service`), applied on every `FacilityRepository` write and decrypted only on demand.
+- **Health Facility Registry** publishes domain events through a new `FacilityAnalyticsService`, feeding the platform-wide user analytics pipeline described in [E4H services](e4h-services.md#recent-platform-wide-additions).
+- **Boundary service** similarly gained a `BoundaryAnalyticsService` for the same analytics pipeline.
+- **eGov Filestore**'s `StorageController` picked up additional download/content-type handling.
+
 ## Maintenance guidance
 
 Keep service-specific setup details in the service directory. Use this page as the cross-service index.

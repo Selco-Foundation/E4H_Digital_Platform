@@ -82,6 +82,10 @@ Common scripts include:
 - `build:webpack`
 - `clean`
 
+## Recent additions
+
+- **Terms/Privacy Policy consent.** This app's `core` module (1.8.44) gained a `PolicyConsentModal.js` that gates login until the user accepts the terms/privacy policy, plus `PolicyDocumentContent.js`, a `usePolicyDocument` hook, a `TermsPrivacyPolicy` page, and a `consentCookies` utility — wired into `Login/login.js`. Implemented independently from the equivalent feature in [Micro UI](micro-ui.md#recent-additions) since the two `core` packages are separate, diverged trees (see the note above).
+
 ## Related backend areas
 
 See the per-module backend links in the [Feature modules](#feature-modules) table above for specific service mappings. More generally, installation workflows also touch mobile installation image and asset submission flows — see [Flutter app](../mobile/flutter-app.md) — and should be validated against [API reference](../backend/api-reference.md) for request/response contracts.
