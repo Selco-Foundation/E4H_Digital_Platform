@@ -30,20 +30,6 @@ public class PlanFacilityIncludeAvailabilityRequest {
     @NotNull
     private String tenantId;
 
-<<<<<<<< HEAD:backend/e4h-services/field-planner/src/main/java/org/egov/field_planner/web/models/PlanFacilityIncludeAvailabilityRequest.java
     @JsonProperty("facilityIds")
     private List<String> facilityIds;
-========
-    @JsonProperty("filters")
-    private SubmissionQueueFilters filters;
-
-    @JsonProperty("sort")
-    private SubmissionQueueSort sort;
-
-    @JsonProperty("limit")
-    private Integer limit;
-
-    @JsonProperty("offset")
-    private Integer offset;
->>>>>>>> 491986f1a (added backend flow for assessment module (#2868) (#2927)):backend/e4h-services/field-planner/src/main/java/org/egov/field_planner/web/models/SubmissionQueueSearchRequest.java
 }
