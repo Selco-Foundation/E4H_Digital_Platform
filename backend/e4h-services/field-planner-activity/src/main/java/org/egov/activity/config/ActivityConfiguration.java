@@ -94,6 +94,15 @@ public class ActivityConfiguration {
     @Value("${activity.facility.kafka.create.topic}")
     private String createActivityFacilityTopic;
 
+    @Value("${egov.ingestion.host}")
+    private String ingestionServiceHost;
+
+    @Value("${egov.ingestion.document.append.url}")
+    private String ingestionDocumentAppendUrl;
+
+    @Value("${egov.ingestion.document.append.module}")
+    private String ingestionDocumentAppendModule;
+
     /**
      * Max serialized size (bytes) of the ActivityFacility list pushed per Kafka message on
      * {@link #createActivityFacilityTopic}. Sized by bytes rather than item count because each
