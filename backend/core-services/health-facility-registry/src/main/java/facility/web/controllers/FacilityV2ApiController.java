@@ -250,6 +250,17 @@ public class FacilityV2ApiController {
     }
 
     /**
+     * Operator script: finds every facility whose facility_poc_phone is still a plaintext
+     * 10-digit number and re-persists it through the update-facility persister, which encrypts
+     * it on the way through (see FacilityRepository#pushUpdateFacility).
+     */
+    @GetMapping("/encrypt-poc-phone")
+    public ResponseEntity<String> encryptFacilityPocPhone() {
+        String summary = facilityService.encryptFacilityPocPhone();
+        return ResponseEntity.ok(summary);
+    }
+
+    /**
      * Operator script: when {@code hfr_id} is null or blank, sets indexer {@code code} to {@code nin_id} if present,
      * otherwise to {@code facility_poc_username} when both HFR and NIN are absent (existing ES doc patched, or full index).
      */
@@ -313,6 +324,25 @@ public class FacilityV2ApiController {
         FacilityProjectNameBackfillResponse result = facilityService.backfillFacilityProjectNames(request);
         log.info("projectName backfill finished: scanned={}, updated={}, skipped={}, failed={}",
                 result.getScanned(), result.getUpdated(), result.getSkipped(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Writes a facility's AMC snapshot onto the health facility index only - the facility table is
+     * not touched. Called by amc-scheduler-service, which owns AMC data; see
+     * {@code FacilityAmcIndexUpdateRequest}. Requires FACILITY_ADMIN or SYSTEM_USER.
+     */
+    @PostMapping("/_update-amc-index")
+    public ResponseEntity<FacilityAmcIndexUpdateResponse> updateAmcIndexFields(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Facility AMC index update (facilityId plus the AMC fields to write)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityAmcIndexUpdateRequest request) {
+        log.info("Received AMC index update request for facilityId: {}", request.getFacilityId());
+        FacilityAmcIndexUpdateResponse result = facilityService.updateAmcIndexFields(request);
+        log.info("AMC index update finished for facilityId={}: updated={}",
+                result.getFacilityId(), result.getUpdated());
         return ResponseEntity.ok(result);
     }
 

@@ -63,6 +63,26 @@ public class AMCServiceConfiguration {
     @Value("${egov.v2.bulk.search.facility.url}")
     private String facilityBulkSearchUrl;
 
+    /**
+     * Index-only endpoint on facility-service for a facility's AMC snapshot. Deliberately not the
+     * facility {@code _update} API: that would persist the AMC fields into the facility table's
+     * additional_details, and AMC data is meant to exist on the search index only.
+     */
+    @Value("${egov.v2.facility.amc.index.update.url}")
+    private String facilityAmcIndexUpdateUrl;
+
+    @Value("${egov.field.planner.host:}")
+    private String fieldPlannerHost;
+
+    /**
+     * Resolves a facility's system type, which field-planner owns - the value is captured on the
+     * installation plan a facility is linked to. Published to the health facility index alongside the
+     * AMC snapshot. Defaulted to blank so an environment that has not configured field-planner
+     * degrades to indexing without a system type instead of failing to start.
+     */
+    @Value("${egov.field.planner.facility.system.type.search.url:}")
+    private String fieldPlannerFacilitySystemTypeSearchUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
@@ -92,6 +112,9 @@ public class AMCServiceConfiguration {
 
     @Value("${scheduled.visit.update.topic}")
     private String updateScheduledVisitTopic;
+
+    @Value("${scheduled.visit.delete.topic}")
+    private String deleteScheduledVisitTopic;
 
     @Value("${scheduled.visit.index.create.topic}")
     private String saveScheduledVisitIndexTopic;
@@ -141,6 +164,14 @@ public class AMCServiceConfiguration {
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
 
+    /**
+     * HRMS role code identifying an AMC field staff member. Used to pick which of a visit's assignees
+     * becomes the mapped vendor on the search index. Configurable because role codes are MDMS data and
+     * can differ per environment.
+     */
+    @Value("${amc.mapped.vendor.role.code}")
+    private String mappedVendorRoleCode;
+
     @Value("${egov.vendor.host}")
     private String vendorHost;
 
@@ -167,6 +198,20 @@ public class AMCServiceConfiguration {
 
     @Value("${amc.otp.sms.message.template:Your OTP for scheduled visit verification is {otp}.}")
     private String otpSmsTemplate;
+
+    // Shared user-analytics topic -> user-analytics-report index (also produced by im-services SEM,
+    // health-facility-registry and boundary-service).
+    @Value("${amc.kafka.user.analytics.topic:user-analytics-event}")
+    private String userAnalyticsTopic;
+
+    @Value("${egov.localization.host:}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path:}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.search.endpoint:}")
+    private String localizationSearchEndpoint;
 
     public String getFacilityBulkSearchPath() {
         return facilityBulkSearchUrl;

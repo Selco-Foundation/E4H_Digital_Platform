@@ -71,6 +71,8 @@ public class AssetValidator {
 
     private void validateAssetDetails(Asset asset, Map<String, String> errorMap) {
         log.debug("Validating asset details for assetTypeID={}", asset.getAssetTypeID());
+        log.info("Asset received for asset={}", asset);
+        log.info("Asset Details received for asset={}", asset.getAssetDetails());
         if(asset.getAssetTypeID().equalsIgnoreCase("INVERTOR"))
             validateInverterDetails(AssetConverterUtil.convertMapToInverterDetails(asset.getAssetDetails()), asset.getSystem(), errorMap);
         else if(asset.getAssetTypeID().equalsIgnoreCase("BATTERY"))
@@ -96,21 +98,21 @@ public class AssetValidator {
 
     private static void validateDCSystem(InverterDetails inverterDetails, Map<String, String> errorMaps) {
         log.debug("AssetValidator::ValidatingDCsystem");
-        if (inverterDetails.getChargeControllerCurrent() == null) {
-            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_CODE,
-                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_MSG);
-        } else if (inverterDetails.getChargeControllerCurrent() != 20.0) {
-            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE_CODE,
-                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE_MSG);
-        }
+//        if (inverterDetails.getChargeControllerCurrent() == null) {
+//            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_CODE,
+//                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_MSG);
+//        } else if (inverterDetails.getChargeControllerCurrent() != 20.0) {
+//            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE_CODE,
+//                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE_MSG);
+//        }
 
-        if (inverterDetails.getChargeControllerVoltage() == null) {
-            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_CODE,
-                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_MSG);
-        } else if (!VALID_CHARGE_CONTROLLER_VOLTAGES.contains(inverterDetails.getChargeControllerVoltage())) {
-            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_CODE,
-                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_MSG);
-        }
+//        if (inverterDetails.getChargeControllerVoltage() == null) {
+//            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_CODE,
+//                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_MSG);
+//        } else if (!VALID_CHARGE_CONTROLLER_VOLTAGES.contains(inverterDetails.getChargeControllerVoltage())) {
+//            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_CODE,
+//                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_MSG);
+//        }
 
         if (!"A".equals(inverterDetails.getCurrentUnit())) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CURRENT_UNIT_CODE,
@@ -127,29 +129,31 @@ public class AssetValidator {
         if (inverterDetails.getInverterCapacity() == null) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_REQUIRED_CODE,
                     ErrorConstants.ASSET_INVERTER_CAPACITY_REQUIRED_MSG);
-        } else {
-            try {
-                Double capacity = Double.parseDouble(inverterDetails.getInverterCapacity());
-                if (!VALID_INVERTER_CAPACITIES.contains(capacity)) {
-                    errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_VALUE_CODE,
-                            ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_VALUE_MSG);
-                }
-            } catch (NumberFormatException e) {
-                errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_FORMAT_CODE,
-                        ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_FORMAT_MSG);
-            }
         }
-        if (!"kVA".equals(inverterDetails.getInverterCapacityUnit())) {
-            errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_UNIT_CODE,
-                    ErrorConstants.ASSET_INVERTER_CAPACITY_UNIT_MSG);
-        }
+//        else {
+//            try {
+//                Double capacity = Double.parseDouble(inverterDetails.getInverterCapacity());
+//                if (!VALID_INVERTER_CAPACITIES.contains(capacity)) {
+//                    errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_VALUE_CODE,
+//                            ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_VALUE_MSG);
+//                }
+//            } catch (NumberFormatException e) {
+//                errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_FORMAT_CODE,
+//                        ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_FORMAT_MSG);
+//            }
+//        }
+//        if (!"kVA".equals(inverterDetails.getInverterCapacityUnit())) {
+//            errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_UNIT_CODE,
+//                    ErrorConstants.ASSET_INVERTER_CAPACITY_UNIT_MSG);
+//        }
         if (inverterDetails.getTotalCapacity() == null) {
             errorMaps.put(ErrorConstants.ASSET_TOTAL_CAPACITY_REQUIRED_CODE,
                     ErrorConstants.ASSET_TOTAL_CAPACITY_REQUIRED_MSG);
-        } else if (inverterDetails.getTotalCapacity() != 1.0) {
-            errorMaps.put(ErrorConstants.ASSET_TOTAL_CAPACITY_VALUE_CODE,
-                    ErrorConstants.ASSET_TOTAL_CAPACITY_VALUE_MSG);
         }
+//        else if (inverterDetails.getTotalCapacity() != 1.0) {
+//            errorMaps.put(ErrorConstants.ASSET_TOTAL_CAPACITY_VALUE_CODE,
+//                    ErrorConstants.ASSET_TOTAL_CAPACITY_VALUE_MSG);
+//        }
         if (!"kVA".equals(inverterDetails.getTotalCapacityUOM())) {
             errorMaps.put(ErrorConstants.ASSET_TOTAL_CAPACITY_UNIT_CODE,
                     ErrorConstants.ASSET_TOTAL_CAPACITY_UNIT_MSG);
@@ -207,50 +211,54 @@ public class AssetValidator {
     private static void validateDCSystemBattery(BatteryDetails batteryDetails, Map<String, String> errorMap) {
         // Validate Battery Voltage for DC system
         log.info("AssetValidator::ValidatingDCSystemBattery");
-        if (batteryDetails.getBatteryVoltage() == null) {
-            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_DC_CODE,
-                    ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_DC_MSG);
-        } else if (!VALID_DC_BATTERY_VOLTAGES.contains(batteryDetails.getBatteryVoltage())) {
-            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_DC_CODE,
-                    ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_DC_MSG);
-        }
+//        if (batteryDetails.getBatteryVoltage() == null) {
+//            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_DC_CODE,
+//                    ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_DC_MSG);
+//        } else if (!VALID_DC_BATTERY_VOLTAGES.contains(batteryDetails.getBatteryVoltage())) {
+//            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_DC_CODE,
+//                    ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_DC_MSG);
+//        }
 
         // Validate Battery Capacity for DC system
         if (batteryDetails.getBatteryCapacity() == null) {
             errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_REQUIRED_DC_CODE,
                     ErrorConstants.ASSET_BATTERY_CAPACITY_REQUIRED_DC_MSG);
-        } else if (!VALID_DC_BATTERY_CAPACITIES.contains(batteryDetails.getBatteryCapacity())) {
-            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_DC_CODE,
-                    ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_DC_MSG);
         }
+//        else if (!VALID_DC_BATTERY_CAPACITIES.contains(batteryDetails.getBatteryCapacity())) {
+//            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_DC_CODE,
+//                    ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_DC_MSG);
+//        }
     }
 
     private static void validateACOffGridSystemBattery(BatteryDetails batteryDetails, Map<String, String> errorMap) {
         // Validate Battery Voltage for AC Off Grid system
         log.info("AssetValidator::ValidatingACOffGridSystemBattery");
-        if (batteryDetails.getBatteryVoltage() == null) {
-            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_AC_CODE,
-                    ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_AC_MSG);
-        } else if (!VALID_AC_BATTERY_VOLTAGES.contains(batteryDetails.getBatteryVoltage())) {
-            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_AC_CODE,
-                    ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_AC_MSG);
-        }
+//        if (batteryDetails.getBatteryVoltage() == null) {
+//            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_AC_CODE,
+//                    ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_AC_MSG);
+//        } else if (!VALID_AC_BATTERY_VOLTAGES.contains(batteryDetails.getBatteryVoltage())) {
+//            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_AC_CODE,
+//                    ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_AC_MSG);
+//        }
 
         // Validate Battery Capacity for AC Off Grid system
         if (batteryDetails.getBatteryCapacity() == null) {
             errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_REQUIRED_AC_CODE,
                     ErrorConstants.ASSET_BATTERY_CAPACITY_REQUIRED_AC_MSG);
-        } else if (!VALID_DC_BATTERY_CAPACITIES.contains(batteryDetails.getBatteryCapacity())) {
-            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_AC_CODE,
-                    ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_AC_MSG);
         }
+//        else if (!VALID_DC_BATTERY_CAPACITIES.contains(batteryDetails.getBatteryCapacity())) {
+//            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_AC_CODE,
+//                    ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_AC_MSG);
+//        }
     }
 
 
     public static void validatePanelDetails(PanelDetails panelDetails, String systemType, Map<String, String> errorMap) {
         log.info("AssetValidator::ValidatingPanelDetails");
-        if (panelDetails == null)
+        if (panelDetails == null) {
             errorMap.put(ErrorConstants.ASSET_PANEL_DETAILS_NULL_CODE, ErrorConstants.ASSET_PANEL_DETAILS_NULL_MSG);
+            return;
+        }
 
         // Common validations for total capacity
         if (panelDetails.getTotalCapacity() == null)
@@ -266,13 +274,13 @@ public class AssetValidator {
                 errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_MSG);
             }
 
-            if (!VALID_DC_PANEL_CAPACITIES.contains(panelDetails.getPanelCapacity()) && SYSTEM_DC.equals(systemType)) {
-                errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_CODE,
-                        ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_MSG);
-            }
+//            if (!VALID_DC_PANEL_CAPACITIES.contains(panelDetails.getPanelCapacity()) && SYSTEM_DC.equals(systemType)) {
+//                errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_CODE,
+//                        ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_MSG);
+//            }
 
-            if (panelDetails.getCapacityUnit() == null)
-                errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_MSG);
+//            if (panelDetails.getCapacityUnit() == null)
+//                errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_MSG);
         }
     }
 

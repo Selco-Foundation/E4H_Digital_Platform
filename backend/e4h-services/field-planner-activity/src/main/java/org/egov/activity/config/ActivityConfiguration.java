@@ -65,6 +65,12 @@ public class ActivityConfiguration {
     @Value("${egov.dc.system.key}")
     private String bomDCSystem;
 
+    @Value("${egov.on.grid.single.phase.key}")
+    private String bomACOnGridSinglePhase;
+
+    @Value("${egov.on.grid.three.phase.key}")
+    private String bomACOnGridSThreePhase;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
@@ -87,6 +93,16 @@ public class ActivityConfiguration {
 
     @Value("${activity.facility.kafka.create.topic}")
     private String createActivityFacilityTopic;
+
+    /**
+     * Max serialized size (bytes) of the ActivityFacility list pushed per Kafka message on
+     * {@link #createActivityFacilityTopic}. Sized by bytes rather than item count because each
+     * item's additionalDetails carries a BOM template copy whose size varies by systemType - a
+     * fixed item count can't guarantee staying under the producer's max.request.size (default
+     * 1 MiB) for every template. Default keeps ~50% margin below that default.
+     */
+    @Value("${activity.facility.create.kafka.batch.max.bytes:500000}")
+    private Integer createActivityFacilityBatchMaxBytes;
 
     @Value("${activity.kafka.create.topic}")
     private String createActivityTopic;
@@ -204,4 +220,22 @@ public class ActivityConfiguration {
 
     @Value("${egov.amc.scheduler.visit.generate.url}")
     private String amcVisitGenerateUrl;
+
+    //Localization
+    @Value("${egov.localization.host}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
+    /**
+     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
+     * (SEM), health-facility-registry, boundary-service, amc-scheduler-service and project publish
+     * to — see ActivityAnalyticsService.
+     */
+    @Value("${activity.kafka.user.analytics.topic:user-analytics-event}")
+    private String userAnalyticsTopic;
 }

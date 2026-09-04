@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useHistory, useLocation, useRouteMatch } from "react-router-dom";
 import ImageComponent from "../../../components/ImageComponent";
 import SandBoxHeader from "../../../components/SandBoxHeader";
+import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import Carousel from "../SignUp-v2/CarouselComponent/CarouselComponent";
 
 const setEmployeeDetail = (userObject, token) => {
@@ -82,6 +83,11 @@ const Otp = ({ isLogin = false }) => {
     if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
     Digit.UserService.setUser(user);
     setEmployeeDetail(user?.info, user?.access_token);
+
+    // Fire-and-forget audit of the successful OTP login; doesn't block the redirect flow below.
+    UserAccessReportService.userLoginReport({
+      User: user?.info,
+    }).catch((err) => console.error("Login report failed", err));
 
     const getRedirectPathOtpLogin = (locationPathname, user, MdmsRes, RoleLandingUrl) => {
       const userRole = user?.info?.roles?.[0]?.code;

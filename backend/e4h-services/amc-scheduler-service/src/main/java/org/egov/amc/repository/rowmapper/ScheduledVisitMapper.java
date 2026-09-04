@@ -38,7 +38,10 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         visit.setProjectId(rs.getString("sv_project_id"));
         visit.setVisitNumber(rs.getInt("sv_visit_number"));
         visit.setScheduledDate(rs.getLong("sv_scheduled_date"));
-        visit.setActualVisitDate(rs.getLong("sv_actual_visit_date"));
+        // actual_visit_date is nullable and stays NULL until the visit report is submitted.
+        // ResultSet.getLong maps SQL NULL to 0, which would defeat the null guards downstream
+        // (the AMC report PDF would render epoch 0 as 01-01-1970), so read it as a true null.
+        visit.setActualVisitDate(getNullableLong(rs, "sv_actual_visit_date"));
         visit.setLastVisitDate(rs.getLong("sv_last_scheduled_visit_date"));
         visit.setStatus(rs.getString("sv_status"));
 
@@ -130,6 +133,32 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         }
 
         return visit;
+    }
+
+    /**
+     * Read a nullable BIGINT column, preserving SQL NULL as {@code null} instead of collapsing it
+     * to 0 the way {@link ResultSet#getLong(String)} does on its own.
+     */
+    private Long getNullableLong(ResultSet rs, String columnName) throws SQLException {
+        long value = rs.getLong(columnName);
+        return rs.wasNull() ? null : value;
+    }
+
+    /**
+     * Convert JSONB column into Map<String,Object>
+     */
+    private Map<String, Object> getGeographyDetails(String columnName, ResultSet rs) throws SQLException {
+        Object obj = rs.getObject(columnName);
+        if (obj == null) {
+            return null;
+        }
+        String json = (obj instanceof PGobject) ? ((PGobject) obj).getValue() : obj.toString();
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (IOException e) {
+//            log.error("Failed to parse geography_details JSON for column: {}", columnName, e);
+            throw new CustomException("PARSING ERROR", "Failed to parse geographyDetails");
+        }
     }
 
     /**

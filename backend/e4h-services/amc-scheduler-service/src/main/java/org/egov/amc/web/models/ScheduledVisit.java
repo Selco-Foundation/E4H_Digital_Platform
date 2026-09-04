@@ -25,11 +25,22 @@ public class ScheduledVisit {
     private String state;
     private String district;
     private String block;
+    // The AMC field staff mapped to this visit: the first active assignment whose HRMS user holds the
+    // role configured in `amc.mapped.vendor.role.code`. Like state/district/block above, these are
+    // resolved only for the search index payload and never persisted; both stay null when no assignee
+    // holds that role, so the index can distinguish "unmapped" from a real name.
+    private String mappedVendorName;
+    private String mappedVendorUserName;
     private Integer visitNumber;
     private Long scheduledDate;
     private Long actualVisitDate;
     private Long lastVisitDate;
     private String status; // DRAFT, SCHEDULED, APPROVED, etc.
+    // Soft-delete flag, distinct from `status`: status is where the visit is in its workflow,
+    // isActive is whether the visit still belongs to the plan at all. Cleared when a series is
+    // regenerated on a new cadence; searches hide anything with isActive = false.
+    @JsonProperty("isActive")
+    private Boolean isActive;
     private VisitReport visitReport;
     private Workflow workflow;
     private List<ProcessInstance> processInstances;

@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Redirect, Route, Switch, useHistory, useLocation } from "react-router-dom";
 import CitizenApp from "./pages/citizen";
 import EmployeeApp from "./pages/employee";
+import TermsPrivacyPolicy from "./pages/TermsPrivacyPolicy";
 
 export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, initData ,defaultLanding="citizen"}) => {
   const history = useHistory();
@@ -66,6 +67,12 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, initData ,de
   };
   return (
     <Switch>
+      <Route exact path={`/${window.contextPath}/privacy-policy`}>
+        <TermsPrivacyPolicy stateCode={stateCode} type="privacy" />
+      </Route>
+      <Route exact path={`/${window.contextPath}/terms-of-use`}>
+        <TermsPrivacyPolicy stateCode={stateCode} type="terms" />
+      </Route>
       <Route path={`/${window.contextPath}/employee`}>
         <EmployeeApp {...commonProps} />
       </Route>

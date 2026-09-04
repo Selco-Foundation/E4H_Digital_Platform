@@ -7,6 +7,8 @@ import facility.web.models.Facility;
 import facility.web.models.FacilityCreateRequest;
 import facility.web.models.FacilityKibanaIndex;
 import facility.web.models.FacilityUpdateRequest;
+import facility.web.models.FacilityUpdateRequestFacilityUpdate;
+import facility.util.PocPhoneCipher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +21,7 @@ public class FacilityRepository {
 
     private final Producer producer;
     private final ObjectMapper objectMapper;
+    private final PocPhoneCipher pocPhoneCipher;
 
     @Value("${facility.create.topic}")
     private String createTopic;
@@ -29,11 +32,24 @@ public class FacilityRepository {
     @Value("${kafka.topics.health.facility.kibana}")
     private String kibanaTopic;
 
+    /**
+     * Every facility write goes through {@link #pushCreateFacility} or {@link #pushUpdateFacility},
+     * so encrypting the POC mobile number here is what guarantees {@code facility_poc_phone} is
+     * never persisted in plaintext — callers must not encrypt it themselves. The value is replaced
+     * in place (rather than on a copy) so callers observing the object after the push see the same
+     * ciphertext that was persisted. {@link PocPhoneCipher#encrypt} is idempotent, so a value that
+     * came straight off the facility table is passed through untouched.
+     */
     public void pushCreateFacility(Facility facility) {
+        facility.setFacilityPocPhone(pocPhoneCipher.encrypt(facility.getFacilityPocPhone()));
         producer.push(createTopic, facility);
     }
 
     public void pushUpdateFacility(FacilityUpdateRequest request) {
+        FacilityUpdateRequestFacilityUpdate update = request.getFacilityUpdate();
+        if (update != null) {
+            update.setPocContact(pocPhoneCipher.encrypt(update.getPocContact()));
+        }
         producer.push(updateTopic, request);
     }
 

@@ -128,6 +128,13 @@ public class Configuration {
     private String localizationSearchEndpoint;
 
     /**
+     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
+     * publishes SEM events to — see FacilityAnalyticsService.
+     */
+    @Value("${facility.kafka.user.analytics.topic:user-analytics-event}")
+    private String userAnalyticsTopic;
+
+    /**
      * Base URL for im-services (e.g. {@code http://localhost:8880}). When blank, incident boundary sync after facility block update is skipped.
      */
     @Value("${egov.im.services.host:}")
