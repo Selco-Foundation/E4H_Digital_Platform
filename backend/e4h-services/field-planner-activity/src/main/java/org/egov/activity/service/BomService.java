@@ -18,13 +18,29 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static org.egov.activity.util.ActivityConstants.INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX;
+import static org.egov.activity.util.ActivityConstants.TENANTID;
 
 @Service
 @Slf4j
 public class BomService {
+
+    // Order matters: documents are appended to the PDF in this documentType order.
+    private static final List<String> APPENDABLE_DOCUMENT_TYPES = List.of(
+            "ASSET_HANDOVER_DOCUMENT", "INSTALLATION_COMPLETION_CERTIFICATE"
+    );
+
+    private static final String DOCUMENTS_KEY = "documents";
+    private static final String FILE_STORE_ID_KEY = "fileStoreId";
 
     private final BomRepository bomRepository;
 
@@ -98,7 +114,7 @@ public class BomService {
         log.info("Update activity facility request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
         List<BillOfMaterial> bomListFromDB = searchBillOfMaterials(
                 getSearchBOMRequest(request.getBillOfMaterials(), request.getRequestInfo()),
@@ -107,7 +123,7 @@ public class BomService {
         log.info("Fetched activities for update request");
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         bomValidator.validateUpdateAgainstDB(request.getBillOfMaterials(), bomListFromDB);
 
@@ -129,6 +145,7 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
+        enrichBomData(request);
         return getBOMPdfFile(pdfKey, tenantId, request);
     }
 
@@ -140,7 +157,146 @@ public class BomService {
         if (pdfKey == null) {
             throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
         }
-        return uploadBOMPdfFilestore(pdfKey, tenantId, request);
+
+        // Must run before enrichBomData, which overwrites bom.documents with only the grouped
+        // INSTALLATION_IMAGE-* entries used for in-PDF image rendering.
+        List<Map<String, Object>> documentsToAppend = extractAppendableDocuments(request.getBomData());
+
+        enrichBomData(request);
+
+        String pdfFilestoreId = uploadBOMPdfFilestore(pdfKey, tenantId, request);
+        return appendBomDocumentsToPdf(pdfFilestoreId, tenantId, documentsToAppend);
+    }
+
+    /**
+     * Appends any INSTALLATION_COMPLETION_CERTIFICATE / ASSET_HANDOVER_DOCUMENT documents attached to the
+     * BOM onto the end of the generated PDF via ingestion-service, returning the merged fileStoreId.
+     * If no such documents are present, the original PDF fileStoreId is returned unchanged.
+     */
+    private String appendBomDocumentsToPdf(String parentFilestoreId, String tenantId, List<Map<String, Object>> documentsToAppend) {
+        if (documentsToAppend.isEmpty()) {
+            return parentFilestoreId;
+        }
+
+        Map<String, Object> appendRequest = new HashMap<>();
+        appendRequest.put("tenantId", tenantId);
+        appendRequest.put("module", activityConfiguration.getIngestionDocumentAppendModule());
+        appendRequest.put("parentFileStoreId", parentFilestoreId);
+        appendRequest.put(DOCUMENTS_KEY, documentsToAppend);
+
+        String url = activityConfiguration.getIngestionServiceHost() + activityConfiguration.getIngestionDocumentAppendUrl();
+        Object response = serviceRequest.fetchResult(new StringBuilder(url), appendRequest);
+
+        Map<String, Object> appendResponse = mapper.convertValue(response, Map.class);
+        String mergedFilestoreId = appendResponse != null ? (String) appendResponse.get(FILE_STORE_ID_KEY) : null;
+        if (mergedFilestoreId == null) {
+            throw new CustomException("ERROR_PDF_DOCUMENT_APPEND", "No fileStoreId returned from document append");
+        }
+        return mergedFilestoreId;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> extractAppendableDocuments(Map<String, Object> bomData) {
+        if (bomData == null || !(bomData.get(DOCUMENTS_KEY) instanceof List<?> rawDocuments)) {
+            return Collections.emptyList();
+        }
+
+        // Raw bom.documents entries carry a singular fileStoreId (same shape enrichBomData itself
+        // reads via document.get(FILE_STORE_ID_KEY) below). Depending on Jackson default-typing metadata
+        // on the incoming request, each element may already be a LinkedHashMap or a concrete POJO
+        // (e.g. Document) - convertValue normalizes either case to a plain Map.
+        List<Map<String, Object>> documents = new ArrayList<>();
+        for (Object rawDocument : rawDocuments) {
+            documents.add(mapper.convertValue(rawDocument, Map.class));
+        }
+
+        // Group by documentType in APPENDABLE_DOCUMENT_TYPES order (all ASSET_HANDOVER_DOCUMENT
+        // documents first, then all INSTALLATION_COMPLETION_CERTIFICATE), not source order.
+        List<Map<String, Object>> ordered = new ArrayList<>();
+        for (String documentType : APPENDABLE_DOCUMENT_TYPES) {
+            for (Map<String, Object> document : documents) {
+                if (document.get(FILE_STORE_ID_KEY) != null && documentType.equals(document.get("documentType"))) {
+                    ordered.add(document);
+                }
+            }
+        }
+        return ordered;
+    }
+
+    /**
+     * The client sends the raw, ungrouped documents array nested inside "bom.documents" (not as
+     * a sibling field on the request), and the PDF service reads tenantId from "bom.tenantId".
+     * For every image the request's system type requires, this combines the fileStoreIds of all raw
+     * entries whose documentType is "INSTALLATION_IMAGE-&lt;code&gt;" into one grouped entry, with
+     * documentName resolved from that code's description, then overwrites "bom.documents" with the
+     * grouped result.
+     * <p>
+     * Only the images the system type declares are emitted, in the order that system type defines -
+     * an AC_ON_GRID_THREE_PHASE report must not carry the DC-only sections, and the master's array
+     * order is not the report's order.
+     */
+    @SuppressWarnings("unchecked")
+    private void enrichBomData(GenerateBOMPdfRequest request) {
+        Map<String, Object> bomData = request.getBomData();
+        if (bomData == null) {
+            return;
+        }
+        bomData.put("tenantId", TENANTID);
+
+        Object rawDocuments = bomData.get(DOCUMENTS_KEY);
+        List<Map<String, Object>> documents = rawDocuments instanceof List
+                ? (List<Map<String, Object>>) rawDocuments
+                : Collections.emptyList();
+
+        List<InstallationImageMaster> installationImages =
+                installationImagesForSystem(request.getRequestInfo(), request.getSystem());
+
+        // Every image required by this system type gets an entry so its documentName always renders,
+        // even when no matching upload exists — fileStoreIds is just empty in that case.
+        List<BomPdfDocument> groupedDocuments = new ArrayList<>();
+        for (InstallationImageMaster installationImage : installationImages) {
+            String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + installationImage.getCode();
+
+            List<String> fileStoreIds = documents.stream()
+                    .filter(document -> documentType.equals(document.get("documentType")) && document.get(FILE_STORE_ID_KEY) != null)
+                    .map(document -> String.valueOf(document.get(FILE_STORE_ID_KEY)))
+                    .collect(Collectors.toList());
+
+            groupedDocuments.add(BomPdfDocument.builder()
+                    .documentType(documentType)
+                    .documentName(installationImage.getDescription())
+                    .fileStoreIds(fileStoreIds)
+                    .build());
+        }
+
+        bomData.put(DOCUMENTS_KEY, groupedDocuments);
+    }
+
+    /**
+     * The active InstallationImages entries that declare this system type, sorted by the order that
+     * system type gives them. An entry whose system_types does not list the system type is dropped:
+     * that image is not part of this system's installation report.
+     */
+    private List<InstallationImageMaster> installationImagesForSystem(RequestInfo requestInfo, String systemType) {
+        List<InstallationImageMaster> allImages = mdmsUtils.fetchInstallationImages(requestInfo, TENANTID);
+
+        List<InstallationImageMaster> imagesForSystem = allImages.stream()
+                .filter(image -> !Boolean.FALSE.equals(image.getActive()))
+                .filter(image -> image.getOrderBySystemType() != null
+                        && image.getOrderBySystemType().containsKey(systemType))
+                .sorted(Comparator.comparingDouble(image -> image.getOrderBySystemType().get(systemType)))
+                .collect(Collectors.toList());
+
+        if (imagesForSystem.isEmpty()) {
+            // Not fatal - the rest of the report is still valid - but it always means the master and
+            // the system type codes have drifted apart, so it must be visible in the logs.
+            log.warn("No InstallationImages entry declares system type {} - the report will carry no images. " +
+                    "Checked {} master entries.", systemType, allImages.size());
+        } else {
+            log.debug("Rendering {} of {} InstallationImages entries for system type {}",
+                    imagesForSystem.size(), allImages.size(), systemType);
+        }
+        return imagesForSystem;
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
@@ -182,7 +338,7 @@ public class BomService {
         if (!isValidCascadingUpdate(bomFromDB, billOfMaterial)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 
