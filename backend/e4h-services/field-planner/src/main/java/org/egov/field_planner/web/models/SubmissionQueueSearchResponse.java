@@ -22,4 +22,10 @@ public class SubmissionQueueSearchResponse {
 
     @JsonProperty("total")
     private Integer total;
+
+    @JsonProperty("count")
+    private Integer count;
+
+    @JsonProperty("pagination")
+    private Pagination pagination;
 }
