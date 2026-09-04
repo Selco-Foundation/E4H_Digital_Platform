@@ -6,9 +6,6 @@ import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.service.*;
 import org.selco.e4h.util.StorageUtil;
 import org.selco.e4h.util.CommonUtility;
-import org.selco.e4h.web.models.FunctionalMetrics;
-import org.selco.e4h.web.models.AgeBucketData;
-import org.selco.e4h.web.models.ArrowData;
 import org.selco.e4h.web.models.*;
 import org.selco.e4h.web.models.ProcessingContext;
 import org.selco.e4h.web.models.storage.StorageResponse;
@@ -27,6 +24,7 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.selco.e4h.config.ConsumerConfiguration;
+import org.selco.e4h.util.EscalationTemplateType;
 import org.selco.e4h.util.ElasticSearchClient;
 
 /**
@@ -45,13 +43,20 @@ public class EscalationController {
     private final StorageUtil storageUtil;
     private final ElasticsearchEscalationService elasticsearchEscalationService;
     private final EscalationStatusService escalationStatusService;
-    private final DynamicEmailTemplateService dynamicEmailTemplateService;
-    private final WeeklyReportService weeklyReportService;
-    private final WeeklyReportEmailService weeklyReportEmailService;
     private final ElasticSearchClient elasticSearchClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ConsumerConfiguration consumerConfiguration;
     private final CommonUtility commonUtility;
+    private final DailyStatePocSummaryBuilder dailyStatePocSummaryBuilder;
+    private final DailyStatePocEmailService dailyStatePocEmailService;
+    private final DailySeniorProgramManagerSummaryBuilder dailySeniorProgramManagerSummaryBuilder;
+    private final DailySeniorProgramManagerEmailService dailySeniorProgramManagerEmailService;
+    private final DailyProcurementSummaryBuilder dailyProcurementSummaryBuilder;
+    private final DailyProcurementEmailService dailyProcurementEmailService;
+    private final WeeklyEscalationAnalyticsService weeklyEscalationAnalyticsService;
+    private final WeeklySeniorProgramManagerEmailService weeklySeniorProgramManagerEmailService;
+    private final WeeklyProcurementEmailService weeklyProcurementEmailService;
+    private final WeeklyLeadershipEmailService weeklyLeadershipEmailService;
     
     /**
      * Daily escalation endpoint
@@ -102,27 +107,19 @@ public class EscalationController {
     }
     
     /**
-     * Weekly escalation endpoint
-     * Uses Incident.EscalationRecipient MDMS to get users per state
-     * Sends one email per email ID containing all states
-     * Runs every Monday at 9:00 AM IST
+     * Weekly escalation endpoint — routes by MDMS templateType to SPM / Procurement / Leadership weekly emails.
      */
     @PostMapping("/weekly")
     public ResponseEntity<String> sendWeeklyEscalationEmail(@RequestBody EscalationEmailRequest request) {
         log.trace("Received request to send weekly escalation email");
         try {
-            log.info("Starting weekly SLA escalation processing");
+            log.info("Starting weekly escalation processing");
             
-            // Use RequestInfo directly
             RequestInfo requestInfo = request.getRequestInfo();
-            log.debug("RequestInfo extracted from request");
             
-            // Fetch master data
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
             List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
             Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
-            log.debug("Fetched {} escalation recipients, {} active tenants, {} tenant names", 
-                escalationRecipients.size(), activeTenantIds.size(), activeTenantIdsName.size());
             
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
@@ -131,81 +128,27 @@ public class EscalationController {
             }
             
             log.info("Found {} escalation recipients and {} active tenants", escalationRecipients.size(), activeTenantIds.size());
-            
-            // Process weekly reports using Incident.EscalationRecipient MDMS
-            processWeeklyReportsWithEscalationRecipients(requestInfo, escalationRecipients, activeTenantIds, activeTenantIdsName);
-            
-            log.info("Completed weekly DRE system report processing");
-            return ResponseEntity.ok("Weekly DRE system report processing completed successfully");
 
-        } catch (Exception e) {
-            log.error("Error during weekly DRE system report processing", e);
-            escalationStatusService.publishGeneralFailureStatus("weekly", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Weekly DRE system report processing failed: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Process weekly reports using Incident.EscalationRecipient MDMS
-     * Sends one email per email ID containing all states
-     */
-    private void processWeeklyReportsWithEscalationRecipients(RequestInfo requestInfo, 
-                                                           List<EscalationRecipient> escalationRecipients, 
-                                                           List<String> activeTenantIds, Map<String, String> activeTenantIdsName) {
-        log.trace("Processing weekly reports with escalation recipients, recipient count: {}, tenant count: {}", 
-            escalationRecipients != null ? escalationRecipients.size() : 0, activeTenantIds != null ? activeTenantIds.size() : 0);
-        try {
-            log.info("Processing weekly reports with {} escalation recipients for {} active tenants", 
-                escalationRecipients.size(), activeTenantIds.size());
-            
-            // Group escalation recipients by email ID to send one email per recipient
-            Map<String, List<EscalationRecipient>> recipientsByEmail = new HashMap<>();
             for (EscalationRecipient recipient : escalationRecipients) {
                 if (recipient.getActive() == null || !recipient.getActive()) {
-                    log.info("Skipping inactive escalation recipient: {}", recipient.getId());
                     continue;
                 }
-                
-                // Get users for this recipient based on boundary level
-                List<String> roleCodes = Arrays.asList(recipient.getRecipientRole());
-                List<User> users = new ArrayList<>();
-                
-                if ("state".equals(recipient.getBoundaryLevel())) {
-                    // For state-level recipients, get users from all active tenants
-                    for (String tenantId : activeTenantIds) {
-                        String state = activeTenantIdsName.get(tenantId);
-                        users.addAll(userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes));
-                    }
-                } else if ("country".equals(recipient.getBoundaryLevel())) {
-                    // For country-level recipients, get users with boundary "India" from 'in' tenant
-                    users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", roleCodes);
-                }
-                
-                for (User user : users) {
-                    if (user.getEmailId() != null && !user.getEmailId().trim().isEmpty()) {
-                        recipientsByEmail.computeIfAbsent(user.getEmailId(), k -> new ArrayList<>()).add(recipient);
-                    }
+                if (isWeeklyTemplate(recipient.getTemplateType())) {
+                    processWeeklyEscalationRecipient(requestInfo, recipient, activeTenantIds, activeTenantIdsName);
+                } else {
+                    log.warn("Skipping weekly recipient id={} — missing or unrecognized templateType: {}",
+                            recipient.getId(), recipient.getTemplateType());
                 }
             }
-            
-            log.info("Found {} unique email addresses for weekly reports", recipientsByEmail.size());
-            
-            // Process each unique email address
-            for (Map.Entry<String, List<EscalationRecipient>> entry : recipientsByEmail.entrySet()) {
-                String emailId = entry.getKey();
-                List<EscalationRecipient> recipientsForEmail = entry.getValue();
-                
-                try {
-                    processWeeklyReportForEmail(requestInfo, emailId, recipientsForEmail, activeTenantIds, activeTenantIdsName);
+
+            log.info("Completed weekly escalation processing");
+            return ResponseEntity.ok("Weekly escalation processing completed successfully");
+
         } catch (Exception e) {
-                    log.error("Error processing weekly report for email: {}", emailId, e);
-                }
-            }
-            
-        } catch (Exception e) {
-            log.error("Error processing weekly reports with escalation recipients", e);
-            throw e;
+            log.error("Error during weekly escalation processing", e);
+            escalationStatusService.publishGeneralFailureStatus("weekly", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Weekly escalation processing failed: " + e.getMessage());
         }
     }
     
@@ -253,641 +196,394 @@ public class EscalationController {
         log.info("Relevant tenant IDs for email {}: {}", emailId, relevantTenantIds);
         return relevantTenantIds;
     }
-    
+
     /**
-     * Process weekly report for a single email ID containing only relevant states
-     */
-    private void processWeeklyReportForEmail(RequestInfo requestInfo, String emailId, 
-                                          List<EscalationRecipient> recipients, 
-                                          List<String> activeTenantIds, Map<String, String> activeTenantIdsName) {
-        log.trace("Processing weekly report for email: {}, recipient count: {}", emailId, recipients != null ? recipients.size() : 0);
-        try {
-            log.info("Processing weekly report for email: {} with {} recipients", emailId, recipients.size());
-            
-            // For weekly reports, only include tenant IDs where the user has roles
-            Set<String> relevantTenantIds = getRelevantTenantIdsForEmail(requestInfo, emailId, recipients, activeTenantIds);
-            
-            // Generate consolidated weekly report data for all relevant tenants
-            Map<String, WeeklyReportData> reportDataByTenant = new HashMap<>();
-            Map<String, String> csvFileStoreIds = new HashMap<>();
-            
-            for (String tenantId : relevantTenantIds) {
-                try {
-                    // Generate weekly report data for this tenant
-                    String state = activeTenantIdsName.get(tenantId);
-                    if (state==null || state.trim().isEmpty())
-                        continue;
-
-                    WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(state, requestInfo);
-                    reportDataByTenant.put(tenantId, reportData);
-                } catch (Exception e) {
-                    log.error("Error generating weekly report data for tenant: {}", tenantId, e);
-                }
-            }
-
-            // Build ONE consolidated CSV across all mapped states and upload to tenant "in"
-            try {
-                // Convert tenantIds to state codes for filtering
-                Set<String> stateCodes = new HashSet<>();
-                for (String tenantId : relevantTenantIds) {
-                    String stateCode = activeTenantIdsName.get(tenantId);
-                    if (stateCode != null && !stateCode.trim().isEmpty()) {
-                        stateCodes.add(stateCode);
-                    }
-                }
-                String consolidatedCsv = generateConsolidatedWeeklyCsv(stateCodes, requestInfo);
-                String consolidatedFileName = generateCsvFileName();
-                String consolidatedFsId = uploadCsvToFileStore(consolidatedCsv, consolidatedFileName, "in", requestInfo);
-                if (consolidatedFsId != null) {
-                    csvFileStoreIds.put("in", consolidatedFsId);
-                    log.info("Uploaded consolidated weekly CSV with filestoreId {} under tenant 'in'", consolidatedFsId);
-                }
-            } catch (Exception e) {
-                log.error("Failed to generate/upload consolidated weekly CSV", e);
-            }
-
-            // Send consolidated email with all states
-            sendConsolidatedWeeklyReportEmail(requestInfo, emailId, reportDataByTenant, csvFileStoreIds);
-            
-        } catch (Exception e) {
-            log.error("Error processing weekly report for email: {}", emailId, e);
-            throw e;
-        }
-    }
-    
-    /**
-     * Send consolidated weekly report email with all states
-     */
-    private void sendConsolidatedWeeklyReportEmail(RequestInfo requestInfo, String emailId, 
-                                                 Map<String, WeeklyReportData> reportDataByTenant,
-                                                 Map<String, String> csvFileStoreIds) {
-        log.trace("Sending consolidated weekly report email to: {}, tenant count: {}", emailId, reportDataByTenant != null ? reportDataByTenant.size() : 0);
-        try {
-            log.info("Sending consolidated weekly report email to: {} for {} tenants", emailId, reportDataByTenant.size());
-            
-            // Create a consolidated report data structure
-            WeeklyReportData consolidatedData = createConsolidatedReportData(reportDataByTenant);
-            
-            // Get user info for email - try to get actual user name
-            User user = getUserByEmailId(requestInfo, emailId);
-            if (user == null) {
-                user = new User();
-                user.setEmailId(emailId);
-                user.setName("Weekly Report Recipient"); // Fallback name
-            }
-            
-            // Generate download URL for the first available CSV file
-            String downloadUrl = "#";
-            if (!csvFileStoreIds.isEmpty()) {
-                String firstFileStoreId = csvFileStoreIds.values().iterator().next();
-                downloadUrl = commonUtility.generateDownloadUrl(
-                    firstFileStoreId, "in", 
-                    consumerConfiguration.getFileStoreBaseUrl(),
-                    consumerConfiguration.getFileStoreDownloadEndpoint()
-                );
-            }
-            
-            // Generate email HTML using the weekly report email service
-            String emailBody = weeklyReportEmailService.generateWeeklyReportEmailHTML(
-                consolidatedData, user.getName(), "consolidated", requestInfo, downloadUrl);
-            
-            // Generate email subject
-            String emailSubject = weeklyReportEmailService.generateWeeklyReportEmailSubject(
-                user.getName(), consolidatedData);
-            
-            // Send email via Kafka
-            sendEmailViaKafka(user, emailSubject, emailBody, new ArrayList<>(), new ArrayList<>(), "in");
-            
-            log.info("Successfully sent consolidated weekly report email to: {}", emailId);
-
-        } catch (Exception e) {
-            log.error("Error sending consolidated weekly report email to: {}", emailId, e);
-            throw e;
-        }
-    }
-    
-    /**
-     * Create consolidated report data from multiple tenant reports
-     */
-    private WeeklyReportData createConsolidatedReportData(Map<String, WeeklyReportData> reportDataByTenant) {
-        if (reportDataByTenant.isEmpty()) {
-            return WeeklyReportData.builder().build();
-        }
-        
-        // Use the first report as base and aggregate data
-        WeeklyReportData firstReport = reportDataByTenant.values().iterator().next();
-        
-        int totalFuncStart = 0, totalNonFuncStart = 0;
-        int totalFuncEnd = 0, totalNonFuncEnd = 0;
-        int totalLt1Wk = 0, totalLt1Mo = 0, totalLt3Mo = 0;
-        
-        Map<String, WeeklyReportData.StateAgeBucketData> consolidatedStateData = new HashMap<>();
-        
-        for (WeeklyReportData reportData : reportDataByTenant.values()) {
-            if (reportData.getWeekStartMetrics() != null) {
-                totalFuncStart += reportData.getWeekStartMetrics().getFunctionalCount();
-                totalNonFuncStart += reportData.getWeekStartMetrics().getNonFunctionalCount();
-            }
-            if (reportData.getWeekEndMetrics() != null) {
-                totalFuncEnd += reportData.getWeekEndMetrics().getFunctionalCount();
-                totalNonFuncEnd += reportData.getWeekEndMetrics().getNonFunctionalCount();
-            }
-            if (reportData.getTotalAgeBuckets() != null) {
-                totalLt1Wk += reportData.getTotalAgeBuckets().getTotalLt1Wk();
-                totalLt1Mo += reportData.getTotalAgeBuckets().getTotalLt1Mo();
-                totalLt3Mo += reportData.getTotalAgeBuckets().getTotalLt3Mo();
-            }
-            
-            // Merge state data
-            if (reportData.getStateData() != null) {
-                consolidatedStateData.putAll(reportData.getStateData());
-            }
-        }
-        
-        // Calculate percentages
-        int totalStart = totalFuncStart + totalNonFuncStart;
-        int totalEnd = totalFuncEnd + totalNonFuncEnd;
-        
-        double funcStartPct = totalStart > 0 ? (totalFuncStart * 100.0 / totalStart) : 0;
-        double nonFuncStartPct = totalStart > 0 ? (totalNonFuncStart * 100.0 / totalStart) : 0;
-        double funcEndPct = totalEnd > 0 ? (totalFuncEnd * 100.0 / totalEnd) : 0;
-        double nonFuncEndPct = totalEnd > 0 ? (totalNonFuncEnd * 100.0 / totalEnd) : 0;
-        
-        // Calculate arrows using shared utility
-        ArrowData funcArrow = commonUtility.calculateArrow(funcStartPct, funcEndPct, true);
-        ArrowData nonFuncArrow = commonUtility.calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
-        
-        // Create consolidated state list - use tenant IDs if no state data
-        String consolidatedStateList;
-        log.info("Creating consolidated state list. consolidatedStateData size: {}, reportDataByTenant keys: {}", 
-            consolidatedStateData.size(), reportDataByTenant.keySet());
-        
-        if (consolidatedStateData.isEmpty()) {
-            // If no state data, use tenant IDs from the reports
-            consolidatedStateList = reportDataByTenant.keySet().stream()
-                .map(commonUtility::getStateDisplayName)
-                .collect(Collectors.joining(", "));
-            log.info("Using tenant IDs for state list: {}", consolidatedStateList);
-        } else {
-            // Use state data keys if available
-            consolidatedStateList = consolidatedStateData.keySet().stream()
-                .map(commonUtility::getStateDisplayName)
-                .collect(Collectors.joining(", "));
-            log.info("Using state data keys for state list: {}", consolidatedStateList);
-        }
-        
-        // Create FunctionalMetrics objects
-        FunctionalMetrics startMetrics = FunctionalMetrics.builder()
-            .functionalCount(totalFuncStart)
-            .nonFunctionalCount(totalNonFuncStart)
-            .build();
-
-        FunctionalMetrics endMetrics = FunctionalMetrics.builder()
-            .functionalCount(totalFuncEnd)
-            .nonFunctionalCount(totalNonFuncEnd)
-            .build();
-
-        // Create AgeBucketData object
-        AgeBucketData totalAgeBuckets = AgeBucketData.builder()
-            .totalLt1Wk(totalLt1Wk)
-            .totalLt1Mo(totalLt1Mo)
-            .totalLt3Mo(totalLt3Mo)
-            .build();
-
-        return WeeklyReportData.builder()
-            .tenantId("in")
-            .dateRange(firstReport.getDateRange())
-            .weekStartDate(firstReport.getWeekStartDate())
-            .weekEndDate(firstReport.getWeekEndDate())
-            .weekStartMetrics(startMetrics)
-            .weekEndMetrics(endMetrics)
-            .functionalArrow(funcArrow)
-            .nonFunctionalArrow(nonFuncArrow)
-            .totalAgeBuckets(totalAgeBuckets)
-            .stateData(consolidatedStateData)
-            .stateList(consolidatedStateList)
-            .todayFormatted(firstReport.getTodayFormatted())
-            .build();
-
-    }
-    /**
-     * Process a single escalation recipient
-     * Based on LLD sequence diagram Loop 1
+     * Process a single escalation recipient — routes by MDMS templateType only.
      */
     private void processEscalationRecipient(RequestInfo requestInfo, EscalationRecipient escalationRecipient, List<String> activeTenantIds, String escalationType) {
         try {
-            log.info("Processing escalation recipient V2: {} role={} boundary={} items={} ", escalationRecipient.getId(), escalationRecipient.getRecipientRole(), escalationRecipient.getBoundaryLevel(), escalationRecipient.getEscalations() != null ? escalationRecipient.getEscalations().size() : 0);
+            log.info("Processing escalation recipient V2: {} role={} boundary={} templateType={} items={} ",
+                    escalationRecipient.getId(), escalationRecipient.getRecipientRole(),
+                    escalationRecipient.getBoundaryLevel(), escalationRecipient.getTemplateType(),
+                    escalationRecipient.getEscalations() != null ? escalationRecipient.getEscalations().size() : 0);
 
-            RecipientRole recipientRole = RecipientRole.builder()
-                    .role(escalationRecipient.getRecipientRole())
-                    .boundaryLevel(escalationRecipient.getBoundaryLevel())
-                    .workflowStates(null)
-                    .build();
+            if ("daily".equals(escalationType) && EscalationTemplateType.DAILY_STATE_POC.equals(escalationRecipient.getTemplateType())) {
+                processDailyStatePocEscalation(requestInfo, escalationRecipient, activeTenantIds);
+                return;
+            }
 
-            processRecipientRole(requestInfo, escalationRecipient, recipientRole, activeTenantIds, escalationType);
+            if ("daily".equals(escalationType) && EscalationTemplateType.DAILY_SENIOR_PROGRAM_MANAGER.equals(escalationRecipient.getTemplateType())) {
+                processDailySeniorProgramManagerEscalation(requestInfo, escalationRecipient, activeTenantIds);
+                return;
+            }
+
+            if ("daily".equals(escalationType) && EscalationTemplateType.DAILY_PROCUREMENT.equals(escalationRecipient.getTemplateType())) {
+                processDailyProcurementEscalation(requestInfo, escalationRecipient);
+                return;
+            }
+
+            log.warn("Skipping {} recipient id={} — missing or unrecognized templateType: {}",
+                    escalationType, escalationRecipient.getId(), escalationRecipient.getTemplateType());
             
         } catch (Exception e) {
             log.error("Error processing escalation recipient: {}", escalationRecipient.getId(), e);
         }
     }
-    
+
     /**
-     * Process a single recipient role
+     * Process daily State POC escalation using the new template (new vs previously open sections).
      */
-    private void processRecipientRole(RequestInfo requestInfo, EscalationRecipient escalationRecipient,
-                                    RecipientRole recipientRole, List<String> activeTenantIds, String escalationType) {
+    private void processDailyStatePocEscalation(RequestInfo requestInfo,
+                                                EscalationRecipient escalationRecipient,
+                                                List<String> activeTenantIds) {
+        String escalationId = escalationRecipient.getId().toString();
+        String recipientRoleName = escalationRecipient.getRecipientRole();
+        List<EscalationRoleEscalationItem> items = escalationRecipient.getEscalations();
+
+        if (items == null || items.isEmpty()) {
+            log.warn("No escalation items configured for daily State POC recipient: {}", escalationId);
+            return;
+        }
+
+        if (!"state".equals(escalationRecipient.getBoundaryLevel())) {
+            log.warn("Daily State POC template is only supported at state boundary level, recipient: {}", escalationId);
+            return;
+        }
+
+        items.sort((a, b) -> levelOrder(a.getEscalationLevel()) - levelOrder(b.getEscalationLevel()));
+        EscalationRoleEscalationItem escalationItem = items.get(0);
+        Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
+
+        for (String tenantId : activeTenantIds) {
+            String state = activeTenantIdsName.get(tenantId);
+            if (state == null || state.isBlank()) {
+                continue;
+            }
+
+            try {
+                List<String> roleCodes = List.of(recipientRoleName);
+                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes);
+
+                if (users.isEmpty()) {
+                    log.warn("No State POC users found for state: {} tenant: {}", state, tenantId);
+                    escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
+                    continue;
+                }
+
+                List<EscalationTicket> newBreaches = slaBreachService.findSLABreachTickets(
+                        state,
+                        escalationItem.getWorkflowStates(),
+                        escalationId,
+                        escalationItem.getEscalationLevel(),
+                        requestInfo);
+
+                List<EscalationTicket> allTicketsForCsv = new ArrayList<>(newBreaches);
+                List<EscalationTicket> previouslyOpen = slaBreachService.findPreviouslyEscalatedStillOpenTickets(
+                        state,
+                        escalationItem.getWorkflowStates(),
+                        escalationId,
+                        escalationItem.getEscalationLevel(),
+                        requestInfo);
+                allTicketsForCsv.addAll(previouslyOpen);
+
+                String csvContent = csvGenerationService.generateEscalationCsv(allTicketsForCsv);
+                String stateName = commonUtility.getStateDisplayName(state);
+                String csvFileName = csvGenerationService.generateCsvFileName(
+                        "daily", escalationItem.getEscalationLevel(), stateName);
+                String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
+
+                String downloadUrl = buildDownloadUrl(csvFileStoreId);
+
+                if (!newBreaches.isEmpty()) {
+                    elasticsearchEscalationService.updateEscalationsForTickets(
+                            newBreaches, escalationId, escalationItem.getEscalationLevel());
+                }
+
+                for (User user : users) {
+                    if (user.getEmailId() == null || user.getEmailId().isBlank()) {
+                        log.warn("State POC user {} has no email, skipping", user.getName());
+                        continue;
+                    }
+
+                    DailyStatePocSummary summary = dailyStatePocSummaryBuilder.buildSummary(
+                            state, user.getName(), escalationItem, escalationId, requestInfo);
+                    String emailSubject = dailyStatePocEmailService.generateEmailSubject(summary);
+                    String emailBody = dailyStatePocEmailService.generateEmailHtml(summary, downloadUrl);
+
+                    List<String> csvFileStoreIds = csvFileStoreId != null ? List.of(csvFileStoreId) : new ArrayList<>();
+                    List<String> csvFileNames = csvFileStoreId != null ? List.of(csvFileName) : new ArrayList<>();
+                    sendEmailViaKafka(user, emailSubject, emailBody, csvFileStoreIds, csvFileNames, tenantId);
+                }
+
+                escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
+                log.info("Completed daily State POC escalation for state: {} with {} new and {} previously open tickets",
+                        state, newBreaches.size(), previouslyOpen.size());
+
+            } catch (Exception e) {
+                log.error("Error processing daily State POC escalation for tenant: {}", tenantId, e);
+                escalationStatusService.publishFailureStatus("daily", escalationId, tenantId, recipientRoleName, e.getMessage());
+            }
+        }
+    }
+
+    private void processDailySeniorProgramManagerEscalation(RequestInfo requestInfo,
+                                                          EscalationRecipient escalationRecipient,
+                                                          List<String> activeTenantIds) {
+        String escalationId = escalationRecipient.getId().toString();
+        String recipientRoleName = escalationRecipient.getRecipientRole();
+        List<EscalationRoleEscalationItem> items = escalationRecipient.getEscalations();
+
+        if (items == null || items.isEmpty()) {
+            log.warn("No escalation items for daily SPM recipient: {}", escalationId);
+            return;
+        }
+
+        items.sort((a, b) -> levelOrder(a.getEscalationLevel()) - levelOrder(b.getEscalationLevel()));
+        EscalationRoleEscalationItem escalationItem = items.get(0);
+        Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
+
+        for (String tenantId : activeTenantIds) {
+            String state = activeTenantIdsName.get(tenantId);
+            if (state == null || state.isBlank()) {
+                continue;
+            }
+
+            try {
+                List<User> users = userService.searchUsersByRoleAndBoundaryCode(
+                        requestInfo, state, List.of(recipientRoleName));
+                if (users.isEmpty()) {
+                    escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
+                    continue;
+                }
+
+                List<EscalationTicket> newBreaches = slaBreachService.findSLABreachTickets(
+                        state, escalationItem.getWorkflowStates(), escalationId,
+                        escalationItem.getEscalationLevel(), requestInfo);
+                List<EscalationTicket> previouslyOpen = slaBreachService.findPreviouslyEscalatedStillOpenTickets(
+                        state, escalationItem.getWorkflowStates(), escalationId,
+                        escalationItem.getEscalationLevel(), requestInfo);
+
+                List<EscalationTicket> allTickets = new ArrayList<>(newBreaches);
+                allTickets.addAll(previouslyOpen);
+                String csvContent = csvGenerationService.generateEscalationCsv(allTickets);
+                String csvFileName = csvGenerationService.generateCsvFileName(
+                        "daily", escalationItem.getEscalationLevel(), commonUtility.getStateDisplayName(state));
+                String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
+                String downloadUrl = buildDownloadUrl(csvFileStoreId);
+
+                if (!newBreaches.isEmpty()) {
+                    elasticsearchEscalationService.updateEscalationsForTickets(
+                            newBreaches, escalationId, escalationItem.getEscalationLevel());
+                }
+
+                for (User user : users) {
+                    if (user.getEmailId() == null || user.getEmailId().isBlank()) {
+                        continue;
+                    }
+                    DailySeniorProgramManagerSummary summary = dailySeniorProgramManagerSummaryBuilder.buildSummary(
+                            state, user.getName(), escalationItem, escalationId, requestInfo);
+                    sendEmailViaKafka(user,
+                            dailySeniorProgramManagerEmailService.generateEmailSubject(summary),
+                            dailySeniorProgramManagerEmailService.generateEmailHtml(summary, downloadUrl),
+                            csvFileStoreId != null ? List.of(csvFileStoreId) : new ArrayList<>(),
+                            csvFileStoreId != null ? List.of(csvFileName) : new ArrayList<>(),
+                            tenantId);
+                }
+
+                escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
+            } catch (Exception e) {
+                log.error("Error processing daily SPM escalation for tenant: {}", tenantId, e);
+                escalationStatusService.publishFailureStatus("daily", escalationId, tenantId, recipientRoleName, e.getMessage());
+            }
+        }
+    }
+
+    private void processDailyProcurementEscalation(RequestInfo requestInfo, EscalationRecipient escalationRecipient) {
+        String escalationId = escalationRecipient.getId().toString();
+        String recipientRoleName = escalationRecipient.getRecipientRole();
+        List<EscalationRoleEscalationItem> items = escalationRecipient.getEscalations();
+        int triggerDelayHours = escalationRecipient.getTriggerDelayHours() != null
+                ? escalationRecipient.getTriggerDelayHours() : 48;
+
+        if (items == null || items.isEmpty()) {
+            log.warn("No escalation items for daily Procurement recipient: {}", escalationId);
+            return;
+        }
+
+        items.sort((a, b) -> levelOrder(a.getEscalationLevel()) - levelOrder(b.getEscalationLevel()));
+        EscalationRoleEscalationItem escalationItem = items.get(0);
+
         try {
-            log.info("Processing recipient role: {} with boundary level: {}", 
-                recipientRole.getRole(), recipientRole.getBoundaryLevel());
-            
-            String escalationId = escalationRecipient.getId().toString();
-            String recipientRoleName = recipientRole.getRole();
-            
-            if ("state".equals(recipientRole.getBoundaryLevel())) {
-                Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
-                // State level processing - Loop 3
-                for (String tenantId : activeTenantIds) {
-                    try {
-                        processStateLevelEscalation(requestInfo, escalationRecipient, recipientRole, tenantId, escalationType, activeTenantIdsName);
-                    } catch (Exception e) {
-//                        e.printStackTrace();
-                        log.error("Error processing state level escalation for tenant: {}", tenantId, e);
-                        escalationStatusService.publishFailureStatus(escalationType, escalationId, tenantId, recipientRoleName, e.getMessage());
-                    }
-                }
-                
-            } else if ("country".equals(recipientRole.getBoundaryLevel())) {
-                // Country level processing
-                try {
-                    processCountryLevelEscalation(requestInfo, escalationRecipient, recipientRole, escalationType, "in");
-                } catch (Exception e) {
-                    log.error("Error processing country level escalation", e);
-                    escalationStatusService.publishFailureStatus(escalationType, escalationId, "in", recipientRoleName, e.getMessage());
-                }
+            List<User> users = userService.searchUsersByRoleAndBoundaryCode(
+                    requestInfo, "India", List.of(recipientRoleName));
+            if (users.isEmpty()) {
+                log.warn("No Procurement users found with boundary India");
+                escalationStatusService.publishSuccessStatus("daily", escalationId, "in", recipientRoleName);
+                return;
             }
-            
+
+            List<EscalationTicket> newBreaches = slaBreachService.findProcurementEligibleTickets(
+                    escalationItem.getWorkflowStates(), escalationId,
+                    escalationItem.getEscalationLevel(), triggerDelayHours, requestInfo);
+            List<EscalationTicket> previouslyOpen = slaBreachService.findProcurementPreviouslyOpenTickets(
+                    escalationItem.getWorkflowStates(), escalationId,
+                    escalationItem.getEscalationLevel(), triggerDelayHours, requestInfo);
+
+            List<EscalationTicket> allTickets = new ArrayList<>(newBreaches);
+            allTickets.addAll(previouslyOpen);
+            String csvContent = csvGenerationService.generateEscalationCsv(allTickets);
+            String csvFileName = csvGenerationService.generateCsvFileName(
+                    "daily", escalationItem.getEscalationLevel(), "AllStates");
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
+            String downloadUrl = buildDownloadUrl(csvFileStoreId);
+
+            if (!newBreaches.isEmpty()) {
+                elasticsearchEscalationService.updateEscalationsForTickets(
+                        newBreaches, escalationId, escalationItem.getEscalationLevel());
+            }
+
+            for (User user : users) {
+                if (user.getEmailId() == null || user.getEmailId().isBlank()) {
+                    continue;
+                }
+                DailyProcurementSummary summary = dailyProcurementSummaryBuilder.buildSummary(
+                        user.getName(), escalationItem, escalationId, triggerDelayHours, requestInfo);
+                sendEmailViaKafka(user,
+                        dailyProcurementEmailService.generateEmailSubject(summary),
+                        dailyProcurementEmailService.generateEmailHtml(summary, downloadUrl),
+                        csvFileStoreId != null ? List.of(csvFileStoreId) : new ArrayList<>(),
+                        csvFileStoreId != null ? List.of(csvFileName) : new ArrayList<>(),
+                        "in");
+            }
+
+            escalationStatusService.publishSuccessStatus("daily", escalationId, "in", recipientRoleName);
         } catch (Exception e) {
-            log.error("Error processing recipient role: {}", recipientRole.getRole(), e);
+            log.error("Error processing daily Procurement escalation", e);
+            escalationStatusService.publishFailureStatus("daily", escalationId, "in", recipientRoleName, e.getMessage());
         }
     }
-    
-    /**
-     * Process state level escalation with separate queries per escalation item
-     */
-    private void processStateLevelEscalation(RequestInfo requestInfo, EscalationRecipient escalationRecipient,
-                                           RecipientRole recipientRole, String tenantId, String escalationType, Map<String, String> activeTenantIdsName) {
-        String escalationId = escalationRecipient.getId().toString();
-        String recipientRoleName = recipientRole.getRole();
-        String state = activeTenantIdsName.get(tenantId); // Get BoundaryCode from tenantId: For tenantId pg, state = India_Karnataka
 
-        // Step 3a: Query users for role
-        List<String> roleCodes = List.of(recipientRole.getRole());
-        List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes);
-        
-        if (users.isEmpty()) {
-            log.warn("No users found for role: {} in tenant: {}", recipientRole.getRole(), tenantId);
-            escalationStatusService.publishSuccessStatus(escalationType, escalationId, tenantId, recipientRoleName);
-            return;
-        }
-        
-        // Process each escalation item (L0 -> L1 -> L2) with separate queries
-        List<EscalationRoleEscalationItem> items = escalationRecipient.getEscalations();
-        if (items == null || items.isEmpty()) {
-            escalationStatusService.publishSuccessStatus(escalationType, escalationId, tenantId, recipientRoleName);
-            return;
-        }
+    private void processWeeklyEscalationRecipient(RequestInfo requestInfo,
+                                                     EscalationRecipient recipient,
+                                                     List<String> activeTenantIds,
+                                                     Map<String, String> activeTenantIdsName) {
+        String templateType = recipient.getTemplateType();
+        String role = recipient.getRecipientRole();
 
-        items.sort((a, b) -> levelOrder(a.getEscalationLevel()) - levelOrder(b.getEscalationLevel()));
+        if (EscalationTemplateType.WEEKLY_LEADERSHIP.equals(templateType)
+                || EscalationTemplateType.WEEKLY_PROCUREMENT.equals(templateType)) {
+            Set<String> allStateCodes = activeTenantIds.stream()
+                    .map(activeTenantIdsName::get)
+                    .filter(s -> s != null && !s.isBlank())
+                    .collect(Collectors.toSet());
+            WeeklyEscalationAnalytics analytics = weeklyEscalationAnalyticsService.buildAnalytics(allStateCodes, requestInfo);
+            String downloadUrl = uploadWeeklyCsv(allStateCodes, requestInfo);
 
-        // Collect tickets by escalation level for single email
-        Map<String, List<EscalationTicket>> ticketsByLevel = new HashMap<>();
-        List<String> csvFileStoreIds = new ArrayList<>();
-        List<String> csvFileNames = new ArrayList<>();
-
-        // Separate query per escalation item as per LLD requirement
-        for (EscalationRoleEscalationItem item : items) {
-            log.info("Processing escalation item: {} with workflow states: {}", 
-                item.getEscalationLevel(), item.getWorkflowStates());
-            
-            // One query per escalation item in array (LLD requirement)
-            // Pass RequestInfo for MDMS-driven threshold calculation
-            List<EscalationTicket> tickets = slaBreachService.findSLABreachTickets(
-                    state,
-                    item.getWorkflowStates(),
-                    escalationId,
-                    item.getEscalationLevel(),
-                    requestInfo
-            );
-
-            // Always process escalation level, even with zero counts
-            List<EscalationTicket> filteredTickets = new ArrayList<>();
-            if (tickets != null && !tickets.isEmpty()) {
-                // Filter tickets by MDMS workflow states to match email template logic
-                filteredTickets = filterTicketsByWorkflowStates(tickets, item.getWorkflowStates());
+            List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", List.of(role));
+            for (User user : users) {
+                if (user.getEmailId() == null || user.getEmailId().isBlank()) {
+                    continue;
+                }
+                sendWeeklyEmailForTemplate(templateType, analytics, user, downloadUrl);
             }
-            
-            // Always add to ticketsByLevel (even if empty) for consistent email generation
-            ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
-            
-            // Always generate CSV (with headers only if no tickets)
-            // Use state name in filename instead of tenantId
-            String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
-            String stateName = commonUtility.getStateDisplayName(state);
-            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), stateName);
-            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
-            
-            if (csvFileStoreId != null) {
-                csvFileStoreIds.add(csvFileStoreId);
-                csvFileNames.add(csvFileName);
-            }
-
-            // Update Elasticsearch for this level (only if there are tickets)
-            if (!filteredTickets.isEmpty()) {
-                elasticsearchEscalationService.updateEscalationsForTickets(filteredTickets, escalationId, item.getEscalationLevel());
-            }
-            
-            log.info("Processed escalation level: {} with {} tickets (filtered from {} total)", 
-                item.getEscalationLevel(), filteredTickets.size(), tickets != null ? tickets.size() : 0);
-        }
-
-        // Always send email (even with zero counts) - use new role-based email generation
-        // Pass MDMS workflow states to template for correct filtering
-        Map<String, List<String>> workflowStatesByLevel = new HashMap<>();
-        for (EscalationRoleEscalationItem item : items) {
-            workflowStatesByLevel.put(item.getEscalationLevel(), item.getWorkflowStates());
-        }
-        
-        sendRoleBasedEscalationEmail(requestInfo, users, ticketsByLevel, recipientRole.getRole(),
-            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, tenantId, workflowStatesByLevel);
-
-        escalationStatusService.publishSuccessStatus(escalationType, escalationId, tenantId, recipientRoleName);
-        log.info("Completed state level escalation (V2) for tenant: {} and role: {} with {} levels", 
-            tenantId, recipientRoleName, ticketsByLevel.size());
-    }
-    
-    /**
-     * Process country level escalation with separate queries per escalation item
-     */
-    private void processCountryLevelEscalation(RequestInfo requestInfo, EscalationRecipient escalationRecipient,
-                                             RecipientRole recipientRole, String escalationType, String tenantId) {
-        String escalationId = escalationRecipient.getId().toString();
-        String recipientRoleName = recipientRole.getRole();
-        
-        // Step 3b: Query users for role with boundary "India" in 'in' tenant
-        List<String> roleCodes = List.of(recipientRole.getRole());
-        List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", roleCodes);
-        
-        if (users.isEmpty()) {
-            log.warn("No users found for role: {} with boundary India in 'in' tenant", recipientRole.getRole());
-            escalationStatusService.publishSuccessStatus(escalationType, escalationId, "in", recipientRoleName);
-            return;
-        }
-        
-        List<EscalationRoleEscalationItem> items = escalationRecipient.getEscalations();
-        if (items == null || items.isEmpty()) {
-            escalationStatusService.publishSuccessStatus(escalationType, escalationId, "in", recipientRoleName);
             return;
         }
 
-        items.sort((a, b) -> levelOrder(a.getEscalationLevel()) - levelOrder(b.getEscalationLevel()));
-
-        // Collect tickets by escalation level for single email
-        Map<String, List<EscalationTicket>> ticketsByLevel = new HashMap<>();
-        List<String> csvFileStoreIds = new ArrayList<>();
-        List<String> csvFileNames = new ArrayList<>();
-
-        // Separate query per escalation item as per LLD requirement
-        for (EscalationRoleEscalationItem item : items) {
-            log.info("Processing country escalation item: {} with workflow states: {}", 
-                item.getEscalationLevel(), item.getWorkflowStates());
-            
-            // One query per escalation item in array (LLD requirement)
-            // Pass RequestInfo for MDMS-driven threshold calculation
-            List<EscalationTicket> tickets = slaBreachService.findSLABreachTicketsForCountry(
-                    item.getWorkflowStates(),
-                    escalationId,
-                    item.getEscalationLevel(),
-                    requestInfo
-            );
-
-            // Always process escalation level, even with zero counts
-            List<EscalationTicket> filteredTickets = new ArrayList<>();
-            if (tickets != null && !tickets.isEmpty()) {
-                // Filter tickets by MDMS workflow states to match email template logic
-                filteredTickets = filterTicketsByWorkflowStates(tickets, item.getWorkflowStates());
-            }
-            
-            // Always add to ticketsByLevel (even if empty) for consistent email generation
-            ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
-            
-            // Always generate CSV (with headers only if no tickets)
-            // All files are stored under tenantId "in"
-            // Use "AllStates" for country-level escalations
-            String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
-            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "AllStates");
-            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
-            
-            if (csvFileStoreId != null) {
-                csvFileStoreIds.add(csvFileStoreId);
-                csvFileNames.add(csvFileName);
-            }
-
-            // Update Elasticsearch for this level (only if there are tickets)
-            if (!filteredTickets.isEmpty()) {
-                elasticsearchEscalationService.updateEscalationsForTickets(filteredTickets, escalationId, item.getEscalationLevel());
-            }
-            
-            log.info("Processed country escalation level: {} with {} tickets (filtered from {} total)", 
-                item.getEscalationLevel(), filteredTickets.size(), tickets != null ? tickets.size() : 0);
-        }
-
-        // Special handling for CENTRAL_POC: Create combined CSV for L1 section (LEVEL_ZERO + LEVEL_ONE)
-        if ("CENTRAL_POC".equals(recipientRole.getRole())) {
-            // Combine LEVEL_ZERO and LEVEL_ONE tickets for L1 section
-            List<EscalationTicket> l1Tickets = new ArrayList<>();
-            if (ticketsByLevel.get("LEVEL_ZERO") != null) {
-                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ZERO"));
-            }
-            if (ticketsByLevel.get("LEVEL_ONE") != null) {
-                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ONE"));
-            }
-            
-            // Generate combined CSV for L1 section
-            if (!l1Tickets.isEmpty()) {
-                String l1CsvContent = csvGenerationService.generateEscalationCsv(l1Tickets);
-                String l1CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_ONE", "AllStates");
-                String l1CsvFileStoreId = uploadCsvToFileStore(l1CsvContent, l1CsvFileName, "in", requestInfo);
-                
-                if (l1CsvFileStoreId != null) {
-                    // Clear existing file store IDs and add only the combined L1 and L2 files
-                    csvFileStoreIds.clear();
-                    csvFileNames.clear();
-                    
-                    // Add L1 combined file
-                    csvFileStoreIds.add(l1CsvFileStoreId);
-                    csvFileNames.add(l1CsvFileName);
-                    
-                    // Add L2 file if it exists
-                    if (ticketsByLevel.get("LEVEL_TWO") != null && !ticketsByLevel.get("LEVEL_TWO").isEmpty()) {
-                        String l2CsvContent = csvGenerationService.generateEscalationCsv(ticketsByLevel.get("LEVEL_TWO"));
-                        String l2CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_TWO", "AllStates");
-                        String l2CsvFileStoreId = uploadCsvToFileStore(l2CsvContent, l2CsvFileName, "in", requestInfo);
-                        
-                        if (l2CsvFileStoreId != null) {
-                            csvFileStoreIds.add(l2CsvFileStoreId);
-                            csvFileNames.add(l2CsvFileName);
-                        }
+        if (EscalationTemplateType.WEEKLY_SENIOR_PROGRAM_MANAGER.equals(templateType)) {
+            Map<String, List<EscalationRecipient>> recipientsByEmail = new HashMap<>();
+            for (String tenantId : activeTenantIds) {
+                String state = activeTenantIdsName.get(tenantId);
+                if (state == null || state.isBlank()) {
+                    continue;
+                }
+                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, List.of(role));
+                for (User user : users) {
+                    if (user.getEmailId() != null && !user.getEmailId().isBlank()) {
+                        recipientsByEmail.computeIfAbsent(user.getEmailId(), k -> new ArrayList<>()).add(recipient);
                     }
                 }
             }
-        }
 
-        // Always send email (even with zero counts) - use new role-based email generation
-        // Pass MDMS workflow states to template for correct filtering
-        Map<String, List<String>> workflowStatesByLevel = new HashMap<>();
-        for (EscalationRoleEscalationItem item : items) {
-            workflowStatesByLevel.put(item.getEscalationLevel(), item.getWorkflowStates());
-        }
-        
-        sendRoleBasedEscalationEmail(requestInfo, users, ticketsByLevel, recipientRole.getRole(),
-            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, "in", workflowStatesByLevel);
+            for (Map.Entry<String, List<EscalationRecipient>> entry : recipientsByEmail.entrySet()) {
+                String emailId = entry.getKey();
+                Set<String> relevantTenantIds = getRelevantTenantIdsForEmail(
+                        requestInfo, emailId, entry.getValue(), activeTenantIds);
+                Set<String> stateCodes = relevantTenantIds.stream()
+                        .map(activeTenantIdsName::get)
+                        .filter(s -> s != null && !s.isBlank())
+                        .collect(Collectors.toSet());
+                if (stateCodes.isEmpty()) {
+                    continue;
+                }
 
-        escalationStatusService.publishSuccessStatus(escalationType, escalationId, "in", recipientRoleName);
-        log.info("Completed country level escalation (V2) for role: {} with {} levels", 
-            recipientRoleName, ticketsByLevel.size());
+                WeeklyEscalationAnalytics analytics = weeklyEscalationAnalyticsService.buildAnalytics(stateCodes, requestInfo);
+                String downloadUrl = uploadWeeklyCsv(stateCodes, requestInfo);
+                User user = getUserByEmailId(requestInfo, emailId);
+                if (user == null) {
+                    user = new User();
+                    user.setEmailId(emailId);
+                    user.setName("Weekly SPM Recipient");
+                }
+                sendWeeklyEmailForTemplate(templateType, analytics, user, downloadUrl);
+            }
+        }
+    }
+
+    private void sendWeeklyEmailForTemplate(String templateType,
+                                            WeeklyEscalationAnalytics analytics,
+                                            User user,
+                                            String downloadUrl) {
+        String subject;
+        String body;
+        if (EscalationTemplateType.WEEKLY_SENIOR_PROGRAM_MANAGER.equals(templateType)) {
+            subject = weeklySeniorProgramManagerEmailService.generateEmailSubject(analytics);
+            body = weeklySeniorProgramManagerEmailService.generateEmailHtml(analytics, user.getName(), downloadUrl);
+        } else if (EscalationTemplateType.WEEKLY_PROCUREMENT.equals(templateType)) {
+            subject = weeklyProcurementEmailService.generateEmailSubject(analytics);
+            body = weeklyProcurementEmailService.generateEmailHtml(analytics, user.getName(), downloadUrl);
+        } else {
+            subject = weeklyLeadershipEmailService.generateEmailSubject(analytics);
+            body = weeklyLeadershipEmailService.generateEmailHtml(analytics, user.getName(), downloadUrl);
+        }
+        sendEmailViaKafka(user, subject, body, new ArrayList<>(), new ArrayList<>(), "in");
+    }
+
+    private String uploadWeeklyCsv(Set<String> stateCodes, RequestInfo requestInfo) {
+        try {
+            String csv = generateConsolidatedWeeklyCsv(stateCodes, requestInfo);
+            String fileName = generateCsvFileName();
+            String fileStoreId = uploadCsvToFileStore(csv, fileName, "in", requestInfo);
+            return buildDownloadUrl(fileStoreId);
+        } catch (Exception e) {
+            log.error("Failed to upload weekly CSV", e);
+            return "#";
+        }
+    }
+
+    private String buildDownloadUrl(String fileStoreId) {
+        if (fileStoreId == null) {
+            return "#";
+        }
+        return commonUtility.generateDownloadUrl(
+                fileStoreId, "in",
+                consumerConfiguration.getFileStoreBaseUrl(),
+                consumerConfiguration.getFileStoreDownloadEndpoint());
+    }
+
+    private boolean isWeeklyTemplate(String templateType) {
+        return EscalationTemplateType.WEEKLY_SENIOR_PROGRAM_MANAGER.equals(templateType)
+                || EscalationTemplateType.WEEKLY_PROCUREMENT.equals(templateType)
+                || EscalationTemplateType.WEEKLY_LEADERSHIP.equals(templateType);
     }
 
     private int levelOrder(String level) {
         if ("LEVEL_ZERO".equals(level)) return 0;
         if ("LEVEL_ONE".equals(level)) return 1;
         if ("LEVEL_TWO".equals(level)) return 2;
+        if ("LEVEL_THREE".equals(level)) return 3;
         return 99;
     }
-    
-    /**
-     * Extract escalation level from CSV filename
-     * Example: "escalation_daily_LEVEL_ONE_karnataka_20251010_045240.csv" -> "LEVEL_ONE"
-     * Pattern: escalation_{type}_{LEVEL}_{stateName}_{timestamp}.csv
-     */
-    private String extractEscalationLevelFromFileName(String fileName) {
-        if (fileName == null || fileName.isEmpty()) {
-            return null;
-        }
-        
-        // Pattern: escalation_daily_LEVEL_ONE_karnataka_20251010_045240.csv
-        String[] parts = fileName.split("_");
-        for (int i = 0; i < parts.length; i++) {
-            if ("LEVEL".equals(parts[i]) && i + 1 < parts.length) {
-                String levelPart = parts[i + 1];
-                // Remove .csv extension if present
-                if (levelPart.endsWith(".csv")) {
-                    levelPart = levelPart.substring(0, levelPart.length() - 4);
-                }
-                return "LEVEL_" + levelPart;
-            }
-        }
-        
-        return null;
-    }
-    
-    /**
-     * Filter tickets by MDMS workflow states to ensure consistency between email template and CSV
-     */
-    private List<EscalationTicket> filterTicketsByWorkflowStates(List<EscalationTicket> tickets, List<String> mdmsWorkflowStates) {
-        if (mdmsWorkflowStates == null || mdmsWorkflowStates.isEmpty()) {
-            return tickets;
-        }
-        
-        return tickets.stream()
-            .filter(ticket -> {
-                String ticketStatus = ticket.getApplicationStatus();
-                return ticketStatus != null && mdmsWorkflowStates.contains(ticketStatus);
-            })
-            .collect(Collectors.toList());
-    }
-    
-    /**
-     * Send role-based escalation email
-     * Handles all 4 roles: STATE_POC, CENTRAL_POC, CENTRAL_ONM_PROJECT_MANAGER, SENIOR_PROGRAM_MANAGER
-     * Always sends email even with zero ticket counts
-     */
-    private void sendRoleBasedEscalationEmail(RequestInfo requestInfo, List<User> users, 
-                                             Map<String, List<EscalationTicket>> ticketsByLevel,
-                                             String recipientRole, String boundaryLevel,
-                                             List<String> csvFileStoreIds, List<String> csvFileNames,
-                                             String escalationType, String tenantId, 
-                                             Map<String, List<String>> workflowStatesByLevel) {
-        try {
-            log.info("Sending role-based escalation email to {} users for role: {}, levels: {}", 
-                users.size(), recipientRole, ticketsByLevel.keySet());
-            
-            // Calculate total tickets (may be zero)
-            int totalTickets = ticketsByLevel.values().stream()
-                .mapToInt(List::size).sum();
-            
-            log.info("Total tickets for role {}: {}", recipientRole, totalTickets);
-            
-            // Create map of file store IDs by escalation level for download functionality
-            Map<String, String> fileStoreIdsByLevel = new HashMap<>();
-            for (int i = 0; i < csvFileStoreIds.size() && i < csvFileNames.size(); i++) {
-                String fileName = csvFileNames.get(i);
-                String fileStoreId = csvFileStoreIds.get(i);
-                
-                // Extract escalation level from filename (e.g., "escalation_daily_LEVEL_ONE_in_20251010_045240.csv")
-                String level = extractEscalationLevelFromFileName(fileName);
-                if (level != null) {
-                    fileStoreIdsByLevel.put(level, fileStoreId);
-                }
-            }
-            
-            // Generate role-based email HTML with download functionality (handles zero counts gracefully)
-            String emailBody = dynamicEmailTemplateService.generateRoleBasedEscalationEmailHTML(
-                ticketsByLevel, 
-                users.get(0).getName(), 
-                recipientRole,
-                boundaryLevel, 
-                tenantId,
-                requestInfo,
-                fileStoreIdsByLevel,
-                workflowStatesByLevel
-            );
-            
-            // Generate role-based email subject (uses formatted date)
-            SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy");
-            dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
-            String formattedDate = dateFormat.format(new Date());
-            
-            String emailSubject = dynamicEmailTemplateService.generateRoleBasedEmailSubject(
-                recipientRole, 
-                tenantId, 
-                formattedDate
-            );
-            
-            // Send email to each user via Kafka
-            for (User user : users) {
-                if (user.getEmailId() != null && !user.getEmailId().trim().isEmpty()) {
-                    try {
-                        sendEmailViaKafka(user, emailSubject, emailBody, csvFileStoreIds, csvFileNames, tenantId);
-                        log.info("Published role-based escalation email to Kafka for role: {}, user: {} ({})", 
-                            recipientRole, user.getName(), user.getEmailId());
-                        
-                    } catch (Exception e) {
-                        log.error("Error publishing role-based email to Kafka for user: {} ({})", 
-                            user.getName(), user.getEmailId(), e);
-                    }
-                } else {
-                    log.warn("User {} has no email address, skipping notification", user.getName());
-                }
-            }
-            
-            log.info("Completed publishing role-based escalation emails to Kafka for {} users (role: {}, total tickets: {})", 
-                users.size(), recipientRole, totalTickets);
-            
-        } catch (Exception e) {
-            log.error("Error sending role-based escalation emails for role: {}", recipientRole, e);
-        }
-    }
-    
+
     /**
      * Get user by email ID from user service
      */
@@ -899,7 +595,8 @@ public class EscalationController {
             for (String tenantId : activeTenantIds) {
                 // Search for users with any role in this tenant
                 String state = activeTenantIdsName.get(tenantId);
-                List<String> allRoles = Arrays.asList("CENTRAL_POC", "STATE_POC", "VENDOR", "ADMIN");
+                List<String> allRoles = Arrays.asList(
+                        "STATE_POC", "SENIOR_PROGRAM_MANAGER", "PROCUREMENT", "LEADERSHIP", "VENDOR", "ADMIN");
                 List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, allRoles);
                 
                 for (User user : users) {
@@ -911,7 +608,8 @@ public class EscalationController {
             }
             
             // Also check country-level users with boundary "India"
-            List<String> allRoles = Arrays.asList("CENTRAL_POC", "STATE_POC", "VENDOR", "ADMIN");
+            List<String> allRoles = Arrays.asList(
+                    "STATE_POC", "SENIOR_PROGRAM_MANAGER", "PROCUREMENT", "LEADERSHIP", "VENDOR", "ADMIN");
             List<User> countryUsers = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", allRoles);
             
             for (User user : countryUsers) {

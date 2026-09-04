@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width">
+  <title>Weekly Escalation - SPM</title>
+  <style>
+    body{margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827}
+    .container{width:100%;max-width:720px;margin:0 auto}.card{background:#fff;border-radius:16px;padding:24px}
+    .h1{font-size:22px;font-weight:700;text-align:center;margin:0}.text{font-size:14px;line-height:20px;margin:0}
+    .muted{color:#6b7280;font-size:13px}.section-title{font-size:16px;font-weight:700;margin:20px 0 8px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left}
+    th{color:#6b7280;font-weight:700}.right{text-align:right}.center{text-align:center}
+    .btn{display:inline-block;background:#fff;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font-weight:600;text-decoration:none}
+    .logo{width:100%;max-width:96px;height:auto}.sp-16{height:16px}.rule{border-top:1px solid #e5e7eb;margin:16px 0}
+  </style>
+</head>
+<body>
+<table role="presentation" width="100%"><tr><td class="sp-16"></td></tr>
+<tr><td align="center"><table role="presentation" class="container card"><tr><td>
+<p class="h1">Weekly Escalation Summary - SPM</p>
+<p class="muted center">${WEEK_RANGE} | ${STATE_LIST}</p>
+<div class="rule"></div>
+<p class="text">Dear ${NAME},</p>
+<p class="section-title">Ticket Overview</p>${TICKET_OVERVIEW}
+<p class="section-title">Vendor Performance</p>
+<table><thead><tr><th>Vendor</th><th class="right">Assigned</th><th class="right">Resolved</th><th class="right">Resolution Rate</th></tr></thead><tbody>${VENDOR_ROWS}</tbody></table>
+<p class="section-title">Bottleneck Statuses</p>
+<table><thead><tr><th>Status</th><th class="right">Open Breached Tickets</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
+<p class="section-title">Facility Impact</p>${FACILITY_SUMMARY}
+${DOWNLOAD_BUTTON}
+<p class="muted center">Report generated on ${AS_OF_DATE}</p>
+</td></tr></table></td></tr></table>
+</body></html>

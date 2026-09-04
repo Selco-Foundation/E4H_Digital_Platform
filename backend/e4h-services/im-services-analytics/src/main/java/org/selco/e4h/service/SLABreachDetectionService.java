@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.util.ElasticSearchClient;
+import org.selco.e4h.util.EscalationTicketUtil;
 import org.selco.e4h.web.models.EscalationLevel;
 import org.selco.e4h.web.models.EscalationTicket;
 import org.springframework.stereotype.Service;
@@ -198,10 +199,161 @@ public class SLABreachDetectionService {
     }
 
     /**
-     * Check if ticket is in SLA breach based on escalation level threshold
-     * Enhanced to support breach age tracking for aged ticket identification
+     * Find tickets already escalated to this recipient/level that are still in breach and unresolved.
      */
-    private boolean isInSLABreach(EscalationTicket ticket, long currentTime) {
+    public List<EscalationTicket> findPreviouslyEscalatedStillOpenTickets(String state,
+                                                                        List<String> workflowStates,
+                                                                        String escalationRecipientId,
+                                                                        String escalationLevel,
+                                                                        RequestInfo requestInfo) {
+        log.trace("Finding previously escalated still-open tickets for state: {}, escalationLevel: {}",
+                state, escalationLevel);
+        try {
+            Map<String, Object> query = buildPreviouslyEscalatedQuery(state, workflowStates,
+                    escalationRecipientId, escalationLevel, requestInfo);
+
+            Map<String, Object> finalQuery = new HashMap<>();
+            finalQuery.put("query", query);
+            finalQuery.put("size", 10000);
+            finalQuery.put("track_total_hits", true);
+
+            List<EscalationTicket> tickets = elasticSearchClient.searchTickets(finalQuery);
+            log.info("Found {} previously escalated still-open tickets for state: {} level: {}",
+                    tickets.size(), state, escalationLevel);
+            return tickets;
+        } catch (Exception e) {
+            log.error("Error finding previously escalated still-open tickets for state: {} level: {}",
+                    state, escalationLevel, e);
+            return new ArrayList<>();
+        }
+    }
+
+    private Map<String, Object> buildPreviouslyEscalatedQuery(String state,
+                                                              List<String> workflowStates,
+                                                              String escalationRecipientId,
+                                                              String escalationLevel,
+                                                              RequestInfo requestInfo) {
+        Map<String, Object> query = new HashMap<>();
+        Map<String, Object> bool = new HashMap<>();
+        List<Map<String, Object>> must = new ArrayList<>();
+
+        Map<String, Object> tenantFilter = new HashMap<>();
+        Map<String, Object> tenantPrefix = new HashMap<>();
+        tenantPrefix.put("Data.incident.boundary.stateCode.keyword", state);
+        tenantFilter.put("prefix", tenantPrefix);
+        must.add(tenantFilter);
+
+        Map<String, Object> statusFilter = new HashMap<>();
+        Map<String, Object> statusTerms = new HashMap<>();
+        statusTerms.put("Data.incident.applicationStatus.keyword", workflowStates);
+        statusFilter.put("terms", statusTerms);
+        must.add(statusFilter);
+
+        addSlaFilter(must, escalationLevel, requestInfo, false);
+        must.addAll(buildEscalationInclusionFilters(escalationRecipientId, escalationLevel));
+
+        bool.put("must", must);
+        query.put("bool", bool);
+        return query;
+    }
+
+    private List<Map<String, Object>> buildEscalationInclusionFilters(String escalationRecipientId, String escalationLevel) {
+        List<Map<String, Object>> must = new ArrayList<>();
+        if (escalationRecipientId == null) {
+            return must;
+        }
+
+        Map<String, Object> escalationIdFilter = new HashMap<>();
+        Map<String, Object> escalationIdTerm = new HashMap<>();
+        escalationIdTerm.put("Data.incident.escalations.escalationId.keyword", escalationRecipientId);
+        escalationIdFilter.put("term", escalationIdTerm);
+        must.add(escalationIdFilter);
+
+        Map<String, Object> escalationLevelFilter = new HashMap<>();
+        Map<String, Object> escalationLevelTerm = new HashMap<>();
+        escalationLevelTerm.put("Data.incident.escalations.escalationLevel.keyword", escalationLevel);
+        escalationLevelFilter.put("term", escalationLevelTerm);
+        must.add(escalationLevelFilter);
+
+        return must;
+    }
+
+    /**
+     * Find previously escalated still-open tickets at country level (all states).
+     */
+    public List<EscalationTicket> findPreviouslyEscalatedStillOpenTicketsForCountry(List<String> workflowStates,
+                                                                                    String escalationRecipientId,
+                                                                                    String escalationLevel,
+                                                                                    RequestInfo requestInfo) {
+        try {
+            Map<String, Object> query = buildPreviouslyEscalatedQueryForCountry(workflowStates,
+                    escalationRecipientId, escalationLevel, requestInfo);
+
+            Map<String, Object> finalQuery = new HashMap<>();
+            finalQuery.put("query", query);
+            finalQuery.put("size", 10000);
+            finalQuery.put("track_total_hits", true);
+
+            return elasticSearchClient.searchTickets(finalQuery);
+        } catch (Exception e) {
+            log.error("Error finding previously escalated still-open country tickets for level: {}", escalationLevel, e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Procurement L3: tickets in breach after LEVEL_THREE threshold, with LEVEL_TWO escalation at least
+     * triggerDelayHours ago (48h after SPM L2 with no status change).
+     */
+    public List<EscalationTicket> findProcurementEligibleTickets(List<String> workflowStates,
+                                                                 String escalationRecipientId,
+                                                                 String escalationLevel,
+                                                                 int triggerDelayHours,
+                                                                 RequestInfo requestInfo) {
+        List<EscalationTicket> candidates = findSLABreachTicketsForCountry(
+                workflowStates, escalationRecipientId, escalationLevel, requestInfo);
+        long l2Cutoff = System.currentTimeMillis() - ((long) triggerDelayHours * 60 * 60 * 1000);
+        return candidates.stream()
+                .filter(ticket -> EscalationTicketUtil.hasEscalationAtLevelSince(ticket, "LEVEL_TWO", l2Cutoff))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    }
+
+    public List<EscalationTicket> findProcurementPreviouslyOpenTickets(List<String> workflowStates,
+                                                                       String escalationRecipientId,
+                                                                       String escalationLevel,
+                                                                       int triggerDelayHours,
+                                                                       RequestInfo requestInfo) {
+        List<EscalationTicket> candidates = findPreviouslyEscalatedStillOpenTicketsForCountry(
+                workflowStates, escalationRecipientId, escalationLevel, requestInfo);
+        long l2Cutoff = System.currentTimeMillis() - ((long) triggerDelayHours * 60 * 60 * 1000);
+        return candidates.stream()
+                .filter(ticket -> EscalationTicketUtil.hasEscalationAtLevelSince(ticket, "LEVEL_TWO", l2Cutoff))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    }
+
+    private Map<String, Object> buildPreviouslyEscalatedQueryForCountry(List<String> workflowStates,
+                                                                        String escalationRecipientId,
+                                                                        String escalationLevel,
+                                                                        RequestInfo requestInfo) {
+        Map<String, Object> query = new HashMap<>();
+        Map<String, Object> bool = new HashMap<>();
+        List<Map<String, Object>> must = new ArrayList<>();
+
+        Map<String, Object> statusFilter = new HashMap<>();
+        Map<String, Object> statusTerms = new HashMap<>();
+        statusTerms.put("Data.incident.applicationStatus.keyword", workflowStates);
+        statusFilter.put("terms", statusTerms);
+        must.add(statusFilter);
+
+        addSlaFilter(must, escalationLevel, requestInfo, true);
+        must.addAll(buildEscalationInclusionFilters(escalationRecipientId, escalationLevel));
+
+        bool.put("must", must);
+        query.put("bool", bool);
+        return query;
+    }
+
+    public boolean isInSLABreach(EscalationTicket ticket, long currentTime) {
         log.trace("Checking if ticket is in SLA breach, incidentId: {}", ticket != null ? ticket.getIncidentId() : "null");
         // If SLA breach time is set and current time is past the breach time
         if (ticket.getSlaBreachTime() != null && currentTime >= ticket.getSlaBreachTime()) {
