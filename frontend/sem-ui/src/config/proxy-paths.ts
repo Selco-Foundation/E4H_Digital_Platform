@@ -7,4 +7,9 @@ export const API_PROXY_PATHS = [
   "/localization",
   "/egov-mdms-service",
   "/asset-registry",
+  "/facility-service",
+  "/inbox",
+  "/im-services",
+  "/egov-workflow-v2",
+  "/filestore",
 ] as const;
