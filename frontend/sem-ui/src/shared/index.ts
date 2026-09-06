@@ -35,6 +35,12 @@ export {
   type SupportedLanguage,
   type LoginBannerImage,
 } from "./api/mdms";
+export { fetchFacilities, type FacilitySummary } from "./api/facility";
+export {
+  fetchWorkflowBusinessService,
+  type WorkflowBusinessServiceResponse,
+  type WorkflowBusinessServiceState,
+} from "./api/workflow";
 export {
   contextPath,
   getConfig,
@@ -54,6 +60,8 @@ export { queryClient } from "./query/query-client";
 export { QueryProvider } from "./query/provider";
 export { useLanguages } from "./hooks/use-languages";
 export { useLoginBannerImages } from "./hooks/use-login-banner-images";
+export { useBoundary } from "./hooks/use-boundary";
+export { useFacility } from "./hooks/use-facility";
 export { useAuthStore, type AuthUser } from "./stores/auth-store";
 export { useJurisdictionStore } from "./stores/jurisdiction-store";
 export { useLocaleStore } from "./stores/locale-store";
@@ -103,6 +111,4 @@ export type { ModuleDefinition, ModuleOverview, NavItem } from "./modules/types"
 
 // Not yet ported from livelihood-ui (no consumer needs them yet):
 // api/user-profile.ts (searchCurrentUser, updateUserProfile, changePasswordInSession),
-// api/facility.ts, api/workflow.ts, hooks/use-boundary.ts, hooks/use-facility.ts,
-// stores/ui-store.ts. Port alongside the profile/change-password pages and the
-// im module that needs facility/workflow data.
+// stores/ui-store.ts. Port alongside the profile/change-password pages.
