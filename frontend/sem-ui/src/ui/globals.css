@@ -1,0 +1,221 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "../**/*.{ts,tsx}";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sla: var(--sla);
+  --color-sla-foreground: var(--sla-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-chip-success: var(--chip-success);
+  --color-chip-success-foreground: var(--chip-success-foreground);
+  --color-page: var(--page);
+  --color-ink-950: var(--ink-950);
+  --color-ink-600: var(--ink-600);
+  --color-ink-400: var(--ink-400);
+  --color-ink-300: var(--ink-300);
+  /* Figma button spec tokens */
+  --color-brand-primary: var(--brand-primary);
+  --color-primary-800: var(--primary-800);
+  --color-primary-700: var(--primary-700);
+  --color-primary-400: var(--primary-400);
+  --color-neutral-25: var(--neutral-25);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-300: var(--ink-300);
+  --color-neutral-400: var(--ink-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-700: var(--neutral-700);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+}
+
+:root {
+  --radius: 0.5rem;
+  --page: hsl(0 0% 98%);
+  --background: hsl(0 0% 98%);
+  --foreground: hsl(160 30% 12%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(160 30% 12%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(160 30% 12%);
+  /* Brand primary green — (#134738) */
+  --primary: hsl(163 58% 18%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(120 20% 94%);
+  --secondary-foreground: hsl(160 30% 18%);
+  --muted: hsl(120 15% 93%);
+  --muted-foreground: hsl(160 8% 42%);
+  --accent: hsl(140 35% 92%);
+  --accent-foreground: hsl(163 58% 18%);
+  --destructive: hsl(0 72% 51%);
+  --border: hsl(140 12% 88%);
+  --input: hsl(140 12% 88%);
+  --ring: hsl(163 58% 18%);
+  /* SLA badge */
+  --sla: hsl(140 40% 90%);
+  --sla-foreground: hsl(163 58% 18%);
+  /* Stat tile — Total Tickets */
+  --info: #ebf4fa;
+  --info-foreground: #3291d1;
+  /* Stat tile — Nearing SLA */
+  --warning: #fffbd7;
+  --warning-foreground: #f79009;
+  /* Stat tile — Resolved */
+  --success: #e1ffea;
+  --success-foreground: #1a6b2f;
+  /* Asset status chip — Operational */
+  --chip-success: #e6fff4;
+  --chip-success-foreground: #079455;
+  /* Sidebar — brand green shell (#134738), matches Figma's Navigation Bar */
+  --sidebar: hsl(163 58% 18%);
+  --sidebar-foreground: hsl(0 0% 100%);
+  --sidebar-primary: hsl(0 0% 100%);
+  --sidebar-primary-foreground: hsl(163 58% 18%);
+  --sidebar-accent: hsl(0 0% 100%);
+  --sidebar-accent-foreground: hsl(163 58% 18%);
+  --sidebar-border: hsl(0 0% 100% / 0.15);
+  --sidebar-ring: hsl(0 0% 100%);
+  --ink-950: #1c1c1c;
+  --ink-600: #51525c;
+  --ink-400: #a0a0ab;
+  --ink-300: #d1d1d6;
+  /* Figma "Buttons" spec — Brand/Primary scale + Neutral-25 */
+  --brand-primary: #1a6b2f;
+  --primary-800: #0a2b13;
+  --primary-700: #10401c;
+  --primary-400: #438755;
+  --neutral-25: #ffffff;
+  --neutral-100: #f4f4f5;
+  --neutral-500: #70707b;
+  --neutral-700: #3f3f46;
+  --primary-100: #beddc5;
+  --primary-200: #95c0a0;
+}
+
+.dark {
+  --page: hsl(160 20% 8%);
+  --background: hsl(160 20% 8%);
+  --foreground: hsl(120 15% 96%);
+  --card: hsl(160 18% 12%);
+  --card-foreground: hsl(120 15% 96%);
+  --popover: hsl(160 18% 12%);
+  --popover-foreground: hsl(120 15% 96%);
+  --primary: hsl(163 50% 38%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(160 15% 16%);
+  --secondary-foreground: hsl(120 15% 96%);
+  --muted: hsl(160 15% 16%);
+  --muted-foreground: hsl(140 10% 60%);
+  --accent: hsl(160 15% 18%);
+  --accent-foreground: hsl(120 15% 96%);
+  --destructive: hsl(0 62.8% 45%);
+  --border: hsl(160 12% 20%);
+  --input: hsl(160 12% 20%);
+  --ring: hsl(163 50% 38%);
+  --sla: hsl(152 25% 18%);
+  --sla-foreground: hsl(140 45% 72%);
+  --info: hsl(205 45% 20%);
+  --info-foreground: hsl(205 70% 70%);
+  --warning: hsl(38 45% 20%);
+  --warning-foreground: hsl(38 90% 65%);
+  --success: hsl(152 30% 18%);
+  --success-foreground: hsl(140 45% 65%);
+  --chip-success: hsl(160 30% 16%);
+  --chip-success-foreground: hsl(160 55% 60%);
+  --sidebar: hsl(160 20% 10%);
+  --sidebar-foreground: hsl(120 15% 96%);
+  --sidebar-primary: hsl(163 50% 38%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(160 15% 16%);
+  --sidebar-accent-foreground: hsl(120 15% 96%);
+  --sidebar-border: hsl(160 12% 20%);
+  --sidebar-ring: hsl(163 50% 38%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    @apply bg-sidebar;
+  }
+
+  body {
+    @apply bg-page text-foreground antialiased;
+  }
+}
+
+@layer components {
+  .font-poppins {
+    font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .livelihood-card {
+    @apply rounded-lg border border-border bg-card shadow-sm;
+  }
+
+  .livelihood-filter-select {
+    @apply h-10 w-full cursor-pointer appearance-none rounded-md border border-input bg-card px-3 pr-9 text-sm text-foreground;
+  }
+
+  .livelihood-radio {
+    @apply size-4 appearance-none rounded-full border-2 border-input bg-card;
+  }
+
+  .livelihood-radio:checked {
+    @apply border-primary;
+    background-image: radial-gradient(circle, hsl(163 58% 18%) 40%, transparent 45%);
+  }
+
+  .livelihood-sla-badge {
+    @apply inline-flex min-w-[2rem] items-center justify-center rounded-full bg-sla px-2.5 py-0.5 text-sm font-medium text-sla-foreground;
+  }
+
+  .livelihood-sla-badge-muted {
+    @apply inline-flex min-w-[2rem] items-center justify-center rounded-full bg-muted px-2.5 py-0.5 text-sm text-muted-foreground;
+  }
+}
