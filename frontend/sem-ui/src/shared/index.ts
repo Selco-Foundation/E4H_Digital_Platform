@@ -18,6 +18,13 @@ export {
 } from "./api/auth";
 export { extractApiErrorMessage } from "./api/errors";
 export {
+  searchCurrentUser,
+  updateUserProfile,
+  changePasswordInSession,
+  type EmployeeProfile,
+  type ChangePasswordInSessionPayload,
+} from "./api/user-profile";
+export {
   resolveQrLogin,
   type QrLoginResolveParams,
   type QrLoginResolveResponse,
@@ -109,6 +116,4 @@ export {
 } from "./utils/employee-session";
 export type { ModuleDefinition, ModuleOverview, NavItem } from "./modules/types";
 
-// Not yet ported from livelihood-ui (no consumer needs them yet):
-// api/user-profile.ts (searchCurrentUser, updateUserProfile, changePasswordInSession),
-// stores/ui-store.ts. Port alongside the profile/change-password pages.
+// Not yet ported from livelihood-ui (no consumer needs it yet): stores/ui-store.ts.

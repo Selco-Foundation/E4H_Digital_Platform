@@ -4,6 +4,8 @@ import type { AnyRoute } from "@tanstack/react-router";
 import { AppShell } from "./layout/AppShell";
 import { LoginPage } from "./pages/employee/LoginPage";
 import { HomePage } from "./pages/employee/HomePage";
+import { ProfilePage } from "./pages/employee/ProfilePage";
+import { ProfileChangePasswordPage } from "./pages/employee/ProfileChangePasswordPage";
 import { CORE_ROUTES } from "./constants/routes";
 
 export interface LoginRouteSearch {
@@ -13,11 +15,10 @@ export interface LoginRouteSearch {
   facilityId?: string;
 }
 
-// ForgotPassword / ChangePassword / Profile pages aren't ported yet — only
-// login + the authenticated home shell. Add their routes here alongside the
-// pages when they're ported (see modules/core in livelihood-ui for the
-// original shape: employeeForgotPasswordRoute, employeeChangePasswordRoute,
-// employeeProfileRoute, employeeProfileChangePasswordRoute).
+// ForgotPassword / ChangePassword (pre-login reset) pages aren't ported yet —
+// only login, the authenticated home shell, and profile/profile-change-password.
+// See modules/core in livelihood-ui for the original shape of the remaining
+// two: employeeForgotPasswordRoute, employeeChangePasswordRoute.
 export function createCoreRoutes(rootRoute: AnyRoute) {
   const basePath = contextPath();
   const employeeHome = `/${basePath}${CORE_ROUTES.employeeHome}`;
@@ -78,6 +79,20 @@ export function createCoreRoutes(rootRoute: AnyRoute) {
     component: HomePage,
   });
 
+  const employeeProfile = `/${basePath}${CORE_ROUTES.employeeProfile}`;
+  const employeeProfileRoute = createRoute({
+    getParentRoute: () => employeeLayoutRoute,
+    path: employeeProfile,
+    component: ProfilePage,
+  });
+
+  const employeeProfileChangePassword = `/${basePath}${CORE_ROUTES.employeeProfileChangePassword}`;
+  const employeeProfileChangePasswordRoute = createRoute({
+    getParentRoute: () => employeeLayoutRoute,
+    path: employeeProfileChangePassword,
+    component: ProfileChangePasswordPage,
+  });
+
   return {
     routes: [
       indexRoute,
@@ -85,6 +100,8 @@ export function createCoreRoutes(rootRoute: AnyRoute) {
       employeeLoginRoute,
       employeeLayoutRoute,
       employeeHomeRoute,
+      employeeProfileRoute,
+      employeeProfileChangePasswordRoute,
     ],
     navItems: [],
     employeeLayoutRoute,
