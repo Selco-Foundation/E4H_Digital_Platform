@@ -2,23 +2,25 @@ import { apiClient, type AuthUser } from "@/shared";
 import { createRequestInfo } from "@/shared/api/request-info";
 import type { JurisdictionBoundaries } from "@/shared";
 import type {
+  BoundaryOption,
   CreateIncidentResponse,
   SelectOption,
   VerificationDocument,
 } from "../types/create-incident";
-import type { LivelihoodAsset, LivelihoodFacility } from "../types/facility-asset";
 import {
   LIVELIHOOD_INCIDENT_BUSINESS_SERVICE,
   OPEN_DUPLICATE_APPLICATION_STATUSES,
 } from "../constants/workflow";
-import { hasRole } from "../utils/access";
 import { searchInbox } from "./inbox";
 
 export interface CreateIncidentInput {
   tenantId: string;
-  endUser: LivelihoodFacility;
-  asset: LivelihoodAsset;
-  complaintType: SelectOption;
+  district: BoundaryOption;
+  block: BoundaryOption;
+  facility: BoundaryOption;
+  ticketType: SelectOption;
+  ticketSubType: SelectOption;
+  systemFunctional: SelectOption;
   comments?: string;
   uploadedDocuments: VerificationDocument[];
   user: AuthUser;
@@ -40,51 +42,35 @@ export function buildVerificationDocuments(
   }));
 }
 
-export function buildCreateIncidentPayload(input: CreateIncidentInput) {
-  const incidentType =
-    input.complaintType.serviceCode ??
-    input.complaintType.key ??
-    input.complaintType.code;
+/**
+ * Workflow action varies by ticket type in DIGIT-UI's im/CreateComplaint — THEFT tickets
+ * take "APPLY_THEFT". The RMS-device trigger ("APPLY_RMS_DEVICE") exists in DIGIT-UI too,
+ * but its exact ticketType code wasn't confirmed, so it isn't handled here yet — those
+ * tickets will currently submit as a plain "APPLY".
+ */
+function resolveWorkflowAction(ticketTypeCode: string): string {
+  return ticketTypeCode === "THEFT" ? "APPLY_THEFT" : "APPLY";
+}
 
-  const isPocCreate = hasRole(input.user.roles, "LIVELIHOOD_POC");
+export function buildCreateIncidentPayload(input: CreateIncidentInput) {
+  const incidentType = input.ticketType.key ?? input.ticketType.code;
+  const incidentSubtype = input.ticketSubType.key ?? input.ticketSubType.code;
   const additionalDetail =
     input.uploadedDocuments.length > 0
       ? { additionalDetail: { fileStoreId: input.uploadedDocuments } }
       : {};
 
-  if (isPocCreate) {
-    return {
-      incident: {
-        incidentType,
-        reporterType: "COMPLAINANT",
-        tenantId: input.tenantId,
-        accountId: input.endUser.endUserUuid,
-        reporterTenant: input.tenantId,
-        facilityId: input.endUser.facilityId,
-        assetId: input.asset.assetId,
-        boundaryCode: input.asset.boundaryCode,
-        comments: input.comments ?? "",
-        createdOnBehalf: true,
-        entryChannel: "POC_MANUAL",
-        reporter: buildOnBehalfReporter(input.endUser, input.tenantId),
-        ...additionalDetail,
-      },
-      workflow: {
-        action: "CREATE",
-        verificationDocuments: buildVerificationDocuments(input.uploadedDocuments),
-      },
-    };
-  }
-
   return {
     incident: {
       tenantId: input.tenantId,
-      facilityId: input.endUser.facilityId,
-      assetId: input.asset.assetId,
+      district: input.district.name,
+      block: input.block.name,
+      boundaryCode: input.facility.code,
       incidentType,
-      boundaryCode: input.asset.boundaryCode,
+      incidentSubtype,
+      systemFunctional: input.systemFunctional.key ?? input.systemFunctional.code,
       comments: input.comments ?? "",
-      entryChannel: "DIRECT",
+      source: "web",
       reporter: {
         uuid: input.user.uuid,
         userName: input.user.userName,
@@ -95,21 +81,9 @@ export function buildCreateIncidentPayload(input: CreateIncidentInput) {
       ...additionalDetail,
     },
     workflow: {
-      action: "CREATE",
+      action: resolveWorkflowAction(incidentType),
       verificationDocuments: buildVerificationDocuments(input.uploadedDocuments),
     },
-  };
-}
-
-function buildOnBehalfReporter(endUser: LivelihoodFacility, tenantId: string) {
-  return {
-    uuid: endUser.endUserUuid,
-    userName: endUser.facilityPocUsername,
-    name: endUser.facilityPocName,
-    mobileNumber: endUser.facilityPocPhone,
-    emailId: endUser.facilityPocEmail,
-    type: "EMPLOYEE",
-    tenantId,
   };
 }
 

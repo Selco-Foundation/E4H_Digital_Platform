@@ -1,5 +1,3 @@
-import type { LivelihoodAsset, LivelihoodFacility } from "./facility-asset";
-
 export interface SelectOption {
   code: string;
   name: string;
@@ -8,6 +6,13 @@ export interface SelectOption {
   serviceCode?: string;
   id?: string;
   status?: string;
+  parentCode?: string;
+}
+
+/** A District / Block / Facility option, sourced from the boundary-relationships tree. */
+export interface BoundaryOption {
+  code: string;
+  name: string;
   parentCode?: string;
 }
 
@@ -25,10 +30,19 @@ export interface UploadedMediaEntry {
   kind: "image" | "video" | "fir";
 }
 
+/**
+ * Mirrors DIGIT-UI's own "im" CreateComplaint screen exactly (Ticket Location:
+ * District/Block/Facility, Ticket Details: Ticket Type/Ticket Subtype/System
+ * Functional) rather than livelihood-ui's End User + Asset flow — SEM's real
+ * DIGIT-UI im module has no separate end-user/asset selection step at all.
+ */
 export interface CreateIncidentFormValues {
-  endUser: LivelihoodFacility | null;
-  asset: LivelihoodAsset | null;
-  complaintType: SelectOption | null;
+  district: BoundaryOption | null;
+  block: BoundaryOption | null;
+  facility: BoundaryOption | null;
+  ticketType: SelectOption | null;
+  ticketSubType: SelectOption | null;
+  systemFunctional: SelectOption | null;
   comments: string;
 }
 

@@ -8,6 +8,12 @@ interface ServiceDef {
   serviceCode?: string;
 }
 
+interface SystemFunctionalityDef {
+  code?: string;
+  name?: string;
+  active?: boolean;
+}
+
 interface ItemCode {
   code?: string;
   category?: string;
@@ -39,6 +45,74 @@ export async function fetchAssetTypes(
   return [...categories]
     .sort((a, b) => a.localeCompare(b))
     .map((category) => ({ code: category, name: category }));
+}
+
+/**
+ * "Ticket Type" dropdown (DIGIT-UI's im/CreateComplaint: `GetServiceDefinitions.getMenu`) —
+ * one option per distinct, non-deprecated `menuPath` on the Incident.ServiceDefs master.
+ * Selecting one of these then filters fetchServiceDefsForMenuPath's list (Ticket Subtype).
+ */
+export async function fetchTicketTypeMenu(
+  accessToken: string,
+  user: AuthUser | null | undefined,
+  t: (key: string) => string,
+): Promise<SelectOption[]> {
+  const stateTenantId = tenantId();
+  const masters = await fetchMdmsMasters(
+    stateTenantId,
+    "Incident",
+    ["ServiceDefs"],
+    accessToken,
+    user,
+  );
+  const serviceDefs = (masters.ServiceDefs as ServiceDef[]) ?? [];
+  const seen = new Set<string>();
+  const options: SelectOption[] = [];
+
+  for (const def of serviceDefs) {
+    if (def.deprecated || !def.menuPath || seen.has(def.menuPath)) {
+      continue;
+    }
+    seen.add(def.menuPath);
+    options.push({
+      code: def.menuPath,
+      key: def.menuPath,
+      menuPath: def.menuPath,
+      name: translateOr(t, `SERVICEDEFS.${def.menuPath.toUpperCase()}`, def.menuPath),
+    });
+  }
+
+  return options.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * "Is the Solar System Working?" dropdown (DIGIT-UI's im/CreateComplaint: module
+ * "Incident", master "SystemFunctionality"). Option codes are typically FUNCTIONAL /
+ * NON_FUNCTIONAL; DIGIT-UI translates each record's own `name` field directly rather
+ * than building a key, so this does the same.
+ */
+export async function fetchSystemFunctionalityOptions(
+  accessToken: string,
+  user: AuthUser | null | undefined,
+  t: (key: string) => string,
+): Promise<SelectOption[]> {
+  const stateTenantId = tenantId();
+  const masters = await fetchMdmsMasters(
+    stateTenantId,
+    "Incident",
+    ["SystemFunctionality"],
+    accessToken,
+    user,
+  );
+  const defs = (masters.SystemFunctionality as SystemFunctionalityDef[]) ?? [];
+
+  return defs
+    .filter((def) => def.active !== false && def.code)
+    .map((def) => ({
+      code: def.code!,
+      key: def.code!,
+      name: translateOr(t, def.name ?? def.code!, def.name ?? def.code!),
+    }));
 }
 
 export async function fetchServiceDefsForMenuPath(

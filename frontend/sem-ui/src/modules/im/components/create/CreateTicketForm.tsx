@@ -1,10 +1,10 @@
 import { Button } from "@/ui";
 import {
   Camera,
-  Factory,
   FileText,
   Info,
   Loader2,
+  MapPin,
   Send,
   Video,
 } from "lucide-react";
@@ -28,21 +28,19 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
     translateOr,
     form,
     fieldErrors,
-    endUserOptions,
-    assetOptions,
-    facilityById,
-    assetById,
-    complaintTypes,
-    showEndUserDropdown,
-    isFacilitiesLoading,
-    isAssetsLoading,
+    districtOptions,
+    blockOptions,
+    facilityOptions,
+    ticketTypeMenu,
+    ticketSubTypeMenu,
+    systemFunctionalMenu,
+    isBoundaryLoading,
     imageUploads,
     videoUploads,
     uploadFiles,
     removeUpload,
     isImageUploading,
     isVideoUploading,
-    disableUpload,
     duplicateTickets,
     setDuplicateTickets,
     canSubmit,
@@ -50,9 +48,12 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
     setSubmitError,
     createMutation,
     validate,
-    handleEndUserChange,
-    handleAssetChange,
-    handleComplaintTypeChange,
+    handleDistrictChange,
+    handleBlockChange,
+    handleFacilityChange,
+    handleTicketTypeChange,
+    handleTicketSubTypeChange,
+    handleSystemFunctionalChange,
     updateField,
     maxImageCount,
     maxImageSizeMb,
@@ -64,6 +65,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
   const submittedIncidentId =
     submittedResponse?.IncidentWrappers?.[0]?.incident?.incidentId;
+  const disableUpload = !form.ticketSubType;
 
   const handleSubmit = () => {
     setSubmitError(null);
@@ -107,49 +109,52 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
         }}
       >
         <FormSectionCard
-          icon={Factory}
-          title={translateOr(t, "ASSET_DETAILS", "Asset Details")}
+          icon={MapPin}
+          title={translateOr(t, "TICKET_LOCATION", "Ticket Location")}
           description={translateOr(
             t,
-            "ASSET_DETAILS_DESC",
-            "Select the end user and asset for this ticket",
+            "TICKET_LOCATION_DESC",
+            "Select where this ticket applies",
           )}
         >
-          <div className="grid gap-4 md:grid-cols-2">
-            {showEndUserDropdown ? (
-              <FormSelectField
-                label={translateOr(t, "INCIDENT_END_USER", "End User")}
-                required
-                value={form.endUser?.facilityId ?? ""}
-                options={endUserOptions}
-                disabled={isFacilitiesLoading}
-                error={fieldErrors.endUser}
-                onChange={(option) =>
-                  handleEndUserChange(
-                    option ? (facilityById.get(option.code) ?? null) : null,
-                  )
-                }
-              />
-            ) : form.endUser ? (
-              <div className="min-w-0 space-y-1.5">
-                <p className="text-sm font-medium text-foreground">
-                  {translateOr(t, "INCIDENT_END_USER", "End User")}
-                </p>
-                <p className="rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-foreground">
-                  {form.endUser.facilityPocName}
-                </p>
-              </div>
-            ) : null}
-
+          <div className="grid gap-4 md:grid-cols-3">
             <FormSelectField
-              label={translateOr(t, "INCIDENT_ASSET", "Asset")}
+              label={translateOr(t, "INCIDENT_DISTRICT", "District")}
               required
-              value={form.asset?.assetId ?? ""}
-              options={assetOptions}
-              disabled={!form.endUser || isAssetsLoading}
-              error={fieldErrors.asset}
+              value={form.district?.code ?? ""}
+              options={districtOptions}
+              disabled={isBoundaryLoading}
+              error={fieldErrors.district}
               onChange={(option) =>
-                handleAssetChange(option ? (assetById.get(option.code) ?? null) : null)
+                handleDistrictChange(
+                  option ? (districtOptions.find((d) => d.code === option.code) ?? null) : null,
+                )
+              }
+            />
+            <FormSelectField
+              label={translateOr(t, "INCIDENT_BLOCK", "Block")}
+              required
+              value={form.block?.code ?? ""}
+              options={blockOptions}
+              disabled={!form.district}
+              error={fieldErrors.block}
+              onChange={(option) =>
+                handleBlockChange(
+                  option ? (blockOptions.find((b) => b.code === option.code) ?? null) : null,
+                )
+              }
+            />
+            <FormSelectField
+              label={translateOr(t, "HEALTH_CARE_CENTRE", "Facility")}
+              required
+              value={form.facility?.code ?? ""}
+              options={facilityOptions}
+              disabled={!form.block}
+              error={fieldErrors.facility}
+              onChange={(option) =>
+                handleFacilityChange(
+                  option ? (facilityOptions.find((f) => f.code === option.code) ?? null) : null,
+                )
               }
             />
           </div>
@@ -164,15 +169,31 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
             "Describe the problem so we can help faster",
           )}
         >
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <FormSelectField
               label={translateOr(t, "TICKET_TYPE", "Issue Type")}
               required
-              value={form.complaintType?.code ?? ""}
-              options={complaintTypes}
-              disabled={!form.asset}
-              error={fieldErrors.complaintType}
-              onChange={(option) => handleComplaintTypeChange(option)}
+              value={form.ticketType?.code ?? ""}
+              options={ticketTypeMenu}
+              error={fieldErrors.ticketType}
+              onChange={(option) => handleTicketTypeChange(option)}
+            />
+            <FormSelectField
+              label={translateOr(t, "TICKET_SUBTYPE", "Issue Sub Type")}
+              required
+              value={form.ticketSubType?.code ?? ""}
+              options={ticketSubTypeMenu}
+              disabled={!form.ticketType}
+              error={fieldErrors.ticketSubType}
+              onChange={(option) => handleTicketSubTypeChange(option)}
+            />
+            <FormSelectField
+              label={translateOr(t, "SYSTEM_FUNCTIONAL", "Is the Solar System Working?")}
+              required
+              value={form.systemFunctional?.code ?? ""}
+              options={systemFunctionalMenu}
+              error={fieldErrors.systemFunctional}
+              onChange={(option) => handleSystemFunctionalChange(option)}
             />
           </div>
         </FormSectionCard>
