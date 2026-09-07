@@ -80,24 +80,7 @@ public class InboxServiceV2 {
         validator.validateSearchCriteria(inboxRequest);
         log.debug("✅ Search criteria validated");
 
-        // Vérification des rôles
-        List<Role> roles = inboxRequest.getRequestInfo().getUserInfo().getRoles();
-        List<String> tenantIds = roles.stream()
-                .filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
-                .map(Role::getTenantId)
-                .collect(Collectors.toList());
-        boolean isVendor = !tenantIds.isEmpty();
-        log.debug("👤 User roles found: {} | isVendor={}", roles, isVendor);
-
-        // Gestion du tenantId pour les vendors
-        Object tenantIdFromRequest = inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId");
-        if (isVendor && tenantIdFromRequest instanceof String) {
-            Set<String> tenantsFromRequest = new HashSet<>(Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
-            if (tenantsFromRequest.size() == 1) {
-                inboxRequest.getInbox().getModuleSearchCriteria().put("tenantId", tenantIds);
-                log.debug("🔄 Overridden tenantId from request with vendor tenantIds={}", tenantIds);
-            }
-        }
+        applyVendorTenantScope(inboxRequest);
 
         // Récupération de la configuration
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
@@ -142,6 +125,31 @@ public class InboxServiceV2 {
         return response;
     }
 
+
+    /**
+     * A vendor user only ever sees the tickets of the facilities its COMPLAINT_RESOLVER roles are
+     * scoped to, so a state or district level tenantId in the request is replaced with the tenants
+     * carried on those roles. A tenantId that is already facility level (more than one dot separated
+     * segment) is left alone - it is narrower than the role scope already.
+     */
+    private void applyVendorTenantScope(InboxRequest inboxRequest) {
+        List<Role> roles = inboxRequest.getRequestInfo().getUserInfo().getRoles();
+        List<String> tenantIds = roles.stream()
+                .filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
+                .map(Role::getTenantId)
+                .collect(Collectors.toList());
+        boolean isVendor = !tenantIds.isEmpty();
+        log.debug("👤 User roles found: {} | isVendor={}", roles, isVendor);
+
+        Object tenantIdFromRequest = inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId");
+        if (isVendor && tenantIdFromRequest instanceof String) {
+            Set<String> tenantsFromRequest = new HashSet<>(Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
+            if (tenantsFromRequest.size() == 1) {
+                inboxRequest.getInbox().getModuleSearchCriteria().put("tenantId", tenantIds);
+                log.debug("🔄 Overridden tenantId from request with vendor tenantIds={}", tenantIds);
+            }
+        }
+    }
 
     private void hashParamsWhereverRequiredBasedOnConfiguration(Map<String, Object> moduleSearchCriteria, InboxQueryConfiguration inboxQueryConfiguration) {
 
@@ -564,6 +572,13 @@ public class InboxServiceV2 {
             inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(STATE_SLA));
             inbox.getBusinessObject().put(TOTAL_SLA_REMAINING, dataBusinessObject.get(TOTAL_SLA_REMAINING));
 
+            // Read straight off the index; keys are always present, null when the indexed document does not carry
+            // them. currentOwner lives at the root of _source rather than inside Data, so it is lifted from the
+            // outer source object into the business object the client sees.
+            inbox.getBusinessObject().put(MAPPED_VENDOR_NAME, dataBusinessObject.get(MAPPED_VENDOR_NAME));
+            inbox.getBusinessObject().put(MAPPED_VENDOR_USER_NAME, dataBusinessObject.get(MAPPED_VENDOR_USER_NAME));
+            inbox.getBusinessObject().put(CURRENT_OWNER, businessObject.get(CURRENT_OWNER));
+
             log.debug("📌 Parsed inbox item with serviceSla={} | stateSla={} | slaRemaining={}",
                     serviceSla,
                     dataBusinessObject.get(STATE_SLA),
@@ -691,6 +706,66 @@ public class InboxServiceV2 {
     }
 
 
+
+    /**
+     * Distinct mapped vendors across the tickets this caller's inbox query matches, for the vendor filter
+     * dropdown. Scoping comes from running the caller's own inbox query, so the dropdown can never offer a
+     * vendor whose tickets the caller would not be shown.
+     */
+    public MappedVendorResponse getMappedVendors(InboxRequest inboxRequest) {
+        log.info("➡️ Fetching mapped vendors | tenantId='{}' | module='{}'",
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+
+        validator.validateSearchCriteria(inboxRequest);
+        applyVendorTenantScope(inboxRequest);
+
+        InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        hashParamsWhereverRequiredBasedOnConfiguration(
+                inboxRequest.getInbox().getModuleSearchCriteria(), inboxQueryConfiguration);
+
+        /*
+          The vendor already selected in the UI must not narrow the list of vendors on offer, otherwise
+          reopening the dropdown would show the single selected entry.
+        */
+        Object droppedVendorFilter = inboxRequest.getInbox().getModuleSearchCriteria().remove(MAPPED_VENDOR_NAME);
+        if (!ObjectUtils.isEmpty(droppedVendorFilter))
+            log.debug("🔄 Ignoring mappedVendorName={} while listing vendors", droppedVendorFilter);
+
+        Map<String, Object> finalQueryBody = queryBuilder.getMappedVendorAggregationQuery(inboxRequest);
+        StringBuilder uri = getURI(inboxQueryConfiguration.getIndex(), SEARCH_PATH);
+
+        Map<String, Object> result = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        List<String> mappedVendors = parseMappedVendorsFromAggregationResponse(result);
+
+        log.info("✅ Returning {} distinct mapped vendor(s)", mappedVendors.size());
+        return MappedVendorResponse.builder()
+                .mappedVendors(mappedVendors)
+                .totalCount(mappedVendors.size())
+                .build();
+    }
+
+    private List<String> parseMappedVendorsFromAggregationResponse(Map<String, Object> response) {
+        if (CollectionUtils.isEmpty((Map<String, Object>) response.get(AGGREGATIONS_KEY))) {
+            log.warn("⚠️ No aggregations found in ES response while listing mapped vendors");
+            return new ArrayList<>();
+        }
+
+        List<Map<String, Object>> buckets = JsonPath.read(response, MAPPED_VENDOR_AGGREGATION_BUCKETS_PATH);
+        if (buckets.size() >= MAPPED_VENDOR_AGGREGATION_SIZE) {
+            log.warn("⚠️ Mapped vendor aggregation hit its cap of {} buckets, the list may be truncated",
+                    MAPPED_VENDOR_AGGREGATION_SIZE);
+        }
+
+        return buckets.stream()
+                .map(bucket -> (String) bucket.get(KEY))
+                .filter(vendor -> !ObjectUtils.isEmpty(vendor))
+                // "Not Applicable" is the placeholder for an unmapped facility, not a vendor to filter by.
+                .filter(vendor -> !MAPPED_VENDOR_NOT_APPLICABLE.equalsIgnoreCase(vendor.trim()))
+                .collect(Collectors.toList());
+    }
 
     private StringBuilder getURI(String indexName, String endpoint){
         StringBuilder uri = new StringBuilder(config.getIndexServiceHost());
