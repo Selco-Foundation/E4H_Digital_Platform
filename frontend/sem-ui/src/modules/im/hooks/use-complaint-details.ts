@@ -27,8 +27,31 @@ export function useComplaintDetails(incidentId: string, tenantId: string) {
         user,
       );
       const wrapper = response.IncidentWrappers?.[0];
+
       if (!wrapper) {
-        throw new Error("COMPLAINT_NOT_FOUND");
+        // DIGIT-UI's own im/ComplaintDetails screen renders this same way for
+        // some tickets: the incident-search response can come back empty even
+        // in production while the Timeline (a separate, independent workflow
+        // process search) still succeeds — so it shows a blank "Ticket
+        // Details" section instead of failing the whole page. Match that
+        // instead of hard-failing here; the page decides whether there's
+        // truly nothing to show by also checking the timeline.
+        return {
+          incidentId,
+          tenantId,
+          rows: [],
+          incident: {
+            tenantId,
+            incidentId,
+            applicationStatus: "",
+            incidentType: "",
+            incidentSubType: "",
+          },
+          workflow: {},
+          images: [],
+          videos: [],
+          thumbnails: [],
+        };
       }
 
       const documents = wrapper.incident.additionalDetail?.fileStoreId ?? [];

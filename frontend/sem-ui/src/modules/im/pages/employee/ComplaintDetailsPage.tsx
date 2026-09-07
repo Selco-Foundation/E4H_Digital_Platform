@@ -56,7 +56,16 @@ export function ComplaintDetailsPage() {
     );
   }
 
-  if (isError || !complaintDetails || !workflowDetails) {
+  // complaintDetails always resolves now (see use-complaint-details.ts) even when
+  // the incident-search response itself comes back empty — DIGIT-UI's own screen
+  // shows that as a blank "Ticket Details" section rather than a hard failure, as
+  // long as the Timeline (a separate, independent query) has something to show.
+  // Only treat this as truly "not found" when both come back empty.
+  const hasNothingToShow =
+    (complaintDetails?.rows.length ?? 0) === 0 &&
+    (workflowDetails?.timeline.length ?? 0) === 0;
+
+  if (isError || !complaintDetails || !workflowDetails || hasNothingToShow) {
     return (
       <div className="space-y-4">
         <p className="text-sm text-destructive">
