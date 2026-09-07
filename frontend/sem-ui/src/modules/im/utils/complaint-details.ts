@@ -3,12 +3,18 @@ import type { ComplaintDetailsData, ComplaintDetailsRow, Incident, IncidentWorkf
 import { TERMINAL_APPLICATION_STATUSES } from "../constants/workflow";
 import { formatEpochToDate } from "./date-format";
 
+/**
+ * Matches DIGIT-UI's im/ComplaintDetails row set and field sources exactly
+ * (useComplaintDetails.js's getDetailsRow) — all fields read flat off `incident`,
+ * confirmed against the real single-ticket search response (a different, flat
+ * shape from the inbox list's nested `incident.boundary.facilityCode`).
+ */
 export function buildComplaintDetailRows(
   incidentId: string,
   incident: Incident,
   t: (key: string) => string,
 ): ComplaintDetailsRow[] {
-  const filedDate = incident.auditDetails?.createdTime;
+  const filedDate = incident.filedDate ?? incident.auditDetails?.createdTime;
 
   return [
     { labelKey: "CS_COMPLAINT_DETAILS_TICKET_NO", value: incidentId },
@@ -21,14 +27,26 @@ export function buildComplaintDetailRows(
       value: `SERVICEDEFS.${incident.incidentType.toUpperCase()}`,
     },
     {
-      // No client-added prefix — matches DIGIT-UI's im module, which translates
-      // the raw boundary/facility code field as-is (see inbox-transform.ts).
-      labelKey: "CS_ADDCOMPLAINT_ASSET",
-      value: incident.boundaryCode ?? "-",
+      labelKey: "CS_ADDCOMPLAINT_TICKET_SUB_TYPE",
+      value: incident.incidentSubType
+        ? `SERVICEDEFS.${incident.incidentSubType.toUpperCase()}`
+        : "-",
     },
-    { labelKey: "CS_ADDCOMPLAINT_BLOCK", value: incident.block ?? "-" },
+    {
+      labelKey: "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL",
+      value: incident.systemFunctional ?? "-",
+    },
     { labelKey: "CS_ADDCOMPLAINT_DISTRICT", value: incident.district ?? "-" },
-    { labelKey: "CS_COMPLAINT_COMMENTS", value: incident.comments?.length?  incident.comments :  "-" },
+    { labelKey: "CS_ADDCOMPLAINT_BLOCK", value: incident.block ?? "-" },
+    {
+      labelKey: "HEALTH_CARE_CENTRE",
+      value: incident.boundaryCode ? `Boundary_${incident.boundaryCode}` : "-",
+    },
+    { labelKey: "CS_COMPLAINT_COMMENTS", value: incident.comments?.length ? incident.comments : "-" },
+    {
+      labelKey: "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE",
+      value: incident.phcSubType ?? "-",
+    },
     {
       labelKey: "CS_COMPLAINT_FILED_DATE",
       value: formatEpochToDate(filedDate),
