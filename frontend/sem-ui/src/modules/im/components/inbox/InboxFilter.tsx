@@ -192,7 +192,7 @@ export function InboxFilter({
         if (!unique.has(state.code)) {
           unique.set(state.code, {
             code: state.code,
-            name: translateOr(t, `BOUNDARY_${state.code}`, state.code),
+            name: translateOr(t, `Boundary_${state.code}`, state.code),
           });
         }
       }
@@ -216,7 +216,7 @@ export function InboxFilter({
       districts
         .map((district) => ({
           code: district.code,
-          name: translateOr(t, `BOUNDARY_${district.code}`, district.code),
+          name: translateOr(t, `Boundary_${district.code}`, district.code),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     );
@@ -254,7 +254,7 @@ export function InboxFilter({
       blocks
         .map((block) => ({
           code: block.code,
-          name: translateOr(t, `BOUNDARY_${block.code}`, block.code),
+          name: translateOr(t, `Boundary_${block.code}`, block.code),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     );
@@ -305,7 +305,7 @@ export function InboxFilter({
       facilities
         .map((facility) => ({
           code: facility.code,
-          name: translateOr(t, `BOUNDARY_${facility.code}`, facility.code),
+          name: translateOr(t, `Boundary_${facility.code}`, facility.code),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     );

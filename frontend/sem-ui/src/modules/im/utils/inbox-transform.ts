@@ -73,7 +73,14 @@ export function combineInboxResponses(
     return {
       incidentId: incident.incidentId,
       incidentType: incident.incidentType,
-      assetLabel: incident.boundaryCode ? `BOUNDARY_${incident.boundaryCode}` : "-",
+      incidentSubType: incident.incidentSubType || "-",
+      // Facility Registry writes each facility's localization entry as
+      // `Boundary_<facilityCode>` -> facility name (see FacilityService.java on
+      // the backend), keyed off `incident.boundary.facilityCode` specifically —
+      // NOT `incident.boundaryCode`, which is a different, unrelated field.
+      assetLabel: incident.boundary?.facilityCode
+        ? `Boundary_${incident.boundary.facilityCode}`
+        : "-",
       status: incident.applicationStatus,
       taskOwner: assignee?.name || "-",
       sla: `${slaValue}`,

@@ -69,6 +69,7 @@ export interface InboxSearchResponse {
 export interface InboxRow {
   incidentId: string;
   incidentType: string;
+  incidentSubType: string;
   assetLabel: string;
   status: string;
   taskOwner: string;

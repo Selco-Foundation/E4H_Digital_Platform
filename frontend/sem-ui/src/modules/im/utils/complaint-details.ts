@@ -21,8 +21,10 @@ export function buildComplaintDetailRows(
       value: `SERVICEDEFS.${incident.incidentType.toUpperCase()}`,
     },
     {
+      // No client-added prefix — matches DIGIT-UI's im module, which translates
+      // the raw boundary/facility code field as-is (see inbox-transform.ts).
       labelKey: "CS_ADDCOMPLAINT_ASSET",
-      value: incident.boundaryCode ? `BOUNDARY_${incident.boundaryCode}` : "-",
+      value: incident.boundaryCode ?? "-",
     },
     { labelKey: "CS_ADDCOMPLAINT_BLOCK", value: incident.block ?? "-" },
     { labelKey: "CS_ADDCOMPLAINT_DISTRICT", value: incident.district ?? "-" },

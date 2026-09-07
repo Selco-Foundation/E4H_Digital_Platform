@@ -32,10 +32,10 @@ export function ComplaintTable({ data }: ComplaintTableProps) {
 
   const columns = [
     { key: "ticket", label: translateOr(t, "CS_COMMON_TICKET_NO", "Ticket No.") },
-    { key: "endUser", label: translateOr(t, "INCIDENT_END_USER", "End User") },
-    { key: "asset", label: translateOr(t, "INCIDENT_ASSET", "Asset") },
     { key: "type", label: translateOr(t, "CS_TICKET_TYPE", "Issue Type") },
+    { key: "subType", label: translateOr(t, "CS_TICKET_SUB_TYPE", "Issue Sub Type") },
     { key: "status", label: translateOr(t, "CS_TICKET_DETAILS_CURRENT_STATUS", "Current Status") },
+    { key: "facility", label: translateOr(t, "INCIDENT_FACILITY", "Facility") },
     { key: "owner", label: translateOr(t, "WF_INBOX_HEADER_CURRENT_OWNER", "Current Owner") },
     { key: "sla", label: slaColumnLabel },
   ] as const;
@@ -87,10 +87,6 @@ export function ComplaintTable({ data }: ComplaintTableProps) {
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-foreground">{row.endUser}</td>
-                  <td className="px-5 py-4 text-foreground">
-                    {translateDetailValue(row.assetLabel, t)}
-                  </td>
                   <td className="px-5 py-4 text-foreground">
                     {translateOr(
                       t,
@@ -99,12 +95,24 @@ export function ComplaintTable({ data }: ComplaintTableProps) {
                     )}
                   </td>
                   <td className="px-5 py-4 text-foreground">
+                    {row.incidentSubType === "-"
+                      ? "-"
+                      : translateOr(
+                          t,
+                          `SERVICEDEFS.${row.incidentSubType.toUpperCase()}`,
+                          row.incidentSubType,
+                        )}
+                  </td>
+                  <td className="px-5 py-4 text-foreground">
                     <span
                       className="block max-w-[180px] truncate"
                       title={translateOr(t, `CS_COMMON_${row.status}`, row.status)}
                     >
                       {translateOr(t, `CS_COMMON_${row.status}`, row.status)}
                     </span>
+                  </td>
+                  <td className="px-5 py-4 text-foreground">
+                    {translateDetailValue(row.assetLabel, t)}
                   </td>
                   <td className="px-5 py-4 text-foreground">{row.taskOwner}</td>
                   <td className="px-5 py-4">
