@@ -33,15 +33,13 @@ function resolveSlaValue(
   }
 
   const assigneeUuid = ProcessInstance?.assignes?.[0]?.uuid;
-  const isAssigneeOrPoc =
-    assigneeUuid && (currentUserUuid === assigneeUuid || currentUserRoles?.includes("LIVELIHOOD_POC"));
-  if (isAssigneeOrPoc) {
+  if (assigneeUuid && currentUserUuid === assigneeUuid) {
     return toSlaDays(businessObject?.slaRemaining ?? 0);
   }
 
   if (!assigneeUuid) {
-    const requiredRoles = ROLE_STATUS_MAPPING[incident.applicationStatus];
-    if (requiredRoles?.some((role) => currentUserRoles?.includes(role))) {
+    const requiredRole = ROLE_STATUS_MAPPING[incident.applicationStatus];
+    if (requiredRole && currentUserRoles?.includes(requiredRole)) {
       return toSlaDays(businessObject?.slaRemaining ?? 0);
     }
   }
