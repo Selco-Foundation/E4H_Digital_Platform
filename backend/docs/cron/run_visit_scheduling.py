@@ -8,7 +8,7 @@ import os
 tenant_id = "in"
 
 # Service host - will be overridden by environment variable or default
-SERVICE_HOST = "http://localhost:8075"
+SERVICE_HOST = "http://amc-service.core-dev:8080"
 if os.getenv("AMC_SCHEDULER_SERVICE_HOST"):
     SERVICE_HOST = os.getenv("AMC_SCHEDULER_SERVICE_HOST")
 
