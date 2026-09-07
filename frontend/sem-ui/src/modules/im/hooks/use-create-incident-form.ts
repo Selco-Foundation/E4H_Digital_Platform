@@ -1,25 +1,28 @@
 import {
+  aggregateBoundaryCodes,
   translateOr,
   useAuthStore,
+  useBoundary,
   useJurisdictionStore,
   useTranslate,
 } from "@/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { searchAssetsForFacility } from "../services/asset-search";
-import { searchFacilitiesByJurisdiction } from "../services/facility-search";
 import { uploadIncidentFile, uploadIncidentVideo } from "../services/file-upload";
 import { createIncident, searchPotentialDuplicates } from "../services/incident";
-import { fetchServiceDefsForMenuPath } from "../services/mdms";
+import {
+  fetchServiceDefsForMenuPath,
+  fetchSystemFunctionalityOptions,
+  fetchTicketTypeMenu,
+} from "../services/mdms";
 import type {
+  BoundaryOption,
   CreateIncidentFormValues,
   CreateIncidentResponse,
   SelectOption,
   UploadedMediaEntry,
 } from "../types/create-incident";
-import type { LivelihoodAsset, LivelihoodFacility } from "../types/facility-asset";
 import { buildUploadedDocuments } from "../utils/create-incident-documents";
-import { buildFacilitySearchCriteria } from "../utils/jurisdiction-facility-criteria";
 import {
   MAX_COMMENT_LENGTH,
   MAX_IMAGE_COUNT,
@@ -31,21 +34,27 @@ import {
   type MediaValidationError,
 } from "../utils/media-validation";
 
-const DRAFT_STORAGE_KEY = "livelihood-im-create-draft";
+const DRAFT_STORAGE_KEY = "sem-im-create-draft";
 
 interface FieldErrors {
-  endUser?: string;
-  asset?: string;
-  complaintType?: string;
+  district?: string;
+  block?: string;
+  facility?: string;
+  ticketType?: string;
+  ticketSubType?: string;
+  systemFunctional?: string;
   comments?: string;
   image?: string;
   video?: string;
 }
 
 const EMPTY_FORM: CreateIncidentFormValues = {
-  endUser: null,
-  asset: null,
-  complaintType: null,
+  district: null,
+  block: null,
+  facility: null,
+  ticketType: null,
+  ticketSubType: null,
+  systemFunctional: null,
   comments: "",
 };
 
@@ -99,6 +108,17 @@ function buildMediaErrorMessage(
       );
 }
 
+function toBoundaryOption(
+  node: { code: string; parentCode: string },
+  t: (key: string) => string,
+): BoundaryOption {
+  return {
+    code: node.code,
+    parentCode: node.parentCode,
+    name: translateOr(t, `Boundary_${node.code}`, node.code),
+  };
+}
+
 export function useCreateIncidentForm(inboxPath: string) {
   const { t } = useTranslate();
   const queryClient = useQueryClient();
@@ -106,10 +126,14 @@ export function useCreateIncidentForm(inboxPath: string) {
   const accessToken = useAuthStore((state) => state.accessToken);
   const employeeTenantId = useAuthStore((state) => state.employeeTenantId);
   const boundaries = useJurisdictionStore((state) => state.boundaries);
+  const jurisdictionCodes = useMemo(() => aggregateBoundaryCodes(boundaries), [boundaries]);
+  const { data: boundaryData, isLoading: isBoundaryLoading } = useBoundary(jurisdictionCodes);
 
   const [form, setForm] = useState<CreateIncidentFormValues>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [complaintTypes, setComplaintTypes] = useState<SelectOption[]>([]);
+  const [ticketTypeMenu, setTicketTypeMenu] = useState<SelectOption[]>([]);
+  const [ticketSubTypeMenu, setTicketSubTypeMenu] = useState<SelectOption[]>([]);
+  const [systemFunctionalMenu, setSystemFunctionalMenu] = useState<SelectOption[]>([]);
   const [imageUploads, setImageUploads] = useState<UploadedMediaEntry[]>([]);
   const [videoUploads, setVideoUploads] = useState<UploadedMediaEntry[]>([]);
   const [isImageUploading, setIsImageUploading] = useState(false);
@@ -118,124 +142,76 @@ export function useCreateIncidentForm(inboxPath: string) {
     Array<{ ticketId: string; ticketTenantId: string }>
   >([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [disableUpload, setDisableUpload] = useState(true);
   const [submittedResponse, setSubmittedResponse] =
     useState<CreateIncidentResponse | null>(null);
 
-  const facilityCriteria = useMemo(
+  const districtOptions = useMemo(
     () =>
-      employeeTenantId
-        ? buildFacilitySearchCriteria(boundaries, employeeTenantId)
-        : null,
-    [boundaries, employeeTenantId],
+      (boundaryData?.districts ?? [])
+        .map((node) => toBoundaryOption(node, t))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [boundaryData, t],
   );
 
-  const facilitiesQuery = useQuery({
-    queryKey: ["create-incident-facilities", facilityCriteria, accessToken],
-    enabled: Boolean(accessToken && facilityCriteria),
-    queryFn: () =>
-      searchFacilitiesByJurisdiction(facilityCriteria!, accessToken!, user),
-  });
+  const blockOptions = useMemo(() => {
+    if (!form.district) {
+      return [];
+    }
+    return (boundaryData?.blocks ?? [])
+      .filter((node) => node.parentCode === form.district!.code)
+      .map((node) => toBoundaryOption(node, t))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [boundaryData, form.district, t]);
 
-  const facilities = facilitiesQuery.data?.facilities ?? [];
-  const showEndUserDropdown = facilities.length !== 1;
+  const facilityOptions = useMemo(() => {
+    if (!form.block) {
+      return [];
+    }
+    return (boundaryData?.facilities ?? [])
+      .filter((node) => node.parentCode === form.block!.code)
+      .map((node) => toBoundaryOption(node, t))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [boundaryData, form.block, t]);
 
-  const assetsQuery = useQuery({
-    queryKey: [
-      "create-incident-assets",
-      form.endUser?.facilityId,
-      employeeTenantId,
-      accessToken,
-    ],
-    enabled: Boolean(accessToken && employeeTenantId && form.endUser?.facilityId),
-    queryFn: () =>
-      searchAssetsForFacility(
-        form.endUser!.facilityId,
-        employeeTenantId!,
-        accessToken!,
-        user,
-      ),
-  });
+  useEffect(() => {
+    if (!accessToken) {
+      setTicketTypeMenu([]);
+      return;
+    }
+    void fetchTicketTypeMenu(accessToken, user, t).then(setTicketTypeMenu);
+  }, [accessToken, t, user]);
 
-  const assets = assetsQuery.data ?? [];
+  useEffect(() => {
+    if (!accessToken) {
+      setSystemFunctionalMenu([]);
+      return;
+    }
+    void fetchSystemFunctionalityOptions(accessToken, user, t).then(setSystemFunctionalMenu);
+  }, [accessToken, t, user]);
 
-  const facilityById = useMemo(
-    () => new Map(facilities.map((facility) => [facility.facilityId, facility])),
-    [facilities],
-  );
+  useEffect(() => {
+    if (!form.ticketType?.key || !accessToken) {
+      setTicketSubTypeMenu([]);
+      return;
+    }
 
-  const assetById = useMemo(
-    () => new Map(assets.map((asset) => [asset.assetId, asset])),
-    [assets],
-  );
-
-  const endUserOptions = useMemo(
-    () =>
-      facilities.map((facility) => ({
-        code: facility.facilityId,
-        name: facility.facilityPocName,
-      })),
-    [facilities],
-  );
-
-  const assetOptions = useMemo(
-    () =>
-      assets.map((asset) => {
-        const assetName = translateOr(
-          t,
-          `ASSETTYPE_${asset.assetTypeId}`,
-          asset.name,
+    void fetchServiceDefsForMenuPath(accessToken, user, form.ticketType.key, t).then(
+      (types) => {
+        setTicketSubTypeMenu(
+          types.map((item) => ({
+            code: item.key,
+            key: item.key,
+            serviceCode: item.serviceCode,
+            menuPath: item.menuPath,
+            name: item.name,
+          })),
         );
-        return {
-          code: asset.assetId,
-          name: asset.serialNumber
-            ? `${assetName} (${asset.serialNumber})`
-            : assetName,
-        };
-      }),
-    [assets, t],
-  );
+      },
+    );
+  }, [accessToken, form.ticketType?.key, t, user]);
 
   useEffect(() => {
-    if (facilities.length !== 1 || form.endUser) {
-      return;
-    }
-    const facility = facilities[0];
-    setForm((prev) => ({
-      ...prev,
-      endUser: facility,
-      asset: null,
-      complaintType: null,
-    }));
-    setDisableUpload(false);
-  }, [facilities, form.endUser]);
-
-  useEffect(() => {
-    if (!form.asset?.assetTypeId || !accessToken) {
-      setComplaintTypes([]);
-      return;
-    }
-
-    void fetchServiceDefsForMenuPath(
-      accessToken,
-      user,
-      form.asset.assetTypeId,
-      t,
-    ).then((types) => {
-      setComplaintTypes(
-        types.map((item) => ({
-          code: item.key,
-          key: item.key,
-          serviceCode: item.serviceCode,
-          menuPath: item.menuPath,
-          name: item.name,
-        })),
-      );
-    });
-  }, [accessToken, form.asset?.assetTypeId, t, user]);
-
-  useEffect(() => {
-    if (!form.endUser?.facilityId || !form.complaintType?.key) {
+    if (!form.facility?.code || !form.ticketType?.key) {
       setDuplicateTickets([]);
       return;
     }
@@ -244,8 +220,8 @@ export function useCreateIncidentForm(inboxPath: string) {
     void searchPotentialDuplicates(
       employeeTenantId!,
       jurisdiction,
-      form.endUser.facilityId,
-      form.complaintType.key,
+      form.facility.code,
+      form.ticketType.key,
       accessToken!,
       user,
     ).then(setDuplicateTickets);
@@ -253,8 +229,8 @@ export function useCreateIncidentForm(inboxPath: string) {
     accessToken,
     boundaries,
     employeeTenantId,
-    form.complaintType,
-    form.endUser,
+    form.facility,
+    form.ticketType,
     user,
   ]);
 
@@ -318,25 +294,34 @@ export function useCreateIncidentForm(inboxPath: string) {
 
   const validate = useCallback(() => {
     const errors: FieldErrors = {};
-    if (!form.endUser) {
-      errors.endUser = translateOr(
+    if (!form.district) {
+      errors.district = translateOr(t, "INCIDENT_DISTRICT_REQUIRED", "Please select a district");
+    }
+    if (!form.block) {
+      errors.block = translateOr(t, "INCIDENT_BLOCK_REQUIRED", "Please select a block");
+    }
+    if (!form.facility) {
+      errors.facility = translateOr(t, "INCIDENT_FACILITY_REQUIRED", "Please select a facility");
+    }
+    if (!form.ticketType) {
+      errors.ticketType = translateOr(
         t,
-        "INCIDENT_END_USER_REQUIRED",
-        "Please select an end user to continue",
+        "INCIDENT_TICKET_TYPE_REQUIRED",
+        "Please select a ticket type",
       );
     }
-    if (!form.asset) {
-      errors.asset = translateOr(
+    if (!form.ticketSubType) {
+      errors.ticketSubType = translateOr(
         t,
-        "INCIDENT_ASSET_REQUIRED",
-        "Please select an asset to continue",
+        "INCIDENT_TICKET_SUBTYPE_REQUIRED",
+        "Please select a ticket subtype",
       );
     }
-    if (!form.complaintType) {
-      errors.complaintType = translateOr(
+    if (!form.systemFunctional) {
+      errors.systemFunctional = translateOr(
         t,
-        "INCIDENT_TYPE_REQUIRED",
-        "Please select an issue type to continue",
+        "INCIDENT_SYSTEM_FUNCTIONAL_REQUIRED",
+        "Please select whether the solar system is working",
       );
     }
     if (form.comments.length > MAX_COMMENT_LENGTH) {
@@ -352,9 +337,12 @@ export function useCreateIncidentForm(inboxPath: string) {
 
   const canSubmit = useMemo(() => {
     return Boolean(
-      form.endUser &&
-        form.asset &&
-        form.complaintType &&
+      form.district &&
+        form.block &&
+        form.facility &&
+        form.ticketType &&
+        form.ticketSubType &&
+        form.systemFunctional &&
         !isImageUploading &&
         !isVideoUploading,
     );
@@ -376,9 +364,12 @@ export function useCreateIncidentForm(inboxPath: string) {
 
       return createIncident({
         tenantId: employeeTenantId,
-        endUser: form.endUser!,
-        asset: form.asset!,
-        complaintType: form.complaintType!,
+        district: form.district!,
+        block: form.block!,
+        facility: form.facility!,
+        ticketType: form.ticketType!,
+        ticketSubType: form.ticketSubType!,
+        systemFunctional: form.systemFunctional!,
         comments: form.comments,
         uploadedDocuments,
         user,
@@ -406,17 +397,9 @@ export function useCreateIncidentForm(inboxPath: string) {
     setFieldErrors({});
     setImageUploads([]);
     setVideoUploads([]);
-    setComplaintTypes([]);
-    setDisableUpload(facilities.length !== 1);
+    setTicketSubTypeMenu([]);
     sessionStorage.removeItem(DRAFT_STORAGE_KEY);
-    if (facilities.length === 1) {
-      setForm({
-        ...EMPTY_FORM,
-        endUser: facilities[0],
-      });
-      setDisableUpload(false);
-    }
-  }, [facilities]);
+  }, []);
 
   const saveDraft = useCallback(() => {
     sessionStorage.setItem(
@@ -452,42 +435,31 @@ export function useCreateIncidentForm(inboxPath: string) {
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  const handleEndUserChange = (facility: LivelihoodFacility | null) => {
-    setForm((prev) => ({
-      ...prev,
-      endUser: facility,
-      asset: null,
-      complaintType: null,
-    }));
-    setFieldErrors((prev) => ({
-      ...prev,
-      endUser: undefined,
-      asset: undefined,
-      complaintType: undefined,
-    }));
-    if (facility) {
-      setDisableUpload(false);
-    }
+  const handleDistrictChange = (district: BoundaryOption | null) => {
+    setForm((prev) => ({ ...prev, district, block: null, facility: null }));
+    setFieldErrors((prev) => ({ ...prev, district: undefined, block: undefined, facility: undefined }));
   };
 
-  const handleAssetChange = (asset: LivelihoodAsset | null) => {
-    setForm((prev) => ({
-      ...prev,
-      asset,
-      complaintType: null,
-    }));
-    setFieldErrors((prev) => ({
-      ...prev,
-      asset: undefined,
-      complaintType: undefined,
-    }));
+  const handleBlockChange = (block: BoundaryOption | null) => {
+    setForm((prev) => ({ ...prev, block, facility: null }));
+    setFieldErrors((prev) => ({ ...prev, block: undefined, facility: undefined }));
   };
 
-  const handleComplaintTypeChange = (complaintType: SelectOption | null) => {
-    updateField("complaintType", complaintType);
-    if (complaintType) {
-      setDisableUpload(false);
-    }
+  const handleFacilityChange = (facility: BoundaryOption | null) => {
+    updateField("facility", facility);
+  };
+
+  const handleTicketTypeChange = (ticketType: SelectOption | null) => {
+    setForm((prev) => ({ ...prev, ticketType, ticketSubType: null }));
+    setFieldErrors((prev) => ({ ...prev, ticketType: undefined, ticketSubType: undefined }));
+  };
+
+  const handleTicketSubTypeChange = (ticketSubType: SelectOption | null) => {
+    updateField("ticketSubType", ticketSubType);
+  };
+
+  const handleSystemFunctionalChange = (systemFunctional: SelectOption | null) => {
+    updateField("systemFunctional", systemFunctional);
   };
 
   return {
@@ -496,21 +468,19 @@ export function useCreateIncidentForm(inboxPath: string) {
     form,
     updateField,
     fieldErrors,
-    endUserOptions,
-    assetOptions,
-    facilityById,
-    assetById,
-    complaintTypes,
-    showEndUserDropdown,
-    isFacilitiesLoading: facilitiesQuery.isLoading,
-    isAssetsLoading: assetsQuery.isLoading,
+    districtOptions,
+    blockOptions,
+    facilityOptions,
+    ticketTypeMenu,
+    ticketSubTypeMenu,
+    systemFunctionalMenu,
+    isBoundaryLoading,
     imageUploads,
     videoUploads,
     uploadFiles,
     removeUpload,
     isImageUploading,
     isVideoUploading,
-    disableUpload,
     duplicateTickets,
     setDuplicateTickets,
     canSubmit,
@@ -522,9 +492,12 @@ export function useCreateIncidentForm(inboxPath: string) {
     validate,
     inboxPath,
     submittedResponse,
-    handleEndUserChange,
-    handleAssetChange,
-    handleComplaintTypeChange,
+    handleDistrictChange,
+    handleBlockChange,
+    handleFacilityChange,
+    handleTicketTypeChange,
+    handleTicketSubTypeChange,
+    handleSystemFunctionalChange,
     maxImageCount: MAX_IMAGE_COUNT,
     maxImageSizeMb: MAX_IMAGE_SIZE_MB,
     maxVideoCount: MAX_VIDEO_COUNT,
