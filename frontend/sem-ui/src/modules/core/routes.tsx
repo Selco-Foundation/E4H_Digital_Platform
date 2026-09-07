@@ -4,6 +4,7 @@ import type { AnyRoute } from "@tanstack/react-router";
 import { AppShell } from "./layout/AppShell";
 import { LoginPage } from "./pages/employee/LoginPage";
 import { HomePage } from "./pages/employee/HomePage";
+import { ForgotPasswordPage } from "./pages/employee/ForgotPasswordPage";
 import { ProfilePage } from "./pages/employee/ProfilePage";
 import { ProfileChangePasswordPage } from "./pages/employee/ProfileChangePasswordPage";
 import { CORE_ROUTES } from "./constants/routes";
@@ -15,14 +16,11 @@ export interface LoginRouteSearch {
   facilityId?: string;
 }
 
-// ForgotPassword / ChangePassword (pre-login reset) pages aren't ported yet —
-// only login, the authenticated home shell, and profile/profile-change-password.
-// See modules/core in livelihood-ui for the original shape of the remaining
-// two: employeeForgotPasswordRoute, employeeChangePasswordRoute.
 export function createCoreRoutes(rootRoute: AnyRoute) {
   const basePath = contextPath();
   const employeeHome = `/${basePath}${CORE_ROUTES.employeeHome}`;
   const employeeLogin = `/${basePath}${CORE_ROUTES.employeeLogin}`;
+  const employeeForgotPassword = `/${basePath}${CORE_ROUTES.employeeForgotPassword}`;
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -57,6 +55,20 @@ export function createCoreRoutes(rootRoute: AnyRoute) {
     component: LoginPage,
   });
 
+  const employeeForgotPasswordRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: employeeForgotPassword,
+    beforeLoad: () => {
+      if (useAuthStore.getState().isAuthenticated) {
+        throw redirect({ to: employeeHome });
+      }
+    },
+    component: ForgotPasswordPage,
+  });
+
+  // The OTP + new-password step (employeeChangePasswordPath/ChangePasswordPage)
+  // isn't implemented yet — ForgotPasswordPage currently just sends the OTP and
+  // stops there. Add that route back here once that page exists again.
   const employeeLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
     id: "employee-layout",
@@ -98,6 +110,7 @@ export function createCoreRoutes(rootRoute: AnyRoute) {
       indexRoute,
       contextRootRoute,
       employeeLoginRoute,
+      employeeForgotPasswordRoute,
       employeeLayoutRoute,
       employeeHomeRoute,
       employeeProfileRoute,
