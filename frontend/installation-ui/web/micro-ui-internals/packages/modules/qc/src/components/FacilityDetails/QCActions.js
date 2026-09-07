@@ -108,37 +108,6 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
     }
   }
 
-  const handleFlagForQC = async () => {
-    setUpdatingWorkflow(true);
-    const comments = formatRejectionReasons(rejectionReasons);
-
-    try {
-      await ActivityService.updateActivityFacilityWorkflow(
-        selectedFacility?.id, "FLAG_FOR_QC",
-        comments, "Flagged for QC by Installation Reviewer",
-        workflowDocuments
-      );
-
-      await revalidateData();
-      dispatch(clearRejectionReasons());
-      setUpdatingWorkflow(false);
-      setToast({
-        key: "success",
-        message: t("QC_FACILITY_FLAG_FOR_QC_SUCCESS"),
-      });
-
-    } catch (error) {
-      console.error("Error flagging for QC", error);
-      setUpdatingWorkflow(false);
-      setToast({
-        key: "error",
-        message: CommonUtils.getApiErrorMessage(error) || t("QC_FACILITY_FLAG_FOR_QC_FAILURE"),
-      });
-    } finally {
-      setUpdatingWorkflow(false);
-    }
-  }
-
   const confirmApprove = () => {
     setConfirmAlert({
       messageKey: "QC_CONFIRM_APPROVE_INSTALLATION_REPORT",
@@ -154,15 +123,6 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
       messageParams: { facilityName: selectedFacility?.facilityName },
       irreversible: true,
       confirmAction: handleReject,
-    });
-  }
-
-  const confirmFlagForQC = () => {
-    setConfirmAlert({
-      messageKey: "QC_CONFIRM_FLAG_FOR_QC_INSTALLATION_REPORT",
-      messageParams: { facilityName: selectedFacility?.facilityName },
-      irreversible: true,
-      confirmAction: handleFlagForQC,
     });
   }
 
@@ -183,21 +143,6 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
     }}>
       {showRejectActions ? (
         <div style={{display: 'flex', gap: '12px'}}>
-          <button
-            onClick={confirmFlagForQC}
-            style={{
-              backgroundColor: "white",
-              color: '#C1440E',
-              border: "1px solid #C1440E",
-              padding: '10px 24px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              borderRadius: '2px',
-              cursor: 'pointer'
-            }}
-          >
-            {t("QC_ACTION_FLAG_FOR_QC")}
-          </button>
           <button
             onClick={confirmReject}
             style={{
