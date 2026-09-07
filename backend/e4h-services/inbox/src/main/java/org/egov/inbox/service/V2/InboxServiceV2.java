@@ -572,12 +572,15 @@ public class InboxServiceV2 {
             inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(STATE_SLA));
             inbox.getBusinessObject().put(TOTAL_SLA_REMAINING, dataBusinessObject.get(TOTAL_SLA_REMAINING));
 
-            // Read straight off the index; keys are always present, null when the indexed document does not carry
-            // them. currentOwner lives at the root of _source rather than inside Data, so it is lifted from the
-            // outer source object into the business object the client sees.
+            /*
+              Read straight off the index; keys are always present, null when the indexed document does not carry
+              them. currentOwner is taken from Data and not from the root of _source - the computed-sla index also
+              carries a root level currentOwner, but that one is the reporting view's placeholder ("-") rather than
+              the program role im-services derives.
+            */
             inbox.getBusinessObject().put(MAPPED_VENDOR_NAME, dataBusinessObject.get(MAPPED_VENDOR_NAME));
             inbox.getBusinessObject().put(MAPPED_VENDOR_USER_NAME, dataBusinessObject.get(MAPPED_VENDOR_USER_NAME));
-            inbox.getBusinessObject().put(CURRENT_OWNER, businessObject.get(CURRENT_OWNER));
+            inbox.getBusinessObject().put(CURRENT_OWNER, dataBusinessObject.get(CURRENT_OWNER));
 
             log.debug("📌 Parsed inbox item with serviceSla={} | stateSla={} | slaRemaining={}",
                     serviceSla,
