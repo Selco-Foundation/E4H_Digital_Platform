@@ -64,9 +64,9 @@ export function buildIncidentInboxFilters(
     facility,
     assignee,
     nearingSLA,
-    state,
     district,
     block,
+    isSystemFunctional,
     wfStatus,
   } = filtersArg ?? {};
 
@@ -88,8 +88,14 @@ export function buildIncidentInboxFilters(
     workflowFilters.status = splitCsv(applicationStatus);
   }
 
+  // Backend `RequestSearchCriteria` has no `assetType`/`facility`/`state` fields.
+  // The inbox "Asset Type" filter is the facility's own type, stored on the
+  // incident as `phcSubType`; the facility filter is the single `boundaryCode`
+  // field. `district`/`block` are plain strings there too (no `state` field
+  // exists at all — matches DIGIT-UI's own behavior of sending it and having
+  // the backend ignore it).
   if (assetType) {
-    searchFilters.assetType = splitCsv(assetType);
+    searchFilters.phcSubType = splitCsv(assetType);
   }
 
   if (incidentType) {
@@ -101,13 +107,17 @@ export function buildIncidentInboxFilters(
   }
 
   if (facility) {
-    searchFilters.facility = splitCsv(facility);
-  } else if (block) {
-    searchFilters.block = splitCsv(block);
-  } else if (district) {
-    searchFilters.district = splitCsv(district);
-  } else if (state) {
-    searchFilters.state = splitCsv(state);
+    searchFilters.boundaryCode = splitCsv(facility)[0];
+  }
+  if (block) {
+    searchFilters.block = splitCsv(block)[0];
+  }
+  if (district) {
+    searchFilters.district = splitCsv(district)[0];
+  }
+
+  if (isSystemFunctional) {
+    searchFilters.systemFunctional = splitCsv(isSystemFunctional)[0];
   }
 
   if (assignee) {

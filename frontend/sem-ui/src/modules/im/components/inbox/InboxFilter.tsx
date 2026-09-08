@@ -29,9 +29,12 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ORDERED_INBOX_STATUSES } from "../../constants/inbox-statuses";
 import { buildDefaultInboxRoleFilters } from "../../hooks/inbox-defaults";
 import { useImAssetTypes } from "../../hooks/use-im-inbox-summary";
+import { fetchSystemFunctionalityOptions, fetchTicketTypeMenu } from "../../services/mdms";
+import type { SelectOption } from "../../types/create-incident";
 import type { ImInboxFilters, InboxDataResult } from "../../types/inbox";
 import { isEndUser } from "../../utils/access";
 import { buildFilterQueryFromState } from "../../utils/inbox-filters";
+import { InboxStatus } from "./InboxStatus";
 import { LiveTicketSearch } from "./LiveTicketSearch";
 
 interface FilterOption {
@@ -58,7 +61,14 @@ function areAllStatusesSelected(
   return statuses.every((code) => selectedCodes.has(code));
 }
 
-type PgrFilterKey = "assetType" | "facility" | "state" | "district" | "block";
+type PgrFilterKey =
+  | "assetType"
+  | "incidentType"
+  | "isSystemFunctional"
+  | "facility"
+  | "state"
+  | "district"
+  | "block";
 
 interface InboxFilterProps {
   complaints?: InboxDataResult;
@@ -69,6 +79,7 @@ interface InboxFilterProps {
 }
 
 export function InboxFilter({
+  complaints,
   searchParams,
   onFilterChange,
   onSearch,
@@ -76,6 +87,7 @@ export function InboxFilter({
 }: InboxFilterProps) {
   const { t } = useTranslate();
   const user = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const userUuid = user?.uuid ?? "";
   const roles = user?.roles;
   const boundaries = useJurisdictionStore((state) => state.boundaries);
@@ -106,12 +118,14 @@ export function InboxFilter({
   const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<PgrFilterKey | "applicationStatus">(
-    "assetType",
+    "incidentType",
   );
   const [categorySearch, setCategorySearch] = useState("");
 
   const emptyPgrFilters = {
     assetType: [] as Array<{ code: string; name?: string; key?: string }>,
+    incidentType: [] as Array<{ code: string; name?: string; key?: string }>,
+    isSystemFunctional: [] as Array<{ code: string; name?: string; key?: string }>,
     facility: [] as Array<{ code: string; name?: string }>,
     state: [] as Array<{ code: string; name?: string }>,
     district: [] as Array<{ code: string; name?: string }>,
@@ -140,12 +154,23 @@ export function InboxFilter({
   const { data: facilityData } = useFacility(facilityBoundaryCodes);
   const { data: assetTypes } = useImAssetTypes();
 
+  const [ticketTypeMenu, setTicketTypeMenu] = useState<SelectOption[]>([]);
+  const [systemFunctionalMenu, setSystemFunctionalMenu] = useState<SelectOption[]>([]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+    void fetchTicketTypeMenu(accessToken, user, t).then(setTicketTypeMenu);
+    void fetchSystemFunctionalityOptions(accessToken, user, t).then(setSystemFunctionalMenu);
+  }, [accessToken, user, t]);
+
   const assetTypeMenu = useMemo(
     () =>
       (assetTypes ?? [])
         .map((item) => ({
           code: item.code,
-          name: translateOr(t, `ASSETTYPE_${item.code}`, item.code),
+          name: translateOr(t, `FACILITYTYPE_${item.code}`, item.name),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [assetTypes, t],
@@ -398,8 +423,19 @@ export function InboxFilter({
     });
   }
 
+  // Asset Type is still left out per request — its state/logic below is
+  // left intact so it can be re-added later.
   const categories = [
-    { key: "assetType" as const, label: translateOr(t, "CS_ASSET_TYPE", "Asset Type"), options: assetTypeMenu },
+    {
+      key: "incidentType" as const,
+      label: translateOr(t, "CS_COMPLAINT_DETAILS_TICKET_TYPE", "Issue Type"),
+      options: ticketTypeMenu,
+    },
+    {
+      key: "isSystemFunctional" as const,
+      label: translateOr(t, "CS_SYSTEM_FUNCTIONAL", "Is the Solar System Working?"),
+      options: systemFunctionalMenu,
+    },
     ...(showGeoFilters
       ? [
           { key: "state" as const, label: translateOr(t, "CS_STATE", "State"), options: stateMenu },
@@ -407,14 +443,14 @@ export function InboxFilter({
           { key: "block" as const, label: translateOr(t, "CS_BLOCK", "Block"), options: blockMenu },
           {
             key: "facility" as const,
-            label: translateOr(t, "INCIDENT_END_USER", "End User"),
+            label: translateOr(t, "INCIDENT_END_USER", "Facility"),
             options: facilityMenu,
           },
         ]
       : []),
     {
       key: "applicationStatus" as const,
-      label: translateOr(t, "ES_IM_FILTER_STATUS", "Ticket Status"),
+      label: translateOr(t, "ES_IM_FILTER_STATUS", "Issue Status"),
       options: statusMenu,
     },
   ];
@@ -441,30 +477,20 @@ export function InboxFilter({
     });
 
   let optionsContent: ReactNode;
-  if (visibleOptions.length === 0) {
+  if (activeCategory === "applicationStatus") {
+    optionsContent = (
+      <InboxStatus
+        statusMap={complaints?.statusArray}
+        selectedStatuses={pgrfilters.applicationStatus}
+        onAssignmentChange={(_checked, option) => toggleStatusGroup(option.statuses)}
+      />
+    );
+  } else if (visibleOptions.length === 0) {
     optionsContent = (
       <p className="text-sm text-muted-foreground">
         {translateOr(t, "ES_COMMON_NO_OPTIONS", "No options found")}
       </p>
     );
-  } else if (activeCategory === "applicationStatus") {
-    optionsContent = visibleOptions.map((option) => {
-      const group = ORDERED_INBOX_STATUSES.find((item) => item.code === option.code);
-      const statuses = group?.statuses ?? [option.code];
-      return (
-        <label
-          key={option.code}
-          className="flex cursor-pointer items-center gap-2 text-sm font-semibold"
-        >
-          <Checkbox
-            className="size-5 rounded-md border-2 border-primary"
-            checked={isStatusGroupChecked(statuses)}
-            onCheckedChange={() => toggleStatusGroup(statuses)}
-          />
-          {option.name}
-        </label>
-      );
-    });
   } else {
     optionsContent = visibleOptions.map((option) => (
       <label

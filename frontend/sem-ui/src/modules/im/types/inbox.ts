@@ -7,6 +7,8 @@ export interface ImInboxFilters {
   };
   pgrfilters?: {
     assetType?: Array<{ code: string; name?: string; key?: string }>;
+    incidentType?: Array<{ code: string; name?: string; key?: string }>;
+    isSystemFunctional?: Array<{ code: string; name?: string; key?: string }>;
     facility?: Array<{ code: string; name?: string }>;
     state?: Array<{ code: string; name?: string }>;
     district?: Array<{ code: string; name?: string }>;
