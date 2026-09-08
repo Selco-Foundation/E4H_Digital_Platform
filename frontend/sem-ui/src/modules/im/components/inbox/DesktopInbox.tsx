@@ -12,6 +12,8 @@ interface DesktopInboxProps {
   searchParams: {
     filters?: ImInboxFilters;
   };
+  onSearch: (params: { applicationNumber?: string }) => void;
+  initialApplicationNumber?: string;
   onNextPage: () => void;
   onPrevPage: () => void;
   currentPage: number;
@@ -26,6 +28,8 @@ export function DesktopInbox({
   isLoading,
   onFilterChange,
   searchParams,
+  onSearch,
+  initialApplicationNumber,
   onNextPage,
   onPrevPage,
   currentPage,
@@ -42,6 +46,8 @@ export function DesktopInbox({
         complaints={data}
         onFilterChange={onFilterChange}
         searchParams={searchParams}
+        onSearch={onSearch}
+        initialApplicationNumber={initialApplicationNumber}
       />
 
       {isLoading ? (

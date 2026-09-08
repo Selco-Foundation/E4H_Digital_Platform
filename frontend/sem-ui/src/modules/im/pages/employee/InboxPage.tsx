@@ -39,6 +39,7 @@ export function InboxPage() {
     filters,
     limit: pageSize,
     offset: pageOffset,
+    applicationNumber: search.applicationNumber,
     ...(search.nearing === "1" ? { nearingSLA: true } : {}),
   };
 
@@ -67,6 +68,17 @@ export function InboxPage() {
       search: (prev: InboxRouteSearch) => ({
         ...prev,
         pageOffset: Math.max(0, nextOffset),
+      }),
+      replace: true,
+    });
+  };
+
+  const handleSearch = (params: { applicationNumber?: string }) => {
+    void navigate({
+      search: (prev: InboxRouteSearch) => ({
+        ...prev,
+        applicationNumber: params.applicationNumber,
+        pageOffset: 0,
       }),
       replace: true,
     });
@@ -112,6 +124,8 @@ export function InboxPage() {
         isLoading={isLoading}
         onFilterChange={handleFilterChange}
         searchParams={{ filters }}
+        onSearch={handleSearch}
+        initialApplicationNumber={search.applicationNumber}
         onNextPage={() => goToOffset(pageOffset + pageSize)}
         onPrevPage={() => goToOffset(pageOffset - pageSize)}
         onPageChange={(page) => goToOffset(page * pageSize)}

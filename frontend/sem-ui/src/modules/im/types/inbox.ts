@@ -20,6 +20,7 @@ export interface ImInboxSearchParams {
   limit?: number;
   offset?: number;
   nearingSLA?: boolean;
+  applicationNumber?: string;
 }
 
 export interface InboxIncidentReporter {
