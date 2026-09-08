@@ -111,8 +111,10 @@ export function createImRoutes(rootRoute: AnyRoute, employeeLayoutRoute: AnyRout
     navItems: [
       {
         id: "im-inbox",
-        label: "Inbox",
-        labelKey: "ES_IM_INBOX",
+        label: "Tickets",
+        // Same key ComplaintLinks.tsx already uses for this exact label elsewhere
+        // in the module, and matches DIGIT-UI's own "Tickets" sidebar wording.
+        labelKey: "ES_IM_HEADER_INCIDENTS",
         to: inboxPath,
         icon: Inbox,
         matchPrefixes: [`/${basePath}${IM_ROUTES.complaintDetails}`],

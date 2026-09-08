@@ -52,6 +52,7 @@ export {
   contextPath,
   getConfig,
   getConfigString,
+  getCrmHelplineNumber,
   isGlobalConfigLoaded,
   tenantId,
 } from "./config/global-config";

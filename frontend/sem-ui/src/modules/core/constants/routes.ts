@@ -5,4 +5,6 @@ export const CORE_ROUTES = {
   employeeChangePassword: "/employee/user/change-password",
   employeeProfile: "/employee/profile",
   employeeProfileChangePassword: "/employee/profile/change-password",
+  employeePrivacyPolicy: "/employee/privacy-policy",
+  employeeTermsOfUse: "/employee/terms-of-use",
 } as const;

@@ -4,6 +4,7 @@ import {
   employeeLoginPath,
   employeeProfilePath,
   getConfigString,
+  getCrmHelplineNumber,
   logoutUser,
   tenantId,
   translateOr,
@@ -46,7 +47,7 @@ import {
   toast,
 } from "@/ui";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, LogOut, Menu } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Home, LogOut, Menu, Phone } from "lucide-react";
 import { useState } from "react";
 
 function isNavItemActive(item: NavItem, pathname: string, homePath: string): boolean {
@@ -66,9 +67,12 @@ export function AppShell() {
   const clearSession = useAuthStore((state) => state.clearSession);
   const clearJurisdiction = useJurisdictionStore((state) => state.clearJurisdiction);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const boundaries = useJurisdictionStore((state) => state.boundaries);
+  const crmHelplineNumber = getCrmHelplineNumber(boundaries?.state ?? []);
   const { t } = useTranslate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false);
 
   const initials =
     user?.name?.slice(0, 2).toUpperCase() ??
@@ -85,6 +89,22 @@ export function AppShell() {
       icon: Home,
     },
     ...navItems,
+  ];
+
+  // Matches DIGIT-UI's SideBar.js exactly: two internal routes, not external
+  // links. Neither page exists yet in sem-ui — clicking through hits the
+  // router's not-found fallback until those are built.
+  const privacyLinks = [
+    {
+      id: "privacy-policy",
+      label: translateOr(t, "CORE_PRIVACY_POLICY", "Privacy Policy"),
+      to: `${basePath}/employee/privacy-policy`,
+    },
+    {
+      id: "terms-of-use",
+      label: translateOr(t, "CORE_TERMS_OF_USE", "Terms of Use"),
+      to: `${basePath}/employee/terms-of-use`,
+    },
   ];
 
   return (
@@ -130,6 +150,35 @@ export function AppShell() {
                     </SidebarMenuItem>
                   );
                 })}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setPrivacyMenuOpen((open) => !open)}
+                    className="justify-center rounded-lg hover:bg-transparent hover:text-sidebar-foreground hover:underline active:bg-transparent active:text-sidebar-foreground md:justify-start"
+                  >
+                    <FileText />
+                    <span className="hidden md:inline">
+                      {translateOr(t, "CORE_PRIVACY_TERMS", "Privacy & Terms")}
+                    </span>
+                    {privacyMenuOpen ? (
+                      <ChevronDown className="ml-auto hidden size-4 md:block" />
+                    ) : (
+                      <ChevronRight className="ml-auto hidden size-4 md:block" />
+                    )}
+                  </SidebarMenuButton>
+                  {privacyMenuOpen ? (
+                    <div className="hidden flex-col gap-1 py-1 pl-9 md:flex">
+                      {privacyLinks.map((link) => (
+                        <Link
+                          key={link.id}
+                          to={link.to}
+                          className="rounded-md py-1.5 text-sm text-sidebar-foreground/80 hover:text-sidebar-foreground hover:underline"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -150,6 +199,19 @@ export function AppShell() {
               </p>
             </div>
           </Link>
+          {crmHelplineNumber ? (
+            <div className="flex items-center justify-center gap-2 md:justify-start">
+              <Phone className="size-5 shrink-0 text-sidebar-foreground" />
+              <div className="hidden min-w-0 flex-col md:flex">
+                <span className="text-xs text-sidebar-foreground/70">
+                  {translateOr(t, "CS_COMMON_HELPLINE", "CRM Toll Number")}
+                </span>
+                <span className="truncate text-sm font-medium text-sidebar-foreground">
+                  {crmHelplineNumber}
+                </span>
+              </div>
+            </div>
+          ) : null}
           <SidebarSeparator className="mx-0 h-[5px] w-full bg-white/60" />
           <Button
             variant="outline"
@@ -225,6 +287,33 @@ export function AppShell() {
                           </Link>
                         );
                       })}
+                      <button
+                        type="button"
+                        onClick={() => setPrivacyMenuOpen((open) => !open)}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white"
+                      >
+                        <FileText className="size-5" />
+                        {translateOr(t, "CORE_PRIVACY_TERMS", "Privacy & Terms")}
+                        {privacyMenuOpen ? (
+                          <ChevronDown className="ml-auto size-4" />
+                        ) : (
+                          <ChevronRight className="ml-auto size-4" />
+                        )}
+                      </button>
+                      {privacyMenuOpen ? (
+                        <div className="flex flex-col gap-1 py-1 pl-9">
+                          {privacyLinks.map((link) => (
+                            <Link
+                              key={link.id}
+                              to={link.to}
+                              onClick={() => setMobileNavOpen(false)}
+                              className="rounded-md py-1.5 text-sm text-white/80 hover:text-white hover:underline"
+                            >
+                              {link.label}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : null}
                     </nav>
                   </div>
 
@@ -243,6 +332,19 @@ export function AppShell() {
                         {user?.name ?? user?.userName ?? translateOr(t, "CORE_COMMON_USER_FALLBACK", "User")}
                       </span>
                     </Link>
+                    {crmHelplineNumber ? (
+                      <div className="flex items-center gap-2">
+                        <Phone className="size-5 shrink-0 text-white" />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="text-xs text-white/70">
+                            {translateOr(t, "CS_COMMON_HELPLINE", "CRM Toll Number")}
+                          </span>
+                          <span className="truncate text-sm font-medium text-white">
+                            {crmHelplineNumber}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="h-px w-full bg-white/40" />
                     <Button
                       variant="outline"

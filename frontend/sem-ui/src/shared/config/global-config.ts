@@ -28,3 +28,13 @@ export function tenantId(envFallback?: string): string {
 export function isGlobalConfigLoaded(): boolean {
   return typeof window.globalConfigs?.getConfig === "function";
 }
+
+/**
+ * Matches DIGIT-UI's AppModules.js: only trust the result when it resolves to
+ * exactly one state (a user whose jurisdiction spans more than one, or none,
+ * gets no CRM number — same as there).
+ */
+export function getCrmHelplineNumber(stateCodes: string[]): string {
+  const infos = window.globalConfigs?.getStateBoundaryInfos?.(stateCodes) ?? [];
+  return infos.length === 1 ? (infos[0].crmHelplineNumber ?? "") : "";
+}
