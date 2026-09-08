@@ -115,9 +115,9 @@ export function AppShell() {
         className="hidden w-(--sidebar-width-icon) items-center md:w-(--sidebar-width) md:items-stretch lg:flex"
       >
         <SidebarHeader className="items-center gap-6 px-2 pt-12 pb-5 md:px-7">
-          <div className="flex h-16 w-16 items-center justify-center rounded-[3px] p-1 md:h-[150px] md:w-[150px]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[3px] p-1 md:h-[120px] md:w-[120px]">
             <img
-              src={getConfigString("SELCO_LOGO", "https://selco-assets.s3.ap-south-1.amazonaws.com/Icon_twoclr.png")}
+              src={getConfigString("SELCO_LOGO", "https://livelihood-assets.s3.ap-south-2.amazonaws.com/Selco_Foundation_logo.png")}
               alt={translateOr(t, "CORE_LOGO_ALT", "Selco Foundation Logo")}
               className="h-full w-full object-contain"
             />
@@ -256,9 +256,9 @@ export function AppShell() {
                   <div className="flex flex-col gap-5">
                     <div className="flex flex-col items-center gap-6">
                       <img
-                        src={getConfigString("SELCO_LOGO", "https://selco-assets.s3.ap-south-1.amazonaws.com/Icon_twoclr.png")}
+                        src={getConfigString("SELCO_LOGO", "https://livelihood-assets.s3.ap-south-2.amazonaws.com/Selco_Foundation_logo.png")}
                         alt={translateOr(t, "CORE_LOGO_ALT", "Selco Foundation Logo")}
-                        className="h-36 w-36 object-contain"
+                        className="h-28 w-28 object-contain"
                       />
                       <div className="h-px w-full bg-white/60" />
                     </div>
