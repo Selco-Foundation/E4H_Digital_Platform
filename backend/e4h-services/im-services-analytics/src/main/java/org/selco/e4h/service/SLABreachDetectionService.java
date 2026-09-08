@@ -315,6 +315,7 @@ public class SLABreachDetectionService {
         long l2Cutoff = System.currentTimeMillis() - ((long) triggerDelayHours * 60 * 60 * 1000);
         return candidates.stream()
                 .filter(ticket -> EscalationTicketUtil.hasEscalationAtLevelSince(ticket, "LEVEL_TWO", l2Cutoff))
+                .filter(ticket -> EscalationTicketUtil.statusUnchangedSinceEscalation(ticket, "LEVEL_TWO"))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
@@ -328,6 +329,7 @@ public class SLABreachDetectionService {
         long l2Cutoff = System.currentTimeMillis() - ((long) triggerDelayHours * 60 * 60 * 1000);
         return candidates.stream()
                 .filter(ticket -> EscalationTicketUtil.hasEscalationAtLevelSince(ticket, "LEVEL_TWO", l2Cutoff))
+                .filter(ticket -> EscalationTicketUtil.statusUnchangedSinceEscalation(ticket, "LEVEL_TWO"))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 

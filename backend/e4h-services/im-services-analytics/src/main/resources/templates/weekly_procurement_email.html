@@ -11,18 +11,20 @@
     table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left}
     th{color:#6b7280;font-weight:700}.right{text-align:right}
     .btn{display:inline-block;background:#fff;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font-weight:600;text-decoration:none}
-    .sp-16{height:16px}.rule{border-top:1px solid #e5e7eb;margin:16px 0}
+    .sp-16{height:16px}.rule{border-top:1px solid #e5e7eb;margin:16px 0}.scroll{overflow-x:auto}
   </style>
 </head>
 <body>
 <table role="presentation" width="100%"><tr><td align="center"><table role="presentation" class="container card"><tr><td>
 <p class="h1">Weekly Procurement Update</p><p class="muted center">${WEEK_RANGE}</p><div class="rule"></div>
 <p class="text">Dear ${NAME},</p>
-<p class="section-title">Vendor SLA Performance (All States)</p>
-<table><thead><tr><th>Vendor</th><th class="right">Assigned</th><th class="right">Resolved</th><th class="right">Resolution Rate</th></tr></thead><tbody>${VENDOR_ROWS}</tbody></table>
-<p class="section-title">Bottleneck Statuses</p>
-<table><thead><tr><th>Status</th><th class="right">Count</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
-<p class="section-title">Facility Impact</p>${FACILITY_SUMMARY}
+<p class="section-title">Section 1 - Vendor SLA Performance (All States)</p>
+<div class="scroll"><table><thead><tr><th>Vendor</th><th class="right">New Breached</th><th class="right">Resolved (within SLA)</th><th class="right">Resolved (breached)</th><th class="right">Response Rate</th><th class="right">Resolution Rate</th></tr></thead><tbody>${VENDOR_ROWS}</tbody></table></div>
+${OVERVIEW_TOTAL_SUMMARY}
+<p class="section-title">Section 2 - Facility Impact (Non-Functional → Functional)</p>
+<table><thead><tr><th>State</th><th class="right">HFs Restored</th><th>Vendor(s) Involved</th></tr></thead><tbody>${FACILITY_ROWS}</tbody></table>
+<p class="section-title">Section 3 - Where the Bottleneck Is</p>
+<table><thead><tr><th>Status</th><th class="right">Count</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
 ${DOWNLOAD_BUTTON}
 <p class="muted center">Report generated on ${AS_OF_DATE}</p>
 </td></tr></table></td></tr></table>

@@ -5,9 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.config.EscalationProperties;
 import org.selco.e4h.util.CommonUtility;
 import org.selco.e4h.util.EscalationEmailTemplateHelper;
+import org.selco.e4h.web.models.WeeklyBottleneckRow;
 import org.selco.e4h.web.models.WeeklyEscalationAnalytics;
+import org.selco.e4h.web.models.WeeklyEscalationEffectivenessRow;
 import org.selco.e4h.web.models.WeeklyNfAlert;
-import org.selco.e4h.web.models.WeeklyTicketOverview;
+import org.selco.e4h.web.models.WeeklyStateNfTrendRow;
+import org.selco.e4h.web.models.WeeklyTheftCaseRow;
+import org.selco.e4h.web.models.WeeklyTrendMetric;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -23,7 +27,7 @@ public class WeeklyLeadershipEmailService {
     private final EscalationProperties escalationProperties;
 
     public String generateEmailSubject(WeeklyEscalationAnalytics analytics) {
-        return String.format("Weekly Leadership Escalation Report | %s", analytics.getWeekRangeLabel());
+        return String.format("Weekly Programme Summary | %s", analytics.getWeekRangeLabel());
     }
 
     public String generateEmailHtml(WeeklyEscalationAnalytics analytics, String recipientName, String downloadUrl) {
@@ -32,12 +36,13 @@ public class WeeklyLeadershipEmailService {
             Map<String, String> variables = EscalationEmailTemplateHelper.baseBrandingVariables(commonUtility, recipientName);
             variables.put("WEEK_RANGE", commonUtility.escapeHtml(analytics.getWeekRangeLabel()));
             variables.put("AS_OF_DATE", commonUtility.escapeHtml(analytics.getAsOfDate()));
-            variables.put("TICKET_OVERVIEW", renderOverview(analytics.getNationalOverview()));
-            variables.put("EFFECTIVENESS", renderEffectiveness(analytics));
-            variables.put("TREND", renderTrend(analytics));
+            variables.put("KEY_HIGHLIGHTS", renderKeyHighlights(analytics));
+            variables.put("EFFECTIVENESS_ROWS", renderEffectiveness(analytics));
+            variables.put("TREND_ROWS", renderTrend(analytics));
+            variables.put("STATE_NF_TREND_ROWS", renderStateNfTrend(analytics));
             variables.put("THEFT_SUMMARY", renderTheft(analytics));
-            variables.put("NF_ALERTS", renderNfAlerts(analytics));
             variables.put("BOTTLENECK_ROWS", renderBottlenecks(analytics));
+            variables.put("NF_ALERTS", renderNfAlerts(analytics));
             variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(commonUtility, downloadUrl));
             variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl());
             return EscalationEmailTemplateHelper.render(template, variables);
@@ -47,56 +52,89 @@ public class WeeklyLeadershipEmailService {
         }
     }
 
-    private String renderOverview(WeeklyTicketOverview overview) {
-        if (overview == null) {
-            return "<p class=\"muted\">No ticket data available.</p>";
-        }
+    private String renderKeyHighlights(WeeklyEscalationAnalytics analytics) {
+        int facilitiesRestored = analytics.getFacilitiesRestored() == null ? 0
+                : analytics.getFacilitiesRestored().stream().mapToInt(r -> r.getRestoredCount()).sum();
+        int ticketsResolved = (analytics.getNationalOverview() != null
+                ? analytics.getNationalOverview().getResolvedWithinSla() + analytics.getNationalOverview().getResolvedAfterBreach()
+                : 0);
+        String vendorLine = analytics.getVendorLowestTatName() != null
+                ? commonUtility.escapeHtml(analytics.getVendorLowestTatName()) + " (" + analytics.getVendorLowestTatDays() + "d)"
+                : "No resolved vendor tickets this week";
+
         return "<ul>"
-                + "<li>Raised this week: <strong>" + overview.getRaisedThisWeek() + "</strong></li>"
-                + "<li>Resolved within SLA: <strong>" + overview.getResolvedWithinSla() + "</strong></li>"
-                + "<li>Resolved after breach: <strong>" + overview.getResolvedAfterBreach() + "</strong></li>"
-                + "<li>Carried forward: <strong>" + overview.getCarriedForward() + "</strong></li>"
+                + "<li>Facilities moved Non-Functional → Functional: <strong>" + facilitiesRestored + "</strong></li>"
+                + "<li>Tickets Resolved This Week: <strong>" + ticketsResolved + "</strong></li>"
+                + "<li>Vendor with Lowest Average TAT: <strong>" + vendorLine + "</strong></li>"
                 + "</ul>";
     }
 
     private String renderEffectiveness(WeeklyEscalationAnalytics analytics) {
-        return "<p>Escalated to L2/L3 last week: <strong>" + analytics.getEscalatedLastWeek()
-                + "</strong> | Resolved since escalation: <strong>"
-                + analytics.getResolvedSinceEscalation() + "</strong></p>";
+        if (analytics.getEscalationEffectiveness() == null || analytics.getEscalationEffectiveness().isEmpty()) {
+            return "<tr><td colspan=\"4\" class=\"muted center\">No escalations last week</td></tr>";
+        }
+        StringBuilder html = new StringBuilder();
+        int totalEscalated = 0;
+        int totalResolved = 0;
+        for (WeeklyEscalationEffectivenessRow row : analytics.getEscalationEffectiveness()) {
+            totalEscalated += row.getEscalatedCount();
+            totalResolved += row.getResolvedCount();
+            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getLevelLabel())).append("</td>")
+                    .append("<td class=\"right\">").append(row.getEscalatedCount()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getResolvedCount()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getResolutionRatePct()).append("%</td></tr>");
+        }
+        double totalRate = totalEscalated > 0 ? Math.round((totalResolved * 100.0 / totalEscalated) * 10.0) / 10.0 : 0;
+        html.append("<tr><td style=\"font-weight:700\">TOTAL</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalEscalated).append("</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalResolved).append("</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalRate).append("%</td></tr>");
+        return html.toString();
     }
 
     private String renderTrend(WeeklyEscalationAnalytics analytics) {
-        if (analytics.getWeekStartMetrics() == null || analytics.getWeekEndMetrics() == null) {
-            return "<p class=\"muted\">Trend data unavailable.</p>";
+        if (analytics.getOverallTrend() == null || analytics.getOverallTrend().isEmpty()) {
+            return "<tr><td colspan=\"4\" class=\"muted center\">Trend data unavailable</td></tr>";
         }
-        int startTotal = analytics.getWeekStartMetrics().getFunctionalCount()
-                + analytics.getWeekStartMetrics().getNonFunctionalCount();
-        int endTotal = analytics.getWeekEndMetrics().getFunctionalCount()
-                + analytics.getWeekEndMetrics().getNonFunctionalCount();
-        double startFuncPct = startTotal > 0
-                ? analytics.getWeekStartMetrics().getFunctionalCount() * 100.0 / startTotal : 0;
-        double endFuncPct = endTotal > 0
-                ? analytics.getWeekEndMetrics().getFunctionalCount() * 100.0 / endTotal : 0;
-        return "<p>Functional facilities: <strong>" + String.format("%.1f", startFuncPct) + "%</strong>"
-                + " → <strong>" + String.format("%.1f", endFuncPct) + "%</strong>"
-                + " (threshold for NF alerts: " + escalationProperties.getLeadership().getNfThresholdPct() + "%)</p>";
+        StringBuilder html = new StringBuilder();
+        for (WeeklyTrendMetric row : analytics.getOverallTrend()) {
+            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getLabel())).append("</td>")
+                    .append("<td class=\"right\">").append(row.getLastWeekValue()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getThisWeekValue()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getArrow()).append(" ")
+                    .append(Math.abs(row.getChangePct())).append("%</td></tr>");
+        }
+        return html.toString();
+    }
+
+    private String renderStateNfTrend(WeeklyEscalationAnalytics analytics) {
+        if (analytics.getStateNfTrend() == null || analytics.getStateNfTrend().isEmpty()) {
+            return "<tr><td colspan=\"4\" class=\"muted center\">No data</td></tr>";
+        }
+        StringBuilder html = new StringBuilder();
+        for (WeeklyStateNfTrendRow row : analytics.getStateNfTrend()) {
+            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
+                    .append("<td class=\"right\">").append(row.getTotalNfLastWeek()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getTotalNfThisWeek()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getNfPctThisWeek()).append("%</td></tr>");
+        }
+        return html.toString();
     }
 
     private String renderTheft(WeeklyEscalationAnalytics analytics) {
-        return "<p>Open theft cases: <strong>" + analytics.getOpenTheftCases()
-                + "</strong> | New theft cases this week: <strong>"
-                + analytics.getNewTheftThisWeek() + "</strong></p>";
-    }
-
-    private String renderNfAlerts(WeeklyEscalationAnalytics analytics) {
-        if (analytics.getNfAlerts() == null || analytics.getNfAlerts().isEmpty()) {
-            return "<p class=\"muted\">No states above NF threshold.</p>";
+        StringBuilder html = new StringBuilder();
+        html.append("<p>Open theft cases: <strong>").append(analytics.getOpenTheftCases()).append("</strong></p>");
+        if (analytics.getTheftCases() == null || analytics.getTheftCases().isEmpty()) {
+            html.append("<p class=\"muted\">No new theft cases this week.</p>");
+            return html.toString();
         }
-        StringBuilder html = new StringBuilder("<table><thead><tr><th>State</th><th>NF %</th><th>Primary Bottleneck</th></tr></thead><tbody>");
-        for (WeeklyNfAlert alert : analytics.getNfAlerts()) {
-            html.append("<tr><td>").append(commonUtility.escapeHtml(alert.getStateName())).append("</td>");
-            html.append("<td>").append(alert.getNfPct()).append("%</td>");
-            html.append("<td>").append(commonUtility.escapeHtml(alert.getPrimaryBottleneck())).append("</td></tr>");
+        html.append("<table><thead><tr><th>State</th><th>Health Facility</th><th>District</th><th>Date</th><th>Status</th></tr></thead><tbody>");
+        for (WeeklyTheftCaseRow row : analytics.getTheftCases()) {
+            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
+                    .append("<td>").append(commonUtility.escapeHtml(row.getHealthFacilityName())).append("</td>")
+                    .append("<td>").append(commonUtility.escapeHtml(row.getDistrict())).append("</td>")
+                    .append("<td>").append(commonUtility.escapeHtml(row.getFiledDateFormatted())).append("</td>")
+                    .append("<td>").append(commonUtility.escapeHtml(row.getStatusLabel())).append("</td></tr>");
         }
         html.append("</tbody></table>");
         return html.toString();
@@ -104,12 +142,31 @@ public class WeeklyLeadershipEmailService {
 
     private String renderBottlenecks(WeeklyEscalationAnalytics analytics) {
         if (analytics.getBottlenecks() == null || analytics.getBottlenecks().isEmpty()) {
-            return "<tr><td colspan=\"2\" class=\"muted center\">No bottlenecks</td></tr>";
+            return "<tr><td colspan=\"4\" class=\"muted center\">No bottlenecks</td></tr>";
         }
         StringBuilder html = new StringBuilder();
-        analytics.getBottlenecks().forEach(row -> html.append("<tr><td>")
-                .append(commonUtility.escapeHtml(row.getStatusLabel())).append("</td><td class=\"right\">")
-                .append(row.getCount()).append("</td></tr>"));
+        for (WeeklyBottleneckRow row : analytics.getBottlenecks()) {
+            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStatusLabel())).append("</td>")
+                    .append("<td class=\"right\">").append(row.getCount()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getAvgDaysOpen()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getPctOfTotalOpen()).append("%</td></tr>");
+        }
+        return html.toString();
+    }
+
+    private String renderNfAlerts(WeeklyEscalationAnalytics analytics) {
+        double threshold = escalationProperties.getLeadership().getNfThresholdPct();
+        if (analytics.getNfAlerts() == null || analytics.getNfAlerts().isEmpty()) {
+            return "<p>✅ No states currently exceed the " + threshold + "% Non-Functional threshold.</p>";
+        }
+        StringBuilder html = new StringBuilder();
+        for (WeeklyNfAlert alert : analytics.getNfAlerts()) {
+            html.append("<div class=\"alert\">🔴 <strong>").append(commonUtility.escapeHtml(alert.getStateName()))
+                    .append("</strong> — Non-Functional rate is ").append(alert.getNfPct())
+                    .append("% (exceeds ").append(threshold).append("% threshold)<br>")
+                    .append("Primary bottleneck: ").append(commonUtility.escapeHtml(alert.getPrimaryBottleneck()))
+                    .append("</div>");
+        }
         return html.toString();
     }
 }

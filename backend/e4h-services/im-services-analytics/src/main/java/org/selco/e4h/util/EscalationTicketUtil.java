@@ -77,6 +77,30 @@ public final class EscalationTicketUtil {
         return false;
     }
 
+    /**
+     * True if the ticket's current applicationStatus matches the status recorded on its most
+     * recent escalation entry at {@code level} (i.e. no workflow-state transition since escalation).
+     * Tickets escalated before the applicationStatus field was captured (recorded status is null)
+     * are treated as unchanged, since there is no prior status to compare against.
+     */
+    public static boolean statusUnchangedSinceEscalation(EscalationTicket ticket, String level) {
+        if (ticket == null || ticket.getEscalationInfo() == null) {
+            return false;
+        }
+        EscalationInfo latestAtLevel = null;
+        for (EscalationInfo info : ticket.getEscalationInfo()) {
+            if (level.equals(info.getEscalationLevel()) && info.getEscalationTime() != null
+                    && (latestAtLevel == null || info.getEscalationTime() > latestAtLevel.getEscalationTime())) {
+                latestAtLevel = info;
+            }
+        }
+        if (latestAtLevel == null) {
+            return false;
+        }
+        String recordedStatus = latestAtLevel.getApplicationStatus();
+        return recordedStatus == null || recordedStatus.equals(ticket.getApplicationStatus());
+    }
+
     public static boolean isNonFunctional(EscalationTicket ticket) {
         if (ticket == null || ticket.getAdditionalDetails() == null) {
             return false;

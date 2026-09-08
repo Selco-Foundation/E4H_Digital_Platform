@@ -11,11 +11,10 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class WeeklyTicketOverview {
-    private int raisedThisWeek;
-    private int newBreaches;
-    private int resolvedWithinSla;
-    private int resolvedAfterBreach;
-    private int carriedForward;
-    private int totalOpen;
+public class WeeklyTrendMetric {
+    private String label;
+    private long lastWeekValue;
+    private long thisWeekValue;
+    private double changePct;
+    private String arrow;
 }

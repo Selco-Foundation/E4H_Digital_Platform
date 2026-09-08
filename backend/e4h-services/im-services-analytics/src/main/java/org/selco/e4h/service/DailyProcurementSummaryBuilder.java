@@ -54,8 +54,27 @@ public class DailyProcurementSummaryBuilder {
                 .asOfDate(DATE_FORMAT.format(new Date()))
                 .dashboardUrl(commonUtility.generateStateDashboardUrl())
                 .newBreaches(groupVendorRows(newBreaches))
-                .previouslyOpen(groupVendorRows(previouslyOpen))
+                .previouslyOpen(capTopVendorsPerState(groupVendorRows(previouslyOpen), 2))
                 .build();
+    }
+
+    /**
+     * Section 2 note in the spec: "Top 2 vendors may be shown for each state" — keep only the
+     * highest-count rows per state, ranked by count desc, ties broken by vendor name.
+     */
+    private List<VendorStateCountRow> capTopVendorsPerState(List<VendorStateCountRow> rows, int maxPerState) {
+        Map<String, List<VendorStateCountRow>> byState = new LinkedHashMap<>();
+        for (VendorStateCountRow row : rows) {
+            byState.computeIfAbsent(row.getStateName(), k -> new ArrayList<>()).add(row);
+        }
+
+        List<VendorStateCountRow> result = new ArrayList<>();
+        for (List<VendorStateCountRow> stateRows : byState.values()) {
+            stateRows.sort(Comparator.comparingLong(VendorStateCountRow::getCount).reversed()
+                    .thenComparing(VendorStateCountRow::getVendorName));
+            result.addAll(stateRows.stream().limit(maxPerState).collect(Collectors.toList()));
+        }
+        return result;
     }
 
     private List<VendorStateCountRow> groupVendorRows(List<EscalationTicket> tickets) {

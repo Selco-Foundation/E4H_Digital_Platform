@@ -9,22 +9,26 @@
     .h1{font-size:22px;font-weight:700;text-align:center;margin:0}.text{font-size:14px;line-height:20px;margin:0}
     .muted{color:#6b7280;font-size:13px}.section-title{font-size:16px;font-weight:700;margin:20px 0 8px}
     table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left}
-    th{color:#6b7280;font-weight:700}.right{text-align:right}.alert{background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px;margin:8px 0}
+    th{color:#6b7280;font-weight:700}.right{text-align:right}.alert{background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px;margin:8px 0;font-size:13px}
     .btn{display:inline-block;background:#fff;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font-weight:600;text-decoration:none}
-    .sp-16{height:16px}.rule{border-top:1px solid #e5e7eb;margin:16px 0}
+    .sp-16{height:16px}.rule{border-top:1px solid #e5e7eb;margin:16px 0}.scroll{overflow-x:auto}
   </style>
 </head>
 <body>
 <table role="presentation" width="100%"><tr><td align="center"><table role="presentation" class="container card"><tr><td>
 <p class="h1">Weekly Leadership Escalation Report</p><p class="muted center">${WEEK_RANGE}</p><div class="rule"></div>
 <p class="text">Dear ${NAME},</p>
-<p class="section-title">Programme Highlights</p>${TICKET_OVERVIEW}
-<p class="section-title">Escalation Effectiveness</p>${EFFECTIVENESS}
-<p class="section-title">Week-over-Week Functional Trend</p>${TREND}
+<p class="section-title">Key Highlights of the Week</p>${KEY_HIGHLIGHTS}
+<p class="section-title">Escalation Effectiveness (Post-Escalation Resolution)</p>
+<div class="scroll"><table><thead><tr><th>Escalation Level</th><th class="right">Escalated Last Week</th><th class="right">Resolved Since Escalation</th><th class="right">Resolution Rate</th></tr></thead><tbody>${EFFECTIVENESS_ROWS}</tbody></table></div>
+<p class="section-title">Overall Trend — Last Week vs This Week</p>
+<div class="scroll"><table><thead><tr><th>Metric</th><th class="right">Last Week</th><th class="right">This Week</th><th class="right">Change</th></tr></thead><tbody>${TREND_ROWS}</tbody></table></div>
+<p class="section-title">Non-Functional Facilities — By State</p>
+<div class="scroll"><table><thead><tr><th>State</th><th class="right">Total NF Last Week</th><th class="right">Total NF This Week</th><th class="right">NF % of Total</th></tr></thead><tbody>${STATE_NF_TREND_ROWS}</tbody></table></div>
 <p class="section-title">Theft Cases</p>${THEFT_SUMMARY}
-<p class="section-title">NF Threshold Alerts</p><div class="alert">${NF_ALERTS}</div>
-<p class="section-title">Primary Bottlenecks</p>
-<table><thead><tr><th>Status</th><th class="right">Open Breached</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
+<p class="section-title">Status-wise SLA Breach — Average Time Open</p>
+<div class="scroll"><table><thead><tr><th>Current Ticket Status</th><th class="right">Open Tickets</th><th class="right">Avg Days Open</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table></div>
+<p class="section-title">⚠ Attention Required</p>${NF_ALERTS}
 ${DOWNLOAD_BUTTON}
 <p class="muted center">Report generated on ${AS_OF_DATE}</p>
 </td></tr></table></td></tr></table>

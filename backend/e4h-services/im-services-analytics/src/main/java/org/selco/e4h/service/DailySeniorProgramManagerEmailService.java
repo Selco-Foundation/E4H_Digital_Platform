@@ -5,9 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.util.CommonUtility;
 import org.selco.e4h.util.EscalationEmailTemplateHelper;
 import org.selco.e4h.web.models.DailySeniorProgramManagerSummary;
+import org.selco.e4h.web.models.StateDailyBreachSection;
+import org.selco.e4h.web.models.StatePreviouslyOpenRow;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -20,8 +21,8 @@ public class DailySeniorProgramManagerEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(DailySeniorProgramManagerSummary summary) {
-        return String.format("[Action Required] SLA Breach Alert - %s | %s",
-                summary.getStateName(), summary.getAsOfDate());
+        return String.format("[Action Required] SLA Breach Escalation - %s | %s",
+                summary.getRecipientName(), summary.getAsOfDate());
     }
 
     public String generateEmailHtml(DailySeniorProgramManagerSummary summary, String downloadUrl) {
@@ -29,16 +30,10 @@ public class DailySeniorProgramManagerEmailService {
             String template = EscalationEmailTemplateHelper.loadTemplate(TEMPLATE_PATH);
             Map<String, String> variables = EscalationEmailTemplateHelper.baseBrandingVariables(
                     commonUtility, summary.getRecipientName());
-            variables.put("STATE_NAME", commonUtility.escapeHtml(summary.getStateName()));
+            variables.put("STATE_LIST", commonUtility.escapeHtml(summary.getStateListLabel()));
             variables.put("AS_OF_DATE", commonUtility.escapeHtml(summary.getAsOfDate()));
-            variables.put("NEW_STATE_POC_ROWS", EscalationEmailTemplateHelper.renderActorRows(
-                    commonUtility, summary.getNewStatePocBreaches(), true));
-            variables.put("NEW_VENDOR_ROWS", EscalationEmailTemplateHelper.renderActorRows(
-                    commonUtility, summary.getNewVendorBreaches(), true));
-            variables.put("PREVIOUS_STATE_POC_ROWS", EscalationEmailTemplateHelper.renderActorRows(
-                    commonUtility, summary.getPreviouslyOpenStatePocBreaches(), true));
-            variables.put("PREVIOUS_VENDOR_ROWS", EscalationEmailTemplateHelper.renderActorRows(
-                    commonUtility, summary.getPreviouslyOpenVendorBreaches(), true));
+            variables.put("STATE_SECTIONS", renderStateSections(summary.getStateSections()));
+            variables.put("PREVIOUSLY_OPEN_ROWS", renderPreviouslyOpenRows(summary.getPreviouslyOpenByState()));
             variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(commonUtility, downloadUrl));
             variables.put("DASHBOARD_URL", summary.getDashboardUrl());
             return EscalationEmailTemplateHelper.render(template, variables);
@@ -46,5 +41,48 @@ public class DailySeniorProgramManagerEmailService {
             log.error("Failed to generate daily SPM email HTML", e);
             return "<html><body><p>Daily SPM escalation email could not be generated.</p></body></html>";
         }
+    }
+
+    private String renderStateSections(java.util.List<StateDailyBreachSection> sections) {
+        if (sections == null || sections.isEmpty()) {
+            return "<p class=\"muted\">No new breaches today across your states.</p>";
+        }
+        StringBuilder html = new StringBuilder();
+        for (StateDailyBreachSection section : sections) {
+            html.append("<p class=\"text\" style=\"font-weight:700;margin-top:16px\">▸ ")
+                    .append(commonUtility.escapeHtml(section.getStateName())).append("</p>");
+            html.append("<p class=\"muted\" style=\"margin-top:4px\">State POC Breaches</p>");
+            html.append("<table><thead><tr><th>State POC</th><th>Current Status</th><th class=\"right\">Count</th></tr></thead><tbody>");
+            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getStatePocBreaches(), true));
+            html.append("</tbody></table>");
+            html.append("<p class=\"muted\" style=\"margin-top:8px\">Vendor Breaches</p>");
+            html.append("<table><thead><tr><th>Vendor</th><th>Current Status</th><th class=\"right\">Count</th></tr></thead><tbody>");
+            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getVendorBreaches(), true));
+            html.append("</tbody></table>");
+        }
+        return html.toString();
+    }
+
+    private String renderPreviouslyOpenRows(java.util.List<StatePreviouslyOpenRow> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return "<tr><td colspan=\"4\" class=\"muted center\">No data</td></tr>";
+        }
+        StringBuilder html = new StringBuilder();
+        long totalStatePoc = 0;
+        long totalVendor = 0;
+        for (StatePreviouslyOpenRow row : rows) {
+            long total = row.getStatePocCount() + row.getVendorCount();
+            totalStatePoc += row.getStatePocCount();
+            totalVendor += row.getVendorCount();
+            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
+                    .append("<td class=\"right\">").append(row.getStatePocCount()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getVendorCount()).append("</td>")
+                    .append("<td class=\"right\">").append(total).append("</td></tr>");
+        }
+        html.append("<tr><td style=\"font-weight:700\">TOTAL</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalStatePoc).append("</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalVendor).append("</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalStatePoc + totalVendor).append("</td></tr>");
+        return html.toString();
     }
 }

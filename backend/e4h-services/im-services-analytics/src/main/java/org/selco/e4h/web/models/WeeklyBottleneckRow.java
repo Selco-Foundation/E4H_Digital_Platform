@@ -14,4 +14,6 @@ import lombok.Setter;
 public class WeeklyBottleneckRow {
     private String statusLabel;
     private long count;
+    private double pctOfTotalOpen;
+    private double avgDaysOpen;
 }

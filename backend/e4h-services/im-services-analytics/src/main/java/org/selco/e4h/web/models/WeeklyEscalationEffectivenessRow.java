@@ -11,11 +11,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class WeeklyTicketOverview {
-    private int raisedThisWeek;
-    private int newBreaches;
-    private int resolvedWithinSla;
-    private int resolvedAfterBreach;
-    private int carriedForward;
-    private int totalOpen;
+public class WeeklyEscalationEffectivenessRow {
+    private String levelLabel;
+    private int escalatedCount;
+    private int resolvedCount;
+    private double resolutionRatePct;
 }

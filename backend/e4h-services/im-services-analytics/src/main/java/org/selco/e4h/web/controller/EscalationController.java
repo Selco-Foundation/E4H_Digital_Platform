@@ -326,6 +326,11 @@ public class EscalationController {
         }
     }
 
+    /**
+     * Person-centric: one SPM may own multiple states (e.g. Sijil / Kiran), so we group by
+     * recipient email across tenants first and send exactly one combined email per person,
+     * matching the pattern already used correctly for the Weekly SPM flow below.
+     */
     private void processDailySeniorProgramManagerEscalation(RequestInfo requestInfo,
                                                           EscalationRecipient escalationRecipient,
                                                           List<String> activeTenantIds) {
@@ -342,58 +347,75 @@ public class EscalationController {
         EscalationRoleEscalationItem escalationItem = items.get(0);
         Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
 
+        Map<String, List<String>> stateCodesByEmail = new LinkedHashMap<>();
+        Map<String, User> userByEmail = new HashMap<>();
         for (String tenantId : activeTenantIds) {
             String state = activeTenantIdsName.get(tenantId);
             if (state == null || state.isBlank()) {
                 continue;
             }
-
-            try {
-                List<User> users = userService.searchUsersByRoleAndBoundaryCode(
-                        requestInfo, state, List.of(recipientRoleName));
-                if (users.isEmpty()) {
-                    escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
+            List<User> users = userService.searchUsersByRoleAndBoundaryCode(
+                    requestInfo, state, List.of(recipientRoleName));
+            for (User user : users) {
+                if (user.getEmailId() == null || user.getEmailId().isBlank()) {
                     continue;
                 }
+                stateCodesByEmail.computeIfAbsent(user.getEmailId(), k -> new ArrayList<>()).add(state);
+                userByEmail.putIfAbsent(user.getEmailId(), user);
+            }
+        }
 
-                List<EscalationTicket> newBreaches = slaBreachService.findSLABreachTickets(
-                        state, escalationItem.getWorkflowStates(), escalationId,
-                        escalationItem.getEscalationLevel(), requestInfo);
-                List<EscalationTicket> previouslyOpen = slaBreachService.findPreviouslyEscalatedStillOpenTickets(
-                        state, escalationItem.getWorkflowStates(), escalationId,
-                        escalationItem.getEscalationLevel(), requestInfo);
+        for (Map.Entry<String, List<String>> entry : stateCodesByEmail.entrySet()) {
+            String emailId = entry.getKey();
+            User user = userByEmail.get(emailId);
+            List<String> stateCodes = entry.getValue().stream()
+                    .sorted(Comparator.comparing(commonUtility::getStateDisplayName))
+                    .collect(Collectors.toList());
 
-                List<EscalationTicket> allTickets = new ArrayList<>(newBreaches);
-                allTickets.addAll(previouslyOpen);
+            try {
+                Map<String, List<EscalationTicket>> newBreachesByState = new LinkedHashMap<>();
+                Map<String, List<EscalationTicket>> previouslyOpenByState = new LinkedHashMap<>();
+                List<EscalationTicket> allNewBreaches = new ArrayList<>();
+                List<EscalationTicket> allTickets = new ArrayList<>();
+
+                for (String stateCode : stateCodes) {
+                    List<EscalationTicket> newBreaches = slaBreachService.findSLABreachTickets(
+                            stateCode, escalationItem.getWorkflowStates(), escalationId,
+                            escalationItem.getEscalationLevel(), requestInfo);
+                    List<EscalationTicket> previouslyOpen = slaBreachService.findPreviouslyEscalatedStillOpenTickets(
+                            stateCode, escalationItem.getWorkflowStates(), escalationId,
+                            escalationItem.getEscalationLevel(), requestInfo);
+                    newBreachesByState.put(stateCode, newBreaches);
+                    previouslyOpenByState.put(stateCode, previouslyOpen);
+                    allNewBreaches.addAll(newBreaches);
+                    allTickets.addAll(newBreaches);
+                    allTickets.addAll(previouslyOpen);
+                }
+
                 String csvContent = csvGenerationService.generateEscalationCsv(allTickets);
                 String csvFileName = csvGenerationService.generateCsvFileName(
-                        "daily", escalationItem.getEscalationLevel(), commonUtility.getStateDisplayName(state));
+                        "daily", escalationItem.getEscalationLevel(), user.getName());
                 String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
                 String downloadUrl = buildDownloadUrl(csvFileStoreId);
 
-                if (!newBreaches.isEmpty()) {
+                if (!allNewBreaches.isEmpty()) {
                     elasticsearchEscalationService.updateEscalationsForTickets(
-                            newBreaches, escalationId, escalationItem.getEscalationLevel());
+                            allNewBreaches, escalationId, escalationItem.getEscalationLevel());
                 }
 
-                for (User user : users) {
-                    if (user.getEmailId() == null || user.getEmailId().isBlank()) {
-                        continue;
-                    }
-                    DailySeniorProgramManagerSummary summary = dailySeniorProgramManagerSummaryBuilder.buildSummary(
-                            state, user.getName(), escalationItem, escalationId, requestInfo);
-                    sendEmailViaKafka(user,
-                            dailySeniorProgramManagerEmailService.generateEmailSubject(summary),
-                            dailySeniorProgramManagerEmailService.generateEmailHtml(summary, downloadUrl),
-                            csvFileStoreId != null ? List.of(csvFileStoreId) : new ArrayList<>(),
-                            csvFileStoreId != null ? List.of(csvFileName) : new ArrayList<>(),
-                            tenantId);
-                }
+                DailySeniorProgramManagerSummary summary = dailySeniorProgramManagerSummaryBuilder.buildSummary(
+                        stateCodes, newBreachesByState, previouslyOpenByState, user.getName());
+                sendEmailViaKafka(user,
+                        dailySeniorProgramManagerEmailService.generateEmailSubject(summary),
+                        dailySeniorProgramManagerEmailService.generateEmailHtml(summary, downloadUrl),
+                        csvFileStoreId != null ? List.of(csvFileStoreId) : new ArrayList<>(),
+                        csvFileStoreId != null ? List.of(csvFileName) : new ArrayList<>(),
+                        "in");
 
-                escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
+                escalationStatusService.publishSuccessStatus("daily", escalationId, "in", recipientRoleName);
             } catch (Exception e) {
-                log.error("Error processing daily SPM escalation for tenant: {}", tenantId, e);
-                escalationStatusService.publishFailureStatus("daily", escalationId, tenantId, recipientRoleName, e.getMessage());
+                log.error("Error processing daily SPM escalation for recipient: {}", emailId, e);
+                escalationStatusService.publishFailureStatus("daily", escalationId, "in", recipientRoleName, e.getMessage());
             }
         }
     }

@@ -15,20 +15,14 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class DailySeniorProgramManagerSummary {
-    private String stateName;
     private String recipientName;
+    private String stateListLabel;
     private String asOfDate;
     private String dashboardUrl;
 
     @Builder.Default
-    private List<ActorCountRow> newStatePocBreaches = new ArrayList<>();
+    private List<StateDailyBreachSection> stateSections = new ArrayList<>();
 
     @Builder.Default
-    private List<ActorCountRow> newVendorBreaches = new ArrayList<>();
-
-    @Builder.Default
-    private List<ActorCountRow> previouslyOpenStatePocBreaches = new ArrayList<>();
-
-    @Builder.Default
-    private List<ActorCountRow> previouslyOpenVendorBreaches = new ArrayList<>();
+    private List<StatePreviouslyOpenRow> previouslyOpenByState = new ArrayList<>();
 }
