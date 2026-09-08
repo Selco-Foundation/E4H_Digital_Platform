@@ -32,6 +32,7 @@ import { useImAssetTypes } from "../../hooks/use-im-inbox-summary";
 import type { ImInboxFilters, InboxDataResult } from "../../types/inbox";
 import { isEndUser } from "../../utils/access";
 import { buildFilterQueryFromState } from "../../utils/inbox-filters";
+import { LiveTicketSearch } from "./LiveTicketSearch";
 
 interface FilterOption {
   code: string;
@@ -63,11 +64,15 @@ interface InboxFilterProps {
   complaints?: InboxDataResult;
   searchParams: { filters?: ImInboxFilters };
   onFilterChange: (filters: ImInboxFilters) => void;
+  onSearch: (params: { applicationNumber?: string }) => void;
+  initialApplicationNumber?: string;
 }
 
 export function InboxFilter({
   searchParams,
   onFilterChange,
+  onSearch,
+  initialApplicationNumber,
 }: InboxFilterProps) {
   const { t } = useTranslate();
   const user = useAuthStore((state) => state.user);
@@ -649,19 +654,22 @@ export function InboxFilter({
           ))}
         </div>
 
-        <button
-          type="button"
-          disabled={!hasActiveFilters}
-          onClick={handleClearAllFilters}
-          className={cn(
-            "hidden text-sm transition-colors lg:block",
-            hasActiveFilters
-              ? "cursor-pointer text-foreground hover:text-primary"
-              : "text-muted-foreground/50",
-          )}
-        >
-          {translateOr(t, "ES_IM_CLEAR_ALL_FILTERS", "clear all filters")}
-        </button>
+        <div className="flex flex-wrap items-center gap-4">
+          <LiveTicketSearch onSearch={onSearch} initialApplicationNumber={initialApplicationNumber} />
+          <button
+            type="button"
+            disabled={!hasActiveFilters}
+            onClick={handleClearAllFilters}
+            className={cn(
+              "hidden text-sm transition-colors lg:block",
+              hasActiveFilters
+                ? "cursor-pointer text-foreground hover:text-primary"
+                : "text-muted-foreground/50",
+            )}
+          >
+            {translateOr(t, "ES_IM_CLEAR_ALL_FILTERS", "clear all filters")}
+          </button>
+        </div>
       </div>
     </div>
   );

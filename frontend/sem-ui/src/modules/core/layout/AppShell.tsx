@@ -95,9 +95,9 @@ export function AppShell() {
         className="hidden w-(--sidebar-width-icon) items-center md:w-(--sidebar-width) md:items-stretch lg:flex"
       >
         <SidebarHeader className="items-center gap-6 px-2 pt-12 pb-5 md:px-7">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[3px] p-1 md:h-[80px] md:w-[80px]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[3px] p-1 md:h-[150px] md:w-[150px]">
             <img
-              src={getConfigString("SELCO_LOGO")}
+              src={getConfigString("SELCO_LOGO", "https://selco-assets.s3.ap-south-1.amazonaws.com/Icon_twoclr.png")}
               alt={translateOr(t, "CORE_LOGO_ALT", "Selco Foundation Logo")}
               className="h-full w-full object-contain"
             />
@@ -194,9 +194,9 @@ export function AppShell() {
                   <div className="flex flex-col gap-5">
                     <div className="flex flex-col items-center gap-6">
                       <img
-                        src={getConfigString("SELCO_LOGO")}
+                        src={getConfigString("SELCO_LOGO", "https://selco-assets.s3.ap-south-1.amazonaws.com/Icon_twoclr.png")}
                         alt={translateOr(t, "CORE_LOGO_ALT", "Selco Foundation Logo")}
-                        className="h-15 w-15 object-contain"
+                        className="h-36 w-36 object-contain"
                       />
                       <div className="h-px w-full bg-white/60" />
                     </div>

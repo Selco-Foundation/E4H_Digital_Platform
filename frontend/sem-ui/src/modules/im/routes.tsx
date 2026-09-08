@@ -15,6 +15,7 @@ export interface InboxRouteSearch {
   pageOffset: number;
   pageSize: number;
   nearing?: string;
+  applicationNumber?: string;
 }
 
 function toFiniteNumber(value: unknown, fallback: number): number {
@@ -81,6 +82,8 @@ export function createImRoutes(rootRoute: AnyRoute, employeeLayoutRoute: AnyRout
         search.nearing === undefined || search.nearing === null
           ? undefined
           : String(search.nearing),
+      applicationNumber:
+        typeof search.applicationNumber === "string" ? search.applicationNumber : undefined,
     }),
     component: InboxPage,
   });

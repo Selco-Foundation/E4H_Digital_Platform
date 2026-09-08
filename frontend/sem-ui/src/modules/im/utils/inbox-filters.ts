@@ -183,6 +183,7 @@ export function flattenInboxFilters(
     limit?: number;
     offset?: number;
     nearingSLA?: boolean;
+    applicationNumber?: string;
   },
   defaults: IncidentFilterInput,
 ): IncidentFilterInput {
@@ -196,6 +197,7 @@ export function flattenInboxFilters(
     limit: searchParams.limit,
     offset: searchParams.offset,
     nearingSLA: searchParams.nearingSLA,
+    applicationNumber: searchParams.applicationNumber,
     services: defaults.services ?? [LIVELIHOOD_INCIDENT_BUSINESS_SERVICE],
     sortOrder: defaults.sortOrder ?? "DESC",
   };
