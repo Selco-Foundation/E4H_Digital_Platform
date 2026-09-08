@@ -14,12 +14,17 @@ interface SystemFunctionalityDef {
   active?: boolean;
 }
 
-interface ItemCode {
+interface FacilityTypeDef {
   code?: string;
-  category?: string;
+  name?: string;
   active?: boolean;
 }
 
+/**
+ * The inbox "Asset Type" filter is actually the facility's own type
+ * (`incident.phcSubType`, backend field `phcSubType`, sourced from the
+ * facility's `facilityType`) — sourced from MDMS `facility.FacilityType`.
+ */
 export async function fetchAssetTypes(
   accessToken: string,
   user: AuthUser | null | undefined,
@@ -27,24 +32,17 @@ export async function fetchAssetTypes(
   const stateTenantId = tenantId();
   const masters = await fetchMdmsMasters(
     stateTenantId,
-    "livelihood",
-    ["ItemCode"],
+    "facility",
+    ["FacilityType"],
     accessToken,
     user,
   );
-  const items = (masters.ItemCode as ItemCode[]) ?? [];
-  const categories = new Set<string>();
+  const items = (masters.FacilityType as FacilityTypeDef[]) ?? [];
 
-  for (const item of items) {
-    if (item.active === false || !item.category) {
-      continue;
-    }
-    categories.add(item.category);
-  }
-
-  return [...categories]
-    .sort((a, b) => a.localeCompare(b))
-    .map((category) => ({ code: category, name: category }));
+  return items
+    .filter((item) => item.active !== false && item.code)
+    .map((item) => ({ code: item.code!, name: item.name ?? item.code! }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
