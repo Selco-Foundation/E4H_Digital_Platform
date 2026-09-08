@@ -7,6 +7,7 @@ import { HomePage } from "./pages/employee/HomePage";
 import { ForgotPasswordPage } from "./pages/employee/ForgotPasswordPage";
 import { ProfilePage } from "./pages/employee/ProfilePage";
 import { ProfileChangePasswordPage } from "./pages/employee/ProfileChangePasswordPage";
+import { TermsPrivacyPolicyPage } from "./pages/employee/TermsPrivacyPolicyPage";
 import { CORE_ROUTES } from "./constants/routes";
 
 export interface LoginRouteSearch {
@@ -105,6 +106,20 @@ export function createCoreRoutes(rootRoute: AnyRoute) {
     component: ProfileChangePasswordPage,
   });
 
+  const employeePrivacyPolicy = `/${basePath}${CORE_ROUTES.employeePrivacyPolicy}`;
+  const employeePrivacyPolicyRoute = createRoute({
+    getParentRoute: () => employeeLayoutRoute,
+    path: employeePrivacyPolicy,
+    component: () => <TermsPrivacyPolicyPage type="privacy" />,
+  });
+
+  const employeeTermsOfUse = `/${basePath}${CORE_ROUTES.employeeTermsOfUse}`;
+  const employeeTermsOfUseRoute = createRoute({
+    getParentRoute: () => employeeLayoutRoute,
+    path: employeeTermsOfUse,
+    component: () => <TermsPrivacyPolicyPage type="terms" />,
+  });
+
   return {
     routes: [
       indexRoute,
@@ -115,6 +130,8 @@ export function createCoreRoutes(rootRoute: AnyRoute) {
       employeeHomeRoute,
       employeeProfileRoute,
       employeeProfileChangePasswordRoute,
+      employeePrivacyPolicyRoute,
+      employeeTermsOfUseRoute,
     ],
     navItems: [],
     employeeLayoutRoute,
