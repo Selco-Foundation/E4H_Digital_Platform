@@ -39,7 +39,7 @@ export function ComplaintSummarySection({
         ))}
       </dl>
       {hasAdditionalDetails ? (
-        <div className="mt-6 border-t border-border pt-5">
+        <div className="mt-6">
           <h3 className="mb-3 text-sm font-semibold text-ink-950">
             {t("CS_TICKET_ADDITIONAL_DETAILS")}
           </h3>

@@ -46,7 +46,30 @@ function getReasonLabel(t: (key: string) => string, action: string): string {
   if (action === "SENDBACK") {
     return t("WF_SENDBACK_REASON");
   }
+  if (action === "REJECT") {
+    return t("CS_DECLINE_COMPLAINT");
+  }
   return t("WF_REJECT_REASON");
+}
+
+function getDialogTitle(t: (key: string) => string, action: string): string {
+  if (action === "ASSIGN" || action === "REASSIGN") {
+    return t("CS_ACTION_ASSIGN_TICKET");
+  }
+  if (action === "REJECT") {
+    return t("CS_ACTION_DECLINE_TICKET");
+  }
+  return t(`CS_ACTION_${action}`);
+}
+
+function getSubmitLabel(t: (key: string) => string, action: string): string {
+  if (action === "ASSIGN" || action === "REASSIGN") {
+    return t("CS_COMMON_ASSIGN");
+  }
+  if (action === "REJECT") {
+    return t("CS_COMMON_DECLINE");
+  }
+  return t("CS_COMMON_SUBMIT");
 }
 
 function getOutOfWarrantyHelperText(
@@ -95,8 +118,8 @@ function ActionDocumentsField({
   const inputRef = useRef<HTMLInputElement>(null);
   const maxFilesReached = uploads.length >= maxFiles;
   const label = requiresQuotation
-    ? t("WF_QUOTATION_DOCUMENT")
-    : t("WF_SUPPORTING_DOCUMENTS");
+    ? t("CS_ACTION_QUOTATION_DOCUMENT")
+    : t("CS_ACTION_SUPPORTING_DOCUMENTS");
   const accept = requiresQuotation
     ? ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     : ".jpg,.jpeg,.pdf,image/jpeg,application/pdf";
@@ -118,7 +141,7 @@ function ActionDocumentsField({
           <Files className="size-5" />
         </span>
         <span className="text-sm text-ink-950">
-          {t("WF_TAP_TO_UPLOAD")}
+          {t("CS_UPLOAD_BUTTON")}
         </span>
       </button>
       <p className="text-xs text-ink-400">
@@ -129,7 +152,7 @@ function ActionDocumentsField({
                 "{MAX_COUNT}",
                 String(maxFiles),
               )
-            : t("WF_SUPPORTING_DOCUMENTS_HINT").replace("{MAX_SIZE}", String(MAX_ACTION_DOCUMENT_SIZE_MB))}
+            : t("CS_FILE_LIMIT")}
       </p>
       <input
         ref={inputRef}
@@ -433,13 +456,13 @@ export function ComplaintActionDialog({
         aria-modal="true"
       >
         <h2 className="text-xl leading-[30px] font-semibold text-ink-950">
-          {t(`CS_ACTION_${action}`)}
+          {getDialogTitle(t, action)}
         </h2>
 
         <div className="mt-4 space-y-4">
           {actionConfig.needsAssignee ? (
             <FormSelectField
-              label={t("WF_ASSIGNEE")}
+              label={t("CS_COMMON_EMPLOYEE_NAME")}
               required
               value={selectedAssignee?.code ?? ""}
               options={assigneeOptions}
@@ -457,7 +480,6 @@ export function ComplaintActionDialog({
               required
               value={selectedReason?.code ?? ""}
               options={reasonOptions.map((reason) => {
-                const fallbackName = reason.code ?? reason.localizedCode ?? "";
                 return {
                   code: reason.code ?? reason.localizedCode ?? "",
                   name: t(reason.localizedCode ?? reason.code ?? ""),
@@ -490,14 +512,13 @@ export function ComplaintActionDialog({
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-ink-950">
-              {t("WF_COMMON_COMMENTS")}
+              {t("CS_COMMON_EMPLOYEE_COMMENTS")}
               {actionConfig.comment === "required" ? (
                 <span className="text-destructive"> *</span>
               ) : null}
             </label>
             <textarea
               className="min-h-[100px] w-full rounded border border-ink-300 bg-card px-3 py-2 text-sm placeholder:text-ink-300"
-              placeholder={t("WF_COMMENTS_PLACEHOLDER")}
               maxLength={MAX_COMMENT_LENGTH}
               value={comments}
               onChange={(event) => setComments(event.target.value)}
@@ -531,7 +552,7 @@ export function ComplaintActionDialog({
 
         <div className="mt-6 flex justify-center gap-3">
           <Button type="button" variant="outline" size="lg" onClick={onClose}>
-            {t("TL_COMMON_CANCEL")}
+            {t("CS_COMMON_CANCEL")}
           </Button>
           <Button
             type="button"
@@ -544,7 +565,7 @@ export function ComplaintActionDialog({
           >
             {mutation.isPending
               ? t("CS_COMMON_SUBMITTING")
-              : t("CS_COMMON_SUBMIT")}
+              : getSubmitLabel(t, action)}
           </Button>
         </div>
       </div>
