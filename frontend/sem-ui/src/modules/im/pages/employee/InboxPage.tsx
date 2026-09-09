@@ -1,7 +1,6 @@
 import {
   contextPath,
   employeeHomePath,
-  translateOr,
   useAuthStore,
   useTranslate,
 } from "@/shared";
@@ -101,14 +100,14 @@ export function InboxPage() {
   const homePath = employeeHomePath();
 
   const breadcrumbItems = [
-    { label: translateOr(t, "CORE_COMMON_OVERVIEW", "Overview"), to: homePath },
-    { label: translateOr(t, "ES_IM_INBOX", "Inbox") },
+    { label: t("CORE_COMMON_OVERVIEW"), to: homePath },
+    { label: t("ES_IM_INBOX") },
   ];
 
   return (
     <div className="space-y-6">
       <TopBar
-        title={translateOr(t, "ES_IM_ALL_TICKETS", "All Tickets")}
+        title={t("ES_IM_ALL_TICKETS")}
         breadcrumbs={breadcrumbItems}
         actions={
           <>
@@ -116,7 +115,7 @@ export function InboxPage() {
               <Button asChild variant="outline" size="sm" className="gap-1.5 rounded-md px-3">
                 <Link to={`${basePath}/paused-rms-facilities`}>
                   <PauseCircle className="size-4" />
-                  {translateOr(t, "ES_IM_PAUSE_RMS", "Pause RMS")}
+                  {t("ES_IM_PAUSE_RMS")}
                 </Link>
               </Button>
             ) : null}
@@ -124,7 +123,7 @@ export function InboxPage() {
               <Button asChild size="sm" className="gap-1.5 rounded-md px-3">
                 <Link to={`${basePath}/incident/create`}>
                   <Plus className="size-4" />
-                  {translateOr(t, "ES_IM_RAISE_NEW_TICKET", "Raise New Ticket")}
+                  {t("ES_IM_RAISE_NEW_TICKET")}
                 </Link>
               </Button>
             ) : null}

@@ -1,4 +1,4 @@
-import { contextPath, translateOr, useAuthStore, useTranslate } from "@/shared";
+import { contextPath, useAuthStore, useTranslate } from "@/shared";
 import { cn } from "@/ui";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { SLA_OVERDUE_MARKER } from "../../constants/workflow";
@@ -25,18 +25,18 @@ export function ComplaintTable({ data }: ComplaintTableProps) {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const slaColumnLabel = isEndUser(user?.roles)
-    ? translateOr(t, "WF_INBOX_HEADER_DAYS_REMAINING", "Days Remaining")
-    : translateOr(t, "WF_INBOX_HEADER_SLA_DAYS_REMAINING", "SLA Days Remaining");
+    ? t("WF_INBOX_HEADER_DAYS_REMAINING")
+    : t("WF_INBOX_HEADER_SLA_DAYS_REMAINING");
   const basePath = `/${contextPath()}/employee/im`;
-  const overdueLabel = translateOr(t, "SLA_OVERDUE", "Overdue");
+  const overdueLabel = t("SLA_OVERDUE");
 
   const columns = [
-    { key: "ticket", label: translateOr(t, "CS_COMMON_TICKET_NO", "Ticket No.") },
-    { key: "type", label: translateOr(t, "CS_TICKET_TYPE", "Issue Type") },
-    { key: "subType", label: translateOr(t, "CS_TICKET_SUB_TYPE", "Issue Sub Type") },
-    { key: "status", label: translateOr(t, "CS_TICKET_DETAILS_CURRENT_STATUS", "Current Status") },
-    { key: "facility", label: translateOr(t, "INCIDENT_FACILITY", "Facility") },
-    { key: "owner", label: translateOr(t, "WF_INBOX_HEADER_CURRENT_OWNER", "Current Owner") },
+    { key: "ticket", label: t("CS_COMMON_TICKET_NO") },
+    { key: "type", label: t("CS_TICKET_TYPE") },
+    { key: "subType", label: t("CS_TICKET_SUB_TYPE") },
+    { key: "status", label: t("CS_TICKET_DETAILS_CURRENT_STATUS") },
+    { key: "facility", label: t("INCIDENT_FACILITY") },
+    { key: "owner", label: t("WF_INBOX_HEADER_CURRENT_OWNER") },
     { key: "sla", label: slaColumnLabel },
   ] as const;
 
@@ -82,33 +82,25 @@ export function ComplaintTable({ data }: ComplaintTableProps) {
                       </Link>
                       {row.potentialDuplicate ? (
                         <p className="mt-1 text-xs font-medium text-destructive">
-                          {translateOr(t, "CS_INFO_POTENTIAL_DUPLICATE", "Potential duplicate")}
+                          {t("CS_INFO_POTENTIAL_DUPLICATE")}
                         </p>
                       ) : null}
                     </div>
                   </td>
                   <td className="px-5 py-4 text-foreground">
-                    {translateOr(
-                      t,
-                      `SERVICEDEFS.${row.incidentType.toUpperCase()}`,
-                      row.incidentType,
-                    )}
+                    {t(`SERVICEDEFS.${row.incidentType.toUpperCase()}`)}
                   </td>
                   <td className="px-5 py-4 text-foreground">
                     {row.incidentSubType === "-"
                       ? "-"
-                      : translateOr(
-                          t,
-                          `SERVICEDEFS.${row.incidentSubType.toUpperCase()}`,
-                          row.incidentSubType,
-                        )}
+                      : t(`SERVICEDEFS.${row.incidentSubType.toUpperCase()}`)}
                   </td>
                   <td className="px-5 py-4 text-foreground">
                     <span
                       className="block max-w-[180px] truncate"
-                      title={translateOr(t, `CS_COMMON_${row.status}`, row.status)}
+                      title={t(`CS_COMMON_${row.status}`)}
                     >
-                      {translateOr(t, `CS_COMMON_${row.status}`, row.status)}
+                      {t(`CS_COMMON_${row.status}`)}
                     </span>
                   </td>
                   <td className="px-5 py-4 text-foreground">

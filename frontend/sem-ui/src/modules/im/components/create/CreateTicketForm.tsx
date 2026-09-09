@@ -26,7 +26,6 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
   const navigate = useNavigate();
   const {
     t,
-    translateOr,
     form,
     fieldErrors,
     districtOptions,
@@ -116,16 +115,12 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
       >
         <FormSectionCard
           icon={MapPin}
-          title={translateOr(t, "TICKET_LOCATION", "Ticket Location")}
-          description={translateOr(
-            t,
-            "TICKET_LOCATION_DESC",
-            "Select where this ticket applies",
-          )}
+          title={t("TICKET_LOCATION")}
+          description={t("TICKET_LOCATION_DESC")}
         >
           <div className="grid gap-4 md:grid-cols-3">
             <FormSelectField
-              label={translateOr(t, "INCIDENT_DISTRICT", "District")}
+              label={t("INCIDENT_DISTRICT")}
               required
               value={form.district?.code ?? ""}
               options={districtOptions}
@@ -138,7 +133,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
               }
             />
             <FormSelectField
-              label={translateOr(t, "INCIDENT_BLOCK", "Block")}
+              label={t("INCIDENT_BLOCK")}
               required
               value={form.block?.code ?? ""}
               options={blockOptions}
@@ -151,7 +146,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
               }
             />
             <FormSelectField
-              label={translateOr(t, "HEALTH_CARE_CENTRE", "Facility")}
+              label={t("HEALTH_CARE_CENTRE")}
               required
               value={form.facility?.code ?? ""}
               options={facilityOptions}
@@ -168,16 +163,12 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
         <FormSectionCard
           icon={FileText}
-          title={translateOr(t, "TICKET_DETAILS", "Ticket Details")}
-          description={translateOr(
-            t,
-            "TICKET_DETAILS_DESC",
-            "Describe the problem so we can help faster",
-          )}
+          title={t("TICKET_DETAILS")}
+          description={t("TICKET_DETAILS_DESC")}
         >
           <div className="grid gap-4 md:grid-cols-3">
             <FormSelectField
-              label={translateOr(t, "TICKET_TYPE", "Issue Type")}
+              label={t("TICKET_TYPE")}
               required
               value={form.ticketType?.code ?? ""}
               options={ticketTypeMenu}
@@ -185,7 +176,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
               onChange={(option) => handleTicketTypeChange(option)}
             />
             <FormSelectField
-              label={translateOr(t, "TICKET_SUBTYPE", "Issue Sub Type")}
+              label={t("TICKET_SUBTYPE")}
               required
               value={form.ticketSubType?.code ?? ""}
               options={ticketSubTypeMenu}
@@ -194,7 +185,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
               onChange={(option) => handleTicketSubTypeChange(option)}
             />
             <FormSelectField
-              label={translateOr(t, "SYSTEM_FUNCTIONAL", "Is the Solar System Working?")}
+              label={t("SYSTEM_FUNCTIONAL")}
               required
               value={form.systemFunctional?.code ?? ""}
               options={systemFunctionalMenu}
@@ -206,26 +197,18 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
         <FormSectionCard
           icon={Info}
-          title={translateOr(t, "ADDITIONAL_DETAILS", "Additional Details")}
-          description={translateOr(
-            t,
-            "ADDITIONAL_DETAILS_DESC",
-            "Provide more information or media to help us resolve the issue",
-          )}
+          title={t("ADDITIONAL_DETAILS")}
+          description={t("ADDITIONAL_DETAILS_DESC")}
         >
           <div className="space-y-6">
             <div className="space-y-1.5">
               <label htmlFor="incident-comments" className="text-sm font-medium text-foreground">
-                {translateOr(t, "INCIDENT_COMMENTS", "Comments")}
+                {t("INCIDENT_COMMENTS")}
               </label>
               <textarea
                 id="incident-comments"
                 className="min-h-[120px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder={translateOr(
-                  t,
-                  "INCIDENT_COMMENTS_PLACEHOLDER",
-                  "Add any additional comments here...",
-                )}
+                placeholder={t("INCIDENT_COMMENTS_PLACEHOLDER")}
                 maxLength={maxCommentLength}
                 value={form.comments}
                 onChange={(event) => updateField("comments", event.target.value)}
@@ -244,13 +227,9 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
             <div className="grid gap-4 md:grid-cols-2">
               <MediaUploadZone
-                label={translateOr(t, "INCIDENT_UPLOAD_IMAGE", "Upload Images")}
-                hint={translateOr(t, "INCIDENT_TAP_UPLOAD_IMAGES", "Tap to upload images")}
-                helperText={translateOr(
-                  t,
-                  "INCIDENT_IMAGE_UPLOAD_HELPER",
-                  `Up to ${maxImageCount} images, JPG/JPEG/PNG, ${maxImageSizeMb}MB max each`,
-                )}
+                label={t("INCIDENT_UPLOAD_IMAGE")}
+                hint={t("INCIDENT_TAP_UPLOAD_IMAGES")}
+                helperText={t("CS_MAXIMUM_IMAGES")}
                 error={fieldErrors.image}
                 icon={Camera}
                 accept=".png,.jpg,.jpeg,image/*"
@@ -263,13 +242,9 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
                 onRemove={(fileStoreId) => removeUpload("image", fileStoreId)}
               />
               <MediaUploadZone
-                label={translateOr(t, "INCIDENT_UPLOAD_VIDEO", "Upload Videos")}
-                hint={translateOr(t, "INCIDENT_TAP_UPLOAD_VIDEOS", "Tap to upload videos")}
-                helperText={translateOr(
-                  t,
-                  "INCIDENT_VIDEO_UPLOAD_HELPER",
-                  `Up to ${maxVideoCount} videos, MP4/MOV/AVI/WMV, ${maxVideoSizeMb}MB max each`,
-                )}
+                label={t("INCIDENT_UPLOAD_VIDEO")}
+                hint={t("INCIDENT_TAP_UPLOAD_VIDEOS")}
+                helperText={t("CS_MAXIMUM_VIDEOS")}
                 error={fieldErrors.video}
                 icon={Video}
                 accept=".mp4,.avi,.mov,.wmv,video/*"
@@ -284,17 +259,9 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
             {isTheftIssue ? (
               <MediaUploadZone
-                label={translateOr(
-                  t,
-                  "INCIDENT_UPLOAD_FIR_POLICE_LETTER",
-                  "Upload FIR or Police Complaint Letter",
-                )}
-                hint={translateOr(t, "INCIDENT_TAP_UPLOAD_FIR", "Tap to upload file")}
-                helperText={translateOr(
-                  t,
-                  "INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER",
-                  "Please upload the copy of an FIR or Police Acknowledgement Letter",
-                )}
+                label={t("INCIDENT_UPLOAD_FIR_POLICE_LETTER")}
+                hint={t("INCIDENT_TAP_UPLOAD_FIR")}
+                helperText={t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER")}
                 error={fieldErrors.fir}
                 icon={FileWarning}
                 accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf"
@@ -324,7 +291,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
             disabled={!canSubmit || createMutation.isPending}
           >
             <Send className="size-4" />
-            {translateOr(t, "FILE_INCIDENT", "Submit ticket")}
+            {t("FILE_INCIDENT")}
           </Button>
         </div>
       </form>

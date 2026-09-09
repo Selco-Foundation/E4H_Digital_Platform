@@ -1,7 +1,6 @@
 import {
   contextPath,
   loadModules,
-  translateOr,
   useAuthStore,
   useTranslate,
 } from "@/shared";
@@ -33,14 +32,14 @@ export function ImKpis() {
       <StatTile
         icon={<FileText className="h-6 w-6" />}
         iconClassName="bg-info text-info-foreground"
-        label={translateOr(t, "TOTAL_IM", "Total")}
+        label={t("TOTAL_IM")}
         value={isLoading ? "-" : (data?.totalCount ?? "-")}
         link={`${basePath}/inbox`}
       />
       <StatTile
         icon={<Clock className="h-6 w-6" />}
         iconClassName="bg-warning text-warning-foreground"
-        label={translateOr(t, "TOTAL_NEARING_SLA", "Nearing SLA")}
+        label={t("TOTAL_NEARING_SLA")}
         value={isLoading ? "-" : (data?.nearingSlaCount ?? "-")}
         link={`${basePath}/inbox?nearing=1`}
       />
@@ -61,8 +60,8 @@ export function ImOverviewActions() {
     <Button asChild size="sm" className="gap-1.5 rounded-md px-4 text-sm font-semibold">
       <Link to={`${basePath}/incident/create`}>
         <Plus className="size-4" />
-        <span className="lg:hidden">{translateOr(t, "ES_IM_RAISE_TICKET_SHORT", "Raise Ticket")}</span>
-        <span className="hidden lg:inline">{translateOr(t, "ES_IM_RAISE_NEW_TICKET", "Raise New Ticket")}</span>
+        <span className="lg:hidden">{t("ES_IM_RAISE_TICKET_SHORT")}</span>
+        <span className="hidden lg:inline">{t("ES_IM_RAISE_NEW_TICKET")}</span>
       </Link>
     </Button>
   );

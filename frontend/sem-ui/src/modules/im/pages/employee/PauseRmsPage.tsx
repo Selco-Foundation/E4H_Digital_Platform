@@ -3,7 +3,6 @@ import {
   employeeHomePath,
   contextPath,
   tenantId,
-  translateOr,
   useAuthStore,
   useBoundary,
   useFacility,
@@ -98,7 +97,7 @@ export function PauseRmsPage() {
       boundaryData.districts
         .map((entry) => ({
           code: entry.code,
-          name: translateOr(t, `Boundary_${entry.code}`, entry.code),
+          name: t(`Boundary_${entry.code}`),
           parentCode: entry.parentCode,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
@@ -115,7 +114,7 @@ export function PauseRmsPage() {
         .filter((entry) => entry.parentCode === district.code)
         .map((entry) => ({
           code: entry.code,
-          name: translateOr(t, `Boundary_${entry.code}`, entry.code),
+          name: t(`Boundary_${entry.code}`),
           parentCode: entry.parentCode,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
@@ -132,7 +131,7 @@ export function PauseRmsPage() {
         .filter((entry) => facilityBoundaryParents.get(entry.boundaryCode) === block.code)
         .map((entry) => ({
           code: entry.boundaryCode,
-          name: entry.facilityName ?? translateOr(t, `Boundary_${entry.boundaryCode}`, entry.boundaryCode),
+          name: entry.facilityName ?? t(`Boundary_${entry.boundaryCode}`),
           facilityId: entry.facilityId,
           facilityName: entry.facilityName,
           parentCode: facilityBoundaryParents.get(entry.boundaryCode),
@@ -189,25 +188,25 @@ export function PauseRmsPage() {
     onSuccess: (response) => {
       if (!response?.success) {
         setError(
-          response?.message ?? translateOr(t, "CS_COMMON_SOMETHING_WENT_WRONG", "Something went wrong!"),
+          response?.message ?? t("CS_COMMON_SOMETHING_WENT_WRONG"),
         );
         return;
       }
       setError(null);
       setSuccessMessage(
         response.isPaused
-          ? translateOr(t, "RMS_FACILITY_PAUSED", "Facility paused successfully")
-          : translateOr(t, "RMS_FACILITY_RESUMED", "Facility resumed successfully"),
+          ? t("RMS_FACILITY_PAUSED")
+          : t("RMS_FACILITY_RESUMED"),
       );
       setIsPaused(Boolean(response.isPaused));
     },
     onError: (mutationError: Error) => {
       setError(
         mutationError.message === "FACILITY_REQUIRED"
-          ? translateOr(t, "RMS_SELECT_FACILITY", "Please select a facility")
+          ? t("RMS_SELECT_FACILITY")
           : mutationError.message === "REASON_REQUIRED"
-            ? translateOr(t, "RMS_REASON_REQUIRED", "Please enter a reason")
-            : translateOr(t, "CS_COMMON_SOMETHING_WENT_WRONG", "Something went wrong!"),
+            ? t("RMS_REASON_REQUIRED")
+            : t("CS_COMMON_SOMETHING_WENT_WRONG"),
       );
     },
   });
@@ -220,18 +219,18 @@ export function PauseRmsPage() {
   return (
     <div className="space-y-6">
       <TopBar
-        title={translateOr(t, "ES_IM_PAUSE_RMS", "Pause RMS")}
+        title={t("ES_IM_PAUSE_RMS")}
         breadcrumbs={[
-          { label: translateOr(t, "CORE_COMMON_OVERVIEW", "Overview"), to: homePath },
-          { label: translateOr(t, "ES_IM_HEADER_INCIDENTS", "Tickets"), to: imRootPath },
-          { label: translateOr(t, "RMS_PAUSED_FACILITIES", "RMS Paused Facilities"), to: pausedListPath },
-          { label: translateOr(t, "ES_IM_PAUSE_RMS", "Pause RMS") },
+          { label: t("CORE_COMMON_OVERVIEW"), to: homePath },
+          { label: t("ES_IM_HEADER_INCIDENTS"), to: imRootPath },
+          { label: t("RMS_PAUSED_FACILITIES"), to: pausedListPath },
+          { label: t("ES_IM_PAUSE_RMS") },
         ]}
       />
 
       <div className="livelihood-card max-w-xl space-y-4 p-6">
         <FormSelectField
-          label={translateOr(t, "CS_DISTRICT", "District")}
+          label={t("CS_DISTRICT")}
           required
           value={district?.code ?? ""}
           options={districtMenu}
@@ -242,7 +241,7 @@ export function PauseRmsPage() {
           }}
         />
         <FormSelectField
-          label={translateOr(t, "CS_BLOCK", "Block")}
+          label={t("CS_BLOCK")}
           required
           value={block?.code ?? ""}
           options={blockMenu}
@@ -253,7 +252,7 @@ export function PauseRmsPage() {
           }}
         />
         <FormSelectField
-          label={translateOr(t, "CS_HEALTH_CARE", "Health Care Centre")}
+          label={t("CS_HEALTH_CARE")}
           required
           value={facility?.code ?? ""}
           options={facilityOptions}
@@ -268,7 +267,7 @@ export function PauseRmsPage() {
         {!isPaused ? (
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-ink-950">
-              {translateOr(t, "RMS_PAUSE_DURATION", "RMS Pause Duration")}
+              {t("RMS_PAUSE_DURATION")}
               <span className="text-destructive"> *</span>
             </label>
             <input
@@ -284,7 +283,7 @@ export function PauseRmsPage() {
         {!isPaused ? (
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-ink-950">
-              {translateOr(t, "RMS_PAUSE_REASON", "RMS Pause Reason")}
+              {t("RMS_PAUSE_REASON")}
               <span className="text-destructive"> *</span>
             </label>
             <textarea
@@ -299,7 +298,7 @@ export function PauseRmsPage() {
           </div>
         ) : (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            {translateOr(t, "RMS_ALREADY_PAUSED", "This facility is already paused")}
+            {t("RMS_ALREADY_PAUSED")}
             {reason ? `: ${reason}` : ""}
           </p>
         )}
@@ -314,8 +313,8 @@ export function PauseRmsPage() {
           onClick={() => mutation.mutate(isPaused ? "RESUME" : "PAUSE")}
         >
           {isPaused
-            ? translateOr(t, "RMS_RESUME", "Resume")
-            : translateOr(t, "ES_IM_PAUSE_RMS", "Pause RMS")}
+            ? t("RMS_RESUME")
+            : t("ES_IM_PAUSE_RMS")}
         </Button>
       </div>
     </div>

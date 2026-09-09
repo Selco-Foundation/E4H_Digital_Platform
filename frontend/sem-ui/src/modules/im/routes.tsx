@@ -1,4 +1,4 @@
-import { contextPath, translateOr, useModuleI18n, useTranslate } from "@/shared";
+import { contextPath, useModuleI18n, useTranslate } from "@/shared";
 import type { AnyRoute } from "@tanstack/react-router";
 import { createRoute, Outlet, redirect } from "@tanstack/react-router";
 import { Inbox } from "lucide-react";
@@ -37,7 +37,7 @@ function ImModuleWrapper() {
   if (isLoading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
-        {translateOr(t, "CORE_COMMON_LOADING", "Loading...")}
+        {t("CORE_COMMON_LOADING")}
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import { contextPath, translateOr, useAuthStore, useTranslate } from "@/shared";
+import { contextPath, useAuthStore, useTranslate } from "@/shared";
 import { Card } from "@/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { Clock } from "lucide-react";
@@ -25,9 +25,9 @@ export function MobileComplaintList({ data }: MobileComplaintListProps) {
   const user = useAuthStore((state) => state.user);
   const basePath = `/${contextPath()}/employee/im`;
   const slaLabel = isEndUser(user?.roles)
-    ? translateOr(t, "WF_INBOX_HEADER_DAYS_REMAINING", "Days Remaining")
-    : translateOr(t, "WF_INBOX_HEADER_SLA_DAYS_REMAINING", "SLA Days Remaining");
-  const overdueLabel = translateOr(t, "SLA_OVERDUE", "Overdue");
+    ? t("WF_INBOX_HEADER_DAYS_REMAINING")
+    : t("WF_INBOX_HEADER_SLA_DAYS_REMAINING");
+  const overdueLabel = t("SLA_OVERDUE");
 
   return (
     <div className="space-y-3">
@@ -45,28 +45,24 @@ export function MobileComplaintList({ data }: MobileComplaintListProps) {
             <p className="text-base font-bold text-ink-950">{row.incidentId}</p>
             {row.potentialDuplicate ? (
               <p className="text-xs font-medium text-destructive">
-                {translateOr(t, "CS_INFO_POTENTIAL_DUPLICATE", "Potential duplicate")}
+                {t("CS_INFO_POTENTIAL_DUPLICATE")}
               </p>
             ) : null}
-            <DetailRow label={translateOr(t, "INCIDENT_END_USER", "End User")} value={row.endUser} />
+            <DetailRow label={t("INCIDENT_END_USER")} value={row.endUser} />
             <DetailRow
-              label={translateOr(t, "INCIDENT_ASSET", "Asset")}
+              label={t("INCIDENT_ASSET")}
               value={translateDetailValue(row.assetLabel, t)}
             />
             <DetailRow
-              label={translateOr(t, "CS_TICKET_TYPE", "Issue Type")}
-              value={translateOr(
-                t,
-                `SERVICEDEFS.${row.incidentType.toUpperCase()}`,
-                row.incidentType,
-              )}
+              label={t("CS_TICKET_TYPE")}
+              value={t(`SERVICEDEFS.${row.incidentType.toUpperCase()}`)}
             />
             <DetailRow
-              label={translateOr(t, "CS_TICKET_DETAILS_CURRENT_STATUS", "Current Status")}
-              value={translateOr(t, `CS_COMMON_${row.status}`, row.status)}
+              label={t("CS_TICKET_DETAILS_CURRENT_STATUS")}
+              value={t(`CS_COMMON_${row.status}`)}
             />
             <DetailRow
-              label={translateOr(t, "WF_INBOX_HEADER_CURRENT_OWNER", "Current Owner")}
+              label={t("WF_INBOX_HEADER_CURRENT_OWNER")}
               value={row.taskOwner}
             />
             <p className="flex items-center gap-1.5 text-sm text-ink-600">

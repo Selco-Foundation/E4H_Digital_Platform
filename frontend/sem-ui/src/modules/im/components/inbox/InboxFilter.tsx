@@ -1,6 +1,5 @@
 import {
   aggregateBoundaryCodes,
-  translateOr,
   useAuthStore,
   useBoundary,
   useFacility,
@@ -95,8 +94,8 @@ export function InboxFilter({
 
   const assignedToOptions = useMemo(
     () => [
-      { code: "ASSIGNED_TO_ME", name: translateOr(t, "ASSIGNED_TO_ME", "My Tickets") },
-      { code: "ASSIGNED_TO_ALL", name: translateOr(t, "ASSIGNED_TO_ALL", "All Tickets") },
+      { code: "ASSIGNED_TO_ME", name: t("ASSIGNED_TO_ME") },
+      { code: "ASSIGNED_TO_ALL", name: t("ASSIGNED_TO_ALL") },
     ],
     [t],
   );
@@ -170,7 +169,7 @@ export function InboxFilter({
       (assetTypes ?? [])
         .map((item) => ({
           code: item.code,
-          name: translateOr(t, `FACILITYTYPE_${item.code}`, item.name),
+          name: t(`FACILITYTYPE_${item.code}`),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [assetTypes, t],
@@ -180,7 +179,7 @@ export function InboxFilter({
     () =>
       ORDERED_INBOX_STATUSES.map((status) => ({
         code: status.code,
-        name: translateOr(t, `CS_COMMON_${status.code}`, status.code),
+        name: t(`CS_COMMON_${status.code}`),
       })),
     [t],
   );
@@ -222,7 +221,7 @@ export function InboxFilter({
         if (!unique.has(state.code)) {
           unique.set(state.code, {
             code: state.code,
-            name: translateOr(t, `Boundary_${state.code}`, state.code),
+            name: t(`Boundary_${state.code}`),
           });
         }
       }
@@ -246,7 +245,7 @@ export function InboxFilter({
       districts
         .map((district) => ({
           code: district.code,
-          name: translateOr(t, `Boundary_${district.code}`, district.code),
+          name: t(`Boundary_${district.code}`),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     );
@@ -284,7 +283,7 @@ export function InboxFilter({
       blocks
         .map((block) => ({
           code: block.code,
-          name: translateOr(t, `Boundary_${block.code}`, block.code),
+          name: t(`Boundary_${block.code}`),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     );
@@ -335,7 +334,7 @@ export function InboxFilter({
       facilities
         .map((facility) => ({
           code: facility.code,
-          name: translateOr(t, `Boundary_${facility.code}`, facility.code),
+          name: t(`Boundary_${facility.code}`),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     );
@@ -428,29 +427,29 @@ export function InboxFilter({
   const categories = [
     {
       key: "incidentType" as const,
-      label: translateOr(t, "CS_COMPLAINT_DETAILS_TICKET_TYPE", "Issue Type"),
+      label: t("CS_COMPLAINT_DETAILS_TICKET_TYPE"),
       options: ticketTypeMenu,
     },
     {
       key: "isSystemFunctional" as const,
-      label: translateOr(t, "CS_SYSTEM_FUNCTIONAL", "Is the Solar System Working?"),
+      label: t("CS_SYSTEM_FUNCTIONAL"),
       options: systemFunctionalMenu,
     },
     ...(showGeoFilters
       ? [
-          { key: "state" as const, label: translateOr(t, "CS_STATE", "State"), options: stateMenu },
-          { key: "district" as const, label: translateOr(t, "CS_DISTRICT", "District"), options: districtMenu },
-          { key: "block" as const, label: translateOr(t, "CS_BLOCK", "Block"), options: blockMenu },
+          { key: "state" as const, label: t("CS_STATE"), options: stateMenu },
+          { key: "district" as const, label: t("CS_DISTRICT"), options: districtMenu },
+          { key: "block" as const, label: t("CS_BLOCK"), options: blockMenu },
           {
             key: "facility" as const,
-            label: translateOr(t, "INCIDENT_END_USER", "Facility"),
+            label: t("INCIDENT_END_USER"),
             options: facilityMenu,
           },
         ]
       : []),
     {
       key: "applicationStatus" as const,
-      label: translateOr(t, "ES_IM_FILTER_STATUS", "Issue Status"),
+      label: t("ES_IM_FILTER_STATUS"),
       options: statusMenu,
     },
   ];
@@ -488,7 +487,7 @@ export function InboxFilter({
   } else if (visibleOptions.length === 0) {
     optionsContent = (
       <p className="text-sm text-muted-foreground">
-        {translateOr(t, "ES_COMMON_NO_OPTIONS", "No options found")}
+        {t("ES_COMMON_NO_OPTIONS")}
       </p>
     );
   } else {
@@ -529,7 +528,7 @@ export function InboxFilter({
                   className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-primary px-3 text-sm font-semibold text-primary"
                 >
                   <Filter className="size-4" />
-                  {translateOr(t, "ES_IM_FILTERS", "Filters")}
+                  {t("ES_IM_FILTERS")}
                   <Separator orientation="vertical" className="h-4" />
                   <ChevronDown
                     className={cn(
@@ -566,7 +565,7 @@ export function InboxFilter({
                     <Input
                       value={categorySearch}
                       onChange={(event) => setCategorySearch(event.target.value)}
-                      placeholder={translateOr(t, "ES_COMMON_SEARCH", "Search")}
+                      placeholder={t("ES_COMMON_SEARCH")}
                     />
                     <ScrollArea className="h-56 pr-3">
                       <div className="space-y-3">{optionsContent}</div>
@@ -610,7 +609,7 @@ export function InboxFilter({
                 <div className="mx-auto mt-3 h-1.5 w-10 shrink-0 rounded-full bg-border" />
                 <SheetHeader className="shrink-0 pb-0">
                   <SheetTitle className="text-lg">
-                    {translateOr(t, "ES_IM_FILTERS", "Filters")}
+                    {t("ES_IM_FILTERS")}
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex shrink-0 gap-6 overflow-x-auto border-b border-border px-4">
@@ -637,7 +636,7 @@ export function InboxFilter({
                   <Input
                     value={categorySearch}
                     onChange={(event) => setCategorySearch(event.target.value)}
-                    placeholder={translateOr(t, "ES_COMMON_SEARCH", "Search")}
+                    placeholder={t("ES_COMMON_SEARCH")}
                   />
                   <div className="space-y-3">{optionsContent}</div>
                 </div>
@@ -652,14 +651,14 @@ export function InboxFilter({
                       setMobileFiltersOpen(false);
                     }}
                   >
-                    {translateOr(t, "ES_IM_CLEAR_ALL_FILTERS", "clear all filters")}
+                    {t("ES_IM_CLEAR_ALL_FILTERS")}
                   </Button>
                   <Button
                     type="button"
                     className="flex-1"
                     onClick={() => setMobileFiltersOpen(false)}
                   >
-                    {translateOr(t, "ES_IM_APPLY_FILTERS", "Apply filters")}
+                    {t("ES_IM_APPLY_FILTERS")}
                   </Button>
                 </SheetFooter>
               </SheetContent>
@@ -693,7 +692,7 @@ export function InboxFilter({
                 : "text-muted-foreground/50",
             )}
           >
-            {translateOr(t, "ES_IM_CLEAR_ALL_FILTERS", "clear all filters")}
+            {t("ES_IM_CLEAR_ALL_FILTERS")}
           </button>
         </div>
       </div>

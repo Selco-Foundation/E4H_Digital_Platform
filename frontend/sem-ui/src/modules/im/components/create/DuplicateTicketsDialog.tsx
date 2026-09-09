@@ -1,4 +1,4 @@
-import { contextPath, translateOr, useTranslate } from "@/shared";
+import { contextPath, useTranslate } from "@/shared";
 import { Button } from "@/ui";
 import { Link } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
@@ -26,17 +26,13 @@ export function DuplicateTicketsDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
         <h2 className="text-center text-lg font-semibold">
-          {translateOr(t, "IM_ALERT_POTENTIAL_DUPLICATES", "Potential Duplicate Tickets Found")}
+          {t("IM_ALERT_POTENTIAL_DUPLICATES")}
         </h2>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          {translateOr(
-            t,
-            "IM_ALERT_POTENTIAL_DUPLICATES_DESC",
-            "Similar tickets already exist for this asset and issue type.",
-          )}
+          {t("IM_ALERT_POTENTIAL_DUPLICATES_DESC")}
         </p>
         <p className="mt-2 max-h-40 overflow-auto text-center text-sm">
-          {translateOr(t, "IM_ALERT_POTENTIAL_DUPLICATES_EXISTING", "Existing tickets")}:{" "}
+          {t("IM_ALERT_POTENTIAL_DUPLICATES_EXISTING")}:{" "}
           {tickets.map((ticket, index) => (
             <span key={ticket.ticketId}>
               <Link
@@ -51,18 +47,14 @@ export function DuplicateTicketsDialog({
           ))}
         </p>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          {translateOr(
-            t,
-            "IM_ALERT_POTENTIAL_DUPLICATES_ACTION_DESC",
-            "Do you still want to create a new ticket?",
-          )}
+          {t("IM_ALERT_POTENTIAL_DUPLICATES_ACTION_DESC")}
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Button type="button" variant="outline" size="lg" onClick={onContinue}>
-            {translateOr(t, "TL_COMMON_YES", "Yes")}
+            {t("TL_COMMON_YES")}
           </Button>
           <Button type="button" size="lg" onClick={onCancel}>
-            {translateOr(t, "TL_COMMON_NO", "No")}
+            {t("TL_COMMON_NO")}
           </Button>
         </div>
       </div>

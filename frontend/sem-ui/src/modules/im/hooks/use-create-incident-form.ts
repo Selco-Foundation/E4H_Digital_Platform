@@ -1,6 +1,5 @@
 import {
   aggregateBoundaryCodes,
-  translateOr,
   useAuthStore,
   useBoundary,
   useJurisdictionStore,
@@ -100,17 +99,17 @@ function buildMediaErrorMessage(
     MEDIA_ERROR_MESSAGE_CONFIG[kind];
 
   if (error.code === "COUNT") {
-    return translateOr(t, countKey, `You can upload up to ${maxCount} files`).replace(
+    return t(countKey).replace(
       "{MAX_COUNT}",
       String(maxCount),
     );
   }
 
   if (error.code === "SIZE") {
-    return translateOr(t, sizeKey, `Each file must be ${maxSizeMb}MB or smaller`);
+    return t(sizeKey).replace("{MAX_SIZE}", String(maxSizeMb));
   }
 
-  return translateOr(t, formatKey, `Only ${formats} formats are supported`);
+  return t(formatKey).replace("{FORMATS}", formats);
 }
 
 function toBoundaryOption(
@@ -120,7 +119,7 @@ function toBoundaryOption(
   return {
     code: node.code,
     parentCode: node.parentCode,
-    name: translateOr(t, `Boundary_${node.code}`, node.code),
+    name: t(`Boundary_${node.code}`),
   };
 }
 
@@ -302,49 +301,29 @@ export function useCreateIncidentForm(inboxPath: string) {
   const validate = useCallback(() => {
     const errors: FieldErrors = {};
     if (!form.district) {
-      errors.district = translateOr(t, "INCIDENT_DISTRICT_REQUIRED", "Please select a district");
+      errors.district = t("INCIDENT_DISTRICT_REQUIRED");
     }
     if (!form.block) {
-      errors.block = translateOr(t, "INCIDENT_BLOCK_REQUIRED", "Please select a block");
+      errors.block = t("INCIDENT_BLOCK_REQUIRED");
     }
     if (!form.facility) {
-      errors.facility = translateOr(t, "INCIDENT_FACILITY_REQUIRED", "Please select a facility");
+      errors.facility = t("INCIDENT_FACILITY_REQUIRED");
     }
     if (!form.ticketType) {
-      errors.ticketType = translateOr(
-        t,
-        "INCIDENT_TICKET_TYPE_REQUIRED",
-        "Please select a ticket type",
-      );
+      errors.ticketType = t("INCIDENT_TICKET_TYPE_REQUIRED");
     }
     if (!form.ticketSubType) {
-      errors.ticketSubType = translateOr(
-        t,
-        "INCIDENT_TICKET_SUBTYPE_REQUIRED",
-        "Please select a ticket subtype",
-      );
+      errors.ticketSubType = t("INCIDENT_TICKET_SUBTYPE_REQUIRED");
     }
     if (!form.systemFunctional) {
-      errors.systemFunctional = translateOr(
-        t,
-        "INCIDENT_SYSTEM_FUNCTIONAL_REQUIRED",
-        "Please select whether the solar system is working",
-      );
+      errors.systemFunctional = t("INCIDENT_SYSTEM_FUNCTIONAL_REQUIRED");
     }
     if (form.comments.length > MAX_COMMENT_LENGTH) {
-      errors.comments = translateOr(
-        t,
-        "INCIDENT_COMMENTS_MAX_LENGTH",
-        "Comments cannot exceed {MAX_COUNT} characters.",
-      ).replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH));
+      errors.comments = t("CS_LENGTH_EXCEED").replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH));
     }
     // Matches DIGIT-UI's `hasMandatoryTheftUpload` check on submit.
     if (isTheftIssue && firUploads.length === 0) {
-      errors.fir = translateOr(
-        t,
-        "INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER",
-        "Please upload the FIR or police complaint letter",
-      );
+      errors.fir = t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER");
     }
     setFieldErrors((prev) => ({ ...prev, ...errors }));
     return Object.keys(errors).length === 0;
@@ -399,7 +378,7 @@ export function useCreateIncidentForm(inboxPath: string) {
         const message =
           response?.Errors?.[0]?.message ??
           response?.message ??
-          translateOr(t, "CS_COMMON_SOMETHING_WENT_WRONG", "Something went wrong!");
+          t("CS_COMMON_SOMETHING_WENT_WRONG");
         setSubmitError(message);
         return;
       }
@@ -484,7 +463,6 @@ export function useCreateIncidentForm(inboxPath: string) {
 
   return {
     t,
-    translateOr,
     form,
     updateField,
     fieldErrors,

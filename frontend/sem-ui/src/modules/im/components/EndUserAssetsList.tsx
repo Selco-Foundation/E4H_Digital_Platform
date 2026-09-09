@@ -1,4 +1,4 @@
-import { translateOr, useTranslate } from "@/shared";
+import { useTranslate } from "@/shared";
 import { Card } from "@/ui";
 import { Package } from "lucide-react";
 import { useState } from "react";
@@ -38,7 +38,7 @@ function AssetThumbnail({ asset, name }: { asset: EndUserAsset; name: string }) 
 
 function AssetBlock({ asset }: { asset: EndUserAsset }) {
   const { t } = useTranslate();
-  const name = translateOr(t, `ASSETTYPE_${asset.assetTypeId}`, asset.name);
+  const name = t(`ASSETTYPE_${asset.assetTypeId}`);
   const subtitle = assetSubtitle(asset);
 
   return (
@@ -62,16 +62,16 @@ export function EndUserAssetsList({ assets, isLoading }: EndUserAssetsListProps)
   return (
     <div className="space-y-3">
       <h3 className="text-[20px] leading-[30px] font-semibold text-ink-950">
-        {translateOr(t, "ES_IM_MY_REGISTERED_ASSETS", "My Registered Assets")}
+        {t("ES_IM_MY_REGISTERED_ASSETS")}
       </h3>
       <div className="flex flex-col items-stretch gap-3 lg:rounded-lg lg:border lg:border-border lg:bg-card lg:p-4 lg:py-5 lg:shadow-sm">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">
-            {translateOr(t, "CS_COMMON_LOADING", "Loading...")}
+            {t("CS_COMMON_LOADING")}
           </p>
         ) : assets.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {translateOr(t, "ES_IM_NO_ASSETS_FOUND", "No assets found")}
+            {t("ES_IM_NO_ASSETS_FOUND")}
           </p>
         ) : (
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">

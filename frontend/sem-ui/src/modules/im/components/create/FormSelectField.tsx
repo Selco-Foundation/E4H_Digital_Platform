@@ -1,6 +1,6 @@
 import type { SelectOption } from "../../types/create-incident";
 import { useMemo, useState } from "react";
-import { translateOr, useTranslate } from "@/shared";
+import { useTranslate } from "@/shared";
 import { cn, Input, Popover, PopoverContent, PopoverTrigger } from "@/ui";
 import { ChevronDown, Info, Search } from "lucide-react";
 
@@ -28,7 +28,7 @@ export function FormSelectField({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const { t } = useTranslate();
-  const resolvedPlaceholder = placeholder ?? translateOr(t, "ES_COMMON_SELECT_PLACEHOLDER", "Select");
+  const resolvedPlaceholder = placeholder ?? t("ES_COMMON_SELECT_PLACEHOLDER");
 
   const selectedOption = useMemo(
     () => options.find((option) => option.code === value) ?? null,
@@ -81,14 +81,14 @@ export function FormSelectField({
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={translateOr(t, "ES_COMMON_SEARCH", "Search")}
+              placeholder={t("ES_COMMON_SEARCH")}
               className="h-8 pl-8 text-sm"
             />
           </div>
           <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto pr-2">
             {filteredOptions.length === 0 ? (
               <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                {translateOr(t, "ES_COMMON_NO_OPTIONS", "No options found")}
+                {t("ES_COMMON_NO_OPTIONS")}
               </p>
             ) : (
               filteredOptions.map((option) => (

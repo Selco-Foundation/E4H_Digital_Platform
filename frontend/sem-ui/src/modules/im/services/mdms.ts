@@ -1,4 +1,4 @@
-import { fetchMdmsMasters, tenantId, translateOr, type AuthUser } from "@/shared";
+import { fetchMdmsMasters, tenantId, type AuthUser } from "@/shared";
 import type { ComplaintTypeOption } from "../types/inbox";
 import { SelectOption } from "../types/create-incident";
 
@@ -76,7 +76,7 @@ export async function fetchTicketTypeMenu(
       code: def.menuPath,
       key: def.menuPath,
       menuPath: def.menuPath,
-      name: translateOr(t, `SERVICEDEFS.${def.menuPath.toUpperCase()}`, def.menuPath),
+      name: t(`SERVICEDEFS.${def.menuPath.toUpperCase()}`),
     });
   }
 
@@ -109,7 +109,7 @@ export async function fetchSystemFunctionalityOptions(
     .map((def) => ({
       code: def.code!,
       key: def.code!,
-      name: translateOr(t, def.name ?? def.code!, def.name ?? def.code!),
+      name: t(def.name ?? def.code!),
     }));
 }
 
@@ -135,11 +135,7 @@ export async function fetchServiceDefsForMenuPath(
       key: def.serviceCode ?? "",
       serviceCode: def.serviceCode,
       menuPath: def.menuPath,
-      name: translateOr(
-        t,
-        `SERVICEDEFS.${(def.serviceCode ?? "").toUpperCase()}`,
-        def.serviceCode ?? "",
-      ),
+      name: t(`SERVICEDEFS.${(def.serviceCode ?? "").toUpperCase()}`),
     }))
     .filter((item) => item.key)
     .sort((a, b) => a.name.localeCompare(b.name));

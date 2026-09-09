@@ -1,4 +1,4 @@
-import { contextPath, translateOr, useAuthStore, useTranslate } from "@/shared";
+import { contextPath, useAuthStore, useTranslate } from "@/shared";
 import { Card, CardContent } from "@/ui";
 import { Link } from "@tanstack/react-router";
 import { canCreateIncident } from "../../utils/access";
@@ -23,7 +23,7 @@ export function ComplaintLinks() {
   const links = canCreateIncident(user?.roles)
     ? [
         {
-          text: translateOr(t, "ES_IM_NEW_INCIDENT", "New Ticket"),
+          text: t("ES_IM_NEW_INCIDENT"),
           link: `${basePath}/incident/create`,
         },
       ]
@@ -37,7 +37,7 @@ export function ComplaintLinks() {
             <ImHeaderIcon />
           </div>
           <span className="font-semibold">
-            {translateOr(t, "ES_IM_HEADER_INCIDENTS", "Tickets")}
+            {t("ES_IM_HEADER_INCIDENTS")}
           </span>
         </div>
         <div className="space-y-1 text-sm">

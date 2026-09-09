@@ -1,4 +1,4 @@
-import { contextPath, employeeHomePath, translateOr, useTranslate } from "@/shared";
+import { contextPath, employeeHomePath, useTranslate } from "@/shared";
 import { Pagination, TopBar } from "@/ui";
 import { useMemo, useState } from "react";
 import { RmsPausedFilter, type RmsPausedFilterState } from "../../components/rms/RmsPausedFilter";
@@ -41,11 +41,11 @@ export function RmsPausedFacilitiesPage() {
   return (
     <div className="space-y-6">
       <TopBar
-        title={translateOr(t, "RMS_PAUSED_FACILITIES", "RMS Paused Facilities")}
+        title={t("RMS_PAUSED_FACILITIES")}
         breadcrumbs={[
-          { label: translateOr(t, "CORE_COMMON_OVERVIEW", "Overview"), to: homePath },
-          { label: translateOr(t, "ES_IM_HEADER_INCIDENTS", "Tickets"), to: imRootPath },
-          { label: translateOr(t, "RMS_PAUSED_FACILITIES", "RMS Paused Facilities") },
+          { label: t("CORE_COMMON_OVERVIEW"), to: homePath },
+          { label: t("ES_IM_HEADER_INCIDENTS"), to: imRootPath },
+          { label: t("RMS_PAUSED_FACILITIES") },
         ]}
       />
 

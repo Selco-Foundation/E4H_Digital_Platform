@@ -1,4 +1,3 @@
-import { translateOr } from "@/shared";
 import type { ComplaintDetailsData, ComplaintDetailsRow, Incident, IncidentWorkflow } from "../types/incident-details";
 import { TERMINAL_APPLICATION_STATUSES } from "../constants/workflow";
 import { formatEpochToDate } from "./date-format";
@@ -70,7 +69,7 @@ export function translateDetailValue(
   value: string,
   t: (key: string) => string,
 ): string {
-  return translateOr(t, value, value);
+  return t(value);
 }
 
 export function buildComplaintDetailsData(

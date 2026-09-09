@@ -1,4 +1,4 @@
-import { searchHrmsEmployeesByRole, translateOr, useAuthStore, useTranslate } from "@/shared";
+import { searchHrmsEmployeesByRole, useAuthStore, useTranslate } from "@/shared";
 import { Button } from "@/ui";
 import { useMutation } from "@tanstack/react-query";
 import { Files, Trash2 } from "lucide-react";
@@ -41,12 +41,12 @@ interface ComplaintActionDialogProps {
 
 function getReasonLabel(t: (key: string) => string, action: string): string {
   if (action === "MARK_OUT_OF_SCOPE") {
-    return translateOr(t, "WF_OUT_OF_SCOPE_REASON", "WF_OUT_OF_SCOPE_REASON");
+    return t("WF_OUT_OF_SCOPE_REASON");
   }
   if (action === "SENDBACK") {
-    return translateOr(t, "WF_SENDBACK_REASON", "WF_SENDBACK_REASON");
+    return t("WF_SENDBACK_REASON");
   }
-  return translateOr(t, "WF_REJECT_REASON", "WF_REJECT_REASON");
+  return t("WF_REJECT_REASON");
 }
 
 function getOutOfWarrantyHelperText(
@@ -57,11 +57,7 @@ function getOutOfWarrantyHelperText(
   if (action !== "OUT_OF_WARRANTY") {
     return null;
   }
-  return translateOr(
-    t,
-    "WF_OUT_OF_WARRANTY_HELPER",
-    "By marking this ticket as Out of Warranty, you are expected to contact {endUserName} and resolve the issue through the appropriate offline process.",
-  ).replace("{endUserName}", endUserName);
+  return t("WF_OUT_OF_WARRANTY_HELPER").replace("{endUserName}", endUserName);
 }
 
 function formatFileSize(bytes: number): string {
@@ -99,8 +95,8 @@ function ActionDocumentsField({
   const inputRef = useRef<HTMLInputElement>(null);
   const maxFilesReached = uploads.length >= maxFiles;
   const label = requiresQuotation
-    ? translateOr(t, "WF_QUOTATION_DOCUMENT", "Quotation document")
-    : translateOr(t, "WF_SUPPORTING_DOCUMENTS", "WF_SUPPORTING_DOCUMENTS");
+    ? t("WF_QUOTATION_DOCUMENT")
+    : t("WF_SUPPORTING_DOCUMENTS");
   const accept = requiresQuotation
     ? ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     : ".jpg,.jpeg,.pdf,image/jpeg,application/pdf";
@@ -122,26 +118,18 @@ function ActionDocumentsField({
           <Files className="size-5" />
         </span>
         <span className="text-sm text-ink-950">
-          {translateOr(t, "WF_TAP_TO_UPLOAD", "Tap to upload files")}
+          {t("WF_TAP_TO_UPLOAD")}
         </span>
       </button>
       <p className="text-xs text-ink-400">
         {maxFilesReached
-          ? translateOr(
-              t,
-              "WF_MAX_FILES_REACHED",
-              "You can upload up to {MAX_COUNT} files",
-            ).replace("{MAX_COUNT}", String(maxFiles))
+          ? t("WF_MAX_FILES_REACHED").replace("{MAX_COUNT}", String(maxFiles))
           : requiresQuotation
-            ? translateOr(t, "WF_MAX_FILES_HINT", "You can upload up to {MAX_COUNT} files").replace(
+            ? t("WF_MAX_FILES_HINT").replace(
                 "{MAX_COUNT}",
                 String(maxFiles),
               )
-            : translateOr(
-                t,
-                "WF_SUPPORTING_DOCUMENTS_HINT",
-                "WF_SUPPORTING_DOCUMENTS_HINT",
-              ).replace("{MAX_SIZE}", String(MAX_ACTION_DOCUMENT_SIZE_MB))}
+            : t("WF_SUPPORTING_DOCUMENTS_HINT").replace("{MAX_SIZE}", String(MAX_ACTION_DOCUMENT_SIZE_MB))}
       </p>
       <input
         ref={inputRef}
@@ -175,7 +163,7 @@ function ActionDocumentsField({
               <button
                 type="button"
                 onClick={() => onRemove(index)}
-                aria-label={translateOr(t, "CS_COMMON_REMOVE", "Remove")}
+                aria-label={t("CS_COMMON_REMOVE")}
                 className="shrink-0 cursor-pointer text-ink-400 hover:text-destructive"
               >
                 <Trash2 className="size-5" />
@@ -308,7 +296,7 @@ export function ComplaintActionDialog({
         const message =
           response?.Errors?.[0]?.message ??
           response?.message ??
-          translateOr(t, "CS_COMMON_SOMETHING_WENT_WRONG", "Something went wrong!");
+          t("CS_COMMON_SOMETHING_WENT_WRONG");
         setError(message);
         return;
       }
@@ -318,24 +306,16 @@ export function ComplaintActionDialog({
       const code = mutationError.message;
       const message =
         code === "COMMENT_REQUIRED"
-          ? translateOr(t, "WF_COMMENT_REQUIRED", "Please enter a comment")
+          ? t("WF_COMMENT_REQUIRED")
           : code === "COMMENT_TOO_LONG"
-            ? translateOr(
-                t,
-                "WF_COMMENT_MAX_LENGTH",
-                "Comments cannot exceed {MAX_COUNT} characters.",
-              ).replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH))
+            ? t("WF_COMMENT_MAX_LENGTH").replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH))
             : code === "FILES_REQUIRED"
-              ? translateOr(
-                  t,
-                  "WF_QUOTATION_REQUIRED",
-                  "Please upload a quotation document",
-                )
+              ? t("WF_QUOTATION_REQUIRED")
               : code === "REASON_REQUIRED"
-                ? translateOr(t, "WF_REASON_REQUIRED", "Please select a reason")
+                ? t("WF_REASON_REQUIRED")
                 : code === "ASSIGNEE_REQUIRED"
-                  ? translateOr(t, "WF_ASSIGNEE_REQUIRED", "WF_ASSIGNEE_REQUIRED")
-                  : translateOr(t, "CS_COMMON_SOMETHING_WENT_WRONG", "Something went wrong!");
+                  ? t("WF_ASSIGNEE_REQUIRED")
+                  : t("CS_COMMON_SOMETHING_WENT_WRONG");
       setError(message);
     },
   });
@@ -348,11 +328,7 @@ export function ComplaintActionDialog({
     const filesToUpload = Array.from(files);
     if (uploads.length + filesToUpload.length > MAX_IMAGE_COUNT) {
       setError(
-        translateOr(
-          t,
-          "WF_MAX_FILES_REACHED",
-          "You can upload up to {MAX_COUNT} files",
-        ).replace("{MAX_COUNT}", String(MAX_IMAGE_COUNT)),
+        t("WF_MAX_FILES_REACHED").replace("{MAX_COUNT}", String(MAX_IMAGE_COUNT)),
       );
       return;
     }
@@ -361,21 +337,13 @@ export function ComplaintActionDialog({
       const quotationError = validateQuotationFiles(filesToUpload);
       if (quotationError?.code === "FORMAT") {
         setError(
-          translateOr(
-            t,
-            "WF_QUOTATION_IMAGE_NOT_ALLOWED",
-            "Quotation must be a document (PDF or Word), not an image",
-          ),
+          t("WF_QUOTATION_IMAGE_NOT_ALLOWED"),
         );
         return;
       }
       if (quotationError?.code === "SIZE") {
         setError(
-          translateOr(
-            t,
-            "WF_QUOTATION_FILE_TOO_LARGE",
-            "{fileName} exceeds the {MAX_SIZE}MB size limit",
-          )
+          t("WF_QUOTATION_FILE_TOO_LARGE")
             .replace("{fileName}", quotationError.fileName ?? "")
             .replace("{MAX_SIZE}", String(MAX_QUOTATION_SIZE_MB)),
         );
@@ -385,21 +353,13 @@ export function ComplaintActionDialog({
       const documentError = validateActionDocumentFiles(filesToUpload);
       if (documentError?.code === "FORMAT") {
         setError(
-          translateOr(
-            t,
-            "WF_DOCUMENT_FORMAT_NOT_ALLOWED",
-            "WF_DOCUMENT_FORMAT_NOT_ALLOWED",
-          ),
+          t("WF_DOCUMENT_FORMAT_NOT_ALLOWED"),
         );
         return;
       }
       if (documentError?.code === "SIZE") {
         setError(
-          translateOr(
-            t,
-            "WF_DOCUMENT_FILE_TOO_LARGE",
-            "WF_DOCUMENT_FILE_TOO_LARGE",
-          )
+          t("WF_DOCUMENT_FILE_TOO_LARGE")
             .replace("{fileName}", documentError.fileName ?? "")
             .replace("{MAX_SIZE}", String(MAX_ACTION_DOCUMENT_SIZE_MB)),
         );
@@ -442,7 +402,7 @@ export function ComplaintActionDialog({
 
   const endUserName =
     complaintDetails.incident.reporter?.name ??
-    translateOr(t, "CS_COMMON_END_USER", "the end user");
+    t("CS_COMMON_END_USER");
   const outOfWarrantyHelperText = getOutOfWarrantyHelperText(t, action, endUserName);
 
   return (
@@ -459,7 +419,7 @@ export function ComplaintActionDialog({
       }}
       role="button"
       tabIndex={0}
-      aria-label={translateOr(t, "CS_COMMON_CLOSE", "Close")}
+      aria-label={t("CS_COMMON_CLOSE")}
     >
       <div
         className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl border border-border bg-card px-6 py-5 shadow-lg"
@@ -473,13 +433,13 @@ export function ComplaintActionDialog({
         aria-modal="true"
       >
         <h2 className="text-xl leading-[30px] font-semibold text-ink-950">
-          {translateOr(t, `CS_ACTION_${action}`, action)}
+          {t(`CS_ACTION_${action}`)}
         </h2>
 
         <div className="mt-4 space-y-4">
           {actionConfig.needsAssignee ? (
             <FormSelectField
-              label={translateOr(t, "WF_ASSIGNEE", "WF_ASSIGNEE")}
+              label={t("WF_ASSIGNEE")}
               required
               value={selectedAssignee?.code ?? ""}
               options={assigneeOptions}
@@ -500,7 +460,7 @@ export function ComplaintActionDialog({
                 const fallbackName = reason.code ?? reason.localizedCode ?? "";
                 return {
                   code: reason.code ?? reason.localizedCode ?? "",
-                  name: translateOr(t, reason.localizedCode ?? reason.code ?? "", fallbackName),
+                  name: t(reason.localizedCode ?? reason.code ?? ""),
                 };
               })}
               onChange={(option) =>
@@ -517,12 +477,12 @@ export function ComplaintActionDialog({
 
           {actionConfig.fixedReopenReasons ? (
             <FormSelectField
-              label={translateOr(t, "WF_REOPEN_REASON", "WF_REOPEN_REASON")}
+              label={t("WF_REOPEN_REASON")}
               required
               value={selectedReopenReason}
               options={REOPEN_REASON_OPTIONS.map((code) => ({
                 code,
-                name: translateOr(t, code, code),
+                name: t(code),
               }))}
               onChange={(option) => setSelectedReopenReason(option?.code ?? "")}
             />
@@ -530,14 +490,14 @@ export function ComplaintActionDialog({
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-ink-950">
-              {translateOr(t, "WF_COMMON_COMMENTS", "Comments")}
+              {t("WF_COMMON_COMMENTS")}
               {actionConfig.comment === "required" ? (
                 <span className="text-destructive"> *</span>
               ) : null}
             </label>
             <textarea
               className="min-h-[100px] w-full rounded border border-ink-300 bg-card px-3 py-2 text-sm placeholder:text-ink-300"
-              placeholder={translateOr(t, "WF_COMMENTS_PLACEHOLDER", "Describe the issue in detail...")}
+              placeholder={t("WF_COMMENTS_PLACEHOLDER")}
               maxLength={MAX_COMMENT_LENGTH}
               value={comments}
               onChange={(event) => setComments(event.target.value)}
@@ -571,7 +531,7 @@ export function ComplaintActionDialog({
 
         <div className="mt-6 flex justify-center gap-3">
           <Button type="button" variant="outline" size="lg" onClick={onClose}>
-            {translateOr(t, "TL_COMMON_CANCEL", "Cancel")}
+            {t("TL_COMMON_CANCEL")}
           </Button>
           <Button
             type="button"
@@ -583,8 +543,8 @@ export function ComplaintActionDialog({
             }}
           >
             {mutation.isPending
-              ? translateOr(t, "CS_COMMON_SUBMITTING", "Submitting...")
-              : translateOr(t, "CS_COMMON_SUBMIT", "Submit")}
+              ? t("CS_COMMON_SUBMITTING")
+              : t("CS_COMMON_SUBMIT")}
           </Button>
         </div>
       </div>

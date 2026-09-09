@@ -1,4 +1,4 @@
-import { contextPath, employeeHomePath, translateOr, useTranslate } from "@/shared";
+import { contextPath, employeeHomePath, useTranslate } from "@/shared";
 import { Button, TopBar } from "@/ui";
 import { Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
@@ -39,10 +39,10 @@ export function ComplaintDetailsPage() {
     return (
       <div className="space-y-4">
         <p className="text-sm text-destructive">
-          {translateOr(t, "CS_COMMON_SOMETHING_WENT_WRONG", "Something went wrong!")}
+          {t("CS_COMMON_SOMETHING_WENT_WRONG")}
         </p>
         <Button asChild variant="outline" size="lg">
-          <Link to={inboxPath}>{translateOr(t, "ES_IM_VIEW_INBOX", "View inbox")}</Link>
+          <Link to={inboxPath}>{t("ES_IM_VIEW_INBOX")}</Link>
         </Button>
       </div>
     );
@@ -69,10 +69,10 @@ export function ComplaintDetailsPage() {
     return (
       <div className="space-y-4">
         <p className="text-sm text-destructive">
-          {translateOr(t, "CS_COMMON_COMPLAINT_NOT_FOUND", "Ticket not found")}
+          {t("CS_COMMON_COMPLAINT_NOT_FOUND")}
         </p>
         <Button asChild variant="outline" size="lg">
-          <Link to={inboxPath}>{translateOr(t, "ES_IM_VIEW_INBOX", "View inbox")}</Link>
+          <Link to={inboxPath}>{t("ES_IM_VIEW_INBOX")}</Link>
         </Button>
       </div>
     );
@@ -93,10 +93,10 @@ export function ComplaintDetailsPage() {
   return (
     <div className="space-y-6">
       <TopBar
-        title={translateOr(t, "CS_HEADER_TICKET_DETAILS", "Ticket Details")}
+        title={t("CS_HEADER_TICKET_DETAILS")}
         breadcrumbs={[
-          { label: translateOr(t, "CORE_COMMON_OVERVIEW", "Overview"), to: homePath },
-          { label: translateOr(t, "ES_IM_INBOX", "Inbox"), to: inboxPath },
+          { label: t("CORE_COMMON_OVERVIEW"), to: homePath },
+          { label: t("ES_IM_INBOX"), to: inboxPath },
           { label: incidentId },
         ]}
       />

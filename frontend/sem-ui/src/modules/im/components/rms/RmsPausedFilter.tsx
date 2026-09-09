@@ -1,4 +1,4 @@
-import { aggregateBoundaryCodes, translateOr, useJurisdictionStore, useTranslate, useBoundary } from "@/shared";
+import { aggregateBoundaryCodes, useJurisdictionStore, useTranslate, useBoundary } from "@/shared";
 import { Link } from "@tanstack/react-router";
 import { Briefcase, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -44,7 +44,7 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
     const unique = new Map<string, BoundaryOption>();
     for (const state of boundaryData.states) {
       if (!unique.has(state.code)) {
-        unique.set(state.code, { code: state.code, name: translateOr(t, `Boundary_${state.code}`, state.code) });
+        unique.set(state.code, { code: state.code, name: t(`Boundary_${state.code}`) });
       }
     }
     setStateMenu([...unique.values()].sort((a, b) => a.name.localeCompare(b.name)));
@@ -60,7 +60,7 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
         .filter((district) => district.parentCode === value.state?.code)
         .map((district) => ({
           code: district.code,
-          name: translateOr(t, `Boundary_${district.code}`, district.code),
+          name: t(`Boundary_${district.code}`),
           parentCode: district.parentCode,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
@@ -77,7 +77,7 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
         .filter((block) => block.parentCode === value.district?.code)
         .map((block) => ({
           code: block.code,
-          name: translateOr(t, `Boundary_${block.code}`, block.code),
+          name: t(`Boundary_${block.code}`),
           parentCode: block.parentCode,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
@@ -99,18 +99,18 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
             <Briefcase className="size-4" />
           </span>
           <span className="font-semibold text-ink-950">
-            {translateOr(t, "RMS_FACILITIES", "Facilities")}
+            {t("RMS_FACILITIES")}
           </span>
         </div>
         <Link to={pauseRmsPath} className="block text-sm font-semibold text-success-foreground hover:underline">
-          {translateOr(t, "ES_IM_PAUSE_RMS", "Pause RMS")}
+          {t("ES_IM_PAUSE_RMS")}
         </Link>
       </div>
 
       <div className="livelihood-card space-y-4 p-5">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-ink-950">
-            {translateOr(t, "ES_COMMON_FILTER_BY", "Filter By")}:
+            {t("ES_COMMON_FILTER_BY")}:
           </span>
           {hasActiveFilters ? (
             <button
@@ -118,13 +118,13 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
               className="cursor-pointer text-sm text-destructive hover:underline"
               onClick={() => onChange({ state: null, district: null, block: null })}
             >
-              {translateOr(t, "ES_COMMON_CLEAR", "Clear")}
+              {t("ES_COMMON_CLEAR")}
             </button>
           ) : null}
         </div>
 
         <FormSelectField
-          label={translateOr(t, "CS_STATE", "State")}
+          label={t("CS_STATE")}
           value={value.state?.code ?? ""}
           options={stateOptions}
           onChange={(option) =>
@@ -145,7 +145,7 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
         ) : null}
 
         <FormSelectField
-          label={translateOr(t, "CS_DISTRICT", "District")}
+          label={t("CS_DISTRICT")}
           value={value.district?.code ?? ""}
           options={districtMenu}
           disabled={!value.state}
@@ -159,7 +159,7 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
         />
 
         <FormSelectField
-          label={translateOr(t, "CS_BLOCK", "Block")}
+          label={t("CS_BLOCK")}
           value={value.block?.code ?? ""}
           options={blockMenu}
           disabled={!value.district}
