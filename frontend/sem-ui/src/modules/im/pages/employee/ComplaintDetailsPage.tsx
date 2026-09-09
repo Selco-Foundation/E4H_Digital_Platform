@@ -3,11 +3,11 @@ import { Button, TopBar } from "@/ui";
 import { Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
-import { ComplaintMediaSection } from "../../components/details/ComplaintMediaSection";
 import { ComplaintSummarySection } from "../../components/details/ComplaintSummarySection";
 import { ComplaintTimelineSection } from "../../components/details/ComplaintTimelineSection";
 import { IM_ROUTES } from "../../constants/routes";
 import { useComplaintDetails } from "../../hooks/use-complaint-details";
+import { isInitialComplaintAction } from "../../utils/complaint-details";
 
 function useComplaintRouteParams() {
   return useMemo(() => {
@@ -79,7 +79,7 @@ export function ComplaintDetailsPage() {
   }
 
   const applyCheckpoint = workflowDetails.timeline.find((checkpoint) =>
-    ["AUTO_ASSIGN", "CREATE"].includes(checkpoint.performedAction ?? ""),
+    isInitialComplaintAction(checkpoint.performedAction),
   );
   const timelineMediaImages =
     applyCheckpoint?.thumbnailsToShow?.fullImage ?? complaintDetails.images;
@@ -101,9 +101,8 @@ export function ComplaintDetailsPage() {
         ]}
       />
 
-      <ComplaintSummarySection complaintDetails={complaintDetails} />
-
-      <ComplaintMediaSection
+      <ComplaintSummarySection
+        complaintDetails={complaintDetails}
         images={timelineMediaImages}
         videos={timelineMediaVideos}
       />

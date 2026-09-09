@@ -6,6 +6,7 @@ import type {
   WorkflowDetailsData,
   WorkflowTimelineCheckpoint,
 } from "../../types/incident-details";
+import { isInitialComplaintAction } from "../../utils/complaint-details";
 import { FormSectionCard } from "../create/FormSectionCard";
 import { ComplaintActionBar } from "./ComplaintActionBar";
 import { ComplaintMediaList } from "./ComplaintMediaList";
@@ -32,7 +33,7 @@ function TimelineCaption({
   const reopenReasons = [...(additional?.reopenreason ?? [])].reverse();
 
   const action = checkpoint.performedAction;
-  const isCreateCheckpoint = action === "APPLY" || action === "CREATE";
+  const isCreateCheckpoint = isInitialComplaintAction(action);
   let reasonText: string | null = null;
   let reasonLabel: string | null = null;
 

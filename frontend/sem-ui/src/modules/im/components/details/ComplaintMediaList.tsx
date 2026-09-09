@@ -16,7 +16,7 @@ interface ComplaintMediaListProps {
 export function ComplaintMediaList({
   images,
   videos,
-  imageGridClassName = "grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4",
+  imageGridClassName = "grid max-w-[760px] grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,180px))]",
 }: ComplaintMediaListProps) {
   const { t } = useTranslate();
   const attachmentLabel = translateOr(t, "CS_COMMON_ATTACHMENT", "Attachment");
@@ -82,13 +82,13 @@ export function ComplaintMediaList({
       ) : null}
 
       {videos.length > 0 ? (
-        <div className="grid gap-3">
+        <div className="grid max-w-[450px] gap-3">
           {videos.map((video, index) => (
             <div key={`${video.original ?? video.master ?? index}`} className="space-y-2">
               {video.original ? (
                 <video
                   controls
-                  className="w-full max-w-xl rounded-lg border border-border"
+                  className="w-full rounded-lg border border-border"
                   src={video.original}
                 />
               ) : video.master ? (

@@ -18,6 +18,7 @@ export interface BoundaryOption {
 
 export interface VerificationDocument {
   fileStoreId: string;
+  id?: string;
   documentUid: string;
   documentType: string;
   additionalDetails: Record<string, unknown>;

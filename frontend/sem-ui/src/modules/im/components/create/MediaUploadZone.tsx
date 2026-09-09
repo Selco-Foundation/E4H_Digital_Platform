@@ -16,7 +16,7 @@ interface MediaUploadZoneProps {
   disabled?: boolean;
   uploading?: boolean;
   uploads: UploadedMediaEntry[];
-  kind: "image" | "video";
+  kind: "image" | "video" | "fir";
   onSelect: (files: FileList) => void;
   onRemove: (fileStoreId: string) => void;
 }
@@ -27,7 +27,7 @@ function UploadedFileThumbnail({
   icon: Icon,
 }: {
   readonly entry: UploadedMediaEntry;
-  readonly kind: "image" | "video";
+  readonly kind: "image" | "video" | "fir";
   readonly icon: LucideIcon;
 }) {
   const previewUrl = useMemo(
@@ -67,7 +67,7 @@ function UploadedFileCard({
   onRemove,
 }: {
   readonly entry: UploadedMediaEntry;
-  readonly kind: "image" | "video";
+  readonly kind: "image" | "video" | "fir";
   readonly icon: LucideIcon;
   readonly onRemove: (fileStoreId: string) => void;
 }) {
