@@ -95,6 +95,10 @@ public class RMSConfiguration {
     @Value("${rms.rule.grid.high.voltage.tickets.enabled:true}")
     private boolean gridHighVoltageTicketsEnabled;
 
+    /** When false, battery deep discharge facilities do not produce alerts or tickets. Overcharge is unaffected by this flag. */
+    @Value("${rms.rule.battery.deep.discharge.tickets.enabled:true}")
+    private boolean batteryDeepDischargeTicketsEnabled;
+
     // Deduplication Configuration
     @Value("${rms.deduplication.suppression.window.hours:24}")
     private Integer suppressionWindowHours;

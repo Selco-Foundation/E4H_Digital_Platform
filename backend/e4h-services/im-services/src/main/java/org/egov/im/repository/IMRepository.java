@@ -13,6 +13,7 @@ import org.egov.tracer.model.CustomException;
 import org.egov.common.exception.InvalidTenantIdException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -157,6 +158,40 @@ public class IMRepository {
 		int updated = jdbcTemplate.update(query, newBoundaryCode, newBlockCode, now, lastModifiedBy, facilityId, tenantId);
 		log.info("Updated boundarycode/block on {} incident row(s) for facilityId={}", updated, facilityId);
 		return updated;
+	}
+
+	/**
+	 * Returns the uuid of the mapped vendor persisted against an incident, or null if the ticket has
+	 * never been handed to a resolver.
+	 *
+	 * <p>Only the one column is selected: this sits on the ticket-update request path and the caller
+	 * has no use for the rest of the row. A null column and an unknown incident are indistinguishable
+	 * here, and both send the caller on to its next fallback.
+	 */
+	public String fetchMappedVendorUuid(String tenantId, String id) {
+		log.trace("IMRepository::fetchMappedVendorUuid method invoked");
+		if (id == null || id.isEmpty()) {
+			return null;
+		}
+
+		String query = "SELECT mapped_vendor_uuid FROM {schema}.eg_incident_v2 WHERE id = ?";
+		try {
+			query = utils.replaceSchemaPlaceholder(query, tenantId);
+		} catch (Exception e) {
+			log.error("Failed to replace schema placeholder for mapped vendor lookup, tenantId: {}", tenantId, e);
+			throw new CustomException("PGR_SEARCH_ERROR",
+					"TenantId length is not sufficient to replace query schema in a multi state instance");
+		}
+
+		ResultSetExtractor<String> extractor = rs -> {
+			if (!rs.next()) {
+				log.info("No incident row found for id={}, mapped vendor cannot be carried forward from db", id);
+				return null;
+			}
+			String uuid = rs.getString("mapped_vendor_uuid");
+			return uuid == null || uuid.isEmpty() ? null : uuid;
+		};
+		return jdbcTemplate.query(query, extractor, id);
 	}
 
 

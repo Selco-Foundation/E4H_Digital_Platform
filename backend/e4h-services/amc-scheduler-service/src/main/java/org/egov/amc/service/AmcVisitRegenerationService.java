@@ -29,8 +29,8 @@ import static org.egov.amc.util.AmcConstants.DRAFT_STATUS;
 import static org.egov.amc.util.AmcConstants.EXPIRED_STATUS;
 
 /**
- * Rebuilds the scheduled-visit series of an AMC configuration when its cadence changes
- * (durationMonths and/or visitFrequencyMonths).
+ * Rebuilds the scheduled-visit series of an AMC configuration when its schedule changes
+ * (durationMonths, visitFrequencyMonths and/or configurationStartDate).
  *
  * <p>This lives in its own bean rather than inside {@link AmcConfigurationService} on purpose:
  * {@code ScheduledVisitService} and {@code ScheduledVisitEnrichment} both inject
@@ -64,11 +64,15 @@ public class AmcVisitRegenerationService {
     }
 
     /**
-     * Regenerates the future visits of a configuration if - and only if - its cadence changed.
+     * Regenerates the future visits of a configuration if - and only if - its schedule changed:
+     * duration, visit frequency, or the AMC Start Date (configurationStartDate) itself. The latter
+     * is set from the Installation Report Submission Date by default and can be corrected later by
+     * re-uploading the AMC configuration Excel (see /amcConfigurationBulkIngest) - either kind of
+     * change moves every not-yet-due visit date, so both need the same rebuild.
      *
      * <p>Visits that are terminal (APPROVED/EXPIRED) or already due are kept untouched; the
-     * remaining ones are deleted and replaced by a fresh series computed from the updated end date
-     * and frequency. New visit numbers continue from the highest kept one, because
+     * remaining ones are deleted and replaced by a fresh series computed from the updated start
+     * date, end date and frequency. New visit numbers continue from the highest kept one, because
      * {@code ux_scheduled_visits_unique_visit_per_amc (amc_configuration_id, visit_number)} forbids
      * restarting at 1.
      *
@@ -84,12 +88,13 @@ public class AmcVisitRegenerationService {
             return List.of();
         }
 
-        boolean cadenceChanged =
+        boolean scheduleChanged =
                 !Objects.equals(configurationFromDB.getDurationMonths(), updatedConfiguration.getDurationMonths())
-                        || !Objects.equals(configurationFromDB.getVisitFrequencyMonths(), updatedConfiguration.getVisitFrequencyMonths());
-        if (!cadenceChanged) {
-            log.debug("Cadence unchanged for configurationId: {}, visits left as-is", updatedConfiguration.getId());
-            return List.of();
+                        || !Objects.equals(configurationFromDB.getVisitFrequencyMonths(), updatedConfiguration.getVisitFrequencyMonths())
+                        || !Objects.equals(configurationFromDB.getConfigurationStartDate(), updatedConfiguration.getConfigurationStartDate());
+        if (!scheduleChanged) {
+            log.debug("Schedule unchanged for configurationId: {}, visits left as-is", updatedConfiguration.getId());
+            List.of();
         }
 
         Long startDate = updatedConfiguration.getConfigurationStartDate() != null

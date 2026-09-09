@@ -111,17 +111,7 @@ public class FacilityKibanaMapper {
             builder.geoPoint(geoPoint);
         }
 
-        // Derive solar panel status the same way the im-services-analytics Kafka listener does:
-        // NON_FUNCTIONAL when any open incident for this boundary code is non-functional, else FUNCTIONAL.
-        // An explicit value in additionalDetails still takes precedence.
-        String solarPanelStatus = incidentStatusDao.resolveSolarPanelStatus(facility.getBoundaryCode());
-        if (facility.getAdditionalDetails() != null) {
-            Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
-            if (solarStatus != null && !solarStatus.toString().isBlank()) {
-                solarPanelStatus = solarStatus.toString();
-            }
-        }
-        builder.solarPanelStatus(solarPanelStatus);
+        applySolarPanelStatus(facility, builder);
 
         applyMappedVendorFields(facility, builder);
         if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {
@@ -176,6 +166,36 @@ public class FacilityKibanaMapper {
             log.warn("Boundary is null in FacilityKibanaIndex for facility {}", facility.getFacilityId());
         }
         return result;
+    }
+
+    /**
+     * Derives solar panel status and the time the facility went non-functional, and sets both on
+     * {@code builder}.
+     *
+     * <p>Status is computed the same way the im-services-analytics Kafka listener does: NON_FUNCTIONAL
+     * when any open incident for this boundary code is non-functional, else FUNCTIONAL. An explicit
+     * value in {@code additionalDetails} still takes precedence over the incident-derived status.
+     */
+    private void applySolarPanelStatus(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        IncidentStatusDao.SolarPanelState solarPanelState =
+                incidentStatusDao.resolveSolarPanelState(facility.getBoundaryCode());
+        String solarPanelStatus = solarPanelState.status();
+        Long nonFunctionalTimestamp = solarPanelState.nonFunctionalSince();
+
+        Object override = facility.getAdditionalDetails() != null
+                ? facility.getAdditionalDetails().get("solarPanelStatus")
+                : null;
+        if (override != null && !override.toString().isBlank()) {
+            solarPanelStatus = override.toString();
+            // The override replaces the incident-derived status, so the incident-derived timestamp no
+            // longer describes it. Keep it only while the override still says non-functional.
+            if (!IncidentStatusDao.NON_FUNCTIONAL.equals(solarPanelStatus)) {
+                nonFunctionalTimestamp = null;
+            }
+        }
+
+        builder.solarPanelStatus(solarPanelStatus);
+        builder.nonFunctionalTimestamp(nonFunctionalTimestamp);
     }
 
     /**

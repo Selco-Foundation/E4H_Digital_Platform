@@ -22,6 +22,19 @@ public class UserAnalyticsConstants {
     public static final String KIBANA_LOGIN_EVENT_TYPE = "KIBANA_LOGIN";
 
     /**
+     * {@code event} value of a dashboard view on the raw Kibana audit topic, and the
+     * {@code event_type} it is translated to in the {@code kibana-dashboard-report} index.
+     * <p>
+     * These live in their own index rather than the shared one because the raw record carries no
+     * username — see {@code KibanaDashboardEventListener}.
+     */
+    public static final String KIBANA_DASHBOARD_VIEW_SOURCE_EVENT = "kibana_dashboard_view";
+    public static final String KIBANA_DASHBOARD_VIEW_EVENT_TYPE = "KIBANA_DASHBOARD_VIEW";
+
+    /** {@code application} dimension both Kibana flows carry. */
+    public static final String KIBANA_APPLICATION = "KIBANA";
+
+    /**
      * {@code system_role} of the vendor acting on a ticket. The Saura eMitra event table counts every
      * event this role produced as a vendor action, whatever the action itself was.
      */

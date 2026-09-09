@@ -52,6 +52,9 @@ public class Action   {
         @Valid
         private List<String> roles;
 
+        @JsonProperty("active")
+        private Boolean active;
+
         private AuditDetails auditDetails;
 
 

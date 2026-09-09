@@ -10,17 +10,27 @@ import facility.web.models.FacilityKibanaIndex;
  * That makes it the one part of the document facility-registry cannot rebuild from its own database,
  * so any code path that constructs a fresh document for an already-indexed facility must copy the
  * indexed values forward or they would be silently dropped on the next re-index.
+ *
+ * <p>{@code systemType} rides along for the same reason. It is not AMC data - field-planner owns it,
+ * captured on the facility's installation plan - but it reaches the index through the same AMC push
+ * and is equally unrebuildable from facility-registry's own tables, so it has to be carried forward
+ * here too.
  */
 public final class FacilityAmcFieldsHelper {
 
     private FacilityAmcFieldsHelper() {
     }
 
-    /** Copies every AMC field from {@code from} onto {@code to}. No-op when either side is null. */
+    /**
+     * Copies every AMC field, plus {@code systemType}, from {@code from} onto {@code to}. No-op when
+     * either side is null.
+     */
     public static void copyAmcFields(FacilityKibanaIndex from, FacilityKibanaIndex to) {
         if (from == null || to == null) {
             return;
         }
+
+        to.setSystemType(from.getSystemType());
 
         to.setAmcInstallationDate(from.getAmcInstallationDate());
         to.setAmcApplicable(from.getAmcApplicable());

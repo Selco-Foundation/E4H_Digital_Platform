@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 import psycopg2
 
 import pandas as pd
@@ -1009,6 +1009,7 @@ async def get_amc_configuration_template(
         "NIN/HFR ID",
         "BoundaryCode",
         "Health Facility Name",
+        "AMC Start Date",
         "AMC-Frequency",
         "AMC-Duration"
     ]
@@ -1109,6 +1110,28 @@ async def get_amc_configuration_template(
             except Exception as e:
                 logger.warning(f"Error fetching existing AMC configurations for project {project_id}: {e}")
 
+        # AMC Start Date defaults to the Installation Report Submission Date (when SUBMIT_REPORT_A/B
+        # was last actioned on the facility's installation workflow) - one bulk lookup for every
+        # facility in the template, not one call per row.
+        installation_submission_dates_by_facility: Dict[str, int] = {}
+        if fieldPlan_activity_service_url:
+            try:
+                fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
+                all_facility_ids = [f.get("facility_id") for f in all_facilities if f.get("facility_id")]
+                installation_submission_dates_by_facility = fieldplan_activity_client.get_installation_report_submission_dates(
+                    request_info, all_facility_ids
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching installation report submission dates for AMC template: {e}")
+
+        def format_amc_start_date(epoch_millis):
+            if not epoch_millis:
+                return ""
+            try:
+                return datetime.fromtimestamp(epoch_millis / 1000).strftime("%d-%m-%Y")
+            except (OverflowError, OSError, ValueError):
+                return ""
+
         # Create rows for AMC configuration template - one row per facility
         # Asset types ["INVERTER","PANEL","BATTERY"] will be used as default for each configuration during processing
         rows = []
@@ -1144,6 +1167,7 @@ async def get_amc_configuration_template(
             # Initialize row with empty values
             frequency_value = ""
             duration_value = ""
+            start_date_value = ""
 
             # Read existing AMC configuration from the map prefetched once above (no per-facility call)
             if facility_id:
@@ -1156,12 +1180,21 @@ async def get_amc_configuration_template(
                     duration_value = convert_duration_to_display(duration_months)
                     logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
 
+                    # An existing configuration already has an authoritative start date (the original
+                    # Installation Report Submission Date, or whatever the Project Manager corrected it
+                    # to on a previous upload) - it takes priority over a freshly fetched submission date.
+                    start_date_value = format_amc_start_date(existing_config.get("configurationStartDate"))
+
+                if not start_date_value:
+                    start_date_value = format_amc_start_date(installation_submission_dates_by_facility.get(facility_id))
+
             # Create one row per facility (asset types are handled internally during processing)
             rows.append({
                 "Facility Id": facility_id,
                 "NIN/HFR ID": nin_hfr_id,
                 "BoundaryCode": boundary_code,
                 "Health Facility Name": facility_name,
+                "AMC Start Date": start_date_value,
                 "AMC-Frequency": frequency_value,
                 "AMC-Duration": duration_value
             })
@@ -1224,7 +1257,7 @@ async def get_amc_configuration_template(
         lock_prefilled_rows_in_excel(
             file_path=output_file_path,
             sheet_name=sheet_name,
-            editable_columns=["AMC-Frequency", "AMC-Duration"],
+            editable_columns=["AMC Start Date", "AMC-Frequency", "AMC-Duration"],
             total_rows=len(rows),
             total_columns=len(columns),
             always_locked_columns=["BoundaryCode"],

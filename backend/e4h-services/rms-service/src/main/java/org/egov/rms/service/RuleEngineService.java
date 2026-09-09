@@ -280,6 +280,10 @@ public class RuleEngineService {
      */
     public List<Alert> applyBatteryDeepDischargeRules(List<RMSFacilityData> facilities) {
         log.info("Applying battery deep discharge/overcharge rules to {} facilities", facilities.size());
+        boolean batteryDeepDischargeTicketsEnabled = config.isBatteryDeepDischargeTicketsEnabled();
+        if (!batteryDeepDischargeTicketsEnabled) {
+            log.info("Battery deep discharge ticket generation is disabled via rms.rule.battery.deep.discharge.tickets.enabled");
+        }
         List<Alert> alerts = new ArrayList<>();
 
         for (RMSFacilityData facility : facilities) {
@@ -300,7 +304,12 @@ public class RuleEngineService {
                           facility.getBatteryHealthInfo().toLowerCase().contains("discharge")) {
                     alertSubType = Alert.AlertSubType.DEEP_DISCHARGING;
                 }
-                
+
+                if (!batteryDeepDischargeTicketsEnabled && alertSubType == Alert.AlertSubType.DEEP_DISCHARGING) {
+                    log.debug("Skipping battery deep discharge alert for facility {} - generation is disabled", facilityId);
+                    continue;
+                }
+
                 // Build detailed metadata with battery health information
                 String metadata = buildBatteryDeepDischargeMetadata(facility, facilityName);
                 

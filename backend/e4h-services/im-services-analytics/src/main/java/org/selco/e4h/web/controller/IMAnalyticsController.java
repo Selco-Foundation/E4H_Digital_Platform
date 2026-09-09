@@ -49,6 +49,22 @@ public class IMAnalyticsController {
         return "Script done!";
     }
 
+    /**
+     * Backfills {@code nonFunctionalTimestamp} onto every health facility index document.
+     * Idempotent - safe to re-run; runs synchronously and returns the number of facilities republished.
+     */
+    @PostMapping("/update_non_functional_timestamp")
+    public ResponseEntity<String> populateNonFunctionalTimestamp() {
+        try {
+            int processed = incidentService.scriptPopulateNonFunctionalTimestamp();
+            return ResponseEntity.ok("Non-functional timestamp backfill completed for " + processed + " facilities");
+        } catch (Exception e) {
+            log.error("Error during non-functional timestamp backfill", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Non-functional timestamp backfill failed: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/test_update_phc")
     public String sendDummyTopicIncident(@Valid @RequestBody IncidentRequest incidentRequest) {
         Map<String, Object> producerRecord = new HashMap<>();
