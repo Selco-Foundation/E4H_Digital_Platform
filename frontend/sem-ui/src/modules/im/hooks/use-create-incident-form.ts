@@ -25,6 +25,8 @@ import type {
 import { buildUploadedDocuments } from "../utils/create-incident-documents";
 import {
   MAX_COMMENT_LENGTH,
+  MAX_FIR_COUNT,
+  MAX_FIR_SIZE_MB,
   MAX_IMAGE_COUNT,
   MAX_IMAGE_SIZE_MB,
   MAX_VIDEO_COUNT,
@@ -46,6 +48,7 @@ interface FieldErrors {
   comments?: string;
   image?: string;
   video?: string;
+  fir?: string;
 }
 
 const EMPTY_FORM: CreateIncidentFormValues = {
@@ -58,54 +61,56 @@ const EMPTY_FORM: CreateIncidentFormValues = {
   comments: "",
 };
 
+const MEDIA_ERROR_MESSAGE_CONFIG: Record<
+  MediaKind,
+  { maxCount: number; maxSizeMb: number; formats: string; countKey: string; sizeKey: string; formatKey: string }
+> = {
+  image: {
+    maxCount: MAX_IMAGE_COUNT,
+    maxSizeMb: MAX_IMAGE_SIZE_MB,
+    formats: "JPG, JPEG, PNG",
+    countKey: "INCIDENT_IMAGE_COUNT_EXCEEDED",
+    sizeKey: "INCIDENT_IMAGE_SIZE_EXCEEDED",
+    formatKey: "INCIDENT_IMAGE_FORMAT_INVALID",
+  },
+  video: {
+    maxCount: MAX_VIDEO_COUNT,
+    maxSizeMb: MAX_VIDEO_SIZE_MB,
+    formats: "MP4, MOV, AVI, WMV",
+    countKey: "INCIDENT_VIDEO_COUNT_EXCEEDED",
+    sizeKey: "INCIDENT_VIDEO_SIZE_EXCEEDED",
+    formatKey: "INCIDENT_VIDEO_FORMAT_INVALID",
+  },
+  fir: {
+    maxCount: MAX_FIR_COUNT,
+    maxSizeMb: MAX_FIR_SIZE_MB,
+    formats: "PDF, JPG, JPEG, PNG",
+    countKey: "INCIDENT_FIR_COUNT_EXCEEDED",
+    sizeKey: "INCIDENT_FIR_SIZE_EXCEEDED",
+    formatKey: "INCIDENT_FIR_FORMAT_INVALID",
+  },
+};
+
 function buildMediaErrorMessage(
   t: (key: string) => string,
   kind: MediaKind,
   error: MediaValidationError,
 ): string {
-  const maxCount = kind === "image" ? MAX_IMAGE_COUNT : MAX_VIDEO_COUNT;
-  const maxSizeMb = kind === "image" ? MAX_IMAGE_SIZE_MB : MAX_VIDEO_SIZE_MB;
-  const formats = kind === "image" ? "JPG, JPEG, PNG" : "MP4, MOV, AVI, WMV";
+  const { maxCount, maxSizeMb, formats, countKey, sizeKey, formatKey } =
+    MEDIA_ERROR_MESSAGE_CONFIG[kind];
 
   if (error.code === "COUNT") {
-    return kind === "image"
-      ? translateOr(
-          t,
-          "INCIDENT_IMAGE_COUNT_EXCEEDED",
-          "You can upload up to {MAX_COUNT} images",
-        ).replace("{MAX_COUNT}", String(maxCount))
-      : translateOr(
-          t,
-          "INCIDENT_VIDEO_COUNT_EXCEEDED",
-          "You can upload up to {MAX_COUNT} videos",
-        ).replace("{MAX_COUNT}", String(maxCount));
+    return translateOr(t, countKey, `You can upload up to ${maxCount} files`).replace(
+      "{MAX_COUNT}",
+      String(maxCount),
+    );
   }
 
   if (error.code === "SIZE") {
-    return kind === "image"
-      ? translateOr(
-          t,
-          "INCIDENT_IMAGE_SIZE_EXCEEDED",
-          `Each image must be ${maxSizeMb}MB or smaller`,
-        )
-      : translateOr(
-          t,
-          "INCIDENT_VIDEO_SIZE_EXCEEDED",
-          `Each video must be ${maxSizeMb}MB or smaller`,
-        );
+    return translateOr(t, sizeKey, `Each file must be ${maxSizeMb}MB or smaller`);
   }
 
-  return kind === "image"
-    ? translateOr(
-        t,
-        "INCIDENT_IMAGE_FORMAT_INVALID",
-        `Only ${formats} formats are supported`,
-      )
-    : translateOr(
-        t,
-        "INCIDENT_VIDEO_FORMAT_INVALID",
-        `Only ${formats} formats are supported`,
-      );
+  return translateOr(t, formatKey, `Only ${formats} formats are supported`);
 }
 
 function toBoundaryOption(
@@ -136,11 +141,16 @@ export function useCreateIncidentForm(inboxPath: string) {
   const [systemFunctionalMenu, setSystemFunctionalMenu] = useState<SelectOption[]>([]);
   const [imageUploads, setImageUploads] = useState<UploadedMediaEntry[]>([]);
   const [videoUploads, setVideoUploads] = useState<UploadedMediaEntry[]>([]);
+  const [firUploads, setFirUploads] = useState<UploadedMediaEntry[]>([]);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const [isFirUploading, setIsFirUploading] = useState(false);
   const [duplicateTickets, setDuplicateTickets] = useState<
     Array<{ ticketId: string; ticketTenantId: string }>
   >([]);
+  // Matches DIGIT-UI's CreateComplaint/index.js: `isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT"`
+  // gates the mandatory "Upload FIR or Police Complaint Letter" field.
+  const isTheftIssue = form.ticketType?.key?.toUpperCase() === "THEFT";
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submittedResponse, setSubmittedResponse] =
     useState<CreateIncidentResponse | null>(null);
@@ -239,13 +249,10 @@ export function useCreateIncidentForm(inboxPath: string) {
       if (!accessToken || !employeeTenantId) {
         return;
       }
-      if (kind !== "image" && kind !== "video") {
-        return;
-      }
 
       const fileArray = Array.from(files);
       const existingCount =
-        kind === "image" ? imageUploads.length : videoUploads.length;
+        kind === "image" ? imageUploads.length : kind === "video" ? videoUploads.length : firUploads.length;
       const validationError = validateMediaFiles(fileArray, existingCount, kind);
 
       if (validationError) {
@@ -258,8 +265,8 @@ export function useCreateIncidentForm(inboxPath: string) {
       setFieldErrors((prev) => ({ ...prev, [kind]: undefined }));
 
       const setUploading =
-        kind === "image" ? setIsImageUploading : setIsVideoUploading;
-      const setUploads = kind === "image" ? setImageUploads : setVideoUploads;
+        kind === "image" ? setIsImageUploading : kind === "video" ? setIsVideoUploading : setIsFirUploading;
+      const setUploads = kind === "image" ? setImageUploads : kind === "video" ? setVideoUploads : setFirUploads;
 
       setUploading(true);
       try {
@@ -281,12 +288,12 @@ export function useCreateIncidentForm(inboxPath: string) {
         setUploading(false);
       }
     },
-    [accessToken, employeeTenantId, imageUploads.length, t, videoUploads.length],
+    [accessToken, employeeTenantId, firUploads.length, imageUploads.length, t, videoUploads.length],
   );
 
   const removeUpload = useCallback(
-    (kind: "image" | "video", fileStoreId: string) => {
-      const setUploads = kind === "image" ? setImageUploads : setVideoUploads;
+    (kind: UploadedMediaEntry["kind"], fileStoreId: string) => {
+      const setUploads = kind === "image" ? setImageUploads : kind === "video" ? setVideoUploads : setFirUploads;
       setUploads((prev) => prev.filter((item) => item.fileStoreId !== fileStoreId));
     },
     [],
@@ -331,9 +338,17 @@ export function useCreateIncidentForm(inboxPath: string) {
         "Comments cannot exceed {MAX_COUNT} characters.",
       ).replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH));
     }
+    // Matches DIGIT-UI's `hasMandatoryTheftUpload` check on submit.
+    if (isTheftIssue && firUploads.length === 0) {
+      errors.fir = translateOr(
+        t,
+        "INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER",
+        "Please upload the FIR or police complaint letter",
+      );
+    }
     setFieldErrors((prev) => ({ ...prev, ...errors }));
     return Object.keys(errors).length === 0;
-  }, [form, t]);
+  }, [firUploads.length, form, isTheftIssue, t]);
 
   const canSubmit = useMemo(() => {
     return Boolean(
@@ -343,10 +358,12 @@ export function useCreateIncidentForm(inboxPath: string) {
         form.ticketType &&
         form.ticketSubType &&
         form.systemFunctional &&
+        (!isTheftIssue || firUploads.length > 0) &&
         !isImageUploading &&
-        !isVideoUploading,
+        !isVideoUploading &&
+        !isFirUploading,
     );
-  }, [form, isImageUploading, isVideoUploading]);
+  }, [firUploads.length, form, isFirUploading, isImageUploading, isTheftIssue, isVideoUploading]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -360,6 +377,7 @@ export function useCreateIncidentForm(inboxPath: string) {
       const uploadedDocuments = buildUploadedDocuments([
         ...imageUploads,
         ...videoUploads,
+        ...firUploads,
       ]);
 
       return createIncident({
@@ -397,6 +415,7 @@ export function useCreateIncidentForm(inboxPath: string) {
     setFieldErrors({});
     setImageUploads([]);
     setVideoUploads([]);
+    setFirUploads([]);
     setTicketSubTypeMenu([]);
     sessionStorage.removeItem(DRAFT_STORAGE_KEY);
   }, []);
@@ -408,9 +427,10 @@ export function useCreateIncidentForm(inboxPath: string) {
         form,
         imageUploads: imageUploads.map((item) => item.fileStoreId),
         videoUploads: videoUploads.map((item) => item.fileStoreId),
+        firUploads: firUploads.map((item) => item.fileStoreId),
       }),
     );
-  }, [form, imageUploads, videoUploads]);
+  }, [firUploads, form, imageUploads, videoUploads]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
@@ -477,10 +497,13 @@ export function useCreateIncidentForm(inboxPath: string) {
     isBoundaryLoading,
     imageUploads,
     videoUploads,
+    firUploads,
     uploadFiles,
     removeUpload,
     isImageUploading,
     isVideoUploading,
+    isFirUploading,
+    isTheftIssue,
     duplicateTickets,
     setDuplicateTickets,
     canSubmit,
@@ -502,6 +525,8 @@ export function useCreateIncidentForm(inboxPath: string) {
     maxImageSizeMb: MAX_IMAGE_SIZE_MB,
     maxVideoCount: MAX_VIDEO_COUNT,
     maxVideoSizeMb: MAX_VIDEO_SIZE_MB,
+    maxFirCount: MAX_FIR_COUNT,
+    maxFirSizeMb: MAX_FIR_SIZE_MB,
     maxCommentLength: MAX_COMMENT_LENGTH,
   };
 }

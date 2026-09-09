@@ -58,7 +58,9 @@ export async function resolveVerificationMedia(
   accessToken: string,
   user?: AuthUser | null,
 ) {
-  const ids = documents.map((doc) => doc.fileStoreId).filter(Boolean);
+  const ids = documents
+    .map((doc) => doc.fileStoreId || doc.id)
+    .filter((id): id is string => Boolean(id));
   if (!ids.length) {
     return { thumbs: [], images: [], videos: [] as Array<{ master?: string | null; original?: string | null }> };
   }
@@ -72,7 +74,12 @@ export async function resolveVerificationMedia(
   const videos = new Map<string, { master?: string | null; original?: string | null }>();
 
   for (const doc of documents) {
-    const rawUrl = urlMap.get(doc.fileStoreId);
+    const fileStoreId = doc.fileStoreId || doc.id;
+    if (!fileStoreId) {
+      continue;
+    }
+
+    const rawUrl = urlMap.get(fileStoreId);
     if (!rawUrl) {
       continue;
     }
@@ -85,7 +92,7 @@ export async function resolveVerificationMedia(
       docType.startsWith("VIDEO") ||
       doc.documentType?.toLowerCase().startsWith("video")
     ) {
-      const videoKey = doc.documentUid || doc.fileStoreId;
+      const videoKey = doc.documentUid || fileStoreId;
       if (!videos.has(videoKey)) {
         videos.set(videoKey, { master: null, original: null });
       }

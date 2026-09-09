@@ -2,6 +2,7 @@ import { Button } from "@/ui";
 import {
   Camera,
   FileText,
+  FileWarning,
   Info,
   Loader2,
   MapPin,
@@ -37,10 +38,13 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
     isBoundaryLoading,
     imageUploads,
     videoUploads,
+    firUploads,
     uploadFiles,
     removeUpload,
     isImageUploading,
     isVideoUploading,
+    isFirUploading,
+    isTheftIssue,
     duplicateTickets,
     setDuplicateTickets,
     canSubmit,
@@ -59,6 +63,8 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
     maxImageSizeMb,
     maxVideoCount,
     maxVideoSizeMb,
+    maxFirCount,
+    maxFirSizeMb,
     maxCommentLength,
     submittedResponse,
   } = useCreateIncidentForm(inboxPath);
@@ -275,6 +281,32 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
                 onRemove={(fileStoreId) => removeUpload("video", fileStoreId)}
               />
             </div>
+
+            {isTheftIssue ? (
+              <MediaUploadZone
+                label={translateOr(
+                  t,
+                  "INCIDENT_UPLOAD_FIR_POLICE_LETTER",
+                  "Upload FIR or Police Complaint Letter",
+                )}
+                hint={translateOr(t, "INCIDENT_TAP_UPLOAD_FIR", "Tap to upload file")}
+                helperText={translateOr(
+                  t,
+                  "INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER",
+                  "Please upload the copy of an FIR or Police Acknowledgement Letter",
+                )}
+                error={fieldErrors.fir}
+                icon={FileWarning}
+                accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf"
+                multiple
+                disabled={disableUpload || firUploads.length >= maxFirCount}
+                uploading={isFirUploading}
+                uploads={firUploads}
+                kind="fir"
+                onSelect={(files) => void uploadFiles(files, "fir")}
+                onRemove={(fileStoreId) => removeUpload("fir", fileStoreId)}
+              />
+            ) : null}
           </div>
         </FormSectionCard>
 

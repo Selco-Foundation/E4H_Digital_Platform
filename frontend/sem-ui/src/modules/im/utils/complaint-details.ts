@@ -3,6 +3,18 @@ import type { ComplaintDetailsData, ComplaintDetailsRow, Incident, IncidentWorkf
 import { TERMINAL_APPLICATION_STATUSES } from "../constants/workflow";
 import { formatEpochToDate } from "./date-format";
 
+const INITIAL_COMPLAINT_ACTIONS = new Set([
+  "APPLY",
+  "APPLY_THEFT",
+  "APPLY_RMS_DEVICE",
+  "AUTO_ASSIGN",
+  "CREATE",
+]);
+
+export function isInitialComplaintAction(action?: string | null): boolean {
+  return INITIAL_COMPLAINT_ACTIONS.has(action ?? "");
+}
+
 /**
  * Matches DIGIT-UI's im/ComplaintDetails row set and field sources exactly
  * (useComplaintDetails.js's getDetailsRow) — all fields read flat off `incident`,

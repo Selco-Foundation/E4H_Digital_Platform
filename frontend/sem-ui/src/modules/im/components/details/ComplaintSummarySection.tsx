@@ -3,15 +3,21 @@ import { ClipboardList } from "lucide-react";
 import type { ComplaintDetailsData } from "../../types/incident-details";
 import { translateDetailValue } from "../../utils/complaint-details";
 import { FormSectionCard } from "../create/FormSectionCard";
+import { ComplaintMediaList, type ComplaintVideoEntry } from "./ComplaintMediaList";
 
 interface ComplaintSummarySectionProps {
   complaintDetails: ComplaintDetailsData;
+  images?: string[];
+  videos?: ComplaintVideoEntry[];
 }
 
 export function ComplaintSummarySection({
   complaintDetails,
+  images = [],
+  videos = [],
 }: ComplaintSummarySectionProps) {
   const { t } = useTranslate();
+  const hasAdditionalDetails = images.length > 0 || videos.length > 0;
 
   return (
     <FormSectionCard
@@ -32,6 +38,14 @@ export function ComplaintSummarySection({
           </div>
         ))}
       </dl>
+      {hasAdditionalDetails ? (
+        <div className="mt-6 border-t border-border pt-5">
+          <h3 className="mb-3 text-sm font-semibold text-ink-950">
+            {translateOr(t, "CS_TICKET_ADDITIONAL_DETAILS", "Additional Details")}
+          </h3>
+          <ComplaintMediaList images={images} videos={videos} />
+        </div>
+      ) : null}
     </FormSectionCard>
   );
 }
