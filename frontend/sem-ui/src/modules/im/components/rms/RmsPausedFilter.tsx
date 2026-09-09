@@ -102,7 +102,7 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
             {translateOr(t, "RMS_FACILITIES", "Facilities")}
           </span>
         </div>
-        <Link to={pauseRmsPath} className="block text-sm font-semibold text-destructive hover:underline">
+        <Link to={pauseRmsPath} className="block text-sm font-semibold text-success-foreground hover:underline">
           {translateOr(t, "ES_IM_PAUSE_RMS", "Pause RMS")}
         </Link>
       </div>
