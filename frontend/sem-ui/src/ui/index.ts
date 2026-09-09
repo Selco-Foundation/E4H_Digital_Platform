@@ -142,5 +142,6 @@ export { SplitButton } from "./components/split-button";
 export type { SplitButtonProps } from "./components/split-button";
 export { TopBar } from "./components/top-bar";
 export { LanguageSwitcher } from "./components/language-switcher";
+export { FacilityScopeSwitcher } from "./components/facility-scope-switcher";
 export { Pagination } from "./components/pagination";
 export type { PaginationProps } from "./components/pagination";
