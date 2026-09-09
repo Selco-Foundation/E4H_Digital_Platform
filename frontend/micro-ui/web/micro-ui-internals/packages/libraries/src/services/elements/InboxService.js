@@ -12,4 +12,14 @@ export const InboxGeneral = {
       data: { ...filters },
     })
   },
+  SearchMappedVendors: ({ ...filters }) => {
+    return Request({
+      url: Urls.MappedVendorSearch,
+      useCache: false,
+      method: "POST",
+      auth: true,
+      userService: true,
+      data: { ...filters },
+    });
+  },
 };
