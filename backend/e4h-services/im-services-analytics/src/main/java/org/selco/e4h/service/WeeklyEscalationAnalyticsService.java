@@ -508,7 +508,7 @@ public class WeeklyEscalationAnalyticsService {
         nfAlerts.sort(Comparator.comparingDouble(WeeklyNfAlert::getNfPct).reversed());
     }
 
-    private List<EscalationTicket> loadScopedTickets(Set<String> stateCodes) {
+    private List<EscalationTicket> loadScopedTickets() {
         Map<String, Object> finalQuery = new HashMap<>();
         finalQuery.put("query", Map.of("match_all", Map.of()));
         finalQuery.put("size", 10000);
