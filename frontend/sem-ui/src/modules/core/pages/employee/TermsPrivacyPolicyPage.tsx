@@ -34,7 +34,7 @@ export function TermsPrivacyPolicyPage({ type }: TermsPrivacyPolicyPageProps) {
         <button
           type="button"
           onClick={() => window.history.back()}
-          className="cursor-pointer text-sm font-medium text-destructive hover:underline"
+          className="cursor-pointer text-sm font-medium text-success-foreground hover:underline"
         >
           {translateOr(t, "PP_COMMON_BACK", "Back")}
         </button>

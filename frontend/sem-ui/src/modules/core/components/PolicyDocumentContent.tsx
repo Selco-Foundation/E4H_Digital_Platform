@@ -53,7 +53,7 @@ export function PolicyDocumentContent({ documentData }: PolicyDocumentContentPro
               <button
                 type="button"
                 onClick={() => scrollToElement(content.header)}
-                className="cursor-pointer text-left text-destructive underline"
+                className="cursor-pointer text-left text-success-foreground underline"
               >
                 {translateOr(t, content.header, content.header)}
               </button>
