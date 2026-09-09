@@ -7,13 +7,13 @@ import {
 } from "@/shared";
 import { Button, TopBar } from "@/ui";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { PauseCircle, Plus } from "lucide-react";
 import { DesktopInbox } from "../../components/inbox/DesktopInbox";
 import { buildDefaultInboxRoleFilters } from "../../hooks/inbox-defaults";
 import { useImInboxData } from "../../hooks/use-im-inbox-summary";
 import type { InboxRouteSearch } from "../../routes";
 import type { ImInboxFilters } from "../../types/inbox";
-import { canCreateIncident } from "../../utils/access";
+import { canCreateIncident, hasRole } from "../../utils/access";
 
 export function InboxPage() {
   const { t } = useTranslate();
@@ -46,6 +46,9 @@ export function InboxPage() {
   const { data: complaints, isLoading } = useImInboxData(inboxParams);
   const totalRecords = complaints?.total ?? 0;
   const canCreateTicket = canCreateIncident(user?.roles);
+  // Matches DIGIT-UI's IMCard.js: the "Pause RMS" entry point is gated to the
+  // COMPLAINT_ASSESSOR role specifically (not the whole IM_ROLES set).
+  const canManageRmsPause = hasRole(user?.roles, "COMPLAINT_ASSESSOR");
 
   const handleFilterChange = (nextFilters: ImInboxFilters) => {
     // InboxFilter's internal state-combining effect fires once on every mount
@@ -108,14 +111,24 @@ export function InboxPage() {
         title={translateOr(t, "ES_IM_ALL_TICKETS", "All Tickets")}
         breadcrumbs={breadcrumbItems}
         actions={
-          canCreateTicket ? (
-            <Button asChild size="sm" className="gap-1.5 rounded-md px-3">
-              <Link to={`${basePath}/incident/create`}>
-                <Plus className="size-4" />
-                {translateOr(t, "ES_IM_RAISE_NEW_TICKET", "Raise New Ticket")}
-              </Link>
-            </Button>
-          ) : null
+          <>
+            {canManageRmsPause ? (
+              <Button asChild variant="outline" size="sm" className="gap-1.5 rounded-md px-3">
+                <Link to={`${basePath}/paused-rms-facilities`}>
+                  <PauseCircle className="size-4" />
+                  {translateOr(t, "ES_IM_PAUSE_RMS", "Pause RMS")}
+                </Link>
+              </Button>
+            ) : null}
+            {canCreateTicket ? (
+              <Button asChild size="sm" className="gap-1.5 rounded-md px-3">
+                <Link to={`${basePath}/incident/create`}>
+                  <Plus className="size-4" />
+                  {translateOr(t, "ES_IM_RAISE_NEW_TICKET", "Raise New Ticket")}
+                </Link>
+              </Button>
+            ) : null}
+          </>
         }
       />
 

@@ -7,6 +7,8 @@ import { IM_ROUTES } from "./constants/routes";
 import { ComplaintDetailsPage } from "./pages/employee/ComplaintDetailsPage";
 import { CreateIncidentPage } from "./pages/employee/CreateIncidentPage";
 import { InboxPage } from "./pages/employee/InboxPage";
+import { PauseRmsPage } from "./pages/employee/PauseRmsPage";
+import { RmsPausedFacilitiesPage } from "./pages/employee/RmsPausedFacilitiesPage";
 import type { ImInboxFilters } from "./types/inbox";
 import { IM_ROLES } from "./utils/access";
 
@@ -49,6 +51,8 @@ export function createImRoutes(rootRoute: AnyRoute, employeeLayoutRoute: AnyRout
   const inboxPath = `/${basePath}${IM_ROUTES.inbox}`;
   const createPath = `/${basePath}${IM_ROUTES.createIncident}`;
   const complaintDetailsPath = `/${basePath}${IM_ROUTES.complaintDetails}/$incidentId/$tenantId`;
+  const pausedRmsFacilitiesPath = `/${basePath}${IM_ROUTES.pausedRmsFacilities}`;
+  const pauseRmsPath = `/${basePath}${IM_ROUTES.pauseRms}`;
 
   // Parent route — loads rainmaker-im translations before any IM page renders
   const imParentRoute = createRoute({
@@ -100,6 +104,21 @@ export function createImRoutes(rootRoute: AnyRoute, employeeLayoutRoute: AnyRout
     component: ComplaintDetailsPage,
   });
 
+  const pausedRmsFacilitiesRoute = createRoute({
+    getParentRoute: () => imParentRoute,
+    path: pausedRmsFacilitiesPath,
+    component: RmsPausedFacilitiesPage,
+  });
+
+  const pauseRmsRoute = createRoute({
+    getParentRoute: () => imParentRoute,
+    path: pauseRmsPath,
+    validateSearch: (search: Record<string, unknown>) => ({
+      facilityId: typeof search.facilityId === "string" ? search.facilityId : undefined,
+    }),
+    component: PauseRmsPage,
+  });
+
   return {
     routes: [
       imParentRoute,
@@ -107,6 +126,8 @@ export function createImRoutes(rootRoute: AnyRoute, employeeLayoutRoute: AnyRout
       inboxRoute,
       createIncidentRoute,
       complaintDetailsRoute,
+      pausedRmsFacilitiesRoute,
+      pauseRmsRoute,
     ],
     navItems: [
       {
