@@ -33,7 +33,7 @@ public final class EscalationEmailTemplateHelper {
         return variables;
     }
 
-    public static String renderDownloadButton(CommonUtility commonUtility, String downloadUrl) {
+    public static String renderDownloadButton(String downloadUrl) {
         if (downloadUrl == null || downloadUrl.isBlank() || "#".equals(downloadUrl)) {
             return "";
         }
