@@ -1,4 +1,4 @@
-import { translateOr, useAuthStore, useTranslate } from "@/shared";
+import { searchHrmsEmployeesByRole, translateOr, useAuthStore, useTranslate } from "@/shared";
 import { Button } from "@/ui";
 import { useMutation } from "@tanstack/react-query";
 import { Files, Trash2 } from "lucide-react";
@@ -7,11 +7,13 @@ import {
   getWorkflowActionConfig,
   isQuotationRequiredAction,
   isSupportedWorkflowAction,
+  REOPEN_REASON_OPTIONS,
 } from "../../constants/workflow-actions";
 import type { UploadedMediaEntry } from "../../types/create-incident";
 import type {
   ComplaintDetailsData,
   MdmsReasonOption,
+  WorkflowDetailsData,
 } from "../../types/incident-details";
 import { uploadIncidentFile } from "../../services/file-upload";
 import {
@@ -20,9 +22,11 @@ import {
 } from "../../services/workflow";
 import { buildUploadedDocuments } from "../../utils/create-incident-documents";
 import {
+  MAX_ACTION_DOCUMENT_SIZE_MB,
   MAX_COMMENT_LENGTH,
   MAX_IMAGE_COUNT,
   MAX_QUOTATION_SIZE_MB,
+  validateActionDocumentFiles,
   validateQuotationFiles,
 } from "../../utils/media-validation";
 import { FormSelectField } from "../create/FormSelectField";
@@ -30,14 +34,19 @@ import { FormSelectField } from "../create/FormSelectField";
 interface ComplaintActionDialogProps {
   action: string;
   complaintDetails: ComplaintDetailsData;
+  workflowDetails: WorkflowDetailsData;
   onClose: () => void;
   onComplete: () => Promise<void>;
 }
 
 function getReasonLabel(t: (key: string) => string, action: string): string {
-  return action === "OUT_OF_SCOPE"
-    ? translateOr(t, "WF_OUT_OF_SCOPE_REASON", "Out of scope reason")
-    : translateOr(t, "WF_DECLINE_REASON", "Decline reason");
+  if (action === "MARK_OUT_OF_SCOPE") {
+    return translateOr(t, "WF_OUT_OF_SCOPE_REASON", "WF_OUT_OF_SCOPE_REASON");
+  }
+  if (action === "SENDBACK") {
+    return translateOr(t, "WF_SENDBACK_REASON", "WF_SENDBACK_REASON");
+  }
+  return translateOr(t, "WF_REJECT_REASON", "WF_REJECT_REASON");
 }
 
 function getOutOfWarrantyHelperText(
@@ -91,10 +100,10 @@ function ActionDocumentsField({
   const maxFilesReached = uploads.length >= maxFiles;
   const label = requiresQuotation
     ? translateOr(t, "WF_QUOTATION_DOCUMENT", "Quotation document")
-    : translateOr(t, "WF_UPLOAD_FILES", "Upload Files");
+    : translateOr(t, "WF_SUPPORTING_DOCUMENTS", "WF_SUPPORTING_DOCUMENTS");
   const accept = requiresQuotation
     ? ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    : ".png,.jpg,.jpeg,.pdf,image/*,application/pdf";
+    : ".jpg,.jpeg,.pdf,image/jpeg,application/pdf";
 
   return (
     <div className="space-y-2">
@@ -123,10 +132,16 @@ function ActionDocumentsField({
               "WF_MAX_FILES_REACHED",
               "You can upload up to {MAX_COUNT} files",
             ).replace("{MAX_COUNT}", String(maxFiles))
-          : translateOr(t, "WF_MAX_FILES_HINT", "You can upload up to {MAX_COUNT} files").replace(
-              "{MAX_COUNT}",
-              String(maxFiles),
-            )}
+          : requiresQuotation
+            ? translateOr(t, "WF_MAX_FILES_HINT", "You can upload up to {MAX_COUNT} files").replace(
+                "{MAX_COUNT}",
+                String(maxFiles),
+              )
+            : translateOr(
+                t,
+                "WF_SUPPORTING_DOCUMENTS_HINT",
+                "WF_SUPPORTING_DOCUMENTS_HINT",
+              ).replace("{MAX_SIZE}", String(MAX_ACTION_DOCUMENT_SIZE_MB))}
       </p>
       <input
         ref={inputRef}
@@ -173,9 +188,15 @@ function ActionDocumentsField({
   );
 }
 
+interface AssigneeOption {
+  code: string;
+  name: string;
+}
+
 export function ComplaintActionDialog({
   action,
   complaintDetails,
+  workflowDetails,
   onClose,
   onComplete,
 }: ComplaintActionDialogProps) {
@@ -188,6 +209,9 @@ export function ComplaintActionDialog({
   const [comments, setComments] = useState("");
   const [reasonOptions, setReasonOptions] = useState<MdmsReasonOption[]>([]);
   const [selectedReason, setSelectedReason] = useState<MdmsReasonOption | null>(null);
+  const [selectedReopenReason, setSelectedReopenReason] = useState<string>("");
+  const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([]);
+  const [selectedAssignee, setSelectedAssignee] = useState<AssigneeOption | null>(null);
   const [uploads, setUploads] = useState<UploadedMediaEntry[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -206,6 +230,41 @@ export function ComplaintActionDialog({
     });
   }, [accessToken, actionConfig?.reasonMaster, user]);
 
+  useEffect(() => {
+    if (!actionConfig?.needsAssignee || !accessToken) {
+      setAssigneeOptions([]);
+      return;
+    }
+    const roles =
+      workflowDetails.actionState?.nextActions?.find((entry) => entry.action === action)
+        ?.assigneeRoles ?? [];
+    const boundaryCodes = [
+      complaintDetails.incident.boundaryCode,
+      complaintDetails.incident.block,
+      complaintDetails.incident.district,
+    ].filter((code): code is string => Boolean(code));
+
+    void searchHrmsEmployeesByRole(roles, boundaryCodes, accessToken, user).then((employees) => {
+      setAssigneeOptions(
+        employees
+          .filter((employee) => employee.user?.uuid)
+          .map((employee) => ({
+            code: employee.user!.uuid!,
+            name: employee.user?.name ?? employee.code ?? employee.user!.uuid!,
+          })),
+      );
+    });
+  }, [
+    accessToken,
+    action,
+    actionConfig?.needsAssignee,
+    complaintDetails.incident.block,
+    complaintDetails.incident.boundaryCode,
+    complaintDetails.incident.district,
+    user,
+    workflowDetails.actionState,
+  ]);
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user || !accessToken || !actionConfig || !isSupportedWorkflowAction(action)) {
@@ -220,6 +279,12 @@ export function ComplaintActionDialog({
       if (actionConfig.reasonMaster && !selectedReason) {
         throw new Error("REASON_REQUIRED");
       }
+      if (actionConfig.fixedReopenReasons && !selectedReopenReason) {
+        throw new Error("REASON_REQUIRED");
+      }
+      if (actionConfig.needsAssignee && !selectedAssignee) {
+        throw new Error("ASSIGNEE_REQUIRED");
+      }
       if (actionConfig.documents === "required" && uploads.length === 0) {
         throw new Error("FILES_REQUIRED");
       }
@@ -229,8 +294,11 @@ export function ComplaintActionDialog({
         action,
         comments: comments.trim(),
         documents: buildUploadedDocuments(uploads),
-        outOfScopeReason: action === "OUT_OF_SCOPE" ? selectedReason : null,
-        declineReason: action === "DECLINE_POC" ? selectedReason : null,
+        assigneeUuid: actionConfig.needsAssignee ? selectedAssignee?.code : null,
+        outOfScopeReason: action === "MARK_OUT_OF_SCOPE" ? selectedReason : null,
+        rejectReason: action === "REJECT" ? selectedReason : null,
+        sendBackReason: action === "SENDBACK" ? selectedReason : null,
+        reopenReason: actionConfig.fixedReopenReasons ? selectedReopenReason : null,
         accessToken,
         user,
       });
@@ -265,7 +333,9 @@ export function ComplaintActionDialog({
                 )
               : code === "REASON_REQUIRED"
                 ? translateOr(t, "WF_REASON_REQUIRED", "Please select a reason")
-                : translateOr(t, "CS_COMMON_SOMETHING_WENT_WRONG", "Something went wrong!");
+                : code === "ASSIGNEE_REQUIRED"
+                  ? translateOr(t, "WF_ASSIGNEE_REQUIRED", "WF_ASSIGNEE_REQUIRED")
+                  : translateOr(t, "CS_COMMON_SOMETHING_WENT_WRONG", "Something went wrong!");
       setError(message);
     },
   });
@@ -308,6 +378,30 @@ export function ComplaintActionDialog({
           )
             .replace("{fileName}", quotationError.fileName ?? "")
             .replace("{MAX_SIZE}", String(MAX_QUOTATION_SIZE_MB)),
+        );
+        return;
+      }
+    } else {
+      const documentError = validateActionDocumentFiles(filesToUpload);
+      if (documentError?.code === "FORMAT") {
+        setError(
+          translateOr(
+            t,
+            "WF_DOCUMENT_FORMAT_NOT_ALLOWED",
+            "WF_DOCUMENT_FORMAT_NOT_ALLOWED",
+          ),
+        );
+        return;
+      }
+      if (documentError?.code === "SIZE") {
+        setError(
+          translateOr(
+            t,
+            "WF_DOCUMENT_FILE_TOO_LARGE",
+            "WF_DOCUMENT_FILE_TOO_LARGE",
+          )
+            .replace("{fileName}", documentError.fileName ?? "")
+            .replace("{MAX_SIZE}", String(MAX_ACTION_DOCUMENT_SIZE_MB)),
         );
         return;
       }
@@ -383,6 +477,20 @@ export function ComplaintActionDialog({
         </h2>
 
         <div className="mt-4 space-y-4">
+          {actionConfig.needsAssignee ? (
+            <FormSelectField
+              label={translateOr(t, "WF_ASSIGNEE", "WF_ASSIGNEE")}
+              required
+              value={selectedAssignee?.code ?? ""}
+              options={assigneeOptions}
+              onChange={(option) =>
+                setSelectedAssignee(
+                  assigneeOptions.find((entry) => entry.code === option?.code) ?? null,
+                )
+              }
+            />
+          ) : null}
+
           {actionConfig.reasonMaster ? (
             <FormSelectField
               label={reasonLabel}
@@ -404,6 +512,19 @@ export function ComplaintActionDialog({
                   ) ?? null,
                 )
               }
+            />
+          ) : null}
+
+          {actionConfig.fixedReopenReasons ? (
+            <FormSelectField
+              label={translateOr(t, "WF_REOPEN_REASON", "WF_REOPEN_REASON")}
+              required
+              value={selectedReopenReason}
+              options={REOPEN_REASON_OPTIONS.map((code) => ({
+                code,
+                name: translateOr(t, code, code),
+              }))}
+              onChange={(option) => setSelectedReopenReason(option?.code ?? "")}
             />
           ) : null}
 

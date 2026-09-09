@@ -8,9 +8,17 @@ export interface HrmsJurisdiction {
   boundary?: string;
 }
 
+export interface HrmsEmployeeUser {
+  uuid?: string;
+  name?: string;
+  mobileNumber?: string;
+  userName?: string;
+}
+
 export interface HrmsEmployee {
   code?: string;
   jurisdictions?: HrmsJurisdiction[];
+  user?: HrmsEmployeeUser;
 }
 
 interface HrmsSearchResponse {
@@ -36,4 +44,37 @@ export async function searchHrmsEmployee(
   );
 
   return response.data.Employees?.[0] ?? null;
+}
+
+/**
+ * Employees eligible to be assigned a ticket for a given workflow action —
+ * matches DIGIT-UI's assignment picker, which searches `/egov-hrms/employees/_search`
+ * by the action's allowed roles and the ticket's own jurisdiction (confirmed
+ * against the real `EmployeeSearchCriteria`, which supports `roles` and
+ * `boundaryCodes` params).
+ */
+export async function searchHrmsEmployeesByRole(
+  roles: string[],
+  boundaryCodes: string[],
+  accessToken: string,
+  user?: AuthUser | null,
+): Promise<HrmsEmployee[]> {
+  if (!roles.length) {
+    return [];
+  }
+  const response = await apiClient.post<HrmsSearchResponse>(
+    "/egov-hrms/employees/_search",
+    {
+      RequestInfo: createRequestInfo(accessToken, user),
+    },
+    {
+      params: {
+        tenantId: tenantId(),
+        roles: roles.join(","),
+        ...(boundaryCodes.length ? { boundaryCodes: boundaryCodes.join(",") } : {}),
+      },
+    },
+  );
+
+  return response.data.Employees ?? [];
 }

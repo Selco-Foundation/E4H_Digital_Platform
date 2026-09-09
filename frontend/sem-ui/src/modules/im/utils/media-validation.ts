@@ -4,6 +4,8 @@ export const MAX_VIDEO_COUNT = 2;
 export const MAX_VIDEO_SIZE_MB = 50;
 export const MAX_COMMENT_LENGTH = 1000;
 export const MAX_QUOTATION_SIZE_MB = 10;
+/** DIGIT-UI's Assign/Decline "Supporting Documents" field: "Only .jpg and .pdf files. 5 MB max file size." */
+export const MAX_ACTION_DOCUMENT_SIZE_MB = 5;
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
 const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "wmv"];
@@ -13,6 +15,8 @@ const QUOTATION_MIME_TYPES = [
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
+const ACTION_DOCUMENT_EXTENSIONS = ["jpg", "jpeg", "pdf"];
+const ACTION_DOCUMENT_MIME_TYPES = ["image/jpeg", "application/pdf"];
 
 function getExtension(file: File): string {
   return file.name.split(".").pop()?.toLowerCase() ?? "";
@@ -72,6 +76,28 @@ export function validateQuotationFiles(files: File[]): MediaValidationError | nu
 
   for (const file of files) {
     if (!isAllowedQuotationFile(file)) {
+      return { code: "FORMAT", fileName: file.name };
+    }
+    if (file.size > maxSizeBytes) {
+      return { code: "SIZE", fileName: file.name };
+    }
+  }
+
+  return null;
+}
+
+export function isAllowedActionDocumentFile(file: File): boolean {
+  return (
+    ACTION_DOCUMENT_EXTENSIONS.includes(getExtension(file)) ||
+    ACTION_DOCUMENT_MIME_TYPES.includes(file.type)
+  );
+}
+
+export function validateActionDocumentFiles(files: File[]): MediaValidationError | null {
+  const maxSizeBytes = MAX_ACTION_DOCUMENT_SIZE_MB * 1024 * 1024;
+
+  for (const file of files) {
+    if (!isAllowedActionDocumentFile(file)) {
       return { code: "FORMAT", fileName: file.name };
     }
     if (file.size > maxSizeBytes) {

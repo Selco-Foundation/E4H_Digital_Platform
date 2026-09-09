@@ -126,6 +126,7 @@ export function ComplaintActionBar({
         <ComplaintActionDialog
           action={selectedAction}
           complaintDetails={complaintDetails}
+          workflowDetails={workflowDetails}
           onClose={() => setSelectedAction(null)}
           onComplete={async () => {
             await onActionComplete();
