@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Breadcrumbs, type BreadcrumbEntry } from "./breadcrumbs";
+import { FacilityScopeSwitcher } from "./facility-scope-switcher";
 import { LanguageSwitcher } from "./language-switcher";
 
 interface TopBarProps {
@@ -25,6 +26,9 @@ export function TopBar({ title, description, breadcrumbs, actions }: TopBarProps
   const hasBottomRow = Boolean(breadcrumbs?.length) || Boolean(actions);
   const combinedActions = (
     <>
+      <span className="hidden lg:inline-flex">
+        <FacilityScopeSwitcher />
+      </span>
       <span className="hidden lg:inline-flex">
         <LanguageSwitcher />
       </span>

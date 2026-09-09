@@ -1,11 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  aggregateBoundaryCodes,
+  aggregateBoundaryTypes,
   employeeProfileChangePasswordPath,
   extractApiErrorMessage,
   searchCurrentUser,
   translateOr,
   updateUserProfile,
   useAuthStore,
+  useJurisdictionStore,
   useTranslate,
   type EmployeeProfile,
 } from "@/shared";
@@ -50,6 +53,7 @@ export function ProfilePage() {
   const employeeTenantId = useAuthStore((state) => state.employeeTenantId);
   const setUser = useAuthStore((state) => state.setUser);
 
+  const currentBoundaries = useJurisdictionStore((state) => state.boundaries);
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,6 +143,18 @@ export function ProfilePage() {
 
   const hasProfileChanges = Boolean(form.formState.dirtyFields.name || form.formState.dirtyFields.email);
 
+  // Matches DIGIT-UI's UserProfile.js "City" field (CORE_COMMON_PROFILE_CITY —
+  // translated as "Facility" for this tenant): read-only, derived from the same
+  // current jurisdiction boundary the header's facility switcher reads/writes.
+  const currentBoundaryCodes = aggregateBoundaryCodes(currentBoundaries);
+  const currentBoundaryTypes = aggregateBoundaryTypes(currentBoundaries);
+  const isOnlyFacilityType =
+    currentBoundaryTypes.length === 1 && currentBoundaryTypes[0] === "facility";
+  const facilityLabel =
+    currentBoundaryCodes.length === 1 && isOnlyFacilityType
+      ? translateOr(t, `Boundary_${currentBoundaryCodes[0]}`, currentBoundaryCodes[0])
+      : translateOr(t, "CORE_COMMON_ALL", "All");
+
   if (isLoading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
@@ -174,6 +190,17 @@ export function ProfilePage() {
                   </FormItem>
                 )}
               />
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm leading-[21px] font-medium text-ink-950">
+                  {translateOr(t, "CORE_COMMON_PROFILE_CITY", "Facility")}
+                </label>
+                <Input
+                  value={facilityLabel}
+                  disabled
+                  className="h-9 rounded border-ink-300 bg-muted px-3 py-2 text-sm leading-[21px] text-ink-950"
+                />
+              </div>
 
               <div className="flex flex-col gap-2">
                 <label className="text-sm leading-[21px] font-medium text-ink-950">
