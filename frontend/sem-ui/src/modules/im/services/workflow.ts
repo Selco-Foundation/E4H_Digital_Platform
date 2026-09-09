@@ -194,6 +194,27 @@ export async function fetchWorkflowDetails(
   const merged = mergeCommentEvents(withMedia);
   const timeline = buildTimeline(merged);
 
+  // DIGIT-UI's im TimeLine.js always appends one extra synthetic checkpoint —
+  // a clone of the LAST "PENDINGFORASSIGNMENT" checkpoint, relabeled as
+  // "COMPLAINT_FILED" ("Ticket Filed") — to the end of the timeline. Since the
+  // real timeline only ever records one workflow transition for a freshly
+  // filed, unassigned ticket, this is what produces the two visible rows
+  // ("Pending For Assignment" on top, "Ticket Filed" below it) rather than
+  // reflecting two real process instances.
+  const lastPendingForAssignment = [...timeline]
+    .reverse()
+    .find((checkpoint) => checkpoint.status === "PENDINGFORASSIGNMENT");
+  if (lastPendingForAssignment) {
+    // DIGIT-UI's COMPLAINT_FILED case deliberately omits thumbnailsToShow (only
+    // comment/auditDetails/assigner are shown) so attachments don't render twice.
+    timeline.push({
+      ...lastPendingForAssignment,
+      performedAction: "FILED",
+      status: "COMPLAINT_FILED",
+      thumbnailsToShow: undefined,
+    });
+  }
+
   return {
     timeline,
     nextActions: nextActions.filter((action) => action.action),
@@ -231,7 +252,10 @@ export interface UpdateIncidentActionInput {
   comments?: string;
   documents?: VerificationDocument[];
   outOfScopeReason?: MdmsReasonOption | null;
-  declineReason?: MdmsReasonOption | null;
+  rejectReason?: MdmsReasonOption | null;
+  sendBackReason?: MdmsReasonOption | null;
+  /** REOPEN/REOPEN_RMS's fixed CS_REOPEN_OPTION_* reason code. */
+  reopenReason?: string | null;
   accessToken: string;
   user: AuthUser;
 }
@@ -253,7 +277,8 @@ export async function updateIncidentAction(
     // actions don't wipe them out — the backend replaces this column wholesale on save.
     ...incident.additionalDetail,
     outOfScopeReason: [...(incident.additionalDetail?.outOfScopeReason ?? [])],
-    declineReason: [...(incident.additionalDetail?.declineReason ?? [])],
+    rejectReason: [...(incident.additionalDetail?.rejectReason ?? [])],
+    reopenreason: [...(incident.additionalDetail?.reopenreason ?? [])],
     fileStoreId: incident.additionalDetail?.fileStoreId,
   };
 
@@ -264,11 +289,23 @@ export async function updateIncidentAction(
     additionalDetail.outOfScopeReason.push(outOfScopeReason);
   }
 
-  const declineReason =
-    input.declineReason?.code ?? input.declineReason?.localizedCode;
-  if (declineReason) {
-    workflow.declineReason = declineReason;
-    additionalDetail.declineReason.push(declineReason);
+  // Backend's `Workflow.sendBackReason` is the strongly-typed { reason, subReason? }
+  // shape (org.egov.im.web.models.SendBackReason) — not a free-form additionalDetail push.
+  const sendBackReasonCode =
+    input.sendBackReason?.code ?? input.sendBackReason?.localizedCode;
+  if (sendBackReasonCode) {
+    workflow.sendBackReason = { reason: sendBackReasonCode };
+  }
+
+  // rejectReason has no dedicated Workflow field — the backend's EnrichmentService
+  // reads it back purely from incident.additionalDetail.rejectReason.
+  const rejectReason = input.rejectReason?.code ?? input.rejectReason?.localizedCode;
+  if (rejectReason) {
+    additionalDetail.rejectReason.push(rejectReason);
+  }
+
+  if (input.reopenReason) {
+    additionalDetail.reopenreason.push(input.reopenReason);
   }
 
   incident.additionalDetail = additionalDetail;

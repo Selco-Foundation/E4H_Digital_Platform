@@ -7,7 +7,9 @@ export interface IncidentAuditDetails {
 
 export interface IncidentAdditionalDetail {
   outOfScopeReason?: unknown[];
-  declineReason?: unknown[];
+  /** Read back by the backend's EnrichmentService as `latestRejectReason`. */
+  rejectReason?: unknown[];
+  reopenreason?: unknown[];
   fileStoreId?: VerificationDocument[];
 }
 
@@ -36,7 +38,8 @@ export interface IncidentWorkflow {
   assignes?: string[] | null;
   verificationDocuments?: VerificationDocument[];
   outOfScopeReason?: unknown;
-  declineReason?: unknown;
+  /** Backend `Workflow.sendBackReason`: `{ reason, subReason? }`. */
+  sendBackReason?: { reason: string; subReason?: string };
 }
 
 export interface IncidentWrapper {

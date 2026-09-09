@@ -28,22 +28,30 @@ function TimelineCaption({
   const additional = complaintDetails.incident.additionalDetail;
 
   const outOfScopeReasons = [...(additional?.outOfScopeReason ?? [])].reverse();
-  const declineReasons = [...(additional?.declineReason ?? [])].reverse();
+  const rejectReasons = [...(additional?.rejectReason ?? [])].reverse();
+  const reopenReasons = [...(additional?.reopenreason ?? [])].reverse();
 
   const action = checkpoint.performedAction;
   const isCreateCheckpoint = action === "APPLY" || action === "CREATE";
   let reasonText: string | null = null;
   let reasonLabel: string | null = null;
 
-  if (action === "OUT_OF_SCOPE") {
+  if (action === "MARK_OUT_OF_SCOPE") {
     const outOfScopeCode = String(outOfScopeReasons.shift() ?? "");
     reasonText = translateOr(t, outOfScopeCode, outOfScopeCode);
-    reasonLabel = translateOr(t, "WF_OUT_OF_SCOPE_REASON", "Out of scope reason");
-  } else if (action === "DECLINE_POC") {
-    const declineCode = String(declineReasons.shift() ?? "");
-    reasonText = translateOr(t, declineCode, declineCode);
-    reasonLabel = translateOr(t, "WF_DECLINE_REASON", "Decline reason");
+    reasonLabel = translateOr(t, "WF_OUT_OF_SCOPE_REASON", "WF_OUT_OF_SCOPE_REASON");
+  } else if (action === "REJECT") {
+    const rejectCode = String(rejectReasons.shift() ?? "");
+    reasonText = translateOr(t, rejectCode, rejectCode);
+    reasonLabel = translateOr(t, "WF_REJECT_REASON", "WF_REJECT_REASON");
+  } else if (action === "REOPEN" || action === "REOPEN_RMS") {
+    const reopenCode = String(reopenReasons.shift() ?? "");
+    reasonText = translateOr(t, reopenCode, reopenCode);
+    reasonLabel = translateOr(t, "WF_REOPEN_REASON", "WF_REOPEN_REASON");
   }
+  // SENDBACK's reason isn't carried on the workflow process-history response (only
+  // action/state/comment/assigner are) — its `wfComment` entries (rendered below)
+  // are the only reason text available for this checkpoint.
 
   return (
     <div className="mt-3 space-y-3 text-xs text-muted-foreground">
@@ -115,8 +123,12 @@ export function ComplaintTimelineSection({
           // latest action is the FIRST entry here, not the last one rendered.
           const isLatest = index === 0;
           const isLastRendered = index === timeline.length - 1;
-          const action = checkpoint.performedAction ?? "UNKNOWN";
-          const actionKey = `TIMELINE_ACTION_${action}`;
+          // DIGIT-UI's own timeline labels key off the checkpoint's resulting
+          // *status*, not the performed action (`t("CS_COMMON_" + checkpoint.status)`
+          // in ComplaintDetails.js) — the same CS_COMMON_<code> convention already
+          // confirmed for the inbox's Issue Status filter.
+          const status = checkpoint.status ?? checkpoint.performedAction ?? "UNKNOWN";
+          const actionKey = `CS_COMMON_${status}`;
 
           return (
             <li key={`${checkpoint.status}-${checkpoint.performedAction}-${index}`} className="relative flex gap-4 pb-8">
@@ -138,7 +150,7 @@ export function ComplaintTimelineSection({
                     isLatest ? "text-success-foreground" : "text-ink-950",
                   )}
                 >
-                  {translateOr(t, actionKey, action)}
+                  {translateOr(t, actionKey, status)}
                 </p>
                 <TimelineCaption
                   checkpoint={checkpoint}
