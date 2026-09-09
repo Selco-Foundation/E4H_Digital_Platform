@@ -23,6 +23,8 @@ import org.selco.e4h.web.models.WeeklyTheftCaseRow;
 import org.selco.e4h.web.models.WeeklyTicketOverview;
 import org.selco.e4h.web.models.WeeklyTrendMetric;
 import org.selco.e4h.web.models.WeeklyVendorPerformanceRow;
+import org.selco.e4h.web.models.workflow.ProcessInstance;
+import org.selco.e4h.util.VendorResponseUtil;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -59,6 +61,7 @@ public class WeeklyEscalationAnalyticsService {
     private final WeeklyReportService weeklyReportService;
     private final CommonUtility commonUtility;
     private final EscalationProperties escalationProperties;
+    private final WorkflowService workflowService;
 
     public WeeklyEscalationAnalytics buildAnalytics(Set<String> stateCodes, RequestInfo requestInfo) {
         Date[] reportWeek = getPreviousWeekDates(0);
@@ -72,7 +75,7 @@ public class WeeklyEscalationAnalyticsService {
                 .map(commonUtility::getStateDisplayName)
                 .collect(Collectors.joining(", "));
 
-        List<EscalationTicket> scopedTickets = loadScopedTickets(stateCodes);
+        List<EscalationTicket> scopedTickets = loadScopedTickets();
 
         long priorWeekEndMs = priorWeek[1].getTime();
         WeekAccumulator acc = new WeekAccumulator();
@@ -83,6 +86,8 @@ public class WeeklyEscalationAnalyticsService {
             }
             accumulateTicket(acc, ticket, stateCode, weekStartMs, weekEndMs, priorWeekEndMs);
         }
+
+        resolveVendorResponseRates(acc, requestInfo);
 
         TrendCounts priorWeekCounts = computeTrendCounts(scopedTickets, stateCodes,
                 priorWeek[0].getTime(), priorWeek[1].getTime());
@@ -156,6 +161,7 @@ public class WeeklyEscalationAnalyticsService {
         Map<String, int[]> effectivenessByLevel = new LinkedHashMap<>(); // [escalated, resolved]
         Map<String, Double> vendorTatDaysSum = new HashMap<>();
         Map<String, Integer> vendorTatCount = new HashMap<>();
+        Map<String, Boolean> vendorFallbackWithinSla = new HashMap<>();
         int openAsOfPriorWeekEnd = 0;
 
         String lowestTatVendorName() {
@@ -181,6 +187,7 @@ public class WeeklyEscalationAnalyticsService {
         int resolvedAfterBreachCount;
         int ticketsAssigned;
         int respondedWithinStepSla;
+        List<String> incidentIds = new ArrayList<>();
     }
 
     private void accumulateTicket(WeekAccumulator acc, EscalationTicket ticket, String stateCode,
@@ -281,8 +288,10 @@ public class WeeklyEscalationAnalyticsService {
             String vendor = ticket.getMappedVendor() != null ? ticket.getMappedVendor() : "Unknown Vendor";
             VendorAgg vendorAgg = acc.vendorAgg.computeIfAbsent(vendor, k -> new VendorAgg());
             vendorAgg.ticketsAssigned++;
-            if (!stepBreached) {
-                vendorAgg.respondedWithinStepSla++;
+            if (ticket.getIncidentId() != null) {
+                vendorAgg.incidentIds.add(ticket.getIncidentId());
+                // Fallback used only if real workflow history is unavailable for this ticket.
+                acc.vendorFallbackWithinSla.put(ticket.getIncidentId(), !stepBreached);
             }
             if (ticket.getSlaBreachTime() != null && ticket.getSlaBreachTime() >= weekStartMs
                     && ticket.getSlaBreachTime() <= weekEndMs) {
@@ -320,9 +329,44 @@ public class WeeklyEscalationAnalyticsService {
     }
 
     /**
-     * Current-step SLA breach check (as opposed to overall-ticket breach) — used both for the
-     * national/state bottleneck breach flag and as the basis for the vendor Response Rate
-     * approximation (see WeeklyVendorPerformanceRow).
+     * Computes each vendor's real Response Rate — % of assigned tickets where the vendor's first
+     * action after entering a vendor-owned workflow state landed within that step's SLA — using
+     * egov-workflow-v2's process-instance history (batched, one HTTP call per ~100 tickets).
+     * Falls back to the current-step-SLA proxy per ticket when history is unavailable (e.g. the
+     * workflow service call fails, or a ticket has no vendor-state entry in its history).
+     */
+    private void resolveVendorResponseRates(WeekAccumulator acc, RequestInfo requestInfo) {
+        List<String> allIncidentIds = acc.vendorAgg.values().stream()
+                .flatMap(v -> v.incidentIds.stream())
+                .distinct()
+                .collect(Collectors.toList());
+        if (allIncidentIds.isEmpty()) {
+            return;
+        }
+
+        List<ProcessInstance> history = workflowService.getProcessInstancesByIncidentIds(
+                "in", allIncidentIds, requestInfo);
+        Map<String, List<ProcessInstance>> historyByBusinessId = history.stream()
+                .filter(pi -> pi.getBusinessId() != null)
+                .collect(Collectors.groupingBy(ProcessInstance::getBusinessId));
+
+        for (VendorAgg vendorAgg : acc.vendorAgg.values()) {
+            for (String incidentId : vendorAgg.incidentIds) {
+                Boolean respondedWithinSla = VendorResponseUtil.respondedWithinSla(historyByBusinessId.get(incidentId));
+                boolean result = respondedWithinSla != null
+                        ? respondedWithinSla
+                        : acc.vendorFallbackWithinSla.getOrDefault(incidentId, false);
+                if (result) {
+                    vendorAgg.respondedWithinStepSla++;
+                }
+            }
+        }
+    }
+
+    /**
+     * Current-step SLA breach check (as opposed to overall-ticket breach) — used for the
+     * national/state bottleneck breach flag, and as the fallback basis for vendor Response Rate
+     * when real workflow history isn't available (see resolveVendorResponseRates).
      */
     private boolean isStepBreached(EscalationTicket ticket) {
         return ticket.getAdditionalDetails() != null

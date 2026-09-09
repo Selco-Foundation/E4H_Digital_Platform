@@ -43,7 +43,7 @@ public class WeeklyLeadershipEmailService {
             variables.put("THEFT_SUMMARY", renderTheft(analytics));
             variables.put("BOTTLENECK_ROWS", renderBottlenecks(analytics));
             variables.put("NF_ALERTS", renderNfAlerts(analytics));
-            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(commonUtility, downloadUrl));
+            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(downloadUrl));
             variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl());
             return EscalationEmailTemplateHelper.render(template, variables);
         } catch (Exception e) {

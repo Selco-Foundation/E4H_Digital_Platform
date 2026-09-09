@@ -18,9 +18,11 @@ public class WeeklyVendorPerformanceRow {
     private int resolvedWithinSlaCount;
     private int resolvedAfterBreachCount;
     /**
-     * Approximation: % of the vendor's currently assigned tickets that are within their
-     * current-step SLA ({@code slaRemaining >= 0}). Not a literal first-response metric —
-     * ES has no first-response timestamp indexed (see ESCALATION_FLOW_WORK_DOC.md open decisions).
+     * % of the vendor's assigned tickets where their first action after entering a vendor-owned
+     * workflow state happened within that step's SLA — computed from real egov-workflow-v2
+     * process-instance history (see WeeklyEscalationAnalyticsService.resolveVendorResponseRates).
+     * Falls back to a current-step-SLA-elapsed proxy only when workflow history is unavailable
+     * for a ticket (e.g. the workflow-v2 call failed, or the ticket has no vendor-state entry).
      */
     private double responseRatePct;
     private double resolutionRatePct;

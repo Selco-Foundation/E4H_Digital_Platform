@@ -40,7 +40,7 @@ public class WeeklySeniorProgramManagerEmailService {
             variables.put("VENDOR_ROWS", renderVendorRows(analytics));
             variables.put("BOTTLENECK_ROWS", renderBottlenecks(analytics));
             variables.put("FACILITY_ROWS", renderFacilityRows(analytics));
-            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(commonUtility, downloadUrl));
+            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(downloadUrl));
             variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl());
             return EscalationEmailTemplateHelper.render(template, variables);
         } catch (Exception e) {

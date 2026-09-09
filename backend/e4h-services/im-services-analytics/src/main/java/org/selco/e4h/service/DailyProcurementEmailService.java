@@ -33,7 +33,7 @@ public class DailyProcurementEmailService {
             variables.put("AS_OF_DATE", commonUtility.escapeHtml(summary.getAsOfDate()));
             variables.put("NEW_VENDOR_ROWS", renderVendorRows(summary.getNewBreaches()));
             variables.put("PREVIOUS_VENDOR_ROWS", renderVendorRows(summary.getPreviouslyOpen()));
-            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(commonUtility, downloadUrl));
+            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(downloadUrl));
             variables.put("DASHBOARD_URL", summary.getDashboardUrl());
             return EscalationEmailTemplateHelper.render(template, variables);
         } catch (Exception e) {

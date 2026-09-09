@@ -34,7 +34,7 @@ public class DailySeniorProgramManagerEmailService {
             variables.put("AS_OF_DATE", commonUtility.escapeHtml(summary.getAsOfDate()));
             variables.put("STATE_SECTIONS", renderStateSections(summary.getStateSections()));
             variables.put("PREVIOUSLY_OPEN_ROWS", renderPreviouslyOpenRows(summary.getPreviouslyOpenByState()));
-            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(commonUtility, downloadUrl));
+            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(downloadUrl));
             variables.put("DASHBOARD_URL", summary.getDashboardUrl());
             return EscalationEmailTemplateHelper.render(template, variables);
         } catch (Exception e) {
