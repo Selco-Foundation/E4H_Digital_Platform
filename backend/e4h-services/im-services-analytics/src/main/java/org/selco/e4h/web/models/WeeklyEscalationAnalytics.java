@@ -65,4 +65,27 @@ public class WeeklyEscalationAnalytics {
     private FunctionalMetrics weekEndMetrics;
     private ArrowData functionalArrow;
     private ArrowData nonFunctionalArrow;
+
+    @Override
+    public String toString() {
+        return "WeeklyEscalationAnalytics{" +
+                "weekRangeLabel='" + weekRangeLabel + '\'' +
+                ", asOfDate='" + asOfDate + '\'' +
+                ", stateListLabel='" + stateListLabel + '\'' +
+                ", facilitiesWithOpenTickets=" + facilitiesWithOpenTickets +
+                ", nfFacilitiesWithOpenTickets=" + nfFacilitiesWithOpenTickets +
+                ", openTheftCases=" + openTheftCases +
+                ", vendorLowestTatName='" + vendorLowestTatName + '\'' +
+                ", vendorLowestTatDays=" + vendorLowestTatDays +
+                ", overviewByStateSize=" + (overviewByState == null ? 0 : overviewByState.size()) +
+                ", vendorPerformanceSize=" + (vendorPerformance == null ? 0 : vendorPerformance.size()) +
+                ", bottlenecksSize=" + (bottlenecks == null ? 0 : bottlenecks.size()) +
+                ", nfAlertsSize=" + (nfAlerts == null ? 0 : nfAlerts.size()) +
+                ", facilitiesRestoredSize=" + (facilitiesRestored == null ? 0 : facilitiesRestored.size()) +
+                ", theftCasesSize=" + (theftCases == null ? 0 : theftCases.size()) +
+                ", escalationEffectivenessSize=" + (escalationEffectiveness == null ? 0 : escalationEffectiveness.size()) +
+                ", stateNfTrendSize=" + (stateNfTrend == null ? 0 : stateNfTrend.size()) +
+                ", overallTrendSize=" + (overallTrend == null ? 0 : overallTrend.size()) +
+                '}';
+    }
 }
