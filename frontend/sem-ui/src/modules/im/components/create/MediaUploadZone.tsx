@@ -1,4 +1,4 @@
-import { translateOr, useTranslate } from "@/shared";
+import { useTranslate } from "@/shared";
 import { cn } from "@/ui";
 import { CheckCircle2, Info, Trash2, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef } from "react";
@@ -82,7 +82,7 @@ function UploadedFileCard({
           <span>{formatFileSize(entry.file.size)}</span>
           <span>•</span>
           <CheckCircle2 className="size-3.5 text-primary" />
-          <span>{translateOr(t, "CS_COMMON_COMPLETE", "Complete")}</span>
+          <span>{t("CS_COMMON_COMPLETE")}</span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full w-full rounded-full bg-primary" />
@@ -92,7 +92,7 @@ function UploadedFileCard({
         type="button"
         onClick={() => onRemove(entry.fileStoreId)}
         className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-        aria-label={translateOr(t, "CS_COMMON_REMOVE", "Remove")}
+        aria-label={t("CS_COMMON_REMOVE")}
       >
         <Trash2 className="size-4" />
       </button>
@@ -138,7 +138,7 @@ export function MediaUploadZone({
           <Icon className="size-5" />
         </div>
         <span className="text-sm text-muted-foreground">
-          {uploading ? translateOr(t, "CS_COMMON_UPLOADING", "Uploading...") : hint}
+          {uploading ? t("CS_COMMON_UPLOADING") : hint}
         </span>
       </button>
       <input

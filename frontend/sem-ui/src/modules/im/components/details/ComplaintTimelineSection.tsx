@@ -1,4 +1,4 @@
-import { translateOr, useTranslate } from "@/shared";
+import { useTranslate } from "@/shared";
 import { cn } from "@/ui";
 import { History } from "lucide-react";
 import type {
@@ -39,16 +39,16 @@ function TimelineCaption({
 
   if (action === "MARK_OUT_OF_SCOPE") {
     const outOfScopeCode = String(outOfScopeReasons.shift() ?? "");
-    reasonText = translateOr(t, outOfScopeCode, outOfScopeCode);
-    reasonLabel = translateOr(t, "WF_OUT_OF_SCOPE_REASON", "WF_OUT_OF_SCOPE_REASON");
+    reasonText = t(outOfScopeCode);
+    reasonLabel = t("WF_OUT_OF_SCOPE_REASON");
   } else if (action === "REJECT") {
     const rejectCode = String(rejectReasons.shift() ?? "");
-    reasonText = translateOr(t, rejectCode, rejectCode);
-    reasonLabel = translateOr(t, "WF_REJECT_REASON", "WF_REJECT_REASON");
+    reasonText = t(rejectCode);
+    reasonLabel = t("WF_REJECT_REASON");
   } else if (action === "REOPEN" || action === "REOPEN_RMS") {
     const reopenCode = String(reopenReasons.shift() ?? "");
-    reasonText = translateOr(t, reopenCode, reopenCode);
-    reasonLabel = translateOr(t, "WF_REOPEN_REASON", "WF_REOPEN_REASON");
+    reasonText = t(reopenCode);
+    reasonLabel = t("WF_REOPEN_REASON");
   }
   // SENDBACK's reason isn't carried on the workflow process-history response (only
   // action/state/comment/assigner are) — its `wfComment` entries (rendered below)
@@ -74,7 +74,7 @@ function TimelineCaption({
       {checkpoint.wfComment?.map((comment, index) => (
         <div key={`${comment}-${index}`}>
           <p className="font-medium text-foreground">
-            {translateOr(t, "WF_COMMON_COMMENTS", "Comments")}
+            {t("WF_COMMON_COMMENTS")}
           </p>
           <p className="break-words">{comment}</p>
         </div>
@@ -85,7 +85,7 @@ function TimelineCaption({
         checkpoint.thumbnailsToShow?.videos?.length) ? (
         <div className="space-y-2">
           <p className="font-medium text-foreground">
-            {translateOr(t, "CS_COMMON_ATTACHMENTS", "Attachments")}
+            {t("CS_COMMON_ATTACHMENTS")}
           </p>
           <ComplaintMediaList
             images={checkpoint.thumbnailsToShow?.fullImage ?? []}
@@ -113,7 +113,7 @@ export function ComplaintTimelineSection({
   return (
     <FormSectionCard
       icon={History}
-      title={translateOr(t, "CS_COMPLAINT_DETAILS_HISTORY", "Timeline")}
+      title={t("CS_COMPLAINT_DETAILS_COMPLAINT_TIMELINE")}
       titleClassName="text-base font-semibold text-ink-950"
       divider
     >
@@ -129,7 +129,10 @@ export function ComplaintTimelineSection({
           // in ComplaintDetails.js) — the same CS_COMMON_<code> convention already
           // confirmed for the inbox's Issue Status filter.
           const status = checkpoint.status ?? checkpoint.performedAction ?? "UNKNOWN";
-          const actionKey = `CS_COMMON_${status}`;
+          const actionKey =
+            status === "COMPLAINT_FILED"
+              ? "CS_COMMON_COMPLAINT_FILED"
+              : `CS_COMMON_${status}`;
 
           return (
             <li key={`${checkpoint.status}-${checkpoint.performedAction}-${index}`} className="relative flex gap-4 pb-8">
@@ -151,7 +154,7 @@ export function ComplaintTimelineSection({
                     isLatest ? "text-success-foreground" : "text-ink-950",
                   )}
                 >
-                  {translateOr(t, actionKey, status)}
+                  {t(actionKey)}
                 </p>
                 <TimelineCaption
                   checkpoint={checkpoint}

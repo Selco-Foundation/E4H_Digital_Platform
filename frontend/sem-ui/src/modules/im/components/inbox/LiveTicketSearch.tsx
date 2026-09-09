@@ -1,4 +1,4 @@
-import { translateOr, useTranslate } from "@/shared";
+import { useTranslate } from "@/shared";
 import { Input } from "@/ui";
 import { useEffect, useState } from "react";
 
@@ -40,7 +40,7 @@ export function LiveTicketSearch({ onSearch, initialApplicationNumber = "" }: Li
         name="serviceRequestId"
         value={complaintNo}
         onChange={(event) => setComplaintNo(event.target.value)}
-        placeholder={translateOr(t, "CS_COMMON_TICKET_NO", "Ticket No.")}
+        placeholder={t("CS_COMMON_TICKET_NO")}
         className="h-8 max-w-xs"
       />
     </div>

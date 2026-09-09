@@ -1,4 +1,4 @@
-import { translateOr, useAuthStore, useTranslate } from "@/shared";
+import { useAuthStore, useTranslate } from "@/shared";
 import { Button, SplitButton } from "@/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SUPPORTED_WORKFLOW_ACTION_SET } from "../../constants/workflow-actions";
@@ -82,19 +82,19 @@ export function ComplaintActionBar({
             className="gap-2"
             onClick={() => setSelectedAction(singleAction.action)}
           >
-            {translateOr(t, `CS_ACTION_${singleAction.action}`, singleAction.action)}
+            {t(`CS_ACTION_${singleAction.action}`)}
           </Button>
         ) : (
           <>
             <div className="mr-auto">
-              <p className="text-sm font-medium text-foreground">{translateOr(t, "WF_TAKE_ACTION", "Take action")}</p>
+              <p className="text-sm font-medium text-foreground">{t("WF_TAKE_ACTION")}</p>
               <p className="text-xs text-muted-foreground">
-                {translateOr(t, "WF_TAKE_ACTION_DESC", "Choose an action to update this ticket")}
+                {t("WF_TAKE_ACTION_DESC")}
               </p>
             </div>
             <div className="relative w-full sm:w-auto" ref={menuRef}>
               <SplitButton
-                label={translateOr(t, "WF_TAKE_ACTION", "Take action")}
+                label={t("WF_TAKE_ACTION")}
                 size="lg"
                 className="flex w-full sm:inline-flex sm:w-auto"
                 onLabelClick={() => setMenuOpen((open) => !open)}
@@ -112,7 +112,7 @@ export function ComplaintActionBar({
                         setMenuOpen(false);
                       }}
                     >
-                      {translateOr(t, `CS_ACTION_${action.action}`, action.action)}
+                      {t(`CS_ACTION_${action.action}`)}
                     </button>
                   ))}
                 </div>

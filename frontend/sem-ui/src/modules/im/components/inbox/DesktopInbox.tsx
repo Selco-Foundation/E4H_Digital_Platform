@@ -1,4 +1,4 @@
-import { translateOr, useTranslate } from "@/shared";
+import { useTranslate } from "@/shared";
 import { Pagination, Skeleton } from "@/ui";
 import type { ImInboxFilters, InboxDataResult } from "../../types/inbox";
 import { ComplaintTable } from "./ComplaintTable";
@@ -56,7 +56,7 @@ export function DesktopInbox({
         </div>
       ) : data && data.combinedRes.length === 0 ? (
         <div className="livelihood-card px-6 py-16 text-center text-sm text-muted-foreground">
-          {translateOr(t, "CS_INBOX_NOTHING_TO_SHOW", "No Tickets Found")}
+          {t("CS_INBOX_NOTHING_TO_SHOW")}
         </div>
       ) : data?.combinedRes?.length ? (
         <>
@@ -69,7 +69,7 @@ export function DesktopInbox({
         </>
       ) : (
         <div className="livelihood-card px-6 py-16 text-center text-sm text-muted-foreground">
-          {translateOr(t, "CS_COMMON_ERROR_LOADING_RESULTS", "Unable to load results")}
+          {t("CS_COMMON_ERROR_LOADING_RESULTS")}
         </div>
       )}
 

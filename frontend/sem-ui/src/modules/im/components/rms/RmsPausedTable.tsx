@@ -1,4 +1,4 @@
-import { contextPath, translateOr, useTranslate } from "@/shared";
+import { contextPath, useTranslate } from "@/shared";
 import { Link } from "@tanstack/react-router";
 import type { PausedFacility } from "../../types/rms";
 
@@ -25,7 +25,7 @@ export function RmsPausedTable({ facilities, isLoading }: RmsPausedTableProps) {
   if (isLoading) {
     return (
       <div className="livelihood-card p-6 text-sm text-muted-foreground">
-        {translateOr(t, "CORE_COMMON_LOADING", "Loading...")}
+        {t("CORE_COMMON_LOADING")}
       </div>
     );
   }
@@ -33,7 +33,7 @@ export function RmsPausedTable({ facilities, isLoading }: RmsPausedTableProps) {
   if (!facilities.length) {
     return (
       <div className="livelihood-card p-6 text-center text-sm text-muted-foreground">
-        {translateOr(t, "RMS_NO_PAUSED_FACILITIES_FOUND", "No RMS Paused Facilities found")}
+        {t("RMS_NO_PAUSED_FACILITIES_FOUND")}
       </div>
     );
   }
@@ -43,10 +43,10 @@ export function RmsPausedTable({ facilities, isLoading }: RmsPausedTableProps) {
       <table className="w-full text-left text-sm">
         <thead className="border-b border-border text-xs font-semibold text-muted-foreground uppercase">
           <tr>
-            <th className="px-4 py-3">{translateOr(t, "RMS_FACILITY_NAME", "Facility Name")}</th>
-            <th className="px-4 py-3">{translateOr(t, "RMS_FACILITY_ID", "Facility ID")}</th>
-            <th className="px-4 py-3">{translateOr(t, "RMS_PAUSED_UNTIL", "Paused Until")}</th>
-            <th className="px-4 py-3">{translateOr(t, "RMS_PAUSED_BY", "Paused By")}</th>
+            <th className="px-4 py-3">{t("RMS_FACILITY_NAME")}</th>
+            <th className="px-4 py-3">{t("RMS_FACILITY_ID")}</th>
+            <th className="px-4 py-3">{t("RMS_PAUSED_UNTIL")}</th>
+            <th className="px-4 py-3">{t("RMS_PAUSED_BY")}</th>
           </tr>
         </thead>
         <tbody>
@@ -58,7 +58,7 @@ export function RmsPausedTable({ facilities, isLoading }: RmsPausedTableProps) {
                   search={{ facilityId: facility.facilityId }}
                   className="font-medium text-destructive hover:underline"
                 >
-                  {translateOr(t, `Boundary_${facility.boundaryCode}`, facility.boundaryCode ?? "-")}
+                  {t(`Boundary_${facility.boundaryCode}`)}
                 </Link>
               </td>
               <td className="px-4 py-3">{facility.facilityId ?? "-"}</td>

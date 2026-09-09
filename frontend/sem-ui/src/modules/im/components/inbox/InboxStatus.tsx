@@ -1,6 +1,6 @@
 import type { InboxStatusMapEntry } from "../../types/inbox";
 import { ORDERED_INBOX_STATUSES } from "../../constants/inbox-statuses";
-import { translateOr, useTranslate } from "@/shared";
+import { useTranslate } from "@/shared";
 import { Label } from "@/ui";
 import { useMemo } from "react";
 
@@ -65,7 +65,7 @@ export function InboxStatus({
 
   return (
     <div className="space-y-2">
-      <Label>{translateOr(t, "ES_IM_FILTER_STATUS", "Ticket Status")}</Label>
+      <Label>{t("ES_IM_FILTER_STATUS")}</Label>
       <div className="space-y-2">
         {sortedComplaints.map((option) => (
           <label key={option.code} className="flex items-center gap-2 text-sm">
@@ -75,7 +75,7 @@ export function InboxStatus({
               onChange={(event) => onAssignmentChange(event.target.checked, option)}
             />
             <span>
-              {translateOr(t, `CS_COMMON_${option.code}`, option.code)}
+              {t(`CS_COMMON_${option.code}`)}
               {option.count ? ` (${option.count})` : ""}
             </span>
           </label>

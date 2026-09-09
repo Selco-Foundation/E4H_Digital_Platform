@@ -1,4 +1,4 @@
-import { translateOr, useTranslate } from "@/shared";
+import { useTranslate } from "@/shared";
 import { Button, Input, Label } from "@/ui";
 import { useState } from "react";
 
@@ -30,7 +30,7 @@ export function InboxSearch({ onSearch, initialApplicationNumber = "" }: InboxSe
       <div className="flex flex-col gap-3 md:flex-row md:items-end">
         <div className="space-y-1">
           <Label htmlFor="serviceRequestId">
-            {translateOr(t, "CS_COMMON_TICKET_NO", "Ticket No.")}
+            {t("CS_COMMON_TICKET_NO")}
           </Label>
           <Input
             id="serviceRequestId"
@@ -42,14 +42,14 @@ export function InboxSearch({ onSearch, initialApplicationNumber = "" }: InboxSe
         </div>
         <div className="flex items-center gap-3">
           <Button type="submit" size="lg">
-            {translateOr(t, "ES_COMMON_SEARCH", "Search")}
+            {t("ES_COMMON_SEARCH")}
           </Button>
           <button
             type="button"
             onClick={clearSearch}
             className="text-sm text-primary hover:underline"
           >
-            {translateOr(t, "ES_COMMON_CLEAR_SEARCH", "Clear Search")}
+            {t("ES_COMMON_CLEAR_SEARCH")}
           </button>
         </div>
       </div>
