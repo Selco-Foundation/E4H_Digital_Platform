@@ -148,7 +148,7 @@ public class EscalationController {
             log.error("Error during weekly escalation processing", e);
             escalationStatusService.publishGeneralFailureStatus("weekly", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Weekly escalation processing failed: " + e.getMessage());
+                    .body("Weekly escalation processing failed");
         }
     }
     
