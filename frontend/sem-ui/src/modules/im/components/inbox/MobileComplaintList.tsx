@@ -44,7 +44,7 @@ export function MobileComplaintList({ data }: MobileComplaintListProps) {
           >
             <p className="text-base font-bold text-ink-950">{row.incidentId}</p>
             {row.potentialDuplicate ? (
-              <p className="text-xs font-medium text-destructive">
+              <p className="inline-block w-fit rounded-md border border-primary bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">
                 {t("CS_INFO_POTENTIAL_DUPLICATE")}
               </p>
             ) : null}

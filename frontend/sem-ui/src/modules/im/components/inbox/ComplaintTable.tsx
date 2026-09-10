@@ -72,7 +72,7 @@ export function ComplaintTable({ data }: ComplaintTableProps) {
                   }}
                 >
                   <td className="px-5 py-4">
-                    <div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <Link
                         to={detailsPath}
                         className="font-semibold text-foreground hover:text-primary hover:underline"
@@ -81,7 +81,7 @@ export function ComplaintTable({ data }: ComplaintTableProps) {
                         {row.incidentId}
                       </Link>
                       {row.potentialDuplicate ? (
-                        <p className="mt-1 text-xs font-medium text-destructive">
+                        <p className="inline-block w-fit rounded-md border border-primary bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">
                           {t("CS_INFO_POTENTIAL_DUPLICATE")}
                         </p>
                       ) : null}

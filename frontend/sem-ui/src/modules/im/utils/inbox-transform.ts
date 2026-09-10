@@ -85,7 +85,7 @@ export function combineInboxResponses(
       endUser: incident.reporter?.name || "-",
       tenantId: incident.tenantId,
       potentialDuplicate:
-        (currentUserRoles?.includes("LIVELIHOOD_POC") && !!incident.isPotentialDuplicate) ??
+        (currentUserRoles?.includes("COMPLAINT_ASSESSOR") && !!incident.isPotentialDuplicate) ??
         false,
     };
   });
