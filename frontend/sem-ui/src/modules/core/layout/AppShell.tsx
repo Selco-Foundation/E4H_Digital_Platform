@@ -3,12 +3,14 @@ import {
   contextPath,
   employeeLoginPath,
   employeeProfilePath,
+  aggregateBoundaryCodes,
   getConfigString,
   getCrmHelplineNumber,
   logoutUser,
   tenantId,
   translateOr,
   useAuthStore,
+  useBoundary,
   useJurisdictionStore,
   useTranslate,
   type NavItem,
@@ -48,7 +50,7 @@ import {
 } from "@/ui";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, FileText, Home, LogOut, Menu, Phone } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 function isNavItemActive(item: NavItem, pathname: string, homePath: string): boolean {
   const matchAgainst = [item.to, ...(item.matchPrefixes ?? [])];
@@ -68,7 +70,10 @@ export function AppShell() {
   const clearJurisdiction = useJurisdictionStore((state) => state.clearJurisdiction);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const boundaries = useJurisdictionStore((state) => state.boundaries);
-  const crmHelplineNumber = getCrmHelplineNumber(boundaries?.state ?? []);
+  const jurisdictionCodes = useMemo(() => aggregateBoundaryCodes(boundaries), [boundaries]);
+  const { data: boundaryData } = useBoundary(jurisdictionCodes);
+  const crmStateCodes = boundaryData?.states?.map((state) => state.code) ?? boundaries?.state ?? [];
+  const crmHelplineNumber = getCrmHelplineNumber(crmStateCodes);
   const { t } = useTranslate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -184,6 +189,19 @@ export function AppShell() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter className="gap-3 px-2 pb-12 md:px-7">
+          {crmHelplineNumber ? (
+            <div className="flex items-center justify-center gap-2 md:justify-start">
+              <Phone className="size-5 shrink-0 text-sidebar-foreground" />
+              <div className="hidden min-w-0 flex-col md:flex">
+                <span className="text-xs text-sidebar-foreground/70">
+                  {translateOr(t, "CS_COMMON_HELPLINE", "CRM Toll Number")}
+                </span>
+                <span className="truncate text-sm font-medium text-sidebar-foreground">
+                  {crmHelplineNumber}
+                </span>
+              </div>
+            </div>
+          ) : null}
           <Link
             to={employeeProfilePath()}
             className="flex items-center justify-center gap-2 rounded-lg transition-opacity hover:opacity-80 md:justify-start"
@@ -199,19 +217,6 @@ export function AppShell() {
               </p>
             </div>
           </Link>
-          {crmHelplineNumber ? (
-            <div className="flex items-center justify-center gap-2 md:justify-start">
-              <Phone className="size-5 shrink-0 text-sidebar-foreground" />
-              <div className="hidden min-w-0 flex-col md:flex">
-                <span className="text-xs text-sidebar-foreground/70">
-                  {translateOr(t, "CS_COMMON_HELPLINE", "CRM Toll Number")}
-                </span>
-                <span className="truncate text-sm font-medium text-sidebar-foreground">
-                  {crmHelplineNumber}
-                </span>
-              </div>
-            </div>
-          ) : null}
           <SidebarSeparator className="mx-0 h-[5px] w-full bg-white/60" />
           <Button
             variant="outline"
@@ -318,6 +323,19 @@ export function AppShell() {
                   </div>
 
                   <div className="flex flex-col gap-3">
+                    {crmHelplineNumber ? (
+                      <div className="flex items-center gap-2">
+                        <Phone className="size-5 shrink-0 text-white" />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="text-xs text-white/70">
+                            {translateOr(t, "CS_COMMON_HELPLINE", "CRM Toll Number")}
+                          </span>
+                          <span className="truncate text-sm font-medium text-white">
+                            {crmHelplineNumber}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
                     <Link
                       to={employeeProfilePath()}
                       onClick={() => setMobileNavOpen(false)}
@@ -332,19 +350,6 @@ export function AppShell() {
                         {user?.name ?? user?.userName ?? translateOr(t, "CORE_COMMON_USER_FALLBACK", "User")}
                       </span>
                     </Link>
-                    {crmHelplineNumber ? (
-                      <div className="flex items-center gap-2">
-                        <Phone className="size-5 shrink-0 text-white" />
-                        <div className="flex min-w-0 flex-col">
-                          <span className="text-xs text-white/70">
-                            {translateOr(t, "CS_COMMON_HELPLINE", "CRM Toll Number")}
-                          </span>
-                          <span className="truncate text-sm font-medium text-white">
-                            {crmHelplineNumber}
-                          </span>
-                        </div>
-                      </div>
-                    ) : null}
                     <div className="h-px w-full bg-white/40" />
                     <Button
                       variant="outline"

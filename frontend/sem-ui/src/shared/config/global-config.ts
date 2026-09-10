@@ -32,9 +32,17 @@ export function isGlobalConfigLoaded(): boolean {
 /**
  * Matches DIGIT-UI's AppModules.js: only trust the result when it resolves to
  * exactly one state (a user whose jurisdiction spans more than one, or none,
- * gets no CRM number — same as there).
+ * gets no CRM number — same as there). Some local/dev configs expose only the
+ * older flat CRM_HELPLINE_NUMBER key, so use that when boundary-specific
+ * metadata is not available.
  */
 export function getCrmHelplineNumber(stateCodes: string[]): string {
-  const infos = window.globalConfigs?.getStateBoundaryInfos?.(stateCodes) ?? [];
+  const getStateBoundaryInfos = window.globalConfigs?.getStateBoundaryInfos;
+
+  if (typeof getStateBoundaryInfos !== "function") {
+    return getConfigString("CRM_HELPLINE_NUMBER");
+  }
+
+  const infos = getStateBoundaryInfos(stateCodes) ?? [];
   return infos.length === 1 ? (infos[0].crmHelplineNumber ?? "") : "";
 }
