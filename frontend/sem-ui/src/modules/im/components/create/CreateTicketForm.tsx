@@ -22,6 +22,33 @@ interface CreateTicketFormProps {
   readonly inboxPath: string;
 }
 
+interface ReadOnlyLocationFieldProps {
+  readonly label: string;
+  readonly value: string;
+  readonly required?: boolean;
+  readonly error?: string;
+}
+
+function ReadOnlyLocationField({
+  label,
+  value,
+  required = false,
+  error,
+}: ReadOnlyLocationFieldProps) {
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <label className="text-sm font-medium text-foreground">
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </label>
+      <div className="livelihood-filter-select flex items-center bg-muted/30 text-foreground">
+        <span className="truncate">{value}</span>
+      </div>
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
 export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
   const navigate = useNavigate();
   const {
@@ -31,6 +58,9 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
     districtOptions,
     blockOptions,
     facilityOptions,
+    isDistrictLocked,
+    isBlockLocked,
+    isFacilityLocked,
     ticketTypeMenu,
     ticketSubTypeMenu,
     systemFunctionalMenu,
@@ -116,55 +146,80 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
         <FormSectionCard
           icon={MapPin}
           title={t("TICKET_LOCATION")}
-          description={t("TICKET_LOCATION_DESC")}
         >
           <div className="grid gap-4 md:grid-cols-3">
-            <FormSelectField
-              label={t("INCIDENT_DISTRICT")}
-              required
-              value={form.district?.code ?? ""}
-              options={districtOptions}
-              disabled={isBoundaryLoading}
-              error={fieldErrors.district}
-              onChange={(option) =>
-                handleDistrictChange(
-                  option ? (districtOptions.find((d) => d.code === option.code) ?? null) : null,
-                )
-              }
-            />
-            <FormSelectField
-              label={t("INCIDENT_BLOCK")}
-              required
-              value={form.block?.code ?? ""}
-              options={blockOptions}
-              disabled={!form.district}
-              error={fieldErrors.block}
-              onChange={(option) =>
-                handleBlockChange(
-                  option ? (blockOptions.find((b) => b.code === option.code) ?? null) : null,
-                )
-              }
-            />
-            <FormSelectField
-              label={t("HEALTH_CARE_CENTRE")}
-              required
-              value={form.facility?.code ?? ""}
-              options={facilityOptions}
-              disabled={!form.block}
-              error={fieldErrors.facility}
-              onChange={(option) =>
-                handleFacilityChange(
-                  option ? (facilityOptions.find((f) => f.code === option.code) ?? null) : null,
-                )
-              }
-            />
+            {isDistrictLocked ? (
+              <ReadOnlyLocationField
+                label={t("INCIDENT_DISTRICT")}
+                required
+                value={form.district?.name ?? districtOptions[0]?.name ?? ""}
+                error={fieldErrors.district}
+              />
+            ) : (
+              <FormSelectField
+                label={t("INCIDENT_DISTRICT")}
+                required
+                value={form.district?.code ?? ""}
+                options={districtOptions}
+                disabled={isBoundaryLoading}
+                error={fieldErrors.district}
+                onChange={(option) =>
+                  handleDistrictChange(
+                    option ? (districtOptions.find((d) => d.code === option.code) ?? null) : null,
+                  )
+                }
+              />
+            )}
+            {isBlockLocked ? (
+              <ReadOnlyLocationField
+                label={t("INCIDENT_BLOCK")}
+                required
+                value={form.block?.name ?? blockOptions[0]?.name ?? ""}
+                error={fieldErrors.block}
+              />
+            ) : (
+              <FormSelectField
+                label={t("INCIDENT_BLOCK")}
+                required
+                value={form.block?.code ?? ""}
+                options={blockOptions}
+                disabled={!form.district}
+                error={fieldErrors.block}
+                onChange={(option) =>
+                  handleBlockChange(
+                    option ? (blockOptions.find((b) => b.code === option.code) ?? null) : null,
+                  )
+                }
+              />
+            )}
+            {isFacilityLocked ? (
+              <ReadOnlyLocationField
+                label={t("HEALTH_CARE_CENTRE")}
+                required
+                value={form.facility?.name ?? facilityOptions[0]?.name ?? ""}
+                error={fieldErrors.facility}
+              />
+            ) : (
+              <FormSelectField
+                label={t("HEALTH_CARE_CENTRE")}
+                required
+                value={form.facility?.code ?? ""}
+                options={facilityOptions}
+                disabled={!form.block}
+                error={fieldErrors.facility}
+                onChange={(option) =>
+                  handleFacilityChange(
+                    option ? (facilityOptions.find((f) => f.code === option.code) ?? null) : null,
+                  )
+                }
+              />
+            )}
           </div>
         </FormSectionCard>
 
         <FormSectionCard
           icon={FileText}
           title={t("TICKET_DETAILS")}
-          description={t("TICKET_DETAILS_DESC")}
         >
           <div className="grid gap-4 md:grid-cols-3">
             <FormSelectField
@@ -198,7 +253,6 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
         <FormSectionCard
           icon={Info}
           title={t("ADDITIONAL_DETAILS")}
-          description={t("ADDITIONAL_DETAILS_DESC")}
         >
           <div className="space-y-6">
             <div className="space-y-1.5">

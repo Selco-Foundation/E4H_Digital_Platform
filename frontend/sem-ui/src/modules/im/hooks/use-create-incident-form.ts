@@ -183,6 +183,30 @@ export function useCreateIncidentForm(inboxPath: string) {
   }, [boundaryData, form.block, t]);
 
   useEffect(() => {
+    if (form.district || districtOptions.length !== 1) {
+      return;
+    }
+    setForm((prev) => (prev.district ? prev : { ...prev, district: districtOptions[0] }));
+    setFieldErrors((prev) => ({ ...prev, district: undefined }));
+  }, [districtOptions, form.district]);
+
+  useEffect(() => {
+    if (!form.district || form.block || blockOptions.length !== 1) {
+      return;
+    }
+    setForm((prev) => (prev.block ? prev : { ...prev, block: blockOptions[0] }));
+    setFieldErrors((prev) => ({ ...prev, block: undefined }));
+  }, [blockOptions, form.block, form.district]);
+
+  useEffect(() => {
+    if (!form.block || form.facility || facilityOptions.length !== 1) {
+      return;
+    }
+    setForm((prev) => (prev.facility ? prev : { ...prev, facility: facilityOptions[0] }));
+    setFieldErrors((prev) => ({ ...prev, facility: undefined }));
+  }, [facilityOptions, form.block, form.facility]);
+
+  useEffect(() => {
     if (!accessToken) {
       setTicketTypeMenu([]);
       return;
@@ -469,6 +493,9 @@ export function useCreateIncidentForm(inboxPath: string) {
     districtOptions,
     blockOptions,
     facilityOptions,
+    isDistrictLocked: districtOptions.length === 1,
+    isBlockLocked: Boolean(form.district) && blockOptions.length === 1,
+    isFacilityLocked: Boolean(form.block) && facilityOptions.length === 1,
     ticketTypeMenu,
     ticketSubTypeMenu,
     systemFunctionalMenu,

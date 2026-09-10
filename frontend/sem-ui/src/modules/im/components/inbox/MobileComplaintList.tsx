@@ -1,10 +1,9 @@
-import { contextPath, useAuthStore, useTranslate } from "@/shared";
+import { contextPath, useTranslate } from "@/shared";
 import { Card } from "@/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { Clock } from "lucide-react";
 import { SLA_OVERDUE_MARKER } from "../../constants/workflow";
 import type { InboxRow } from "../../types/inbox";
-import { isEndUser } from "../../utils/access";
 import { translateDetailValue } from "../../utils/complaint-details";
 
 interface MobileComplaintListProps {
@@ -22,11 +21,8 @@ function DetailRow({ label, value }: { readonly label: string; readonly value: s
 export function MobileComplaintList({ data }: MobileComplaintListProps) {
   const { t } = useTranslate();
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
   const basePath = `/${contextPath()}/employee/im`;
-  const slaLabel = isEndUser(user?.roles)
-    ? t("WF_INBOX_HEADER_DAYS_REMAINING")
-    : t("WF_INBOX_HEADER_SLA_DAYS_REMAINING");
+  const slaLabel = t("WF_INBOX_HEADER_SLA_DAYS_REMAINING");
   const overdueLabel = t("SLA_OVERDUE");
 
   return (

@@ -1,9 +1,8 @@
-import { contextPath, useAuthStore, useTranslate } from "@/shared";
+import { contextPath, useTranslate } from "@/shared";
 import { cn } from "@/ui";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { SLA_OVERDUE_MARKER } from "../../constants/workflow";
 import type { InboxRow } from "../../types/inbox";
-import { isEndUser } from "../../utils/access";
 import { translateDetailValue } from "../../utils/complaint-details";
 
 interface ComplaintTableProps {
@@ -23,10 +22,7 @@ function SlaBadge({ value, overdueLabel }: { value: string; overdueLabel: string
 export function ComplaintTable({ data }: ComplaintTableProps) {
   const { t } = useTranslate();
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const slaColumnLabel = isEndUser(user?.roles)
-    ? t("WF_INBOX_HEADER_DAYS_REMAINING")
-    : t("WF_INBOX_HEADER_SLA_DAYS_REMAINING");
+  const slaColumnLabel = t("WF_INBOX_HEADER_SLA_DAYS_REMAINING");
   const basePath = `/${contextPath()}/employee/im`;
   const overdueLabel = t("SLA_OVERDUE");
 
