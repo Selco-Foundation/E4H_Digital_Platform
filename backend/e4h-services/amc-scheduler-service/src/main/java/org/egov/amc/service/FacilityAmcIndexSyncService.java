@@ -42,6 +42,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.egov.amc.util.AmcConstants.PROJECT_MANAGER;
+
 /**
  * Pushes a snapshot of a facility's AMC data (installation date, applicability, frequency,
  * valid-till, and up to 10 due/visit date cycles) into facility-service's {@code additionalDetails},
@@ -432,7 +434,7 @@ public class FacilityAmcIndexSyncService {
                     .isActive(true)
                     .build();
             ScheduledVisitSearchRequest request = ScheduledVisitSearchRequest.builder()
-                    .RequestInfo(requestInfo)
+                    .RequestInfo(requestInfoForVisitSearch(requestInfo, tenantId))
                     .searchCriteria(criteria)
                     .build();
             List<ScheduledVisit> pageOfVisits = scheduledVisitRepository
@@ -626,7 +628,9 @@ public class FacilityAmcIndexSyncService {
      * happened yet reads as an explicit "Not Applicable" in the dump instead of an empty cell.
      */
     private String toIndexDate(Long epochMillis) {
-        if (epochMillis == null) {
+        // Zero counts as absent, not as 1 Jan 1970: EXPIRED visits carry actual_visit_date = 0
+        // rather than NULL, and "01-01-1970" reads as a real visit in the AMC Data Dump.
+        if (epochMillis == null || epochMillis == 0L) {
             return NOT_APPLICABLE;
         }
         return Instant.ofEpochMilli(epochMillis).atZone(INDEX_DATE_ZONE).format(INDEX_DATE_FORMATTER);
@@ -724,7 +728,7 @@ public class FacilityAmcIndexSyncService {
                 .isActive(true)
                 .build();
         ScheduledVisitSearchRequest request = ScheduledVisitSearchRequest.builder()
-                .RequestInfo(requestInfo)
+                .RequestInfo(requestInfoForVisitSearch(requestInfo, tenantId))
                 .searchCriteria(criteria)
                 .build();
         List<ScheduledVisit> fromDb =
@@ -784,6 +788,58 @@ public class FacilityAmcIndexSyncService {
             return updated.intValue();
         }
         return 0;
+    }
+
+    /**
+     * The caller's {@code RequestInfo} with {@code PROJECT_MANAGER} added, for the scheduled-visit
+     * repository search only.
+     *
+     * <p>{@code ScheduledVisitQueryBuilder} scopes that search to the caller: without
+     * {@code PROJECT_MANAGER} it appends {@code sva.assigned_user = <userInfo.uuid>}. That is
+     * correct for a field agent browsing their own worklist and wrong for an index sync, which has
+     * to see every visit of the configuration regardless of who triggered it. Without this, a vendor
+     * submitting one visit report indexes a snapshot holding only the cycles assigned to them and
+     * blanks the rest to "Not Applicable" - silently, because an over-filtered search is an empty
+     * result rather than an error.
+     *
+     * <p>The caller's object is copied rather than mutated: the same {@code RequestInfo} is reused
+     * by the workflow and HRMS calls later in the sync, which should keep the real caller's roles.
+     */
+    private RequestInfo requestInfoForVisitSearch(RequestInfo requestInfo, String tenantId) {
+        if (requestInfo == null || requestInfo.getUserInfo() == null) {
+            return buildFacilityServiceSystemRequestInfo(tenantId);
+        }
+        User caller = requestInfo.getUserInfo();
+        List<Role> roles = new ArrayList<>(caller.getRoles() == null ? List.of() : caller.getRoles());
+        boolean alreadyProjectManager = roles.stream()
+                .anyMatch(role -> role != null && PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
+        if (alreadyProjectManager) {
+            return requestInfo;
+        }
+
+        roles.add(Role.builder().name("Project manager").code(PROJECT_MANAGER).tenantId(tenantId).build());
+        User elevated = User.builder()
+                .id(caller.getId())
+                .uuid(caller.getUuid())
+                .userName(caller.getUserName())
+                .name(caller.getName())
+                .mobileNumber(caller.getMobileNumber())
+                .emailId(caller.getEmailId())
+                .type(caller.getType())
+                .roles(roles)
+                .tenantId(caller.getTenantId())
+                .build();
+        return RequestInfo.builder()
+                .apiId(requestInfo.getApiId())
+                .ver(requestInfo.getVer())
+                .ts(requestInfo.getTs())
+                .action(requestInfo.getAction())
+                .did(requestInfo.getDid())
+                .key(requestInfo.getKey())
+                .msgId(requestInfo.getMsgId())
+                .authToken(requestInfo.getAuthToken())
+                .userInfo(elevated)
+                .build();
     }
 
     private RequestInfo buildFacilityServiceSystemRequestInfo(String tenantId) {
