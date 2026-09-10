@@ -6,9 +6,11 @@ import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.util.CommonUtility;
 import org.selco.e4h.util.EscalationActorUtil;
 import org.selco.e4h.util.EscalationTicketUtil;
+import org.selco.e4h.web.models.ActorCountRow;
 import org.selco.e4h.web.models.DailyProcurementSummary;
 import org.selco.e4h.web.models.EscalationRoleEscalationItem;
 import org.selco.e4h.web.models.EscalationTicket;
+import org.selco.e4h.web.models.StateDailyBreachSection;
 import org.selco.e4h.web.models.VendorStateCountRow;
 import org.springframework.stereotype.Service;
 
@@ -53,9 +55,54 @@ public class DailyProcurementSummaryBuilder {
                 .recipientName(recipientName)
                 .asOfDate(DATE_FORMAT.format(new Date()))
                 .dashboardUrl(commonUtility.generateStateDashboardUrl())
-                .newBreaches(groupVendorRows(newBreaches))
+                .newBreachesByState(groupByState(newBreaches))
                 .previouslyOpen(capTopVendorsPerState(groupVendorRows(previouslyOpen), 2))
                 .build();
+    }
+
+    /**
+     * Section 1 per the spec: a "▸ StateName" banner + a 2-column (Vendor, Count) table for
+     * each state — not a single flat table with State as a column.
+     */
+    private List<StateDailyBreachSection> groupByState(List<EscalationTicket> tickets) {
+        Map<String, List<EscalationTicket>> byState = new LinkedHashMap<>();
+        for (EscalationTicket ticket : tickets) {
+            if (EscalationActorUtil.classifyByWorkflowState(ticket.getApplicationStatus())
+                    != EscalationActorUtil.ActorBucket.VENDOR) {
+                continue;
+            }
+            String stateCode = EscalationTicketUtil.resolveStateCode(ticket);
+            String stateName = commonUtility.getStateDisplayName(stateCode != null ? stateCode : "Unknown");
+            byState.computeIfAbsent(stateName, k -> new ArrayList<>()).add(ticket);
+        }
+
+        List<StateDailyBreachSection> sections = new ArrayList<>();
+        byState.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> sections.add(StateDailyBreachSection.builder()
+                        .stateName(entry.getKey())
+                        .breaches(groupVendorActorRows(entry.getValue()))
+                        .build()));
+        return sections;
+    }
+
+    private List<ActorCountRow> groupVendorActorRows(List<EscalationTicket> tickets) {
+        Map<String, ActorCountRow> grouped = new LinkedHashMap<>();
+        for (EscalationTicket ticket : tickets) {
+            String vendorName = EscalationActorUtil.resolveActorName(ticket);
+            String status = EscalationActorUtil.resolveStatusLabel(ticket.getApplicationStatus());
+            String key = vendorName + "|" + status;
+
+            ActorCountRow row = grouped.computeIfAbsent(key, k -> ActorCountRow.builder()
+                    .actorName(vendorName)
+                    .currentStatus(status)
+                    .count(0)
+                    .build());
+            row.setCount(row.getCount() + 1);
+        }
+        return grouped.values().stream()
+                .sorted(Comparator.comparing(ActorCountRow::getActorName))
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**

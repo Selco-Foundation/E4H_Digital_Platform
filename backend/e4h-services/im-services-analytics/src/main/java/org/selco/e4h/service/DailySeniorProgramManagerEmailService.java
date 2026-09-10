@@ -21,7 +21,7 @@ public class DailySeniorProgramManagerEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(DailySeniorProgramManagerSummary summary) {
-        return String.format("[Action Required] SLA Breach Escalation - %s | %s",
+        return String.format("[Action Required] SLA Breach Escalation — %s | %s",
                 summary.getRecipientName(), summary.getAsOfDate());
     }
 
@@ -49,15 +49,10 @@ public class DailySeniorProgramManagerEmailService {
         }
         StringBuilder html = new StringBuilder();
         for (StateDailyBreachSection section : sections) {
-            html.append("<p class=\"text\" style=\"font-weight:700;margin-top:16px\">▸ ")
+            html.append("<p class=\"banner b-slate\">▸ ")
                     .append(commonUtility.escapeHtml(section.getStateName())).append("</p>");
-            html.append("<p class=\"muted\" style=\"margin-top:4px\">State POC Breaches</p>");
-            html.append("<table><thead><tr><th>State POC</th><th>Current Status</th><th class=\"right\">Count</th></tr></thead><tbody>");
-            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getStatePocBreaches(), true));
-            html.append("</tbody></table>");
-            html.append("<p class=\"muted\" style=\"margin-top:8px\">Vendor Breaches</p>");
-            html.append("<table><thead><tr><th>Vendor</th><th>Current Status</th><th class=\"right\">Count</th></tr></thead><tbody>");
-            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getVendorBreaches(), true));
+            html.append("<table class=\"t-slate\"><thead><tr><th>Role Name</th><th class=\"right\">Count of Tickets</th></tr></thead><tbody>");
+            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false));
             html.append("</tbody></table>");
         }
         return html.toString();

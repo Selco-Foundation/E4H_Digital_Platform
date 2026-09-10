@@ -558,7 +558,7 @@ public class EscalationController {
         String subject;
         String body;
         if (EscalationTemplateType.WEEKLY_SENIOR_PROGRAM_MANAGER.equals(templateType)) {
-            subject = weeklySeniorProgramManagerEmailService.generateEmailSubject(analytics);
+            subject = weeklySeniorProgramManagerEmailService.generateEmailSubject(analytics, user.getName());
             body = weeklySeniorProgramManagerEmailService.generateEmailHtml(analytics, user.getName(), downloadUrl);
         } else if (EscalationTemplateType.WEEKLY_PROCUREMENT.equals(templateType)) {
             subject = weeklyProcurementEmailService.generateEmailSubject(analytics);

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.util.CommonUtility;
 import org.selco.e4h.util.EscalationEmailTemplateHelper;
 import org.selco.e4h.web.models.DailyProcurementSummary;
+import org.selco.e4h.web.models.StateDailyBreachSection;
 import org.selco.e4h.web.models.VendorStateCountRow;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +23,7 @@ public class DailyProcurementEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(DailyProcurementSummary summary) {
-        return String.format("[Action Required] Procurement SLA Breach Alert | %s", summary.getAsOfDate());
+        return String.format("[Urgent] Vendor SLA Escalation — Procurement Action Required | %s", summary.getAsOfDate());
     }
 
     public String generateEmailHtml(DailyProcurementSummary summary, String downloadUrl) {
@@ -31,8 +32,8 @@ public class DailyProcurementEmailService {
             Map<String, String> variables = EscalationEmailTemplateHelper.baseBrandingVariables(
                     commonUtility, summary.getRecipientName());
             variables.put("AS_OF_DATE", commonUtility.escapeHtml(summary.getAsOfDate()));
-            variables.put("NEW_VENDOR_ROWS", renderVendorRows(summary.getNewBreaches()));
-            variables.put("PREVIOUS_VENDOR_ROWS", renderVendorRows(summary.getPreviouslyOpen()));
+            variables.put("STATE_SECTIONS", renderStateSections(summary.getNewBreachesByState()));
+            variables.put("PREVIOUS_VENDOR_ROWS", renderPreviousRows(summary.getPreviouslyOpen()));
             variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(downloadUrl));
             variables.put("DASHBOARD_URL", summary.getDashboardUrl());
             return EscalationEmailTemplateHelper.render(template, variables);
@@ -42,16 +43,30 @@ public class DailyProcurementEmailService {
         }
     }
 
-    private String renderVendorRows(List<VendorStateCountRow> rows) {
+    private String renderStateSections(List<StateDailyBreachSection> sections) {
+        if (sections == null || sections.isEmpty()) {
+            return "<p class=\"muted\">No new escalations today.</p>";
+        }
+        StringBuilder html = new StringBuilder();
+        for (StateDailyBreachSection section : sections) {
+            html.append("<p class=\"banner b-slate\">▸ ")
+                    .append(commonUtility.escapeHtml(section.getStateName())).append("</p>");
+            html.append("<table class=\"t-slate\"><thead><tr><th>Vendor</th><th class=\"right\">Count of Tickets</th></tr></thead><tbody>");
+            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false));
+            html.append("</tbody></table>");
+        }
+        return html.toString();
+    }
+
+    private String renderPreviousRows(List<VendorStateCountRow> rows) {
         if (rows == null || rows.isEmpty()) {
-            return "<tr><td colspan=\"4\" class=\"muted center\">No breaches</td></tr>";
+            return "<tr><td colspan=\"3\" class=\"muted center\">No breaches</td></tr>";
         }
         StringBuilder html = new StringBuilder();
         for (VendorStateCountRow row : rows) {
             html.append("<tr>");
             html.append("<td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>");
             html.append("<td>").append(commonUtility.escapeHtml(row.getVendorName())).append("</td>");
-            html.append("<td>").append(commonUtility.escapeHtml(row.getCurrentStatus())).append("</td>");
             html.append("<td class=\"right\"><span class=\"badge\">").append(row.getCount()).append("</span></td>");
             html.append("</tr>");
         }

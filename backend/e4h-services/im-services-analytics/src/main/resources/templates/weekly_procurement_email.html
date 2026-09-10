@@ -12,20 +12,52 @@
     th{color:#6b7280;font-weight:700}.right{text-align:right}
     .btn{display:inline-block;background:#fff;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font-weight:600;text-decoration:none}
     .sp-16{height:16px}.rule{border-top:1px solid #e5e7eb;margin:16px 0}.scroll{overflow-x:auto}
+    .banner{color:#fff;font-weight:700;padding:10px 14px;border-radius:2px;margin:20px 0 8px;font-size:14px}
+    .b-magenta{background:#9c1458}.b-green{background:#1b5e20}.b-orange{background:#dd6b20}.b-slate{background:#55707f}
+    table.t-magenta th{background:#9c1458;color:#fff}table.t-green th{background:#1b5e20;color:#fff}
+    table.t-orange th{background:#dd6b20;color:#fff}
   </style>
 </head>
 <body>
 <table role="presentation" width="100%"><tr><td align="center"><table role="presentation" class="container card"><tr><td>
 <p class="h1">Weekly Procurement Update</p><p class="muted center">${WEEK_RANGE}</p><div class="rule"></div>
 <p class="text">Dear ${NAME},</p>
-<p class="section-title">Section 1 - Vendor SLA Performance (All States)</p>
-<div class="scroll"><table><thead><tr><th>Vendor</th><th class="right">New Breached</th><th class="right">Resolved (within SLA)</th><th class="right">Resolved (breached)</th><th class="right">Response Rate</th><th class="right">Resolution Rate</th></tr></thead><tbody>${VENDOR_ROWS}</tbody></table></div>
+<p class="text">Here is your weekly vendor performance summary across all 11 states, covering ${WEEK_RANGE}. This is a summary view — for individual ticket details, refer to your daily escalation emails or the E4H Dashboard.</p>
+<p class="banner b-magenta">Section 1 — Vendor SLA Performance (All 11 States)</p>
+<p class="muted">Vendor-wise breach and resolution performance this week, sorted lowest resolution rate first:</p>
+<div class="scroll"><table class="t-magenta"><thead><tr><th>Vendor</th><th class="right">New Breached</th><th class="right">Resolved (within SLA)</th><th class="right">Resolved (breached)</th><th class="right">Response Rate</th><th class="right">Resolution Rate</th></tr></thead><tbody>${VENDOR_ROWS}</tbody></table></div>
 ${OVERVIEW_TOTAL_SUMMARY}
-<p class="section-title">Section 2 - Facility Impact (Non-Functional → Functional)</p>
-<table><thead><tr><th>State</th><th class="right">HFs Restored</th><th>Vendor(s) Involved</th></tr></thead><tbody>${FACILITY_ROWS}</tbody></table>
-<p class="section-title">Section 3 - Where the Bottleneck Is</p>
-<table><thead><tr><th>Status</th><th class="right">Count</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
-${DOWNLOAD_BUTTON}
+<p class="banner b-green">Section 2 — Facility Impact (Non-Functional → Functional)</p>
+<p class="muted">Facilities that moved from Non-Functional to Functional this week as a result of resolved vendor tickets:</p>
+<table class="t-green"><thead><tr><th>State</th><th class="right">HFs Restored</th><th>Vendor(s) Involved</th></tr></thead><tbody>${FACILITY_ROWS}</tbody></table>
+<p class="banner b-orange">Section 3 — Where the Bottleneck Is</p>
+<p class="muted">Open vendor breaches grouped by current ticket status, highest first:</p>
+<table class="t-orange"><thead><tr><th>Status</th><th class="right">Count</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
+
+<p class="banner b-slate">Resources</p>
+<table role="presentation" width="100%"><tr>
+  <td style="width:50%;padding:6px 6px 6px 0" valign="top">
+    <div style="background:#f3f4f6;border-radius:8px;padding:14px">
+      <p class="text" style="font-weight:700">📊 E4H Dashboard</p>
+      <p class="text"><a href="${DASHBOARD_URL}" style="color:#f08400">Visit Dashboard</a></p>
+    </div>
+  </td>
+  <td style="width:50%;padding:6px 0 6px 6px" valign="top">
+    <div style="background:#f3f4f6;border-radius:8px;padding:14px">
+      <p class="text" style="font-weight:700">📎 Ticket Details</p>
+      ${DOWNLOAD_BUTTON}
+    </div>
+  </td>
+</tr></table>
+
+<p class="banner b-green">Action Expected From You</p>
+<p class="text">As the Procurement Team overseeing vendor contracts and performance, please:</p>
+<ul class="text">
+  <li>Review the vendor performance table above and flag any vendor with a declining or consistently low resolution rate for contract review.</li>
+  <li>Investigate the ticket status with the highest breach count — this usually points to a systemic vendor-process issue rather than a single ticket.</li>
+  <li>Track the HF impact number over time — the goal is for this to keep growing week over week.</li>
+</ul>
+
 <p class="muted center">Report generated on ${AS_OF_DATE}</p>
 </td></tr></table></td></tr></table>
 </body></html>

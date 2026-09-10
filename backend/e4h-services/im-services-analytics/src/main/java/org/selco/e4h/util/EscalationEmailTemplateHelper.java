@@ -41,15 +41,23 @@ public final class EscalationEmailTemplateHelper {
                 + "\" target=\"_blank\" rel=\"noopener\">Download Ticket Details</a></p>";
     }
 
+    /** Email tables show only the top rows by count — the rest is one click away in the download. */
+    public static final int MAX_DISPLAY_ROWS = 3;
+
     public static String renderActorRows(CommonUtility commonUtility, java.util.List<org.selco.e4h.web.models.ActorCountRow> rows,
                                          boolean includeStatus) {
+        int colspan = includeStatus ? 3 : 2;
         if (rows == null || rows.isEmpty()) {
-            return includeStatus
-                    ? "<tr><td colspan=\"3\" class=\"muted center\">No breaches</td></tr>"
-                    : "<tr><td colspan=\"2\" class=\"muted center\">No breaches</td></tr>";
+            return "<tr><td colspan=\"" + colspan + "\" class=\"muted center\">No breaches</td></tr>";
         }
+
+        java.util.List<org.selco.e4h.web.models.ActorCountRow> sorted = new java.util.ArrayList<>(rows);
+        sorted.sort(java.util.Comparator.comparingLong(org.selco.e4h.web.models.ActorCountRow::getCount).reversed());
+        java.util.List<org.selco.e4h.web.models.ActorCountRow> display = sorted.size() > MAX_DISPLAY_ROWS
+                ? sorted.subList(0, MAX_DISPLAY_ROWS) : sorted;
+
         StringBuilder html = new StringBuilder();
-        for (org.selco.e4h.web.models.ActorCountRow row : rows) {
+        for (org.selco.e4h.web.models.ActorCountRow row : display) {
             html.append("<tr>");
             html.append("<td>").append(commonUtility.escapeHtml(row.getActorName())).append("</td>");
             if (includeStatus) {
@@ -58,6 +66,16 @@ public final class EscalationEmailTemplateHelper {
             html.append("<td class=\"right\"><span class=\"badge\">").append(row.getCount()).append("</span></td>");
             html.append("</tr>");
         }
+        appendMoreRow(html, colspan, sorted.size());
         return html.toString();
+    }
+
+    /** Appends a "+N more" note row when the full list exceeds MAX_DISPLAY_ROWS. */
+    public static void appendMoreRow(StringBuilder html, int colspan, int totalCount) {
+        if (totalCount > MAX_DISPLAY_ROWS) {
+            html.append("<tr><td colspan=\"").append(colspan).append("\" class=\"muted\">+ ")
+                    .append(totalCount - MAX_DISPLAY_ROWS)
+                    .append(" more — see the downloaded ticket details for the full list</td></tr>");
+        }
     }
 }

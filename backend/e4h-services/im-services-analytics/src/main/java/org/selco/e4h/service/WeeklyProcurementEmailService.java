@@ -23,7 +23,7 @@ public class WeeklyProcurementEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(WeeklyEscalationAnalytics analytics) {
-        return String.format("Weekly Procurement Update | %s", analytics.getWeekRangeLabel());
+        return String.format("[Weekly Summary] Vendor SLA Performance — Procurement Team | Week of %s", analytics.getWeekRangeLabel());
     }
 
     public String generateEmailHtml(WeeklyEscalationAnalytics analytics, String recipientName, String downloadUrl) {
@@ -59,8 +59,9 @@ public class WeeklyProcurementEmailService {
         if (analytics.getVendorPerformance() == null || analytics.getVendorPerformance().isEmpty()) {
             return "<tr><td colspan=\"6\" class=\"muted center\">No vendor data</td></tr>";
         }
+        java.util.List<WeeklyVendorPerformanceRow> rows = analytics.getVendorPerformance();
         StringBuilder html = new StringBuilder();
-        for (WeeklyVendorPerformanceRow row : analytics.getVendorPerformance()) {
+        for (WeeklyVendorPerformanceRow row : rows.subList(0, Math.min(rows.size(), EscalationEmailTemplateHelper.MAX_DISPLAY_ROWS))) {
             html.append("<tr>");
             html.append("<td>").append(commonUtility.escapeHtml(row.getVendorName())).append("</td>");
             html.append("<td class=\"right\">").append(row.getNewBreachesThisWeek()).append("</td>");
@@ -70,6 +71,7 @@ public class WeeklyProcurementEmailService {
             html.append("<td class=\"right\">").append(row.getResolutionRatePct()).append("%</td>");
             html.append("</tr>");
         }
+        EscalationEmailTemplateHelper.appendMoreRow(html, 6, rows.size());
         return html.toString();
     }
 
@@ -77,12 +79,14 @@ public class WeeklyProcurementEmailService {
         if (analytics.getBottlenecks() == null || analytics.getBottlenecks().isEmpty()) {
             return "<tr><td colspan=\"3\" class=\"muted center\">No bottlenecks</td></tr>";
         }
+        java.util.List<WeeklyBottleneckRow> rows = analytics.getBottlenecks();
         StringBuilder html = new StringBuilder();
-        for (WeeklyBottleneckRow row : analytics.getBottlenecks()) {
+        for (WeeklyBottleneckRow row : rows.subList(0, Math.min(rows.size(), EscalationEmailTemplateHelper.MAX_DISPLAY_ROWS))) {
             html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStatusLabel())).append("</td>")
                     .append("<td class=\"right\">").append(row.getCount()).append("</td>")
                     .append("<td class=\"right\">").append(row.getPctOfTotalOpen()).append("%</td></tr>");
         }
+        EscalationEmailTemplateHelper.appendMoreRow(html, 3, rows.size());
         return html.toString();
     }
 

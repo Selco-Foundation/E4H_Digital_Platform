@@ -52,10 +52,11 @@ public class DailySeniorProgramManagerSummaryBuilder {
             List<ActorCountRow> statePocRows = groupActorRows(newBreaches, EscalationActorUtil.ActorBucket.STATE_SPOC);
             List<ActorCountRow> vendorRows = groupActorRows(newBreaches, EscalationActorUtil.ActorBucket.VENDOR);
             if (!statePocRows.isEmpty() || !vendorRows.isEmpty()) {
+                List<ActorCountRow> combined = new ArrayList<>(statePocRows);
+                combined.addAll(vendorRows);
                 stateSections.add(StateDailyBreachSection.builder()
                         .stateName(stateName)
-                        .statePocBreaches(statePocRows)
-                        .vendorBreaches(vendorRows)
+                        .breaches(combined)
                         .build());
             }
 

@@ -12,24 +12,40 @@
     th{color:#6b7280;font-weight:700}.right{text-align:right}.alert{background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px;margin:8px 0;font-size:13px}
     .btn{display:inline-block;background:#fff;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font-weight:600;text-decoration:none}
     .sp-16{height:16px}.rule{border-top:1px solid #e5e7eb;margin:16px 0}.scroll{overflow-x:auto}
+    .banner{color:#fff;font-weight:700;padding:10px 14px;border-radius:2px;margin:20px 0 8px;font-size:14px}
+    .b-green{background:#1b5e20}.b-blue{background:#1565c0}.b-teal{background:#00695c}
+    .b-red{background:#b83227}.b-orange{background:#dd6b20}.b-darkred{background:#922b21}.b-slate{background:#55707f}
+    table.t-blue th{background:#1565c0;color:#fff}table.t-teal th{background:#00695c;color:#fff}
+    table.t-red th{background:#b83227;color:#fff}table.t-orange th{background:#dd6b20;color:#fff}
   </style>
 </head>
 <body>
 <table role="presentation" width="100%"><tr><td align="center"><table role="presentation" class="container card"><tr><td>
 <p class="h1">Weekly Leadership Escalation Report</p><p class="muted center">${WEEK_RANGE}</p><div class="rule"></div>
 <p class="text">Dear ${NAME},</p>
-<p class="section-title">Key Highlights of the Week</p>${KEY_HIGHLIGHTS}
-<p class="section-title">Escalation Effectiveness (Post-Escalation Resolution)</p>
-<div class="scroll"><table><thead><tr><th>Escalation Level</th><th class="right">Escalated Last Week</th><th class="right">Resolved Since Escalation</th><th class="right">Resolution Rate</th></tr></thead><tbody>${EFFECTIVENESS_ROWS}</tbody></table></div>
-<p class="section-title">Overall Trend — Last Week vs This Week</p>
-<div class="scroll"><table><thead><tr><th>Metric</th><th class="right">Last Week</th><th class="right">This Week</th><th class="right">Change</th></tr></thead><tbody>${TREND_ROWS}</tbody></table></div>
-<p class="section-title">Non-Functional Facilities — By State</p>
-<div class="scroll"><table><thead><tr><th>State</th><th class="right">Total NF Last Week</th><th class="right">Total NF This Week</th><th class="right">NF % of Total</th></tr></thead><tbody>${STATE_NF_TREND_ROWS}</tbody></table></div>
-<p class="section-title">Theft Cases</p>${THEFT_SUMMARY}
-<p class="section-title">Status-wise SLA Breach — Average Time Open</p>
-<div class="scroll"><table><thead><tr><th>Current Ticket Status</th><th class="right">Open Tickets</th><th class="right">Avg Days Open</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table></div>
-<p class="section-title">⚠ Attention Required</p>${NF_ALERTS}
-${DOWNLOAD_BUTTON}
+<p class="text">Here is the programme-wide weekly summary across all 11 states, covering ${WEEK_RANGE}. Key numbers first, followed by the areas that need attention this week, and what we recommend doing about them.</p>
+<p class="banner b-green">Key Highlights of the Week</p>${KEY_HIGHLIGHTS}
+<p class="banner b-blue">Escalation Effectiveness (Post-Escalation Resolution)</p>
+<div class="scroll"><table class="t-blue"><thead><tr><th>Escalation Level</th><th class="right">Escalated Last Week</th><th class="right">Resolved Since Escalation</th><th class="right">Resolution Rate</th></tr></thead><tbody>${EFFECTIVENESS_ROWS}</tbody></table></div>
+<p class="banner b-teal">Overall Trend — Last Week vs This Week</p>
+<div class="scroll"><table class="t-teal"><thead><tr><th>Metric</th><th class="right">Last Week</th><th class="right">This Week</th><th class="right">Change</th></tr></thead><tbody>${TREND_ROWS}</tbody></table></div>
+<p class="banner b-red">Non-Functional Facilities — By State</p>
+<div class="scroll"><table class="t-red"><thead><tr><th>State</th><th class="right">Total NF Last Week</th><th class="right">Total NF This Week</th><th class="right">NF % of Total</th></tr></thead><tbody>${STATE_NF_TREND_ROWS}</tbody></table></div>
+<p class="banner b-red">New Theft Cases Reported</p>${THEFT_SUMMARY}
+<p class="banner b-orange">Status-wise SLA Breach — Average Time Open</p>
+<div class="scroll"><table class="t-orange"><thead><tr><th>Current Ticket Status</th><th class="right">Open Tickets</th><th class="right">Avg Days Open</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table></div>
+<p class="banner b-darkred">⚠ Attention Required</p>${NF_ALERTS}
+
+<p class="banner b-slate">Resources</p>
+<table role="presentation" width="100%"><tr>
+  <td style="width:50%;padding:6px" valign="top">
+    <div style="background:#f3f4f6;border-radius:8px;padding:14px">
+      <p class="text" style="font-weight:700">📊 E4H Dashboard</p>
+      <p class="text"><a href="${DASHBOARD_URL}" style="color:#f08400">Visit Dashboard</a></p>
+    </div>
+  </td>
+</tr></table>
+
 <p class="muted center">Report generated on ${AS_OF_DATE}</p>
 </td></tr></table></td></tr></table>
 </body></html>

@@ -18,8 +18,5 @@ public class StateDailyBreachSection {
     private String stateName;
 
     @Builder.Default
-    private List<ActorCountRow> statePocBreaches = new ArrayList<>();
-
-    @Builder.Default
-    private List<ActorCountRow> vendorBreaches = new ArrayList<>();
+    private List<ActorCountRow> breaches = new ArrayList<>();
 }

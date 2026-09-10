@@ -20,7 +20,7 @@ public class DailyProcurementSummary {
     private String dashboardUrl;
 
     @Builder.Default
-    private List<VendorStateCountRow> newBreaches = new ArrayList<>();
+    private List<StateDailyBreachSection> newBreachesByState = new ArrayList<>();
 
     @Builder.Default
     private List<VendorStateCountRow> previouslyOpen = new ArrayList<>();

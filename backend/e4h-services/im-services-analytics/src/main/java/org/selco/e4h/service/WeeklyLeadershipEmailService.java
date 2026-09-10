@@ -27,7 +27,7 @@ public class WeeklyLeadershipEmailService {
     private final EscalationProperties escalationProperties;
 
     public String generateEmailSubject(WeeklyEscalationAnalytics analytics) {
-        return String.format("Weekly Programme Summary | %s", analytics.getWeekRangeLabel());
+        return String.format("[Weekly Programme Summary] E4H SLA & Facility Status | Week of %s", analytics.getWeekRangeLabel());
     }
 
     public String generateEmailHtml(WeeklyEscalationAnalytics analytics, String recipientName, String downloadUrl) {
@@ -128,14 +128,16 @@ public class WeeklyLeadershipEmailService {
             html.append("<p class=\"muted\">No new theft cases this week.</p>");
             return html.toString();
         }
-        html.append("<table><thead><tr><th>State</th><th>Health Facility</th><th>District</th><th>Date</th><th>Status</th></tr></thead><tbody>");
-        for (WeeklyTheftCaseRow row : analytics.getTheftCases()) {
+        html.append("<table class=\"t-red\"><thead><tr><th>State</th><th>Health Facility</th><th>District</th><th>Date</th><th>Status</th></tr></thead><tbody>");
+        java.util.List<WeeklyTheftCaseRow> theftRows = analytics.getTheftCases();
+        for (WeeklyTheftCaseRow row : theftRows.subList(0, Math.min(theftRows.size(), EscalationEmailTemplateHelper.MAX_DISPLAY_ROWS))) {
             html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
                     .append("<td>").append(commonUtility.escapeHtml(row.getHealthFacilityName())).append("</td>")
                     .append("<td>").append(commonUtility.escapeHtml(row.getDistrict())).append("</td>")
                     .append("<td>").append(commonUtility.escapeHtml(row.getFiledDateFormatted())).append("</td>")
                     .append("<td>").append(commonUtility.escapeHtml(row.getStatusLabel())).append("</td></tr>");
         }
+        EscalationEmailTemplateHelper.appendMoreRow(html, 5, theftRows.size());
         html.append("</tbody></table>");
         return html.toString();
     }
@@ -144,13 +146,15 @@ public class WeeklyLeadershipEmailService {
         if (analytics.getBottlenecks() == null || analytics.getBottlenecks().isEmpty()) {
             return "<tr><td colspan=\"4\" class=\"muted center\">No bottlenecks</td></tr>";
         }
+        java.util.List<WeeklyBottleneckRow> rows = analytics.getBottlenecks();
         StringBuilder html = new StringBuilder();
-        for (WeeklyBottleneckRow row : analytics.getBottlenecks()) {
+        for (WeeklyBottleneckRow row : rows.subList(0, Math.min(rows.size(), EscalationEmailTemplateHelper.MAX_DISPLAY_ROWS))) {
             html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStatusLabel())).append("</td>")
                     .append("<td class=\"right\">").append(row.getCount()).append("</td>")
                     .append("<td class=\"right\">").append(row.getAvgDaysOpen()).append("</td>")
                     .append("<td class=\"right\">").append(row.getPctOfTotalOpen()).append("%</td></tr>");
         }
+        EscalationEmailTemplateHelper.appendMoreRow(html, 4, rows.size());
         return html.toString();
     }
 

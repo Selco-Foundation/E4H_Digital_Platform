@@ -3,6 +3,7 @@ package org.selco.e4h.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.util.CommonUtility;
+import org.selco.e4h.util.EscalationEmailTemplateHelper;
 import org.selco.e4h.web.models.ActorCountRow;
 import org.selco.e4h.web.models.DailyStatePocSummary;
 import org.springframework.core.io.ClassPathResource;
@@ -24,7 +25,7 @@ public class DailyStatePocEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(DailyStatePocSummary summary) {
-        return String.format("[Action Required] SLA Breach Alert - %s | %s",
+        return String.format("[Action Required] SLA Breach Alert — %s | %s",
                 summary.getStateName(), summary.getAsOfDate());
     }
 
@@ -51,23 +52,7 @@ public class DailyStatePocEmailService {
     }
 
     private String renderRows(List<ActorCountRow> rows, boolean includeStatus) {
-        if (rows == null || rows.isEmpty()) {
-            return includeStatus
-                    ? "<tr><td colspan=\"3\" class=\"muted center\">No breaches</td></tr>"
-                    : "<tr><td colspan=\"2\" class=\"muted center\">No breaches</td></tr>";
-        }
-
-        StringBuilder html = new StringBuilder();
-        for (ActorCountRow row : rows) {
-            html.append("<tr>");
-            html.append("<td>").append(commonUtility.escapeHtml(row.getActorName())).append("</td>");
-            if (includeStatus) {
-                html.append("<td>").append(commonUtility.escapeHtml(row.getCurrentStatus())).append("</td>");
-            }
-            html.append("<td class=\"right\"><span class=\"badge\">").append(row.getCount()).append("</span></td>");
-            html.append("</tr>");
-        }
-        return html.toString();
+        return EscalationEmailTemplateHelper.renderActorRows(commonUtility, rows, includeStatus);
     }
 
     private String renderDownloadButton(String downloadUrl) {
