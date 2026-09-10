@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Dropdown, RadioButtons, ActionBar, RemoveableTag, RoundedLabel } from "@selco/digit-ui-react-components";
 import { ApplyFilterBar, CloseSvg } from "@selco/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
@@ -19,8 +19,10 @@ const Filter = (props) => {
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
+  const isCRMUser = roles?.some((role) => role.code === "COMPLAINT_ASSESSOR");
   const isStateProgramManagerUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_1");
   const isTechPocUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
+  const showVendorFilter = isCRMUser || isStateProgramManagerUser || isTechPocUser;
 
   const assignedToOptions = useMemo(
     () => [
@@ -71,14 +73,16 @@ const isCodePresent = (array, codeToCheck) =>{
   );
 
   const [pgrfilters, setPgrFilters] = useState(
-    searchParams?.filters?.pgrfilters || {
+    {
       incidentType: [],
       facility: [],
       state: [],
       district: [],
       block: [],
+      mappedVendorName: [],
       isSystemFunctional: [],
       applicationStatus: [],
+      ...(searchParams?.filters?.pgrfilters || {}),
     }
   );
 
@@ -97,6 +101,23 @@ const isCodePresent = (array, codeToCheck) =>{
           }
         : { assignee: [{ code: "" }] })
   );
+
+  const toQueryParams = useCallback((filters) => {
+    const query = {};
+    for (const property in filters) {
+      if (property === "mappedVendorName" && !showVendorFilter) continue;
+      if (Array.isArray(filters[property])) {
+        const params = filters[property].map((prop) => prop.code).join();
+        if (params) {
+          query[property] = params;
+        }
+      }
+    }
+    return query;
+  }, [showVendorFilter]);
+
+  const currentPgrQuery = useMemo(() => toQueryParams(pgrfilters), [pgrfilters, toQueryParams]);
+  const currentWfQuery = useMemo(() => toQueryParams(wfFilters), [wfFilters, toQueryParams]);
 
   useEffect(() => {
     const refactorStateMenu = () => {
@@ -160,6 +181,7 @@ const isCodePresent = (array, codeToCheck) =>{
       district: prevFilters.district.map((district) => ({ ...district, name: t(`Boundary_${district.code}`), })),
       block: prevFilters.block.map((block) => ({ ...block, name: t(`Boundary_${block.code}`), })),
       facility: prevFilters.facility.map((facility) => ({ ...facility, name: t(`Boundary_${facility.code}`), })),
+      mappedVendorName: prevFilters.mappedVendorName || [],
       isSystemFunctional: prevFilters.isSystemFunctional.map((systemFunctionality) => ({
         ...systemFunctionality,
         name: t(systemFunctionality.nonLocalizedName)
@@ -231,6 +253,18 @@ const isCodePresent = (array, codeToCheck) =>{
   }, [selectAssigned]);
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
+  const { data: mappedVendorData } = Digit.Hooks.im.useMappedVendors({
+    tenantId,
+    filters: {
+      ...currentPgrQuery,
+      ...currentWfQuery,
+      limit: 0,
+      offset: 0,
+    },
+    enabled: showVendorFilter,
+  });
+  const mappedVendorMenu = mappedVendorData?.vendors || [];
+
   // let localities = Digit.Hooks.pgr.useLocalities({ city: tenantId });
   const { data: localities } = Digit.Hooks.useBoundaryLocalities(tenantId, "admin", {}, t);
   
@@ -256,25 +290,10 @@ const isCodePresent = (array, codeToCheck) =>{
     for (const property in pgrfilters) {
       if (Array.isArray(pgrfilters[property])) {
         count += pgrfilters[property].length;
-        let params = pgrfilters[property].map((prop) => prop.code).join();
-        if (params) {
-          pgrQuery[property] = params;
-        }
-        else{
-          delete pgrQuery?.[property]
-        }
       }
     }
-    for (const property in wfFilters) {
-      if (Array.isArray(wfFilters[property])) {
-        let params = wfFilters[property].map((prop) => prop.code).join();
-        if (params) {
-          wfQuery[property] = params;
-        } else {
-          delete wfQuery?.[property];
-        }
-      }
-    }
+    pgrQuery = currentPgrQuery;
+    wfQuery = currentWfQuery;
     count += wfFilters?.assignee?.length || 0;
 
     if (props.type !== "mobile") {
@@ -282,7 +301,7 @@ const isCodePresent = (array, codeToCheck) =>{
     }
 
     Digit.inboxFilterCount = count;
-  }, [pgrfilters, wfFilters]);
+  }, [pgrfilters, wfFilters, currentPgrQuery, currentWfQuery]);
 
   const ifExists = (list, key) => {
     return list.filter((object) => object.code === key.code).length;
@@ -302,7 +321,7 @@ const isCodePresent = (array, codeToCheck) =>{
   function onSelectHealthCare(value, key) {
     if(!value) return
     if (!ifExists(pgrfilters[key], value)) {
-      setPgrFilters({ ...pgrfilters, [key]: [...pgrfilters[key], value] });
+      setPgrFilters({ ...pgrfilters, [key]: [...pgrfilters[key], value], ...(key === "facility" ? { mappedVendorName: [] } : {}) });
     }
   }
 
@@ -314,14 +333,14 @@ const isCodePresent = (array, codeToCheck) =>{
       setDistrictMenu([]);
       setBlockMenu([]);
       setFacilityMenu([]);
-      setPgrFilters({ ...pgrfilters, state: [], district: [], block: [], facility: [] });
+      setPgrFilters({ ...pgrfilters, state: [], district: [], block: [], facility: [], mappedVendorName: [] });
     } else if (key === "district") {
       setBlockMenu([]);
       setFacilityMenu([]);
-      setPgrFilters({ ...pgrfilters, district: [], block: [], facility: [] });
+      setPgrFilters({ ...pgrfilters, district: [], block: [], facility: [], mappedVendorName: [] });
     } else if (key === "block") {
       setFacilityMenu([]);
-      setPgrFilters({ ...pgrfilters, block: [], facility: [] });
+      setPgrFilters({ ...pgrfilters, block: [], facility: [], mappedVendorName: [] });
     } else {
       setPgrFilters({ ...pgrfilters, [key]: afterRemove });
     }
@@ -341,7 +360,7 @@ const isCodePresent = (array, codeToCheck) =>{
     const previouslySelectedState = pgrfilters.state[0];
 
     if (previouslySelectedState?.code !== selectedState.code) {
-      setPgrFilters({ ...pgrfilters, state: [selectedState], district: [], block: [], facility: [] });
+      setPgrFilters({ ...pgrfilters, state: [selectedState], district: [], block: [], facility: [], mappedVendorName: [] });
     }
   };
 
@@ -349,7 +368,7 @@ const isCodePresent = (array, codeToCheck) =>{
     const previouslySelectedDistrict = pgrfilters.district[0];
 
     if (previouslySelectedDistrict?.code !== selectedDistrict.code) {
-      setPgrFilters({ ...pgrfilters, district: [selectedDistrict], block: [], facility: [] });
+      setPgrFilters({ ...pgrfilters, district: [selectedDistrict], block: [], facility: [], mappedVendorName: [] });
     }
   };
 
@@ -357,7 +376,16 @@ const isCodePresent = (array, codeToCheck) =>{
     const previouslySelectedBlock = pgrfilters.block[0];
 
     if (previouslySelectedBlock?.code !== selectedBlock.code) {
-      setPgrFilters({ ...pgrfilters, block: [selectedBlock], facility: [] });
+      setPgrFilters({ ...pgrfilters, block: [selectedBlock], facility: [], mappedVendorName: [] });
+    }
+  };
+
+  const handleVendorChange = (selectedVendor) => {
+    if (!selectedVendor) return;
+    const previouslySelectedVendor = pgrfilters.mappedVendorName[0];
+
+    if (previouslySelectedVendor?.code !== selectedVendor.code) {
+      setPgrFilters({ ...pgrfilters, mappedVendorName: [selectedVendor] });
     }
   };
 
@@ -376,6 +404,7 @@ const isCodePresent = (array, codeToCheck) =>{
       state: [],
       district: [],
       block: [],
+      mappedVendorName: [],
       isSystemFunctional: [],
       applicationStatus: []
     };
@@ -404,7 +433,7 @@ const isCodePresent = (array, codeToCheck) =>{
   }
 
   const handleFilterSubmit = () => {
-    props.onFilterChange({ pgrQuery: pgrQuery, wfQuery: wfQuery, wfFilters, pgrfilters });
+    props.onFilterChange({ pgrQuery: currentPgrQuery, wfQuery: currentWfQuery, wfFilters, pgrfilters });
   };
 
   const GetSelectOptions = (lable, options, selected = null, select, optionKey, onRemove, key) => {
@@ -424,6 +453,24 @@ const isCodePresent = (array, codeToCheck) =>{
           {pgrfilters[key].length > 0 &&
             pgrfilters[key].map((value, index) => {
               return <RemoveableTag disabled={disableSelection} key={index} text={`${value[optionKey]} ...`} onClick={() => onRemove(index, key)} />;
+            })}
+        </div>
+      </div>
+    );
+  };
+
+  const GetVendorSelectOptions = () => {
+    const selected = { name: "", code: "" };
+
+    return (
+      <div>
+        <div className="filter-label">Vendor</div>
+        <Dropdown option={mappedVendorMenu} selected={selected} select={handleVendorChange} optionKey="name" />
+
+        <div className="tag-container">
+          {pgrfilters.mappedVendorName.length > 0 &&
+            pgrfilters.mappedVendorName.map((value, index) => {
+              return <RemoveableTag key={index} text={`${value.name} ...`} onClick={() => onRemove(index, "mappedVendorName")} />;
             })}
         </div>
       </div>
@@ -564,6 +611,7 @@ const isCodePresent = (array, codeToCheck) =>{
                     )
                   }
                 </div>
+                {showVendorFilter && <div>{GetVendorSelectOptions()}</div>}
               </div>
             )}
             <div>
