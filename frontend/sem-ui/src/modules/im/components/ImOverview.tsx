@@ -8,10 +8,8 @@ import { Button, StatTile } from "@/ui";
 import { Link } from "@tanstack/react-router";
 import { Clock, FileText, Plus } from "lucide-react";
 import { useEffect } from "react";
-import { EndUserAssetsList } from "./EndUserAssetsList";
-import { useEndUserAssets } from "../hooks/use-end-user-assets";
 import { useImInboxSummary } from "../hooks/use-im-inbox-summary";
-import { canCreateIncident, hasImAccess, isEndUser } from "../utils/access";
+import { canCreateIncident, hasImAccess } from "../utils/access";
 
 export function ImKpis() {
   const { t } = useTranslate();
@@ -68,13 +66,5 @@ export function ImOverviewActions() {
 }
 
 export function ImDetails() {
-  const user = useAuthStore((state) => state.user);
-  const endUser = isEndUser(user?.roles);
-  const { assets, isLoading: isAssetsLoading } = useEndUserAssets({ enabled: endUser });
-
-  if (!hasImAccess(user?.roles) || !endUser) {
-    return null;
-  }
-
-  return <EndUserAssetsList assets={assets} isLoading={isAssetsLoading} />;
+  return null;
 }
