@@ -39,3 +39,16 @@ export function isAssigneeScopedUser(
 ): boolean {
   return hasRole(roles, "LIVELIHOOD_VENDOR") || hasRole(roles, "COMPLAINT_RESOLVER");
 }
+
+/**
+ * Matches DIGIT-UI's inbox Filter.js: `showVendorFilter = isCRMUser ||
+ * isStateProgramManagerUser || isTechPocUser` — the Vendor filter is only
+ * shown to these three roles.
+ */
+export function canFilterByVendor(roles: Array<{ code?: string }> | undefined): boolean {
+  return (
+    hasRole(roles, "COMPLAINT_ASSESSOR") ||
+    hasRole(roles, "COMPLAINT_FACILITATOR_1") ||
+    hasRole(roles, "COMPLAINT_FACILITATOR_2")
+  );
+}

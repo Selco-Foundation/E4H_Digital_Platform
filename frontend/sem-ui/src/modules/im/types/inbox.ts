@@ -13,6 +13,7 @@ export interface ImInboxFilters {
     state?: Array<{ code: string; name?: string }>;
     district?: Array<{ code: string; name?: string }>;
     block?: Array<{ code: string; name?: string }>;
+    mappedVendorName?: Array<{ code: string; name?: string }>;
     applicationStatus?: Array<{ code: string }>;
   };
 }
@@ -51,6 +52,7 @@ export interface InboxItem {
     incident?: InboxIncident;
     slaRemaining?: number;
     totalSlaRemaining?: number;
+    currentOwner?: string;
   };
   ProcessInstance?: {
     assignes?: Array<{ uuid?: string; name?: string }>;

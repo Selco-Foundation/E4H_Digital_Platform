@@ -22,6 +22,7 @@ export interface IncidentFilterInput {
   district?: string;
   block?: string;
   isSystemFunctional?: string;
+  mappedVendorName?: string;
   wfStatus?: string;
   IncidentWrappers?: boolean;
   incidentId?: string;
@@ -67,6 +68,7 @@ export function buildIncidentInboxFilters(
     district,
     block,
     isSystemFunctional,
+    mappedVendorName,
     wfStatus,
   } = filtersArg ?? {};
 
@@ -118,6 +120,10 @@ export function buildIncidentInboxFilters(
 
   if (isSystemFunctional) {
     searchFilters.systemFunctional = splitCsv(isSystemFunctional)[0];
+  }
+
+  if (mappedVendorName) {
+    searchFilters.mappedVendorName = mappedVendorName;
   }
 
   if (assignee) {

@@ -65,7 +65,6 @@ export function combineInboxResponses(
       applicationStatus: "",
       tenantId: "",
     };
-    const assignee = ProcessInstance?.assignes?.[0];
     const slaValue = resolveSlaValue(item, incident, currentUserUuid, currentUserRoles, isEndUser);
 
     return {
@@ -80,7 +79,7 @@ export function combineInboxResponses(
         ? `Boundary_${incident.boundary.facilityCode}`
         : "-",
       status: incident.applicationStatus,
-      taskOwner: assignee?.name || "-",
+      taskOwner: businessObject?.currentOwner || "-",
       sla: `${slaValue}`,
       endUser: incident.reporter?.name || "-",
       tenantId: incident.tenantId,

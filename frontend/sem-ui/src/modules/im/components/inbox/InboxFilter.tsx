@@ -23,15 +23,17 @@ import {
   SheetTrigger,
   cn,
 } from "@/ui";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Filter } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ORDERED_INBOX_STATUSES } from "../../constants/inbox-statuses";
 import { buildDefaultInboxRoleFilters } from "../../hooks/inbox-defaults";
 import { useImAssetTypes } from "../../hooks/use-im-inbox-summary";
 import { fetchSystemFunctionalityOptions, fetchTicketTypeMenu } from "../../services/mdms";
+import { fetchMappedVendors } from "../../services/vendor";
 import type { SelectOption } from "../../types/create-incident";
 import type { ImInboxFilters, InboxDataResult } from "../../types/inbox";
-import { isEndUser } from "../../utils/access";
+import { canFilterByVendor, isEndUser } from "../../utils/access";
 import { buildFilterQueryFromState } from "../../utils/inbox-filters";
 import { InboxStatus } from "./InboxStatus";
 import { LiveTicketSearch } from "./LiveTicketSearch";
@@ -67,7 +69,8 @@ type PgrFilterKey =
   | "facility"
   | "state"
   | "district"
-  | "block";
+  | "block"
+  | "mappedVendorName";
 
 interface InboxFilterProps {
   complaints?: InboxDataResult;
@@ -87,10 +90,12 @@ export function InboxFilter({
   const { t } = useTranslate();
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
+  const employeeTenantId = useAuthStore((state) => state.employeeTenantId);
   const userUuid = user?.uuid ?? "";
   const roles = user?.roles;
   const boundaries = useJurisdictionStore((state) => state.boundaries);
   const jurisdictionCodes = aggregateBoundaryCodes(boundaries);
+  const showVendorFilter = canFilterByVendor(roles);
 
   const assignedToOptions = useMemo(
     () => [
@@ -129,6 +134,7 @@ export function InboxFilter({
     state: [] as Array<{ code: string; name?: string }>,
     district: [] as Array<{ code: string; name?: string }>,
     block: [] as Array<{ code: string; name?: string }>,
+    mappedVendorName: [] as Array<{ code: string; name?: string }>,
     applicationStatus: [] as Array<{ code: string }>,
   };
 
@@ -361,10 +367,35 @@ export function InboxFilter({
     }));
   }, [selectAssigned, userUuid]);
 
+  const { pgrQuery: currentPgrQuery, wfQuery: currentWfQuery } = useMemo(
+    () => buildFilterQueryFromState({ pgrfilters, wfFilters }),
+    [pgrfilters, wfFilters],
+  );
+
   useEffect(() => {
-    const { pgrQuery, wfQuery } = buildFilterQueryFromState({ pgrfilters, wfFilters });
-    onFilterChange({ pgrQuery, wfQuery, wfFilters, pgrfilters });
-  }, [pgrfilters, wfFilters]); // eslint-disable-line react-hooks/exhaustive-deps
+    onFilterChange({ pgrQuery: currentPgrQuery, wfQuery: currentWfQuery, wfFilters, pgrfilters });
+  }, [currentPgrQuery, currentWfQuery, wfFilters, pgrfilters]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { data: mappedVendorData } = useQuery({
+    queryKey: ["im-mapped-vendors", employeeTenantId, currentPgrQuery, currentWfQuery],
+    enabled: showVendorFilter && Boolean(accessToken && employeeTenantId),
+    queryFn: () => {
+      // Matches DIGIT-UI's useMappedVendors.js: the vendor list itself must not
+      // be filtered by the currently-selected vendor.
+      const { mappedVendorName: _omit, ...vendorScopedQuery } = {
+        ...currentPgrQuery,
+        ...currentWfQuery,
+      };
+      return fetchMappedVendors(
+        { ...vendorScopedQuery, limit: 0, offset: 0 },
+        employeeTenantId!,
+        boundaries,
+        accessToken!,
+        user,
+      );
+    },
+  });
+  const mappedVendorMenu = mappedVendorData?.vendors ?? [];
 
   const hasActiveFilters =
     Object.values(pgrfilters).some((value) => value.length > 0) ||
@@ -446,6 +477,9 @@ export function InboxFilter({
             options: facilityMenu,
           },
         ]
+      : []),
+    ...(showVendorFilter
+      ? [{ key: "mappedVendorName" as const, label: t("CS_VENDOR"), options: mappedVendorMenu }]
       : []),
     {
       key: "applicationStatus" as const,
