@@ -23,7 +23,7 @@ public class WeeklyProcurementEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(WeeklyEscalationAnalytics analytics) {
-        return String.format("[Weekly Summary] Vendor SLA Performance — Procurement Team | Week of %s", analytics.getWeekRangeLabel());
+        return String.format("[Weekly Summary] Vendor SLA Performance - Procurement Team | Week of %s", analytics.getWeekRangeLabel());
     }
 
     public String generateEmailHtml(WeeklyEscalationAnalytics analytics, String recipientName, String downloadUrl) {

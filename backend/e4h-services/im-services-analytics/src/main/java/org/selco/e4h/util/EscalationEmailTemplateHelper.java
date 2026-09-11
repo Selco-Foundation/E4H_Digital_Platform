@@ -33,15 +33,16 @@ public final class EscalationEmailTemplateHelper {
         return variables;
     }
 
+    /** Styled to match the "Visit Dashboard" link in the Resources section - plain text link, not a button. */
     public static String renderDownloadButton(String downloadUrl) {
         if (downloadUrl == null || downloadUrl.isBlank() || "#".equals(downloadUrl)) {
             return "";
         }
-        return "<p class=\"center\"><a class=\"btn\" href=\"" + downloadUrl
-                + "\" target=\"_blank\" rel=\"noopener\">Download Ticket Details</a></p>";
+        return "<p class=\"text\"><a href=\"" + downloadUrl
+                + "\" target=\"_blank\" rel=\"noopener\" style=\"color:#f08400\">Download Ticket Details</a></p>";
     }
 
-    /** Email tables show only the top rows by count — the rest is one click away in the download. */
+    /** Email tables show only the top rows by count - the rest is one click away in the download. */
     public static final int MAX_DISPLAY_ROWS = 3;
 
     public static String renderActorRows(CommonUtility commonUtility, java.util.List<org.selco.e4h.web.models.ActorCountRow> rows,
@@ -75,7 +76,7 @@ public final class EscalationEmailTemplateHelper {
         if (totalCount > MAX_DISPLAY_ROWS) {
             html.append("<tr><td colspan=\"").append(colspan).append("\" class=\"muted\">+ ")
                     .append(totalCount - MAX_DISPLAY_ROWS)
-                    .append(" more — see the downloaded ticket details for the full list</td></tr>");
+                    .append(" more - see the downloaded ticket details for the full list</td></tr>");
         }
     }
 }

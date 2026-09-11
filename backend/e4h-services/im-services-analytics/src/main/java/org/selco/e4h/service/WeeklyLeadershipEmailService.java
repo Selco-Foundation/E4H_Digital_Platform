@@ -63,7 +63,7 @@ public class WeeklyLeadershipEmailService {
                 : "No resolved vendor tickets this week";
 
         return "<ul>"
-                + "<li>Facilities moved Non-Functional → Functional: <strong>" + facilitiesRestored + "</strong></li>"
+                + "<li>Facilities moved Non-Functional -&gt; Functional: <strong>" + facilitiesRestored + "</strong></li>"
                 + "<li>Tickets Resolved This Week: <strong>" + ticketsResolved + "</strong></li>"
                 + "<li>Vendor with Lowest Average TAT: <strong>" + vendorLine + "</strong></li>"
                 + "</ul>";
@@ -161,12 +161,12 @@ public class WeeklyLeadershipEmailService {
     private String renderNfAlerts(WeeklyEscalationAnalytics analytics) {
         double threshold = escalationProperties.getLeadership().getNfThresholdPct();
         if (analytics.getNfAlerts() == null || analytics.getNfAlerts().isEmpty()) {
-            return "<p>✅ No states currently exceed the " + threshold + "% Non-Functional threshold.</p>";
+            return "<p>No states currently exceed the " + threshold + "% Non-Functional threshold.</p>";
         }
         StringBuilder html = new StringBuilder();
         for (WeeklyNfAlert alert : analytics.getNfAlerts()) {
-            html.append("<div class=\"alert\">🔴 <strong>").append(commonUtility.escapeHtml(alert.getStateName()))
-                    .append("</strong> — Non-Functional rate is ").append(alert.getNfPct())
+            html.append("<div class=\"alert\"><strong>").append(commonUtility.escapeHtml(alert.getStateName()))
+                    .append("</strong> - Non-Functional rate is ").append(alert.getNfPct())
                     .append("% (exceeds ").append(threshold).append("% threshold)<br>")
                     .append("Primary bottleneck: ").append(commonUtility.escapeHtml(alert.getPrimaryBottleneck()))
                     .append("</div>");

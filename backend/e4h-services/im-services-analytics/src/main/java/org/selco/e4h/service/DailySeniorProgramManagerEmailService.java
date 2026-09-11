@@ -21,7 +21,7 @@ public class DailySeniorProgramManagerEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(DailySeniorProgramManagerSummary summary) {
-        return String.format("[Action Required] SLA Breach Escalation — %s | %s",
+        return String.format("[Action Required] SLA Breach Escalation - %s | %s",
                 summary.getRecipientName(), summary.getAsOfDate());
     }
 
@@ -49,7 +49,7 @@ public class DailySeniorProgramManagerEmailService {
         }
         StringBuilder html = new StringBuilder();
         for (StateDailyBreachSection section : sections) {
-            html.append("<p class=\"banner b-slate\">▸ ")
+            html.append("<p class=\"banner b-slate\">&gt;")
                     .append(commonUtility.escapeHtml(section.getStateName())).append("</p>");
             html.append("<table class=\"t-slate\"><thead><tr><th>Role Name</th><th class=\"right\">Count of Tickets</th></tr></thead><tbody>");
             html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false));

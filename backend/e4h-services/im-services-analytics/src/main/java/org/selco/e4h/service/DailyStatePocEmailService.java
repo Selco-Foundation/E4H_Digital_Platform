@@ -25,7 +25,7 @@ public class DailyStatePocEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(DailyStatePocSummary summary) {
-        return String.format("[Action Required] SLA Breach Alert — %s | %s",
+        return String.format("[Action Required] SLA Breach Alert - %s | %s",
                 summary.getStateName(), summary.getAsOfDate());
     }
 

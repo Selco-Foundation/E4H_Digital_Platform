@@ -23,7 +23,7 @@ public class DailyProcurementEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(DailyProcurementSummary summary) {
-        return String.format("[Urgent] Vendor SLA Escalation — Procurement Action Required | %s", summary.getAsOfDate());
+        return String.format("[Urgent] Vendor SLA Escalation - Procurement Action Required | %s", summary.getAsOfDate());
     }
 
     public String generateEmailHtml(DailyProcurementSummary summary, String downloadUrl) {
@@ -49,7 +49,7 @@ public class DailyProcurementEmailService {
         }
         StringBuilder html = new StringBuilder();
         for (StateDailyBreachSection section : sections) {
-            html.append("<p class=\"banner b-slate\">▸ ")
+            html.append("<p class=\"banner b-slate\">&gt;")
                     .append(commonUtility.escapeHtml(section.getStateName())).append("</p>");
             html.append("<table class=\"t-slate\"><thead><tr><th>Vendor</th><th class=\"right\">Count of Tickets</th></tr></thead><tbody>");
             html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false));

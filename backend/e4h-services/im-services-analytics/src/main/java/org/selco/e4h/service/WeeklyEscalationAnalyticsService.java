@@ -69,7 +69,7 @@ public class WeeklyEscalationAnalyticsService {
         long weekStartMs = reportWeek[0].getTime();
         long weekEndMs = reportWeek[1].getTime();
 
-        String weekRangeLabel = RANGE_FORMAT.format(reportWeek[0]) + " – "
+        String weekRangeLabel = RANGE_FORMAT.format(reportWeek[0]) + " -"
                 + RANGE_FORMAT.format(reportWeek[1]) + " " + Calendar.getInstance().get(Calendar.YEAR);
         String stateListLabel = stateCodes.stream()
                 .map(commonUtility::getStateDisplayName)
@@ -329,8 +329,8 @@ public class WeeklyEscalationAnalyticsService {
     }
 
     /**
-     * Computes each vendor's real Response Rate — % of assigned tickets where the vendor's first
-     * action after entering a vendor-owned workflow state landed within that step's SLA — using
+     * Computes each vendor's real Response Rate - % of assigned tickets where the vendor's first
+     * action after entering a vendor-owned workflow state landed within that step's SLA - using
      * egov-workflow-v2's process-instance history (batched, one HTTP call per ~100 tickets).
      * Falls back to the current-step-SLA proxy per ticket when history is unavailable (e.g. the
      * workflow service call fails, or a ticket has no vendor-state entry in its history).
@@ -364,7 +364,7 @@ public class WeeklyEscalationAnalyticsService {
     }
 
     /**
-     * Current-step SLA breach check (as opposed to overall-ticket breach) — used for the
+     * Current-step SLA breach check (as opposed to overall-ticket breach) - used for the
      * national/state bottleneck breach flag, and as the fallback basis for vendor Response Rate
      * when real workflow history isn't available (see resolveVendorResponseRates).
      */
@@ -430,7 +430,7 @@ public class WeeklyEscalationAnalyticsService {
         double changePct = lastWeekValue > 0
                 ? Math.round(((thisWeekValue - lastWeekValue) * 100.0 / lastWeekValue) * 10.0) / 10.0
                 : (thisWeekValue > 0 ? 100.0 : 0.0);
-        String arrow = thisWeekValue > lastWeekValue ? "▲" : (thisWeekValue < lastWeekValue ? "▼" : "");
+        String arrow = thisWeekValue > lastWeekValue ? "Up" : (thisWeekValue < lastWeekValue ? "Down" : "");
         return WeeklyTrendMetric.builder()
                 .label(label)
                 .lastWeekValue(lastWeekValue)
@@ -497,7 +497,7 @@ public class WeeklyEscalationAnalyticsService {
             int[] counts = acc.effectivenessByLevel.getOrDefault(level, new int[2]);
             double rate = counts[0] > 0 ? (counts[1] * 100.0 / counts[0]) : 0;
             rows.add(WeeklyEscalationEffectivenessRow.builder()
-                    .levelLabel("LEVEL_TWO".equals(level) ? "Level 2 — SPM" : "Level 3 — Procurement")
+                    .levelLabel("LEVEL_TWO".equals(level) ? "Level 2 - SPM" : "Level 3 - Procurement")
                     .escalatedCount(counts[0])
                     .resolvedCount(counts[1])
                     .resolutionRatePct(Math.round(rate * 10.0) / 10.0)

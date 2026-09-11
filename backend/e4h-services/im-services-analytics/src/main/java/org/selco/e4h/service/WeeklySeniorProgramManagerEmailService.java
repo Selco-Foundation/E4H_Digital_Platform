@@ -24,7 +24,7 @@ public class WeeklySeniorProgramManagerEmailService {
     private final CommonUtility commonUtility;
 
     public String generateEmailSubject(WeeklyEscalationAnalytics analytics, String recipientName) {
-        return String.format("[Weekly Summary] SLA Performance — %s | Week of %s",
+        return String.format("[Weekly Summary] SLA Performance - %s | Week of %s",
                 recipientName, analytics.getWeekRangeLabel());
     }
 

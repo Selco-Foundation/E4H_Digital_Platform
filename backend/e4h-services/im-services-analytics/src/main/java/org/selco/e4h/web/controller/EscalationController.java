@@ -286,11 +286,11 @@ public class EscalationController {
                         requestInfo);
                 allTicketsForCsv.addAll(previouslyOpen);
 
-                String csvContent = csvGenerationService.generateEscalationCsv(allTicketsForCsv);
+                byte[] csvContent = csvGenerationService.generateEscalationWorkbook(allTicketsForCsv);
                 String stateName = commonUtility.getStateDisplayName(state);
                 String csvFileName = csvGenerationService.generateCsvFileName(
                         "daily", escalationItem.getEscalationLevel(), stateName);
-                String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
+                String csvFileStoreId = uploadWorkbookToFileStore(csvContent, csvFileName, "in", requestInfo);
 
                 String downloadUrl = buildDownloadUrl(csvFileStoreId);
 
@@ -392,10 +392,10 @@ public class EscalationController {
                     allTickets.addAll(previouslyOpen);
                 }
 
-                String csvContent = csvGenerationService.generateEscalationCsv(allTickets);
+                byte[] csvContent = csvGenerationService.generateEscalationWorkbook(allTickets);
                 String csvFileName = csvGenerationService.generateCsvFileName(
                         "daily", escalationItem.getEscalationLevel(), user.getName());
-                String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
+                String csvFileStoreId = uploadWorkbookToFileStore(csvContent, csvFileName, "in", requestInfo);
                 String downloadUrl = buildDownloadUrl(csvFileStoreId);
 
                 if (!allNewBreaches.isEmpty()) {
@@ -453,10 +453,10 @@ public class EscalationController {
 
             List<EscalationTicket> allTickets = new ArrayList<>(newBreaches);
             allTickets.addAll(previouslyOpen);
-            String csvContent = csvGenerationService.generateEscalationCsv(allTickets);
+            byte[] csvContent = csvGenerationService.generateEscalationWorkbook(allTickets);
             String csvFileName = csvGenerationService.generateCsvFileName(
                     "daily", escalationItem.getEscalationLevel(), "AllStates");
-            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
+            String csvFileStoreId = uploadWorkbookToFileStore(csvContent, csvFileName, "in", requestInfo);
             String downloadUrl = buildDownloadUrl(csvFileStoreId);
 
             if (!newBreaches.isEmpty()) {
@@ -697,7 +697,9 @@ public class EscalationController {
         appendCsvHeader(csv);
 
         try {
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            // true = include closed tickets too, since this report splits counts into Open/Closed;
+            // fetching only-open tickets here would make "Closed Ticket" permanently read 0.
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, true);
             log.info("Consolidated CSV: fetched {} tickets from ES, filtering by {} state codes", tickets.size(), stateCodes.size());
 
             Map<String, Map<String, Object>> facilityAgg = new LinkedHashMap<>();
@@ -730,7 +732,15 @@ public class EscalationController {
             
             log.info("Consolidated CSV: filtered to {} tickets matching state codes", filteredCount);
 
-            facilityAgg.values().forEach(r -> appendCsvRow(csv, r));
+            // Sort only for readability (State -> District -> Block -> Facility); every field value
+            // stays exactly as returned by the API, only the row order changes.
+            List<Map<String, Object>> sortedRows = new ArrayList<>(facilityAgg.values());
+            sortedRows.sort(Comparator
+                    .comparing((Map<String, Object> r) -> (String) r.get("state"), String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(r -> (String) r.get("district"), String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(r -> (String) r.get("block"), String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(r -> (String) r.get("facility"), String.CASE_INSENSITIVE_ORDER));
+            sortedRows.forEach(r -> appendCsvRow(csv, r));
 
         } catch (Exception e) {
             log.error("Error generating consolidated weekly CSV", e);
@@ -890,6 +900,100 @@ public class EscalationController {
         return String.format("weekly_report_%s.csv", timestamp);
     }
     
+    /**
+     * Upload the ticket-details workbook ({@code .xlsx}) to FileStore
+     */
+    private String uploadWorkbookToFileStore(byte[] workbookContent, String fileName, String tenantId, RequestInfo requestInfo) {
+        try {
+            log.info("Uploading workbook file: {} to FileStore for tenant: {}", fileName, tenantId);
+
+            MultipartFile workbookFile = createMultipartFileFromContent(workbookContent, fileName,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+            ProcessingContext context = ProcessingContext.builder()
+                    .tenantId(tenantId)
+                    .module("Incident")
+                    .tag("escalation-csv")
+                    .requestInfo(commonUtility.convertRequestInfoToJson(requestInfo))
+                    .build();
+
+            StorageResponse response = storageUtil.uploadToFileStorage(Arrays.asList(workbookFile), context);
+
+            if (response != null && response.getFiles() != null && !response.getFiles().isEmpty()) {
+                String fileStoreId = response.getFiles().get(0).getFileStoreId();
+                log.info("Successfully uploaded workbook file: {} with fileStoreId: {}", fileName, fileStoreId);
+                return fileStoreId;
+            } else {
+                log.error("Failed to upload workbook file: {}", fileName);
+                return null;
+            }
+
+        } catch (Exception e) {
+            log.error("Error uploading workbook file: {} for tenant: {}", fileName, tenantId, e);
+            return null;
+        }
+    }
+
+    /**
+     * Create MultipartFile from raw bytes (used for the {@code .xlsx} ticket-details workbook)
+     */
+    private MultipartFile createMultipartFileFromContent(byte[] content, String fileName, String contentType) {
+        byte[] safeContent = content != null ? content : new byte[0];
+        return new MultipartFile() {
+            @Override
+            public String getName() {
+                return "file";
+            }
+
+            @Override
+            public String getOriginalFilename() {
+                return fileName;
+            }
+
+            @Override
+            public String getContentType() {
+                return contentType;
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return safeContent.length == 0;
+            }
+
+            @Override
+            public long getSize() {
+                return safeContent.length;
+            }
+
+            @Override
+            public byte[] getBytes() throws IOException {
+                return safeContent;
+            }
+
+            @Override
+            public InputStream getInputStream() throws IOException {
+                return new ByteArrayInputStream(safeContent);
+            }
+
+            @Override
+            public void transferTo(java.io.File dest) throws IOException, IllegalStateException {
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
+                    fos.write(safeContent);
+                }
+            }
+
+            @Override
+            public Resource getResource() {
+                return new ByteArrayResource(safeContent) {
+                    @Override
+                    public String getFilename() {
+                        return fileName;
+                    }
+                };
+            }
+        };
+    }
+
     /**
      * Upload CSV file to FileStore
      */
