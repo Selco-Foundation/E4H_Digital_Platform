@@ -261,7 +261,7 @@ export function ComplaintActionDialog({
           .filter((employee) => employee.user?.uuid)
           .map((employee) => ({
             code: employee.user!.uuid!,
-            name: employee.user?.name ?? employee.code ?? employee.user!.uuid!,
+            name: employee.user!.userName!,
           })),
       );
     });

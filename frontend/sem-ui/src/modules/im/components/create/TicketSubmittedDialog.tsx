@@ -32,10 +32,6 @@ export function TicketSubmittedDialog({
           <span className="font-medium text-foreground">{incidentId}</span>
         </p>
 
-        <p className="mt-3 text-sm text-muted-foreground">
-          {t("ES_IM_TICKET_SUBMITTED_DESC")}
-        </p>
-
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button asChild variant="outline" size="lg">
             <Link to={inboxPath}>
