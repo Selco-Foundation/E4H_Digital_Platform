@@ -40,7 +40,7 @@ public class DailyStatePocEmailService {
             variables.put("NEW_TECH_POC_ROWS", renderRows(summary.getNewTechPocBreaches(), true));
             variables.put("PREVIOUS_CRM_ROWS", renderRows(summary.getPreviouslyOpenCrmBreaches(), true));
             variables.put("PREVIOUS_TECH_POC_ROWS", renderRows(summary.getPreviouslyOpenTechPocBreaches(), true));
-            variables.put("DOWNLOAD_BUTTON", renderDownloadButton(downloadUrl));
+            variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(downloadUrl));
             variables.put("DASHBOARD_URL", summary.getDashboardUrl());
             variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
             variables.put("SAURA_LOGO", commonUtility.loadLogoAsBase64("SauraEmitra.png"));
@@ -53,13 +53,6 @@ public class DailyStatePocEmailService {
 
     private String renderRows(List<ActorCountRow> rows, boolean includeStatus) {
         return EscalationEmailTemplateHelper.renderActorRows(commonUtility, rows, includeStatus);
-    }
-
-    private String renderDownloadButton(String downloadUrl) {
-        if (downloadUrl == null || downloadUrl.isBlank() || "#".equals(downloadUrl)) {
-            return "";
-        }
-        return "<p class=\"center\"><a class=\"btn\" href=\"" + downloadUrl + "\" target=\"_blank\" rel=\"noopener\">Download Ticket Details</a></p>";
     }
 
     private String loadTemplate() throws IOException {
