@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width">
+  <title>Weekly Escalation - SPM</title>
+  <style>
+    body{margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827}
+    .container{width:100%;max-width:720px;margin:0 auto}.card{background:#fff;border-radius:16px;padding:24px}
+    .h1{font-size:22px;font-weight:700;text-align:center;margin:0}.text{font-size:14px;line-height:20px;margin:0}
+    .muted{color:#6b7280;font-size:13px}.section-title{font-size:16px;font-weight:700;margin:20px 0 8px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left}
+    th{color:#6b7280;font-weight:700}.right{text-align:right}.center{text-align:center}
+    .btn{display:inline-block;background:#fff;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font-weight:600;text-decoration:none}
+    .logo{width:100%;max-width:96px;height:auto}.sp-16{height:16px}.rule{border-top:1px solid #e5e7eb;margin:16px 0}
+    .scroll{overflow-x:auto}
+    .banner{color:#fff;font-weight:700;padding:10px 14px;border-radius:2px;margin:20px 0 8px;font-size:14px}
+    .b-red{background:#b83227}.b-magenta{background:#9c1458}.b-green{background:#1b5e20}
+    .b-orange{background:#dd6b20}.b-slate{background:#55707f}
+    table.t-red th{background:#b83227;color:#fff}table.t-magenta th{background:#9c1458;color:#fff}
+    table.t-green th{background:#1b5e20;color:#fff}table.t-orange th{background:#dd6b20;color:#fff}
+  </style>
+</head>
+<body>
+<table role="presentation" width="100%"><tr><td class="sp-16"></td></tr>
+<tr><td align="center"><table role="presentation" class="container card"><tr><td>
+<p class="h1">Weekly Escalation Summary - SPM</p>
+<p class="muted center">${WEEK_RANGE} | ${STATE_LIST}</p>
+<div class="rule"></div>
+<p class="text">Dear ${NAME},</p>
+<p class="text">Here is your weekly performance summary for <strong>${STATE_LIST}</strong>, covering ${WEEK_RANGE}. This is a summary view - for individual ticket details, refer to your daily escalation emails or the E4H Dashboard.</p>
+<p class="banner b-red">Section 1 - Ticket Overview (state-wise)</p>
+<div class="scroll"><table class="t-red"><thead><tr><th>State</th><th class="right">New Raised</th><th class="right">New Breaches</th><th class="right">Resolved (within SLA)</th><th class="right">Resolved (breached)</th><th class="right">Still Open (Carried Fwd)</th><th class="right">Total Open</th></tr></thead><tbody>${OVERVIEW_ROWS}</tbody></table></div>
+${OVERVIEW_TOTAL_SUMMARY}
+<p class="banner b-magenta">Section 2 - Vendor Performance</p>
+<p class="muted">Vendor-wise breach and resolution performance this week, sorted lowest resolution rate first - this is where your follow-up will have the most impact:</p>
+<div class="scroll"><table class="t-magenta"><thead><tr><th>Vendor</th><th class="right">New Breached</th><th class="right">Resolved (within SLA)</th><th class="right">Resolved (breached)</th><th class="right">Response Rate</th><th class="right">Resolution Rate</th></tr></thead><tbody>${VENDOR_ROWS}</tbody></table></div>
+<p class="banner b-green">Section 3 - Facility Impact (Non-Functional -&gt; Functional)</p>
+<p class="muted">Facilities that moved from Non-Functional to Functional this week as a result of resolved tickets:</p>
+<table class="t-green"><thead><tr><th>State</th><th class="right">Facilities Restored</th></tr></thead><tbody>${FACILITY_ROWS}</tbody></table>
+<p class="banner b-orange">Section 4 - Where the Bottleneck Is</p>
+<p class="muted">Open breaches grouped by current ticket status, highest first - this tells you exactly where tickets are getting stuck:</p>
+<table class="t-orange"><thead><tr><th>Current Ticket Status</th><th class="right">Open Breached Tickets</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
+
+<p class="banner b-slate">Resources</p>
+<table role="presentation" width="100%"><tr>
+  <td style="width:50%;padding:6px 6px 6px 0" valign="top">
+    <div style="background:#f3f4f6;border-radius:8px;padding:14px">
+      <p class="text" style="font-weight:700">E4H Dashboard</p>
+      <p class="text"><a href="${DASHBOARD_URL}" style="color:#f08400">Visit Dashboard</a></p>
+    </div>
+  </td>
+  <td style="width:50%;padding:6px 0 6px 6px" valign="top">
+    <div style="background:#f3f4f6;border-radius:8px;padding:14px">
+      <p class="text" style="font-weight:700">Ticket Details</p>
+      ${DOWNLOAD_BUTTON}
+    </div>
+  </td>
+</tr></table>
+
+<p class="banner b-green">Action Expected From You</p>
+<p class="text">As the SPM for <strong>${STATE_LIST}</strong>, please:</p>
+<ul class="text">
+  <li>Review the vendor performance table above and follow up directly with any vendor whose resolution rate has dropped this week.</li>
+  <li>Investigate the ticket status with the highest breach count - this usually points to a process fix (e.g. fund approval, vendor dispatch) rather than a one-off follow-up.</li>
+  <li>Track the Facility impact number over time - the goal is for this to keep growing week over week.</li>
+</ul>
+
+<p class="muted center">Report generated on ${AS_OF_DATE}</p>
+</td></tr></table></td></tr></table>
+</body></html>
