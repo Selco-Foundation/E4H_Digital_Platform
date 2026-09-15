@@ -1,4 +1,4 @@
-name: AMC Scheduler Service Image Build workflow
+name: Bulk Indexer Service Image Build workflow
 on:
   push:
     branches:
