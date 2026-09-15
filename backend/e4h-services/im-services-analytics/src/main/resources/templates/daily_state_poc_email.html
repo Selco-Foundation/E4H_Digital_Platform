@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Daily Escalation - State POC</title>
+  <style>
+    body { margin:0; padding:0; background:#f3f4f6; font-family:Arial,Helvetica,sans-serif; color:#111827; }
+    .container { width:100%; max-width:720px; margin:0 auto; }
+    .card { background:#fff; border-radius:16px; padding:24px; }
+    .h1 { font-size:22px; font-weight:700; text-align:center; margin:0; }
+    .text { font-size:14px; line-height:20px; margin:0; }
+    .muted { color:#6b7280; font-size:13px; }
+    .section-title { font-size:16px; font-weight:700; margin:20px 0 8px; }
+    table { width:100%; border-collapse:collapse; margin-top:8px; }
+    th, td { padding:10px 8px; border-bottom:1px solid #e5e7eb; font-size:13px; text-align:left; }
+    th { color:#6b7280; font-weight:700; }
+    .right { text-align:right; }
+    .center { text-align:center; }
+    .badge { display:inline-block; min-width:32px; padding:6px 10px; border-radius:10px; background:#fee4e2; border:1px solid #f97316; font-weight:700; text-align:center; }
+    .btn { display:inline-block; background:#fff; color:#f08400; border:1.5px solid #f07400; border-radius:12px; padding:12px 18px; font-weight:600; text-decoration:none; }
+    .logo { width:100%; max-width:96px; height:auto; }
+    .sp-16 { height:16px; }
+    .rule { border-top:1px solid #e5e7eb; margin:16px 0; }
+    .banner { color:#fff; font-weight:700; padding:10px 14px; border-radius:2px; margin:20px 0 8px; font-size:14px; }
+    .b-red { background:#b83227; } .b-magenta { background:#9c1458; } .b-orange { background:#dd6b20; }
+    .b-green { background:#1b5e20; } .b-slate { background:#55707f; }
+    table.t-red th { background:#b83227; color:#fff; }
+    table.t-magenta th { background:#9c1458; color:#fff; }
+    table.t-orange th { background:#dd6b20; color:#fff; }
+  </style>
+</head>
+<body>
+  <table role="presentation" width="100%">
+    <tr><td class="sp-16"></td></tr>
+    <tr>
+      <td align="center">
+        <table role="presentation" class="container card">
+          <tr>
+            <td>
+              <table role="presentation" width="100%">
+                <tr>
+                  <td align="left"><img class="logo" src="${SELCO_LOGO}" alt="SELCO Foundation"></td>
+                  <td align="center"><p class="h1">Daily Escalation Email</p></td>
+                  <td align="right"><img class="logo" src="${SAURA_LOGO}" alt="Saura eMitra"></td>
+                </tr>
+              </table>
+
+              <div class="rule"></div>
+
+              <p class="text">Dear ${NAME},</p>
+              <div class="sp-16"></div>
+              <p class="text">This is your daily SLA breach notification for <strong>${STATE_NAME}</strong>. Please review the ticket counts below and take immediate action to unblock resolution.</p>
+
+              <p class="banner b-red">Section 1 - New Breaches Today (as of ${AS_OF_DATE})</p>
+              <p class="muted">The following breaches have been recorded today and require your immediate attention:</p>
+
+              <p class="banner b-red" style="margin-top:16px;font-size:13px">SLA Breaches from CRM</p>
+              <table class="t-red">
+                <thead>
+                  <tr>
+                    <th>CRM Name</th>
+                    <th>Count of Tickets Breached</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${NEW_CRM_ROWS}
+                </tbody>
+              </table>
+
+              <p class="banner b-magenta" style="margin-top:16px;font-size:13px">SLA Breaches from Tech PoC</p>
+              <table class="t-magenta">
+                <thead>
+                  <tr>
+                    <th>Tech PoC Name</th>
+                    <th>Current Status</th>
+                    <th class="right">Count of Tickets Breached</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${NEW_TECH_POC_ROWS}
+                </tbody>
+              </table>
+
+              <p class="banner b-orange">Section 2 - Previously Flagged Breaches Still Open</p>
+
+              <p class="banner b-orange" style="margin-top:16px;font-size:13px">CRM</p>
+              <table class="t-orange">
+                <thead>
+                  <tr>
+                    <th>CRM Name</th>
+                    <th>Current Status</th>
+                    <th class="right">Count of Tickets</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${PREVIOUS_CRM_ROWS}
+                </tbody>
+              </table>
+
+              <p class="banner b-orange" style="margin-top:16px;font-size:13px">Tech PoC</p>
+              <table class="t-orange">
+                <thead>
+                  <tr>
+                    <th>Tech PoC Name</th>
+                    <th>Current Status</th>
+                    <th class="right">Count of Tickets</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${PREVIOUS_TECH_POC_ROWS}
+                </tbody>
+              </table>
+
+              <p class="banner b-slate">Resources</p>
+              <table role="presentation" width="100%"><tr>
+                <td style="width:50%;padding:6px 6px 6px 0" valign="top">
+                  <div style="background:#f3f4f6;border-radius:8px;padding:14px">
+                    <p class="text" style="font-weight:700">E4H Dashboard</p>
+                    <p class="text"><a href="${DASHBOARD_URL}" target="_blank" rel="noopener" style="color:#f08400;">Visit Dashboard</a></p>
+                  </div>
+                </td>
+                <td style="width:50%;padding:6px 0 6px 6px" valign="top">
+                  <div style="background:#f3f4f6;border-radius:8px;padding:14px">
+                    <p class="text" style="font-weight:700">Ticket Details</p>
+                    ${DOWNLOAD_BUTTON}
+                  </div>
+                </td>
+              </tr></table>
+
+              <p class="banner b-green">Action Expected From You</p>
+              <p class="text">As the State SPOC for <strong>${STATE_NAME}</strong>, please:</p>
+              <ul class="text">
+                <li>Follow up with the CRM and/or Tech PoC on all flagged breaches immediately.</li>
+                <li>For Out of Warranty tickets: confirm fund arrangement status and update the system.</li>
+                <li>For Out of Scope tickets: coordinate with the relevant stakeholders and take a decision (assign to vendor or decline with reason).</li>
+                <li>If you are facing challenges with any specific ticket, escalate to your SPM directly.</li>
+              </ul>
+              <p class="muted">If you need support, please reach out to your SPM.</p>
+
+              <div class="rule"></div>
+              <p class="muted center">This is a system-generated daily summary from Saura eMitra.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr><td class="sp-16"></td></tr>
+  </table>
+</body>
+</html>
