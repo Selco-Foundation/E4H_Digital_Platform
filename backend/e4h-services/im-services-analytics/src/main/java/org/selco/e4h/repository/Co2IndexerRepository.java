@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.config.CarbonEmissionProperties;
 import org.selco.e4h.service.Co2EsDocumentFactory;
+import org.selco.e4h.util.LogSanitizer;
 import org.selco.e4h.web.models.BulkIndexRequest;
 import org.selco.e4h.web.models.Co2MonthlyDocument;
 import org.selco.e4h.web.models.Co2MonthlyIndexPayload;
@@ -86,16 +87,20 @@ public class Co2IndexerRepository {
         // Key on the facility so every batch for one facility lands on the same partition and is
         // therefore applied in order by a single consumer.
         send(properties.getBulkIndexTopic(), first.getFacilityId(), request);
+        // index and batchId derive from request-supplied tenantId / facilityId — sanitize so a
+        // value containing a line break cannot forge log entries.
         log.debug("Published bulk batch index={} batchId={} documents={}",
-                index, batchId, documents.size());
+                LogSanitizer.sanitize(index), LogSanitizer.sanitize(batchId), documents.size());
     }
 
     private void send(String topic, String key, Object payload) {
         try {
             kafkaTemplate.send(topic, key, payload);
-            log.debug("Published to topic={} key={}", topic, key);
+            log.debug("Published to topic={} key={}", topic, LogSanitizer.sanitize(key));
         } catch (Exception e) {
-            log.error("Failed to publish CO2 index message topic={} key={}", topic, key, e);
+            // key is derived from tenantId / facilityId, which reach this service as request params.
+            log.error("Failed to publish CO2 index message topic={} key={}",
+                    topic, LogSanitizer.sanitize(key), e);
         }
     }
 }

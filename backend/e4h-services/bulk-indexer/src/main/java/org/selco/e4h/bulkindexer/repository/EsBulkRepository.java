@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.bulkindexer.config.BulkIndexerProperties;
+import org.selco.e4h.bulkindexer.util.LogSanitizer;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -57,7 +58,7 @@ public class EsBulkRepository {
             body = buildNdjson(indexName, documents);
         } catch (Exception e) {
             log.error("Failed to serialise a _bulk body for index={} documents={}",
-                    indexName, documents.size(), e);
+                    LogSanitizer.sanitize(indexName), documents.size(), e);
             return BulkOutcome.allFailed(documents.size());
         }
 
@@ -72,7 +73,7 @@ public class EsBulkRepository {
             return interpret(indexName, documents.size(), response.getBody());
         } catch (Exception e) {
             log.error("_bulk call failed for index={} documents={} uri={}",
-                    indexName, documents.size(), uri, e);
+                    LogSanitizer.sanitize(indexName), documents.size(), LogSanitizer.sanitize(uri), e);
             return BulkOutcome.allFailed(documents.size());
         }
     }
@@ -94,7 +95,8 @@ public class EsBulkRepository {
     @SuppressWarnings("unchecked")
     private BulkOutcome interpret(String indexName, int sent, Map<String, Object> response) {
         if (response == null) {
-            log.error("_bulk returned an empty body for index={} documents={}", indexName, sent);
+            log.error("_bulk returned an empty body for index={} documents={}",
+                    LogSanitizer.sanitize(indexName), sent);
             return BulkOutcome.allFailed(sent);
         }
         if (!Boolean.TRUE.equals(response.get("errors"))) {
@@ -103,7 +105,8 @@ public class EsBulkRepository {
 
         List<Map<String, Object>> items = (List<Map<String, Object>>) response.get("items");
         if (items == null) {
-            log.error("_bulk reported errors but returned no items for index={}", indexName);
+            log.error("_bulk reported errors but returned no items for index={}",
+                    LogSanitizer.sanitize(indexName));
             return BulkOutcome.allFailed(sent);
         }
 
@@ -119,7 +122,8 @@ public class EsBulkRepository {
             }
             failed++;
             log.error("ES rejected document _index={} _id={} status={} error={}",
-                    result.get("_index"), result.get("_id"), result.get("status"), error);
+                    LogSanitizer.sanitize(result.get("_index")), LogSanitizer.sanitize(result.get("_id")),
+                    LogSanitizer.sanitize(result.get("status")), LogSanitizer.sanitize(error));
         }
         return new BulkOutcome(sent - failed, failed);
     }
