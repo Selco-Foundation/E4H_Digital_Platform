@@ -7,7 +7,6 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
 
   const [expanded, setExpanded] = useState(false);
   const [imageToView, setImageToView] = useState(null);
-  const showStaticPotentialDuplicateFlag = true;
 
   const AssetInfoItem = (title, value) => (
     <div style={{
@@ -34,34 +33,6 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
       ))}
     </div>
   )
-
-  const PotentialDuplicateFlag = ({ item }) => {
-    const isPotentialDuplicate = item?.potentialDuplicate || showStaticPotentialDuplicateFlag;
-
-    if (!isPotentialDuplicate) {
-      return null;
-    }
-
-    return (
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          width: "fit-content",
-          marginBottom: "10px",
-          padding: "4px 10px",
-          border: "1px solid #D4351C",
-          borderRadius: "4px",
-          color: "#D4351C",
-          fontWeight: "bold",
-          fontSize: "14px",
-          backgroundColor: "#FFF4F2",
-        }}
-      >
-        {t("QC_INSTALLATION_POTENTIAL_DUPLICATE", "Potential Duplicate")}
-      </div>
-    );
-  };
 
   return (
     <div
@@ -151,7 +122,6 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
 
             {items?.map((item, index) => (
               <Section key={index} title={`${t(`QC_INSTALLATION_${section}`)} ${index + 1}`}>
-                <PotentialDuplicateFlag item={item} />
                 {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SERIAL_NUMBER`), item.serialNumber)}
                 {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), item.capacity)}
                 {item.documents && item.documents.length > 0 && (

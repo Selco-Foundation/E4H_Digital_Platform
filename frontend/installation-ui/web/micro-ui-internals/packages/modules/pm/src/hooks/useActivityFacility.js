@@ -37,6 +37,7 @@ const formatFacilities = (facilities) => {
       pocNumber: activityFacility?.pocNumber,
       startDate: activityFacility?.startDate,
       endDate: activityFacility?.endDate,
+      potentialDuplicate: activityFacility?.potentialDuplicate || activityFacility?.additionalDetails?.potentialDuplicate || facility?.potentialDuplicate || facility?.additionalDetails?.potentialDuplicate,
       raw: activityFacility,
     };
   });

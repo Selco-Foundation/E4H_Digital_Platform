@@ -118,21 +118,54 @@ const FieldPlanFacilities = () => {
   }
 
   const GetCell = (value) => <span className="cell-text" style={{ color: "#000000" }}>{value}</span>;
+  const showStaticPotentialDuplicateFlag = true;
+  const PotentialDuplicateFlag = ({ row }) => {
+    const isPotentialDuplicate = row.original["potentialDuplicate"] || showStaticPotentialDuplicateFlag;
+
+    if (!isPotentialDuplicate) {
+      return null;
+    }
+
+    return (
+      <div style={{ marginTop: "5px" }}>
+        <span
+          style={{
+            border: "1px solid #B91900",
+            borderRadius: "6px",
+            backgroundColor: "#FFF5F4",
+            color: "#B91900",
+            width: "fit-content",
+            padding: "2px 6px",
+            display: "inline-block",
+            fontSize: "12px",
+            fontWeight: "bold",
+          }}
+        >
+          {t("CS_INFO_POTENTIAL_DUPLICATE", "Potential Duplicate")}
+        </span>
+      </div>
+    );
+  };
 
   const columns = useMemo(
     () => [
       {
         Header: t("CS_HEALTH_FACILITY"),
-        Cell: ({ row }) => (
-          <span className="link" onClick={() => dispatch(populateWorkingFacility(row.original))}>
-            <Link
-              to={`/${window.contextPath}/employee/pm/field-plans/${fieldPlanId}/facilities/${row.original["id"]}/details`}
-              style={{ color: "#C84C0E" }}
-            >
-              {row.original["facilityName"]}
-            </Link>
-          </span>
-        ),
+        Cell: ({ row }) => {
+          return (
+            <div>
+              <span className="link" onClick={() => dispatch(populateWorkingFacility(row.original))}>
+                <Link
+                  to={`/${window.contextPath}/employee/pm/field-plans/${fieldPlanId}/facilities/${row.original["id"]}/details`}
+                  style={{ color: "#C84C0E" }}
+                >
+                  {row.original["facilityName"]}
+                </Link>
+              </span>
+              <PotentialDuplicateFlag row={row} />
+            </div>
+          );
+        },
       },
       {
         Header: t("CS_ACTIVITY_TYPE"),
