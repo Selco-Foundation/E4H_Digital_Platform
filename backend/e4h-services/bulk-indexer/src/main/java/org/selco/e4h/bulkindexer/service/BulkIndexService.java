@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.bulkindexer.config.BulkIndexerProperties;
 import org.selco.e4h.bulkindexer.repository.EsBulkRepository;
+import org.selco.e4h.bulkindexer.util.LogSanitizer;
 import org.selco.e4h.bulkindexer.web.models.BulkIndexRequest;
 import org.springframework.stereotype.Service;
 
@@ -24,14 +25,16 @@ public class BulkIndexService {
     public void process(BulkIndexRequest request) {
         String index = request.getIndex();
         if (index == null || index.isBlank()) {
-            log.error("Dropping message batchId={} — no target index", request.getBatchId());
+            log.error("Dropping message batchId={} — no target index",
+                    LogSanitizer.sanitize(request.getBatchId()));
             meterRegistry.counter("bulkindexer.messages.dropped", "reason", "missing-index").increment();
             return;
         }
 
         List<BulkIndexRequest.BulkIndexDocument> documents = request.getDocuments();
         if (documents == null || documents.isEmpty()) {
-            log.warn("Message batchId={} index={} carried no documents", request.getBatchId(), index);
+            log.warn("Message batchId={} index={} carried no documents",
+                    LogSanitizer.sanitize(request.getBatchId()), LogSanitizer.sanitize(index));
             return;
         }
 
@@ -46,7 +49,7 @@ public class BulkIndexService {
         }
         if (malformed > 0) {
             log.error("Skipped {} document(s) with no source batchId={} index={}",
-                    malformed, request.getBatchId(), index);
+                    malformed, LogSanitizer.sanitize(request.getBatchId()), LogSanitizer.sanitize(index));
         }
 
         int succeeded = 0;
@@ -73,10 +76,11 @@ public class BulkIndexService {
 
         if (malformed == 0 && esFailures == 0) {
             log.info("Indexed batchId={} index={} documents={}",
-                    request.getBatchId(), index, succeeded);
+                    LogSanitizer.sanitize(request.getBatchId()), LogSanitizer.sanitize(index), succeeded);
         } else {
             log.error("Indexed batchId={} index={} received={} indexed={} malformed={} esFailures={}",
-                    request.getBatchId(), index, documents.size(), succeeded, malformed, esFailures);
+                    LogSanitizer.sanitize(request.getBatchId()), LogSanitizer.sanitize(index),
+                    documents.size(), succeeded, malformed, esFailures);
         }
     }
 }

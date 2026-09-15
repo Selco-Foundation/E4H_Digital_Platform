@@ -71,7 +71,8 @@ Since a dropped batch is not retried, **alert on `bulkindexer_messages_dropped_t
 `bulkindexer_documents_failed_total`** — otherwise a malformed batch silently loses a whole
 facility's history.
 
-`GET /health` (actuator, with k8s probe groups) and `GET /prometheus` are exposed.
+Only `GET /health` (k8s probe groups, no component detail) and `GET /prometheus` are exposed —
+deliberately not `metrics`, not `info`, never `*`. Both sit under the `/bulk-indexer` context path.
 
 ## Operational notes
 
