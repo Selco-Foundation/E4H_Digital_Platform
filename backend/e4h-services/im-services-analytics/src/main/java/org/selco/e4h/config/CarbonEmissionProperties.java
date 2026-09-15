@@ -23,6 +23,16 @@ public class CarbonEmissionProperties {
     @Value("${kafka.topics.co2-monthly-projection-indexer}")
     private String co2MonthlyProjectionIndexerTopic;
 
+    /**
+     * When true, publish one batch per facility to the bulk-indexer service instead of one message
+     * per facility-month to egov-indexer. Flip to false to fall back without a redeploy.
+     */
+    @Value("${co2.bulk.index.enabled}")
+    private boolean bulkIndexEnabled;
+
+    @Value("${kafka.topics.bulk-index-documents}")
+    private String bulkIndexTopic;
+
     @Value("${co2.batch.facility.size}")
     private int facilityBatchSize;
 
