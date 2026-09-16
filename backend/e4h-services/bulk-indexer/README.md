@@ -80,36 +80,20 @@ deliberately not `metrics`, not `info`, never `*`. Both sit under the `/bulk-ind
   `max.request.size=10MB` and this service sets `max.partition.fetch.bytes=10MB`, but the
   **broker's `max.message.bytes` must be raised to match** — the 1MB default leaves only ~7x
   headroom and a longer lifecycle or wider document would start silently failing sends.
-- **TLS.** An ES8 cluster with security enabled serves https with a certificate issued by the
-  cluster's own CA, which the JVM does not trust by default — every `_bulk` call then fails with
-  `PKIX path building failed: unable to find valid certification path to requested target`.
+- **TLS.** This service follows `im-services-analytics`: TLS trust comes from the JVM default
+  `SSLContext`, which that service overrides at startup in `Main.trustSelfSignedSSL()` so the ES8
+  cluster's self-signed certificate is accepted. Without an equivalent override here, `_bulk` calls
+  fail with `PKIX path building failed: unable to find valid certification path to requested
+  target`, because the cluster CA is not in the default trust store.
 
-  Mount the cluster CA and point the service at it:
+  Note what that override costs: it calls `SSLContext.setDefault` and
+  `setDefaultHostnameVerifier`, so certificate *and* hostname verification are disabled for every
+  outbound HTTPS call the JVM makes — not only Elasticsearch. The ES credentials travel on that
+  connection as a Basic auth header. The narrower alternative is to mount the cluster CA and trust
+  that issuer specifically for the ES client only.
 
-  ```yaml
-  volumes:
-    - name: es-certs
-      secret:
-        secretName: elasticsearch-data-certs   # whichever secret holds ca.crt
-  volumeMounts:
-    - name: es-certs
-      mountPath: /etc/es-certs
-      readOnly: true
-  env:
-    - name: ES_CA_CERT_PATH
-      value: /etc/es-certs/ca.crt
-  ```
-
-  If ES is reachable over plain http inside the cluster, set `ES_HOST=http://…` instead and leave
-  `ES_CA_CERT_PATH` empty — TLS is then not involved at all.
-
-  This trusts *that CA specifically*, scoped to the ES RestTemplate. It is deliberately not a
-  trust-all `X509TrustManager` and not `SSLContext.setDefault` — a certificate from any other
-  issuer is still rejected. `im-services-analytics` does install a JVM-wide trust-all manager;
-  that is a pre-existing weakness and should not be copied here.
-
-- **Timeouts.** `ES_CONNECT_TIMEOUT_MS` (5s) and `ES_READ_TIMEOUT_MS` (60s). Without them an
-  unresponsive cluster stalls the consumer thread indefinitely.
+- **Timeouts.** `ES_CONNECT_TIMEOUT_MS` (5s) and `ES_READ_TIMEOUT_MS` (60s). Unrelated to TLS;
+  without them an unresponsive cluster stalls the Kafka consumer thread indefinitely.
 - **Secrets.** `ES_PASSWORD` must come from the ES secret, not the properties file.
 
 ## Cutover
