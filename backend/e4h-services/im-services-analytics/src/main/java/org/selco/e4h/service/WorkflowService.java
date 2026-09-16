@@ -70,6 +70,40 @@ public class WorkflowService {
     }
 
 
+    private static final int BATCH_SIZE = 100;
+
+    /**
+     * Batched workflow-history fetch for many incidents at once (chunked to keep the query URL
+     * bounded) — used for vendor first-response computation. Best-effort: a failed chunk is
+     * logged and skipped rather than failing the whole call, since this feeds a report, not a
+     * transactional flow.
+     */
+    public List<ProcessInstance> getProcessInstancesByIncidentIds(String tenantId, List<String> incidentIds,
+                                                                    RequestInfo requestInfo) {
+        if (CollectionUtils.isEmpty(incidentIds)) {
+            return Collections.emptyList();
+        }
+        List<ProcessInstance> all = new ArrayList<>();
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
+
+        for (int i = 0; i < incidentIds.size(); i += BATCH_SIZE) {
+            List<String> batch = incidentIds.subList(i, Math.min(i + BATCH_SIZE, incidentIds.size()));
+            try {
+                StringBuilder url = getprocessInstanceSearchURL(tenantId, String.join(",", batch));
+                url.append("&history=true");
+                Object result = repository.fetchResult(url, requestInfoWrapper);
+                ProcessInstanceResponse response = mapper.convertValue(result, ProcessInstanceResponse.class);
+                if (response != null && !CollectionUtils.isEmpty(response.getProcessInstances())) {
+                    all.addAll(response.getProcessInstances());
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch process instance history for batch starting at index {} (size {})",
+                        i, batch.size(), e);
+            }
+        }
+        return all;
+    }
+
     public StringBuilder getprocessInstanceSearchURL(String tenantId, String IncidentId) {
         log.trace("Building process instance search URL for tenantId: {}, incidentId: {}", tenantId, IncidentId);
         StringBuilder url = new StringBuilder(consumerConfiguration.getWfHost());

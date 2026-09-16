@@ -14,7 +14,7 @@ serviceMaps:
       transactionCodeJsonPath: $.id
       auditAttributeBasePath: $.*
       queryMaps:
-        - query: INSERT INTO amc_configuration (id, tenant_id, vendor_id, facility_id, asset_types, project_id, duration_months, visit_frequency_months, configuration_start_date, configuration_end_date, status, geography_details, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        - query: INSERT INTO amc_configuration (id, tenant_id, vendor_id, facility_id, asset_types, project_id, duration_months, visit_frequency_months, configuration_start_date, configuration_end_date, status, geography_details, additional_details, amc_plan_id, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           basePath: $.AmcConfigurations.*
           jsonMaps:
             - jsonPath: $.AmcConfigurations.*.id
@@ -48,6 +48,8 @@ serviceMaps:
             - jsonPath: $.AmcConfigurations.*.additionalDetails
               type: JSON
               dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.amcPlanId
 
             - jsonPath: $.AmcConfigurations.*.auditDetails.createdBy
 
@@ -99,7 +101,7 @@ serviceMaps:
       transactionCodeJsonPath: $.id
       auditAttributeBasePath: $.*
       queryMaps:
-        - query: UPDATE amc_configuration SET vendor_id = ?, facility_id = ?, asset_types = ?, project_id = ?, duration_months = ?, visit_frequency_months = ?, configuration_start_date = ?, configuration_end_date = ?, status = ?, geography_details = ?, additional_details = ?, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
+        - query: UPDATE amc_configuration SET vendor_id = ?, facility_id = ?, asset_types = ?, project_id = ?, duration_months = ?, visit_frequency_months = ?, configuration_start_date = ?, configuration_end_date = ?, status = ?, geography_details = ?, additional_details = ?, amc_plan_id = ?, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
           basePath: $.AmcConfigurations.*
           jsonMaps:
             - jsonPath: $.AmcConfigurations.*.vendorId
@@ -129,6 +131,8 @@ serviceMaps:
             - jsonPath: $.AmcConfigurations.*.additionalDetails
               type: JSON
               dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.amcPlanId
 
             - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedBy
 
@@ -185,7 +189,7 @@ serviceMaps:
       name: AMC Configuration
       description: Soft-deletes an amc configuration by clearing is_active. Nothing is physically
         removed - scheduled visits, asset links and assignments all stay on disk, so an APPROVED visit
-        report or a submission pending review is never destroyed. The rows simply stop being returned:
+        report or a submission pending review is never destroyed. The rows simply stop being returned,
         both search query builders join amc_configuration and filter on ac.is_active. Reactivation is
         deliberately not exposed; a facility that comes back gets a fresh configuration, which the
         partial unique index (WHERE is_active) allows.
@@ -209,6 +213,104 @@ serviceMaps:
             - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedTime
 
             - jsonPath: $.AmcConfigurations.*.id
+
+    - version: 1.0
+      name: AMC Plan
+      description: Persists an AMC plan (groups the AmcConfigurations of a project) in the amc_plans table
+      fromTopic: save-amc-plan
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.createdBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: INSERT INTO amc_plans (id, tenant_id, name, project_id, health_facility_number, start_date, end_date, geography_scope, selected_activities, status, isdeleted, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $.AmcPlans.*
+          jsonMaps:
+            - jsonPath: $.AmcPlans.*.id
+
+            - jsonPath: $.AmcPlans.*.tenantId
+
+            - jsonPath: $.AmcPlans.*.name
+
+            - jsonPath: $.AmcPlans.*.projectId
+
+            - jsonPath: $.AmcPlans.*.healthFacilityNumber
+
+            - jsonPath: $.AmcPlans.*.startDate
+
+            - jsonPath: $.AmcPlans.*.endDate
+
+            - jsonPath: $.AmcPlans.*.geographyScope
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcPlans.*.selectedActivities
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcPlans.*.status
+
+            - jsonPath: $.AmcPlans.*.isDeleted
+
+            - jsonPath: $.AmcPlans.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcPlans.*.auditDetails.createdBy
+
+            - jsonPath: $.AmcPlans.*.auditDetails.createdTime
+
+            - jsonPath: $.AmcPlans.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AmcPlans.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      name: AMC Plan
+      description: Updates an AMC plan in the amc_plans table
+      fromTopic: update-amc-plan
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.createdBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: UPDATE amc_plans SET name = ?, health_facility_number = ?, start_date = ?, end_date = ?, geography_scope = ?, selected_activities = ?, status = ?, additional_details = ?, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
+          basePath: $.AmcPlans.*
+          jsonMaps:
+            - jsonPath: $.AmcPlans.*.name
+
+            - jsonPath: $.AmcPlans.*.healthFacilityNumber
+
+            - jsonPath: $.AmcPlans.*.startDate
+
+            - jsonPath: $.AmcPlans.*.endDate
+
+            - jsonPath: $.AmcPlans.*.geographyScope
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcPlans.*.selectedActivities
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcPlans.*.status
+
+            - jsonPath: $.AmcPlans.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcPlans.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AmcPlans.*.auditDetails.lastModifiedTime
+
+            - jsonPath: $.AmcPlans.*.id
 
     - version: 1.0
       description: Saves a asset AMC

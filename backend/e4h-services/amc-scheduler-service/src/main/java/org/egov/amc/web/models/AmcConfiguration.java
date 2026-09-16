@@ -21,6 +21,9 @@ public class AmcConfiguration {
     private Facility facility;
     private String projectId;
     private Project project;
+    // Groups this configuration under an AmcPlan for the project. Nullable: configurations created
+    // before AmcPlan existed are not backfilled.
+    private String amcPlanId;
     private List<AssetAmc> assetsAmc;
     private List<Map<String, Object>> assetTypes;
     private List<AmcConfigurationAssignment> assignments;
