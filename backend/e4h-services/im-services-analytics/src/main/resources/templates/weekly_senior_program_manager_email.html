@@ -29,17 +29,17 @@
 <p class="text">Dear ${NAME},</p>
 <p class="text">Here is your weekly performance summary for <strong>${STATE_LIST}</strong>, covering ${WEEK_RANGE}. This is a summary view - for individual ticket details, refer to your daily escalation emails or the E4H Dashboard.</p>
 <p class="banner b-red">Section 1 - Ticket Overview (state-wise)</p>
-<div class="scroll"><table class="t-red"><thead><tr><th>State</th><th class="right">New Raised</th><th class="right">New Breaches</th><th class="right">Resolved (within SLA)</th><th class="right">Resolved (breached)</th><th class="right">Still Open (Carried Fwd)</th><th class="right">Total Open</th></tr></thead><tbody>${OVERVIEW_ROWS}</tbody></table></div>
+<div class="scroll"><table class="t-red"><thead><tr><th>State</th><th class="right">New Tickets Raised This Week</th><th class="right">New Breaches This Week</th><th class="right">Tickets Resolved This Week (within SLA)</th><th class="right">Tickets Resolved This Week (breached SLA)</th><th class="right">Still Open (Carried Forward)</th><th class="right">Total Open as of Today</th></tr></thead><tbody>${OVERVIEW_ROWS}</tbody></table></div>
 ${OVERVIEW_TOTAL_SUMMARY}
 <p class="banner b-magenta">Section 2 - Vendor Performance</p>
 <p class="muted">Vendor-wise breach and resolution performance this week, sorted lowest resolution rate first - this is where your follow-up will have the most impact:</p>
-<div class="scroll"><table class="t-magenta"><thead><tr><th>Vendor</th><th class="right">New Breached</th><th class="right">Resolved (within SLA)</th><th class="right">Resolved (breached)</th><th class="right">Response Rate</th><th class="right">Resolution Rate</th></tr></thead><tbody>${VENDOR_ROWS}</tbody></table></div>
+<div class="scroll"><table class="t-magenta"><thead><tr><th>Vendor</th><th class="right">New Tickets Breached</th><th class="right">Tickets Resolved (within SLA)</th><th class="right">Tickets Resolved (breached SLA)</th><th class="right">Response Rate (first response/total tickets assigned) (within SLA)</th><th class="right">Resolution Rate (resolved/total tickets assigned)</th></tr></thead><tbody>${VENDOR_ROWS}</tbody></table></div>
 <p class="banner b-green">Section 3 - Facility Impact (Non-Functional -&gt; Functional)</p>
 <p class="muted">Facilities that moved from Non-Functional to Functional this week as a result of resolved tickets:</p>
-<table class="t-green"><thead><tr><th>State</th><th class="right">Facilities Restored</th></tr></thead><tbody>${FACILITY_ROWS}</tbody></table>
-<p class="banner b-orange">Section 4 - Where the Bottleneck Is</p>
+<table class="t-green"><thead><tr><th>State</th><th class="right">Facilities Restored to Functional This Week</th></tr></thead><tbody>${FACILITY_ROWS}</tbody></table>
+<p class="banner b-orange">Section 4 - Where the Bottleneck Is (Ticket Status Breakdown)</p>
 <p class="muted">Open breaches grouped by current ticket status, highest first - this tells you exactly where tickets are getting stuck:</p>
-<table class="t-orange"><thead><tr><th>Current Ticket Status</th><th class="right">Open Breached Tickets</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
+<table class="t-orange"><thead><tr><th>Current Ticket Status</th><th class="right">Number of Breaches</th><th class="right">% of Total Open</th></tr></thead><tbody>${BOTTLENECK_ROWS}</tbody></table>
 
 <p class="banner b-slate">Resources</p>
 <table role="presentation" width="100%"><tr>
@@ -66,5 +66,6 @@ ${OVERVIEW_TOTAL_SUMMARY}
 </ul>
 
 <p class="muted center">Report generated on ${AS_OF_DATE}</p>
+<p class="text" style="margin-top:12px">Regards,<br><strong>Saura eMitra - Automated Escalation System</strong><br><span class="muted">SELCO Foundation | E4H Programme</span></p>
 </td></tr></table></td></tr></table>
 </body></html>

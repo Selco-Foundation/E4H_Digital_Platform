@@ -128,7 +128,7 @@ public class WeeklyLeadershipEmailService {
             html.append("<p class=\"muted\">No new theft cases this week.</p>");
             return html.toString();
         }
-        html.append("<table class=\"t-red\"><thead><tr><th>State</th><th>Health Facility</th><th>District</th><th>Date</th><th>Status</th></tr></thead><tbody>");
+        html.append("<table class=\"t-red\"><thead><tr><th>State</th><th>Health Facility</th><th>District</th><th>Date Reported</th><th>Current Status</th></tr></thead><tbody>");
         java.util.List<WeeklyTheftCaseRow> theftRows = analytics.getTheftCases();
         for (WeeklyTheftCaseRow row : theftRows.subList(0, Math.min(theftRows.size(), EscalationEmailTemplateHelper.MAX_DISPLAY_ROWS))) {
             html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
