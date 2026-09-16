@@ -24,8 +24,8 @@ export function toTenantLocale(tenantId: string): string {
   return tenantId.replace(/\./g, "_").toUpperCase();
 }
 
-export function checkForNotNull(value = ""): boolean {
-  return Boolean(value && value != null && value !== undefined && value !== "");
+export function checkForNotNull(value: string | null | undefined = ""): boolean {
+  return value != null && value !== "";
 }
 
 export function stringReplaceAll(str = "", searcher = "", replaceWith = ""): string {

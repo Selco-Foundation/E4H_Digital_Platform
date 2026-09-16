@@ -1,4 +1,4 @@
-import { contextPath, employeeHomePath, useAuthStore } from "@/shared";
+import { contextPath, useAuthStore } from "@/shared";
 import { createRoute, redirect } from "@tanstack/react-router";
 import type { AnyRoute } from "@tanstack/react-router";
 import { AppShell } from "./layout/AppShell";

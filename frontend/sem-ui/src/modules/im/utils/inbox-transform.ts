@@ -58,7 +58,7 @@ export function combineInboxResponses(
   );
 
   return items.map((item) => {
-    const { businessObject, ProcessInstance } = item;
+    const { businessObject } = item;
     const incident = businessObject?.incident ?? {
       incidentId: "",
       incidentType: "",

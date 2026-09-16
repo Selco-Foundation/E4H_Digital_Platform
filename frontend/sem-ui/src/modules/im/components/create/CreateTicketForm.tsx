@@ -89,11 +89,8 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
     handleSystemFunctionalChange,
     updateField,
     maxImageCount,
-    maxImageSizeMb,
     maxVideoCount,
-    maxVideoSizeMb,
     maxFirCount,
-    maxFirSizeMb,
     maxCommentLength,
     submittedResponse,
   } = useCreateIncidentForm(inboxPath);
