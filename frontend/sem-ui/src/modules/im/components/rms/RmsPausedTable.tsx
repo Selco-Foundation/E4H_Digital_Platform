@@ -25,7 +25,7 @@ export function RmsPausedTable({ facilities, isLoading }: RmsPausedTableProps) {
   if (isLoading) {
     return (
       <div className="livelihood-card p-6 text-sm text-muted-foreground">
-        {t("CORE_COMMON_LOADING")}
+        {t("CORE_COMMON_LOADING", "Loading")}
       </div>
     );
   }
@@ -33,7 +33,7 @@ export function RmsPausedTable({ facilities, isLoading }: RmsPausedTableProps) {
   if (!facilities.length) {
     return (
       <div className="livelihood-card p-6 text-center text-sm text-muted-foreground">
-        {t("RMS_NO_PAUSED_FACILITIES_FOUND")}
+        {t("RMS_NO_PAUSED_FACILITIES_FOUND", "RMS No Paused Facilities Found")}
       </div>
     );
   }
@@ -43,10 +43,10 @@ export function RmsPausedTable({ facilities, isLoading }: RmsPausedTableProps) {
       <table className="w-full text-left text-sm">
         <thead className="border-b border-border text-xs font-semibold text-muted-foreground uppercase">
           <tr>
-            <th className="px-4 py-3">{t("RMS_FACILITY_NAME")}</th>
-            <th className="px-4 py-3">{t("RMS_FACILITY_ID")}</th>
-            <th className="px-4 py-3">{t("RMS_PAUSED_UNTIL")}</th>
-            <th className="px-4 py-3">{t("RMS_PAUSED_BY")}</th>
+            <th className="px-4 py-3">{t("RMS_FACILITY_NAME", "RMS Facility Name")}</th>
+            <th className="px-4 py-3">{t("RMS_FACILITY_ID", "RMS Facility ID")}</th>
+            <th className="px-4 py-3">{t("RMS_PAUSED_UNTIL", "RMS Paused Until")}</th>
+            <th className="px-4 py-3">{t("RMS_PAUSED_BY", "RMS Paused By")}</th>
           </tr>
         </thead>
         <tbody>

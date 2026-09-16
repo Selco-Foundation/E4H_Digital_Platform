@@ -40,15 +40,15 @@ function TimelineCaption({
   if (action === "MARK_OUT_OF_SCOPE") {
     const outOfScopeCode = String(outOfScopeReasons.shift() ?? "");
     reasonText = t(outOfScopeCode);
-    reasonLabel = t("WF_OUT_OF_SCOPE_REASON");
+    reasonLabel = t("WF_OUT_OF_SCOPE_REASON", "Out Of Scope Reason");
   } else if (action === "REJECT") {
     const rejectCode = String(rejectReasons.shift() ?? "");
     reasonText = t(rejectCode);
-    reasonLabel = t("WF_REJECT_REASON");
+    reasonLabel = t("WF_REJECT_REASON", "Reject Reason");
   } else if (action === "REOPEN" || action === "REOPEN_RMS") {
     const reopenCode = String(reopenReasons.shift() ?? "");
     reasonText = t(reopenCode);
-    reasonLabel = t("WF_REOPEN_REASON");
+    reasonLabel = t("WF_REOPEN_REASON", "Reopen Reason");
   }
   // SENDBACK's reason isn't carried on the workflow process-history response (only
   // action/state/comment/assigner are) — its `wfComment` entries (rendered below)
@@ -74,7 +74,7 @@ function TimelineCaption({
       {checkpoint.wfComment?.map((comment, index) => (
         <div key={`${comment}-${index}`}>
           <p className="font-medium text-foreground">
-            {t("WF_COMMON_COMMENTS")}
+            {t("WF_COMMON_COMMENTS", "Comments")}
           </p>
           <p className="break-words">{comment}</p>
         </div>
@@ -85,7 +85,7 @@ function TimelineCaption({
         checkpoint.thumbnailsToShow?.videos?.length) ? (
         <div className="space-y-2">
           <p className="font-medium text-foreground">
-            {t("CS_COMMON_ATTACHMENTS")}
+            {t("CS_COMMON_ATTACHMENTS", "Documents")}
           </p>
           <ComplaintMediaList
             images={checkpoint.thumbnailsToShow?.fullImage ?? []}
@@ -113,7 +113,7 @@ export function ComplaintTimelineSection({
   return (
     <FormSectionCard
       icon={History}
-      title={t("CS_COMPLAINT_DETAILS_COMPLAINT_TIMELINE")}
+      title={t("CS_COMPLAINT_DETAILS_COMPLAINT_TIMELINE", "Timeline")}
       titleClassName="text-base font-semibold text-ink-950"
       divider
     >

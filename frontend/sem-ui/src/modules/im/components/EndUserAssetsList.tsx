@@ -62,16 +62,16 @@ export function EndUserAssetsList({ assets, isLoading }: EndUserAssetsListProps)
   return (
     <div className="space-y-3">
       <h3 className="text-[20px] leading-[30px] font-semibold text-ink-950">
-        {t("ES_IM_MY_REGISTERED_ASSETS")}
+        {t("ES_IM_MY_REGISTERED_ASSETS", "Registered Assets")}
       </h3>
       <div className="flex flex-col items-stretch gap-3 lg:rounded-lg lg:border lg:border-border lg:bg-card lg:p-4 lg:py-5 lg:shadow-sm">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">
-            {t("CS_COMMON_LOADING")}
+            {t("CS_COMMON_LOADING", "Loading")}
           </p>
         ) : assets.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {t("ES_IM_NO_ASSETS_FOUND")}
+            {t("ES_IM_NO_ASSETS_FOUND", "No Assets Found")}
           </p>
         ) : (
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">

@@ -41,11 +41,11 @@ export function RmsPausedFacilitiesPage() {
   return (
     <div className="space-y-6">
       <TopBar
-        title={t("RMS_PAUSED_FACILITIES")}
+        title={t("RMS_PAUSED_FACILITIES", "RMS Paused Facilities")}
         breadcrumbs={[
-          { label: t("CORE_COMMON_OVERVIEW"), to: homePath },
-          { label: t("ES_IM_HEADER_INCIDENTS"), to: imRootPath },
-          { label: t("RMS_PAUSED_FACILITIES") },
+          { label: t("CORE_COMMON_OVERVIEW", "Overview"), to: homePath },
+          { label: t("ES_IM_HEADER_INCIDENTS", "Header Incidents"), to: imRootPath },
+          { label: t("RMS_PAUSED_FACILITIES", "RMS Paused Facilities") },
         ]}
       />
 

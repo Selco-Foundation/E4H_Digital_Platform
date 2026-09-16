@@ -82,7 +82,7 @@ function UploadedFileCard({
           <span>{formatFileSize(entry.file.size)}</span>
           <span>•</span>
           <CheckCircle2 className="size-3.5 text-primary" />
-          <span>{t("CS_COMMON_COMPLETE")}</span>
+          <span>{t("CS_COMMON_COMPLETE", "Complete")}</span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full w-full rounded-full bg-primary" />
@@ -92,7 +92,7 @@ function UploadedFileCard({
         type="button"
         onClick={() => onRemove(entry.fileStoreId)}
         className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-        aria-label={t("CS_COMMON_REMOVE")}
+        aria-label={t("CS_COMMON_REMOVE", "Remove")}
       >
         <Trash2 className="size-4" />
       </button>
@@ -138,7 +138,7 @@ export function MediaUploadZone({
           <Icon className="size-5" />
         </div>
         <span className="text-sm text-muted-foreground">
-          {uploading ? t("CS_COMMON_UPLOADING") : hint}
+          {uploading ? t("CS_COMMON_UPLOADING", "Uploading") : hint}
         </span>
       </button>
       <input

@@ -22,8 +22,8 @@ export function MobileComplaintList({ data }: MobileComplaintListProps) {
   const { t } = useTranslate();
   const navigate = useNavigate();
   const basePath = `/${contextPath()}/employee/im`;
-  const slaLabel = t("WF_INBOX_HEADER_SLA_DAYS_REMAINING");
-  const overdueLabel = t("SLA_OVERDUE");
+  const slaLabel = t("WF_INBOX_HEADER_SLA_DAYS_REMAINING", "SLA Days Remaining");
+  const overdueLabel = t("SLA_OVERDUE", "SLA Overdue");
 
   return (
     <div className="space-y-3">
@@ -41,24 +41,24 @@ export function MobileComplaintList({ data }: MobileComplaintListProps) {
             <p className="text-base font-bold text-ink-950">{row.incidentId}</p>
             {row.potentialDuplicate ? (
               <p className="inline-block w-fit rounded-md border border-primary bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">
-                {t("CS_INFO_POTENTIAL_DUPLICATE")}
+                {t("CS_INFO_POTENTIAL_DUPLICATE", "Potential Duplicate")}
               </p>
             ) : null}
-            <DetailRow label={t("INCIDENT_END_USER")} value={row.endUser} />
+            <DetailRow label={t("INCIDENT_END_USER", "Facility")} value={row.endUser} />
             <DetailRow
-              label={t("INCIDENT_ASSET")}
+              label={t("INCIDENT_ASSET", "Incident Asset")}
               value={translateDetailValue(row.assetLabel, t)}
             />
             <DetailRow
-              label={t("CS_TICKET_TYPE")}
+              label={t("CS_TICKET_TYPE", "Issue Type")}
               value={t(`SERVICEDEFS.${row.incidentType.toUpperCase()}`)}
             />
             <DetailRow
-              label={t("CS_TICKET_DETAILS_CURRENT_STATUS")}
+              label={t("CS_TICKET_DETAILS_CURRENT_STATUS", "Current Status")}
               value={t(`CS_COMMON_${row.status}`)}
             />
             <DetailRow
-              label={t("WF_INBOX_HEADER_CURRENT_OWNER")}
+              label={t("WF_INBOX_HEADER_CURRENT_OWNER", "Current Owner")}
               value={row.taskOwner}
             />
             <p className="flex items-center gap-1.5 text-sm text-ink-600">

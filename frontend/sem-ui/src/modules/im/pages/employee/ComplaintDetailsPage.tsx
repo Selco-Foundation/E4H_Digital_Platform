@@ -39,10 +39,10 @@ export function ComplaintDetailsPage() {
     return (
       <div className="space-y-4">
         <p className="text-sm text-destructive">
-          {t("CS_COMMON_SOMETHING_WENT_WRONG")}
+          {t("CS_COMMON_SOMETHING_WENT_WRONG", "Something Went Wrong")}
         </p>
         <Button asChild variant="outline" size="lg">
-          <Link to={inboxPath}>{t("ES_IM_VIEW_INBOX")}</Link>
+          <Link to={inboxPath}>{t("ES_IM_VIEW_INBOX", "View Inbox")}</Link>
         </Button>
       </div>
     );
@@ -69,10 +69,10 @@ export function ComplaintDetailsPage() {
     return (
       <div className="space-y-4">
         <p className="text-sm text-destructive">
-          {t("CS_COMMON_COMPLAINT_NOT_FOUND")}
+          {t("CS_COMMON_COMPLAINT_NOT_FOUND", "Complaint Not Found")}
         </p>
         <Button asChild variant="outline" size="lg">
-          <Link to={inboxPath}>{t("ES_IM_VIEW_INBOX")}</Link>
+          <Link to={inboxPath}>{t("ES_IM_VIEW_INBOX", "View Inbox")}</Link>
         </Button>
       </div>
     );
@@ -93,10 +93,10 @@ export function ComplaintDetailsPage() {
   return (
     <div className="space-y-6">
       <TopBar
-        title={t("CS_HEADER_TICKET_DETAILS")}
+        title={t("CS_HEADER_TICKET_DETAILS", "Ticket Details")}
         breadcrumbs={[
-          { label: t("CORE_COMMON_OVERVIEW"), to: homePath },
-          { label: t("ES_IM_INBOX"), to: inboxPath },
+          { label: t("CORE_COMMON_OVERVIEW", "Overview"), to: homePath },
+          { label: t("ES_IM_INBOX", "Inbox"), to: inboxPath },
           { label: incidentId },
         ]}
       />

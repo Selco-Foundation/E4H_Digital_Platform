@@ -56,7 +56,7 @@ export function DesktopInbox({
         </div>
       ) : data && data.combinedRes.length === 0 ? (
         <div className="livelihood-card px-6 py-16 text-center text-sm text-muted-foreground">
-          {t("CS_INBOX_NOTHING_TO_SHOW")}
+          {t("CS_INBOX_NOTHING_TO_SHOW", "Nothing To Show")}
         </div>
       ) : data?.combinedRes?.length ? (
         <>
@@ -69,7 +69,7 @@ export function DesktopInbox({
         </>
       ) : (
         <div className="livelihood-card px-6 py-16 text-center text-sm text-muted-foreground">
-          {t("CS_COMMON_ERROR_LOADING_RESULTS")}
+          {t("CS_COMMON_ERROR_LOADING_RESULTS", "Error Loading Results")}
         </div>
       )}
 

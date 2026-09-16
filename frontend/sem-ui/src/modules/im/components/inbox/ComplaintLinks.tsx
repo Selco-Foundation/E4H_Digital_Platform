@@ -23,7 +23,7 @@ export function ComplaintLinks() {
   const links = canCreateIncident(user?.roles)
     ? [
         {
-          text: t("ES_IM_NEW_INCIDENT"),
+          text: t("ES_IM_NEW_INCIDENT", "New Incident"),
           link: `${basePath}/incident/create`,
         },
       ]
@@ -37,7 +37,7 @@ export function ComplaintLinks() {
             <ImHeaderIcon />
           </div>
           <span className="font-semibold">
-            {t("ES_IM_HEADER_INCIDENTS")}
+            {t("ES_IM_HEADER_INCIDENTS", "Header Incidents")}
           </span>
         </div>
         <div className="space-y-1 text-sm">

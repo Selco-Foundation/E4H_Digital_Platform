@@ -24,23 +24,23 @@ export function TicketSubmittedDialog({
         </div>
 
         <h2 className="text-xl font-semibold text-foreground">
-          {t("CS_COMMON_COMPLAINT_SUBMITTED")}
+          {t("CS_COMMON_COMPLAINT_SUBMITTED", "Complaint Submitted")}
         </h2>
 
         <p className="mt-2 text-sm text-muted-foreground">
-          {t("ES_COMMON_TRACK_COMPLAINT_TEXT")}{" "}
+          {t("ES_COMMON_TRACK_COMPLAINT_TEXT", "Your ticket has been registered. You can track the ticket status by logging into this application again")}{" "}
           <span className="font-medium text-foreground">{incidentId}</span>
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button asChild variant="outline" size="lg">
             <Link to={inboxPath}>
-              {t("ES_IM_VIEW_INBOX")}
+              {t("ES_IM_VIEW_INBOX", "View Inbox")}
             </Link>
           </Button>
           <Button asChild size="lg">
             <Link to={homePath}>
-              {t("CORE_COMMON_GO_TO_HOME")}
+              {t("CORE_COMMON_GO_TO_HOME", "Go To Home")}
             </Link>
           </Button>
         </div>

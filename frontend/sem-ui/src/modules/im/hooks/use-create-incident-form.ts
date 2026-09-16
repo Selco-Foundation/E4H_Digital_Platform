@@ -325,29 +325,29 @@ export function useCreateIncidentForm(inboxPath: string) {
   const validate = useCallback(() => {
     const errors: FieldErrors = {};
     if (!form.district) {
-      errors.district = t("INCIDENT_DISTRICT_REQUIRED");
+      errors.district = t("INCIDENT_DISTRICT_REQUIRED", "District Required");
     }
     if (!form.block) {
-      errors.block = t("INCIDENT_BLOCK_REQUIRED");
+      errors.block = t("INCIDENT_BLOCK_REQUIRED", "Block Required");
     }
     if (!form.facility) {
-      errors.facility = t("INCIDENT_FACILITY_REQUIRED");
+      errors.facility = t("INCIDENT_FACILITY_REQUIRED", "Facility Required");
     }
     if (!form.ticketType) {
-      errors.ticketType = t("INCIDENT_TICKET_TYPE_REQUIRED");
+      errors.ticketType = t("INCIDENT_TICKET_TYPE_REQUIRED", "Ticket Type Required");
     }
     if (!form.ticketSubType) {
-      errors.ticketSubType = t("INCIDENT_TICKET_SUBTYPE_REQUIRED");
+      errors.ticketSubType = t("INCIDENT_TICKET_SUBTYPE_REQUIRED", "Ticket Subtype Required");
     }
     if (!form.systemFunctional) {
-      errors.systemFunctional = t("INCIDENT_SYSTEM_FUNCTIONAL_REQUIRED");
+      errors.systemFunctional = t("INCIDENT_SYSTEM_FUNCTIONAL_REQUIRED", "System Functional Required");
     }
     if (form.comments.length > MAX_COMMENT_LENGTH) {
-      errors.comments = t("CS_LENGTH_EXCEED").replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH));
+      errors.comments = t("CS_LENGTH_EXCEED", "Length Exceed").replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH));
     }
     // Matches DIGIT-UI's `hasMandatoryTheftUpload` check on submit.
     if (isTheftIssue && firUploads.length === 0) {
-      errors.fir = t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER");
+      errors.fir = t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER", "Please Upload Fir Police Letter");
     }
     setFieldErrors((prev) => ({ ...prev, ...errors }));
     return Object.keys(errors).length === 0;
@@ -402,7 +402,7 @@ export function useCreateIncidentForm(inboxPath: string) {
         const message =
           response?.Errors?.[0]?.message ??
           response?.message ??
-          t("CS_COMMON_SOMETHING_WENT_WRONG");
+          t("CS_COMMON_SOMETHING_WENT_WRONG", "Something Went Wrong");
         setSubmitError(message);
         return;
       }

@@ -22,17 +22,17 @@ function SlaBadge({ value, overdueLabel }: { value: string; overdueLabel: string
 export function ComplaintTable({ data }: ComplaintTableProps) {
   const { t } = useTranslate();
   const navigate = useNavigate();
-  const slaColumnLabel = t("WF_INBOX_HEADER_SLA_DAYS_REMAINING");
+  const slaColumnLabel = t("WF_INBOX_HEADER_SLA_DAYS_REMAINING", "SLA Days Remaining");
   const basePath = `/${contextPath()}/employee/im`;
-  const overdueLabel = t("SLA_OVERDUE");
+  const overdueLabel = t("SLA_OVERDUE", "SLA Overdue");
 
   const columns = [
-    { key: "ticket", label: t("CS_COMMON_TICKET_NO") },
-    { key: "type", label: t("CS_TICKET_TYPE") },
-    { key: "subType", label: t("CS_TICKET_SUB_TYPE") },
-    { key: "status", label: t("CS_TICKET_DETAILS_CURRENT_STATUS") },
-    { key: "facility", label: t("INCIDENT_FACILITY") },
-    { key: "owner", label: t("WF_INBOX_HEADER_CURRENT_OWNER") },
+    { key: "ticket", label: t("CS_COMMON_TICKET_NO", "Ticket No") },
+    { key: "type", label: t("CS_TICKET_TYPE", "Ticket Type") },
+    { key: "subType", label: t("CS_TICKET_SUB_TYPE", "Ticket Sub Type") },
+    { key: "status", label: t("CS_TICKET_DETAILS_CURRENT_STATUS", "Current Status") },
+    { key: "facility", label: t("INCIDENT_FACILITY", "Incident Facility") },
+    { key: "owner", label: t("WF_INBOX_HEADER_CURRENT_OWNER", "Current Owner") },
     { key: "sla", label: slaColumnLabel },
   ] as const;
 
@@ -78,7 +78,7 @@ export function ComplaintTable({ data }: ComplaintTableProps) {
                       </Link>
                       {row.potentialDuplicate ? (
                         <p className="inline-block w-fit rounded-md border border-primary bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">
-                          {t("CS_INFO_POTENTIAL_DUPLICATE")}
+                          {t("CS_INFO_POTENTIAL_DUPLICATE", "Potential Duplicate")}
                         </p>
                       ) : null}
                     </div>

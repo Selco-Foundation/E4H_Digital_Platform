@@ -40,7 +40,7 @@ export function LiveTicketSearch({ onSearch, initialApplicationNumber = "" }: Li
         name="serviceRequestId"
         value={complaintNo}
         onChange={(event) => setComplaintNo(event.target.value)}
-        placeholder={t("CS_COMMON_TICKET_NO")}
+        placeholder={t("CS_COMMON_TICKET_NO", "Ticket No")}
         className="h-8 max-w-xs"
       />
     </div>

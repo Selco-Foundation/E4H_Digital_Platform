@@ -145,19 +145,19 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
       >
         <FormSectionCard
           icon={MapPin}
-          title={t("TICKET_LOCATION")}
+          title={t("TICKET_LOCATION", "Location")}
         >
           <div className="grid gap-4 md:grid-cols-3">
             {isDistrictLocked ? (
               <ReadOnlyLocationField
-                label={t("INCIDENT_DISTRICT")}
+                label={t("INCIDENT_DISTRICT", "District")}
                 required
                 value={form.district?.name ?? districtOptions[0]?.name ?? ""}
                 error={fieldErrors.district}
               />
             ) : (
               <FormSelectField
-                label={t("INCIDENT_DISTRICT")}
+                label={t("INCIDENT_DISTRICT", "District")}
                 required
                 value={form.district?.code ?? ""}
                 options={districtOptions}
@@ -172,14 +172,14 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
             )}
             {isBlockLocked ? (
               <ReadOnlyLocationField
-                label={t("INCIDENT_BLOCK")}
+                label={t("INCIDENT_BLOCK", "Block")}
                 required
                 value={form.block?.name ?? blockOptions[0]?.name ?? ""}
                 error={fieldErrors.block}
               />
             ) : (
               <FormSelectField
-                label={t("INCIDENT_BLOCK")}
+                label={t("INCIDENT_BLOCK", "Block")}
                 required
                 value={form.block?.code ?? ""}
                 options={blockOptions}
@@ -194,14 +194,14 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
             )}
             {isFacilityLocked ? (
               <ReadOnlyLocationField
-                label={t("HEALTH_CARE_CENTRE")}
+                label={t("HEALTH_CARE_CENTRE", "Health Care Centre")}
                 required
                 value={form.facility?.name ?? facilityOptions[0]?.name ?? ""}
                 error={fieldErrors.facility}
               />
             ) : (
               <FormSelectField
-                label={t("HEALTH_CARE_CENTRE")}
+                label={t("HEALTH_CARE_CENTRE", "Health Care Centre")}
                 required
                 value={form.facility?.code ?? ""}
                 options={facilityOptions}
@@ -219,11 +219,11 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
         <FormSectionCard
           icon={FileText}
-          title={t("TICKET_DETAILS")}
+          title={t("TICKET_DETAILS", "Details")}
         >
           <div className="grid gap-4 md:grid-cols-3">
             <FormSelectField
-              label={t("TICKET_TYPE")}
+              label={t("TICKET_TYPE", "Type")}
               required
               value={form.ticketType?.code ?? ""}
               options={ticketTypeMenu}
@@ -231,7 +231,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
               onChange={(option) => handleTicketTypeChange(option)}
             />
             <FormSelectField
-              label={t("TICKET_SUBTYPE")}
+              label={t("TICKET_SUBTYPE", "Subtype")}
               required
               value={form.ticketSubType?.code ?? ""}
               options={ticketSubTypeMenu}
@@ -240,7 +240,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
               onChange={(option) => handleTicketSubTypeChange(option)}
             />
             <FormSelectField
-              label={t("SYSTEM_FUNCTIONAL")}
+              label={t("SYSTEM_FUNCTIONAL", "System Functional")}
               required
               value={form.systemFunctional?.code ?? ""}
               options={systemFunctionalMenu}
@@ -252,17 +252,17 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
         <FormSectionCard
           icon={Info}
-          title={t("ADDITIONAL_DETAILS")}
+          title={t("ADDITIONAL_DETAILS", "Additional Details")}
         >
           <div className="space-y-6">
             <div className="space-y-1.5">
               <label htmlFor="incident-comments" className="text-sm font-medium text-foreground">
-                {t("INCIDENT_COMMENTS")}
+                {t("INCIDENT_COMMENTS", "Comments")}
               </label>
               <textarea
                 id="incident-comments"
                 className="min-h-[120px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder={t("INCIDENT_COMMENTS_PLACEHOLDER")}
+                placeholder={t("INCIDENT_COMMENTS_PLACEHOLDER", "Comments")}
                 maxLength={maxCommentLength}
                 value={form.comments}
                 onChange={(event) => updateField("comments", event.target.value)}
@@ -281,9 +281,9 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
             <div className="grid gap-4 md:grid-cols-2">
               <MediaUploadZone
-                label={t("INCIDENT_UPLOAD_IMAGE")}
-                hint={t("INCIDENT_TAP_UPLOAD_IMAGES")}
-                helperText={t("CS_MAXIMUM_IMAGES")}
+                label={t("INCIDENT_UPLOAD_IMAGE", "Upload Image")}
+                hint={t("INCIDENT_TAP_UPLOAD_IMAGES", "Upload Images")}
+                helperText={t("CS_MAXIMUM_IMAGES", "Maximum of 5 Images allowed")}
                 error={fieldErrors.image}
                 icon={Camera}
                 accept=".png,.jpg,.jpeg,image/*"
@@ -296,9 +296,9 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
                 onRemove={(fileStoreId) => removeUpload("image", fileStoreId)}
               />
               <MediaUploadZone
-                label={t("INCIDENT_UPLOAD_VIDEO")}
-                hint={t("INCIDENT_TAP_UPLOAD_VIDEOS")}
-                helperText={t("CS_MAXIMUM_VIDEOS")}
+                label={t("INCIDENT_UPLOAD_VIDEO", "Upload Video")}
+                hint={t("INCIDENT_TAP_UPLOAD_VIDEOS", "Upload Videos")}
+                helperText={t("CS_MAXIMUM_VIDEOS", "Upload Videos one by one. Maximum 2 videos of 50MB each are allowed")}
                 error={fieldErrors.video}
                 icon={Video}
                 accept=".mp4,.avi,.mov,.wmv,video/*"
@@ -313,9 +313,9 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
 
             {isTheftIssue ? (
               <MediaUploadZone
-                label={t("INCIDENT_UPLOAD_FIR_POLICE_LETTER")}
-                hint={t("INCIDENT_TAP_UPLOAD_FIR")}
-                helperText={t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER")}
+                label={t("INCIDENT_UPLOAD_FIR_POLICE_LETTER", "Upload Fir Police Letter")}
+                hint={t("INCIDENT_TAP_UPLOAD_FIR", "Upload Fir")}
+                helperText={t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER", "Please Upload Fir Police Letter")}
                 error={fieldErrors.fir}
                 icon={FileWarning}
                 accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf"
@@ -345,7 +345,7 @@ export function CreateTicketForm({ inboxPath }: CreateTicketFormProps) {
             disabled={!canSubmit || createMutation.isPending}
           >
             <Send className="size-4" />
-            {t("FILE_INCIDENT")}
+            {t("FILE_INCIDENT", "Submit Ticket")}
           </Button>
         </div>
       </form>

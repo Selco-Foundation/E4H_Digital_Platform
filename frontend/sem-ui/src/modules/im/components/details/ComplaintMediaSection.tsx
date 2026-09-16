@@ -21,7 +21,7 @@ export function ComplaintMediaSection({
   return (
     <FormSectionCard
       icon={ImageIcon}
-      title={t("CS_COMMON_ATTACHMENTS")}
+      title={t("CS_COMMON_ATTACHMENTS", "Documents")}
       titleClassName="text-base font-semibold text-ink-950"
       divider
     >

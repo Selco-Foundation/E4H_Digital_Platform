@@ -99,18 +99,18 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
             <Briefcase className="size-4" />
           </span>
           <span className="font-semibold text-ink-950">
-            {t("RMS_FACILITIES")}
+            {t("RMS_FACILITIES", "RMS Facilities")}
           </span>
         </div>
         <Link to={pauseRmsPath} className="block text-sm font-semibold text-success-foreground hover:underline">
-          {t("ES_IM_PAUSE_RMS")}
+          {t("ES_IM_PAUSE_RMS", "Pause RMS")}
         </Link>
       </div>
 
       <div className="livelihood-card space-y-4 p-5">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-ink-950">
-            {t("ES_COMMON_FILTER_BY")}:
+            {t("ES_COMMON_FILTER_BY", "Filter By")}:
           </span>
           {hasActiveFilters ? (
             <button
@@ -118,13 +118,13 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
               className="cursor-pointer text-sm text-destructive hover:underline"
               onClick={() => onChange({ state: null, district: null, block: null })}
             >
-              {t("ES_COMMON_CLEAR")}
+              {t("ES_COMMON_CLEAR", "Clear")}
             </button>
           ) : null}
         </div>
 
         <FormSelectField
-          label={t("CS_STATE")}
+          label={t("CS_STATE", "State")}
           value={value.state?.code ?? ""}
           options={stateOptions}
           onChange={(option) =>
@@ -145,7 +145,7 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
         ) : null}
 
         <FormSelectField
-          label={t("CS_DISTRICT")}
+          label={t("CS_DISTRICT", "District")}
           value={value.district?.code ?? ""}
           options={districtMenu}
           disabled={!value.state}
@@ -159,7 +159,7 @@ export function RmsPausedFilter({ value, onChange, pauseRmsPath }: RmsPausedFilt
         />
 
         <FormSelectField
-          label={t("CS_BLOCK")}
+          label={t("CS_BLOCK", "Block")}
           value={value.block?.code ?? ""}
           options={blockMenu}
           disabled={!value.district}

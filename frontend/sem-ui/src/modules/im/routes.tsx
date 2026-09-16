@@ -37,7 +37,7 @@ function ImModuleWrapper() {
   if (isLoading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
-        {t("CORE_COMMON_LOADING")}
+        {t("CORE_COMMON_LOADING", "Loading")}
       </div>
     );
   }

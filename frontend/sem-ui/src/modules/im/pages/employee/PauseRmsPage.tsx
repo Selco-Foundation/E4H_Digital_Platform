@@ -188,25 +188,25 @@ export function PauseRmsPage() {
     onSuccess: (response) => {
       if (!response?.success) {
         setError(
-          response?.message ?? t("CS_COMMON_SOMETHING_WENT_WRONG"),
+          response?.message ?? t("CS_COMMON_SOMETHING_WENT_WRONG", "Something Went Wrong"),
         );
         return;
       }
       setError(null);
       setSuccessMessage(
         response.isPaused
-          ? t("RMS_FACILITY_PAUSED")
-          : t("RMS_FACILITY_RESUMED"),
+          ? t("RMS_FACILITY_PAUSED", "RMS Facility Paused")
+          : t("RMS_FACILITY_RESUMED", "RMS Facility Resumed"),
       );
       setIsPaused(Boolean(response.isPaused));
     },
     onError: (mutationError: Error) => {
       setError(
         mutationError.message === "FACILITY_REQUIRED"
-          ? t("RMS_SELECT_FACILITY")
+          ? t("RMS_SELECT_FACILITY", "RMS Select Facility")
           : mutationError.message === "REASON_REQUIRED"
-            ? t("RMS_REASON_REQUIRED")
-            : t("CS_COMMON_SOMETHING_WENT_WRONG"),
+            ? t("RMS_REASON_REQUIRED", "RMS Reason Required")
+            : t("CS_COMMON_SOMETHING_WENT_WRONG", "Something Went Wrong"),
       );
     },
   });
@@ -219,18 +219,18 @@ export function PauseRmsPage() {
   return (
     <div className="space-y-6">
       <TopBar
-        title={t("ES_IM_PAUSE_RMS")}
+        title={t("ES_IM_PAUSE_RMS", "Pause RMS")}
         breadcrumbs={[
-          { label: t("CORE_COMMON_OVERVIEW"), to: homePath },
-          { label: t("ES_IM_HEADER_INCIDENTS"), to: imRootPath },
-          { label: t("RMS_PAUSED_FACILITIES"), to: pausedListPath },
-          { label: t("ES_IM_PAUSE_RMS") },
+          { label: t("CORE_COMMON_OVERVIEW", "Overview"), to: homePath },
+          { label: t("ES_IM_HEADER_INCIDENTS", "Header Incidents"), to: imRootPath },
+          { label: t("RMS_PAUSED_FACILITIES", "RMS Paused Facilities"), to: pausedListPath },
+          { label: t("ES_IM_PAUSE_RMS", "Pause RMS") },
         ]}
       />
 
       <div className="livelihood-card max-w-xl space-y-4 p-6">
         <FormSelectField
-          label={t("CS_DISTRICT")}
+          label={t("CS_DISTRICT", "District")}
           required
           value={district?.code ?? ""}
           options={districtMenu}
@@ -241,7 +241,7 @@ export function PauseRmsPage() {
           }}
         />
         <FormSelectField
-          label={t("CS_BLOCK")}
+          label={t("CS_BLOCK", "Block")}
           required
           value={block?.code ?? ""}
           options={blockMenu}
@@ -252,7 +252,7 @@ export function PauseRmsPage() {
           }}
         />
         <FormSelectField
-          label={t("CS_HEALTH_CARE")}
+          label={t("CS_HEALTH_CARE", "Health Care")}
           required
           value={facility?.code ?? ""}
           options={facilityOptions}
@@ -267,7 +267,7 @@ export function PauseRmsPage() {
         {!isPaused ? (
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-ink-950">
-              {t("RMS_PAUSE_DURATION")}
+              {t("RMS_PAUSE_DURATION", "RMS Pause Duration")}
               <span className="text-destructive"> *</span>
             </label>
             <input
@@ -283,7 +283,7 @@ export function PauseRmsPage() {
         {!isPaused ? (
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-ink-950">
-              {t("RMS_PAUSE_REASON")}
+              {t("RMS_PAUSE_REASON", "RMS Pause Reason")}
               <span className="text-destructive"> *</span>
             </label>
             <textarea
@@ -298,7 +298,7 @@ export function PauseRmsPage() {
           </div>
         ) : (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            {t("RMS_ALREADY_PAUSED")}
+            {t("RMS_ALREADY_PAUSED", "RMS Already Paused")}
             {reason ? `: ${reason}` : ""}
           </p>
         )}
@@ -313,8 +313,8 @@ export function PauseRmsPage() {
           onClick={() => mutation.mutate(isPaused ? "RESUME" : "PAUSE")}
         >
           {isPaused
-            ? t("RMS_RESUME")
-            : t("ES_IM_PAUSE_RMS")}
+            ? t("RMS_RESUME", "RMS Resume")
+            : t("ES_IM_PAUSE_RMS", "Pause RMS")}
         </Button>
       </div>
     </div>

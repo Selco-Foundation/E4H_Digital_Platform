@@ -87,14 +87,14 @@ export function ComplaintActionBar({
         ) : (
           <>
             <div className="mr-auto">
-              <p className="text-sm font-medium text-foreground">{t("WF_TAKE_ACTION")}</p>
+              <p className="text-sm font-medium text-foreground">{t("WF_TAKE_ACTION", "Take Action")}</p>
               <p className="text-xs text-muted-foreground">
-                {t("WF_TAKE_ACTION_DESC")}
+                {t("WF_TAKE_ACTION_DESC", "Choose an action to update this ticket")}
               </p>
             </div>
             <div className="relative w-full sm:w-auto" ref={menuRef}>
               <SplitButton
-                label={t("WF_TAKE_ACTION")}
+                label={t("WF_TAKE_ACTION", "Take Action")}
                 size="lg"
                 className="flex w-full sm:inline-flex sm:w-auto"
                 onLabelClick={() => setMenuOpen((open) => !open)}

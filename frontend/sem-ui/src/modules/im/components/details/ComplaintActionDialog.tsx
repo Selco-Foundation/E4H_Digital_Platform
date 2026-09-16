@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { searchHrmsEmployeesByRole, useAuthStore, useTranslate } from "@/shared";
 import { Button } from "@/ui";
 import { useMutation } from "@tanstack/react-query";
@@ -39,48 +40,48 @@ interface ComplaintActionDialogProps {
   onComplete: () => Promise<void>;
 }
 
-function getReasonLabel(t: (key: string) => string, action: string): string {
+function getReasonLabel(t: TFunction, action: string): string {
   if (action === "MARK_OUT_OF_SCOPE") {
-    return t("WF_OUT_OF_SCOPE_REASON");
+    return t("WF_OUT_OF_SCOPE_REASON", "Out Of Scope Reason");
   }
   if (action === "SENDBACK") {
-    return t("WF_SENDBACK_REASON");
+    return t("WF_SENDBACK_REASON", "Sendback Reason");
   }
   if (action === "REJECT") {
-    return t("CS_DECLINE_COMPLAINT");
+    return t("CS_DECLINE_COMPLAINT", "Decline Complaint");
   }
-  return t("WF_REJECT_REASON");
+  return t("WF_REJECT_REASON", "Reject Reason");
 }
 
-function getDialogTitle(t: (key: string) => string, action: string): string {
+function getDialogTitle(t: TFunction, action: string): string {
   if (action === "ASSIGN" || action === "REASSIGN") {
-    return t("CS_ACTION_ASSIGN_TICKET");
+    return t("CS_ACTION_ASSIGN_TICKET", "Assign Ticket");
   }
   if (action === "REJECT") {
-    return t("CS_ACTION_DECLINE_TICKET");
+    return t("CS_ACTION_DECLINE_TICKET", "Decline Ticket");
   }
   return t(`CS_ACTION_${action}`);
 }
 
-function getSubmitLabel(t: (key: string) => string, action: string): string {
+function getSubmitLabel(t: TFunction, action: string): string {
   if (action === "ASSIGN" || action === "REASSIGN") {
-    return t("CS_COMMON_ASSIGN");
+    return t("CS_COMMON_ASSIGN", "Assign");
   }
   if (action === "REJECT") {
-    return t("CS_COMMON_DECLINE");
+    return t("CS_COMMON_DECLINE", "Decline");
   }
-  return t("CS_COMMON_SUBMIT");
+  return t("CS_COMMON_SUBMIT", "Submit");
 }
 
 function getOutOfWarrantyHelperText(
-  t: (key: string) => string,
+  t: TFunction,
   action: string,
   endUserName: string,
 ): string | null {
   if (action !== "OUT_OF_WARRANTY") {
     return null;
   }
-  return t("WF_OUT_OF_WARRANTY_HELPER").replace("{endUserName}", endUserName);
+  return t("WF_OUT_OF_WARRANTY_HELPER", "Out Of Warranty Helper").replace("{endUserName}", endUserName);
 }
 
 function formatFileSize(bytes: number): string {
@@ -102,7 +103,7 @@ interface ActionDocumentsFieldProps {
   maxFiles: number;
   onUpload: (files: FileList) => Promise<void>;
   onRemove: (index: number) => void;
-  t: (key: string) => string;
+  t: TFunction;
 }
 
 function ActionDocumentsField({
@@ -118,8 +119,8 @@ function ActionDocumentsField({
   const inputRef = useRef<HTMLInputElement>(null);
   const maxFilesReached = uploads.length >= maxFiles;
   const label = requiresQuotation
-    ? t("CS_ACTION_QUOTATION_DOCUMENT")
-    : t("CS_ACTION_SUPPORTING_DOCUMENTS");
+    ? t("CS_ACTION_QUOTATION_DOCUMENT", "Quotation Document")
+    : t("CS_ACTION_SUPPORTING_DOCUMENTS", "Supporting Documents");
   const accept = requiresQuotation
     ? ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     : ".jpg,.jpeg,.pdf,image/jpeg,application/pdf";
@@ -141,18 +142,18 @@ function ActionDocumentsField({
           <Files className="size-5" />
         </span>
         <span className="text-sm text-ink-950">
-          {t("CS_UPLOAD_BUTTON")}
+          {t("CS_UPLOAD_BUTTON", "Upload")}
         </span>
       </button>
       <p className="text-xs text-ink-400">
         {maxFilesReached
-          ? t("WF_MAX_FILES_REACHED").replace("{MAX_COUNT}", String(maxFiles))
+          ? t("WF_MAX_FILES_REACHED", "Max Files Reached").replace("{MAX_COUNT}", String(maxFiles))
           : requiresQuotation
-            ? t("WF_MAX_FILES_HINT").replace(
+            ? t("WF_MAX_FILES_HINT", "Max Files Hint").replace(
                 "{MAX_COUNT}",
                 String(maxFiles),
               )
-            : t("CS_FILE_LIMIT")}
+            : t("CS_FILE_LIMIT", "Only .jpg and .pdf files. 5 MB max file size.")}
       </p>
       <input
         ref={inputRef}
@@ -186,7 +187,7 @@ function ActionDocumentsField({
               <button
                 type="button"
                 onClick={() => onRemove(index)}
-                aria-label={t("CS_COMMON_REMOVE")}
+                aria-label={t("CS_COMMON_REMOVE", "Remove")}
                 className="shrink-0 cursor-pointer text-ink-400 hover:text-destructive"
               >
                 <Trash2 className="size-5" />
@@ -319,7 +320,7 @@ export function ComplaintActionDialog({
         const message =
           response?.Errors?.[0]?.message ??
           response?.message ??
-          t("CS_COMMON_SOMETHING_WENT_WRONG");
+          t("CS_COMMON_SOMETHING_WENT_WRONG", "Something Went Wrong");
         setError(message);
         return;
       }
@@ -329,16 +330,16 @@ export function ComplaintActionDialog({
       const code = mutationError.message;
       const message =
         code === "COMMENT_REQUIRED"
-          ? t("WF_COMMENT_REQUIRED")
+          ? t("WF_COMMENT_REQUIRED", "Required")
           : code === "COMMENT_TOO_LONG"
-            ? t("WF_COMMENT_MAX_LENGTH").replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH))
+            ? t("WF_COMMENT_MAX_LENGTH", "Max Length").replace("{MAX_COUNT}", String(MAX_COMMENT_LENGTH))
             : code === "FILES_REQUIRED"
-              ? t("WF_QUOTATION_REQUIRED")
+              ? t("WF_QUOTATION_REQUIRED", "Required")
               : code === "REASON_REQUIRED"
-                ? t("WF_REASON_REQUIRED")
+                ? t("WF_REASON_REQUIRED", "Reason Required")
                 : code === "ASSIGNEE_REQUIRED"
-                  ? t("WF_ASSIGNEE_REQUIRED")
-                  : t("CS_COMMON_SOMETHING_WENT_WRONG");
+                  ? t("WF_ASSIGNEE_REQUIRED", "Assignee Required")
+                  : t("CS_COMMON_SOMETHING_WENT_WRONG", "Something Went Wrong");
       setError(message);
     },
   });
@@ -351,7 +352,7 @@ export function ComplaintActionDialog({
     const filesToUpload = Array.from(files);
     if (uploads.length + filesToUpload.length > MAX_IMAGE_COUNT) {
       setError(
-        t("WF_MAX_FILES_REACHED").replace("{MAX_COUNT}", String(MAX_IMAGE_COUNT)),
+        t("WF_MAX_FILES_REACHED", "Max Files Reached").replace("{MAX_COUNT}", String(MAX_IMAGE_COUNT)),
       );
       return;
     }
@@ -360,13 +361,13 @@ export function ComplaintActionDialog({
       const quotationError = validateQuotationFiles(filesToUpload);
       if (quotationError?.code === "FORMAT") {
         setError(
-          t("WF_QUOTATION_IMAGE_NOT_ALLOWED"),
+          t("WF_QUOTATION_IMAGE_NOT_ALLOWED", "Image Not Allowed"),
         );
         return;
       }
       if (quotationError?.code === "SIZE") {
         setError(
-          t("WF_QUOTATION_FILE_TOO_LARGE")
+          t("WF_QUOTATION_FILE_TOO_LARGE", "File Too Large")
             .replace("{fileName}", quotationError.fileName ?? "")
             .replace("{MAX_SIZE}", String(MAX_QUOTATION_SIZE_MB)),
         );
@@ -376,13 +377,13 @@ export function ComplaintActionDialog({
       const documentError = validateActionDocumentFiles(filesToUpload);
       if (documentError?.code === "FORMAT") {
         setError(
-          t("WF_DOCUMENT_FORMAT_NOT_ALLOWED"),
+          t("WF_DOCUMENT_FORMAT_NOT_ALLOWED", "Document Format Not Allowed"),
         );
         return;
       }
       if (documentError?.code === "SIZE") {
         setError(
-          t("WF_DOCUMENT_FILE_TOO_LARGE")
+          t("WF_DOCUMENT_FILE_TOO_LARGE", "Document File Too Large")
             .replace("{fileName}", documentError.fileName ?? "")
             .replace("{MAX_SIZE}", String(MAX_ACTION_DOCUMENT_SIZE_MB)),
         );
@@ -425,7 +426,7 @@ export function ComplaintActionDialog({
 
   const endUserName =
     complaintDetails.incident.reporter?.name ??
-    t("CS_COMMON_END_USER");
+    t("CS_COMMON_END_USER", "End User");
   const outOfWarrantyHelperText = getOutOfWarrantyHelperText(t, action, endUserName);
 
   return (
@@ -442,7 +443,7 @@ export function ComplaintActionDialog({
       }}
       role="button"
       tabIndex={0}
-      aria-label={t("CS_COMMON_CLOSE")}
+      aria-label={t("CS_COMMON_CLOSE", "Close")}
     >
       <div
         className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl border border-border bg-card px-6 py-5 shadow-lg"
@@ -462,7 +463,7 @@ export function ComplaintActionDialog({
         <div className="mt-4 space-y-4">
           {actionConfig.needsAssignee ? (
             <FormSelectField
-              label={t("CS_COMMON_EMPLOYEE_NAME")}
+              label={t("CS_COMMON_EMPLOYEE_NAME", "Employee Name")}
               required
               value={selectedAssignee?.code ?? ""}
               options={assigneeOptions}
@@ -499,7 +500,7 @@ export function ComplaintActionDialog({
 
           {actionConfig.fixedReopenReasons ? (
             <FormSelectField
-              label={t("WF_REOPEN_REASON")}
+              label={t("WF_REOPEN_REASON", "Reopen Reason")}
               required
               value={selectedReopenReason}
               options={REOPEN_REASON_OPTIONS.map((code) => ({
@@ -512,7 +513,7 @@ export function ComplaintActionDialog({
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-ink-950">
-              {t("CS_COMMON_EMPLOYEE_COMMENTS")}
+              {t("CS_COMMON_EMPLOYEE_COMMENTS", "Employee Comments")}
               {actionConfig.comment === "required" ? (
                 <span className="text-destructive"> *</span>
               ) : null}
@@ -552,7 +553,7 @@ export function ComplaintActionDialog({
 
         <div className="mt-6 flex justify-center gap-3">
           <Button type="button" variant="outline" size="lg" onClick={onClose}>
-            {t("CS_COMMON_CANCEL")}
+            {t("CS_COMMON_CANCEL", "Cancel")}
           </Button>
           <Button
             type="button"
@@ -564,7 +565,7 @@ export function ComplaintActionDialog({
             }}
           >
             {mutation.isPending
-              ? t("CS_COMMON_SUBMITTING")
+              ? t("CS_COMMON_SUBMITTING", "Submitting")
               : getSubmitLabel(t, action)}
           </Button>
         </div>

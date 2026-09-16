@@ -99,8 +99,8 @@ export function InboxFilter({
 
   const assignedToOptions = useMemo(
     () => [
-      { code: "ASSIGNED_TO_ME", name: t("ASSIGNED_TO_ME") },
-      { code: "ASSIGNED_TO_ALL", name: t("ASSIGNED_TO_ALL") },
+      { code: "ASSIGNED_TO_ME", name: t("ASSIGNED_TO_ME", "Assigned To Me") },
+      { code: "ASSIGNED_TO_ALL", name: t("ASSIGNED_TO_ALL", "Assigned To All") },
     ],
     [t],
   );
@@ -458,32 +458,32 @@ export function InboxFilter({
   const categories = [
     {
       key: "incidentType" as const,
-      label: t("CS_COMPLAINT_DETAILS_TICKET_TYPE"),
+      label: t("CS_COMPLAINT_DETAILS_TICKET_TYPE", "Issue type"),
       options: ticketTypeMenu,
     },
     {
       key: "isSystemFunctional" as const,
-      label: t("CS_SYSTEM_FUNCTIONAL"),
+      label: t("CS_SYSTEM_FUNCTIONAL", "Is the Solar System Working?"),
       options: systemFunctionalMenu,
     },
     ...(showGeoFilters
       ? [
-          { key: "state" as const, label: t("CS_STATE"), options: stateMenu },
-          { key: "district" as const, label: t("CS_DISTRICT"), options: districtMenu },
-          { key: "block" as const, label: t("CS_BLOCK"), options: blockMenu },
+          { key: "state" as const, label: t("CS_STATE", "State"), options: stateMenu },
+          { key: "district" as const, label: t("CS_DISTRICT", "District"), options: districtMenu },
+          { key: "block" as const, label: t("CS_BLOCK", "Block"), options: blockMenu },
           {
             key: "facility" as const,
-            label: t("INCIDENT_END_USER"),
+            label: t("INCIDENT_END_USER", "End User"),
             options: facilityMenu,
           },
         ]
       : []),
     ...(showVendorFilter
-      ? [{ key: "mappedVendorName" as const, label: t("CS_VENDOR"), options: mappedVendorMenu }]
+      ? [{ key: "mappedVendorName" as const, label: t("CS_VENDOR", "Vendor"), options: mappedVendorMenu }]
       : []),
     {
       key: "applicationStatus" as const,
-      label: t("ES_IM_FILTER_STATUS"),
+      label: t("ES_IM_FILTER_STATUS", "Filter Status"),
       options: statusMenu,
     },
   ];
@@ -521,7 +521,7 @@ export function InboxFilter({
   } else if (visibleOptions.length === 0) {
     optionsContent = (
       <p className="text-sm text-muted-foreground">
-        {t("ES_COMMON_NO_OPTIONS")}
+        {t("ES_COMMON_NO_OPTIONS", "No Options")}
       </p>
     );
   } else {
@@ -562,7 +562,7 @@ export function InboxFilter({
                   className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-primary px-3 text-sm font-semibold text-primary"
                 >
                   <Filter className="size-4" />
-                  {t("ES_IM_FILTERS")}
+                  {t("ES_IM_FILTERS", "Filters")}
                   <Separator orientation="vertical" className="h-4" />
                   <ChevronDown
                     className={cn(
@@ -599,7 +599,7 @@ export function InboxFilter({
                     <Input
                       value={categorySearch}
                       onChange={(event) => setCategorySearch(event.target.value)}
-                      placeholder={t("ES_COMMON_SEARCH")}
+                      placeholder={t("ES_COMMON_SEARCH", "Search")}
                     />
                     <ScrollArea className="h-56 pr-3">
                       <div className="space-y-3">{optionsContent}</div>
@@ -643,7 +643,7 @@ export function InboxFilter({
                 <div className="mx-auto mt-3 h-1.5 w-10 shrink-0 rounded-full bg-border" />
                 <SheetHeader className="shrink-0 pb-0">
                   <SheetTitle className="text-lg">
-                    {t("ES_IM_FILTERS")}
+                    {t("ES_IM_FILTERS", "Filters")}
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex shrink-0 gap-6 overflow-x-auto border-b border-border px-4">
@@ -670,7 +670,7 @@ export function InboxFilter({
                   <Input
                     value={categorySearch}
                     onChange={(event) => setCategorySearch(event.target.value)}
-                    placeholder={t("ES_COMMON_SEARCH")}
+                    placeholder={t("ES_COMMON_SEARCH", "Common Search")}
                   />
                   <div className="space-y-3">{optionsContent}</div>
                 </div>
@@ -685,14 +685,14 @@ export function InboxFilter({
                       setMobileFiltersOpen(false);
                     }}
                   >
-                    {t("ES_IM_CLEAR_ALL_FILTERS")}
+                    {t("ES_IM_CLEAR_ALL_FILTERS", "Clear All Filters")}
                   </Button>
                   <Button
                     type="button"
                     className="flex-1"
                     onClick={() => setMobileFiltersOpen(false)}
                   >
-                    {t("ES_IM_APPLY_FILTERS")}
+                    {t("ES_IM_APPLY_FILTERS", "Apply Filters")}
                   </Button>
                 </SheetFooter>
               </SheetContent>
@@ -726,7 +726,7 @@ export function InboxFilter({
                 : "text-muted-foreground/50",
             )}
           >
-            {t("ES_IM_CLEAR_ALL_FILTERS")}
+            {t("ES_IM_CLEAR_ALL_FILTERS", "Clear All Filters")}
           </button>
         </div>
       </div>

@@ -12,11 +12,11 @@ export function CreateIncidentPage() {
   return (
     <div className="space-y-6">
       <TopBar
-        title={t("ES_IM_RAISE_NEW_TICKET")}
+        title={t("ES_IM_RAISE_NEW_TICKET", "Raise New Ticket")}
         breadcrumbs={[
-          { label: t("CORE_COMMON_OVERVIEW"), to: homePath },
-          { label: t("ES_IM_INBOX"), to: inboxPath },
-          { label: t("ES_IM_TICKET_CREATE") },
+          { label: t("CORE_COMMON_OVERVIEW", "Overview"), to: homePath },
+          { label: t("ES_IM_INBOX", "Inbox"), to: inboxPath },
+          { label: t("ES_IM_TICKET_CREATE", "Raise Ticket") },
         ]}
       />
 

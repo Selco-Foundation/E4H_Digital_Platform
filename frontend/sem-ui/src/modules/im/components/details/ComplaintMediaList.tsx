@@ -19,7 +19,7 @@ export function ComplaintMediaList({
   imageGridClassName = "grid max-w-[760px] grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,180px))]",
 }: ComplaintMediaListProps) {
   const { t } = useTranslate();
-  const attachmentLabel = t("CS_COMMON_ATTACHMENT");
+  const attachmentLabel = t("CS_COMMON_ATTACHMENT", "Documents");
 
   if (!images.length && !videos.length) {
     return null;
@@ -98,7 +98,7 @@ export function ComplaintMediaList({
                   rel="noreferrer"
                   className="text-sm text-primary hover:underline"
                 >
-                  {t("CS_COMMON_VIEW_VIDEO")}
+                  {t("CS_COMMON_VIEW_VIDEO", "View Video")}
                 </a>
               ) : null}
             </div>

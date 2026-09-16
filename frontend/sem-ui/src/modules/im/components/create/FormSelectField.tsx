@@ -28,7 +28,7 @@ export function FormSelectField({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const { t } = useTranslate();
-  const resolvedPlaceholder = placeholder ?? t("ES_COMMON_SELECT_PLACEHOLDER");
+  const resolvedPlaceholder = placeholder ?? t("ES_COMMON_SELECT_PLACEHOLDER", "Select");
 
   const selectedOption = useMemo(
     () => options.find((option) => option.code === value) ?? null,
@@ -81,14 +81,14 @@ export function FormSelectField({
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("ES_COMMON_SEARCH")}
+              placeholder={t("ES_COMMON_SEARCH", "Search")}
               className="h-8 pl-8 text-sm"
             />
           </div>
           <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto pr-2">
             {filteredOptions.length === 0 ? (
               <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                {t("ES_COMMON_NO_OPTIONS")}
+                {t("ES_COMMON_NO_OPTIONS", "No Options")}
               </p>
             ) : (
               filteredOptions.map((option) => (

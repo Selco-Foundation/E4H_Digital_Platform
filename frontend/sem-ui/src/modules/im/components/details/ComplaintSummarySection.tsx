@@ -22,7 +22,7 @@ export function ComplaintSummarySection({
   return (
     <FormSectionCard
       icon={ClipboardList}
-      title={t("CS_HEADER_TICKET_DETAILS")}
+      title={t("CS_HEADER_TICKET_DETAILS", "Ticket Details")}
       titleClassName="text-base font-semibold text-ink-950"
       divider
     >
@@ -41,7 +41,7 @@ export function ComplaintSummarySection({
       {hasAdditionalDetails ? (
         <div className="mt-6">
           <h3 className="mb-3 text-sm font-semibold text-ink-950">
-            {t("CS_TICKET_ADDITIONAL_DETAILS")}
+            {t("CS_TICKET_ADDITIONAL_DETAILS", "Additional Details")}
           </h3>
           <ComplaintMediaList images={images} videos={videos} />
         </div>

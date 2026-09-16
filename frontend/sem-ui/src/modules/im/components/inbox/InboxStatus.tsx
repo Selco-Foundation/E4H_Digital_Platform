@@ -65,7 +65,7 @@ export function InboxStatus({
 
   return (
     <div className="space-y-2">
-      <Label>{t("ES_IM_FILTER_STATUS")}</Label>
+      <Label>{t("ES_IM_FILTER_STATUS", "Filter Status")}</Label>
       <div className="space-y-2">
         {sortedComplaints.map((option) => (
           <label key={option.code} className="flex items-center gap-2 text-sm">

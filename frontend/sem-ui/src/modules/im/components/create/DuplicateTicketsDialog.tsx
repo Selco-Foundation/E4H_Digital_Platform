@@ -26,13 +26,13 @@ export function DuplicateTicketsDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
         <h2 className="text-center text-lg font-semibold">
-          {t("IM_ALERT_POTENTIAL_DUPLICATES")}
+          {t("IM_ALERT_POTENTIAL_DUPLICATES", "Potential Duplicates")}
         </h2>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          {t("IM_ALERT_POTENTIAL_DUPLICATES_DESC")}
+          {t("IM_ALERT_POTENTIAL_DUPLICATES_DESC", "There are already tickets submitted for the selected Item Type and Sub-Type")}
         </p>
         <p className="mt-2 max-h-40 overflow-auto text-center text-sm">
-          {t("IM_ALERT_POTENTIAL_DUPLICATES_EXISTING")}:{" "}
+          {t("IM_ALERT_POTENTIAL_DUPLICATES_EXISTING", "Alert Potential Duplicates Existing")}:{" "}
           {tickets.map((ticket, index) => (
             <span key={ticket.ticketId}>
               <Link
@@ -47,14 +47,14 @@ export function DuplicateTicketsDialog({
           ))}
         </p>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          {t("IM_ALERT_POTENTIAL_DUPLICATES_ACTION_DESC")}
+          {t("IM_ALERT_POTENTIAL_DUPLICATES_ACTION_DESC", "There are already tickets submitted for the selected Item Type and Sub-Type")}
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Button type="button" variant="outline" size="lg" onClick={onContinue}>
-            {t("TL_COMMON_YES")}
+            {t("TL_COMMON_YES", "Yes")}
           </Button>
           <Button type="button" size="lg" onClick={onCancel}>
-            {t("TL_COMMON_NO")}
+            {t("TL_COMMON_NO", "No")}
           </Button>
         </div>
       </div>
