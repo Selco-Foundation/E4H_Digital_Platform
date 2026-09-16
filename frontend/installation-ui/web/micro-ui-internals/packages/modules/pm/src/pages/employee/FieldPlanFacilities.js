@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Loader, Table } from "@egovernments/digit-ui-react-components";
+import { DownloadIcon, Loader, Table } from "@egovernments/digit-ui-react-components";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
@@ -116,6 +116,24 @@ const FieldPlanFacilities = () => {
   const onPrevPage = () => {
     setPageOffset(pageOffset - pageSize);
   }
+
+  const DownloadReportsButton = () => (
+    <button
+      type="button"
+      className={"jk-digit-secondary-btn"}
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: "8px",
+        minHeight: "32px",
+        padding: "0px 16px",
+      }}
+    >
+      <DownloadIcon fill={"#C84C0E"} />
+      <span>{t("PM_DOWNLOAD_INSTALLATION_COMPLETION_REPORTS", "Download Completion Reports")}</span>
+    </button>
+  );
 
   const GetCell = (value) => <span className="cell-text" style={{ color: "#000000" }}>{value}</span>;
   const showStaticPotentialDuplicateFlag = true;
@@ -269,8 +287,11 @@ const FieldPlanFacilities = () => {
           <Loader />
         </div>
       )}
-      <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
-        {fieldPlan?.name || t("CS_COMMON_FIELD_PLAN")}
+      <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "20px"}}>
+        <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", color: "#0B0C0C"}}>
+          {fieldPlan?.name || t("CS_COMMON_FIELD_PLAN")}
+        </div>
+        <DownloadReportsButton />
       </div>
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ minWidth: "300px" }}>

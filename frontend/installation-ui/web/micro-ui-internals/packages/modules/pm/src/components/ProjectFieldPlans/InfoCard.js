@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { EditIcon } from "@egovernments/digit-ui-react-components";
+import { DownloadIcon, EditIcon } from "@egovernments/digit-ui-react-components";
 import { useHistory } from "react-router-dom";
 
 const InfoCard = ({ t, project }) => {
@@ -38,6 +38,24 @@ const InfoCard = ({ t, project }) => {
     history.push(`/${window.contextPath}/employee/pm/project/${id}/details`);
   }
 
+  const DownloadReportsButton = () => (
+    <button
+      type="button"
+      className={"jk-digit-secondary-btn"}
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: "8px",
+        minHeight: "32px",
+        padding: "0px 16px",
+      }}
+    >
+      <DownloadIcon fill={"#C84C0E"} />
+      <span>{t("PM_DOWNLOAD_INSTALLATION_COMPLETION_REPORTS", "Download Completion Reports")}</span>
+    </button>
+  );
+
   return (
     <div
       style={{
@@ -63,19 +81,28 @@ const InfoCard = ({ t, project }) => {
       >
         {t("PM_PROJECT_PROJECT_DETAILS")}
       </div>
-      <button
-        type="button"
+      <div
         style={{
           position: "absolute",
           top: "20px",
           right: "20px",
-          padding: "0px",
-          backgroundColor: "white",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
         }}
-        onClick={handleProjectDetailsNavigation}
       >
-        <EditIcon />
-      </button>
+        <DownloadReportsButton />
+        <button
+          type="button"
+          style={{
+            padding: "0px",
+            backgroundColor: "white",
+          }}
+          onClick={handleProjectDetailsNavigation}
+        >
+          <EditIcon />
+        </button>
+      </div>
       <div
         style={{
           display: "flex",
