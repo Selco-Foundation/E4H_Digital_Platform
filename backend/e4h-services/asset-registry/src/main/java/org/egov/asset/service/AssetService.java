@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.mapper.AssetRowMapper;
 import org.egov.asset.mapper.DocumentRowMapper;
 import org.egov.asset.repository.AssetRepository;
+import org.egov.asset.util.AssetConstants;
 import org.egov.asset.util.ErrorConstants;
 import org.egov.asset.util.IdgenUtil;
 import org.egov.asset.util.ResponseInfoFactory;
@@ -76,6 +77,8 @@ public class AssetService {
             IntStream.range(0, documentIds.size())
                     .forEach(i -> request.getAssetDetail().getAsset().getDocuments().get(i).setId(documentIds.get(i)));
 
+            enrichPotentialDuplicate(request.getAssetDetail().getAsset());
+
             log.info("Pushing asset creation to repository | assetId={}", request.getAssetDetail().getAsset().getAssetId());
             assetRepository.pushCreateAsset(request.getAssetDetail().getAsset());
             log.info("Asset created successfully | assetId={} tenantId={}", 
@@ -90,6 +93,72 @@ public class AssetService {
         } catch (Exception e) {
             log.error("Unexpected error creating asset | tenantId={}", tenantId, e);
             throw new CustomException("ASSET_CREATION_ERROR", "Failed to create asset: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Flags the asset as a potential duplicate when the same Asset Brand + Asset Serial Number +
+     * Asset Type combination already exists in the registry, by writing {@code isPotentialDuplicate}
+     * into its assetDetails (persisted as-is in the asset_details JSONB column).
+     * <p>
+     * The flag is informational only: a duplicate is never rejected, the asset is created either
+     * way. It is written on every asset, true or false, so consumers never have to tell a
+     * non-duplicate apart from an asset created before this check existed.
+     */
+    void enrichPotentialDuplicate(Asset asset) {
+        log.trace("AssetService::enrichPotentialDuplicate called");
+        boolean isPotentialDuplicate = hasAssetWithSameBrandSerialNumberAndType(asset);
+
+        // Copied rather than mutated in place: the map comes straight from the request body and
+        // nothing guarantees it is modifiable.
+        Map<String, Object> assetDetails = asset.getAssetDetails() == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(asset.getAssetDetails());
+        assetDetails.put(AssetConstants.IS_POTENTIAL_DUPLICATE, isPotentialDuplicate);
+        asset.setAssetDetails(assetDetails);
+
+        if (isPotentialDuplicate) {
+            log.info("Potential duplicate asset | assetId={} assetTypeID={} brandID={} serialNumber={}",
+                    asset.getAssetId(), asset.getAssetTypeID(), asset.getBrandID(), asset.getSerialNumber());
+        } else {
+            log.info("No duplicate found | assetId={} assetTypeID={} brandID={} serialNumber={}",
+                    asset.getAssetId(), asset.getAssetTypeID(), asset.getBrandID(), asset.getSerialNumber());
+        }
+    }
+
+    /**
+     * True when the registry already holds an asset of this type with this brand and serial number.
+     * The lookup is global - no tenant, facility or workflow status narrowing - as required by the
+     * duplicate rule. A blank brand, serial number or asset type cannot form the duplicate key, so
+     * it never matches.
+     */
+    private boolean hasAssetWithSameBrandSerialNumberAndType(Asset asset) {
+        log.trace("AssetService::hasAssetWithSameBrandSerialNumberAndType called");
+        String brandId = asset.getBrandID();
+        String serialNumber = asset.getSerialNumber();
+        String assetTypeId = asset.getAssetTypeID();
+        if (brandId == null || brandId.isBlank()
+                || serialNumber == null || serialNumber.isBlank()
+                || assetTypeId == null || assetTypeId.isBlank()) {
+            log.debug("Incomplete duplicate key, skipping lookup | assetId={} assetTypeID={} brandID={} serialNumber={}",
+                    asset.getAssetId(), assetTypeId, brandId, serialNumber);
+            return false;
+        }
+
+        String query = "SELECT COUNT(*) FROM asset WHERE brand_id = ? AND serial_number = ?"
+                + " AND UPPER(asset_type_id) = UPPER(?)";
+        Object[] params = {brandId, serialNumber, assetTypeId};
+
+        try {
+            Integer count = jdbcTemplate.queryForObject(query, params, Integer.class);
+            log.info("Duplicate lookup completed | assetTypeID={} brandID={} serialNumber={} matches={}",
+                    assetTypeId, brandId, serialNumber, count);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.error("Error checking for duplicate asset | assetTypeID={} brandID={} serialNumber={} error={}",
+                    assetTypeId, brandId, serialNumber, e.getMessage(), e);
+            throw new CustomException("ASSET_DUPLICATE_CHECK_ERROR",
+                    "Failed to check for duplicate assets: " + e.getMessage());
         }
     }
 
