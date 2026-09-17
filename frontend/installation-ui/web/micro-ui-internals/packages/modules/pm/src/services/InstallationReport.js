@@ -2,12 +2,12 @@ import { Request } from "@egovernments/digit-ui-libraries";
 import { FilestoreService } from "./Filestore";
 
 export const InstallationReportService = {
-  fetchApprovedReports: async (tenantId, fieldPlanId) => {
+  fetchApprovedReports: async (tenantId, projectId) => {
     const response = await Request({
-      url: "/activity/v1/activities/installation-report/fieldplan/_search",
+      url: "/activity/v1/activities/installation-report/project/_search",
       method: "POST",
       data: {},
-      params: { tenantId, fieldPlanId },
+      params: { tenantId, projectId },
       userService: true,
       auth: true,
     });

@@ -40,8 +40,8 @@ const SearchActionCentre = ({ t, fieldPlanId, projectQueryFilter, mainCheckBox, 
     } catch (error) {
       console.error("Error downloading installation reports", error);
       const message = CommonUtils.getApiErrorMessage(error);
-      setToast({ key: "error", label: message && message !== "QC_INSTALLATION_REPORT_DOWNLOAD_FAILED"
-        ? message : t("QC_INSTALLATION_REPORT_DOWNLOAD_FAILED", "Unable to download installation reports. Please try again.") });
+      setToast({ key: "error", label: message && message !== "COMMON_INSTALLATION_REPORT_DOWNLOAD_FAILED"
+        ? message : t("COMMON_INSTALLATION_REPORT_DOWNLOAD_FAILED", "Unable to download installation reports. Please try again.") });
     } finally {
       downloadInProgress.current = false;
       setDownloading(false);
@@ -259,7 +259,7 @@ const SearchActionCentre = ({ t, fieldPlanId, projectQueryFilter, mainCheckBox, 
               height: "40px"
             }}
           >
-            <span>{t("QC_DOWNLOAD_REPORTS")}</span>
+            <span>{t("COMMON_DOWNLOAD_REPORTS", "Download Reports")}</span>
             <div style={{ height: "14px", marginBottom: "auto", transform: "scale(0.7)" }}>
               <DownloadIcon fill={"#d35400"} />
             </div>

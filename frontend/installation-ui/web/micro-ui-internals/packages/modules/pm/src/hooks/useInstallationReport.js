@@ -2,18 +2,18 @@ import { useQuery, useQueryClient } from "react-query";
 import { InstallationReportService } from "../services/InstallationReport";
 import { createInstallationReportZip } from "../utilities/installationReportDownload";
 
-const useInstallationReport = (fieldPlanId) => {
+const useInstallationReport = (projectId) => {
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const queryClient = useQueryClient();
-  const queryKey = ["QC_APPROVED_INSTALLATION_REPORTS", tenantId, fieldPlanId];
+  const queryKey = ["PM_APPROVED_INSTALLATION_REPORTS", tenantId, projectId];
   const { isLoading, isFetching, isError, error, data, refetch } = useQuery(
     queryKey,
-    () => InstallationReportService.fetchApprovedReports(tenantId, fieldPlanId),
-    { enabled: !!fieldPlanId, retry: false, cacheTime: 0 }
+    () => InstallationReportService.fetchApprovedReports(tenantId, projectId),
+    { enabled: !!projectId, retry: false, cacheTime: 0 }
   );
 
   const { refetch: refetchZip } = useQuery(
-    ["QC_INSTALLATION_REPORT_ZIP", tenantId, fieldPlanId],
+    ["PM_INSTALLATION_REPORT_ZIP", tenantId, projectId],
     async () => {
       // Refresh the approved list inside the export query before reading any files.
       const result = await refetch({ throwOnError: true });
@@ -35,7 +35,7 @@ const useInstallationReport = (fieldPlanId) => {
       return result.data;
     } finally {
       // Release the potentially large ZIP from the query cache after the action.
-      queryClient.removeQueries(["QC_INSTALLATION_REPORT_ZIP", tenantId, fieldPlanId], { exact: true });
+      queryClient.removeQueries(["PM_INSTALLATION_REPORT_ZIP", tenantId, projectId], { exact: true });
     }
   };
 
