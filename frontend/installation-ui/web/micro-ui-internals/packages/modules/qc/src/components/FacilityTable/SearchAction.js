@@ -1,12 +1,53 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { TextInput, LinkLabel, TickMark, DownloadIcon, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
 import { DoneAll } from "@egovernments/digit-ui-svg-components";
+import useInstallationReport from "../../hooks/useInstallationReport";
+import CommonUtils from "../../utilities/CommonUtils";
 import { ActivityService } from "../../services/Activity";
 
-const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch, revalidateData, setUpdatingWorkflow }) => {
+const saveDownload = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+};
+
+const SearchActionCentre = ({ t, fieldPlanId, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch, revalidateData, setUpdatingWorkflow }) => {
 
   const [textToSearch, setTextToSearch] = useState(projectQueryFilter.facilitySearch.name || "");
   const [toast, setToast] = useState(null);
+
+  const [downloading, setDownloading] = useState(false);
+  const downloadInProgress = useRef(false);
+  const { fetchZip } = useInstallationReport(fieldPlanId);
+
+  const handleDownload = async () => {
+    if (!fieldPlanId || downloadInProgress.current) return;
+    downloadInProgress.current = true;
+    setDownloading(true);
+    setUpdatingWorkflow(true);
+    try {
+      const blob = await fetchZip();
+      if (!blob) {
+        setToast({ key: "warning", label: t("QC_NO_APPROVED_INSTALLATION_REPORTS", "No approved installation reports are available for this plan.") });
+        return;
+      }
+      saveDownload(blob, `Installation_Reports_${fieldPlanId}.zip`);
+    } catch (error) {
+      console.error("Error downloading installation reports", error);
+      const message = CommonUtils.getApiErrorMessage(error);
+      setToast({ key: "error", label: message && message !== "QC_INSTALLATION_REPORT_DOWNLOAD_FAILED"
+        ? message : t("QC_INSTALLATION_REPORT_DOWNLOAD_FAILED", "Unable to download installation reports. Please try again.") });
+    } finally {
+      downloadInProgress.current = false;
+      setDownloading(false);
+      setUpdatingWorkflow(false);
+    }
+  };
 
   const handleSearch = (name) => {
     const facilitySearchQuery = {};
@@ -22,13 +63,11 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
     })
   }
 
-  useEffect(()=>{
-    if(toast){
-      setTimeout(()=>{
-        setToast(null);
-      },2500)
-    }
-  },[toast])
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(timeout);
+  }, [toast]);
 
   const handleClear = () => {
     setTextToSearch("");
@@ -63,14 +102,14 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
           setUpdatingWorkflow(false);
           setToast({
             key: "success",
-            message: t("QC_BULK_APPROVE_SUCCESS"),
+            label: t("QC_BULK_APPROVE_SUCCESS"),
           });
           break;
         case 207:
           setUpdatingWorkflow(false);
           setToast({
             key: "warning",
-            message: t("QC_BULK_APPROVE_PARTIAL_SUCCESS"),
+            label: t("QC_BULK_APPROVE_PARTIAL_SUCCESS"),
             failedCount: response?.data?.failedProjectIDs?.length,
           });
           break;
@@ -78,7 +117,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
           setUpdatingWorkflow(false);
           setToast({
             key: "error",
-            message: t("QC_BULK_APPROVE_FAILED"),
+            label: t("QC_BULK_APPROVE_FAILED"),
           })
           break;
       }
@@ -109,7 +148,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
           <Toast
             error={toast.key === "error"}
             warning={toast.key === "warning"}
-            label={`${toast.message} ${toast.failedCount ? `(${toast.failedCount} ${t("QC_BULK_APPROVE_FAILED_COUNT")})` : ""}`}
+            label={`${toast.label} ${toast.failedCount ? `(${toast.failedCount} ${t("QC_BULK_APPROVE_FAILED_COUNT")})` : ""}`}
             onClose={() => setToast(null)}
             style={{ maxWidth: "670px" }}
             isDleteBtn={true}
@@ -200,7 +239,12 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
             </button>
           )}
           <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading || !fieldPlanId}
+            aria-busy={downloading}
             style={{
+              opacity: downloading || !fieldPlanId ? 0.5 : 1,
               backgroundColor: "white",
               border: "1px solid #d35400",
               color: "#d35400",
@@ -215,7 +259,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
               height: "40px"
             }}
           >
-            <span>{t("CORE_COMMON_DOWNLOAD")}</span>
+            <span>{t("QC_DOWNLOAD_REPORTS")}</span>
             <div style={{ height: "14px", marginBottom: "auto", transform: "scale(0.7)" }}>
               <DownloadIcon fill={"#d35400"} />
             </div>
