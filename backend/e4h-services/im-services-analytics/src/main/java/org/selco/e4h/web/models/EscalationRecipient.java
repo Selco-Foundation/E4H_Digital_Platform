@@ -30,6 +30,12 @@ public class EscalationRecipient {
     @JsonProperty("boundaryLevel")
     private String boundaryLevel; // "state" or "country"
 
+    @JsonProperty("templateType")
+    private String templateType;
+
+    @JsonProperty("triggerDelayHours")
+    private Integer triggerDelayHours;
+
     @JsonProperty("escalations")
     private List<EscalationRoleEscalationItem> escalations;
 }

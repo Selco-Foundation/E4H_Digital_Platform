@@ -253,20 +253,35 @@ public class BomService {
 
         // Every image required by this system type gets an entry so its documentName always renders,
         // even when no matching upload exists — fileStoreIds is just empty in that case.
+        //
+        // The pdf-service data-config for every bom_* report looks up each section by POSITION -
+        // "installation_image_1_title" reads documents[documentType=='INSTALLATION_IMAGE-1'],
+        // "_2_title" reads '-2', and so on sequentially. It does NOT know about MDMS codes at all.
+        // So the emitted documentType here must be the 1-based position of this image within THIS
+        // system type's sorted list (INSTALLATION_IMAGE-1, -2, -3, ...), never the raw MDMS code -
+        // codes are scattered arbitrarily across 1-46 and hardly ever match their position (e.g. for
+        // AC_OFF_GRID the 2nd required image is master code 33, not code 2). Emitting the raw code
+        // here silently dropped every image whose code fell outside the mapping's slot range, and
+        // produced "NA" for slots whose literal code number happened to belong to a different
+        // system type. Raw uploads are still matched by their true master code (uploads are tagged
+        // INSTALLATION_IMAGE-<code> by the field app), only the outgoing documentType is positional.
         List<BomPdfDocument> groupedDocuments = new ArrayList<>();
+        int position = 1;
         for (InstallationImageMaster installationImage : installationImages) {
-            String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + installationImage.getCode();
+            String masterDocumentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + installationImage.getCode();
+            String positionalDocumentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + position;
 
             List<String> fileStoreIds = documents.stream()
-                    .filter(document -> documentType.equals(document.get("documentType")) && document.get(FILE_STORE_ID_KEY) != null)
+                    .filter(document -> masterDocumentType.equals(document.get("documentType")) && document.get(FILE_STORE_ID_KEY) != null)
                     .map(document -> String.valueOf(document.get(FILE_STORE_ID_KEY)))
                     .collect(Collectors.toList());
 
             groupedDocuments.add(BomPdfDocument.builder()
-                    .documentType(documentType)
+                    .documentType(positionalDocumentType)
                     .documentName(installationImage.getDescription())
                     .fileStoreIds(fileStoreIds)
                     .build());
+            position++;
         }
 
         bomData.put(DOCUMENTS_KEY, groupedDocuments);
