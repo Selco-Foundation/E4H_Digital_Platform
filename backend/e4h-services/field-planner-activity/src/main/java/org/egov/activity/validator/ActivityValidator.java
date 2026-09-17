@@ -417,6 +417,36 @@ public class ActivityValidator {
         return null;
     }
 
+    /**
+     * Ids of every installation plan attached to a project, from field-planner. An unknown project
+     * is not an error here - it simply has no installation plan, hence no installation report.
+     */
+    public List<String> getFieldPlanIdsByProjectId(RequestInfo requestInfo, String projectId, String tenantId) {
+        FieldPlanSearchCriteria criteria = FieldPlanSearchCriteria.builder()
+                .projectId(List.of(projectId))
+                .tenantId(tenantId)
+                .build();
+        FieldPlanSearchRequest fieldPlanRequest = FieldPlanSearchRequest.builder()
+                .requestInfo(requestInfo)
+                .fieldPlan(criteria)
+                .build();
+        String url = config.getFieldPlanServiceHost() + config.getFieldPlanServiceSearchUrl()
+                + "?tenantId=" + tenantId + "&offset=0&limit=" + config.getMaxLimit();
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), fieldPlanRequest, Map.class);
+        FieldPlanResponse fieldPlanResponse = mapper.convertValue(response, FieldPlanResponse.class);
+        if (fieldPlanResponse == null || fieldPlanResponse.getFieldPlans() == null) {
+            log.warn("No installation plan returned for projectId: {}", projectId);
+            return Collections.emptyList();
+        }
+        List<String> fieldPlanIds = fieldPlanResponse.getFieldPlans().stream()
+                .map(FieldPlan::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        log.debug("Resolved {} installation plans for projectId: {}", fieldPlanIds.size(), projectId);
+        return fieldPlanIds;
+    }
+
     public void isActivityAsignmentWithinFieldPlan(FieldPlan fieldPlan, ActivityAssignment activityAssignment, Map<String, String> errorMap) {
         if (fieldPlan == null || activityAssignment == null) {
             log.error("Installation Plan or Activity is null");
