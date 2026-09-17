@@ -1,0 +1,324 @@
+sequenceDiagram
+    participant FS as Field Staff
+    participant MOBILE as Mobile App
+    participant LOCAL_DB as Local Storage
+    participant GW as E4H API Gateway (Existing)
+    participant AUTH as E4H Auth Service (Existing)
+    participant FPS as Field Planner Service (NEW)
+    participant MSS as Mobile Sync Service (NEW)
+    participant HFR as Health Facility Registry (Existing)
+    participant HRMS as eGov HRMS (Existing)
+    participant EGOV_FS as eGov Filestore (Existing)
+    participant DB as E4H PostgreSQL (Shared)
+    participant CACHE as Redis Cache (Shared)
+    
+    Note over FS,CACHE: E4H Integrated Mobile App Synchronization
+    
+    FS->>MOBILE: Open mobile app
+    MOBILE->>LOCAL_DB: Check last sync timestamp
+    LOCAL_DB-->>MOBILE: Return last sync: 2024-01-01 10:30:00
+    
+    MOBILE->>MOBILE: Check network connectivity
+    
+    alt Network Available
+        MOBILE->>GW: POST /user/oauth/authenticate (E4H auth)
+        GW->>AUTH: Validate field staff credentials
+        AUTH->>HRMS: GET /egov-hrms/employees/_search
+        Note over AUTH,HRMS: Validate employee exists and is field staff
+        HRMS-->>AUTH: Employee validated
+        AUTH-->>GW: Return E4H JWT token
+        GW-->>MOBILE: Return JWT token
+        MOBILE->>LOCAL_DB: Store E4H authentication token
+        
+        MOBILE->>GW: GET /field-planner/v1/mobile/sync/facilities?since=2024-01-01T10:30:00Z
+        GW->>MSS: Process facility sync request (new service)
+        MSS->>FPS: Get facilities assigned to user since timestamp
+        
+        FPS->>DB: Query facility_activities table (new) for assignments
+        Note over FPS,DB: Query includes: new assignments, status changes
+        DB-->>FPS: Return activity assignments and status changes
+        
+        FPS->>HFR: GET /facility/v1/_search (get facility details)
+        Note over FPS,HFR: Get facility master data from existing registry
+        HFR->>CACHE: Check cached facility data
+        alt Cache Hit
+            CACHE-->>HFR: Return cached facility data
+        else Cache Miss
+            HFR->>DB: Query existing facility table
+            DB-->>HFR: Return facility details
+            HFR->>CACHE: Update cache
+        end
+        HFR-->>FPS: Facility details with location, contact, etc.
+        
+        FPS-->>MSS: Return integrated sync data
+        MSS-->>GW: Return sync response with facility + activity data
+        GW-->>MOBILE: Download facility updates
+        
+        MOBILE->>LOCAL_DB: Begin local transaction
+        
+        loop For each facility update
+            alt New Facility Assignment
+                MOBILE->>LOCAL_DB: Insert new facility record
+                MOBILE->>LOCAL_DB: Download activity form templates
+                LOCAL_DB-->>MOBILE: Facility and templates stored
+                
+            else Facility Status Change
+                MOBILE->>LOCAL_DB: Update facility status
+                LOCAL_DB-->>MOBILE: Status updated
+                
+                alt Status Changed to ACTIVE
+                    MOBILE->>MOBILE: Show notification "New facility available"
+                else Status Changed to COMPLETED
+                    MOBILE->>LOCAL_DB: Mark local data as read-only
+                    LOCAL_DB-->>MOBILE: Data marked read-only
+                end
+                
+            else Facility Data Update
+                MOBILE->>LOCAL_DB: Update facility information
+                LOCAL_DB-->>MOBILE: Information updated
+            end
+        end
+        
+        MOBILE->>LOCAL_DB: Commit local transaction
+        MOBILE->>LOCAL_DB: Update last sync timestamp
+        LOCAL_DB-->>MOBILE: Sync timestamp updated
+        
+        Note over MOBILE,CACHE: Upload Pending Local Changes
+        
+        MOBILE->>LOCAL_DB: Get pending uploads (reports, photos)
+        LOCAL_DB-->>MOBILE: Return unsynchronized data
+        
+        loop For each pending report
+            MOBILE->>MOBILE: Prepare upload data (report + attachments)
+            
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/_upload (multipart)
+            GW->>MSS: Process report submission
+            
+            MSS->>HRMS: GET /egov-hrms/employees/_search
+            Note over MSS,HRMS: Validate field staff employee ID
+            HRMS-->>MSS: Field staff validated
+            
+            MSS->>EGOV_FS: POST /filestore/v1/files (process attachments)
+            EGOV_FS->>EGOV_FS: Validate and store files in eGov Filestore
+            EGOV_FS-->>MSS: Return file UUIDs and URLs
+            
+            MSS->>DB: Begin transaction
+            MSS->>DB: Create activity_reports record (new table)
+            MSS->>DB: Update facility_activities status (new table)
+            DB-->>MSS: Report saved with proper E4H schema
+            MSS->>DB: Commit transaction
+            
+            MSS-->>GW: Report uploaded successfully
+            GW-->>MOBILE: Return success response
+            
+            MOBILE->>LOCAL_DB: Mark report as synchronized
+            MOBILE->>LOCAL_DB: Delete local files (keep metadata)
+            LOCAL_DB-->>MOBILE: Local cleanup completed
+        end
+        
+        MOBILE->>LOCAL_DB: Get pending progress updates
+        LOCAL_DB-->>MOBILE: Return auto-saved progress
+        
+        loop For each progress update
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/{id}/progress
+            GW->>MSS: Update progress
+            MSS->>DB: Store progress snapshot in facility_activities (new table)
+            DB-->>MSS: Progress saved in E4H database
+            MSS-->>GW: Progress updated
+            GW-->>MOBILE: Progress synchronized
+            
+            MOBILE->>LOCAL_DB: Mark progress as synchronized
+            LOCAL_DB-->>MOBILE: Progress update cleared
+        end
+        
+        MOBILE-->>FS: Show "Sync completed successfully"
+        
+    else Network Unavailable (Offline Mode)
+        MOBILE-->>FS: Show "Working offline"
+        MOBILE->>LOCAL_DB: Enable offline mode
+        LOCAL_DB-->>MOBILE: Offline mode enabled
+        
+        Note over MOBILE,LOCAL_DB: Continue working with cached data
+    end
+    
+    Note over FS,CACHE: Offline Data Collection
+    
+    FS->>MOBILE: Select facility to work on
+    MOBILE->>LOCAL_DB: Load facility and form template
+    LOCAL_DB-->>MOBILE: Return facility data and form
+    MOBILE-->>FS: Display activity form
+    
+    loop Data Collection (Offline)
+        FS->>MOBILE: Fill form fields
+        FS->>MOBILE: Take photos/videos
+        MOBILE->>LOCAL_DB: Auto-save progress locally
+        LOCAL_DB-->>MOBILE: Progress saved
+        
+        alt Network Becomes Available
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/{id}/progress
+            GW->>MSS: Save progress to E4H server
+            MSS->>DB: Store progress snapshot in facility_activities (new)
+            DB-->>MSS: Progress saved remotely in E4H database
+            MSS-->>GW: Return save confirmation
+            GW-->>MOBILE: Show "Progress backed up"
+            
+            MOBILE->>LOCAL_DB: Mark progress as synchronized
+            LOCAL_DB-->>MOBILE: Sync status updated
+        end
+    end
+    
+    FS->>MOBILE: Complete and submit report
+    MOBILE->>MOBILE: Validate form completion
+    
+    alt Form Validation Failed
+        MOBILE-->>FS: Show validation errors
+        FS->>MOBILE: Fix errors and retry
+        
+    else Form Valid
+        MOBILE->>LOCAL_DB: Store completed report with "PENDING_UPLOAD" status
+        LOCAL_DB-->>MOBILE: Report queued for upload
+        
+        alt Network Available
+            MOBILE->>MOBILE: Immediate upload attempt
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/_upload (multipart)
+            
+            alt Upload Successful
+                GW-->>MOBILE: Report uploaded successfully to E4H
+                MOBILE->>LOCAL_DB: Mark report as synchronized
+                MOBILE-->>FS: Show "Report submitted successfully"
+                
+            else Upload Failed
+                MOBILE->>LOCAL_DB: Keep report in pending queue
+                MOBILE-->>FS: Show "Report saved, will upload when online"
+            end
+            
+        else Network Unavailable
+            MOBILE-->>FS: Show "Report saved, will upload when online"
+        end
+    end
+    
+    Note over FS,CACHE: Background Sync Process
+    
+    MOBILE->>MOBILE: Start background sync service
+    Note over MOBILE: Runs every 5 minutes when online
+    
+    loop Background Sync Cycle
+        MOBILE->>MOBILE: Check network connectivity
+        
+        alt Network Available
+            MOBILE->>LOCAL_DB: Check for pending uploads
+            LOCAL_DB-->>MOBILE: Return pending items
+            
+            alt Has Pending Uploads
+                MOBILE->>MOBILE: Process uploads silently
+                
+                loop For each pending item
+                    MOBILE->>API: Upload pending data
+                    
+                    alt Upload Successful
+                        API-->>MOBILE: Success response
+                        MOBILE->>LOCAL_DB: Mark as synchronized
+                        MOBILE->>MOBILE: Show subtle success indicator
+                        
+                    else Upload Failed
+                        MOBILE->>LOCAL_DB: Increment retry count
+                        alt Max Retries Reached
+                            MOBILE->>MOBILE: Flag for manual attention
+                            MOBILE->>MOBILE: Show "Upload failed, manual sync needed"
+                        end
+                    end
+                end
+                
+            else No Pending Uploads
+                MOBILE->>API: Check for new assignments/updates
+                API->>SYNC: Quick sync check
+                SYNC->>DB: Check for updates since last sync
+                
+                alt Updates Available
+                    DB-->>SYNC: Return update summary
+                    SYNC-->>API: Return sync needed flag
+                    API-->>MOBILE: Show "Updates available"
+                    MOBILE->>MOBILE: Show sync notification to user
+                    
+                else No Updates
+                    SYNC-->>API: No updates
+                    API-->>MOBILE: No sync needed
+                end
+            end
+            
+        else Network Unavailable
+            Note over MOBILE: Continue offline, retry later
+        end
+        
+        MOBILE->>MOBILE: Wait 5 minutes for next cycle
+    end
+    
+    Note over FS,CACHE: Manual Full Sync
+    
+    FS->>MOBILE: Pull to refresh or click sync button
+    MOBILE-->>FS: Show "Syncing..."
+    
+    MOBILE->>GW: POST /field-planner/v1/mobile/sync/full
+    GW->>MSS: Full synchronization request
+    
+    MSS->>FPS: Get complete user context from Field Planner
+    FPS->>DB: Query all user facility_activities and assignments (new tables)
+    DB-->>FPS: Return comprehensive Field Planner data
+    
+    FPS->>HFR: GET /facility/v1/_search (get all assigned facilities)
+    Note over FPS,HFR: Get facility master data from existing registry
+    HFR-->>FPS: Complete facility details
+    
+    MSS->>EGOV_FS: GET /filestore/v1/files (get required templates)
+    EGOV_FS-->>MSS: Return template versions from eGov Filestore
+    
+    MSS-->>GW: Return full sync package
+    GW-->>MOBILE: Download complete sync data with E4H integration
+    
+    MOBILE->>LOCAL_DB: Begin full sync transaction
+    MOBILE->>LOCAL_DB: Clear outdated cached data
+    MOBILE->>LOCAL_DB: Update all facility assignments
+    MOBILE->>LOCAL_DB: Update form templates
+    MOBILE->>LOCAL_DB: Update user profile and permissions
+    LOCAL_DB-->>MOBILE: Full sync completed
+    
+    MOBILE->>LOCAL_DB: Commit sync transaction
+    MOBILE->>LOCAL_DB: Update last full sync timestamp
+    LOCAL_DB-->>MOBILE: Full sync finalized
+    
+    MOBILE-->>FS: Show "Sync completed"
+    
+    Note over FS,CACHE: Conflict Resolution
+    
+    alt Data Conflict Detected
+        MOBILE->>MOBILE: Detect server vs local data conflict
+        MOBILE-->>FS: Show "Data conflict detected"
+        
+        FS->>MOBILE: Choose resolution strategy
+        alt Keep Server Data
+            MOBILE->>LOCAL_DB: Replace local data with server data
+            LOCAL_DB-->>MOBILE: Local data updated
+            
+        else Keep Local Data
+            MOBILE->>GW: Force upload local changes
+            GW->>MSS: Process conflict override
+            MSS->>DB: Update E4H database with local data (with conflict flag)
+            DB-->>MSS: Conflict resolution recorded in E4H schema
+            MSS-->>GW: Conflict resolved
+            GW-->>MOBILE: Local data preserved
+            
+        else Manual Merge
+            MOBILE-->>FS: Show merge interface
+            FS->>MOBILE: Manually resolve conflicts
+            MOBILE->>GW: Upload merged data
+            GW-->>MOBILE: Merged data saved to E4H
+        end
+    end
+    
+    Note over FS,CACHE: E4H Integrated Mobile Sync Complete
+    Note over FS,CACHE: Mobile app works with E4H authentication
+    Note over FS,CACHE: Data synchronized with existing Health Facility Registry
+    Note over FS,CACHE: Files stored in eGov Filestore service
+    Note over FS,CACHE: Field staff validated via eGov HRMS
+    Note over FS,CACHE: All data stored in shared E4H PostgreSQL database
+    Note over FS,CACHE: Offline capability maintained with E4H integration 

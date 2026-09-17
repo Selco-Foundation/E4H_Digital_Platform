@@ -1,0 +1,314 @@
+sequenceDiagram
+    participant PM as Project Manager/SPOC
+    participant UI as E4H Web UI (Extended)
+    participant GW as E4H API Gateway (Existing)
+    participant AUTH as E4H Auth Service (Existing)
+    participant HRMS as eGov HRMS (Existing)
+    participant AMS as Activity Management Service (NEW)
+    participant FPS as Field Planner Service (NEW)
+    participant EGOV_FS as eGov Filestore (Existing)
+    participant DB as E4H PostgreSQL (Shared)
+    participant QUEUE as Kafka Queue (Shared)
+    participant NEW_USER as New User
+    
+    Note over PM,NEW_USER: E4H Integrated User Management via eGov HRMS
+    
+    PM->>UI: Navigate to Team Management (E4H UI)
+    UI->>GW: GET /user/oauth/me
+    GW->>AUTH: Validate PM/SPOC JWT token
+    AUTH->>HRMS: GET /egov-hrms/employees/_search
+    Note over AUTH,HRMS: Validate PM has team management permissions
+    HRMS-->>AUTH: PM validated with team management role
+    AUTH-->>GW: User authenticated
+    GW-->>UI: User authenticated
+    
+    UI->>GW: GET /egov-hrms/employees/_search?supervisorId={pmId}
+    GW->>HRMS: Get team members for PM/SPOC (existing service)
+    HRMS->>DB: Query eg_hrms_employee and eg_hrms_assignment tables
+    DB-->>HRMS: Return team member list with assignments
+    HRMS-->>GW: Return team data
+    GW-->>UI: Display team dashboard
+    UI-->>PM: Show current team members and roles
+    
+    PM->>UI: Click "Add Team Member"
+    Note over PM,UI: Redirects to eGov HRMS employee management
+    Note over UI: Field Planner integrates with existing E4H user management
+    Note over UI: Uses eGov HRMS for all employee operations
+    
+    alt Single Employee Creation (via eGov HRMS)
+        PM->>UI: Fill employee creation form
+        Note over PM,UI: Name, Phone, Employee Type, Department, Designation
+        
+        PM->>UI: Submit employee creation form
+        UI->>GW: POST /egov-hrms/employees/_create
+        GW->>HRMS: Create new employee (existing service)
+        
+        HRMS->>DB: Check if employee already exists (eg_hrms_employee table)
+        alt Employee Already Exists
+            DB-->>HRMS: Return duplicate error
+            HRMS-->>GW: Return validation error
+            GW-->>UI: Show error message
+            UI-->>PM: "Employee with this phone/code already exists"
+        else Employee Details Valid
+            HRMS->>DB: Begin transaction
+            HRMS->>DB: Create eg_hrms_employee record
+            DB-->>HRMS: Return employee UUID
+            
+            HRMS->>DB: Create eg_hrms_assignment record
+            Note over HRMS,DB: Link employee to PM as supervisor
+            DB-->>HRMS: Assignment created
+            
+            HRMS->>DB: Commit transaction
+            DB-->>HRMS: Employee created successfully
+            
+            Note over HRMS: E4H audit patterns handle employee creation logging
+            
+            Note over HRMS: E4H notification system handles onboarding
+            HRMS->>QUEUE: Publish EmployeeCreatedEvent
+            
+            HRMS-->>GW: Employee created successfully
+            GW-->>UI: Return success response
+            UI-->>PM: Show "Employee created and assigned to your team"
+        end
+        
+    else Bulk Employee Creation via Excel (E4H Integration)
+        PM->>UI: Click "Bulk Create Employees"
+        UI->>GW: GET /field-planner/v1/employees/bulk-template
+        GW->>AMS: Generate bulk creation template (Field Planner service)
+        AMS->>EGOV_FS: POST /filestore/v1/files (generate template)
+        EGOV_FS-->>AMS: Return Excel template UUID and URL
+        AMS-->>GW: Return template download link
+        GW-->>UI: Download template from eGov Filestore
+        UI-->>PM: Template downloaded
+        
+        PM->>PM: Fill employee data in Excel template
+        PM->>UI: Upload completed employee file
+        
+        UI->>GW: POST /field-planner/v1/employees/bulk-create (multipart)
+        GW->>AMS: Process bulk employee creation (new service)
+        AMS->>EGOV_FS: POST /filestore/v1/files (validate uploaded file)
+        EGOV_FS->>EGOV_FS: Validate Excel format
+        
+        alt Invalid Excel Format
+            EGOV_FS-->>AMS: Return format error
+            AMS-->>GW: Return format error
+            GW-->>UI: Show format error
+            UI-->>PM: "Invalid file format, use template"
+        else Valid Format
+            EGOV_FS->>EGOV_FS: Parse employee data
+            EGOV_FS-->>AMS: Return employee list
+            
+            AMS->>HRMS: POST /egov-hrms/employees/_create (bulk)
+            Note over AMS,HRMS: Use existing eGov HRMS bulk creation capability
+            HRMS->>DB: Process employee creation in bulk
+            
+            loop For each employee
+                HRMS->>DB: Validate employee data (eg_hrms_employee table)
+                HRMS->>HRMS: Check employee uniqueness
+                HRMS->>HRMS: Validate phone number format
+                
+                Note over HRMS: eGov HRMS handles all employee validations
+                Note over HRMS: Creates eg_hrms_employee and eg_hrms_assignment records
+                Note over HRMS: Publishes EmployeeCreatedEvent via Kafka
+                Note over HRMS: E4H audit patterns handle bulk creation logging
+                US->>US: Validate role assignments
+                
+                alt Validation Error
+                    US->>US: Add to error list
+                else Valid User
+                    US->>US: Add to valid users list
+                end
+            end
+            
+            alt Validation Errors Found
+                US->>US: Generate error report
+                US-->>API: Return bulk creation errors
+                API-->>UI: Show error summary
+                UI-->>PM: "Some users failed validation, download error report"
+                
+            else All Users Valid
+                US->>DB: Begin transaction
+                
+                loop For each valid user
+                    US->>DB: Create user record
+                    DB-->>US: Return user ID
+                    
+                    US->>AUTH: Generate verification token
+                    AUTH-->>US: Return token
+                    US->>DB: Store verification token
+                    
+                    US->>DB: Create team association
+                    DB-->>US: Association created
+                    
+                    US->>NS: Queue verification email
+                end
+                
+                US->>DB: Commit transaction
+                DB-->>US: All users created
+                
+                US->>AS: Log bulk creation audit
+                AS->>DB: Store audit record
+                DB-->>AS: Audit logged
+                
+                NS->>EMAIL: Send all verification emails
+                loop For each new user
+                    EMAIL->>NEW_USER: Send verification email
+                end
+                
+                US-->>API: Bulk creation successful
+                API-->>UI: Return success summary
+                UI-->>PM: Show "X users created successfully"
+            end
+        end
+    end
+    
+    Note over PM,NEW_USER: User Verification Process
+    
+    NEW_USER->>EMAIL: Receive verification email
+    NEW_USER->>NEW_USER: Click verification link
+    
+    NEW_USER->>API: GET /api/v1/auth/verify-email/{token}
+    API->>AUTH: Verify email token
+    AUTH->>DB: Validate token and check expiry
+    
+    alt Token Invalid or Expired
+        DB-->>AUTH: Return token error
+        AUTH-->>API: Return verification error
+        API-->>NEW_USER: Show "Invalid or expired verification link"
+        
+    else Token Valid
+        DB-->>AUTH: Token valid
+        AUTH->>DB: Begin transaction
+        AUTH->>DB: Update user status to ACTIVE
+        AUTH->>DB: Mark email as verified
+        AUTH->>DB: Remove verification token
+        DB-->>AUTH: User activated
+        AUTH->>DB: Commit transaction
+        
+        AUTH->>AS: Log email verification audit
+        AS->>DB: Store audit record
+        DB-->>AS: Audit logged
+        
+        AUTH-->>API: Email verified successfully
+        API-->>NEW_USER: Show "Email verified, set password"
+        
+        NEW_USER->>NEW_USER: Create password
+        NEW_USER->>API: POST /api/v1/auth/set-password
+        API->>AUTH: Set user password
+        AUTH->>AUTH: Hash password
+        AUTH->>DB: Store password hash
+        DB-->>AUTH: Password set
+        
+        AUTH-->>API: Password set successfully
+        API-->>NEW_USER: Show "Account setup complete"
+    end
+    
+    Note over PM,NEW_USER: Team Member Management
+    
+    PM->>UI: Manage existing team member
+    UI->>API: GET /api/v1/users/{id}
+    API->>US: Get user details
+    US->>DB: Query user information
+    DB-->>US: Return user data
+    US-->>API: Return user details
+    API-->>UI: Display user profile
+    UI-->>PM: Show user details and options
+    
+    alt Update User Roles
+        PM->>UI: Modify user roles
+        UI->>API: PUT /api/v1/users/{id}/roles
+        API->>US: Update user roles
+        
+        US->>DB: Begin transaction
+        US->>DB: Update user roles
+        DB-->>US: Roles updated
+        US->>DB: Commit transaction
+        
+        US->>AS: Log role change audit
+        AS->>DB: Store audit record
+        DB-->>AS: Audit logged
+        
+        US->>NS: Send role change notification
+        NS->>EMAIL: Send notification to user
+        EMAIL->>NEW_USER: Notify of role changes
+        
+        US-->>API: Roles updated successfully
+        API-->>UI: Return success response
+        UI-->>PM: Show "User roles updated"
+        
+    else Deactivate User
+        PM->>UI: Click "Deactivate User"
+        UI->>API: PUT /api/v1/users/{id}/status
+        Note over API: Body: { "status": "INACTIVE" }
+        API->>US: Deactivate user
+        
+        US->>DB: Check for active assignments
+        alt User Has Active Assignments
+            DB-->>US: Return assignment conflict
+            US-->>API: Return deactivation error
+            API-->>UI: Show error message
+            UI-->>PM: "Cannot deactivate: user has active assignments"
+            
+        else No Active Assignments
+            US->>DB: Begin transaction
+            US->>DB: Update user status to INACTIVE
+            US->>DB: Revoke active sessions
+            DB-->>US: User deactivated
+            US->>DB: Commit transaction
+            
+            US->>AS: Log user deactivation audit
+            AS->>DB: Store audit record
+            DB-->>AS: Audit logged
+            
+            US->>NS: Send deactivation notification
+            NS->>EMAIL: Notify user of deactivation
+            EMAIL->>NEW_USER: Account deactivated notification
+            
+            US-->>API: User deactivated successfully
+            API-->>UI: Return success response
+            UI-->>PM: Show "User deactivated"
+        end
+        
+    else Remove from Team
+        PM->>UI: Click "Remove from Team"
+        UI->>API: DELETE /api/v1/teams/members/{userId}
+        API->>US: Remove team association
+        
+        US->>DB: Check for active assignments in team
+        alt User Has Team Assignments
+            DB-->>US: Return assignment conflict
+            US-->>API: Return removal error
+            API-->>UI: Show error message
+            UI-->>PM: "Cannot remove: user has active team assignments"
+            
+        else No Team Assignments
+            US->>DB: Remove team association
+            DB-->>US: Association removed
+            
+            US->>AS: Log team removal audit
+            AS->>DB: Store audit record
+            DB-->>AS: Audit logged
+            
+            US-->>API: Removed from team successfully
+            API-->>UI: Return success response
+            UI-->>PM: Show "User removed from team"
+        end
+    end
+    
+    PM->>UI: View team activity and statistics
+    UI->>GW: GET /field-planner/v1/teams/statistics?supervisorId={pmId}
+    GW->>AMS: Get team performance data (new service)
+    AMS->>HRMS: GET /egov-hrms/employees/_search (get team activity data)
+    HRMS->>DB: Query eg_hrms_employee and eg_hrms_assignment for statistics
+    DB-->>HRMS: Return team statistics
+    HRMS-->>AMS: Return team data
+    AMS-->>GW: Return statistics
+    GW-->>UI: Display team dashboard
+    UI-->>PM: Show team performance metrics
+    
+    Note over PM,NEW_USER: E4H Platform User Management Integration Complete
+    Note over PM,NEW_USER: Field Planner uses eGov HRMS for ALL employee management
+    Note over PM,NEW_USER: No duplicate user tables - leverages existing E4H infrastructure  
+    Note over PM,NEW_USER: Employee creation, assignment, and team management via eGov HRMS
+    Note over PM,NEW_USER: E4H audit patterns and notification system handle all events
+    Note over PM,NEW_USER: Consistent with E4H platform conventions and security 
