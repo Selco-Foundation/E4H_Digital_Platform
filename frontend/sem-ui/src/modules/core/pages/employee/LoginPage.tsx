@@ -4,8 +4,10 @@ import {
   employeeForgotPasswordPath,
   employeeHomePath,
   filterRolesForEmployeeTenant,
+  hasAcceptedRequiredConsents,
   hydrateEmployeeJurisdictions,
   loginUser,
+  rememberRequiredConsents,
   resolveQrLogin,
   tenantId,
   translateOr,
@@ -15,6 +17,7 @@ import {
 } from "@/shared";
 import {
   Button,
+  Checkbox,
   Form,
   FormControl,
   FormField,
@@ -31,6 +34,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AuthLayout } from "../../components/AuthLayout";
 import { PasswordFormField } from "../../components/PasswordFormField";
+import { PolicyConsentModal } from "../../components/PolicyConsentModal";
+import type { PolicyDocumentType } from "../../hooks/use-policy-document";
 import type { LoginRouteSearch } from "../../routes";
 
 function createLoginSchema(t: (key: string) => string) {
@@ -75,6 +80,12 @@ export function LoginPage() {
   const setJurisdictionData = useJurisdictionStore((state) => state.setJurisdictionData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResolvingQr, setIsResolvingQr] = useState(Boolean(qrTenantId && qrFacilityId));
+  const [hasStoredConsent, setHasStoredConsent] = useState(hasAcceptedRequiredConsents());
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [activePolicyModal, setActivePolicyModal] = useState<PolicyDocumentType | null>(null);
+  const shouldShowConsent = !hasStoredConsent;
+  const isConsentAccepted = privacyAccepted && termsAccepted;
   const loginSchema = useMemo(() => createLoginSchema(t), [t]);
 
   const form = useForm<LoginFormValues>({
@@ -124,6 +135,13 @@ export function LoginPage() {
   }, []);
 
   const onSubmit = async (values: LoginFormValues) => {
+    if (shouldShowConsent && !isConsentAccepted) {
+      toast.error(
+        translateOr(t, "CORE_ACCEPT_PRIVACY_TERMS", "Please accept the Privacy Policy and Terms of Use"),
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -132,6 +150,11 @@ export function LoginPage() {
         password: values.password.trim(),
         tenantId: tenantId(),
       });
+
+      if (shouldShowConsent) {
+        rememberRequiredConsents();
+        setHasStoredConsent(true);
+      }
 
       const userInfo = response.UserRequest;
       if (!userInfo?.tenantId) {
@@ -177,6 +200,26 @@ export function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handlePolicyModalAccept = () => {
+    if (activePolicyModal === "privacy") {
+      setPrivacyAccepted(true);
+    }
+    if (activePolicyModal === "terms") {
+      setTermsAccepted(true);
+    }
+    setActivePolicyModal(null);
+  };
+
+  const handlePolicyModalReject = () => {
+    if (activePolicyModal === "privacy") {
+      setPrivacyAccepted(false);
+    }
+    if (activePolicyModal === "terms") {
+      setTermsAccepted(false);
+    }
+    setActivePolicyModal(null);
   };
 
   return (
@@ -237,12 +280,51 @@ export function LoginPage() {
                 </Link>
               }
             />
+
+            {shouldShowConsent ? (
+              <div className="flex flex-col gap-3">
+                <label className="flex cursor-pointer items-center gap-3 text-sm text-ink-950">
+                  <Checkbox
+                    checked={privacyAccepted}
+                    onCheckedChange={(checked) => setPrivacyAccepted(checked === true)}
+                  />
+                  {translateOr(t, "CORE_ACCEPT_TEXT", "By clicking, I accept the")}{" "}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setActivePolicyModal("privacy");
+                    }}
+                    className="text-primary underline"
+                  >
+                    {translateOr(t, "CORE_PRIVACY_POLICY", "Privacy Policy")}
+                  </button>
+                </label>
+                <label className="flex cursor-pointer items-center gap-3 text-sm text-ink-950">
+                  <Checkbox
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                  />
+                  {translateOr(t, "CORE_ACCEPT_TEXT", "By clicking, I accept the")}{" "}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setActivePolicyModal("terms");
+                    }}
+                    className="text-primary underline"
+                  >
+                    {translateOr(t, "CORE_TERMS_OF_USE", "Terms of Use")}
+                  </button>
+                </label>
+              </div>
+            ) : null}
           </div>
 
           <Button
             type="submit"
             size="lg"
-            disabled={isSubmitting || isResolvingQr}
+            disabled={isSubmitting || isResolvingQr || (shouldShowConsent && !isConsentAccepted)}
             className="w-full"
           >
             {isSubmitting
@@ -251,6 +333,15 @@ export function LoginPage() {
           </Button>
         </form>
       </Form>
+
+      {activePolicyModal ? (
+        <PolicyConsentModal
+          type={activePolicyModal}
+          onClose={() => setActivePolicyModal(null)}
+          onAccept={handlePolicyModalAccept}
+          onReject={handlePolicyModalReject}
+        />
+      ) : null}
     </AuthLayout>
   );
 }

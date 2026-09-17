@@ -119,6 +119,10 @@ export {
   filterRolesForEmployeeTenant,
   hydrateEmployeeJurisdictions,
 } from "./utils/employee-session";
+export {
+  hasAcceptedRequiredConsents,
+  rememberRequiredConsents,
+} from "./utils/consent-cookies";
 export type { ModuleDefinition, ModuleOverview, NavItem } from "./modules/types";
 
 // Not yet ported from livelihood-ui (no consumer needs it yet): stores/ui-store.ts.
