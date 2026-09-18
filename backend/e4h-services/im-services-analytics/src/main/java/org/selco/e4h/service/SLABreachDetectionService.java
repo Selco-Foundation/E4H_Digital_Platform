@@ -237,11 +237,7 @@ public class SLABreachDetectionService {
         Map<String, Object> bool = new HashMap<>();
         List<Map<String, Object>> must = new ArrayList<>();
 
-        Map<String, Object> tenantFilter = new HashMap<>();
-        Map<String, Object> tenantPrefix = new HashMap<>();
-        tenantPrefix.put("Data.incident.boundary.stateCode.keyword", state);
-        tenantFilter.put("prefix", tenantPrefix);
-        must.add(tenantFilter);
+        must.add(buildStateScopeFilter(state));
 
         Map<String, Object> statusFilter = new HashMap<>();
         Map<String, Object> statusTerms = new HashMap<>();
@@ -255,6 +251,41 @@ public class SLABreachDetectionService {
         bool.put("must", must);
         query.put("bool", bool);
         return query;
+    }
+
+    /**
+     * Matches tickets on state, two ways: the normal case where
+     * {@code Data.incident.boundary.stateCode} is populated (prefix match, as before), and a fallback
+     * for tickets that have no {@code incident.boundary} object at all but do carry a plain state name
+     * on {@code Data.state} (e.g. "Karnataka", "Arunachal Pradesh") - reformatted the same
+     * "India_StateNameNoSpaces" way MDMS-derived state codes are shaped, and verified directly against
+     * the ES index. Without this fallback, ~1,900 tickets are invisible to every state-scoped query here,
+     * silently undercounting State POC / SPM breach detection for their affected states.
+     */
+    private Map<String, Object> buildStateScopeFilter(String state) {
+        Map<String, Object> tenantPrefix = new HashMap<>();
+        tenantPrefix.put("Data.incident.boundary.stateCode.keyword", state);
+        Map<String, Object> prefixFilter = new HashMap<>();
+        prefixFilter.put("prefix", tenantPrefix);
+
+        Map<String, Object> scriptBody = new HashMap<>();
+        scriptBody.put("lang", "painless");
+        scriptBody.put("source",
+                "doc.containsKey('Data.state.keyword') && doc['Data.state.keyword'].size() > 0 && "
+                        + "('India_' + doc['Data.state.keyword'].value.replace(' ', '')).equalsIgnoreCase(params.state)");
+        scriptBody.put("params", Map.of("state", state));
+        Map<String, Object> script = new HashMap<>();
+        script.put("script", scriptBody);
+        Map<String, Object> scriptFilter = new HashMap<>();
+        scriptFilter.put("script", script);
+
+        Map<String, Object> shouldBool = new HashMap<>();
+        shouldBool.put("should", List.of(prefixFilter, scriptFilter));
+        shouldBool.put("minimum_should_match", 1);
+
+        Map<String, Object> wrapper = new HashMap<>();
+        wrapper.put("bool", shouldBool);
+        return wrapper;
     }
 
     private List<Map<String, Object>> buildEscalationInclusionFilters(String escalationRecipientId, String escalationLevel) {
@@ -474,12 +505,9 @@ public class SLABreachDetectionService {
         Map<String, Object> bool = new HashMap<>();
         List<Map<String, Object>> must = new ArrayList<>();
 
-        // Filter by tenant - use prefix match to include state and all its sub-tenants
-        Map<String, Object> tenantFilter = new HashMap<>();
-        Map<String, Object> tenantPrefix = new HashMap<>();
-        tenantPrefix.put("Data.incident.boundary.stateCode.keyword", state);
-        tenantFilter.put("prefix", tenantPrefix);
-        must.add(tenantFilter);
+        // Filter by tenant - matches state (and falls back to plain Data.state for tickets with no
+        // incident.boundary at all; see buildStateScopeFilter)
+        must.add(buildStateScopeFilter(state));
 
         // Filter by workflow states
         Map<String, Object> statusFilter = new HashMap<>();
