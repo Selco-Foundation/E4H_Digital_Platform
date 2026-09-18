@@ -21,4 +21,10 @@ public class AmcConfigurationAssignment {
     @JsonProperty("isActive")
     private boolean isActive;
     private AuditDetails auditDetails;
+    @JsonProperty("role")
+    protected Map<String, Object> role;
+    @JsonProperty("additionalDetails")
+    private Map<String, Object> additionalDetails = null;
+    @JsonProperty("pocNumber")
+    private String pocNumber = null;
 }

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 import psycopg2
 
 import pandas as pd
@@ -22,9 +22,16 @@ from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_
     lock_excel_columns
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
+from app.utils.assessment_service_client import AssessmentServiceClient
+from app.utils.assessment_fieldplan_handoff import (
+    fetch_eligible_assessment_facilities,
+    merge_eligible_facilities_into_list,
+    restrict_to_eligible_and_linked_facilities,
+)
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
+from app.utils.project_category import resolve_project_category, filter_facilities_by_category
 from app.utils.project_service_client import ProjectServiceClient
 import os, tempfile, zipfile, qrcode, shutil
 
@@ -41,6 +48,8 @@ fieldPlan_service_url = os.getenv("FIELDPLAN_SERVICE_URL")
 fieldPlan_activity_service_url = os.getenv("FIELDPLAN_ACTIVITY_SERVICE_URL")
 amc_scheduler_service_url = os.getenv("AMC_SCHEDULER_SERVICE_URL")
 DEFAULT_AMC_ASSET_TYPES = ["INVERTER", "PANEL", "BATTERY"]
+# Only an ACTIVE AMC configuration blocks creating another one for the same facility + project.
+AMC_ACTIVE_STATUS = "ACTIVE"
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
     "port": int(os.getenv("DB_PORT", 5432)),
@@ -48,6 +57,88 @@ DB_CONFIG = {
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD")
 }
+
+
+def _extract_facility_boundary_code(facility: dict) -> str:
+    for key in ("boundary_code", "boundaryCode"):
+        val = facility.get(key)
+        if val:
+            return str(val).strip()
+    for nested_key in ("facility_details", "facilityDetails", "address"):
+        nested = facility.get(nested_key)
+        if isinstance(nested, dict):
+            for key in ("boundary_code", "boundaryCode"):
+                val = nested.get(key)
+                if val:
+                    return str(val).strip()
+    return ""
+
+
+def _resolve_template_boundary_list(
+        facility_service: FacilityTemplateService,
+        request_info,
+        boundary_data: dict,
+        facilities: List[dict],
+) -> List[Boundary]:
+    """
+    BoundaryCodes sheet data. Uses request boundary_data when provided;
+    otherwise derives rows from project facility boundary codes, or falls back
+    to the boundary service catalog (same as facilityIngestion).
+    """
+    boundary_list = flatten_boundaries(boundary_data or {})
+    if boundary_list:
+        return boundary_list
+
+    facility_boundary_codes = {
+        _extract_facility_boundary_code(f) for f in facilities
+    }
+    facility_boundary_codes.discard("")
+
+    try:
+        all_boundaries = facility_service.get_all_boundaries(request_info)
+    except Exception as e:
+        logger.warning(f"Could not load boundaries for template: {e}")
+        return []
+
+    if facility_boundary_codes:
+        filtered = [b for b in all_boundaries if b.code in facility_boundary_codes]
+        if filtered:
+            logger.info(
+                f"Boundary sheet populated with {len(filtered)} rows from project facility boundary codes"
+            )
+            return filtered
+
+    logger.info(f"Boundary sheet populated with {len(all_boundaries)} rows from boundary service")
+    return all_boundaries
+
+
+def _normalize_template_facility_id(val) -> str:
+    if val is None:
+        return ""
+    if isinstance(val, bool):
+        return str(val).strip()
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, float):
+        if val.is_integer():
+            return str(int(val))
+        return str(val).strip()
+    text = str(val).strip()
+    if not text or text.lower() == "nan":
+        return ""
+    if text.endswith(".0") and text[:-2].replace("-", "", 1).isdigit():
+        return text[:-2]
+    return text
+
+
+def _append_excluded_facilities_sheet(output_path: str, excluded_rows: List[dict]) -> None:
+    from app.utils.file_utils import create_excel_data_writer
+
+    df = pd.DataFrame(excluded_rows, columns=["Facility Id", "Facility Name", "Exclusion Reason"])
+    writer = create_excel_data_writer(output_path, "ExcludedFacilities")
+    writer.write_data(df)
+    autofit_columns(output_path, "ExcludedFacilities", auto_fit=True)
+
 
 @router.post('/facilityIngestionTemplateWithData',
             summary='Generate facility ingestion template Excel file with schema, already present data and boundary codes',
@@ -178,6 +269,15 @@ async def get_facility_ingestion_template_with_data(
                 logger.error(f"Error fetching project facilities: {e}")
                 # Continue without project facility data if there's an error
 
+        # Resolve the project's facility category (HEALTH/ANGANWADI) from its projectType,
+        # so only facilities of that category are offered for selection (existing links stay visible).
+        project_category = None
+        if project_id and project_service_url:
+            project_category = resolve_project_category(
+                ProjectServiceClient(project_service_url), request_info, project_id
+            )
+            logger.info(f"Resolved project category for project {project_id}: {project_category}")
+
         # Combine boundary facilities with project facilities (avoid duplicates)
         # Only include project facilities that belong to the current boundary codes
         existing_facility_ids = {f.get('facility_id') for f in all_facilities}
@@ -216,6 +316,9 @@ async def get_facility_ingestion_template_with_data(
             logger.debug("No project_id provided - marking all facilities as No")
             for facility in all_facilities:
                 facility["include_in_project"] = "No"
+
+        all_facilities = filter_facilities_by_category(all_facilities, project_category, project_linked_facility_ids)
+        logger.info(f"Facilities after category filter ({project_category}): {len(all_facilities)}")
 
         try:
             logger.info("Generating template file with facility data")
@@ -299,6 +402,11 @@ async def get_facility_ingestion_template_with_data(
     boundary_data = payload.get("boundary_data", {})
     fieldplan_id = payload.get("fieldplan_id")
     project_id = payload.get("project_id")
+    tenant_id = payload.get("tenantId", "in")
+    assessment_client = (
+        AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
+    )
+
     mdms_client = MDMSClient(mdms_url)
     fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
     try:
@@ -320,6 +428,11 @@ async def get_facility_ingestion_template_with_data(
         project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
         logger.info(f"Found {len(project_linked_facility_ids)} facilities currently linked to project {project_id}")
 
+        # Resolve the project's facility category (HEALTH/ANGANWADI) from its projectType via MDMS,
+        # so only facilities of that category are offered for selection (existing links stay visible).
+        project_category = resolve_project_category(project_client, request_info, project_id)
+        logger.info(f"Resolved project category for project {project_id}: {project_category}")
+
         all_facilities = []
         facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
         if facility_client and project_linked_facility_ids and boundary_list:
@@ -340,7 +453,7 @@ async def get_facility_ingestion_template_with_data(
             except Exception as e:
                 logger.error(f"Error fetching boundary facilities in bulk: {e}", exc_info=True)
 
-        # Fetch fieldplan-linked facilities if fieldplan_id is provided
+        # Fetch installation-plan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
         fieldplan_facilities_data = []
         fieldplan_facility_by_id = {}
@@ -355,9 +468,9 @@ async def get_facility_ingestion_template_with_data(
                     pf.get("facilityId"): pf for pf in fieldplan_facilities if pf.get("facilityId")
                 }
                 logger.info(
-                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
+                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to installation plan {fieldplan_id}")
 
-                # Fetch all fieldplan-linked facility details in one bulk call
+                # Fetch all installation-plan-linked facility details in one bulk call
                 if facility_client and fieldplan_linked_facility_ids:
                     facility_ids = list(fieldplan_linked_facility_ids)
                     try:
@@ -370,14 +483,14 @@ async def get_facility_ingestion_template_with_data(
                         )
                         fieldplan_facilities_data.extend(facilities_bulk_result.get("facilities", []) or [])
                     except Exception as e:
-                        logger.error(f"Error bulk fetching fieldplan facilities: {e}")
+                        logger.error(f"Error bulk fetching installation plan facilities: {e}")
 
             except Exception as e:
-                logger.error(f"Error fetching fieldplan facilities: {e}")
-                # Continue without fieldplan facility data if there's an error
+                logger.error(f"Error fetching installation plan facilities: {e}")
+                # Continue without installation plan facility data if there's an error
 
-        # Combine boundary facilities with fieldplan facilities (avoid duplicates)
-        # Only include fieldplan facilities that belong to the current boundary codes
+        # Combine boundary facilities with installation plan facilities (avoid duplicates)
+        # Only include installation plan facilities that belong to the current boundary codes
         existing_facility_ids = {f.get('facility_id') for f in all_facilities}
         valid_boundary_codes = {boundary.code for boundary in boundary_list}
 
@@ -389,7 +502,7 @@ async def get_facility_ingestion_template_with_data(
             if (facility_id not in existing_facility_ids and facility_id in project_linked_facility_ids and facility_boundary_code in valid_boundary_codes):
                 all_facilities.append(pf_facility)
                 logger.info(
-                    f"Added fieldplan facility {facility_id} to template (boundary: {facility_boundary_code})")
+                    f"Added installation plan facility {facility_id} to template (boundary: {facility_boundary_code})")
             elif (facility_id not in project_linked_facility_ids): # In case the facility is no longer mapped to project, so unlink the facility
                 fieldPlan_facility_data = next(
                     (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
@@ -410,19 +523,19 @@ async def get_facility_ingestion_template_with_data(
                                                                    facility_activity_id=facility_activity_ids)
             elif facility_boundary_code not in valid_boundary_codes:
                 logger.info(
-                    f"Skipped fieldplan facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
+                    f"Skipped installation plan facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
 
         logger.info(
-            f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, fieldplan: {len(fieldplan_facilities_data)})")
+            f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, installation plan: {len(fieldplan_facilities_data)})")
 
-        # Mark facilities as included in fieldplan if they are already linked
+        # Mark facilities as included in installation plan if they are already linked
         if fieldplan_id:
             for facility in all_facilities:
                 facility_id = facility.get("facility_id")
                 if facility_id in fieldplan_linked_facility_ids:
                     facility["include_in_fieldplan"] = "Yes"
-                    logger.info(f"Facility {facility_id} is linked to fieldplan - marking as Yes")
-                    # Overlay the field-plan-specific solar config (facilityType/systemType/
+                    logger.info(f"Facility {facility_id} is linked to installation plan - marking as Yes")
+                    # Overlay the installation-plan-specific solar config (facilityType/systemType/
                     # solarSolutionDesignType/totalSystemCapacity) from the FieldPlanFacility's
                     # additionalFields, resolved to labels by generate_template_file_with_data's
                     # existing code->name lookup against facility_schema.
@@ -432,12 +545,74 @@ async def get_facility_ingestion_template_with_data(
                 else:
 
                     facility["include_in_fieldplan"] = "No"
-                    logger.info(f"Facility {facility_id} is NOT linked to fieldplan - marking as No")
+                    logger.info(f"Facility {facility_id} is NOT linked to installation plan - marking as No")
         else:
             # If no fieldplan_id provided, set all facilities to "No"
             for facility in all_facilities:
                 facility["include_in_fieldplan"] = "No"
                 logger.info(f"No fieldplan_id provided - marking facility {facility.get('facility_id')} as No")
+
+        eligible_facilities: List[dict] = []
+        if assessment_client and project_id:
+            try:
+                eligible_facilities = fetch_eligible_assessment_facilities(
+                    assessment_client=assessment_client,
+                    request_info=request_info,
+                    project_id=project_id,
+                    tenant_id=tenant_id,
+                )
+                if eligible_facilities and facility_client:
+                    eligible_facility_ids = [
+                        f.get("facilityId") for f in eligible_facilities if f.get("facilityId")
+                    ]
+                    facilities_by_id = {
+                        f.get("facility_id") or f.get("facilityId"): f
+                        for f in all_facilities
+                        if f.get("facility_id") or f.get("facilityId")
+                    }
+                    missing_ids = [
+                        fid for fid in eligible_facility_ids if fid not in facilities_by_id
+                    ]
+                    if missing_ids:
+                        bulk_result = facility_client.bulk_search_facility(
+                            request_info=request_info,
+                            tenant_ids=[tenant_id],
+                            facility_ids=missing_ids,
+                            limit=max(len(missing_ids), 50),
+                            send_non_paginated_response=True,
+                        )
+                        for facility in bulk_result.get("facilities") or []:
+                            fid = facility.get("facility_id") or facility.get("facilityId")
+                            if fid:
+                                facilities_by_id[fid] = facility
+                    all_facilities = merge_eligible_facilities_into_list(
+                        all_facilities,
+                        eligible_facilities,
+                        facilities_by_id,
+                    )
+                    all_facilities = restrict_to_eligible_and_linked_facilities(
+                        all_facilities,
+                        eligible_facilities,
+                        fieldplan_linked_facility_ids,
+                    )
+                    logger.info(
+                        "Installation plan template restricted to %s eligible assessment facility(ies) "
+                        "(%s total rows after already-linked)",
+                        len(eligible_facilities),
+                        len(all_facilities),
+                    )
+            except Exception as eligible_err:
+                logger.warning(
+                    "Could not enrich template with eligible assessment facilities: %s",
+                    eligible_err,
+                )
+
+        all_facilities = filter_facilities_by_category(
+            all_facilities,
+            project_category,
+            project_linked_facility_ids | fieldplan_linked_facility_ids,
+        )
+        logger.info(f"Facilities after category filter ({project_category}): {len(all_facilities)}")
 
         try:
             facility_service.generate_template_file_with_data(
@@ -813,9 +988,10 @@ async def get_amc_configuration_template(
         payload: dict = Body(..., description="Payload containing RequestInfo, boundary_data")
 ):
     request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    tenant_id = request_info.user_info.tenant_id if request_info.user_info and request_info.user_info.tenant_id else "in"
 
     boundary_data = payload.get("boundary_data", {})
-    project_id = payload.get("project_id")  
+    project_id = payload.get("project_id")
 
     if not boundary_data:
         raise HTTPException(status_code=400, detail="boundary_data is required")
@@ -833,6 +1009,7 @@ async def get_amc_configuration_template(
         "NIN/HFR ID",
         "BoundaryCode",
         "Health Facility Name",
+        "AMC Start Date",
         "AMC-Frequency",
         "AMC-Duration"
     ]
@@ -905,30 +1082,59 @@ async def get_amc_configuration_template(
         )
 
         # Initialize AMC scheduler client and prefetch existing configs for this project once
+        # (one search call for the whole project, not one per facility - see the per-row lookup below).
+        # Only ACTIVE configurations pre-fill a row: once the previous AMC is EXPIRED or CANCELLED the
+        # facility is treated as having no current contract.
+        # The AMC columns stay editable even when a configuration already exists: re-uploading the
+        # template with a different frequency/duration is how an existing configuration gets updated
+        # (see /amcConfigurationBulkIngest), so locking them would make that impossible.
         amc_client = None
         existing_amc_by_facility = {}
         if amc_scheduler_service_url and project_id:
             amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url)
             try:
-                all_existing_configs_resp = amc_client.search_amc_configurations(
+                all_existing_configs = amc_client.search_all_amc_configurations(
                     request_info,
-                    project_id=project_id
+                    project_id=project_id,
+                    tenant_id=tenant_id,
                 )
-                all_existing_configs = all_existing_configs_resp.get("AmcConfigurations", [])
                 for config in all_existing_configs:
                     facility_id = config.get("facilityId")
+                    if str(config.get("status") or "").strip().upper() != AMC_ACTIVE_STATUS:
+                        continue
                     if facility_id and facility_id not in existing_amc_by_facility:
                         existing_amc_by_facility[facility_id] = config
                 logger.info(
-                    f"Fetched {len(existing_amc_by_facility)} existing AMC configurations for project {project_id}"
+                    f"Fetched {len(existing_amc_by_facility)} active AMC configurations for project {project_id}"
                 )
             except Exception as e:
                 logger.warning(f"Error fetching existing AMC configurations for project {project_id}: {e}")
 
+        # AMC Start Date defaults to the Installation Report Submission Date (when SUBMIT_REPORT_A/B
+        # was last actioned on the facility's installation workflow) - one bulk lookup for every
+        # facility in the template, not one call per row.
+        installation_submission_dates_by_facility: Dict[str, int] = {}
+        if fieldPlan_activity_service_url:
+            try:
+                fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
+                all_facility_ids = [f.get("facility_id") for f in all_facilities if f.get("facility_id")]
+                installation_submission_dates_by_facility = fieldplan_activity_client.get_installation_report_submission_dates(
+                    request_info, all_facility_ids
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching installation report submission dates for AMC template: {e}")
+
+        def format_amc_start_date(epoch_millis):
+            if not epoch_millis:
+                return ""
+            try:
+                return datetime.fromtimestamp(epoch_millis / 1000).strftime("%d-%m-%Y")
+            except (OverflowError, OSError, ValueError):
+                return ""
+
         # Create rows for AMC configuration template - one row per facility
         # Asset types ["INVERTER","PANEL","BATTERY"] will be used as default for each configuration during processing
         rows = []
-        rows_with_existing_amc = []  # Track row indices that have existing AMC configurations
 
         def convert_frequency_to_display(frequency_months):
             """Convert frequency in months to display format"""
@@ -948,7 +1154,7 @@ async def get_amc_configuration_template(
                 return "5 Years"
             return ""
 
-        for idx, facility in enumerate(all_facilities):
+        for facility in all_facilities:
             # facility_details = facility.get("facility_details", {}) or {}
             nin_id = facility.get("nin_id", "")
             hfr_id = facility.get("hfr_id", "")
@@ -961,30 +1167,26 @@ async def get_amc_configuration_template(
             # Initialize row with empty values
             frequency_value = ""
             duration_value = ""
+            start_date_value = ""
 
-            # Read existing AMC configuration from prefetched map
-            if amc_client and project_id and facility_id:
-                try:
-                    existing_configs = amc_client.search_amc_configurations(
-                        request_info,
-                        facility_id=facility_id,
-                        project_id=project_id
-                    )
-                    # Check if any configurations exist
-                    configs = existing_configs.get("AmcConfigurations", [])
-                    if configs:
-                        # Use the first configuration found
-                        existing_config = configs[0]
-                        frequency_months = existing_config.get("frequency")
-                        duration_months = existing_config.get("duration")
+            # Read existing AMC configuration from the map prefetched once above (no per-facility call)
+            if facility_id:
+                existing_config = existing_amc_by_facility.get(facility_id)
+                if existing_config:
+                    frequency_months = existing_config.get("visitFrequencyMonths")
+                    duration_months = existing_config.get("durationMonths")
 
-                        frequency_value = convert_frequency_to_display(frequency_months)
-                        duration_value = convert_duration_to_display(duration_months)
-                        rows_with_existing_amc.append(idx)
-                        logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
-                except Exception as e:
-                    logger.warning(f"Error checking existing AMC config for facility {facility_id}: {e}")
-                    # Continue without existing config data
+                    frequency_value = convert_frequency_to_display(frequency_months)
+                    duration_value = convert_duration_to_display(duration_months)
+                    logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
+
+                    # An existing configuration already has an authoritative start date (the original
+                    # Installation Report Submission Date, or whatever the Project Manager corrected it
+                    # to on a previous upload) - it takes priority over a freshly fetched submission date.
+                    start_date_value = format_amc_start_date(existing_config.get("configurationStartDate"))
+
+                if not start_date_value:
+                    start_date_value = format_amc_start_date(installation_submission_dates_by_facility.get(facility_id))
 
             # Create one row per facility (asset types are handled internally during processing)
             rows.append({
@@ -992,6 +1194,7 @@ async def get_amc_configuration_template(
                 "NIN/HFR ID": nin_hfr_id,
                 "BoundaryCode": boundary_code,
                 "Health Facility Name": facility_name,
+                "AMC Start Date": start_date_value,
                 "AMC-Frequency": frequency_value,
                 "AMC-Duration": duration_value
             })
@@ -1054,50 +1257,12 @@ async def get_amc_configuration_template(
         lock_prefilled_rows_in_excel(
             file_path=output_file_path,
             sheet_name=sheet_name,
-            editable_columns=["AMC-Frequency", "AMC-Duration"],
+            editable_columns=["AMC Start Date", "AMC-Frequency", "AMC-Duration"],
             total_rows=len(rows),
             total_columns=len(columns),
             always_locked_columns=["BoundaryCode"],
             extra_append_rows=500
         )
-
-        # Lock AMC-Frequency and AMC-Duration for rows with existing AMC configurations
-        if rows_with_existing_amc:
-            wb = load_workbook(output_file_path)
-            ws = wb[sheet_name]
-            grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
-
-            header_row = [cell.value for cell in ws[1]]
-            frequency_col_idx = None
-            duration_col_idx = None
-
-            for idx, header in enumerate(header_row, start=1):
-                if header == "AMC-Frequency":
-                    frequency_col_idx = idx
-                elif header == "AMC-Duration":
-                    duration_col_idx = idx
-
-            # Lock cells for rows with existing AMC configurations
-            # Note: rows_with_existing_amc contains 0-based indices, Excel rows are 1-based
-            # Header is row 1, so data starts at row 2
-            for row_idx_0based in rows_with_existing_amc:
-                excel_row = row_idx_0based + 2  # +2 because header is row 1, and 0-based to 1-based
-
-                if frequency_col_idx:
-                    cell = ws.cell(row=excel_row, column=frequency_col_idx)
-                    cell.protection = Protection(locked=True)
-                    cell.fill = grey_fill
-
-                if duration_col_idx:
-                    cell = ws.cell(row=excel_row, column=duration_col_idx)
-                    cell.protection = Protection(locked=True)
-                    cell.fill = grey_fill
-
-            # Re-enable sheet protection
-            ws.protection.sheet = True
-            ws.protection.enable()
-            wb.save(output_file_path)
-            logger.info(f"Locked AMC fields for {len(rows_with_existing_amc)} rows with existing AMC configurations")
 
         # Autofit columns
         autofit_columns(
@@ -1122,3 +1287,206 @@ async def get_amc_configuration_template(
         logger.error(f"Unhandled error in get_amc_configuration_template: {e}")
         cleanup_temp_file(output_file_path)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.post(
+    '/assessmentPlanIncludeTemplate',
+    summary='Generate assessment plan facility include Excel template',
+    response_description='Returns Excel template with project-linked facilities and Include Yes/No column',
+)
+async def get_assessment_plan_include_template(
+        background_tasks: BackgroundTasks,
+        facility_service: FacilityTemplateService = Depends(),
+        payload: dict = Body(..., description="Payload object"),
+):
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    project_id = payload.get("projectId")
+    plan_id = payload.get("planId")
+    tenant_id = payload.get("tenantId", "in")
+    boundary_data = payload.get("boundary_data", {})
+
+    if not project_id or not plan_id:
+        raise HTTPException(status_code=400, detail="projectId and planId are required")
+
+    logger.info(
+        f"Generating assessment plan include template: project_id={project_id}, plan_id={plan_id}"
+    )
+
+    mdms_client = MDMSClient(mdms_url)
+    project_client = ProjectServiceClient(project_service_url)
+    facility_client = FacilityServiceClient(facility_service_url)
+    assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+
+    try:
+        facility_schema = mdms_client.get_column_definitions_with_metadata(
+            request_info, "data-ingestion.FieldPlanFacilityIngestionSchema"
+        )
+
+        project_facilities_response = project_client.search_project_facility(request_info, project_id)
+        project_facilities = project_facilities_response.get("ProjectFacilities", []) or []
+        facility_ids = [
+            pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")
+        ]
+
+        availability_response = assessment_client.check_include_availability(
+            request_info, plan_id, tenant_id, facility_ids
+        )
+        available_ids = {
+            _normalize_template_facility_id(fid)
+            for fid in (availability_response.get("availableFacilityIds", []) or [])
+            if fid
+        }
+        excluded_items = availability_response.get("excluded", []) or []
+
+        plan_facility_response = assessment_client.search_plan_facilities(
+            request_info, plan_id, export_all=True
+        )
+        plan_facility_ids = {
+            _normalize_template_facility_id(f.get("facilityId"))
+            for f in (plan_facility_response.get("facilities", []) or [])
+            if f.get("facilityId")
+        }
+
+        all_facilities = []
+        excluded_facility_rows = []
+        if facility_ids and facility_client:
+            bulk_result = facility_client.bulk_search_facility(
+                request_info=request_info,
+                tenant_ids=[tenant_id],
+                facility_ids=facility_ids,
+                limit=max(len(facility_ids), 50),
+                send_non_paginated_response=True,
+            )
+            facilities_by_id = {
+                _normalize_template_facility_id(f.get("facility_id") or f.get("facilityId")): f
+                for f in (bulk_result.get("facilities", []) or [])
+            }
+            for pf in project_facilities:
+                fid = _normalize_template_facility_id(pf.get("facilityId"))
+                if not fid:
+                    continue
+                if fid not in available_ids:
+                    continue
+                facility = dict(facilities_by_id.get(fid, {}))
+                if not facility.get("facility_id") and not facility.get("facilityId"):
+                    facility["facility_id"] = fid
+                facility["include_in_assessment_plan"] = "Yes" if fid in plan_facility_ids else ""
+                all_facilities.append(facility)
+
+            for item in excluded_items:
+                fid = _normalize_template_facility_id(item.get("facilityId"))
+                if not fid:
+                    continue
+                facility = dict(facilities_by_id.get(fid, {}))
+                facility_name = (
+                    facility.get("facility_name")
+                    or facility.get("facilityName")
+                    or facility.get("name")
+                    or ""
+                )
+                excluded_facility_rows.append({
+                    "Facility Id": fid,
+                    "Facility Name": facility_name,
+                    "Exclusion Reason": item.get("message") or item.get("code") or "Excluded",
+                })
+
+        boundary_list = _resolve_template_boundary_list(
+            facility_service, request_info, boundary_data, all_facilities
+        )
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
+        output_file_path = create_temp_file(suffix=".xlsx")
+
+        facility_service.generate_template_file_with_data(
+            output_path=output_file_path,
+            facility_schema=facility_schema,
+            boundary_list=boundary_list,
+            facility_data=all_facilities,
+            type="assessment_include",
+            extra_append_rows=0,
+            optimize_for_performance=True,
+        )
+
+        if excluded_facility_rows:
+            _append_excluded_facilities_sheet(output_file_path, excluded_facility_rows)
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating assessment plan include template: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    '/assessmentPlanFacilityExport',
+    summary='Export assessment plan facility grid to Excel',
+    response_description='Returns read-only Excel export of plan facilities',
+)
+async def export_assessment_plan_facilities(
+        background_tasks: BackgroundTasks,
+        payload: dict = Body(..., description="Payload object"),
+):
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    plan_id = payload.get("planId")
+    filters = payload.get("filters") or {}
+
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="planId is required")
+
+    logger.info(f"Exporting assessment plan facilities: plan_id={plan_id}")
+    assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+
+    try:
+        search_result = assessment_client.search_plan_facilities(
+            request_info=request_info,
+            plan_id=plan_id,
+            filters=filters,
+            export_all=True,
+            include_response_summary=True,
+        )
+        facilities = search_result.get("facilities", []) or []
+
+        rows = []
+        for facility in facilities:
+            rows.append({
+                "Plan Facility Id": facility.get("planFacilityId", ""),
+                "Facility Id": facility.get("facilityId", ""),
+                "Facility Name": facility.get("facilityName", ""),
+                "Category": facility.get("facilityCategory", ""),
+                "Type": facility.get("facilityType", ""),
+                "District": facility.get("district", ""),
+                "Block": facility.get("block", ""),
+                "Remote Status": facility.get("phoneStatus", ""),
+                "On-site Status": facility.get("fieldStatus", ""),
+                "Assessment Result": facility.get("overallStatus", ""),
+                "Completion Status": facility.get("assessmentCompletionStatus", ""),
+                "Phone Response Summary": "; ".join(facility.get("phoneResponseSummary") or []),
+                "Field Response Summary": "; ".join(facility.get("fieldResponseSummary") or []),
+            })
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
+        output_file_path = create_temp_file(suffix=".xlsx")
+
+        df = pd.DataFrame(rows)
+        df.to_excel(output_file_path, index=False, sheet_name="PlanFacilities")
+        autofit_columns(file_path=output_file_path, sheet_name="PlanFacilities")
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting assessment plan facilities: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

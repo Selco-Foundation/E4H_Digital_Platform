@@ -275,6 +275,16 @@ const CreateFieldPlan = () => {
     setToastQueue([]);
   }, []);
 
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const toastTimeout = setTimeout(closeToast, 4000);
+
+    return () => clearTimeout(toastTimeout);
+  }, [toast, closeToast]);
+
   const showToastMessages = (messages, key = "error") => {
     const formattedToasts = messages.filter(Boolean).map((message) => ({
       key,
@@ -450,7 +460,8 @@ const CreateFieldPlan = () => {
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
           key: "error",
-          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
+          label: response.apiErrorMessage || t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR"),
+          translate: false,
         })
         setInvalidDataError(null);
 
@@ -788,7 +799,7 @@ const CreateFieldPlan = () => {
               selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData?.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
               description: "PM_CREATE_FIELD_PLAN_LABEL_ACTIVITIES_DESC",
               t,
-              activityData: activityData?.filter((activity) => activity?.code !== "AMC"),
+              activityData: activityData?.filter((activity) => activity?.code === "INS"),
             },
             route: "activities",
             nextRoute: "",
@@ -1209,6 +1220,7 @@ const CreateFieldPlan = () => {
         break;
       case 4:
         await saveActivityDetailsAndUpdateFieldPlan(data.activityUserAssignment);
+        break;
     }
   };
 
@@ -1507,7 +1519,7 @@ const CreateFieldPlan = () => {
                 </button>
               )}
             </div>
-          ) : t(toast.label)}
+          ) : (toast.translate === false ? toast.label : t(toast.label))}
           isDleteBtn={!hasCustomPrepopulationErrorToast}
           onClose={hasCustomPrepopulationErrorToast ? undefined : closeToast}
         />

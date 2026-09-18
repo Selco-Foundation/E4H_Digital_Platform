@@ -3,6 +3,7 @@ import Section from "./Section";
 import AddRejectionReasonModal from "./AddRejectionReasonModal";
 import SystemParameterReport from "./SystemParameterReport";
 import EditRejectionReasonModal from "./EditRejectionReasonModal";
+import AssetImageViewer from "./AssetImageViewer";
 import { useDispatch, useSelector } from "react-redux";
 import { setRejectionReasons } from "../../redux/actions";
 import { ImageViewer, Loader } from "@egovernments/digit-ui-react-components";
@@ -38,6 +39,7 @@ const Summary = ({
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const rejectionReasons = rejectionData?.[section] || [];
   const [imageToView, setImageToView] = useState(null);
+  const [assetImageToView, setAssetImageToView] = useState(null);
   const rejectionSectionLabel = customTitle || t(`QC_${section}_SUMMARY`);
 
   const toggleExpanded = () => {
@@ -84,10 +86,18 @@ const Summary = ({
     </div>
   )
 
-  const AssetImages = (images) => (
+  const AssetImages = (images, item) => (
     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
       {images.map((doc, idx) => (
-        <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(doc)}>
+        <div
+          key={idx}
+          style={{ cursor: "pointer" }}
+          onClick={() => setAssetImageToView({
+            src: doc,
+            serialNumber: item?.serialNumber,
+            capacity: item?.capacity
+          })}
+        >
           <img loading="lazy" decoding="async" src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
         </div>
       ))}
@@ -218,7 +228,7 @@ const Summary = ({
                   <div style={{display: "flex", gap: "10px"}}>
                     {AssetInfoItem(
                       t(`QC_INSTALLATION_ASSET_IMAGE`),
-                      AssetImages(item.documents)
+                      AssetImages(item.documents, item)
                     )}
                   </div>
                 )}
@@ -285,6 +295,9 @@ const Summary = ({
           </div>
         ))}
 
+      {assetImageToView && (
+        <AssetImageViewer t={t} image={assetImageToView} onClose={() => setAssetImageToView(null)} />
+      )}
       {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
 
       {showRejectionModal && (

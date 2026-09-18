@@ -5,7 +5,7 @@ import os
 import shutil
 import tempfile
 import zipfile
-from datetime import datetime, timedelta
+from datetime import datetime
 import uuid
 from typing import Optional, Dict, List, Set
 
@@ -25,6 +25,7 @@ from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
     field_plan_facility_validation,
+    assessment_plan_include_validation,
     collect_hfr_nin_errors_for_row,
     collect_anganwadi_poc_username_errors_for_row,
 )
@@ -53,10 +54,23 @@ from app.utils.boundary_service_client import BoundaryServiceClient
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
+from app.utils.assessment_service_client import AssessmentServiceClient
+from app.utils.assessment_fieldplan_handoff import (
+    load_eligible_facility_map,
+    merge_assessment_validation_errors,
+    resolve_plan_facility_id_for_handoff,
+    should_use_assessment_handoff_validation,
+    validate_assessment_handoff_rows,
+)
 from app.utils.icc_report_converter import validate_and_convert, ICCValidationError, SYSTEM_TYPE_TO_INTERNAL
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
+from app.utils.project_category import (
+    category_from_project_type_name,
+    resolve_project_category,
+    validate_facility_category_matches_project,
+)
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.project_service_client import ProjectServiceClient
 from app.utils.hrms_service_client import HRMSServiceClient
@@ -625,7 +639,7 @@ async def upload_facilities_excel_sheet(
         facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
                                         description="Name of the sheet containing facility data"),
         request_info: str = Form(default=""),
-        are_facilities_onm_ready: bool = Form(description="FieldPlan ID")
+        are_facilities_onm_ready: bool = Form(description="Installation Plan ID")
 ):
     input_temp_file = None
     output_temp_file = None
@@ -704,7 +718,7 @@ async def upload_facilities_excel_sheet(
              summary='Upload and process workstream with facilities excel file.',
              response_description='Returns processed Excel file with validation results')
 async def upload_facilities_with_workstream(
-        project_id_with_type_field_plan: str = Form(default="Project id of the project with type field plan"),
+        project_id_with_type_field_plan: str = Form(default="Project id of the project with type installation plan"),
         request_info: str = Form(default=""),
         installation_spoc_user_name:str = Form(default=""),
         installation_spoc_user_mobile_number:str = Form(default=""),
@@ -714,14 +728,14 @@ async def upload_facilities_with_workstream(
     #get_authorized_request_info(request_info)
 
     try:
-        # Fetch project of type Field Plan using project_id
+        # Fetch project of type Installation Plan using project_id
         if project_service_url and hrms_service_url:
             project_client = ProjectServiceClient(project_service_url)
             hrms_client = HRMSServiceClient(hrms_service_url)
             field_plan_project = project_client.search_project(request_info, project_id_with_type_field_plan)
             project = field_plan_project["Project"][0]
             if not project:
-                raise Exception("Field plan id is not correct.")
+                raise Exception("Installation plan id is not correct.")
             field_plan_project_facilities = project_client.search_project_facility(request_info,
                                                                                    project_id_with_type_field_plan)
             work_stream_creation_payload = get_project_creation_payload(
@@ -1294,11 +1308,11 @@ async def upload_projects_excel_sheet(
                         email_value = df.at[index, 'Email']
                         if pd.isna(email_value) or not email_value:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = 'Email is required for Field Plan projects'
+                            df.at[index, 'error'] = 'Email is required for Installation Plan projects'
                             continue
                         if pd.isna(mobile_number_raw) or not mobile_number_raw:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = 'Mobile Number is required for Field Plan projects'
+                            df.at[index, 'error'] = 'Mobile Number is required for Installation Plan projects'
                             continue
 
 
@@ -1353,7 +1367,7 @@ async def upload_projects_excel_sheet(
                                     if len(staff_list) == 1:
                                         sms_request = {
                                             "mobileNumber": mobile_number,
-                                            "message": "Yor are assigned to the field plan",
+                                            "message": "Yor are assigned to the installation plan",
                                             "expiryTime": None
                                         }
                                         producer = Producer()
@@ -1639,7 +1653,7 @@ async def upload_icc_reports(
 
 
 @router.post('/icc-reports/_update',
-             summary='Bulk-update existing ICC report field plan templates, optionally replacing '
+             summary='Bulk-update existing ICC report installation plan templates, optionally replacing '
                      'their Excel files, via field-planner in one call',
              response_description='Returns the field-planner bulk template update response')
 async def update_icc_reports(
@@ -2419,6 +2433,11 @@ async def validate_facilities_excel_sheet(
         project = projects["Project"][0]["project"]
         geography = project.get("additionalDetails", {}).get("geographyDetails", {})
 
+        # Only Health/Anganwadi facilities matching the project's own type category may be
+        # selected - re-checked here in case a row's Category of Facility was hand-edited after
+        # the template (already filtered to this category) was downloaded.
+        project_category = category_from_project_type_name(project.get("projectType"))
+
         # Valid codes directly as a set (no loop needed)
         valid_boundary_codes = {str(block["code"]).strip() for block in geography.get("blocks", []) if
                                 block.get("code")}
@@ -2464,6 +2483,8 @@ async def validate_facilities_excel_sheet(
             boundary_data_df,
             'data-ingestion.FacilityIngestionSchema'
         )
+        category_errors = validate_facility_category_matches_project(df, project_category)
+        validation_errors = merge_assessment_validation_errors(validation_errors, category_errors)
 
         # Mark rows based on validation results
         error_count = 0
@@ -2546,12 +2567,38 @@ async def validate_facilities_excel_sheet(
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
                                         description="Name of the sheet containing boundary data"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        project_id: str = Form(default="", description="Project ID (required for assessment handoff validation)"),
+        fieldplan_id: str = Form(default="", description="Installation Plan ID (used to resolve the parent project when project_id is not provided)"),
+        tenant_id: str = Form(default="in"),
 ):
     temp_input_file = None
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
     facility_client = FacilityServiceClient(facility_service_url)
+
+    # The frontend calls this endpoint with fieldplan_id, not project_id (see /createFieldPlanFacility
+    # for the same fallback) - resolve the parent project through the installation plan when
+    # project_id itself isn't supplied.
+    resolved_project_id = project_id
+    if not resolved_project_id and fieldplan_id and fieldPlan_service_url:
+        try:
+            fieldplan_response = FieldPlanServiceClient(fieldPlan_service_url).search_fieldPlan(
+                request_info_obj, fieldplan_id
+            )
+            fieldplan_data = fieldplan_response.get("FieldPlans", [])
+            resolved_project_id = fieldplan_data[0].get("projectId") if fieldplan_data else None
+        except Exception as e:
+            logger.warning(f"Could not resolve project id from fieldplan_id {fieldplan_id}: {e}")
+
+    # Only Health/Anganwadi facilities matching the project's own type category may be selected -
+    # re-checked here in case a row's Category of Facility was hand-edited after the template
+    # (already filtered to this category) was downloaded.
+    project_category = None
+    if resolved_project_id and project_service_url:
+        project_category = resolve_project_category(
+            ProjectServiceClient(project_service_url), request_info_obj, resolved_project_id
+        )
 
     try:
         # Save uploaded Excel to a temp file
@@ -2593,6 +2640,32 @@ async def validate_facilities_excel_sheet(
             boundary_data_df,
             'data-ingestion.FieldPlanFacilityIngestionSchema'
         )
+        category_errors = validate_facility_category_matches_project(df, project_category)
+        validation_errors = merge_assessment_validation_errors(validation_errors, category_errors)
+
+        assessment_client = (
+            AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
+        )
+        use_assessment_flow = should_use_assessment_handoff_validation(
+            assessment_client=assessment_client,
+            request_info=request_info_obj,
+            project_id=project_id,
+            tenant_id=tenant_id,
+        )
+        if use_assessment_flow:
+            if not project_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="project_id is required when eligible assessment facilities exist for handoff",
+                )
+            eligible_map = load_eligible_facility_map(
+                assessment_client,
+                request_info_obj,
+                project_id,
+                tenant_id,
+            )
+            assessment_errors = validate_assessment_handoff_rows(df, eligible_map)
+            validation_errors = merge_assessment_validation_errors(validation_errors, assessment_errors)
 
         # Mark rows based on validation results
         error_count = 0
@@ -2940,8 +3013,10 @@ async def create_fielplan_facilities(
         facility_file: UploadFile = File(description="Validated Excel file with PASSED/FAILED status"),
         facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
-        fieldplan_id: str = Form(description="FieldPlan ID"),
-        request_info: str = Form(default="")
+        fieldplan_id: str = Form(description="Installation Plan ID"),
+        request_info: str = Form(default=""),
+        project_id: str = Form(default="", description="Project ID (required for assessment handoff apply)"),
+        tenant_id: str = Form(default="in"),
 ):
     input_temp_file = None
 
@@ -2953,11 +3028,11 @@ async def create_fielplan_facilities(
         # ---------- save uploaded file ----------
         input_temp_file, uploaded_size = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
         facility_file_path = input_temp_file.name
-        logger.info(f"Received createFieldPlanFacility file of size {uploaded_size} bytes")
+        logger.info(f"Received createInstallationFacility file of size {uploaded_size} bytes")
 
         # ---------- prepare output path & load workbook ----------
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"facility_fieldplan_update_results_{timestamp}.xlsx"
+        output_filename = f"facility_installationplan_update_results_{timestamp}.xlsx"
         output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
         output_temp_file.close()
         output_file_path = output_temp_file.name
@@ -3023,7 +3098,7 @@ async def create_fielplan_facilities(
                 if f.get("key")
             }
 
-        include_col = find_col("Included in Field Plan")
+        include_col = find_col("Included in Installation Plan")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
         facility_type_col = find_col("Type of HC")
@@ -3046,13 +3121,37 @@ async def create_fielplan_facilities(
             logger.warning(f"Could not fetch FieldPlanFacilityIngestionSchema for code lookup: {e}")
 
         # add result columns if missing
-        if 'Field Plan Linking Status' not in df.columns:
-            df['Field Plan Linking Status'] = ''
+        if 'Installation Plan Linking Status' not in df.columns:
+            df['Installation Plan Linking Status'] = ''
 
         fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
         fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
 
-        # Fetch fieldplan-linked facilities if fieldplan_id is provided
+        assessment_client = (
+            AssessmentServiceClient(fieldPlan_service_url) if fieldPlan_service_url else None
+        )
+        use_assessment_flow = should_use_assessment_handoff_validation(
+            assessment_client=assessment_client,
+            request_info=request_info,
+            project_id=project_id,
+            tenant_id=tenant_id,
+        )
+        eligible_map = {}
+        if use_assessment_flow:
+            if not project_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="project_id is required when eligible assessment facilities exist for handoff",
+                )
+            assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+            eligible_map = load_eligible_facility_map(
+                assessment_client,
+                request_info,
+                project_id,
+                tenant_id,
+            )
+
+        # Fetch installation-plan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
         if fieldplan_id:
             try:
@@ -3061,12 +3160,46 @@ async def create_fielplan_facilities(
                 fieldplan_linked_facility_ids = {pf.get("facilityId") for pf in fieldplan_facilities if
                                                  pf.get("facilityId")}
                 logger.info(
-                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
+                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to installation plan {fieldplan_id}")
 
                 # Get FieldPlan status
                 fieldplan_response = fieldplan_client.search_fieldPlan(request_info, fieldplan_id)
                 fieldplan_data = fieldplan_response.get("FieldPlans", [])
                 fieldplan_status = fieldplan_data[0].get("status") if fieldplan_data else None
+
+                # Resolve the parent project's facility category (HEALTH/ANGANWADI) so new links
+                # can be rejected if the row's facility doesn't match - defense-in-depth against a
+                # hand-edited Facility Id column bypassing the category filter applied at template
+                # generation time (see /fieldplanFacilityIngestionTemplate).
+                resolved_project_id = project_id or (fieldplan_data[0].get("projectId") if fieldplan_data else None)
+                project_category = resolve_project_category(
+                    ProjectServiceClient(project_service_url), request_info, resolved_project_id
+                ) if resolved_project_id and project_service_url else None
+                logger.info(f"Resolved project category for installation plan {fieldplan_id}: {project_category}")
+
+                facility_category_by_id = {}
+                if project_category and facility_service_url:
+                    sheet_facility_ids = list(dict.fromkeys(
+                        str(row.get(facility_id_col)).strip()
+                        for _, row in df.iterrows()
+                        if pd.notna(row.get(facility_id_col)) and str(row.get(facility_id_col)).strip()
+                    ))
+                    if sheet_facility_ids:
+                        try:
+                            facility_client = FacilityServiceClient(facility_service_url)
+                            bulk_result = facility_client.bulk_search_facility(
+                                request_info=request_info,
+                                tenant_ids=["in"],
+                                facility_ids=sheet_facility_ids,
+                                limit=max(len(sheet_facility_ids), 50),
+                                send_non_paginated_response=True,
+                            )
+                            for f in (bulk_result.get("facilities", []) or []):
+                                f_id = f.get("facility_id")
+                                if f_id:
+                                    facility_category_by_id[f_id] = str(f.get("facility_category") or "").strip().upper()
+                        except Exception as e:
+                            logger.warning(f"Could not bulk fetch facility categories for category check: {e}")
 
                 fieldplan_assignment_response = fieldplan_activity_client.search_fieldplan_activity_assignment(request_info, fieldplan_id)
                 fieldplan_assignment_data = fieldplan_assignment_response.get("ActivitiesAssignments", [])
@@ -3080,6 +3213,7 @@ async def create_fielplan_facilities(
                             role_to_ids[code].append(item.get("assignedTo"))
 
                 pending_bulk_fieldplan_links = []
+                pending_assessment_handoffs = []
                 pending_bulk_fieldplan_updates = []
                 # iterate all rows — handle existing facility ids (linking/unlinking)
                 for index, row in df.iterrows():
@@ -3094,7 +3228,7 @@ async def create_fielplan_facilities(
                         if include_col:
                             include_val = str(row.get(include_col, "")).strip().lower()
                         else:
-                            include_val = str(row.get("Included in Field Plan (Mandatory)", "")).strip().lower()
+                            include_val = str(row.get("Included in Installation Plan (Mandatory)", "")).strip().lower()
 
                         should_link = include_val == "yes"
 
@@ -3132,14 +3266,14 @@ async def create_fielplan_facilities(
                                     }
 
                                     if not changed_keys:
-                                        df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                        df.at[index, 'Installation Plan Linking Status'] = "Already Linked"
                                     elif fieldplan_status != DRAFT_FIELD_PLAN_STATUS:
-                                        df.at[index, 'Field Plan Linking Status'] = (
+                                        df.at[index, 'Installation Plan Linking Status'] = (
                                             f"Error: Cannot update - FieldPlan status must be DRAFT "
                                             f"(current status: {fieldplan_status})"
                                         )
                                     elif fieldPlan_facility_data is None or not fieldPlan_facility_data.get("id"):
-                                        df.at[index, 'Field Plan Linking Status'] = (
+                                        df.at[index, 'Installation Plan Linking Status'] = (
                                             "Error: Cannot update - FieldPlanFacility record id not found"
                                         )
                                     else:
@@ -3149,7 +3283,7 @@ async def create_fielplan_facilities(
                                                 row_values.get("customTotalSystemCapacity")
                                             )
                                         if error:
-                                            df.at[index, 'Field Plan Linking Status'] = error
+                                            df.at[index, 'Installation Plan Linking Status'] = error
                                         else:
                                             additional_fields = build_field_plan_facility_additional_fields(
                                                 {key: row_values.get(key) for key in changed_keys}
@@ -3184,46 +3318,57 @@ async def create_fielplan_facilities(
                                         facility_activity_ids = list({fa.get("activityFacility").get("id") for fa in facilities_activity if fa.get("activityFacility").get("id")})
                                         fieldplan_activity_client.delete_facility_activity(request_info=request_info, facility_activity_id=facility_activity_ids)
 
-                                        df.at[index, 'Field Plan Linking Status'] = "Unlinked"
+                                        df.at[index, 'Installation Plan Linking Status'] = "Unlinked"
                                         fieldplan_linked_facility_ids.remove(facility_id)
                                     except Exception as e:
-                                        df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
+                                        df.at[index, 'Installation Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
                                 if should_link:
+                                    if (project_category and facility_id in facility_category_by_id
+                                            and facility_category_by_id[facility_id] != project_category):
+                                        df.at[index, 'Installation Plan Linking Status'] = (
+                                            "Error: Facility category does not match project type"
+                                        )
+                                        continue
+
                                     custom_capacity_val = row.get(custom_total_system_capacity_col, None) \
                                         if custom_total_system_capacity_col else None
                                     custom_capacity_str = str(custom_capacity_val).strip() \
                                         if pd.notna(custom_capacity_val) else ""
                                     error = validate_custom_capacity_numeric(custom_capacity_str)
                                     if error:
-                                        df.at[index, 'Field Plan Linking Status'] = error
+                                        df.at[index, 'Installation Plan Linking Status'] = error
                                         continue
 
-                                    pending_bulk_fieldplan_links.append(
-                                        (
-                                            index,
-                                            build_field_plan_facility_bulk_entry(
-                                                row,
-                                                facility_id,
-                                                column_list=field_plan_facility_schema,
-                                                facility_type_column=facility_type_col,
-                                                system_type_column=system_type_col,
-                                                total_system_capacity_column=total_system_capacity_col,
-                                                solution_design_type_column=solution_design_type_col,
-                                                custom_solution_design_column=custom_solution_design_col,
-                                                custom_total_system_capacity_column=custom_total_system_capacity_col,
-                                            ),
-                                        )
+                                    bulk_entry = build_field_plan_facility_bulk_entry(
+                                        row,
+                                        facility_id,
+                                        column_list=field_plan_facility_schema,
+                                        facility_type_column=facility_type_col,
+                                        system_type_column=system_type_col,
+                                        total_system_capacity_column=total_system_capacity_col,
+                                        solution_design_type_column=solution_design_type_col,
+                                        custom_solution_design_column=custom_solution_design_col,
+                                        custom_total_system_capacity_column=custom_total_system_capacity_col,
                                     )
+                                    plan_facility_id = resolve_plan_facility_id_for_handoff(
+                                        facility_id, eligible_map
+                                    )
+                                    if use_assessment_flow and plan_facility_id:
+                                        pending_assessment_handoffs.append(
+                                            (index, bulk_entry, plan_facility_id)
+                                        )
+                                    else:
+                                        pending_bulk_fieldplan_links.append((index, bulk_entry))
                                 else:
-                                    df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
+                                    df.at[index, 'Installation Plan Linking Status'] = "Skipped (Include in Installation Plan != Yes)"
 
                                 # continue to next row
                                 continue
 
                     except Exception as e:
                         # any unexpected error per row
-                        df.at[index, 'Field Plan Linking Status'] = "Not Attempted"
+                        df.at[index, 'Installation Plan Linking Status'] = "Not Attempted"
                         continue
 
                 if pending_bulk_fieldplan_links:
@@ -3241,7 +3386,7 @@ async def create_fielplan_facilities(
                             if fieldplan_resp.status_code in (200, 201, 202):
                                 for row_idx, entry in chunk:
                                     facility_id = entry["facilityId"]
-                                    df.at[row_idx, 'Field Plan Linking Status'] = "Linked"
+                                    df.at[row_idx, 'Installation Plan Linking Status'] = "Linked"
                                     fieldplan_linked_facility_ids.add(facility_id)
 
                                     if fieldplan_data:
@@ -3260,10 +3405,69 @@ async def create_fielplan_facilities(
                                                 logger.error(f"Error creating facility activity for {facility_id}: {activity_exc}", exc_info=True)
                             else:
                                 for row_idx, _ in chunk:
-                                    df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
+                                    df.at[row_idx, 'Installation Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
                         except Exception as bulk_exc:
                             for row_idx, _ in chunk:
-                                df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+                                df.at[row_idx, 'Installation Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+
+                if pending_assessment_handoffs and assessment_client:
+                    for row_idx, bulk_entry, plan_facility_id in pending_assessment_handoffs:
+                        facility_id = bulk_entry["facilityId"]
+                        try:
+                            create_resp = fieldplan_client.create_fieldPlan_facility(
+                                request_info=request_info,
+                                fieldPlan_id=fieldplan_id,
+                                facility_id=facility_id,
+                                source_plan_facility_id=plan_facility_id,
+                                additional_fields=bulk_entry.get("additionalFields"),
+                            )
+                            field_plan_facility = (
+                                create_resp.get("FieldPlanFacility")
+                                or create_resp.get("fieldPlanFacility")
+                                or {}
+                            )
+                            field_plan_facility_id = field_plan_facility.get("id")
+                            if not field_plan_facility_id:
+                                search_resp = fieldplan_client.search_fieldplan_facility(
+                                    request_info, fieldplan_id
+                                )
+                                for pf in search_resp.get("FieldPlanFacilities", []):
+                                    if pf.get("facilityId") == facility_id:
+                                        field_plan_facility_id = pf.get("id")
+                                        break
+                            if not field_plan_facility_id:
+                                raise ValueError("FieldPlanFacility id not returned after create")
+
+                            assessment_client.apply_facility_handoff(
+                                request_info=request_info,
+                                plan_facility_id=plan_facility_id,
+                                installation_field_plan_id=fieldplan_id,
+                                field_plan_facility_id=field_plan_facility_id,
+                            )
+                            df.at[row_idx, 'Installation Plan Linking Status'] = "Linked + Assessment Handoff"
+                            fieldplan_linked_facility_ids.add(facility_id)
+
+                            if fieldplan_data:
+                                fieldplan = fieldplan_data[0]
+                                if fieldplan.get("status") == 'SCHEDULED':
+                                    try:
+                                        fieldplan_activity_client.create_facility_activity(
+                                            request_info=request_info,
+                                            fieldPlan=fieldplan,
+                                            roleToIds=role_to_ids,
+                                            facility_id=facility_id,
+                                        )
+                                    except Exception as activity_exc:
+                                        logger.error(
+                                            f"Error creating facility activity for {facility_id}: {activity_exc}",
+                                            exc_info=True,
+                                        )
+                        except Exception as handoff_exc:
+                            logger.error(
+                                f"Assessment handoff failed for planFacilityId={plan_facility_id}: {handoff_exc}",
+                                exc_info=True,
+                            )
+                            df.at[row_idx, 'Installation Plan Linking Status'] = f"Handoff failed: {handoff_exc}"
 
                 if pending_bulk_fieldplan_updates:
                     chunk_size = BULK_INGEST_CHUNK_SIZE
@@ -3278,23 +3482,23 @@ async def create_fielplan_facilities(
 
                             if update_resp.status_code in (200, 201, 202):
                                 for row_idx, _ in chunk:
-                                    df.at[row_idx, 'Field Plan Linking Status'] = "Updated"
+                                    df.at[row_idx, 'Installation Plan Linking Status'] = "Updated"
                             else:
                                 for row_idx, _ in chunk:
-                                    df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {update_resp.status_code} {update_resp.text}"
+                                    df.at[row_idx, 'Installation Plan Linking Status'] = f"Failed: {update_resp.status_code} {update_resp.text}"
                         except Exception as bulk_exc:
                             for row_idx, _ in chunk:
-                                df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
+                                df.at[row_idx, 'Installation Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
 
             except Exception as e:
-                logger.error(f"Error fetching fieldplan facilities: {e}")
-                # Continue without fieldplan facility data if there's an error
+                logger.error(f"Error fetching installation plan facilities: {e}")
+                # Continue without installation plan facility data if there's an error
 
         # ---------- write results back into workbook preserving formatting ----------
         # Ensure headers exist in sheet (without wiping template)
         header_values = [cell.value for cell in ws[1]]
 
-        for col_name in ["Field Plan Linking Status"]:
+        for col_name in ["Installation Plan Linking Status"]:
             if col_name not in header_values:
                 cell = ws.cell(row=1, column=len(header_values) + 1, value=col_name)
                 cell.font = Font(bold=True)
@@ -3342,11 +3546,23 @@ async def validate_amc_configurations_excel_sheet(
         background_tasks: BackgroundTasks,
         amc_file: UploadFile = File(..., description="Excel file containing AMC configuration data"),
         amc_sheet_name: str = Form(default="amc-configurations", description="Name of the sheet containing AMC data"),
+        user_info_list: str = Form(default="", description="Optional JSON array of user info objects with vendor mapping, for pocNumber validation"),
         request_info: str = Form(default="")
 ):
     input_temp_file = None
     output_temp_file = None
     request_info_obj = request_info_from_json(request_info)
+
+    # All assignments in this batch must share one pocNumber - same rule enforced server-side in
+    # AmcConfigurationValidator, checked here too so the caller sees it before /amcConfigurationBulkIngest.
+    if user_info_list:
+        try:
+            user_info_data = json.loads(user_info_list)
+            if not isinstance(user_info_data, list):
+                raise HTTPException(status_code=400, detail="user_info_list must be a JSON array")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON in user_info_list: {str(e)}")
+        validate_poc_numbers_consistent(user_info_data)
 
     try:
         input_temp_file, _ = await _save_upload_to_temp_file(amc_file, suffix=".xlsx")
@@ -3378,16 +3594,18 @@ async def validate_amc_configurations_excel_sheet(
             "Facility Id",
             "Health Facility Name",
             # "Vendor",
+            "AMC Start Date",
             "AMC-Frequency",
             "AMC-Duration"
         ]
 
         # Column names
         # vendor_col = "Vendor" if required_columns else "vendor"
+        start_date_col = "AMC Start Date" if "AMC Start Date" in df.columns else "amc start date"
         frequency_col = "AMC-Frequency" if required_columns else "amc-frequency"
         duration_col = "AMC-Duration" if required_columns else "amc-duration"
 
-        # Validate each row - only check vendor, AMC frequency, and AMC duration
+        # Validate each row - only check vendor, AMC start date, AMC frequency, and AMC duration
         error_count = 0
         for index, row in df.iterrows():
             validation_errors = []
@@ -3397,11 +3615,26 @@ async def validate_amc_configurations_excel_sheet(
                 # vendor_name = str(row.get(vendor_col, "")).strip() if not pd.isna(row.get(vendor_col)) else ""
                 amc_frequency = str(row.get(frequency_col, "")).strip() if not pd.isna(row.get(frequency_col)) else ""
                 amc_duration = str(row.get(duration_col, "")).strip() if not pd.isna(row.get(duration_col)) else ""
+                amc_start_date = _parse_amc_start_date(row.get(start_date_col)) if start_date_col in df.columns else None
 
-                # Check if fields are filled
-                if not amc_frequency or not amc_duration:
+                # A row left entirely blank means the user does not want an AMC on that facility - and
+                # is how an existing configuration gets removed at ingest time. Only a half-filled row
+                # is an error, because it is always a mistake rather than an opt-out.
+                if amc_frequency and not amc_duration:
                     validation_errors.append(
-                        "Please ensure AMC frequency, and duration are selected for all listed assets before upload."
+                        "Please ensure AMC duration is selected when an AMC frequency is set."
+                    )
+                elif amc_duration and not amc_frequency:
+                    validation_errors.append(
+                        "Please ensure AMC frequency is selected when an AMC duration is set."
+                    )
+
+                # AMC Start Date is the reference date the schedule is calculated from, so it is
+                # required whenever the row opts into an AMC (mirrors the frequency/duration pairing
+                # above) - a blank row is still a valid opt-out.
+                if (amc_frequency or amc_duration) and amc_start_date is None:
+                    validation_errors.append(
+                        "AMC Start Date is required and must be a valid date (dd-mm-yyyy) when an AMC frequency/duration is set."
                     )
 
                 # Set status and error
@@ -3486,6 +3719,160 @@ async def validate_amc_configurations_excel_sheet(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
+def _extract_boundary_codes(geography_details: dict, key: str) -> Set[str]:
+    """
+    Boundary codes under geography_details[key] ("districts" or "blocks").
+
+    The platform emits geographyDetails in two shapes - a list of plain code strings, and a list of
+    {"code": ..., "name": ...} objects - so both are accepted here rather than picking one and
+    silently returning nothing for the other.
+    """
+    codes: Set[str] = set()
+    for entry in geography_details.get(key) or []:
+        if isinstance(entry, dict):
+            code = entry.get("code")
+        else:
+            code = entry
+        if code:
+            codes.add(str(code).strip())
+    codes.discard("")
+    return codes
+
+
+def _build_amc_geography_scope(geography_details: dict):
+    """
+    Predicate telling whether a boundary code falls inside the districts/blocks the user selected,
+    plus whether a scope was actually supplied.
+
+    Boundary codes are hierarchical ("India_Karnataka_Mysuru_HD_Kote"), so a district is matched by
+    prefix. When no district or block was selected the scope is unrestricted - a bulk upload must not
+    silently drop every row because the caller omitted the geography filters. Callers must check the
+    second return value before doing anything destructive: an unrestricted scope covers the whole
+    project, which is exactly when deleting "everything not in the file" would be catastrophic.
+    """
+    block_codes = _extract_boundary_codes(geography_details, "blocks")
+    district_codes = _extract_boundary_codes(geography_details, "districts")
+
+    if not block_codes and not district_codes:
+        logger.warning("geography_details carries no districts or blocks - AMC rows will not be filtered by boundary")
+        return (lambda boundary_code: True), False
+
+    def is_in_scope(boundary_code: Optional[str]) -> bool:
+        code = str(boundary_code or "").strip()
+        if not code:
+            return False
+        if code in block_codes:
+            return True
+        return any(code == district or code.startswith(f"{district}_") for district in district_codes)
+
+    return is_in_scope, True
+
+
+def _add_months(start: datetime, months: int) -> datetime:
+    """
+    Calendar-month arithmetic, matching AmcConfigurationServiceUtil.generateAmcVisits on the Java side.
+    A 30-days-per-month approximation drifts by over a month on a 60-month contract, which would put
+    the configuration end date before the last visit the scheduler generates.
+    """
+    month_index = start.month - 1 + months
+    year = start.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(start.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+                          31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    return start.replace(year=year, month=month, day=day)
+
+
+def _parse_amc_start_date(value) -> Optional[datetime]:
+    """
+    Parses the "AMC Start Date" Excel cell. Accepts a native Excel date (pandas reads a
+    date-formatted cell as a Timestamp) or the dd-mm-yyyy text the template pre-fills, since the
+    Project Manager may retype the value instead of keeping the cell's original format.
+    """
+    if value is None:
+        return None
+    if isinstance(value, float) and pd.isna(value):
+        return None
+    if isinstance(value, pd.Timestamp):
+        return None if pd.isna(value) else value.to_pydatetime()
+    if isinstance(value, datetime):
+        return value
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return None
+    parsed = pd.to_datetime(text, format="%d-%m-%Y", errors="coerce")
+    if pd.isna(parsed):
+        parsed = pd.to_datetime(text, dayfirst=True, errors="coerce")
+    return None if pd.isna(parsed) else parsed.to_pydatetime()
+
+
+def _normalize_amc_assignments(assignments) -> List[dict]:
+    """
+    Rebuilds the nested auditDetails the AMC model expects on each assignment.
+
+    The search query aggregates assignments with jsonb_build_object and emits the audit columns flat
+    ("createdBy", "lastModifiedTime", ...), while AmcConfigurationAssignment declares an auditDetails
+    object. Because the service disables FAIL_ON_UNKNOWN_PROPERTIES, echoing the flat form back on an
+    update is accepted but silently drops the values, and the assignment upsert then writes NULL into
+    last_modified_by/last_modified_time.
+    """
+    normalized: List[dict] = []
+    for assignment in assignments or []:
+        if not isinstance(assignment, dict):
+            continue
+        assignment = dict(assignment)
+        audit_details = assignment.get("auditDetails")
+        if not audit_details:
+            audit_details = {
+                key: assignment.get(key)
+                for key in ("createdBy", "createdTime", "lastModifiedBy", "lastModifiedTime")
+                if assignment.get(key) is not None
+            }
+        if audit_details:
+            assignment["auditDetails"] = audit_details
+        normalized.append(assignment)
+    return normalized
+
+
+def build_amc_configuration_update_payload(
+        existing_config: dict,
+        duration_months: int,
+        frequency_months: int,
+        start_date_ms: Optional[int] = None,
+) -> dict:
+    """
+    Full update payload for an existing AMC configuration, carrying a new duration/frequency and
+    (when the Project Manager edited it) a new AMC Start Date.
+
+    The AMC service replays the entire create validation on update, so a partial payload is rejected:
+    everything it validated on create has to be sent back. Two fields are easy to get wrong -
+      * status: the persister writes it straight from the payload and nothing restores it, so omitting
+        it would null the column out;
+      * geographyDetails: its state is read-only, so the stored value is reused rather than the one
+        from the upload form.
+    Search-only enrichments (vendor, facility, project, assetsAmc, totalVisits, completedVisits) are
+    deliberately left out. configurationStartDate defaults to the value already on file when the
+    upload does not carry one; configurationEndDate is recomputed server-side (AmcConfigurationService.
+    applyDurationDrivenEndDates) whenever durationMonths or configurationStartDate changed.
+    """
+    return {
+        "id": existing_config.get("id"),
+        "tenantId": existing_config.get("tenantId"),
+        "vendorId": existing_config.get("vendorId"),
+        "facilityId": existing_config.get("facilityId"),
+        "projectId": existing_config.get("projectId"),
+        "durationMonths": duration_months,
+        "visitFrequencyMonths": frequency_months,
+        "status": existing_config.get("status") or "ACTIVE",
+        "configurationStartDate": start_date_ms if start_date_ms is not None else existing_config.get("configurationStartDate"),
+        "configurationEndDate": existing_config.get("configurationEndDate"),
+        "assetTypes": existing_config.get("assetTypes"),
+        "assignments": _normalize_amc_assignments(existing_config.get("assignments")),
+        "geographyDetails": existing_config.get("geographyDetails"),
+        "additionalDetails": existing_config.get("additionalDetails"),
+        "auditDetails": existing_config.get("auditDetails"),
+    }
+
+
 def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
     # Vendor id (or name fallback) for the vendor that has a user with role AMC_FIELD_STAFF.
     role_code = "AMC_FIELD_STAFF"
@@ -3524,6 +3911,42 @@ def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
     return next(iter(candidates))
 
 
+def validate_poc_numbers_consistent(user_info_data: List[dict]) -> None:
+    """
+    All AMC configuration assignments in one batch represent the same PO/work-order, so every
+    user in user_info_list must carry a pocNumber (its own, or its vendor_mapping's - same
+    fallback used when building assignments for /amcConfigurationBulkIngest) and they must all
+    be identical. Mirrors AmcConfigurationValidator's pocNumber check on the Java side.
+    """
+    poc_numbers: Set[str] = set()
+    missing = False
+
+    for vendor_mapping in user_info_data:
+        users = vendor_mapping.get("users", [])
+        if not users and "userId" in vendor_mapping:
+            users = [{"userId": vendor_mapping.get("userId")}]
+        if not isinstance(users, list):
+            continue
+
+        for user in users:
+            poc_number = str(user.get("pocNumber") or vendor_mapping.get("pocNumber") or "").strip()
+            if not poc_number:
+                missing = True
+            else:
+                poc_numbers.add(poc_number)
+
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail="pocNumber is mandatory for every user in user_info_list",
+        )
+    if len(poc_numbers) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail=f"All users in user_info_list must have the same pocNumber; found: {sorted(poc_numbers)}",
+        )
+
+
 @router.post('/amcConfigurationBulkIngest',
              summary='Bulk ingest AMC configuration template data',
              response_description="Returns processed Excel file with AMC configuration creation results")
@@ -3533,6 +3956,8 @@ async def bulk_ingest_amc_configurations(
         amc_sheet_name: str = Form(default="amc-configurations", description="Name of the sheet containing AMC data"),
         project_id: str = Form(..., description="Project ID"),
         user_info_list: str = Form(..., description="JSON array of user info objects with vendor mapping"),
+        geography_details: str = Form(..., description="JSON object with state, districts and blocks for the AMC configurations being created"),
+        amc_plan_id: Optional[str] = Form(default=None, description="Existing AMC Plan to add/update configurations under. A project can have several AMC Plans (e.g. one per subset of facilities); omit to create a new AMC Plan for this batch."),
         request_info: str = Form(default="")
 ):
     input_temp_file = None
@@ -3550,6 +3975,14 @@ async def bulk_ingest_amc_configurations(
                 raise HTTPException(status_code=400, detail="user_info_list must be a JSON array")
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=400, detail=f"Invalid JSON in user_info_list: {str(e)}")
+
+        # Parse geography details (state/districts/blocks) - same scope applied to every AMC configuration in this batch
+        try:
+            geography_details_data = json.loads(geography_details)
+            if not isinstance(geography_details_data, dict):
+                raise HTTPException(status_code=400, detail="geography_details must be a JSON object")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON in geography_details: {str(e)}")
 
         amc_vendor_id = get_vendor_id_for_amc_field_staff(user_info_data)
 
@@ -3603,6 +4036,10 @@ async def bulk_ingest_amc_configurations(
                     "userName": user_name,
                     "name": user_name,
                     "tenantId": user_tenant_id,
+                    # role/pocNumber live on the user object; fall back to the vendor_mapping level
+                    # for backward compatibility with older payload shapes.
+                    "role": user.get("role") or vendor_mapping.get("role"),
+                    "pocNumber": user.get("pocNumber") or vendor_mapping.get("pocNumber"),
                     "fullUser": user  # Store full user object for reference
                 })
 
@@ -3644,7 +4081,8 @@ async def bulk_ingest_amc_configurations(
                 df[_col] = df[_col].map(lambda x: "" if pd.isna(x) else str(x))
             df[_col] = df[_col].astype("object")
 
-        required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
+        required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC Start Date", "AMC-Frequency", "AMC-Duration"]
+        start_date_col = "AMC Start Date" if "AMC Start Date" in df.columns else "amc start date"
 
         # Initialize clients
         facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
@@ -3656,8 +4094,22 @@ async def bulk_ingest_amc_configurations(
         if not facility_client:
             raise HTTPException(status_code=500, detail="Facility Service is not configured")
 
-        # Track configurations to detect duplicates (vendor-facility-project combination)
-        seen_configs = set()
+        # Fail fast on a bogus/mismatched amc_plan_id, before processing the whole file. A project can
+        # have several AMC Plans (e.g. one per subset of facilities), so this is a targeted lookup by
+        # id, not "the project's plan".
+        if amc_plan_id:
+            try:
+                matching_plans = amc_client.search_amc_plans(
+                    request_info_obj, project_id=project_id, plan_ids=[amc_plan_id], tenant_id=tenant_id
+                )
+            except Exception as e:
+                logger.error(f"Error validating AMC Plan {amc_plan_id} for project {project_id}: {e}", exc_info=True)
+                raise HTTPException(status_code=502, detail=f"AMC Plan lookup failed: {str(e)}")
+            if not matching_plans:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"AMC Plan {amc_plan_id} was not found for project {project_id}",
+                )
 
         facility_ids_from_file = []
         for _, row in df.iterrows():
@@ -3667,54 +4119,93 @@ async def bulk_ingest_amc_configurations(
             if facility_id:
                 facility_ids_from_file.append(facility_id)
 
+        facility_batch_size = int(os.getenv("AMC_INGEST_FACILITY_ID_BATCH_SIZE", "500"))
+
+        def load_facilities_by_id(ids: List[str]) -> Dict[str, dict]:
+            """
+            Facility rows keyed by facility_id, in batches. Uses the with-boundary variant because
+            boundary codes drive the district/block scope check below.
+            """
+            loaded: Dict[str, dict] = {}
+            unique_ids = list(dict.fromkeys(i for i in ids if i))
+            for batch_start in range(0, len(unique_ids), facility_batch_size):
+                batch_ids = unique_ids[batch_start:batch_start + facility_batch_size]
+                bulk_facility_result = facility_client.bulk_search_facility_with_boundary(
+                    request_info=request_info_obj,
+                    tenant_ids=["in"],
+                    facility_ids=batch_ids,
+                    limit=max(len(batch_ids), 50),
+                    send_non_paginated_response=True,
+                )
+                for facility in (bulk_facility_result.get("facilities", []) or []):
+                    f_id = facility.get("facility_id")
+                    if f_id:
+                        loaded[f_id] = facility
+            return loaded
+
         facility_map = {}
         if facility_ids_from_file:
-            unique_facility_ids = list(dict.fromkeys(facility_ids_from_file))
-            facility_batch_size = int(os.getenv("AMC_INGEST_FACILITY_ID_BATCH_SIZE", "500"))
             try:
-                for batch_start in range(0, len(unique_facility_ids), facility_batch_size):
-                    batch_ids = unique_facility_ids[batch_start:batch_start + facility_batch_size]
-                    bulk_facility_result = facility_client.bulk_search_facility(
-                        request_info=request_info_obj,
-                        tenant_ids=["in"],
-                        facility_ids=batch_ids,
-                        limit=max(len(batch_ids), 50),
-                        send_non_paginated_response=True,
-                    )
-                    for facility in (bulk_facility_result.get("facilities", []) or []):
-                        f_id = facility.get("facility_id")
-                        if f_id:
-                            facility_map[f_id] = facility
+                facility_map = load_facilities_by_id(facility_ids_from_file)
             except Exception as e:
                 logger.error(f"Error bulk searching facilities for AMC ingest: {e}", exc_info=True)
                 raise HTTPException(status_code=502, detail=f"Facility lookup failed: {str(e)}")
 
-        asset_types_formatted = []
-        asset_type_names = {
-            "INVERTER": "Inverter",
-            "PANEL": "Panel",
-            "BATTERY": "Battery"
-        }
-        for asset_type in DEFAULT_AMC_ASSET_TYPES:
-            asset_types_formatted.append({
-                "code": asset_type,
-                "name": asset_type_names.get(asset_type, asset_type.title())
-            })
+        # Fallback reference date for a new configuration whose row has no usable AMC Start Date cell
+        # (e.g. an older template re-uploaded as-is). The template always pre-fills this column, so in
+        # practice this only backstops a blank/corrupted cell rather than driving the common path.
+        installation_submission_dates_by_facility: Dict[str, int] = {}
+        if fieldPlan_activity_service_url and facility_ids_from_file:
+            try:
+                fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
+                installation_submission_dates_by_facility = fieldplan_activity_client.get_installation_report_submission_dates(
+                    request_info_obj, facility_ids_from_file
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching installation report submission dates for AMC ingest: {e}")
 
-        assignments_template = []
-        for user in assignment_users:
-            assigned_user_id = user.get("id") or user.get("userId")
-            assignment_tenant_id = user.get("tenantId") or tenant_id
-            assignments_template.append({
-                "assignedUser": str(assigned_user_id),
-                "tenantId": assignment_tenant_id,
-            })
+        # District/block scope selected in the UI. Rows outside it are never created, and existing
+        # configurations inside it that disappeared from the file are deleted (see reconciliation below).
+        is_boundary_in_scope, has_geography_scope = _build_amc_geography_scope(geography_details_data)
 
-        now = datetime.now()
-        configuration_start_date = int(now.timestamp() * 1000)
+        # One search for the whole project instead of one per row. Configurations of any status are
+        # loaded, not just ACTIVE ones: ux_amc_configuration_unique_installation
+        # (tenant_id, facility_id, project_id, vendor_id) means a second create for a facility that
+        # already has an EXPIRED or CANCELLED configuration would be rejected by the database - and
+        # since persistence is asynchronous, that rejection would never surface to the user. So an
+        # existing configuration is always updated, never duplicated.
+        existing_config_by_facility: Dict[str, dict] = {}
+        try:
+            for config in amc_client.search_all_amc_configurations(
+                    request_info_obj, project_id=project_id, tenant_id=tenant_id):
+                config_facility_id = config.get("facilityId")
+                if not config_facility_id:
+                    continue
+                current = existing_config_by_facility.get(config_facility_id)
+                # An ACTIVE configuration always wins over a closed one for the same facility.
+                if current is None or (
+                        str(current.get("status") or "").strip().upper() != "ACTIVE"
+                        and str(config.get("status") or "").strip().upper() == "ACTIVE"):
+                    existing_config_by_facility[config_facility_id] = config
+            logger.info(
+                f"Loaded {len(existing_config_by_facility)} existing AMC configuration(s) for project {project_id}"
+            )
+        except Exception as e:
+            logger.error(f"Error loading existing AMC configurations for project {project_id}: {e}", exc_info=True)
+            raise HTTPException(status_code=502, detail=f"AMC configuration lookup failed: {str(e)}")
 
         configs_to_create = []
         row_indexes_for_configs = []
+        configs_to_update = []
+        row_indexes_for_updates = []
+        # Facilities the user kept in the file with a usable AMC selection. Anything already configured
+        # inside the selected districts/blocks but missing from this set loses its configuration.
+        facility_ids_kept_in_file: Set[str] = set()
+        # AMC Plan aggregates for this batch (see the AmcPlan search-or-create/update block below):
+        # the earliest/latest effective start/end date "dans le fichier excel" across every row that
+        # results in a create or update.
+        batch_min_start_ms: Optional[int] = None
+        batch_max_end_ms: Optional[int] = None
 
         for index, row in df.iterrows():
             try:
@@ -3736,11 +4227,36 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
                     continue
 
+                # The template writes a locked BoundaryCode column; fall back to the facility record
+                # when the column is missing (older template) or blank.
+                facility_record = facility_map.get(facility_id) or {}
+                boundary_code = str(row.get("BoundaryCode", "") or "").strip()
+                if not boundary_code:
+                    boundary_code = str(
+                        facility_record.get("boundary_code") or facility_record.get("boundaryCode") or ""
+                    ).strip()
+
+                if not is_boundary_in_scope(boundary_code):
+                    df.at[index, 'status'] = 'skipped'
+                    df.at[index, 'error'] = (
+                        f'Facility is outside the selected districts/blocks (boundary code: {boundary_code or "unknown"})'
+                    )
+                    continue
+
                 # Get AMC frequency and duration (already validated, just convert to months)
                 frequency_col = "AMC-Frequency" if "AMC-Frequency" in df.columns else "amc-frequency"
                 duration_col = "AMC-Duration" if "AMC-Duration" in df.columns else "amc-duration"
-                amc_frequency = str(row.get(frequency_col, "")).strip()
-                amc_duration = str(row.get(duration_col, "")).strip()
+                amc_frequency = "" if pd.isna(row.get(frequency_col)) else str(row.get(frequency_col, "")).strip()
+                amc_duration = "" if pd.isna(row.get(duration_col)) else str(row.get(duration_col, "")).strip()
+                parsed_start_date = _parse_amc_start_date(row.get(start_date_col)) if start_date_col in df.columns else None
+                parsed_start_date_ms = int(parsed_start_date.timestamp() * 1000) if parsed_start_date is not None else None
+
+                # A row left blank means the user does not want an AMC on this facility. That is a
+                # deliberate choice, not an error - and it is what drives the deletion pass below.
+                if not amc_frequency and not amc_duration:
+                    df.at[index, 'status'] = 'skipped'
+                    df.at[index, 'error'] = 'No AMC frequency/duration selected'
+                    continue
 
                 # Convert frequency to months (format already validated in validation endpoint)
                 if amc_frequency == "Every 6 Months":
@@ -3764,13 +4280,63 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC duration value: {amc_duration}'
                     continue
 
-                # Check for duplicate configuration (vendor-facility-project combination)
-                config_key = (facility_id, project_id)
-                if config_key in seen_configs:
+                # An existing configuration is updated in place rather than duplicated - the database
+                # allows only one configuration per (tenant, facility, project, vendor).
+                existing_config = existing_config_by_facility.get(facility_id)
+
+                # A facility can belong to at most one AMC Plan: reject the row rather than silently
+                # reassigning it or letting the DB's unique-installation constraint fail it later. A
+                # legacy config with no amcPlanId yet (created before AMC Plan existed) is not a
+                # conflict - it gets adopted into whichever plan this batch targets.
+                existing_plan_id = existing_config.get("amcPlanId") if existing_config else None
+                if existing_plan_id and existing_plan_id != amc_plan_id:
                     df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = 'Duplicate configuration: vendor-facility-project combination already exists'
+                    df.at[index, 'error'] = (
+                        f'Facility already has an active AMC configuration under a different AMC Plan '
+                        f'({existing_plan_id})'
+                    )
                     continue
-                seen_configs.add(config_key)
+
+                facility_ids_kept_in_file.add(facility_id)
+
+                # This row's effective start date, for the AMC Plan aggregates - same precedence the
+                # create/update branches below already apply individually (parsed cell > existing
+                # config's start date > installation submission date > now), just tracked as a running
+                # min/max across the whole batch instead of being resolved once per row in isolation.
+                if parsed_start_date is not None:
+                    row_start_dt = parsed_start_date
+                elif existing_config is not None and existing_config.get("configurationStartDate"):
+                    row_start_dt = datetime.fromtimestamp(existing_config["configurationStartDate"] / 1000)
+                else:
+                    fallback_ms = installation_submission_dates_by_facility.get(facility_id)
+                    row_start_dt = datetime.fromtimestamp(fallback_ms / 1000) if fallback_ms else datetime.now()
+                row_start_ms = int(row_start_dt.timestamp() * 1000)
+                row_end_ms = int(_add_months(row_start_dt, duration_months).timestamp() * 1000)
+                batch_min_start_ms = row_start_ms if batch_min_start_ms is None else min(batch_min_start_ms, row_start_ms)
+                batch_max_end_ms = row_end_ms if batch_max_end_ms is None else max(batch_max_end_ms, row_end_ms)
+
+                if existing_config:
+                    start_date_changed = (
+                        parsed_start_date_ms is not None
+                        and parsed_start_date_ms != existing_config.get("configurationStartDate")
+                    )
+                    # A legacy config with no AMC Plan yet counts as "changed" once this batch adopts
+                    # it into one - otherwise it would be silently skipped and never get amcPlanId set.
+                    plan_assignment_changed = amc_plan_id is not None and existing_config.get("amcPlanId") != amc_plan_id
+                    if (existing_config.get("durationMonths") == duration_months
+                            and existing_config.get("visitFrequencyMonths") == frequency_months
+                            and not start_date_changed
+                            and not plan_assignment_changed
+                            and str(existing_config.get("status") or "").strip().upper() == "ACTIVE"):
+                        df.at[index, 'status'] = 'skipped'
+                        df.at[index, 'error'] = 'No change'
+                        continue
+
+                    configs_to_update.append(build_amc_configuration_update_payload(
+                        existing_config, duration_months, frequency_months, start_date_ms=parsed_start_date_ms
+                    ))
+                    row_indexes_for_updates.append(index)
+                    continue
 
                 # Create assignments array from vendor users
                 assignments = []
@@ -3782,7 +4348,10 @@ async def bulk_ingest_amc_configurations(
 
                     assignment = {
                         "assignedUser": str(assigned_user_id),
-                        "tenantId": assignment_tenant_id
+                        "tenantId": assignment_tenant_id,
+                        "role": user.get("role"),
+                        "additionalDetails": None,
+                        "pocNumber": user.get("pocNumber"),
                     }
                     assignments.append(assignment)
 
@@ -3799,11 +4368,18 @@ async def bulk_ingest_amc_configurations(
                         "name": asset_type_names.get(asset_type, asset_type.title())
                     })
 
-                # Calculate configuration dates (start date = now, end date = start + duration)
-                now = datetime.now()
-                configuration_start_date = int(now.timestamp() * 1000)  # Convert to milliseconds
-                end_date = now + timedelta(days=duration_months * 30)  # Approximate: 30 days per month
-                configuration_end_date = int(end_date.timestamp() * 1000)
+                # Start date = the (possibly Project Manager-edited) AMC Start Date cell, defaulting to
+                # the Installation Report Submission Date fetched above, with "now" only as a last
+                # resort when neither is available. End date = start + duration, in calendar months
+                # (not 30-day months): the AMC scheduler generates visits with calendar arithmetic, so
+                # an approximation would place the last visit past the contract end.
+                if parsed_start_date is not None:
+                    start_dt = parsed_start_date
+                else:
+                    fallback_ms = installation_submission_dates_by_facility.get(facility_id)
+                    start_dt = datetime.fromtimestamp(fallback_ms / 1000) if fallback_ms else datetime.now()
+                configuration_start_date = int(start_dt.timestamp() * 1000)  # Convert to milliseconds
+                configuration_end_date = int(_add_months(start_dt, duration_months).timestamp() * 1000)
 
                 configs_to_create.append({
                     "tenantId": tenant_id,
@@ -3816,7 +4392,9 @@ async def bulk_ingest_amc_configurations(
                     "configurationStartDate": configuration_start_date,
                     "configurationEndDate": configuration_end_date,
                     "assetTypes": asset_types_formatted,
-                    "assignments": assignments
+                    "assignments": assignments,
+                    # Same state/districts/blocks scope for every AMC configuration in this batch, same as installation plan
+                    "geographyDetails": geography_details_data
                 })
                 row_indexes_for_configs.append(index)
             except Exception as e:
@@ -3824,41 +4402,161 @@ async def bulk_ingest_amc_configurations(
                 df.at[index, 'error'] = f'Unexpected error: {str(e)}'
                 logger.error(f"Error processing row {index}: {e}")
 
-        if configs_to_create:
-            chunk_size = AMC_CONFIGURATION_BULK_CHUNK_SIZE
-            n_cfgs = len(configs_to_create)
+        chunk_size = AMC_CONFIGURATION_BULK_CHUNK_SIZE
 
-            def _process_amc_chunk(
-                chunk_cfgs: List[dict],
-                chunk_row_indexes: List,
-                http_session: requests.Session,
-            ) -> None:
+        def _process_amc_chunk(
+            action: str,
+            success_status: str,
+            chunk_cfgs: List[dict],
+            chunk_row_indexes: List,
+            http_session: requests.Session,
+        ) -> None:
+            # A chunk is all-or-nothing: the AMC service answers per request, not per configuration,
+            # so a single rejection marks every row of the chunk. Creates and updates are therefore
+            # dispatched separately, to keep one failing side from burying the other.
+            send = (amc_client.create_amc_configurations_bulk if action == "create"
+                    else amc_client.update_amc_configurations_bulk)
+            try:
+                send(request_info_obj, chunk_cfgs, session=http_session)
+                df.loc[chunk_row_indexes, "status"] = success_status
+                df.loc[chunk_row_indexes, "error"] = ""
+            except Exception as exc:
+                logger.error(
+                    "Bulk AMC %s failed for %s rows: %s",
+                    action,
+                    len(chunk_cfgs),
+                    exc,
+                    exc_info=True,
+                )
+                err = str(exc)
+                df.loc[chunk_row_indexes, "status"] = "failed"
+                df.loc[chunk_row_indexes, "error"] = err
+
+        # Facilities that already hold a configuration inside the selected districts/blocks but are no
+        # longer requested in the file: the upload is the source of truth for its own scope, so those
+        # configurations are deactivated (soft delete - the AMC service clears isActive, no row is
+        # removed and the visit history is preserved). Facilities outside the selected
+        # districts/blocks are never touched - another upload owns them.
+        #
+        # Scoped to amc_plan_id: a project can have several AMC Plans, each covering a different
+        # subset of facilities, so "missing from this file" must only reconcile against the plan this
+        # batch targets - never against configurations that belong to a different plan. When this
+        # batch is creating a brand-new plan (amc_plan_id not given), there is nothing to reconcile
+        # against yet, so the deletion pass is skipped entirely.
+        configs_to_delete = []
+        deleted_facility_ids: Set[str] = set()
+        candidate_facility_ids = [
+            facility_id for facility_id, config in existing_config_by_facility.items()
+            if str(config.get("status") or "").strip().upper() == "ACTIVE"
+            and facility_id not in facility_ids_kept_in_file
+            and config.get("amcPlanId") == amc_plan_id
+        ] if (has_geography_scope and amc_plan_id) else []
+        if not has_geography_scope and existing_config_by_facility and amc_plan_id:
+            logger.warning(
+                "Skipping AMC deletion pass for project %s: geography_details defines no districts or "
+                "blocks, so the upload's scope cannot be bounded and every configuration would qualify",
+                project_id,
+            )
+        if candidate_facility_ids:
+            try:
+                # Facilities absent from the file were never looked up, so resolve their boundary codes.
+                missing_ids = [fid for fid in candidate_facility_ids if fid not in facility_map]
+                if missing_ids:
+                    facility_map.update(load_facilities_by_id(missing_ids))
+            except Exception as e:
+                logger.error(f"Error resolving boundaries of AMC deletion candidates: {e}", exc_info=True)
+                raise HTTPException(status_code=502, detail=f"Facility lookup failed: {str(e)}")
+
+            for facility_id in candidate_facility_ids:
+                facility_record = facility_map.get(facility_id) or {}
+                boundary_code = facility_record.get("boundary_code") or facility_record.get("boundaryCode")
+                if not is_boundary_in_scope(boundary_code):
+                    continue
+                config = existing_config_by_facility[facility_id]
+                configs_to_delete.append({
+                    "id": config.get("id"),
+                    "tenantId": config.get("tenantId") or tenant_id,
+                })
+                deleted_facility_ids.add(facility_id)
+
+        # AMC Plan: groups this batch's AmcConfigurations together (amc_plan_id FK). A project can have
+        # several AMC Plans - e.g. 300 facilities split across several plans - so this either updates
+        # the plan the caller targeted (amc_plan_id given, already validated to belong to this project
+        # above) or creates a brand-new one for this batch. healthFacilityNumber/startDate/endDate are
+        # scoped to that one plan: this batch's kept facilities, plus (only when updating an existing
+        # plan) whichever of that plan's own facilities are not being deleted - never facilities that
+        # belong to a different plan. This is a blocking step (raises on failure, aborts before any
+        # config is sent) - proceeding without a plan link would defeat the point of the feature.
+        final_active_facility_ids: Set[str] = set(facility_ids_kept_in_file)
+        if amc_plan_id:
+            for fid, cfg in existing_config_by_facility.items():
+                if fid in final_active_facility_ids or fid in deleted_facility_ids:
+                    continue
+                if cfg.get("amcPlanId") == amc_plan_id and str(cfg.get("status") or "").strip().upper() == "ACTIVE":
+                    final_active_facility_ids.add(fid)
+        health_facility_number = len(final_active_facility_ids)
+
+        if health_facility_number > 0 and amc_scheduler_service_url:
+            plan_start_ms = batch_min_start_ms or int(datetime.now().timestamp() * 1000)
+            plan_end_ms = batch_max_end_ms or plan_start_ms
+            plan_payload = {
+                "tenantId": tenant_id,
+                "projectId": project_id,
+                "healthFacilityNumber": health_facility_number,
+                "startDate": plan_start_ms,
+                "endDate": plan_end_ms,
+                "geographyScope": geography_details_data,
+                "createdBy": request_info_obj.user_info.uuid if request_info_obj.user_info else None,
+            }
+            try:
+                if amc_plan_id:
+                    plan_payload["id"] = amc_plan_id
+                    amc_plan = amc_client.update_amc_plan(request_info_obj, plan_payload)
+                else:
+                    amc_plan = amc_client.create_amc_plan(request_info_obj, plan_payload)
+                    amc_plan_id = amc_plan.get("id")
+                logger.info(f"AMC Plan '{amc_plan.get('name')}' ({amc_plan_id}) linked for project {project_id}")
+            except Exception as e:
+                logger.error(f"Error creating/updating AMC Plan for project {project_id}: {e}", exc_info=True)
+                raise HTTPException(status_code=502, detail=f"AMC Plan creation failed: {str(e)}")
+
+            for cfg in configs_to_create + configs_to_update:
+                cfg["amcPlanId"] = amc_plan_id
+
+        deleted_count = 0
+        with requests.Session() as http_session:
+            for start in range(0, len(configs_to_create), chunk_size):
+                _process_amc_chunk(
+                    "create",
+                    "success",
+                    configs_to_create[start:start + chunk_size],
+                    row_indexes_for_configs[start:start + chunk_size],
+                    http_session,
+                )
+
+            for start in range(0, len(configs_to_update), chunk_size):
+                _process_amc_chunk(
+                    "update",
+                    "updated",
+                    configs_to_update[start:start + chunk_size],
+                    row_indexes_for_updates[start:start + chunk_size],
+                    http_session,
+                )
+
+            for start in range(0, len(configs_to_delete), chunk_size):
+                chunk = configs_to_delete[start:start + chunk_size]
                 try:
-                    amc_client.create_amc_configurations_bulk(
-                        request_info_obj,
-                        chunk_cfgs,
-                        session=http_session,
-                    )
-                    df.loc[chunk_row_indexes, "status"] = "success"
-                    df.loc[chunk_row_indexes, "error"] = ""
+                    amc_client.delete_amc_configurations(request_info_obj, chunk, session=http_session)
+                    deleted_count += len(chunk)
                 except Exception as exc:
                     logger.error(
-                        "Bulk AMC create failed for %s rows: %s",
-                        len(chunk_cfgs),
-                        exc,
-                        exc_info=True,
+                        "Bulk AMC delete failed for %s configuration(s): %s", len(chunk), exc, exc_info=True
                     )
-                    err = str(exc)
-                    df.loc[chunk_row_indexes, "status"] = "failed"
-                    df.loc[chunk_row_indexes, "error"] = err
 
-            with requests.Session() as http_session:
-                for start in range(0, n_cfgs, chunk_size):
-                    _process_amc_chunk(
-                        configs_to_create[start:start + chunk_size],
-                        row_indexes_for_configs[start:start + chunk_size],
-                        http_session,
-                    )
+        logger.info(
+            f"AMC bulk ingest for project {project_id}: {len(configs_to_create)} created, "
+            f"{len(configs_to_update)} updated, {deleted_count}/{len(configs_to_delete)} deleted"
+        )
 
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=amc_sheet_name)
@@ -3868,11 +4566,16 @@ async def bulk_ingest_amc_configurations(
         background_tasks.add_task(cleanup_temp_file, output_file_path)
         background_tasks.add_task(cleanup_temp_file, input_temp_file.name)
 
-        return FileResponse(
+        response = FileResponse(
             path=output_file_path,
             filename=output_filename,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        # Deletions do not show up as rows in the returned file, so the UI needs them out of band.
+        response.headers["X-Deleted-Count"] = str(deleted_count)
+        if amc_plan_id:
+            response.headers["X-Amc-Plan-Id"] = amc_plan_id
+        return response
 
     except HTTPException:
         if input_temp_file and os.path.exists(input_temp_file.name):
@@ -3887,3 +4590,489 @@ async def bulk_ingest_amc_configurations(
         if output_temp_file and os.path.exists(output_temp_file.name):
             os.unlink(output_temp_file.name)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+def _read_assessment_include_sheet(file_path: str, sheet_name: str = "FacilityMapping") -> pd.DataFrame:
+    wb = load_workbook(file_path, read_only=True)
+    if sheet_name not in wb.sheetnames:
+        for candidate in ("FacilityMapping", "AssessmentInclude"):
+            if candidate in wb.sheetnames:
+                sheet_name = candidate
+                break
+        else:
+            sheet_name = wb.sheetnames[0]
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    df.columns = [str(c).strip() for c in df.columns]
+    return df.loc[:, ~df.columns.str.startswith("Unnamed")]
+
+
+def _find_assessment_include_col(df: pd.DataFrame) -> Optional[str]:
+    for col in df.columns:
+        col_lower = str(col).lower()
+        if "include in assessment plan" in col_lower:
+            return col
+    return None
+
+
+def _find_assessment_facility_id_col(df: pd.DataFrame) -> Optional[str]:
+    for col in df.columns:
+        if "facility id" in str(col).lower():
+            return col
+    return None
+
+
+def _row_value(row, col: Optional[str]) -> str:
+    if not col:
+        return ""
+    val = row.get(col)
+    if pd.isna(val):
+        return ""
+    return str(val).strip()
+
+
+def _normalize_facility_id_from_excel(val) -> str:
+    if pd.isna(val) or val is None:
+        return ""
+    if isinstance(val, bool):
+        return str(val).strip()
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, float):
+        if math.isfinite(val) and val.is_integer():
+            return str(int(val))
+        return str(val).strip()
+    text = str(val).strip()
+    if not text or text.lower() == "nan":
+        return ""
+    if text.endswith(".0") and text[:-2].replace("-", "", 1).isdigit():
+        return text[:-2]
+    return text
+
+
+def _build_assessment_include_facility_payload(row, df: pd.DataFrame, facility_id_col: str) -> Dict[str, str]:
+    payload = {"facilityId": _normalize_facility_id_from_excel(row.get(facility_id_col))}
+    optional_fields = {
+        "facilityName": next(
+            (c for c in df.columns if "health centre name" in str(c).lower() or "facility name" in str(c).lower()),
+            None,
+        ),
+        "facilityCategory": next(
+            (c for c in df.columns if "category of facility" in str(c).lower() or "facility category" in str(c).lower()),
+            None,
+        ),
+        "facilityType": next(
+            (c for c in df.columns if "type of hc" in str(c).lower() or "facility type" in str(c).lower()),
+            None,
+        ),
+        "district": next((c for c in df.columns if str(c).lower().strip() == "district"), None),
+        "block": next((c for c in df.columns if str(c).lower().strip() == "block"), None),
+    }
+    for key, col in optional_fields.items():
+        value = _row_value(row, col)
+        if value:
+            payload[key] = value
+    return payload
+
+
+def _parse_upstream_error_detail(response: Optional[requests.Response]) -> str:
+    if response is None:
+        return "Assessment bulk-create request failed"
+    body = (response.text or "").strip()
+    if not body:
+        return f"Assessment bulk-create failed with HTTP {response.status_code}"
+    try:
+        parsed = response.json()
+    except ValueError:
+        return body
+    errors = parsed.get("Errors") or parsed.get("errors") or []
+    if isinstance(errors, list) and errors:
+        messages = []
+        for err in errors:
+            if isinstance(err, dict):
+                code = err.get("code") or err.get("errorCode") or "ERROR"
+                message = err.get("message") or err.get("description") or code
+                messages.append(f"{code}: {message}")
+            else:
+                messages.append(str(err))
+        return "; ".join(messages)
+    if isinstance(parsed.get("message"), str):
+        return parsed["message"]
+    return body
+
+
+def _apply_validation_results_to_dataframe(
+        df: pd.DataFrame,
+        validation_errors: List[List[str]],
+) -> int:
+    error_count = 0
+    for i, errs in enumerate(validation_errors):
+        if errs:
+            df.at[i, "status"] = "FAILED"
+            df.at[i, "error"] = "; ".join(dict.fromkeys(errs))
+            error_count += 1
+        else:
+            df.at[i, "status"] = "PASSED"
+            df.at[i, "error"] = ""
+    return error_count
+
+
+def _apply_include_validation_results_to_dataframe(
+        df: pd.DataFrame,
+        validation_errors: List[List[str]],
+        exclusion_messages: List[List[str]],
+) -> int:
+    error_count = 0
+    for i in range(len(df)):
+        if validation_errors[i]:
+            df.at[i, "status"] = "FAILED"
+            df.at[i, "error"] = "; ".join(dict.fromkeys(validation_errors[i]))
+            error_count += 1
+        elif exclusion_messages[i]:
+            df.at[i, "status"] = "EXCLUDED"
+            df.at[i, "error"] = "; ".join(dict.fromkeys(exclusion_messages[i]))
+        else:
+            include_col = _find_assessment_include_col(df)
+            if include_col is not None:
+                include_val = str(df.at[i, include_col]).strip().lower()
+                if include_val == "yes":
+                    df.at[i, "status"] = "PASSED"
+                    df.at[i, "error"] = ""
+    return error_count
+
+
+def _build_availability_exclusions(
+        availability_response: dict,
+) -> dict:
+    exclusions = {}
+    for item in availability_response.get("excluded", []) or []:
+        facility_id = _normalize_facility_id_from_excel(item.get("facilityId"))
+        if not facility_id:
+            continue
+        message = item.get("message") or item.get("code") or "Facility excluded from assessment plan"
+        exclusions[facility_id] = message
+    return exclusions
+
+
+def _write_validated_facility_sheet(
+        wb,
+        df: pd.DataFrame,
+        facility_sheet_name: str,
+) -> None:
+    ws = wb[facility_sheet_name]
+    header_values = [cell.value for cell in ws[1]]
+
+    for col_name in ["status", "error"]:
+        if col_name not in header_values:
+            new_col_idx = len(header_values) + 1
+            cell = ws.cell(row=1, column=new_col_idx, value=col_name)
+            cell.font = Font(bold=True)
+            header_values.append(col_name)
+            cell.protection = Protection(locked=True)
+            for r_idx in range(2, ws.max_row + 1):
+                ws.cell(row=r_idx, column=new_col_idx).protection = Protection(locked=True)
+
+    grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    export_df = prepare_dataframe_for_excel_export(df)
+    for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
+        for c_idx, value in enumerate(row, start=1):
+            cell = ws.cell(row=r_idx, column=c_idx, value=value)
+            if ws.cell(1, c_idx).value in ["status", "error"]:
+                cell.protection = Protection(locked=True)
+                cell.fill = grey_fill
+
+    ws.protection.sheet = True
+    ws.protection.enable()
+
+
+@router.post(
+    '/assessmentPlanIncludeValidateData',
+    summary='Validate assessment plan facility include Excel before apply',
+    response_description='Returns validation report Excel with PASSED/FAILED rows',
+)
+async def validate_assessment_plan_include_data(
+        background_tasks: BackgroundTasks,
+        include_file: UploadFile = File(..., description="Assessment plan include Excel file"),
+        plan_id: str = Form(description="Assessment plan ID"),
+        project_id: str = Form(description="Project ID"),
+        tenant_id: str = Form(default="in"),
+        request_info: str = Form(default=""),
+        facility_sheet_name: str = Form(default="FacilityMapping",
+                                        description="Name of the sheet containing facility data"),
+):
+    if not fieldPlan_service_url:
+        raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+    request_info_obj = request_info_from_json(request_info)
+    temp_input_file = None
+    try:
+        temp_input_file, _ = await _save_upload_to_temp_file(include_file, suffix=".xlsx")
+        wb = load_workbook(temp_input_file.name)
+
+        if facility_sheet_name not in wb.sheetnames:
+            for candidate in ("FacilityMapping", "AssessmentInclude"):
+                if candidate in wb.sheetnames:
+                    facility_sheet_name = candidate
+                    break
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Facility sheet '{facility_sheet_name}' not found",
+                )
+
+        df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+
+        include_col = _find_assessment_include_col(df)
+        if include_col is None:
+            raise HTTPException(status_code=400, detail="Include in Assessment Plan column not found")
+
+        facility_id_col = _find_assessment_facility_id_col(df)
+        if facility_id_col is None:
+            raise HTTPException(status_code=400, detail="Facility Id column not found")
+
+        if "status" not in df.columns:
+            df["status"] = ""
+        if "error" not in df.columns:
+            df["error"] = ""
+
+        project_client = ProjectServiceClient(project_service_url)
+        linked = project_client.search_project_facility(request_info_obj, project_id)
+        linked_ids = {
+            pf.get("facilityId") for pf in (linked.get("ProjectFacilities", []) or []) if pf.get("facilityId")
+        }
+
+        assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+        all_facility_ids = [
+            _normalize_facility_id_from_excel(row.get(facility_id_col))
+            for _, row in df.iterrows()
+            if _normalize_facility_id_from_excel(row.get(facility_id_col))
+        ]
+        availability_response = assessment_client.check_include_availability(
+            request_info_obj, plan_id, tenant_id, all_facility_ids
+        )
+        availability_exclusions = _build_availability_exclusions(availability_response)
+
+        mdms_client = MDMSClient(mdms_url)
+        validation_errors, exclusion_messages = assessment_plan_include_validation(
+            df,
+            mdms_client,
+            request_info_obj,
+            include_col,
+            facility_id_col,
+            linked_ids,
+            availability_exclusions,
+        )
+        error_count = _apply_include_validation_results_to_dataframe(
+            df, validation_errors, exclusion_messages
+        )
+        _write_validated_facility_sheet(wb, df, facility_sheet_name)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_temp_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+        wb.save(output_temp_file_path)
+        autofit_columns(output_temp_file_path, facility_sheet_name, auto_fit=True)
+        background_tasks.add_task(cleanup_temp_file, output_temp_file_path)
+
+        response = FileResponse(
+            path=output_temp_file_path,
+            filename=f"assessment_plan_include_validation_results_{timestamp}.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response.headers["X-Error-Count"] = str(error_count)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Assessment include validation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+    finally:
+        if temp_input_file and os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)
+
+
+def _write_facility_apply_results_workbook(
+        wb,
+        df: pd.DataFrame,
+        facility_sheet_name: str,
+        output_path: str,
+) -> None:
+    ws = wb[facility_sheet_name]
+    header_values = [cell.value for cell in ws[1]]
+    for col_name in df.columns:
+        if col_name not in header_values:
+            cell = ws.cell(row=1, column=len(header_values) + 1, value=col_name)
+            cell.font = Font(bold=True)
+            header_values.append(col_name)
+
+    if ws.max_row > 1:
+        ws.delete_rows(2, ws.max_row - 1)
+
+    export_df = prepare_dataframe_for_excel_export(df)
+    for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
+        for c_idx, value in enumerate(row, start=1):
+            ws.cell(row=r_idx, column=c_idx, value=value)
+
+    wb.save(output_path)
+
+
+@router.post(
+    '/assessmentPlanIncludeApply',
+    summary='Apply assessment plan facility include Excel (Yes rows only)',
+    response_description='Returns processed Excel file with assessment include results',
+)
+async def apply_assessment_plan_include_data(
+        background_tasks: BackgroundTasks,
+        include_file: UploadFile = File(..., description="Assessment plan include Excel file"),
+        plan_id: str = Form(description="Assessment plan ID"),
+        project_id: str = Form(description="Project ID"),
+        tenant_id: str = Form(default="in"),
+        request_info: str = Form(default=""),
+        facility_sheet_name: str = Form(default="FacilityMapping",
+                                        description="Name of the sheet containing facility data"),
+):
+    if not fieldPlan_service_url:
+        raise HTTPException(status_code=500, detail="FIELDPLAN_SERVICE_URL is not configured")
+
+    request_info_obj = request_info_from_json(request_info)
+    assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+    temp_input_file = None
+    output_file_path = None
+    try:
+        temp_input_file, _ = await _save_upload_to_temp_file(include_file, suffix=".xlsx")
+        wb = load_workbook(temp_input_file.name)
+
+        if facility_sheet_name not in wb.sheetnames:
+            for candidate in ("FacilityMapping", "AssessmentInclude"):
+                if candidate in wb.sheetnames:
+                    facility_sheet_name = candidate
+                    break
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Facility sheet '{facility_sheet_name}' not found",
+                )
+
+        df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+
+        include_col = _find_assessment_include_col(df)
+        if include_col is None:
+            raise HTTPException(status_code=400, detail="Include in Assessment Plan column not found")
+
+        facility_id_col = _find_assessment_facility_id_col(df)
+        if facility_id_col is None:
+            raise HTTPException(status_code=400, detail="Facility Id column not found")
+
+        if "status" not in df.columns or "error" not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing 'status'/'error' columns. Please upload validated file.",
+            )
+
+        failed_rows = df[df["status"].astype(str).str.upper() == "FAILED"]
+        if not failed_rows.empty:
+            raise HTTPException(
+                status_code=400,
+                detail="Validation failed: Some rows are marked as FAILED. Please fix errors and re-validate.",
+            )
+
+        result_col = "Assessment Plan Include Status"
+        if result_col not in df.columns:
+            df[result_col] = ""
+
+        yes_row_indices: List[int] = []
+        facilities = []
+        for index, row in df.iterrows():
+            include_val = str(row.get(include_col, "")).strip().lower()
+            if include_val != "yes":
+                df.at[index, result_col] = "Skipped (Include in Assessment Plan != Yes)"
+                continue
+
+            row_status = str(row.get("status", "")).strip().upper()
+            if row_status == "EXCLUDED":
+                exclusion_msg = str(row.get("error", "")).strip()
+                df.at[index, result_col] = f"Skipped: {exclusion_msg}" if exclusion_msg else "Skipped (excluded)"
+                continue
+
+            facility_id = _normalize_facility_id_from_excel(row.get(facility_id_col))
+            if not facility_id:
+                df.at[index, result_col] = "Skipped (missing Facility Id)"
+                continue
+
+            yes_row_indices.append(index)
+            facilities.append(_build_assessment_include_facility_payload(row, df, facility_id_col))
+
+        if not facilities:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one facility must be marked Include in Assessment Plan = Yes",
+            )
+
+        try:
+            response = assessment_client.bulk_create_plan_facilities(
+                request_info_obj, plan_id, tenant_id, facilities
+            )
+            created = response.get("created", []) or []
+            api_errors = response.get("errors", []) or []
+            api_skipped = response.get("skipped", []) or []
+
+            created_ids = {
+                _normalize_facility_id_from_excel(item.get("facilityId"))
+                for item in created
+                if item.get("facilityId")
+            }
+            error_by_facility_id = {
+                _normalize_facility_id_from_excel(item.get("facilityId")): item
+                for item in api_errors
+                if item.get("facilityId")
+            }
+            skipped_by_facility_id = {
+                _normalize_facility_id_from_excel(item.get("facilityId")): item
+                for item in api_skipped
+                if item.get("facilityId")
+            }
+
+            for index in yes_row_indices:
+                facility_id = _normalize_facility_id_from_excel(df.at[index, facility_id_col])
+                if facility_id in created_ids:
+                    df.at[index, result_col] = "Included"
+                elif facility_id in skipped_by_facility_id:
+                    skip = skipped_by_facility_id[facility_id]
+                    message = skip.get("message") or skip.get("code") or "Facility skipped"
+                    df.at[index, result_col] = f"Skipped: {message}"
+                elif facility_id in error_by_facility_id:
+                    err = error_by_facility_id[facility_id]
+                    message = err.get("message") or err.get("code") or "Include failed"
+                    df.at[index, result_col] = f"Failed: {message}"
+                else:
+                    df.at[index, result_col] = "Not Attempted"
+        except requests.HTTPError as http_err:
+            detail = _parse_upstream_error_detail(http_err.response)
+            for index in yes_row_indices:
+                df.at[index, result_col] = f"Failed: {detail}"
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"assessment_plan_include_apply_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        _write_facility_apply_results_workbook(wb, df, facility_sheet_name, output_file_path)
+        autofit_columns(output_file_path, facility_sheet_name, auto_fit=True)
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Assessment include apply failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Apply failed: {str(e)}")
+    finally:
+        if temp_input_file and os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)

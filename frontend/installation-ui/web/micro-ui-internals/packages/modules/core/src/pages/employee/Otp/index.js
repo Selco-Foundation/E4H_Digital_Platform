@@ -78,37 +78,48 @@ const Otp = ({ isLogin = false }) => {
 
   useEffect(() => {
     if (!user) return;
-    Digit.SessionStorage.set("citizen.userRequestObject", user);
-    const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
-    if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
-    Digit.UserService.setUser(user);
-    setEmployeeDetail(user?.info, user?.access_token);
+    let cancelled = false;
 
-    // Fire-and-forget audit of the successful OTP login; doesn't block the redirect flow below.
-    UserAccessReportService.userLoginReport({
-      User: user?.info,
-    }).catch((err) => console.error("Login report failed", err));
+    (async () => {
+      Digit.SessionStorage.set("citizen.userRequestObject", user);
+      const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
+      if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
+      Digit.UserService.setUser(user);
+      setEmployeeDetail(user?.info, user?.access_token);
 
-    const getRedirectPathOtpLogin = (locationPathname, user, MdmsRes, RoleLandingUrl) => {
-      const userRole = user?.info?.roles?.[0]?.code;
-      const isSuperUser = userRole === "SUPERUSER";
-      const contextPath = window?.contextPath;
-
-      switch (true) {
-        case locationPathname === "/sandbox-ui/user/otp" && isSuperUser:
-          return `/${contextPath}/employee/sandbox/landing`;
-        case isSuperUser && MdmsRes?.[0]?.rolesForLandingPage?.includes("SUPERUSER"):
-          return `/${contextPath}${RoleLandingUrl}`;
-        default:
-          return `/${contextPath}/employee`;
+      try {
+        await UserAccessReportService.userLoginReport({
+          User: user?.info,
+        });
+      } catch (err) {
+        console.error("Login report failed", err);
       }
+
+      const getRedirectPathOtpLogin = (locationPathname, user, MdmsRes, RoleLandingUrl) => {
+        const userRole = user?.info?.roles?.[0]?.code;
+        const isSuperUser = userRole === "SUPERUSER";
+        const contextPath = window?.contextPath;
+
+        switch (true) {
+          case locationPathname === "/sandbox-ui/user/otp" && isSuperUser:
+            return `/${contextPath}/employee/sandbox/landing`;
+          case isSuperUser && MdmsRes?.[0]?.rolesForLandingPage?.includes("SUPERUSER"):
+            return `/${contextPath}${RoleLandingUrl}`;
+          default:
+            return `/${contextPath}/employee`;
+        }
+      };
+      const redirectPathOtpLogin = getRedirectPathOtpLogin(location.pathname, user, MdmsRes, RoleLandingUrl);
+
+      if (cancelled) return;
+      if (isLogin) history.push(redirectPathOtpLogin);
+      else history.push({ pathname: `/${window?.globalPath}/user/setup`, state: { tenant } });
+    })().catch((err) => console.error("otp login effect failed", err));
+
+    return () => {
+      cancelled = true;
     };
-    const redirectPathOtpLogin = getRedirectPathOtpLogin(location.pathname, user, MdmsRes, RoleLandingUrl);
-
-    if (isLogin) history.push(redirectPathOtpLogin);
-    else history.push({ pathname: `/${window?.globalPath}/user/setup`, state: { tenant } });
-
-  }, [user]);
+  }, [user, history, isLogin, location.pathname, MdmsRes, RoleLandingUrl, tenant]);
 
   const onSubmit = async (formData) => {
     const requestData = { username: email, password: formData?.OtpComponent?.otp, tenantId: tenant, userType: "EMPLOYEE" };

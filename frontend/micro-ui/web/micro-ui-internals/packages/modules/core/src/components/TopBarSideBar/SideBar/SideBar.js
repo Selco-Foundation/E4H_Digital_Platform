@@ -156,12 +156,12 @@ const Sidebar = ({ data }) => {
       {
         labelKey: "CORE_PRIVACY_POLICY",
         fallbackLabel: "Privacy Policy",
-        navigationURL: `/${window.contextPath}/privacy-policy`,
+        navigationURL: `/${window.contextPath}/employee/privacy-policy`,
       },
       {
         labelKey: "CORE_TERMS_OF_USE",
         fallbackLabel: "Terms of Use",
-        navigationURL: `/${window.contextPath}/terms-of-use`,
+        navigationURL: `/${window.contextPath}/employee/terms-of-use`,
       },
     ];
     const isPolicyOpen = openItems[policyParentKey] || false;

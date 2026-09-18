@@ -327,11 +327,11 @@ export const CitizenSideBar = ({
           toggleSidebar();
           break;
         case "privacyPolicy":
-          history.push(`/${window?.contextPath}/privacy-policy`);
+          history.push(`/${window?.contextPath}/employee/privacy-policy`);
           toggleSidebar();
           break;
         case "termsOfUse":
-          history.push(`/${window?.contextPath}/terms-of-use`);
+          history.push(`/${window?.contextPath}/employee/terms-of-use`);
           toggleSidebar();
           break;
         case "logout":

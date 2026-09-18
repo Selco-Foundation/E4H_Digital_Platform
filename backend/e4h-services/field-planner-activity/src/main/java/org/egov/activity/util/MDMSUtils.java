@@ -6,6 +6,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.activity.web.models.ActivityRequest;
+import org.egov.activity.web.models.InstallationImageMaster;
 import org.egov.mdms.model.MasterDetail;
 import org.egov.mdms.model.MdmsCriteria;
 import org.egov.mdms.model.MdmsCriteriaReq;
@@ -160,6 +161,101 @@ public class MDMSUtils {
             }
         }
         return records;
+    }
+
+    /**
+     * Returns every entry of the common-masters.InstallationImages master, with the system types it
+     * applies to. Filtering by system type and ordering are the caller's job (see
+     * BomService.enrichBomData) - this only parses the master.
+     */
+    @SuppressWarnings("unchecked")
+    public List<InstallationImageMaster> fetchInstallationImages(RequestInfo requestInfo, String tenantId) {
+        log.trace("fetchInstallationImages method invoked for tenantId: {}", tenantId);
+        log.info("Fetching InstallationImages MDMS master for tenantId: {}", tenantId);
+
+        MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder()
+                .requestInfo(requestInfo)
+                .mdmsCriteria(MdmsCriteria.builder()
+                        .tenantId(tenantId)
+                        .moduleDetails(Collections.singletonList(getInstallationImageModuleRequestData()))
+                        .build())
+                .build();
+
+        List<InstallationImageMaster> installationImageMasters = new ArrayList<>();
+        try {
+            Map response = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, Map.class);
+            Map<String, Object> mdmsRes = (Map<String, Object>) response.get("MdmsRes");
+            Map<String, Object> commonMasters = mdmsRes != null
+                    ? (Map<String, Object>) mdmsRes.get(MDMS_COMMON_MASTERS_MODULE_NAME)
+                    : null;
+            List<Map<String, Object>> masterRecords = commonMasters != null
+                    ? (List<Map<String, Object>>) commonMasters.get(MASTER_INSTALLATION_IMAGES)
+                    : null;
+            if (masterRecords != null && !masterRecords.isEmpty()) {
+                List<Map<String, Object>> installationImages =
+                        (List<Map<String, Object>>) masterRecords.get(0).get(INSTALLATION_IMAGE_FIELD);
+                if (installationImages != null) {
+                    for (Map<String, Object> image : installationImages) {
+                        InstallationImageMaster parsed = toInstallationImageMaster(image);
+                        if (parsed != null) {
+                            installationImageMasters.add(parsed);
+                        }
+                    }
+                }
+            }
+            log.debug("Fetched {} InstallationImages entries for tenantId: {}", installationImageMasters.size(), tenantId);
+        } catch (Exception e) {
+            log.error("Error while fetching InstallationImages MDMS master for tenantId: {}", tenantId, e);
+            throw new CustomException("MDMS_ERROR", "error while calling mdms for InstallationImages master");
+        }
+        return installationImageMasters;
+    }
+
+    /**
+     * Flattens one master entry's "system_types": [{code, order}, ...] into a code -> order map.
+     * Entries without a code or description are skipped - they cannot be rendered.
+     */
+    @SuppressWarnings("unchecked")
+    private InstallationImageMaster toInstallationImageMaster(Map<String, Object> image) {
+        Object code = image.get("code");
+        Object description = image.get("description");
+        if (code == null || description == null) {
+            return null;
+        }
+
+        Map<String, Double> orderBySystemType = new LinkedHashMap<>();
+        Object rawSystemTypes = image.get(INSTALLATION_IMAGE_SYSTEM_TYPES_FIELD);
+        if (rawSystemTypes instanceof List) {
+            for (Object rawSystemType : (List<Object>) rawSystemTypes) {
+                if (!(rawSystemType instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> systemType = (Map<String, Object>) rawSystemType;
+                Object systemTypeCode = systemType.get("code");
+                Object order = systemType.get("order");
+                if (systemTypeCode == null) {
+                    continue;
+                }
+                // Absent or non-numeric order sorts last rather than dropping the image.
+                double sortOrder = order instanceof Number ? ((Number) order).doubleValue() : Double.MAX_VALUE;
+                orderBySystemType.put(String.valueOf(systemTypeCode), sortOrder);
+            }
+        }
+
+        Object active = image.get("active");
+        return InstallationImageMaster.builder()
+                .code(String.valueOf(code))
+                .description(String.valueOf(description))
+                .active(active instanceof Boolean ? (Boolean) active : Boolean.TRUE)
+                .orderBySystemType(orderBySystemType)
+                .build();
+    }
+
+    private ModuleDetail getInstallationImageModuleRequestData() {
+        MasterDetail installationImageMasterDetail = MasterDetail.builder().name(MASTER_INSTALLATION_IMAGES).build();
+        return ModuleDetail.builder()
+                .masterDetails(Collections.singletonList(installationImageMasterDetail))
+                .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
     }
 
     private ModuleDetail getTenantModuleRequestData() {

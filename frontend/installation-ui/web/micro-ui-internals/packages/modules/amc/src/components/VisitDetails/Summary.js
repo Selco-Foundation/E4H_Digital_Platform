@@ -104,7 +104,11 @@ const Summary = ({ t, section, data, images, report, isDocument, supportingDocum
       </div>
       {expanded &&
         (isDocument ? (
-          report && <SystemParameterReport file={report} supportingDocuments={supportingDocuments} />
+          report ? (
+            <SystemParameterReport file={report} supportingDocuments={supportingDocuments} />
+          ) : (
+            <div style={{ padding: "20px" }}>{t("CORE_COMMON_NOT_APPLICABLE")}</div>
+          )
         ) : (
           <div style={{ padding: "20px" }}>
 
