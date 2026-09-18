@@ -34,14 +34,14 @@ import java.util.List;
 public class CSVGenerationService {
 
     private static final String[] HEADERS = {
-            "Ticket Number", "District", "Block", "Health Facility Name", "Health Facility Type",
+            "Ticket Number", "State", "District", "Block", "Health Facility Name", "Health Facility Type",
             "Is Solar System Working", "Issue Type", "Issue Sub-Type", "Priority", "Mapped Vendor",
             "Current Ticket Status", "SLA Compliance for Current Status", "Defined SLA Duration for Current Status",
             "SLA Compliance for Overall Ticket", "Defined Overall SLA Duration", "Comments", "Ticket Filed Date"
     };
 
     private static final int[] COLUMN_WIDTHS_CHARS = {
-            22, 16, 16, 28, 20, 16, 18, 20, 10, 24, 22, 14, 16, 14, 16, 40, 18
+            22, 16, 16, 16, 28, 20, 16, 18, 20, 10, 24, 22, 14, 16, 14, 16, 40, 18
     };
 
     /**
@@ -90,6 +90,7 @@ public class CSVGenerationService {
         Row row = sheet.createRow(rowIndex);
         int column = 0;
         writeCell(row, column++, ticket.getTicketNumber(), styles);
+        writeCell(row, column++, ticket.getStateName(), styles);
         writeCell(row, column++, ticket.getDistrict(), styles);
         writeCell(row, column++, ticket.getBlock(), styles);
         writeCell(row, column++, ticket.getHealthFacilityName(), styles);

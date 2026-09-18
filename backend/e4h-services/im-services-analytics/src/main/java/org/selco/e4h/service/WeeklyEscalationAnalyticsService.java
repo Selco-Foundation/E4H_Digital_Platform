@@ -525,10 +525,15 @@ public class WeeklyEscalationAnalyticsService {
                 double nfPct = endTotal > 0 ? endNf * 100.0 / endTotal : 0;
                 String stateName = commonUtility.getStateDisplayName(stateCode);
 
+                int[] nfChange = weeklyReportService.getNfFacilityChangeCounts(stateCode);
+
                 stateNfTrend.add(WeeklyStateNfTrendRow.builder()
                         .stateName(stateName)
                         .totalNfLastWeek(startNf)
+                        .facilitiesMovedToFunctional(nfChange[1])
+                        .newNonFunctionalThisWeek(nfChange[0])
                         .totalNfThisWeek(endNf)
+                        .totalFacilitiesThisWeek(endTotal)
                         .nfPctThisWeek(Math.round(nfPct * 10.0) / 10.0)
                         .build());
 
@@ -553,11 +558,9 @@ public class WeeklyEscalationAnalyticsService {
     }
 
     private List<EscalationTicket> loadScopedTickets() {
-        Map<String, Object> finalQuery = new HashMap<>();
-        finalQuery.put("query", Map.of("match_all", Map.of()));
-        finalQuery.put("size", 10000);
-        finalQuery.put("track_total_hits", true);
-        return elasticSearchClient.searchTickets(finalQuery);
+        // Paginated: a single size:10000 request would silently truncate now that the index holds
+        // more tickets than that (see ElasticSearchClient.searchAllTickets).
+        return elasticSearchClient.searchAllTickets(Map.of("match_all", Map.of()));
     }
 
     private FunctionalMetrics aggregateFunctionalMetrics(Set<String> stateCodes, RequestInfo requestInfo, boolean start) {

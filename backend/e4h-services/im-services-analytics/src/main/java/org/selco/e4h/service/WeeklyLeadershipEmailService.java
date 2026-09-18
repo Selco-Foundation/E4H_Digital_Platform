@@ -109,15 +109,37 @@ public class WeeklyLeadershipEmailService {
 
     private String renderStateNfTrend(WeeklyEscalationAnalytics analytics) {
         if (analytics.getStateNfTrend() == null || analytics.getStateNfTrend().isEmpty()) {
-            return "<tr><td colspan=\"4\" class=\"muted center\">No data</td></tr>";
+            return "<tr><td colspan=\"6\" class=\"muted center\">No data</td></tr>";
         }
         StringBuilder html = new StringBuilder();
+        int sumLastWeek = 0;
+        int sumMoved = 0;
+        int sumNew = 0;
+        int sumThisWeek = 0;
+        int sumTotalFacilities = 0;
         for (WeeklyStateNfTrendRow row : analytics.getStateNfTrend()) {
+            sumLastWeek += row.getTotalNfLastWeek();
+            sumMoved += row.getFacilitiesMovedToFunctional();
+            sumNew += row.getNewNonFunctionalThisWeek();
+            sumThisWeek += row.getTotalNfThisWeek();
+            sumTotalFacilities += row.getTotalFacilitiesThisWeek();
             html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
                     .append("<td class=\"right\">").append(row.getTotalNfLastWeek()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getFacilitiesMovedToFunctional()).append("</td>")
+                    .append("<td class=\"right\">").append(row.getNewNonFunctionalThisWeek()).append("</td>")
                     .append("<td class=\"right\">").append(row.getTotalNfThisWeek()).append("</td>")
                     .append("<td class=\"right\">").append(row.getNfPctThisWeek()).append("%</td></tr>");
         }
+        // Weighted by facility count, not an average of the per-state percentages, so a large
+        // state doesn't get diluted to the same weight as a small one.
+        double overallPct = sumTotalFacilities > 0 ? (sumThisWeek * 100.0 / sumTotalFacilities) : 0;
+        html.append("<tr><td style=\"font-weight:700\">TOTAL</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(sumLastWeek).append("</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(sumMoved).append("</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(sumNew).append("</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">").append(sumThisWeek).append("</td>")
+                .append("<td class=\"right\" style=\"font-weight:700\">")
+                .append(Math.round(overallPct * 10.0) / 10.0).append("%</td></tr>");
         return html.toString();
     }
 
