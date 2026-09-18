@@ -586,7 +586,9 @@ def parse_args(argv):
     p.add_argument("--es-index", default=os.getenv("ES_INDEX", DEFAULT_ES_INDEX))
     p.add_argument("--es-username", default=os.getenv("ES_USERNAME", "elastic"))
     p.add_argument("--es-password", default=os.getenv("ES_PASSWORD", "9lwuatHbJh6Hseo987Hm8TEl"))
-p.add_argument("--im-url", default=os.getenv("IM_SERVICES_URL", "http://localhost:8081/") +"im-services"),
+    p.add_argument("--im-url",
+                   default=os.getenv("IM_SERVICES_HOST", "http://localhost:8081/") +
+                           os.getenv("IM_SERVICES_ENDPOINT", "im-services"),
                    help="Base URL up to and including the /im-services context path")
     p.add_argument("--auth-token", default=None, help="Overrides IM_AUTH_TOKEN")
     p.add_argument("--request-info-file", default=None,
