@@ -50,6 +50,60 @@ public class ElasticSearchClient {
         return fetchTickets(INDEX_NAME, from, size, closedTickets);
     }
 
+    /**
+     * Paginated (scroll-based) equivalent of {@link #fetchRequiredTickets}. A single size:10000
+     * one-shot call silently truncates once the index holds more matching documents than that -
+     * true for this index as of Sep 2026 (~13,700 tickets and growing). Used wherever the caller
+     * needs the complete matching set (e.g. facility-level Non-Functional snapshots for the Weekly
+     * Leadership NF trend table), not just a bounded first page.
+     */
+    public List<Map<String, Object>> fetchAllRequiredTickets(boolean closedTickets) {
+        log.trace("Fetching all required tickets (paginated), closedTickets: {}", closedTickets);
+        String searchUri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH + "?scroll=" + SCROLL_KEEP_ALIVE;
+        String scrollUri = getBaseUrl() + "/_search/scroll";
+        int pageSize = 5000;
+        int maxPages = 50; // safety circuit breaker (250k docs) - not a real limit at current volumes
+
+        List<Map<String, Object>> allDocs = new ArrayList<>();
+        String scrollId = null;
+        try {
+            Map<String, Object> initialRequest = buildRequiredTicketQuery(0, pageSize, closedTickets);
+            initialRequest.remove("from"); // scroll has no concept of an offset
+
+            Map<String, Object> response = restTemplate.postForObject(
+                    searchUri, new HttpEntity<>(initialRequest, updateService.buildHeaders()), Map.class);
+
+            for (int page = 0; page < maxPages && response != null; page++) {
+                scrollId = (String) response.get("_scroll_id");
+                Map<String, Object> hits = (Map<String, Object>) response.get("hits");
+                List<Map<String, Object>> rawHits = hits != null
+                        ? (List<Map<String, Object>>) hits.get("hits") : null;
+                if (rawHits == null || rawHits.isEmpty()) {
+                    break;
+                }
+
+                allDocs.addAll(parseESHits(response));
+
+                if (rawHits.size() < pageSize || scrollId == null) {
+                    break;
+                }
+
+                Map<String, Object> scrollRequest = new HashMap<>();
+                scrollRequest.put("scroll", SCROLL_KEEP_ALIVE);
+                scrollRequest.put("scroll_id", scrollId);
+                response = restTemplate.postForObject(
+                        scrollUri, new HttpEntity<>(scrollRequest, updateService.buildHeaders()), Map.class);
+            }
+            log.info("fetchAllRequiredTickets: fetched {} documents across scroll pages", allDocs.size());
+            return allDocs;
+        } catch (Exception e) {
+            log.error("Failed to execute paginated fetchRequiredTickets", e);
+            return allDocs;
+        } finally {
+            clearScroll(scrollId);
+        }
+    }
+
     public List<Map<String, Object>> fetchOldRequiredTicketsFromImServices(int from, int size, boolean closedTickets) {
         return fetchTickets(OLD_INDEX_NAME, from, size,  closedTickets);
     }
@@ -192,6 +246,84 @@ public class ElasticSearchClient {
         return totalIndex;
     }
 
+    private static final String SCROLL_KEEP_ALIVE = "2m";
+
+    /**
+     * Fetches every document matching {@code baseQuery} (e.g. {"match_all": {}}) via the Scroll API,
+     * paginating past Elasticsearch's ~10,000-hit result-window cap. A single size:10000 one-shot
+     * search (as {@link #searchTickets} does) silently truncates once the index holds more documents
+     * than that - which, as of Sep 2026, it already does (~13,700 tickets and growing). Used by
+     * WeeklyEscalationAnalyticsService, which needs the full historical ticket set in one pass.
+     * <p>
+     * Sorting by {@code _id} (the more modern search_after approach) is not usable here - this
+     * cluster has {@code indices.id_field_data.enabled=false} (the standard, recommended setting),
+     * which disallows it. Scroll needs no sort field and works under that setting.
+     */
+    public List<EscalationTicket> searchAllTickets(Map<String, Object> baseQuery) {
+        log.trace("Searching all tickets (paginated via scroll) with custom query");
+        String searchUri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH + "?scroll=" + SCROLL_KEEP_ALIVE;
+        String scrollUri = getBaseUrl() + "/_search/scroll";
+        int pageSize = 5000;
+        int maxPages = 50; // safety circuit breaker (250k docs) - not a real limit at current volumes
+
+        List<EscalationTicket> allTickets = new ArrayList<>();
+        String scrollId = null;
+        try {
+            Map<String, Object> initialRequest = new HashMap<>();
+            initialRequest.put("query", baseQuery);
+            initialRequest.put("size", pageSize);
+            initialRequest.put("track_total_hits", true);
+
+            Map<String, Object> response = restTemplate.postForObject(
+                    searchUri, new HttpEntity<>(initialRequest, updateService.buildHeaders()), Map.class);
+
+            for (int page = 0; page < maxPages && response != null; page++) {
+                scrollId = (String) response.get("_scroll_id");
+                Map<String, Object> hits = (Map<String, Object>) response.get("hits");
+                List<Map<String, Object>> rawHits = hits != null
+                        ? (List<Map<String, Object>>) hits.get("hits") : null;
+                if (rawHits == null || rawHits.isEmpty()) {
+                    break;
+                }
+
+                allTickets.addAll(parseEscalationTickets(response));
+
+                if (rawHits.size() < pageSize || scrollId == null) {
+                    break;
+                }
+
+                Map<String, Object> scrollRequest = new HashMap<>();
+                scrollRequest.put("scroll", SCROLL_KEEP_ALIVE);
+                scrollRequest.put("scroll_id", scrollId);
+                response = restTemplate.postForObject(
+                        scrollUri, new HttpEntity<>(scrollRequest, updateService.buildHeaders()), Map.class);
+            }
+
+            log.info("searchAllTickets: fetched {} total tickets across scroll pages", allTickets.size());
+            return allTickets;
+        } catch (Exception e) {
+            log.error("Failed to execute paginated (scroll) search query on index '{}'", INDEX_NAME, e);
+            return allTickets;
+        } finally {
+            clearScroll(scrollId);
+        }
+    }
+
+    /** Best-effort cleanup so the scroll context doesn't linger on the cluster until it expires. */
+    private void clearScroll(String scrollId) {
+        if (scrollId == null) {
+            return;
+        }
+        try {
+            String uri = getBaseUrl() + "/_search/scroll";
+            Map<String, Object> body = Map.of("scroll_id", List.of(scrollId));
+            HttpEntity<Object> entity = new HttpEntity<>(body, updateService.buildHeaders());
+            restTemplate.exchange(uri, HttpMethod.DELETE, entity, Map.class);
+        } catch (Exception e) {
+            log.debug("Failed to clear scroll context {} (non-fatal, will expire on its own)", scrollId, e);
+        }
+    }
+
     /**
      * Generic search method for custom queries
      * Used by SLABreachDetectionService for escalation queries
@@ -314,8 +446,9 @@ public class ElasticSearchClient {
                     .additionalDetails(data)
                     // Complete field mapping according to enhancement requirements
                     .ticketNumber((String) incident.get("incidentId"))
-                    .district((String) data.get("district"))  // district is in Data, not incident
-                    .block((String) data.get("block"))        // block is in Data, not incident
+                    .stateName((String) data.get("state"))    // state is in Data, not incident
+                    .district(EscalationTicketUtil.resolveBoundaryNameOrFlag((String) data.get("district")))  // district is in Data, not incident
+                    .block(EscalationTicketUtil.resolveBoundaryNameOrFlag((String) data.get("block")))        // block is in Data, not incident
                     .healthFacilityName((String) data.get("tenantId_localized"))  // tenantId_localized is the health facility name
                     .healthFacilityType((String) incident.get("phcSubType")) // phcSubType is in incident for health facility type
                     .isSolarSystemWorking(isSolarSystemWorking)
