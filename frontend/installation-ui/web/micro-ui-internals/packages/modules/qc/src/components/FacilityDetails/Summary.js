@@ -224,6 +224,8 @@ const Summary = ({
               <Section key={index} title={`${t(`QC_INSTALLATION_${section}`)} ${index + 1}`}>
                 {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SERIAL_NUMBER`), item.serialNumber)}
                 {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), item.capacity)}
+                {item.isPotentialDuplicate === true &&
+                  AssetInfoItem(t("QC_INSTALLATION_ASSET_POTENTIAL_DUPLICATE"), t("CORE_COMMON_YES"))}
                 {item.documents && item.documents.length > 0 && (
                   <div style={{display: "flex", gap: "10px"}}>
                     {AssetInfoItem(
