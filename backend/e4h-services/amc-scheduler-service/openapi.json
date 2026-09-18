@@ -1,0 +1,1935 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AMC Scheduler Service",
+    "version": "1.0.0",
+    "description": "eGov DIGIT platform service that manages Annual Maintenance Contract (AMC) configurations, the assets covered under those contracts, and the scheduled maintenance visits generated from a configuration.\n\n### Authentication\nThis API does **not** use an `Authorization` HTTP header. Every request body carries a `RequestInfo` object, and authentication is performed via `RequestInfo.authToken` (the Bearer JWT issued by egov-user) together with `RequestInfo.userInfo` (the caller's user profile and roles). Obtain `authToken` by logging in through egov-user's `/user/oauth/token` or `/user/_login` API, then place the returned token as the value of `RequestInfo.authToken` on every subsequent call. Requests with a missing/invalid/expired token are rejected (401/403) by the platform's auth filter before reaching this service's business logic.\n\nAll list-based request/response wrappers (`AssetAmcs`, `AmcConfigurations`, `ScheduledVisits`) and the `ResponseInfo` envelope follow standard DIGIT platform conventions.",
+    "contact": {
+      "name": "eGovernments Foundation"
+    }
+  },
+  "servers": [
+    {
+      "url": "/asset-amc",
+      "description": "Server context-path as configured in src/main/resources/application.properties (server.servlet.context-path=/asset-amc)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "AssetAmc",
+      "description": "APIs to create, update and search Asset-AMC linkage records (which asset is covered under which AMC configuration)."
+    },
+    {
+      "name": "ScheduledVisit",
+      "description": "APIs to create, generate, update (including workflow transitions) and search scheduled maintenance visits, plus OTP resend for visit-report submission."
+    },
+    {
+      "name": "AmcConfiguration",
+      "description": "APIs to create, update and search AMC configuration records (vendor, facility, project, duration, visit frequency and assignments)."
+    }
+  ],
+  "paths": {
+    "/v1/asset/_create": {
+      "post": {
+        "tags": ["AssetAmc"],
+        "summary": "Create Asset-AMC records",
+        "description": "Capture details of asset(s) covered under an AMC configuration (\"Capture details of benificiary type.\" per controller ApiParam). At least one AssetAmc entry is required.",
+        "operationId": "createAssetAmc",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AssetAmcRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "amc-scheduler-service",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_create",
+                  "did": "web-client",
+                  "key": "",
+                  "msgId": "1752739200000|en_IN",
+                  "requesterId": "",
+                  "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu",
+                  "userInfo": {
+                    "id": 143,
+                    "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                    "userName": "amc-admin",
+                    "name": "Ravi Kumar",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9876543210",
+                    "emailId": "ravi.kumar@selco.org",
+                    "roles": [
+                      { "code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar" }
+                    ],
+                    "tenantId": "pb.amritsar",
+                    "uuid_": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10"
+                  },
+                  "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"
+                },
+                "AssetAmcs": [
+                  {
+                    "tenantId": "pb.amritsar",
+                    "assetId": "a1b2c3d4-e5f6-4789-9abc-1234567890ab",
+                    "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                    "amcStartDate": 1751328000000,
+                    "amcEndDate": 1782864000000,
+                    "status": "ACTIVE",
+                    "isLegacyAsset": false,
+                    "additionalDetails": {}
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. AssetAmc creation request accepted and persisted; enriched records (with generated ids and auditDetails) are returned.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AssetAmcResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "successful"
+                  },
+                  "AssetAmcs": [
+                    {
+                      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                      "tenantId": "pb.amritsar",
+                      "assetId": "a1b2c3d4-e5f6-4789-9abc-1234567890ab",
+                      "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                      "amcStartDate": 1751328000000,
+                      "amcEndDate": 1782864000000,
+                      "status": "ACTIVE",
+                      "isLegacyAsset": false,
+                      "additionalDetails": {},
+                      "auditDetails": {
+                        "createdBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "lastModifiedBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "createdTime": 1752739201000,
+                        "lastModifiedTime": 1752739201000
+                      }
+                    }
+                  ],
+                  "TotalCount": 0
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/asset/_update": {
+      "post": {
+        "tags": ["AssetAmc"],
+        "summary": "Update Asset-AMC records",
+        "description": "Details for the updated Field Plan (per controller ApiParam) - update one or more existing AssetAmc records identified by their id.",
+        "operationId": "updateAssetAmc",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AssetAmcRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "AssetAmcs": [
+                  {
+                    "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                    "tenantId": "pb.amritsar",
+                    "assetId": "a1b2c3d4-e5f6-4789-9abc-1234567890ab",
+                    "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                    "amcStartDate": 1751328000000,
+                    "amcEndDate": 1782864000000,
+                    "status": "UNDER_MAINTENANCE",
+                    "isLegacyAsset": false,
+                    "additionalDetails": {}
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. AssetAmc record(s) updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AssetAmcResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/asset/_search": {
+      "post": {
+        "tags": ["AssetAmc"],
+        "summary": "Search Asset-AMC records",
+        "description": "Details for the assetAmc (per controller ApiParam) - search AssetAmc records by tenantId, ids, assetIds, amcConfigurationIds, statuses and date ranges, with pagination.",
+        "operationId": "searchAssetAmc",
+        "parameters": [
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/offset" },
+          { "$ref": "#/components/parameters/tenantId" },
+          { "$ref": "#/components/parameters/includeDeleted" },
+          { "$ref": "#/components/parameters/lastChangedSince" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AssetAmcSearchRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "searchCriteria": {
+                  "tenantId": "pb.amritsar",
+                  "ids": ["f47ac10b-58cc-4372-a567-0e02b2c3d479"],
+                  "assetIds": ["a1b2c3d4-e5f6-4789-9abc-1234567890ab"],
+                  "amcConfigurationIds": ["c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd"],
+                  "statuses": ["ACTIVE"],
+                  "includeLegacy": false,
+                  "startDateFrom": 1748736000000,
+                  "startDateTo": 1751328000000,
+                  "endDateFrom": null,
+                  "endDateTo": null,
+                  "isActive": true,
+                  "isCountQuery": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. Matching AssetAmc records with total count.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AssetAmcResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1752739205000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "successful"
+                  },
+                  "AssetAmcs": [
+                    {
+                      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                      "tenantId": "pb.amritsar",
+                      "assetId": "a1b2c3d4-e5f6-4789-9abc-1234567890ab",
+                      "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                      "amcStartDate": 1751328000000,
+                      "amcEndDate": 1782864000000,
+                      "status": "ACTIVE",
+                      "isLegacyAsset": false,
+                      "additionalDetails": {},
+                      "auditDetails": {
+                        "createdBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "lastModifiedBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "createdTime": 1752739201000,
+                        "lastModifiedTime": 1752739201000
+                      }
+                    }
+                  ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/visit/_create": {
+      "post": {
+        "tags": ["ScheduledVisit"],
+        "summary": "Create scheduled visit(s)",
+        "description": "Capture details of scheduled visit(s) (per controller ApiParam). At least one ScheduledVisit entry is required.",
+        "operationId": "createScheduledVisit",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScheduledVisitRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "ScheduledVisit": [
+                  {
+                    "tenantId": "pb.amritsar",
+                    "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                    "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                    "facilityId": "fac-1001",
+                    "facilityName": "Amritsar Civil Hospital",
+                    "visitNumber": 1,
+                    "scheduledDate": 1753776000000,
+                    "status": "DRAFT",
+                    "additionalDetails": {}
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. Scheduled visit(s) created.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScheduledVisitResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1752739210000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "successful"
+                  },
+                  "ScheduledVisits": [
+                    {
+                      "id": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab",
+                      "tenantId": "pb.amritsar",
+                      "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                      "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                      "facilityId": "fac-1001",
+                      "facilityName": "Amritsar Civil Hospital",
+                      "visitNumber": 1,
+                      "scheduledDate": 1753776000000,
+                      "status": "DRAFT",
+                      "additionalDetails": {},
+                      "auditDetails": {
+                        "createdBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "lastModifiedBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "createdTime": 1752739210000,
+                        "lastModifiedTime": 1752739210000
+                      }
+                    }
+                  ],
+                  "TotalCount": 0
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/visit/configuration/_generate": {
+      "post": {
+        "tags": ["ScheduledVisit"],
+        "summary": "Generate scheduled visits for an AMC configuration",
+        "description": "Generates ScheduledVisit records for the given AMC configuration based on its duration and visit frequency, optionally scoped to a generation date window and optionally regenerating existing visits.",
+        "operationId": "generateVisits",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VisitGenerationRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "configurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                "generationStartDate": 1751328000000,
+                "generationEndDate": 1782864000000,
+                "regenerateExisting": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. Scheduled visits generated for the configuration.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScheduledVisitResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1752739215000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "successful"
+                  },
+                  "ScheduledVisits": [
+                    {
+                      "id": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab",
+                      "tenantId": "pb.amritsar",
+                      "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                      "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                      "facilityId": "fac-1001",
+                      "facilityName": "Amritsar Civil Hospital",
+                      "visitNumber": 1,
+                      "scheduledDate": 1753776000000,
+                      "status": "SCHEDULED",
+                      "additionalDetails": {},
+                      "auditDetails": {
+                        "createdBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "lastModifiedBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "createdTime": 1752739215000,
+                        "lastModifiedTime": 1752739215000
+                      }
+                    }
+                  ],
+                  "TotalCount": 0
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - e.g. configurationId missing/not found, or configuration cannot generate visits.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1752739215000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "GENERATE_VISIT_ERROR",
+                      "message": "The configuration ID: c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd do not exist",
+                      "description": "The configuration ID: c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd do not exist",
+                      "params": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/visit/workflow/_update": {
+      "post": {
+        "tags": ["ScheduledVisit"],
+        "summary": "Submit a visit report and transition its workflow",
+        "description": "Details for the updated workflow visit (per controller ApiParam). Submits/updates the VisitReport for a scheduled visit (e.g. after OTP verification) and applies the workflow action/transition supplied.",
+        "operationId": "updateScheduledVisitWorkflow",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VisitReportSubmissionRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "visitId": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab",
+                "visitReport": {
+                  "schemaCode": "amc.visit.report",
+                  "version": "1.0",
+                  "submittedBy": "9876543210",
+                  "submittedAt": 1753862400000,
+                  "otpReference": "8823",
+                  "otpVerifiedAt": 1753862400000,
+                  "responses": {
+                    "assetCondition": "GOOD",
+                    "remarks": "Routine maintenance completed"
+                  },
+                  "documents": [
+                    {
+                      "documentType": "VISIT_PHOTO",
+                      "fileStoreId": "b8f3f7f0-2e4b-4a90-9b2f-1234567890ab",
+                      "fileName": "visit_photo_1.jpg",
+                      "additionalDetails": {}
+                    }
+                  ],
+                  "additionalDetails": {}
+                },
+                "workflow": {
+                  "action": "SUBMIT_OTP",
+                  "comment": "Visit completed and OTP verified",
+                  "documents": [],
+                  "assignes": [],
+                  "rating": 5,
+                  "additionalDetails": {}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. Scheduled visit updated with new workflow status.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScheduledVisitResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - e.g. visit report not found, invalid OTP request, or empty workflow response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1753862401000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INVALID_OTP_REQUEST",
+                      "message": "Visit report with OTP reference is required for SUBMIT_OTP action",
+                      "description": "Visit report with OTP reference is required for SUBMIT_OTP action",
+                      "params": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/visit/_search": {
+      "post": {
+        "tags": ["ScheduledVisit"],
+        "summary": "Search scheduled visits",
+        "description": "Details for the visit (per controller ApiParam). Search ScheduledVisit records by tenantId, ids, amcConfigurationIds, facilityIds, projectsIds, statuses, date ranges, visitNumbers and assignedUsers, with pagination. Each returned visit is additionally enriched with its workflow ProcessInstances and payment/OTP Transactions.",
+        "operationId": "searchScheduledVisit",
+        "parameters": [
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/offset" },
+          { "$ref": "#/components/parameters/tenantId" },
+          { "$ref": "#/components/parameters/includeDeleted" },
+          { "$ref": "#/components/parameters/lastChangedSince" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScheduledVisitSearchRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "searchCriteria": {
+                  "tenantId": "pb.amritsar",
+                  "ids": ["d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab"],
+                  "amcConfigurationIds": ["c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd"],
+                  "facilityIds": ["fac-1001"],
+                  "projectsIds": ["9c1a2b3d-4e5f-4678-9abc-0123456789ef"],
+                  "statuses": ["SCHEDULED"],
+                  "scheduledDateFrom": 1751328000000,
+                  "scheduledDateTo": 1782864000000,
+                  "visitNumbers": [1],
+                  "assignedUsers": ["3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10"],
+                  "facilityName": "Amritsar Civil Hospital",
+                  "sort_direction": "DESC",
+                  "includeExpired": false,
+                  "isActive": true,
+                  "isCountQuery": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. Matching scheduled visits (enriched with processInstances and transactions) with total count.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScheduledVisitResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1753862500000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "successful"
+                  },
+                  "ScheduledVisits": [
+                    {
+                      "id": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab",
+                      "tenantId": "pb.amritsar",
+                      "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                      "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                      "facilityId": "fac-1001",
+                      "facilityName": "Amritsar Civil Hospital",
+                      "visitNumber": 1,
+                      "scheduledDate": 1753776000000,
+                      "status": "SCHEDULED",
+                      "processInstances": [],
+                      "transactions": [],
+                      "additionalDetails": {},
+                      "auditDetails": {
+                        "createdBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "lastModifiedBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "createdTime": 1752739215000,
+                        "lastModifiedTime": 1752739215000
+                      }
+                    }
+                  ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/visit/_resend_otp": {
+      "post": {
+        "tags": ["ScheduledVisit"],
+        "summary": "Resend OTP for a scheduled visit report",
+        "description": "Capture details of scheduled visit (per controller ApiParam). Regenerates and resends the OTP used to verify visit-report submission for the given visitId, sent to the facility POC's mobile number.",
+        "operationId": "resendOTP",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResendOTPRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "visitId": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. OTP resent; response contains OTP metadata (not the OTP value itself in production).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OtpResponse" },
+                "example": {
+                  "responseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1753862600000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "successful"
+                  },
+                  "otp": {
+                    "uuid": "8f14e45f-ceea-467e-add3-8f14e45fceea",
+                    "identity": "9876543210",
+                    "tenantId": "pb.amritsar",
+                    "isValidationSuccessful": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - e.g. visitId missing, visit not found, or facility/employee mobile number missing for OTP generation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1753862600000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "GENERATE_TOKEN",
+                      "message": "Visit not found with ID: d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab",
+                      "description": "Visit not found with ID: d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab",
+                      "params": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/visit/_update": {
+      "post": {
+        "tags": ["ScheduledVisit"],
+        "summary": "Update scheduled visit(s)",
+        "description": "Details for the updated scheduled visits (per controller ApiParam). Bulk-updates one or more existing ScheduledVisit records identified by their id.",
+        "operationId": "updateScheduledVisits",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScheduledVisitRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "ScheduledVisit": [
+                  {
+                    "id": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab",
+                    "tenantId": "pb.amritsar",
+                    "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                    "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                    "facilityId": "fac-1001",
+                    "facilityName": "Amritsar Civil Hospital",
+                    "visitNumber": 1,
+                    "scheduledDate": 1753776000000,
+                    "status": "APPROVED",
+                    "additionalDetails": {}
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. Scheduled visit(s) updated.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScheduledVisitResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/configuration/_create": {
+      "post": {
+        "tags": ["AmcConfiguration"],
+        "summary": "Create AMC configuration(s)",
+        "description": "Capture details of benificiary type (per controller ApiParam). At least one AmcConfiguration entry is required.",
+        "operationId": "createAmcConfiguration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AmcConfigurationRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "AmcConfigurations": [
+                  {
+                    "tenantId": "pb.amritsar",
+                    "vendorId": "9a8b7c6d-5e4f-4321-8a9b-0c1d2e3f4a5b",
+                    "facilityId": "fac-1001",
+                    "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                    "assetTypes": [
+                      { "assetTypeId": "AT-VENTILATOR", "count": 5 }
+                    ],
+                    "durationMonths": 12,
+                    "visitFrequencyMonths": 3,
+                    "configurationStartDate": 1751328000000,
+                    "configurationEndDate": 1782864000000,
+                    "status": "ACTIVE",
+                    "additionalDetails": {}
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. AMC configuration(s) created.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AmcConfigurationResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1752739300000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "successful"
+                  },
+                  "AmcConfigurations": [
+                    {
+                      "id": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                      "tenantId": "pb.amritsar",
+                      "vendorId": "9a8b7c6d-5e4f-4321-8a9b-0c1d2e3f4a5b",
+                      "facilityId": "fac-1001",
+                      "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                      "assetTypes": [
+                        { "assetTypeId": "AT-VENTILATOR", "count": 5 }
+                      ],
+                      "durationMonths": 12,
+                      "visitFrequencyMonths": 3,
+                      "configurationStartDate": 1751328000000,
+                      "configurationEndDate": 1782864000000,
+                      "status": "ACTIVE",
+                      "totalVisits": 4,
+                      "completedVisits": 0,
+                      "additionalDetails": {},
+                      "auditDetails": {
+                        "createdBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "lastModifiedBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "createdTime": 1752739300000,
+                        "lastModifiedTime": 1752739300000
+                      }
+                    }
+                  ],
+                  "TotalCount": 0
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/configuration/_update": {
+      "post": {
+        "tags": ["AmcConfiguration"],
+        "summary": "Update AMC configuration(s)",
+        "description": "Details for the updated Field Plan (per controller ApiParam). Update one or more existing AmcConfiguration records identified by their id, including assignments.",
+        "operationId": "updateAmcConfiguration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AmcConfigurationRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "AmcConfigurations": [
+                  {
+                    "id": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                    "tenantId": "pb.amritsar",
+                    "vendorId": "9a8b7c6d-5e4f-4321-8a9b-0c1d2e3f4a5b",
+                    "facilityId": "fac-1001",
+                    "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                    "durationMonths": 12,
+                    "visitFrequencyMonths": 3,
+                    "configurationStartDate": 1751328000000,
+                    "configurationEndDate": 1782864000000,
+                    "status": "ACTIVE",
+                    "assignments": [
+                      {
+                        "id": "1a2b3c4d-5e6f-4789-9abc-0123456789ab",
+                        "tenantId": "pb.amritsar",
+                        "amcConfigurationId": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                        "assignedUser": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "isActive": true
+                      }
+                    ],
+                    "additionalDetails": {}
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. AMC configuration(s) updated.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AmcConfigurationResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/configuration/_search": {
+      "post": {
+        "tags": ["AmcConfiguration"],
+        "summary": "Search AMC configurations",
+        "description": "Details for the amcConfiguration (per controller ApiParam). Search AmcConfiguration records by tenantId, ids, vendorIds, facilityIds, projectIds, statuses, activeOnDate, date range, assignedUsers and createdBy, with pagination.",
+        "operationId": "searchAmcConfiguration",
+        "parameters": [
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/offset" },
+          { "$ref": "#/components/parameters/tenantId" },
+          { "$ref": "#/components/parameters/includeDeleted" },
+          { "$ref": "#/components/parameters/lastChangedSince" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AmcConfigurationSearchRequest" },
+              "example": {
+                "RequestInfo": {"apiId": "amc-scheduler-service", "ver": "1.0", "ts": 1752739200000, "action": "_create", "did": "web-client", "key": "", "msgId": "1752739200000|en_IN", "requesterId": "", "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu", "userInfo": {"id": 143, "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10", "userName": "amc-admin", "name": "Ravi Kumar", "type": "EMPLOYEE", "mobileNumber": "9876543210", "emailId": "ravi.kumar@selco.org", "roles": [{"code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar"}], "tenantId": "pb.amritsar"}, "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"},
+                "searchCriteria": {
+                  "tenantId": "pb.amritsar",
+                  "ids": ["c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd"],
+                  "vendorIds": ["9a8b7c6d-5e4f-4321-8a9b-0c1d2e3f4a5b"],
+                  "facilityIds": ["fac-1001"],
+                  "projectIds": ["9c1a2b3d-4e5f-4678-9abc-0123456789ef"],
+                  "statuses": ["ACTIVE"],
+                  "activeOnDate": "17-07-2026",
+                  "assignedUsers": ["3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10"],
+                  "createdBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                  "includeExpired": false,
+                  "isActive": true,
+                  "isCountQuery": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. Matching AMC configurations with total count.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AmcConfigurationResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "amc-scheduler-service",
+                    "ver": "1.0",
+                    "ts": 1752739400000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1752739200000|en_IN",
+                    "status": "successful"
+                  },
+                  "AmcConfigurations": [
+                    {
+                      "id": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd",
+                      "tenantId": "pb.amritsar",
+                      "vendorId": "9a8b7c6d-5e4f-4321-8a9b-0c1d2e3f4a5b",
+                      "facilityId": "fac-1001",
+                      "projectId": "9c1a2b3d-4e5f-4678-9abc-0123456789ef",
+                      "durationMonths": 12,
+                      "visitFrequencyMonths": 3,
+                      "configurationStartDate": 1751328000000,
+                      "configurationEndDate": 1782864000000,
+                      "status": "ACTIVE",
+                      "totalVisits": 4,
+                      "completedVisits": 1,
+                      "additionalDetails": {},
+                      "auditDetails": {
+                        "createdBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "lastModifiedBy": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+                        "createdTime": 1752739300000,
+                        "lastModifiedTime": 1752739300000
+                      }
+                    }
+                  ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "limit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Maximum number of records to return.",
+        "required": false,
+        "schema": { "type": "integer", "example": 10 }
+      },
+      "offset": {
+        "name": "offset",
+        "in": "query",
+        "description": "Number of records to skip for pagination.",
+        "required": false,
+        "schema": { "type": "integer", "example": 0 }
+      },
+      "tenantId": {
+        "name": "tenantId",
+        "in": "query",
+        "description": "Unique id for a tenant.",
+        "required": false,
+        "schema": { "type": "string", "example": "pb.amritsar" }
+      },
+      "includeDeleted": {
+        "name": "includeDeleted",
+        "in": "query",
+        "description": "Used to fetch soft-deleted records too, if set to true.",
+        "required": false,
+        "schema": { "type": "boolean", "default": false, "example": false }
+      },
+      "lastChangedSince": {
+        "name": "lastChangedSince",
+        "in": "query",
+        "description": "Epoch time in milliseconds; used to fetch records changed since this timestamp.",
+        "required": false,
+        "schema": { "type": "integer", "format": "int64", "example": 1751328000000 }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request. Typically raised as a `org.egov.tracer.model.CustomException` (e.g. missing mandatory field, referenced entity not found, or a validation failure) and rendered by egov-tracer's default exception handler as an `ErrorRes`.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "amc-scheduler-service",
+                "ver": "1.0",
+                "ts": 1752739200000,
+                "resMsgId": "uief87324",
+                "msgId": "1752739200000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "TENANT_ID",
+                  "message": "Tenant ID is mandatory",
+                  "description": "Tenant ID is mandatory",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized. `RequestInfo.authToken` is missing, invalid or expired.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "amc-scheduler-service",
+                "ver": "1.0",
+                "ts": 1752739200000,
+                "resMsgId": "uief87324",
+                "msgId": "1752739200000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "UNAUTHORIZED",
+                  "message": "Invalid auth token",
+                  "description": "The auth token provided in RequestInfo is invalid or has expired. Please login again via egov-user /user/oauth/token.",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden. The authenticated user does not have the role/privilege required to perform this action.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "amc-scheduler-service",
+                "ver": "1.0",
+                "ts": 1752739200000,
+                "resMsgId": "uief87324",
+                "msgId": "1752739200000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "ACCESS_FORBIDDEN",
+                  "message": "Access Denied",
+                  "description": "User with roles supplied in RequestInfo.userInfo.roles is not authorized to perform this action.",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not Found. The referenced resource (e.g. AssetAmc, AmcConfiguration, ScheduledVisit or a related Project/Facility/Vendor) does not exist.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "amc-scheduler-service",
+                "ver": "1.0",
+                "ts": 1752739200000,
+                "resMsgId": "uief87324",
+                "msgId": "1752739200000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "INVALID_ASSETAMC_MODIFY",
+                  "message": "The records that you are trying to update does not exists in the system",
+                  "description": "The records that you are trying to update does not exists in the system",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal Server Error. An unhandled exception occurred while processing the request.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorRes" },
+            "example": {
+              "ResponseInfo": {
+                "apiId": "amc-scheduler-service",
+                "ver": "1.0",
+                "ts": 1752739200000,
+                "resMsgId": "uief87324",
+                "msgId": "1752739200000|en_IN",
+                "status": "failed"
+              },
+              "Errors": [
+                {
+                  "code": "INTERNAL_SERVER_ERROR",
+                  "message": "Some internal error occurred while processing this request",
+                  "description": "com.something.SomeException: exception message",
+                  "params": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "examples": {
+      "RequestInfoExample": {
+        "summary": "Sample RequestInfo",
+        "value": {
+          "apiId": "amc-scheduler-service",
+          "ver": "1.0",
+          "ts": 1752739200000,
+          "action": "_create",
+          "did": "web-client",
+          "key": "",
+          "msgId": "1752739200000|en_IN",
+          "requesterId": "",
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu",
+          "userInfo": {
+            "id": 143,
+            "uuid": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10",
+            "userName": "amc-admin",
+            "name": "Ravi Kumar",
+            "type": "EMPLOYEE",
+            "mobileNumber": "9876543210",
+            "emailId": "ravi.kumar@selco.org",
+            "roles": [
+              { "code": "AMC_ADMIN", "name": "AMC Admin", "tenantId": "pb.amritsar" }
+            ],
+            "tenantId": "pb.amritsar"
+          },
+          "correlationId": "8f14e45f-ceea-467e-add3-8f14e45fceea"
+        }
+      }
+    },
+    "schemas": {
+      "Role": {
+        "type": "object",
+        "description": "Role assigned to a user, as embedded in RequestInfo.userInfo.roles (org.egov.common.contract.request.Role).",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 101 },
+          "name": { "type": "string", "example": "AMC Admin" },
+          "code": { "type": "string", "example": "AMC_ADMIN" },
+          "tenantId": { "type": "string", "example": "pb.amritsar" }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "User details embedded in RequestInfo.userInfo (org.egov.common.contract.request.User). This, together with RequestInfo.authToken, is how the caller is authenticated and authorized - there is no separate Authorization header.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 143 },
+          "uuid": { "type": "string", "example": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10" },
+          "userName": { "type": "string", "example": "amc-admin" },
+          "name": { "type": "string", "example": "Ravi Kumar" },
+          "type": { "type": "string", "example": "EMPLOYEE" },
+          "mobileNumber": { "type": "string", "example": "9876543210" },
+          "emailId": { "type": "string", "example": "ravi.kumar@selco.org" },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Role" }
+          },
+          "tenantId": { "type": "string", "example": "pb.amritsar" }
+        }
+      },
+      "RequestInfo": {
+        "type": "object",
+        "description": "Standard DIGIT platform request envelope. `authToken` is the Bearer JWT obtained from egov-user's /user/oauth/token or /user/_login - it is the sole authentication mechanism used by this service (no Authorization header).",
+        "required": ["userInfo"],
+        "properties": {
+          "apiId": { "type": "string", "example": "amc-scheduler-service" },
+          "ver": { "type": "string", "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "description": "Epoch millis", "example": 1752739200000 },
+          "action": { "type": "string", "example": "_create" },
+          "did": { "type": "string", "example": "web-client" },
+          "key": { "type": "string", "example": "" },
+          "msgId": { "type": "string", "example": "1752739200000|en_IN" },
+          "authToken": {
+            "type": "string",
+            "description": "Bearer JWT issued by egov-user's OAuth login (/user/oauth/token or /user/_login). Carries the authenticated session for this request - the platform's auth filter validates this token in place of an Authorization header.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.dGhpc2lzYXNhbXBsZXRva2Vu"
+          },
+          "correlationId": { "type": "string", "example": "8f14e45f-ceea-467e-add3-8f14e45fceea" },
+          "userInfo": { "$ref": "#/components/schemas/UserInfo" }
+        }
+      },
+      "ResponseInfo": {
+        "type": "object",
+        "description": "Standard DIGIT platform response envelope.",
+        "properties": {
+          "apiId": { "type": "string", "example": "amc-scheduler-service" },
+          "ver": { "type": "string", "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "example": 1752739201000 },
+          "resMsgId": { "type": "string", "example": "uief87324" },
+          "msgId": { "type": "string", "example": "1752739200000|en_IN" },
+          "status": { "type": "string", "enum": ["successful", "failed"], "example": "successful" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Single error entry (org.egov.tracer.model.Error), as produced by egov-tracer's default CustomException handler.",
+        "properties": {
+          "id": { "type": "string", "nullable": true },
+          "parentId": { "type": "string", "nullable": true },
+          "code": { "type": "string", "example": "TENANT_ID" },
+          "message": { "type": "string", "example": "Tenant ID is mandatory" },
+          "description": { "type": "string", "example": "Tenant ID is mandatory" },
+          "params": {
+            "type": "array",
+            "items": { "type": "string" },
+            "nullable": true
+          }
+        }
+      },
+      "ErrorRes": {
+        "type": "object",
+        "description": "Standard eGov-tracer error response shape returned (HTTP 400 by default, or the mapped status for the exception type) whenever a CustomException/validation error/unhandled exception occurs.",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "Errors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "AuditDetails": {
+        "type": "object",
+        "properties": {
+          "createdBy": { "type": "string", "example": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10" },
+          "lastModifiedBy": { "type": "string", "example": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10" },
+          "createdTime": { "type": "integer", "format": "int64", "example": 1752739201000 },
+          "lastModifiedTime": { "type": "integer", "format": "int64", "example": 1752739201000 }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "description": "Generic uploaded document reference, reused across Asset, Organisation, ProcessInstance and Workflow.",
+        "properties": {
+          "id": { "type": "string", "maxLength": 64, "nullable": true },
+          "tenantId": { "type": "string", "maxLength": 64, "nullable": true },
+          "bomId": { "type": "string", "maxLength": 64, "nullable": true },
+          "documentType": { "type": "string", "maxLength": 64, "example": "VISIT_PHOTO" },
+          "fileStoreId": { "type": "string", "maxLength": 64, "example": "b8f3f7f0-2e4b-4a90-9b2f-1234567890ab" },
+          "documentUid": { "type": "string", "maxLength": 64, "nullable": true },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "status": { "type": "string", "maxLength": 64, "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "description": "Generic address representation (used inside Organisation.orgAddress).",
+        "properties": {
+          "id": { "type": "string", "nullable": true },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "orgId": { "type": "string", "nullable": true },
+          "doorNo": { "type": "string", "nullable": true },
+          "plotNo": { "type": "string", "nullable": true },
+          "landmark": { "type": "string", "nullable": true },
+          "city": { "type": "string", "example": "Amritsar" },
+          "pincode": { "type": "string", "example": "143001" },
+          "district": { "type": "string", "example": "Amritsar" },
+          "region": { "type": "string", "nullable": true },
+          "state": { "type": "string", "example": "Punjab" },
+          "country": { "type": "string", "example": "India" },
+          "additionDetails": { "type": "object", "nullable": true },
+          "buildingName": { "type": "string", "nullable": true },
+          "street": { "type": "string", "nullable": true },
+          "boundaryType": { "type": "string", "nullable": true },
+          "boundaryCode": { "type": "string", "nullable": true },
+          "hqAddress": { "type": "string", "nullable": true }
+        }
+      },
+      "Organisation": {
+        "type": "object",
+        "description": "AMC vendor / organisation registry record.",
+        "required": ["tenantId", "name"],
+        "properties": {
+          "id": { "type": "string", "example": "9a8b7c6d-5e4f-4321-8a9b-0c1d2e3f4a5b" },
+          "tenantId": { "type": "string", "minLength": 2, "maxLength": 64, "example": "pb.amritsar" },
+          "name": { "type": "string", "minLength": 2, "maxLength": 128, "example": "Acme Medical Equipment Services" },
+          "code": { "type": "string", "minLength": 2, "maxLength": 128, "nullable": true },
+          "applicationNumber": { "type": "string", "nullable": true },
+          "orgNumber": { "type": "string", "nullable": true },
+          "orgStatus": { "type": "string", "enum": ["DEBARRED", "ACTIVE", "INACTIVE"], "example": "ACTIVE" },
+          "orgType": { "type": "string", "example": "VENDOR" },
+          "orgSubType": { "type": "string", "nullable": true },
+          "orgPocName": { "type": "string", "example": "Suresh Mehta" },
+          "orgPocPhone": { "type": "string", "example": "9876500000" },
+          "orgPocEmail": { "type": "string", "example": "suresh.mehta@acme-medical.com" },
+          "orgPocUsername": { "type": "string", "nullable": true },
+          "externalRefNumber": { "type": "string", "minLength": 2, "maxLength": 64, "nullable": true },
+          "dateOfIncorporation": { "type": "number", "nullable": true },
+          "orgAddress": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Address" }
+          },
+          "isActive": { "type": "boolean", "example": true },
+          "documents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Document" }
+          },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "Facility": {
+        "type": "object",
+        "description": "Facility (e.g. hospital/health centre) that an AMC configuration or scheduled visit belongs to.",
+        "properties": {
+          "id": { "type": "string", "example": "fac-uuid-1001" },
+          "tenant_id": { "type": "string", "example": "pb.amritsar" },
+          "facility_id": { "type": "string", "example": "fac-1001" },
+          "facility_category": { "type": "string", "example": "PUBLIC" },
+          "facility_type": { "type": "string", "example": "HOSPITAL" },
+          "facility_subtype": { "type": "string", "nullable": true },
+          "facility_name": { "type": "string", "example": "Amritsar Civil Hospital" },
+          "facility_ownership": { "type": "string", "nullable": true },
+          "facility_region": { "type": "string", "example": "Amritsar" },
+          "wfStatus": { "type": "string", "nullable": true },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "facility_details": { "type": "object", "nullable": true },
+          "isActive": { "type": "boolean", "example": true },
+          "boundaryCode": { "type": "string", "nullable": true },
+          "isOnmReady": { "type": "boolean", "default": false },
+          "facility_poc_name": { "type": "string", "example": "Dr. Anita Sharma" },
+          "facility_poc_phone": { "type": "string", "example": "9876511111" },
+          "facility_poc_email": { "type": "string", "nullable": true },
+          "facility_status": { "type": "string", "example": "ACTIVE" },
+          "hfr_id": { "type": "string", "nullable": true },
+          "nin_id": { "type": "string", "nullable": true }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "description": "Project (org.egov.common.models.project.Project, from the health-services-models library) that an AMC configuration or scheduled visit is linked to. Shown with its most commonly used fields.",
+        "properties": {
+          "id": { "type": "string", "example": "9c1a2b3d-4e5f-4678-9abc-0123456789ef" },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "projectNumber": { "type": "string", "nullable": true },
+          "name": { "type": "string", "example": "AMC Program 2026" },
+          "projectType": { "type": "string", "nullable": true },
+          "projectSubType": { "type": "string", "nullable": true },
+          "department": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "referenceID": { "type": "string", "nullable": true },
+          "projectTypeId": { "type": "string", "nullable": true },
+          "startDate": { "type": "integer", "format": "int64", "nullable": true },
+          "endDate": { "type": "integer", "format": "int64", "nullable": true },
+          "isTaskEnabled": { "type": "boolean", "nullable": true },
+          "parent": { "type": "string", "nullable": true },
+          "projectHierarchy": { "type": "string", "nullable": true },
+          "natureOfWork": { "type": "string", "nullable": true },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "isDeleted": { "type": "boolean", "nullable": true },
+          "rowVersion": { "type": "integer", "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "Asset": {
+        "type": "object",
+        "description": "Registered asset (e.g. medical equipment) that may be covered under an AMC.",
+        "required": ["tenantId", "system", "facilityID", "activityFacilityID", "assetTypeID", "serialNumber", "brandID"],
+        "properties": {
+          "assetId": { "type": "string", "example": "a1b2c3d4-e5f6-4789-9abc-1234567890ab" },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "system": { "type": "string", "example": "HEALTH" },
+          "facilityID": { "type": "string", "example": "fac-1001" },
+          "activityFacilityID": { "type": "string", "example": "fac-1001" },
+          "assetTypeID": { "type": "string", "example": "AT-VENTILATOR" },
+          "serialNumber": { "type": "string", "example": "SN-2024-00123" },
+          "modelNumber": { "type": "string", "nullable": true, "example": "V-500" },
+          "brandID": { "type": "string", "example": "BR-PHILIPS" },
+          "assetDetails": { "type": "object", "nullable": true },
+          "warrantyStartDate": { "type": "string", "format": "date-time", "nullable": true },
+          "warrantyDuration": { "type": "integer", "nullable": true, "example": 24 },
+          "warrantyEndDate": { "type": "string", "format": "date-time", "nullable": true },
+          "wfStatus": { "type": "string", "nullable": true },
+          "isActive": { "type": "boolean", "nullable": true, "example": true },
+          "isOperational": { "type": "boolean", "nullable": true, "example": true },
+          "documents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Document" }
+          },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "additionalDetails": { "type": "object", "nullable": true }
+        }
+      },
+      "AmcConfigurationAssignment": {
+        "type": "object",
+        "description": "Assignment of a user (typically a technician) to an AMC configuration.",
+        "properties": {
+          "id": { "type": "string", "example": "1a2b3c4d-5e6f-4789-9abc-0123456789ab" },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "amcConfigurationId": { "type": "string", "example": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd" },
+          "assignedUser": { "type": "string", "example": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10" },
+          "isActive": { "type": "boolean", "example": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "AmcConfiguration": {
+        "type": "object",
+        "description": "AMC configuration record linking a vendor, a facility and a project, with duration/frequency and status.",
+        "properties": {
+          "id": { "type": "string", "example": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd" },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "vendorId": { "type": "string", "example": "9a8b7c6d-5e4f-4321-8a9b-0c1d2e3f4a5b" },
+          "vendor": { "$ref": "#/components/schemas/Organisation" },
+          "facilityId": { "type": "string", "example": "fac-1001" },
+          "facility": { "$ref": "#/components/schemas/Facility" },
+          "projectId": { "type": "string", "example": "9c1a2b3d-4e5f-4678-9abc-0123456789ef" },
+          "project": { "$ref": "#/components/schemas/Project" },
+          "assetsAmc": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AssetAmc" }
+          },
+          "assetTypes": {
+            "type": "array",
+            "items": { "type": "object" },
+            "example": [{ "assetTypeId": "AT-VENTILATOR", "count": 5 }]
+          },
+          "assignments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AmcConfigurationAssignment" }
+          },
+          "durationMonths": { "type": "integer", "example": 12 },
+          "visitFrequencyMonths": { "type": "integer", "example": 3 },
+          "configurationStartDate": { "type": "integer", "format": "int64", "example": 1751328000000 },
+          "configurationEndDate": { "type": "integer", "format": "int64", "example": 1782864000000 },
+          "status": { "type": "string", "enum": ["ACTIVE", "EXPIRED", "CANCELLED"], "example": "ACTIVE" },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "totalVisits": { "type": "integer", "example": 4 },
+          "completedVisits": { "type": "integer", "example": 1 }
+        }
+      },
+      "AssetAmc": {
+        "type": "object",
+        "description": "Linkage record between an Asset and an AmcConfiguration.",
+        "properties": {
+          "id": { "type": "string", "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479" },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "assetId": { "type": "string", "example": "a1b2c3d4-e5f6-4789-9abc-1234567890ab" },
+          "asset": { "$ref": "#/components/schemas/Asset" },
+          "amcConfigurationId": { "type": "string", "example": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd" },
+          "amcConfiguration": { "$ref": "#/components/schemas/AmcConfiguration" },
+          "amcStartDate": { "type": "integer", "format": "int64", "example": 1751328000000 },
+          "amcEndDate": { "type": "integer", "format": "int64", "example": 1782864000000 },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE, EXPIRED, UNDER_MAINTENANCE, INACTIVE",
+            "enum": ["ACTIVE", "EXPIRED", "UNDER_MAINTENANCE", "INACTIVE"],
+            "example": "ACTIVE"
+          },
+          "isLegacyAsset": { "type": "boolean", "example": false },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "AssetAmcRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "AssetAmcs"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "AssetAmcs": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/components/schemas/AssetAmc" }
+          }
+        }
+      },
+      "AssetAmcResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "AssetAmcs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AssetAmc" }
+          },
+          "TotalCount": { "type": "integer", "default": 0, "example": 1 }
+        }
+      },
+      "AssetAmcSearchCriteria": {
+        "type": "object",
+        "properties": {
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "ids": { "type": "array", "items": { "type": "string" } },
+          "assetIds": { "type": "array", "items": { "type": "string" } },
+          "amcConfigurationIds": { "type": "array", "items": { "type": "string" } },
+          "statuses": { "type": "array", "items": { "type": "string" } },
+          "includeLegacy": { "type": "boolean", "nullable": true },
+          "startDateFrom": { "type": "integer", "format": "int64", "nullable": true },
+          "startDateTo": { "type": "integer", "format": "int64", "nullable": true },
+          "endDateFrom": { "type": "integer", "format": "int64", "nullable": true },
+          "endDateTo": { "type": "integer", "format": "int64", "nullable": true },
+          "isActive": { "type": "boolean", "default": false },
+          "isCountQuery": { "type": "boolean", "default": false }
+        }
+      },
+      "AssetAmcSearchRequest": {
+        "type": "object",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "searchCriteria": { "$ref": "#/components/schemas/AssetAmcSearchCriteria" }
+        }
+      },
+      "AmcConfigurationSearchCriteria": {
+        "type": "object",
+        "properties": {
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "ids": { "type": "array", "items": { "type": "string" } },
+          "vendorIds": { "type": "array", "items": { "type": "string" } },
+          "facilityIds": { "type": "array", "items": { "type": "string" } },
+          "projectIds": { "type": "array", "items": { "type": "string" } },
+          "statuses": { "type": "array", "items": { "type": "string" } },
+          "activeOnDate": { "type": "string", "nullable": true, "example": "17-07-2026" },
+          "configurationStartDate": { "type": "integer", "format": "int64", "nullable": true },
+          "configurationEndDate": { "type": "integer", "format": "int64", "nullable": true },
+          "assignedUsers": { "type": "array", "items": { "type": "string" } },
+          "createdBy": { "type": "string", "nullable": true },
+          "includeExpired": { "type": "boolean", "nullable": true },
+          "isActive": { "type": "boolean", "default": false },
+          "isCountQuery": { "type": "boolean", "default": false }
+        }
+      },
+      "AmcConfigurationSearchRequest": {
+        "type": "object",
+        "required": ["searchCriteria"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "searchCriteria": { "$ref": "#/components/schemas/AmcConfigurationSearchCriteria" }
+        }
+      },
+      "AmcConfigurationRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "AmcConfigurations"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "AmcConfigurations": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/components/schemas/AmcConfiguration" }
+          }
+        }
+      },
+      "AmcConfigurationResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "AmcConfigurations": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AmcConfiguration" }
+          },
+          "TotalCount": { "type": "integer", "default": 0, "example": 1 }
+        }
+      },
+      "EmployeeRole": {
+        "type": "object",
+        "description": "Role assigned to an amc-scheduler-service User (org.egov.amc.web.models.Role) - distinct from the platform-wide RequestInfo Role.",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 100, "example": "FIELD_TECHNICIAN" },
+          "code": { "type": "string", "minLength": 2, "maxLength": 100, "example": "FIELD_TECHNICIAN" },
+          "description": { "type": "string", "maxLength": 256, "nullable": true },
+          "tenantId": { "type": "string", "maxLength": 256, "example": "pb.amritsar" }
+        }
+      },
+      "AssignedUser": {
+        "type": "object",
+        "description": "Employee/user assigned to a scheduled visit (org.egov.amc.web.models.User) - a fuller employee profile than RequestInfo.UserInfo, sourced from egov-user.",
+        "required": ["name", "mobileNumber", "dob"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 143 },
+          "uuid": { "type": "string", "maxLength": 64, "example": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10" },
+          "userName": { "type": "string", "maxLength": 180, "example": "field.tech1" },
+          "salutation": { "type": "string", "maxLength": 5, "nullable": true },
+          "name": { "type": "string", "maxLength": 250, "example": "Suresh Kumar" },
+          "gender": { "type": "string", "nullable": true, "example": "MALE" },
+          "mobileNumber": { "type": "string", "pattern": "^[0-9]{10}$", "example": "9876543210" },
+          "emailId": { "type": "string", "maxLength": 128, "nullable": true },
+          "altContactNumber": { "type": "string", "maxLength": 50, "nullable": true },
+          "pan": { "type": "string", "maxLength": 10, "nullable": true },
+          "aadhaarNumber": { "type": "string", "pattern": "^[0-9]{12}$", "nullable": true },
+          "permanentAddress": { "type": "string", "maxLength": 300, "nullable": true },
+          "permanentCity": { "type": "string", "maxLength": 300, "nullable": true },
+          "permanentPincode": { "type": "string", "maxLength": 10, "nullable": true },
+          "correspondenceCity": { "type": "string", "maxLength": 300, "nullable": true },
+          "correspondencePincode": { "type": "string", "maxLength": 10, "nullable": true },
+          "correspondenceAddress": { "type": "string", "maxLength": 300, "nullable": true },
+          "active": { "type": "boolean", "example": true },
+          "dob": { "type": "integer", "format": "int64", "example": 631152000000 },
+          "pwdExpiryDate": { "type": "integer", "format": "int64", "nullable": true },
+          "locale": { "type": "string", "maxLength": 16, "nullable": true },
+          "type": { "type": "string", "maxLength": 50, "example": "EMPLOYEE" },
+          "signature": { "type": "string", "maxLength": 36, "nullable": true },
+          "accountLocked": { "type": "boolean", "nullable": true },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EmployeeRole" }
+          },
+          "fatherOrHusbandName": { "type": "string", "maxLength": 100, "nullable": true },
+          "relationship": { "type": "string", "nullable": true },
+          "bloodGroup": { "type": "string", "maxLength": 32, "nullable": true },
+          "identificationMark": { "type": "string", "maxLength": 300, "nullable": true },
+          "photo": { "type": "string", "maxLength": 36, "nullable": true },
+          "createdBy": { "type": "string", "maxLength": 64, "nullable": true },
+          "createdDate": { "type": "integer", "format": "int64", "nullable": true },
+          "lastModifiedBy": { "type": "string", "maxLength": 64, "nullable": true },
+          "lastModifiedDate": { "type": "integer", "format": "int64", "nullable": true },
+          "otpReference": { "type": "string", "nullable": true },
+          "tenantId": { "type": "string", "maxLength": 256, "example": "pb.amritsar" }
+        }
+      },
+      "ScheduledVisitAssignment": {
+        "type": "object",
+        "description": "Assignment of an employee to a scheduled visit.",
+        "properties": {
+          "id": { "type": "string", "example": "2b3c4d5e-6f7a-4890-9abc-1234567890bc" },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "scheduledVisitId": { "type": "string", "example": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab" },
+          "assignedUser": { "type": "string", "example": "3d9e7b7a-2c1e-4b3e-9a0b-2e6b6f1c8a10" },
+          "user": { "$ref": "#/components/schemas/AssignedUser" },
+          "isActive": { "type": "boolean", "example": true },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "VisitReportDocument": {
+        "type": "object",
+        "properties": {
+          "documentType": { "type": "string", "example": "VISIT_PHOTO" },
+          "fileStoreId": { "type": "string", "example": "b8f3f7f0-2e4b-4a90-9b2f-1234567890ab" },
+          "fileName": { "type": "string", "example": "visit_photo_1.jpg" },
+          "additionalDetails": { "type": "object", "nullable": true }
+        }
+      },
+      "VisitReport": {
+        "type": "object",
+        "description": "Report captured during/after a scheduled visit, including OTP verification metadata and MDMS-driven dynamic responses.",
+        "properties": {
+          "schemaCode": { "type": "string", "example": "amc.visit.report" },
+          "version": { "type": "string", "example": "1.0" },
+          "submittedBy": { "type": "string", "example": "9876543210" },
+          "submittedAt": { "type": "integer", "format": "int64", "example": 1753862400000 },
+          "otpReference": { "type": "string", "example": "8823" },
+          "otpVerifiedAt": { "type": "integer", "format": "int64", "nullable": true, "example": 1753862400000 },
+          "responses": {
+            "type": "object",
+            "description": "Dynamic key-value responses captured for the visit, schema-driven by schemaCode/version.",
+            "example": { "assetCondition": "GOOD", "remarks": "Routine maintenance completed" }
+          },
+          "documents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/VisitReportDocument" }
+          },
+          "additionalDetails": { "type": "object", "nullable": true }
+        }
+      },
+      "Action": {
+        "type": "object",
+        "description": "Workflow action definition (org.egov.common.contract.workflow.Action).",
+        "properties": {
+          "uuid": { "type": "string", "nullable": true },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "currentState": { "type": "string", "example": "DRAFT" },
+          "action": { "type": "string", "example": "SUBMIT_OTP" },
+          "nextState": { "type": "string", "example": "APPROVED" },
+          "roles": { "type": "array", "items": { "type": "string" } },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "State": {
+        "type": "object",
+        "description": "Workflow state definition (org.egov.common.contract.workflow.State).",
+        "properties": {
+          "uuid": { "type": "string", "nullable": true },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "businessServiceId": { "type": "string", "nullable": true },
+          "sla": { "type": "integer", "format": "int64", "nullable": true },
+          "state": { "type": "string", "example": "APPROVED" },
+          "applicationStatus": { "type": "string", "nullable": true },
+          "docUploadRequired": { "type": "boolean", "nullable": true },
+          "isStartState": { "type": "boolean", "nullable": true },
+          "isTerminateState": { "type": "boolean", "nullable": true },
+          "isStateUpdatable": { "type": "boolean", "nullable": true },
+          "actions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Action" }
+          },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "ProcessInstance": {
+        "type": "object",
+        "description": "Workflow process-instance/history entry for a scheduled visit (org.egov.amc.web.models.ProcessInstance).",
+        "required": ["tenantId", "businessService", "businessId", "action", "moduleName"],
+        "properties": {
+          "id": { "type": "string", "maxLength": 64, "nullable": true },
+          "tenantId": { "type": "string", "maxLength": 128, "example": "pb.amritsar" },
+          "businessService": { "type": "string", "maxLength": 128, "example": "AMC_VISIT" },
+          "businessId": { "type": "string", "maxLength": 128, "example": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab" },
+          "action": { "type": "string", "maxLength": 128, "example": "SUBMIT_OTP" },
+          "moduleName": { "type": "string", "maxLength": 64, "example": "amc-services" },
+          "state": { "$ref": "#/components/schemas/State" },
+          "comment": { "type": "string", "maxLength": 1024, "nullable": true },
+          "documents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Document" }
+          },
+          "assigner": { "$ref": "#/components/schemas/UserInfo" },
+          "assignes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UserInfo" }
+          },
+          "nextActions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Action" }
+          },
+          "stateSla": { "type": "integer", "format": "int64", "nullable": true },
+          "businesssServiceSla": { "type": "integer", "format": "int64", "nullable": true },
+          "previousStatus": { "type": "string", "maxLength": 128, "nullable": true },
+          "entity": { "type": "object", "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "rating": { "type": "integer", "nullable": true, "example": 5 },
+          "escalated": { "type": "boolean", "default": false }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "description": "Transaction record (e.g. OTP verification / payment) linked to a scheduled visit.",
+        "properties": {
+          "transactionId": { "type": "string", "example": "txn-8f14e45f" },
+          "processInstanceId": { "type": "string", "nullable": true },
+          "visitReport": { "$ref": "#/components/schemas/VisitReport" },
+          "visitId": { "type": "string", "example": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "Workflow": {
+        "type": "object",
+        "description": "Workflow action payload applied when submitting/transitioning a scheduled visit.",
+        "properties": {
+          "action": { "type": "string", "example": "SUBMIT_OTP" },
+          "comment": { "type": "string", "nullable": true, "example": "Visit completed and OTP verified" },
+          "documents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Document" }
+          },
+          "assignes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "rating": { "type": "integer", "nullable": true, "example": 5 },
+          "additionalDetails": { "type": "object", "nullable": true }
+        }
+      },
+      "ScheduledVisit": {
+        "type": "object",
+        "description": "A single maintenance visit scheduled under an AMC configuration.",
+        "properties": {
+          "id": { "type": "string", "example": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab" },
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "projectId": { "type": "string", "example": "9c1a2b3d-4e5f-4678-9abc-0123456789ef" },
+          "amcConfigurationId": { "type": "string", "example": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd" },
+          "amcConfiguration": { "$ref": "#/components/schemas/AmcConfiguration" },
+          "facilityId": { "type": "string", "example": "fac-1001" },
+          "facilityName": { "type": "string", "example": "Amritsar Civil Hospital" },
+          "facility": { "$ref": "#/components/schemas/Facility" },
+          "visitNumber": { "type": "integer", "example": 1 },
+          "scheduledDate": { "type": "integer", "format": "int64", "example": 1753776000000 },
+          "actualVisitDate": { "type": "integer", "format": "int64", "nullable": true },
+          "lastVisitDate": { "type": "integer", "format": "int64", "nullable": true },
+          "status": {
+            "type": "string",
+            "description": "DRAFT, SCHEDULED, APPROVED, etc.",
+            "example": "SCHEDULED"
+          },
+          "visitReport": { "$ref": "#/components/schemas/VisitReport" },
+          "workflow": { "$ref": "#/components/schemas/Workflow" },
+          "processInstances": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProcessInstance" }
+          },
+          "transactions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Transaction" }
+          },
+          "assignments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ScheduledVisitAssignment" }
+          },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "ScheduledVisitRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "ScheduledVisit"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "ScheduledVisit": {
+            "type": "array",
+            "minItems": 1,
+            "description": "List of ScheduledVisit objects (JSON property is named 'ScheduledVisit', singular, despite being an array).",
+            "items": { "$ref": "#/components/schemas/ScheduledVisit" }
+          }
+        }
+      },
+      "ScheduledVisitResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "ScheduledVisits": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ScheduledVisit" }
+          },
+          "TotalCount": { "type": "integer", "default": 0, "example": 1 }
+        }
+      },
+      "ScheduledVisitSearchCriteria": {
+        "type": "object",
+        "properties": {
+          "tenantId": { "type": "string", "example": "pb.amritsar" },
+          "ids": { "type": "array", "items": { "type": "string" } },
+          "amcConfigurationIds": { "type": "array", "items": { "type": "string" } },
+          "facilityIds": { "type": "array", "items": { "type": "string" } },
+          "projectsIds": { "type": "array", "items": { "type": "string" } },
+          "statuses": { "type": "array", "items": { "type": "string" } },
+          "scheduledDateFrom": { "type": "integer", "format": "int64", "nullable": true },
+          "scheduledDateTo": { "type": "integer", "format": "int64", "nullable": true },
+          "actualDateFrom": { "type": "integer", "format": "int64", "nullable": true },
+          "actualDateTo": { "type": "integer", "format": "int64", "nullable": true },
+          "visitNumbers": { "type": "array", "items": { "type": "integer" } },
+          "assignedUsers": { "type": "array", "items": { "type": "string" } },
+          "facilityName": { "type": "string", "nullable": true },
+          "sort_direction": { "type": "string", "enum": ["ASC", "DESC"], "nullable": true, "example": "DESC" },
+          "includeExpired": { "type": "boolean", "nullable": true },
+          "isActive": { "type": "boolean", "default": false },
+          "isCountQuery": { "type": "boolean", "default": false }
+        }
+      },
+      "ScheduledVisitSearchRequest": {
+        "type": "object",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "searchCriteria": { "$ref": "#/components/schemas/ScheduledVisitSearchCriteria" }
+        }
+      },
+      "ResendOTPRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "visitId"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "visitId": { "type": "string", "example": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab" }
+        }
+      },
+      "Otp": {
+        "type": "object",
+        "properties": {
+          "otp": { "type": "string", "maxLength": 128, "nullable": true, "description": "Present only in non-production/test profiles; withheld in production responses." },
+          "UUID": { "type": "string", "maxLength": 36, "example": "8f14e45f-ceea-467e-add3-8f14e45fceea" },
+          "identity": { "type": "string", "maxLength": 100, "example": "9876543210" },
+          "tenantId": { "type": "string", "maxLength": 256, "example": "pb.amritsar" },
+          "isValidationSuccessful": { "type": "boolean", "example": false }
+        }
+      },
+      "OtpResponse": {
+        "type": "object",
+        "properties": {
+          "responseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "otp": { "$ref": "#/components/schemas/Otp" }
+        }
+      },
+      "VisitGenerationRequest": {
+        "type": "object",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "configurationId": { "type": "string", "example": "c2d3e4f5-a6b7-4c8d-9e0f-1234567890cd" },
+          "generationStartDate": { "type": "integer", "format": "int64", "description": "Epoch millis (date yyyy-MM-dd)", "example": 1751328000000 },
+          "generationEndDate": { "type": "integer", "format": "int64", "description": "Epoch millis (date yyyy-MM-dd)", "example": 1782864000000 },
+          "regenerateExisting": { "type": "boolean", "default": false, "example": false }
+        }
+      },
+      "VisitReportSubmissionRequest": {
+        "type": "object",
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "visitId": { "type": "string", "example": "d2e3f4a5-b6c7-4d8e-9f0a-1234567890ab" },
+          "visitReport": { "$ref": "#/components/schemas/VisitReport" },
+          "workflow": { "$ref": "#/components/schemas/Workflow" }
+        }
+      }
+    }
+  }
+}

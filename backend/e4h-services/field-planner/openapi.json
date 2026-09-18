@@ -1,0 +1,1720 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Field Planner Service API",
+    "version": "1.0.0",
+    "description": "REST API for the eGov DIGIT field-planner service. Field Plans are modelled as time-bound Projects (projectType=FieldPlan) that group field activities and can be linked to facilities.\n\n### Authentication\nThis service does not use HTTP `Authorization` headers. Every non-health request body wraps a `RequestInfo` object, and authentication is carried entirely inside `RequestInfo.authToken` — the Bearer JWT access token issued by egov-user's OAuth login endpoints (`POST /user/oauth/token` or `POST /user/_login`). The token must be paired with `RequestInfo.userInfo`, which carries the authenticated user's `uuid`, `userName` and `roles`. Requests with a missing/invalid `authToken` or missing `userInfo`/`uuid` are rejected with a 400 `CustomException` (see the `ErrorRes` schema) by egov-tracer's default exception handling — field-planner does not define its own error DTO.\n\nThe `GET /health` endpoint is an unauthenticated liveness/readiness probe and requires no `RequestInfo`.",
+    "contact": {
+      "name": "eGov DIGIT / SELCO E4H Digital Platform",
+      "url": "https://github.com/egovernments/DIGIT-OSS"
+    }
+  },
+  "servers": [
+    {
+      "url": "/field-planner",
+      "description": "Context path configured via server.servlet.context-path in application.properties"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Field Plan",
+      "description": "Create, update and search Field Plans"
+    },
+    {
+      "name": "Field Plan Facility",
+      "description": "Assign/unassign facilities to Field Plans, individually or in bulk"
+    },
+    {
+      "name": "Health",
+      "description": "Service liveness/readiness probe"
+    }
+  ],
+  "paths": {
+    "/v1/field-plans/_create": {
+      "post": {
+        "tags": ["Field Plan"],
+        "summary": "Create one or more Field Plans",
+        "description": "Validates the request (RequestInfo/UserInfo presence, mandatory FieldPlan fields, start/end date rules, and cross-checks against the referenced Project and MDMS master data), enriches each FieldPlan with a generated id and audit details, persists it and asynchronously pushes it to the `fieldPlan.management.system.kafka.create.topic` (save-field-plan) Kafka topic. Returns the enriched FieldPlans that were accepted for creation.",
+        "operationId": "createFieldPlan",
+        "requestBody": {
+          "required": true,
+          "description": "Capture details of the Field Plan (beneficiary/facility field-plan) to be created.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FieldPlanRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "field-planner",
+                  "ver": "1.0",
+                  "ts": 1784284200000,
+                  "action": "_create",
+                  "did": "web-browser",
+                  "key": null,
+                  "msgId": "1784284200000|en_IN",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA",
+                  "correlationId": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c",
+                  "userInfo": {
+                    "id": 501,
+                    "uuid": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                    "userName": "field-supervisor-1",
+                    "name": "Asha Rao",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9880012345",
+                    "emailId": "asha.rao@selco.example.org",
+                    "tenantId": "in",
+                    "roles": [
+                      { "id": 12, "code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Field Supervisor", "tenantId": "in" }
+                    ]
+                  }
+                },
+                "FieldPlans": [
+                  {
+                    "tenantId": "in",
+                    "name": "Field Plan - Gachibowli Road",
+                    "status": "DRAFT",
+                    "healthFacilityNumber": 3,
+                    "startDate": 1777593600000,
+                    "endDate": 1798675200000,
+                    "projectId": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7",
+                    "geographyDetails": {
+                      "state": "Karnataka",
+                      "district": "Bengaluru Urban"
+                    },
+                    "activities": [
+                      { "code": "INSTALLATION", "name": "Solar Installation" }
+                    ],
+                    "isDeleted": false,
+                    "additionalDetails": {}
+                  }
+                ],
+                "isCascadingProjectDateUpdate": false,
+                "apiOperation": "CREATE"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. The Field Plans were validated and queued/persisted successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FieldPlanResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "field-planner",
+                    "ver": "1.0",
+                    "ts": 1784284201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1784284200000|en_IN",
+                    "status": "successful"
+                  },
+                  "FieldPlans": [
+                    {
+                      "id": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                      "tenantId": "in",
+                      "name": "Field Plan - Gachibowli Road",
+                      "status": "DRAFT",
+                      "healthFacilityNumber": 3,
+                      "startDate": 1777593600000,
+                      "endDate": 1798675200000,
+                      "projectId": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7",
+                      "geographyDetails": {
+                        "state": "Karnataka",
+                        "district": "Bengaluru Urban"
+                      },
+                      "activities": [
+                        { "code": "INSTALLATION", "name": "Solar Installation" }
+                      ],
+                      "isDeleted": false,
+                      "isDuplicate": false,
+                      "additionalDetails": {},
+                      "auditDetails": {
+                        "createdBy": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                        "lastModifiedBy": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                        "createdTime": 1784284201000,
+                        "lastModifiedTime": 1784284201000
+                      }
+                    }
+                  ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Raised as a `CustomException` (e.g. missing RequestInfo/UserInfo, missing mandatory FieldPlan fields, invalid/unknown Project ID, FieldPlan dates outside the Project's dates, start date not before end date, or the FieldPlan's tenant/state not present in MDMS).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "field-planner",
+                    "ver": "1.0",
+                    "ts": 1784284201000,
+                    "resMsgId": null,
+                    "msgId": "1784284200000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "TENANT_ID",
+                      "message": "Tenant ID is mandatory",
+                      "description": "Tenant ID is mandatory",
+                      "params": null
+                    },
+                    {
+                      "code": "ACTIVITIES",
+                      "message": "Activity is mandatory",
+                      "description": "Activity is mandatory",
+                      "params": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. `RequestInfo.authToken` is missing, expired or invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The authToken provided in RequestInfo could not be validated by egov-user", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. The authenticated user's roles do not permit this operation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "ACCESS_FORBIDDEN", "message": "Access Denied", "description": "User does not have the privilege to create Field Plans", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The referenced Project ID does not exist.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "FieldPlan", "message": "Project ID do not exist", "description": "Project ID do not exist", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. Unexpected failure (e.g. downstream MDMS/Project service call failure, DB error).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "JSONPATH_ERROR", "message": "Failed to parse mdms response", "description": "Failed to parse mdms response", "params": null }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/field-plans/_update": {
+      "post": {
+        "tags": ["Field Plan"],
+        "summary": "Update one or more existing Field Plans",
+        "description": "Validates RequestInfo/UserInfo, mandatory FieldPlan fields, that every FieldPlan carries the same tenantId, that each FieldPlan has an `id`, and that the requested start/end date changes are legal against the persisted record (e.g. cannot move a start/end date that has already elapsed, changes must be at least 24 hours in advance). Persists the update and asynchronously pushes to the `fieldPlan.kafka.update.topic` (update-fieldplan) Kafka topic.",
+        "operationId": "updateFieldPlan",
+        "requestBody": {
+          "required": true,
+          "description": "Details for the updated Field Plan.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FieldPlanRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "field-planner",
+                  "ver": "1.0",
+                  "ts": 1784284200000,
+                  "action": "_update",
+                  "did": "web-browser",
+                  "key": null,
+                  "msgId": "1784284200000|en_IN",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA",
+                  "correlationId": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c",
+                  "userInfo": {
+                    "id": 501,
+                    "uuid": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                    "userName": "field-supervisor-1",
+                    "name": "Asha Rao",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9880012345",
+                    "emailId": "asha.rao@selco.example.org",
+                    "tenantId": "in",
+                    "roles": [
+                      { "id": 12, "code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Field Supervisor", "tenantId": "in" }
+                    ]
+                  }
+                },
+                "FieldPlans": [
+                  {
+                    "id": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                    "tenantId": "in",
+                    "name": "Field Plan - Gachibowli Road (extended)",
+                    "status": "APPROVED",
+                    "healthFacilityNumber": 3,
+                    "startDate": 1777593600000,
+                    "endDate": 1800000000000,
+                    "projectId": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7",
+                    "geographyDetails": {
+                      "state": "Karnataka",
+                      "district": "Bengaluru Urban"
+                    },
+                    "activities": [
+                      { "code": "INSTALLATION", "name": "Solar Installation" }
+                    ],
+                    "isDeleted": false
+                  }
+                ],
+                "isCascadingProjectDateUpdate": false,
+                "apiOperation": "UPDATE"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. The Field Plans were validated and updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FieldPlanResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "field-planner",
+                    "ver": "1.0",
+                    "ts": 1784284201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1784284200000|en_IN",
+                    "status": "successful"
+                  },
+                  "FieldPlans": [
+                    {
+                      "id": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                      "tenantId": "in",
+                      "name": "Field Plan - Gachibowli Road (extended)",
+                      "status": "APPROVED",
+                      "healthFacilityNumber": 3,
+                      "startDate": 1777593600000,
+                      "endDate": 1800000000000,
+                      "projectId": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7",
+                      "isDeleted": false,
+                      "isDuplicate": false,
+                      "auditDetails": {
+                        "createdBy": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                        "lastModifiedBy": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                        "createdTime": 1784284201000,
+                        "lastModifiedTime": 1784284999000
+                      }
+                    }
+                  ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Raised as a `CustomException` (e.g. missing FieldPlan id, mixed tenantIds across FieldPlans, or an illegal start/end date change against the persisted record).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UPDATE_FIELDPLAN", "message": "FieldPlan Id is mandatory", "description": "FieldPlan Id is mandatory", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. `RequestInfo.authToken` is missing, expired or invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The authToken provided in RequestInfo could not be validated by egov-user", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. The authenticated user's roles do not permit this operation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "ACCESS_FORBIDDEN", "message": "Access Denied", "description": "User does not have the privilege to update Field Plans", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The FieldPlan record being updated does not exist.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "INVALID_FIELDPLAN_MODIFY", "message": "The records that you are trying to update does not exists in the system", "description": "The records that you are trying to update does not exists in the system", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Error while processing request", "description": "An unexpected error occurred while updating the FieldPlan", "params": null }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/field-plans/_search": {
+      "post": {
+        "tags": ["Field Plan"],
+        "summary": "Search Field Plans",
+        "description": "Validates RequestInfo/UserInfo, requires `limit`, `offset` and `tenantId` query parameters, requires the FieldPlan search criteria's `tenantId` to match the query parameter, requires at least one search field (ids/projectId/statuses/fromDate/toDate/lastChangedSince) to be supplied, and validates the from/to date range. Returns the matching FieldPlans together with the total matching count.",
+        "operationId": "searchFieldPlan",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "description": "Maximum number of records to return.",
+            "schema": { "type": "integer", "format": "int32", "example": 10 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": true,
+            "description": "Number of records to skip, for pagination.",
+            "schema": { "type": "integer", "format": "int32", "example": 0 }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": true,
+            "description": "Tenant to search within. Must match FieldPlans.tenantId in the request body.",
+            "schema": { "type": "string", "example": "in" }
+          },
+          {
+            "name": "lastChangedSince",
+            "in": "query",
+            "required": false,
+            "description": "Epoch millis. Only return records changed after this time.",
+            "schema": { "type": "integer", "format": "int64", "example": 1777500000000 }
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "required": false,
+            "description": "Whether soft-deleted records should be included in the results.",
+            "schema": { "type": "boolean", "default": false, "example": false }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Details for the FieldPlan search.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FieldPlanSearchRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "field-planner",
+                  "ver": "1.0",
+                  "ts": 1784284200000,
+                  "action": "_search",
+                  "did": "web-browser",
+                  "key": null,
+                  "msgId": "1784284200000|en_IN",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA",
+                  "correlationId": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c",
+                  "userInfo": {
+                    "id": 501,
+                    "uuid": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                    "userName": "field-supervisor-1",
+                    "tenantId": "in",
+                    "roles": [
+                      { "id": 12, "code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Field Supervisor", "tenantId": "in" }
+                    ]
+                  }
+                },
+                "FieldPlans": {
+                  "ids": ["9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a"],
+                  "projectIds": ["f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7"],
+                  "statuses": ["DRAFT", "APPROVED"],
+                  "tenantId": "in",
+                  "fromDate": 1777593600000,
+                  "toDate": 1798675200000
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. Search executed successfully (an empty result list is still a 200).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FieldPlanResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "field-planner",
+                    "ver": "1.0",
+                    "ts": 1784284201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1784284200000|en_IN",
+                    "status": "successful"
+                  },
+                  "FieldPlans": [
+                    {
+                      "id": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                      "tenantId": "in",
+                      "name": "Field Plan - Gachibowli Road",
+                      "status": "DRAFT",
+                      "healthFacilityNumber": 3,
+                      "startDate": 1777593600000,
+                      "endDate": 1798675200000,
+                      "projectId": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7",
+                      "isDeleted": false,
+                      "isDuplicate": false
+                    }
+                  ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Raised as a `CustomException` (e.g. missing limit/offset/tenantId, tenantId mismatch between query param and body, no search field supplied, or fromDate/toDate range invalid).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "FIELDPLAN_SEARCH_FIELDS", "message": "Any one fieldplan search field is required", "description": "Any one fieldplan search field is required", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. `RequestInfo.authToken` is missing, expired or invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The authToken provided in RequestInfo could not be validated by egov-user", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. The authenticated user's roles do not permit this operation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "ACCESS_FORBIDDEN", "message": "Access Denied", "description": "User does not have the privilege to search Field Plans", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. Reserved for parity with other DIGIT APIs; this operation returns 200 with an empty list rather than 404 when nothing matches.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "Resource not found", "description": "No matching resource was found", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Error while processing request", "description": "An unexpected error occurred while searching Field Plans", "params": null }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/field-plans/facility/_create": {
+      "post": {
+        "tags": ["Field Plan Facility"],
+        "summary": "Assign a facility to a Field Plan",
+        "description": "Wraps the single FieldPlanFacility in a bulk request of size 1. Validates that the facilityId exists in the Facility service and that the fieldPlanId exists in field-planner, enriches the record with a generated id and audit details, and asynchronously pushes it to the `fieldPlan.facility.kafka.create.topic` (save-fieldplan-facility-topic) Kafka topic for persistence.",
+        "operationId": "createFieldPlanFacility",
+        "requestBody": {
+          "required": true,
+          "description": "Capture linkage of Field Plan and facility.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FieldPlanFacilityRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "field-planner",
+                  "ver": "1.0",
+                  "ts": 1784284200000,
+                  "action": "_create",
+                  "did": "web-browser",
+                  "key": null,
+                  "msgId": "1784284200000|en_IN",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA",
+                  "correlationId": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c",
+                  "userInfo": {
+                    "id": 501,
+                    "uuid": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                    "userName": "field-supervisor-1",
+                    "tenantId": "in",
+                    "roles": [
+                      { "id": 12, "code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Field Supervisor", "tenantId": "in" }
+                    ]
+                  }
+                },
+                "FieldPlanFacility": {
+                  "facilityId": "FAC/2025/000049",
+                  "fieldPlanId": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                  "tenantId": "in",
+                  "isdeleted": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. The linkage was validated and queued for persistence.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FieldPlanFacilityResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "field-planner",
+                    "ver": "1.0",
+                    "ts": 1784284201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1784284200000|en_IN",
+                    "status": "successful"
+                  },
+                  "FieldPlanFacility": {
+                    "id": "0b3a2f1e-9c8d-4a2b-8e7f-6d5c4b3a2f1e",
+                    "facilityId": "FAC/2025/000049",
+                    "fieldPlanId": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                    "tenantId": "in",
+                    "isdeleted": false,
+                    "rowVersion": 1,
+                    "auditDetails": {
+                      "createdBy": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                      "lastModifiedBy": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                      "createdTime": 1784284201000,
+                      "lastModifiedTime": 1784284201000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Raised as a `CustomException` when the facilityId or fieldPlanId does not exist, or is otherwise invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "INVALID_FIELDPLAN1", "message": "FIELDPLAN_ID does not exist: 9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a", "description": "FIELDPLAN_ID does not exist: 9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. `RequestInfo.authToken` is missing, expired or invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The authToken provided in RequestInfo could not be validated by egov-user", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. The authenticated user's roles do not permit this operation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "ACCESS_FORBIDDEN", "message": "Access Denied", "description": "User does not have the privilege to assign facilities", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The referenced Facility does not exist.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "FACILITY_ERROR", "message": "Facility ID do not exist", "description": "Facility ID do not exist", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. E.g. failure while calling the Facility service.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "FACILITY_ERROR", "message": "error while calling facility service", "description": "error while calling facility service", "params": null }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/field-plans/facility/bulk/_create": {
+      "post": {
+        "tags": ["Field Plan Facility"],
+        "summary": "Assign facilities to Field Plans in bulk",
+        "description": "Sets `RequestInfo.apiId` to the request URI and asynchronously pushes the whole bulk request to the `fieldPlan.facility.consumer.bulk.create.topic` (save-fieldplan-facility-bulk-topic) Kafka topic for downstream validation and persistence by the consumer. The HTTP response only echoes back a `ResponseInfo` acknowledging the request was accepted for processing — it does not reflect the outcome of validation, which happens asynchronously in the consumer.",
+        "operationId": "createFieldPlanFacilityBulk",
+        "requestBody": {
+          "required": true,
+          "description": "Capture linkage of Field Plan and facility, in bulk.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FieldPlanFacilityBulkRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "field-planner",
+                  "ver": "1.0",
+                  "ts": 1784284200000,
+                  "action": "_create",
+                  "did": "web-browser",
+                  "key": null,
+                  "msgId": "1784284200000|en_IN",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA",
+                  "correlationId": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c",
+                  "userInfo": {
+                    "id": 501,
+                    "uuid": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                    "userName": "field-supervisor-1",
+                    "tenantId": "in",
+                    "roles": [
+                      { "id": 12, "code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Field Supervisor", "tenantId": "in" }
+                    ]
+                  }
+                },
+                "FieldPlanFacilities": [
+                  {
+                    "facilityId": "FAC/2025/000049",
+                    "fieldPlanId": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                    "tenantId": "in",
+                    "isdeleted": false
+                  },
+                  {
+                    "facilityId": "FAC/2025/000050",
+                    "fieldPlanId": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                    "tenantId": "in",
+                    "isdeleted": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. The bulk request was pushed to Kafka for asynchronous processing; the response body is a bare `ResponseInfo` (not wrapped under a `ResponseInfo` key).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResponseInfo" },
+                "example": {
+                  "apiId": "/field-planner/v1/field-plans/facility/bulk/_create",
+                  "ver": "1.0",
+                  "ts": 1784284201000,
+                  "resMsgId": "uief87324",
+                  "msgId": "1784284200000|en_IN",
+                  "status": "successful"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Raised as a `CustomException` for malformed request payloads (e.g. an empty FieldPlanFacilities list).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "IllegalArgumentException", "message": "FieldPlanFacilities are mandatory", "description": "FieldPlanFacilities are mandatory", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. `RequestInfo.authToken` is missing, expired or invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The authToken provided in RequestInfo could not be validated by egov-user", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. The authenticated user's roles do not permit this operation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "ACCESS_FORBIDDEN", "message": "Access Denied", "description": "User does not have the privilege to bulk-assign facilities", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. Reserved for parity; validation errors for individual entities surface asynchronously through the consumer, not on this synchronous response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "Resource not found", "description": "No matching resource was found", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. E.g. failure publishing to Kafka.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Error while processing request", "description": "An unexpected error occurred while queueing the bulk request", "params": null }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/field-plans/facility/_search": {
+      "post": {
+        "tags": ["Field Plan Facility"],
+        "summary": "Search Field Plan - Facility linkages",
+        "description": "If `FieldPlanFacility.id` is supplied in the criteria, the search is performed purely by id (filtered further by lastChangedSince/tenantId/includeDeleted); otherwise it searches by the supplied criteria (facilityId/fieldPlanId) with pagination. Returns the matching linkages together with the total matching count.",
+        "operationId": "searchFieldPlanFacility",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of records to return.",
+            "schema": { "type": "integer", "format": "int32", "example": 10 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Number of records to skip, for pagination.",
+            "schema": { "type": "integer", "format": "int32", "example": 0 }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": true,
+            "description": "Tenant to search within.",
+            "schema": { "type": "string", "example": "in" }
+          },
+          {
+            "name": "lastChangedSince",
+            "in": "query",
+            "required": false,
+            "description": "Epoch millis. Only return records changed after this time.",
+            "schema": { "type": "integer", "format": "int64", "example": 1777500000000 }
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "required": false,
+            "description": "Whether soft-deleted/unassigned records should be included in the results.",
+            "schema": { "type": "boolean", "default": false, "example": false }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Capture details of the Field Plan Facility search criteria.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FieldPlanFacilitySearchRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "field-planner",
+                  "ver": "1.0",
+                  "ts": 1784284200000,
+                  "action": "_search",
+                  "did": "web-browser",
+                  "key": null,
+                  "msgId": "1784284200000|en_IN",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA",
+                  "correlationId": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c",
+                  "userInfo": {
+                    "id": 501,
+                    "uuid": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                    "userName": "field-supervisor-1",
+                    "tenantId": "in",
+                    "roles": [
+                      { "id": 12, "code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Field Supervisor", "tenantId": "in" }
+                    ]
+                  }
+                },
+                "FieldPlanFacility": {
+                  "fieldPlanId": ["9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a"]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK. Search executed successfully (an empty result list is still a 200).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FieldPlanFacilityBulkResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "field-planner",
+                    "ver": "1.0",
+                    "ts": 1784284201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1784284200000|en_IN",
+                    "status": "successful"
+                  },
+                  "FieldPlanFacilities": [
+                    {
+                      "id": "0b3a2f1e-9c8d-4a2b-8e7f-6d5c4b3a2f1e",
+                      "facilityId": "FAC/2025/000049",
+                      "fieldPlanId": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                      "tenantId": "in",
+                      "isdeleted": false,
+                      "rowVersion": 1
+                    }
+                  ],
+                  "TotalCount": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Raised as a `CustomException`/validation failure for malformed search criteria.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "TENANT_ID", "message": "Tenant ID is mandatory", "description": "Tenant ID is mandatory", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. `RequestInfo.authToken` is missing, expired or invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The authToken provided in RequestInfo could not be validated by egov-user", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. The authenticated user's roles do not permit this operation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "ACCESS_FORBIDDEN", "message": "Access Denied", "description": "User does not have the privilege to search Field Plan Facilities", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. Reserved for parity; this operation returns 200 with an empty list rather than 404 when nothing matches.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "Resource not found", "description": "No matching resource was found", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Error while processing request", "description": "An unexpected error occurred while searching Field Plan Facilities", "params": null }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/field-plans/facility/_unassign": {
+      "post": {
+        "tags": ["Field Plan Facility"],
+        "summary": "Unassign a facility from a Field Plan",
+        "description": "Wraps the single FieldPlanFacility in a bulk request of size 1, re-validates the facilityId/fieldPlanId, enriches the record for deletion (marks it deleted / stamps audit details) and asynchronously pushes it to the `fieldPlan.facility.kafka.unassign.topic` (delete-fieldplan-facility-topic) Kafka topic.",
+        "operationId": "unassignFieldPlanFacility",
+        "requestBody": {
+          "required": true,
+          "description": "Capture linkage of Field Plan and facility to unassign.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FieldPlanFacilityRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "field-planner",
+                  "ver": "1.0",
+                  "ts": 1784284200000,
+                  "action": "_unassign",
+                  "did": "web-browser",
+                  "key": null,
+                  "msgId": "1784284200000|en_IN",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA",
+                  "correlationId": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c",
+                  "userInfo": {
+                    "id": 501,
+                    "uuid": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                    "userName": "field-supervisor-1",
+                    "tenantId": "in",
+                    "roles": [
+                      { "id": 12, "code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Field Supervisor", "tenantId": "in" }
+                    ]
+                  }
+                },
+                "FieldPlanFacility": {
+                  "id": "0b3a2f1e-9c8d-4a2b-8e7f-6d5c4b3a2f1e",
+                  "facilityId": "FAC/2025/000049",
+                  "fieldPlanId": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                  "tenantId": "in",
+                  "isdeleted": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. The unassign request was validated and queued for processing.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FieldPlanFacilityResponse" },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "field-planner",
+                    "ver": "1.0",
+                    "ts": 1784284201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "1784284200000|en_IN",
+                    "status": "successful"
+                  },
+                  "FieldPlanFacility": {
+                    "id": "0b3a2f1e-9c8d-4a2b-8e7f-6d5c4b3a2f1e",
+                    "facilityId": "FAC/2025/000049",
+                    "fieldPlanId": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                    "tenantId": "in",
+                    "isdeleted": true,
+                    "rowVersion": 2,
+                    "auditDetails": {
+                      "createdBy": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                      "lastModifiedBy": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                      "createdTime": 1784284201000,
+                      "lastModifiedTime": 1784284999000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Raised as a `CustomException` when the facilityId or fieldPlanId does not exist, or is otherwise invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "INVALID_FIELDPLAN1", "message": "FIELDPLAN_ID does not exist: 9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a", "description": "FIELDPLAN_ID does not exist: 9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. `RequestInfo.authToken` is missing, expired or invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The authToken provided in RequestInfo could not be validated by egov-user", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. The authenticated user's roles do not permit this operation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "ACCESS_FORBIDDEN", "message": "Access Denied", "description": "User does not have the privilege to unassign facilities", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The referenced Facility does not exist.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "FACILITY_ERROR", "message": "Facility ID do not exist", "description": "Facility ID do not exist", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. E.g. failure while calling the Facility service.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "FACILITY_ERROR", "message": "error while calling facility service", "description": "error while calling facility service", "params": null }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/field-plans/facility/bulk/_unassign": {
+      "post": {
+        "tags": ["Field Plan Facility"],
+        "summary": "Unassign facilities from Field Plans in bulk",
+        "description": "Sets `RequestInfo.apiId` to the request URI and asynchronously pushes the whole bulk request to the `fieldPlan.facility.consumer.bulk.unassign.topic` (delete-fieldplan-facility-bulk-topic) Kafka topic for downstream validation and processing by the consumer. The HTTP response only echoes back a `ResponseInfo` acknowledging the request was accepted for processing.",
+        "operationId": "unassignFieldPlanFacilityBulk",
+        "requestBody": {
+          "required": true,
+          "description": "Capture linkage of Field Plan and facility to unassign, in bulk.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FieldPlanFacilityBulkRequest" },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "field-planner",
+                  "ver": "1.0",
+                  "ts": 1784284200000,
+                  "action": "_unassign",
+                  "did": "web-browser",
+                  "key": null,
+                  "msgId": "1784284200000|en_IN",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA",
+                  "correlationId": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c",
+                  "userInfo": {
+                    "id": 501,
+                    "uuid": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa",
+                    "userName": "field-supervisor-1",
+                    "tenantId": "in",
+                    "roles": [
+                      { "id": 12, "code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Field Supervisor", "tenantId": "in" }
+                    ]
+                  }
+                },
+                "FieldPlanFacilities": [
+                  {
+                    "id": "0b3a2f1e-9c8d-4a2b-8e7f-6d5c4b3a2f1e",
+                    "facilityId": "FAC/2025/000049",
+                    "fieldPlanId": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a",
+                    "tenantId": "in",
+                    "isdeleted": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. The bulk unassign request was pushed to Kafka for asynchronous processing; the response body is a bare `ResponseInfo` (not wrapped under a `ResponseInfo` key).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResponseInfo" },
+                "example": {
+                  "apiId": "/field-planner/v1/field-plans/facility/bulk/_unassign",
+                  "ver": "1.0",
+                  "ts": 1784284201000,
+                  "resMsgId": "uief87324",
+                  "msgId": "1784284200000|en_IN",
+                  "status": "successful"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Raised as a `CustomException` for malformed request payloads (e.g. an empty FieldPlanFacilities list).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "IllegalArgumentException", "message": "FieldPlanFacilities are mandatory", "description": "FieldPlanFacilities are mandatory", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. `RequestInfo.authToken` is missing, expired or invalid.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "UNAUTHORIZED", "message": "Invalid or expired auth token", "description": "The authToken provided in RequestInfo could not be validated by egov-user", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. The authenticated user's roles do not permit this operation.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "ACCESS_FORBIDDEN", "message": "Access Denied", "description": "User does not have the privilege to bulk-unassign facilities", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. Reserved for parity; validation errors for individual entities surface asynchronously through the consumer, not on this synchronous response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "NOT_FOUND", "message": "Resource not found", "description": "No matching resource was found", "params": null }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. E.g. failure publishing to Kafka.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorRes" },
+                "example": {
+                  "ResponseInfo": { "apiId": "field-planner", "ver": "1.0", "ts": 1784284201000, "resMsgId": null, "msgId": "1784284200000|en_IN", "status": "failed" },
+                  "Errors": [
+                    { "code": "INTERNAL_SERVER_ERROR", "message": "Error while processing request", "description": "An unexpected error occurred while queueing the bulk unassign request", "params": null }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Service health check",
+        "description": "Unauthenticated liveness/readiness probe. Takes no parameters and no RequestInfo, and always returns a fixed status payload when the service process is up and able to serve HTTP traffic.",
+        "operationId": "healthCheck",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK. The service is up.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" },
+                "example": {
+                  "status": "UP",
+                  "groups": ["liveness", "readiness"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Role": {
+        "type": "object",
+        "description": "A role assigned to a user, as returned by egov-user.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 12 },
+          "name": { "type": "string", "example": "Field Supervisor" },
+          "code": { "type": "string", "example": "INSTALLATION_REPORT_PART_B_EDITOR" },
+          "tenantId": { "type": "string", "example": "in" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "description": "The authenticated user, embedded in RequestInfo.userInfo. Obtained from egov-user during login and echoed back on every subsequent request.",
+        "required": ["uuid"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 501 },
+          "userName": { "type": "string", "example": "field-supervisor-1" },
+          "name": { "type": "string", "example": "Asha Rao" },
+          "type": { "type": "string", "example": "EMPLOYEE" },
+          "mobileNumber": { "type": "string", "example": "9880012345" },
+          "emailId": { "type": "string", "example": "asha.rao@selco.example.org" },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Role" }
+          },
+          "tenantId": { "type": "string", "example": "in" },
+          "uuid": {
+            "type": "string",
+            "description": "Unique user identifier. Mandatory — field-planner rejects requests where this is blank.",
+            "example": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa"
+          }
+        }
+      },
+      "PlainAccessRequest": {
+        "type": "object",
+        "description": "Optional egov-user plain-text field access request, passed through unchanged. Not used by field-planner.",
+        "nullable": true,
+        "properties": {
+          "recordId": { "type": "string" },
+          "recordType": { "type": "string" },
+          "fields": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "RequestInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT request envelope, required on every non-health field-planner endpoint. Authentication is carried entirely by `authToken` + `userInfo` in this object — there is no separate Authorization header.",
+        "required": ["authToken", "userInfo"],
+        "properties": {
+          "apiId": { "type": "string", "description": "Identifier of the calling API/module.", "example": "field-planner" },
+          "ver": { "type": "string", "description": "API version.", "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "description": "Request timestamp, epoch milliseconds.", "example": 1784284200000 },
+          "action": { "type": "string", "description": "Action being performed.", "example": "_create" },
+          "did": { "type": "string", "description": "Device id.", "example": "web-browser", "nullable": true },
+          "key": { "type": "string", "nullable": true },
+          "msgId": { "type": "string", "example": "1784284200000|en_IN" },
+          "authToken": {
+            "type": "string",
+            "description": "Bearer JWT access token obtained from egov-user's OAuth login (`POST /user/oauth/token` or `POST /user/_login`). This IS the authentication credential for field-planner — it is validated on every request in place of an HTTP Authorization header.",
+            "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJfbmFtZSI6ImFkbWluIiwic2NvcGUiOlsicmVhZCJdLCJpYXQiOjE3ODQyODQyMDAsImp0aSI6IjNmOGExYzJlLTZiN2QtNGUyOS05YzNhLTFkMmUzZjRhNWI2YyJ9.4Qw2b7z8yq2x1nWJf3sVjv9Xk0m1Qd7cRt5uHn8pJfA"
+          },
+          "correlationId": { "type": "string", "example": "3f8a1c2e-6b7d-4e29-9c3a-1d2e3f4a5b6c", "nullable": true },
+          "plainAccessRequest": { "$ref": "#/components/schemas/PlainAccessRequest" },
+          "userInfo": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "ResponseInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT response envelope.",
+        "properties": {
+          "apiId": { "type": "string", "example": "field-planner" },
+          "ver": { "type": "string", "example": "1.0" },
+          "ts": { "type": "integer", "format": "int64", "example": 1784284201000 },
+          "resMsgId": { "type": "string", "example": "uief87324", "nullable": true },
+          "msgId": { "type": "string", "example": "1784284200000|en_IN" },
+          "status": { "type": "string", "enum": ["successful", "failed"], "example": "successful" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "A single error entry, as produced by egov-tracer's default CustomException handling.",
+        "properties": {
+          "id": { "type": "string", "nullable": true },
+          "parentId": { "type": "string", "nullable": true },
+          "code": { "type": "string", "description": "Machine-readable error code.", "example": "TENANT_ID" },
+          "message": { "type": "string", "description": "Human-readable error message.", "example": "Tenant ID is mandatory" },
+          "description": { "type": "string", "description": "Further description of the error (mirrors message for CustomException-derived errors).", "example": "Tenant ID is mandatory" },
+          "params": {
+            "type": "array",
+            "items": { "type": "string" },
+            "nullable": true
+          }
+        }
+      },
+      "ErrorRes": {
+        "type": "object",
+        "description": "Standard eGov DIGIT error response, returned with HTTP 4xx/5xx by egov-tracer's default CustomException handling.",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "Errors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "AuditDetails": {
+        "type": "object",
+        "description": "Standard eGov DIGIT audit metadata.",
+        "properties": {
+          "createdBy": { "type": "string", "example": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa" },
+          "lastModifiedBy": { "type": "string", "example": "27f8b1de-1234-4a12-9c3a-abf7e0d1a9aa" },
+          "createdTime": { "type": "integer", "format": "int64", "example": 1784284201000 },
+          "lastModifiedTime": { "type": "integer", "format": "int64", "example": 1784284201000 }
+        }
+      },
+      "Field": {
+        "type": "object",
+        "description": "A single key/value additional field.",
+        "properties": {
+          "key": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      },
+      "AdditionalFields": {
+        "type": "object",
+        "description": "Schema-versioned bag of additional key/value fields.",
+        "properties": {
+          "schema": { "type": "string", "nullable": true },
+          "version": { "type": "integer", "format": "int32", "nullable": true },
+          "fields": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Field" }
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "description": "Simplified view of the health-services Project (org.egov.common.models.project.Project) that a Field Plan is linked to via projectId. Field Plans are themselves modelled as Projects with projectType=FieldPlan.",
+        "properties": {
+          "id": { "type": "string", "example": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7" },
+          "tenantId": { "type": "string", "example": "in" },
+          "projectNumber": { "type": "string", "nullable": true },
+          "name": { "type": "string", "example": "Field Plan - Gachibowli Road" },
+          "projectType": { "type": "string", "example": "FieldPlan" },
+          "projectSubType": { "type": "string", "nullable": true },
+          "department": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "referenceID": { "type": "string", "nullable": true, "example": "1" },
+          "projectTypeId": { "type": "string", "nullable": true },
+          "startDate": { "type": "integer", "format": "int64", "example": 1777593600000 },
+          "endDate": { "type": "integer", "format": "int64", "example": 1798675200000 },
+          "isTaskEnabled": { "type": "boolean", "nullable": true },
+          "parent": { "type": "string", "nullable": true, "example": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7" },
+          "projectHierarchy": { "type": "string", "nullable": true },
+          "natureOfWork": { "type": "string", "nullable": true },
+          "additionalDetails": { "type": "object", "nullable": true },
+          "isDeleted": { "type": "boolean", "example": false },
+          "rowVersion": { "type": "integer", "format": "int32", "nullable": true },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" }
+        }
+      },
+      "FieldPlan": {
+        "type": "object",
+        "description": "A Field Plan groups a set of field activities within a date range for a tenant, and is linked 1:1 with an underlying Project (projectType=FieldPlan).",
+        "required": ["tenantId"],
+        "properties": {
+          "id": { "type": "string", "nullable": true, "description": "Server-generated identifier. Absent on create, required on update.", "example": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a" },
+          "tenantId": { "type": "string", "example": "in" },
+          "name": { "type": "string", "example": "Field Plan - Gachibowli Road" },
+          "status": { "type": "string", "description": "Workflow status, e.g. DRAFT/APPROVED/REJECTED.", "example": "DRAFT" },
+          "healthFacilityNumber": { "type": "integer", "format": "int32", "example": 3 },
+          "startDate": { "type": "integer", "format": "int64", "description": "Epoch millis. Must be before endDate and at least 1 day earlier.", "example": 1777593600000 },
+          "endDate": { "type": "integer", "format": "int64", "description": "Epoch millis. Must be within the linked Project's start/end date range.", "example": 1798675200000 },
+          "project": { "$ref": "#/components/schemas/Project" },
+          "projectId": { "type": "string", "description": "Id of the underlying Project this Field Plan represents. Mandatory on create.", "example": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7" },
+          "geographyDetails": {
+            "type": "object",
+            "description": "Free-form geography attributes (e.g. state, district) validated against MDMS StateInfo master data.",
+            "additionalProperties": true,
+            "example": { "state": "Karnataka", "district": "Bengaluru Urban" }
+          },
+          "activities": {
+            "type": "array",
+            "description": "List of activities for this Field Plan. Mandatory and validated against the MDMS Activities master.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "example": [ { "code": "INSTALLATION", "name": "Solar Installation" } ]
+          },
+          "isDeleted": { "type": "boolean", "default": false, "example": false },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "additionalDetails": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "isDuplicate": { "type": "boolean", "default": false, "example": false }
+        }
+      },
+      "ApiOperation": {
+        "type": "string",
+        "enum": ["CREATE", "UPDATE", "DELETE"],
+        "example": "CREATE"
+      },
+      "FieldPlanRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "FieldPlans"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "FieldPlans": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/components/schemas/FieldPlan" }
+          },
+          "isCascadingProjectDateUpdate": { "type": "boolean", "default": false },
+          "apiOperation": { "$ref": "#/components/schemas/ApiOperation" }
+        }
+      },
+      "FieldPlanResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "FieldPlans": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/FieldPlan" }
+          },
+          "TotalCount": { "type": "integer", "format": "int32", "default": 0, "example": 1 }
+        }
+      },
+      "FieldPlanSearchCriteria": {
+        "type": "object",
+        "description": "Search criteria for Field Plans. At least one of ids/projectIds/statuses/fromDate/toDate (or the lastChangedSince query parameter) must be supplied.",
+        "required": ["tenantId"],
+        "properties": {
+          "ids": { "type": "array", "items": { "type": "string" }, "nullable": true },
+          "projectIds": { "type": "array", "items": { "type": "string" }, "nullable": true },
+          "statuses": { "type": "array", "items": { "type": "string" }, "nullable": true, "example": ["DRAFT", "APPROVED"] },
+          "assignedToMe": { "type": "string", "nullable": true },
+          "tenantId": { "type": "string", "description": "Must match the tenantId query parameter.", "example": "in" },
+          "fromDate": { "type": "integer", "format": "int64", "nullable": true, "example": 1777593600000 },
+          "toDate": { "type": "integer", "format": "int64", "nullable": true, "example": 1798675200000 }
+        }
+      },
+      "FieldPlanSearchRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "FieldPlans"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "FieldPlans": { "$ref": "#/components/schemas/FieldPlanSearchCriteria" }
+        }
+      },
+      "FieldPlanFacility": {
+        "type": "object",
+        "description": "A linkage between a Field Plan and a Facility.",
+        "required": ["facilityId", "fieldPlanId", "tenantId"],
+        "properties": {
+          "facilityId": { "type": "string", "minLength": 2, "maxLength": 64, "example": "FAC/2025/000049" },
+          "fieldPlanId": { "type": "string", "minLength": 2, "maxLength": 64, "example": "9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a" },
+          "isdeleted": { "type": "boolean", "nullable": true, "example": false },
+          "id": { "type": "string", "nullable": true, "minLength": 2, "maxLength": 64, "example": "0b3a2f1e-9c8d-4a2b-8e7f-6d5c4b3a2f1e" },
+          "tenantId": { "type": "string", "minLength": 2, "maxLength": 1000, "example": "in" },
+          "additionalFields": { "$ref": "#/components/schemas/AdditionalFields" },
+          "auditDetails": { "$ref": "#/components/schemas/AuditDetails" },
+          "rowVersion": { "type": "integer", "format": "int32", "nullable": true, "example": 1 },
+          "hasErrors": { "type": "boolean", "nullable": true }
+        }
+      },
+      "FieldPlanFacilityRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "FieldPlanFacility"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "FieldPlanFacility": { "$ref": "#/components/schemas/FieldPlanFacility" }
+        }
+      },
+      "FieldPlanFacilityResponse": {
+        "type": "object",
+        "required": ["ResponseInfo", "FieldPlanFacility"],
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "FieldPlanFacility": { "$ref": "#/components/schemas/FieldPlanFacility" }
+        }
+      },
+      "FieldPlanFacilityBulkRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "FieldPlanFacilities"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "FieldPlanFacilities": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/components/schemas/FieldPlanFacility" }
+          }
+        }
+      },
+      "FieldPlanFacilityBulkResponse": {
+        "type": "object",
+        "required": ["ResponseInfo"],
+        "properties": {
+          "ResponseInfo": { "$ref": "#/components/schemas/ResponseInfo" },
+          "FieldPlanFacilities": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/FieldPlanFacility" }
+          },
+          "TotalCount": { "type": "integer", "format": "int64", "nullable": true, "example": 1 }
+        }
+      },
+      "FieldPlanFacilitySearch": {
+        "type": "object",
+        "description": "Search criteria for Field Plan - Facility linkages. If `id` is supplied, the search is performed purely by id.",
+        "properties": {
+          "id": { "type": "array", "items": { "type": "string" }, "nullable": true, "example": ["0b3a2f1e-9c8d-4a2b-8e7f-6d5c4b3a2f1e"] },
+          "facilityId": { "type": "array", "items": { "type": "string" }, "nullable": true, "example": ["FAC/2025/000049"] },
+          "fieldPlanId": { "type": "array", "items": { "type": "string" }, "nullable": true, "example": ["9c6d0a1e-2b3c-4d5e-8f6a-7b8c9d0e1f2a"] }
+        }
+      },
+      "FieldPlanFacilitySearchRequest": {
+        "type": "object",
+        "required": ["RequestInfo", "FieldPlanFacility"],
+        "properties": {
+          "RequestInfo": { "$ref": "#/components/schemas/RequestInfo" },
+          "FieldPlanFacility": { "$ref": "#/components/schemas/FieldPlanFacilitySearch" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "description": "Fixed liveness/readiness payload returned by GET /health.",
+        "properties": {
+          "status": { "type": "string", "example": "UP" },
+          "groups": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["liveness", "readiness"]
+          }
+        }
+      }
+    }
+  }
+}

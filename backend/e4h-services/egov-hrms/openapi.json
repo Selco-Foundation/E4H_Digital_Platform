@@ -1,0 +1,3139 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "egov-hrms",
+    "version": "1.0.0",
+    "description": "eGov DIGIT Human Resource Management System (HRMS) service. Manages employee records, their linked egov-user accounts, jurisdictions, assignments, service history, education, departmental tests, documents, deactivation and reactivation.\n\n**Authentication:** this service has no separate `Authorization` header scheme. Every request carries its auth context inside the JSON body's `RequestInfo` object: `RequestInfo.authToken` is the Bearer JWT obtained from egov-user's OAuth login (`/user/oauth/token` or `/user/_login`), and `RequestInfo.userInfo` carries the caller's identity and roles (`userInfo.roles[].code`). Endpoints validate/authorize purely from this embedded object; there is no token in any HTTP header."
+  },
+  "servers": [
+    {
+      "url": "/egov-hrms"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Employee",
+      "description": "Employee lifecycle: create, update, search, count."
+    }
+  ],
+  "paths": {
+    "/employees/_create": {
+      "post": {
+        "tags": [
+          "Employee"
+        ],
+        "summary": "Create one or more employees",
+        "description": "Creates one or more Employee records (each with an embedded egov-user account). Performs duplicate checks (mobile number / username), validates MDMS-driven codes (employeeType, department, designation, role, qualification, stream, departmental test) and data-sanity checks (exactly one current assignment, non-overlapping assignment/service periods, dates not before date of birth, etc.) before persisting. On success, creates the corresponding user(s) in egov-user and returns the created Employees with server-generated id/uuid/auditDetails.",
+        "operationId": "createEmployees",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmployeeRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "org.egov.hrms",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_create",
+                  "did": "web",
+                  "key": "",
+                  "msgId": "20260717103000|en_IN",
+                  "requesterId": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5NTM1ZTk0Yi1hMWU1LTRhNDUtOGIyYy03N2UwYzJlNzdkMWEiLCJpYXQiOjE3NTI3MzkyMDB9.7Kk3s9m1XyZbT0vQeR8pL2N4jH6dG1wA5cF3bE9tU0o",
+                  "userInfo": {
+                    "id": 101,
+                    "uuid": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                    "userName": "hrms-admin",
+                    "name": "Harpreet Singh",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9988776655",
+                    "tenantId": "pb.amritsar",
+                    "roles": [
+                      {
+                        "code": "HRMS_ADMIN",
+                        "name": "HRMS Administrator",
+                        "tenantId": "pb.amritsar"
+                      },
+                      {
+                        "code": "EMPLOYEE_CREATOR",
+                        "name": "Employee Creator",
+                        "tenantId": "pb.amritsar"
+                      }
+                    ]
+                  },
+                  "correlationId": "c2e77d1a-9535-4e94-b1a5-4a458b2c77e0"
+                },
+                "Employees": [
+                  {
+                    "id": 145,
+                    "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                    "code": "PB-EMP-000145",
+                    "employeeStatus": "EMPLOYED",
+                    "employeeType": "PERMANENT",
+                    "dateOfAppointment": 1580428200000,
+                    "jurisdictions": [
+                      {
+                        "id": "1245",
+                        "hierarchy": "REVENUE",
+                        "boundary": "amritsar",
+                        "boundaryType": "City",
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        },
+                        "isActive": true
+                      }
+                    ],
+                    "assignments": [
+                      {
+                        "id": "3301",
+                        "position": 500123,
+                        "designation": "JUNIOR_ENGINEER",
+                        "department": "PUBLIC_HEALTH_ENGINEERING",
+                        "fromDate": 1580428200000,
+                        "toDate": null,
+                        "govtOrderNumber": "GO/2020/0145",
+                        "tenantid": "pb.amritsar",
+                        "reportingTo": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                        "isHOD": false,
+                        "isCurrentAssignment": true,
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        }
+                      }
+                    ],
+                    "serviceHistory": [
+                      {
+                        "id": "4501",
+                        "serviceStatus": "EMPLOYED",
+                        "serviceFrom": 1580428200000,
+                        "serviceTo": null,
+                        "orderNo": "SO/2020/0087",
+                        "location": "amritsar",
+                        "tenantId": "pb.amritsar",
+                        "isCurrentPosition": true,
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        }
+                      }
+                    ],
+                    "isActive": true,
+                    "education": [
+                      {
+                        "id": "5601",
+                        "qualification": "BE_BTECH",
+                        "stream": "CIVIL_ENGINEERING",
+                        "yearOfPassing": 946684800000,
+                        "university": "Punjab Technical University",
+                        "remarks": "First division",
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        },
+                        "isActive": true
+                      }
+                    ],
+                    "tests": [
+                      {
+                        "id": "6701",
+                        "test": "DEPARTMENTAL_PROMOTION_TEST",
+                        "yearOfPassing": 1104537600000,
+                        "remarks": "Passed with distinction",
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        },
+                        "isActive": true
+                      }
+                    ],
+                    "tenantId": "pb.amritsar",
+                    "documents": [
+                      {
+                        "id": "7801",
+                        "documentName": "Appointment order",
+                        "documentId": "e4h-hrms/1234567/FILESTORE-KEY-0001",
+                        "referenceType": "HEADER",
+                        "referenceId": "145",
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        }
+                      }
+                    ],
+                    "deactivationDetails": [],
+                    "reactivationDetails": [],
+                    "auditDetails": {
+                      "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                      "createdDate": 1580428200000,
+                      "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                      "lastModifiedDate": 1752739200000
+                    },
+                    "reActivateEmployee": false,
+                    "user": {
+                      "id": 5001,
+                      "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                      "userName": "PB-EMP-000145",
+                      "password": null,
+                      "salutation": "Mr.",
+                      "name": "Gurpreet Singh",
+                      "gender": "MALE",
+                      "mobileNumber": "9876543210",
+                      "emailId": "gurpreet.singh@example.com",
+                      "altContactNumber": "9123456780",
+                      "pan": "ABCPS1234K",
+                      "aadhaarNumber": "123456789012",
+                      "permanentAddress": "House No 12, Model Town",
+                      "permanentCity": "Amritsar",
+                      "permanentPincode": "143001",
+                      "correspondenceCity": "Amritsar",
+                      "correspondencePincode": "143001",
+                      "correspondenceAddress": "House No 12, Model Town",
+                      "active": true,
+                      "dob": 473385000000,
+                      "pwdExpiryDate": 1783382400000,
+                      "locale": "en_IN",
+                      "type": "EMPLOYEE",
+                      "signature": null,
+                      "accountLocked": false,
+                      "roles": [
+                        {
+                          "name": "Junior Engineer",
+                          "code": "JUNIOR_ENGINEER",
+                          "description": "Junior Engineer role for PHED",
+                          "tenantId": "pb.amritsar"
+                        }
+                      ],
+                      "fatherOrHusbandName": "Balwinder Singh",
+                      "relationship": "FATHER",
+                      "bloodGroup": "B_POSITIVE",
+                      "identificationMark": "Mole on left cheek",
+                      "photo": null,
+                      "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                      "createdDate": 1580428200000,
+                      "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                      "lastModifiedDate": 1752739200000,
+                      "otpReference": null,
+                      "tenantId": "pb.amritsar"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted - employee(s) created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeResponse"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "successful"
+                  },
+                  "Employees": [
+                    {
+                      "id": 145,
+                      "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                      "code": "PB-EMP-000145",
+                      "employeeStatus": "EMPLOYED",
+                      "employeeType": "PERMANENT",
+                      "dateOfAppointment": 1580428200000,
+                      "jurisdictions": [
+                        {
+                          "id": "1245",
+                          "hierarchy": "REVENUE",
+                          "boundary": "amritsar",
+                          "boundaryType": "City",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "assignments": [
+                        {
+                          "id": "3301",
+                          "position": 500123,
+                          "designation": "JUNIOR_ENGINEER",
+                          "department": "PUBLIC_HEALTH_ENGINEERING",
+                          "fromDate": 1580428200000,
+                          "toDate": null,
+                          "govtOrderNumber": "GO/2020/0145",
+                          "tenantid": "pb.amritsar",
+                          "reportingTo": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                          "isHOD": false,
+                          "isCurrentAssignment": true,
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "serviceHistory": [
+                        {
+                          "id": "4501",
+                          "serviceStatus": "EMPLOYED",
+                          "serviceFrom": 1580428200000,
+                          "serviceTo": null,
+                          "orderNo": "SO/2020/0087",
+                          "location": "amritsar",
+                          "tenantId": "pb.amritsar",
+                          "isCurrentPosition": true,
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "isActive": true,
+                      "education": [
+                        {
+                          "id": "5601",
+                          "qualification": "BE_BTECH",
+                          "stream": "CIVIL_ENGINEERING",
+                          "yearOfPassing": 946684800000,
+                          "university": "Punjab Technical University",
+                          "remarks": "First division",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "tests": [
+                        {
+                          "id": "6701",
+                          "test": "DEPARTMENTAL_PROMOTION_TEST",
+                          "yearOfPassing": 1104537600000,
+                          "remarks": "Passed with distinction",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "tenantId": "pb.amritsar",
+                      "documents": [
+                        {
+                          "id": "7801",
+                          "documentName": "Appointment order",
+                          "documentId": "e4h-hrms/1234567/FILESTORE-KEY-0001",
+                          "referenceType": "HEADER",
+                          "referenceId": "145",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "deactivationDetails": [],
+                      "reactivationDetails": [],
+                      "auditDetails": {
+                        "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "createdDate": 1580428200000,
+                        "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "lastModifiedDate": 1752739200000
+                      },
+                      "reActivateEmployee": false,
+                      "user": {
+                        "id": 5001,
+                        "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                        "userName": "PB-EMP-000145",
+                        "password": null,
+                        "salutation": "Mr.",
+                        "name": "Gurpreet Singh",
+                        "gender": "MALE",
+                        "mobileNumber": "9876543210",
+                        "emailId": "gurpreet.singh@example.com",
+                        "altContactNumber": "9123456780",
+                        "pan": "ABCPS1234K",
+                        "aadhaarNumber": "123456789012",
+                        "permanentAddress": "House No 12, Model Town",
+                        "permanentCity": "Amritsar",
+                        "permanentPincode": "143001",
+                        "correspondenceCity": "Amritsar",
+                        "correspondencePincode": "143001",
+                        "correspondenceAddress": "House No 12, Model Town",
+                        "active": true,
+                        "dob": 473385000000,
+                        "pwdExpiryDate": 1783382400000,
+                        "locale": "en_IN",
+                        "type": "EMPLOYEE",
+                        "signature": null,
+                        "accountLocked": false,
+                        "roles": [
+                          {
+                            "name": "Junior Engineer",
+                            "code": "JUNIOR_ENGINEER",
+                            "description": "Junior Engineer role for PHED",
+                            "tenantId": "pb.amritsar"
+                          }
+                        ],
+                        "fatherOrHusbandName": "Balwinder Singh",
+                        "relationship": "FATHER",
+                        "bloodGroup": "B_POSITIVE",
+                        "identificationMark": "Mole on left cheek",
+                        "photo": null,
+                        "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "createdDate": 1580428200000,
+                        "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "lastModifiedDate": 1752739200000,
+                        "otpReference": null,
+                        "tenantId": "pb.amritsar"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - validation failed, e.g. duplicate mobile/username in the bulk request, invalid MDMS-driven code, invalid assignment/service/education/test dates, or more/less than one current assignment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ERR_HRMS_INVALID_CURRENT_ASSGN",
+                      "message": "There should be exactly one current assignment for the employee.",
+                      "description": "There should be exactly one current assignment for the employee.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - RequestInfo.authToken is missing, invalid or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "UNAUTHORIZED",
+                      "message": "Authentication failed, invalid or expired authToken in RequestInfo.",
+                      "description": "The authToken supplied in RequestInfo could not be validated against egov-user.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - the authenticated user's roles do not permit this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ACCESS_FORBIDDEN",
+                      "message": "User does not have the privileges to access this API.",
+                      "description": "The role(s) associated with the requester do not permit this action.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no matching resource for the given identifiers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ERR_HRMS_UPDATE_EMPLOYEE_NOT_EXIST_CODE",
+                      "message": "No employee found for given UUID.",
+                      "description": "No employee found for given UUID.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - an unhandled exception occurred while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Error while processing request",
+                      "description": "An unexpected error occurred while processing the request. Contact system administrator.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees/_update": {
+      "post": {
+        "tags": [
+          "Employee"
+        ],
+        "summary": "Update one or more employees",
+        "description": "Updates one or more existing Employee records. Each Employee must include its existing id, uuid and (unchanged) code; the service looks up the existing record(s) by uuid and enforces that previously-created jurisdictions, assignments, service history, education, departmental tests, documents and deactivation details are not removed (only appended to / modified). Setting isActive=false requires deactivationDetails with a reasonForDeactivation validated against MDMS and an effectiveFrom equal to the current date; reactivating (isActive=true with reActivateEmployee=true) requires reactivationDetails whose effectiveFrom falls between the prior deactivation date and now. Also propagates changes to the corresponding user in egov-user.",
+        "operationId": "updateEmployees",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmployeeRequest"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "org.egov.hrms",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_create",
+                  "did": "web",
+                  "key": "",
+                  "msgId": "20260717103000|en_IN",
+                  "requesterId": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5NTM1ZTk0Yi1hMWU1LTRhNDUtOGIyYy03N2UwYzJlNzdkMWEiLCJpYXQiOjE3NTI3MzkyMDB9.7Kk3s9m1XyZbT0vQeR8pL2N4jH6dG1wA5cF3bE9tU0o",
+                  "userInfo": {
+                    "id": 101,
+                    "uuid": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                    "userName": "hrms-admin",
+                    "name": "Harpreet Singh",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9988776655",
+                    "tenantId": "pb.amritsar",
+                    "roles": [
+                      {
+                        "code": "HRMS_ADMIN",
+                        "name": "HRMS Administrator",
+                        "tenantId": "pb.amritsar"
+                      },
+                      {
+                        "code": "EMPLOYEE_CREATOR",
+                        "name": "Employee Creator",
+                        "tenantId": "pb.amritsar"
+                      }
+                    ]
+                  },
+                  "correlationId": "c2e77d1a-9535-4e94-b1a5-4a458b2c77e0"
+                },
+                "Employees": [
+                  {
+                    "id": 145,
+                    "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                    "code": "PB-EMP-000145",
+                    "employeeStatus": "EMPLOYED",
+                    "employeeType": "PERMANENT",
+                    "dateOfAppointment": 1580428200000,
+                    "jurisdictions": [
+                      {
+                        "id": "1245",
+                        "hierarchy": "REVENUE",
+                        "boundary": "amritsar",
+                        "boundaryType": "City",
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        },
+                        "isActive": true
+                      }
+                    ],
+                    "assignments": [
+                      {
+                        "id": "3301",
+                        "position": 500123,
+                        "designation": "JUNIOR_ENGINEER",
+                        "department": "PUBLIC_HEALTH_ENGINEERING",
+                        "fromDate": 1580428200000,
+                        "toDate": null,
+                        "govtOrderNumber": "GO/2020/0145",
+                        "tenantid": "pb.amritsar",
+                        "reportingTo": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                        "isHOD": false,
+                        "isCurrentAssignment": true,
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        }
+                      }
+                    ],
+                    "serviceHistory": [
+                      {
+                        "id": "4501",
+                        "serviceStatus": "EMPLOYED",
+                        "serviceFrom": 1580428200000,
+                        "serviceTo": null,
+                        "orderNo": "SO/2020/0087",
+                        "location": "amritsar",
+                        "tenantId": "pb.amritsar",
+                        "isCurrentPosition": true,
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        }
+                      }
+                    ],
+                    "isActive": false,
+                    "education": [
+                      {
+                        "id": "5601",
+                        "qualification": "BE_BTECH",
+                        "stream": "CIVIL_ENGINEERING",
+                        "yearOfPassing": 946684800000,
+                        "university": "Punjab Technical University",
+                        "remarks": "First division",
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        },
+                        "isActive": true
+                      }
+                    ],
+                    "tests": [
+                      {
+                        "id": "6701",
+                        "test": "DEPARTMENTAL_PROMOTION_TEST",
+                        "yearOfPassing": 1104537600000,
+                        "remarks": "Passed with distinction",
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        },
+                        "isActive": true
+                      }
+                    ],
+                    "tenantId": "pb.amritsar",
+                    "documents": [
+                      {
+                        "id": "7801",
+                        "documentName": "Appointment order",
+                        "documentId": "e4h-hrms/1234567/FILESTORE-KEY-0001",
+                        "referenceType": "HEADER",
+                        "referenceId": "145",
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        }
+                      }
+                    ],
+                    "deactivationDetails": [
+                      {
+                        "id": "8901",
+                        "reasonForDeactivation": "RETIRED",
+                        "orderNo": "DO/2026/0012",
+                        "remarks": "Superannuation",
+                        "effectiveFrom": 1752652800000,
+                        "tenantId": "pb.amritsar",
+                        "auditDetails": {
+                          "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "createdDate": 1580428200000,
+                          "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                          "lastModifiedDate": 1752739200000
+                        }
+                      }
+                    ],
+                    "reactivationDetails": [],
+                    "auditDetails": {
+                      "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                      "createdDate": 1580428200000,
+                      "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                      "lastModifiedDate": 1752739200000
+                    },
+                    "reActivateEmployee": false,
+                    "user": {
+                      "id": 5001,
+                      "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                      "userName": "PB-EMP-000145",
+                      "password": null,
+                      "salutation": "Mr.",
+                      "name": "Gurpreet Singh",
+                      "gender": "MALE",
+                      "mobileNumber": "9876543210",
+                      "emailId": "gurpreet.singh@example.com",
+                      "altContactNumber": "9123456780",
+                      "pan": "ABCPS1234K",
+                      "aadhaarNumber": "123456789012",
+                      "permanentAddress": "House No 12, Model Town",
+                      "permanentCity": "Amritsar",
+                      "permanentPincode": "143001",
+                      "correspondenceCity": "Amritsar",
+                      "correspondencePincode": "143001",
+                      "correspondenceAddress": "House No 12, Model Town",
+                      "active": true,
+                      "dob": 473385000000,
+                      "pwdExpiryDate": 1783382400000,
+                      "locale": "en_IN",
+                      "type": "EMPLOYEE",
+                      "signature": null,
+                      "accountLocked": false,
+                      "roles": [
+                        {
+                          "name": "Junior Engineer",
+                          "code": "JUNIOR_ENGINEER",
+                          "description": "Junior Engineer role for PHED",
+                          "tenantId": "pb.amritsar"
+                        }
+                      ],
+                      "fatherOrHusbandName": "Balwinder Singh",
+                      "relationship": "FATHER",
+                      "bloodGroup": "B_POSITIVE",
+                      "identificationMark": "Mole on left cheek",
+                      "photo": null,
+                      "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                      "createdDate": 1580428200000,
+                      "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                      "lastModifiedDate": 1752739200000,
+                      "otpReference": null,
+                      "tenantId": "pb.amritsar"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted - employee(s) updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeResponse"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "successful"
+                  },
+                  "Employees": [
+                    {
+                      "id": 145,
+                      "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                      "code": "PB-EMP-000145",
+                      "employeeStatus": "EMPLOYED",
+                      "employeeType": "PERMANENT",
+                      "dateOfAppointment": 1580428200000,
+                      "jurisdictions": [
+                        {
+                          "id": "1245",
+                          "hierarchy": "REVENUE",
+                          "boundary": "amritsar",
+                          "boundaryType": "City",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "assignments": [
+                        {
+                          "id": "3301",
+                          "position": 500123,
+                          "designation": "JUNIOR_ENGINEER",
+                          "department": "PUBLIC_HEALTH_ENGINEERING",
+                          "fromDate": 1580428200000,
+                          "toDate": null,
+                          "govtOrderNumber": "GO/2020/0145",
+                          "tenantid": "pb.amritsar",
+                          "reportingTo": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                          "isHOD": false,
+                          "isCurrentAssignment": true,
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "serviceHistory": [
+                        {
+                          "id": "4501",
+                          "serviceStatus": "EMPLOYED",
+                          "serviceFrom": 1580428200000,
+                          "serviceTo": null,
+                          "orderNo": "SO/2020/0087",
+                          "location": "amritsar",
+                          "tenantId": "pb.amritsar",
+                          "isCurrentPosition": true,
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "isActive": false,
+                      "education": [
+                        {
+                          "id": "5601",
+                          "qualification": "BE_BTECH",
+                          "stream": "CIVIL_ENGINEERING",
+                          "yearOfPassing": 946684800000,
+                          "university": "Punjab Technical University",
+                          "remarks": "First division",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "tests": [
+                        {
+                          "id": "6701",
+                          "test": "DEPARTMENTAL_PROMOTION_TEST",
+                          "yearOfPassing": 1104537600000,
+                          "remarks": "Passed with distinction",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "tenantId": "pb.amritsar",
+                      "documents": [
+                        {
+                          "id": "7801",
+                          "documentName": "Appointment order",
+                          "documentId": "e4h-hrms/1234567/FILESTORE-KEY-0001",
+                          "referenceType": "HEADER",
+                          "referenceId": "145",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "deactivationDetails": [
+                        {
+                          "id": "8901",
+                          "reasonForDeactivation": "RETIRED",
+                          "orderNo": "DO/2026/0012",
+                          "remarks": "Superannuation",
+                          "effectiveFrom": 1752652800000,
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "reactivationDetails": [],
+                      "auditDetails": {
+                        "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "createdDate": 1580428200000,
+                        "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "lastModifiedDate": 1752739200000
+                      },
+                      "reActivateEmployee": false,
+                      "user": {
+                        "id": 5001,
+                        "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                        "userName": "PB-EMP-000145",
+                        "password": null,
+                        "salutation": "Mr.",
+                        "name": "Gurpreet Singh",
+                        "gender": "MALE",
+                        "mobileNumber": "9876543210",
+                        "emailId": "gurpreet.singh@example.com",
+                        "altContactNumber": "9123456780",
+                        "pan": "ABCPS1234K",
+                        "aadhaarNumber": "123456789012",
+                        "permanentAddress": "House No 12, Model Town",
+                        "permanentCity": "Amritsar",
+                        "permanentPincode": "143001",
+                        "correspondenceCity": "Amritsar",
+                        "correspondencePincode": "143001",
+                        "correspondenceAddress": "House No 12, Model Town",
+                        "active": true,
+                        "dob": 473385000000,
+                        "pwdExpiryDate": 1783382400000,
+                        "locale": "en_IN",
+                        "type": "EMPLOYEE",
+                        "signature": null,
+                        "accountLocked": false,
+                        "roles": [
+                          {
+                            "name": "Junior Engineer",
+                            "code": "JUNIOR_ENGINEER",
+                            "description": "Junior Engineer role for PHED",
+                            "tenantId": "pb.amritsar"
+                          }
+                        ],
+                        "fatherOrHusbandName": "Balwinder Singh",
+                        "relationship": "FATHER",
+                        "bloodGroup": "B_POSITIVE",
+                        "identificationMark": "Mole on left cheek",
+                        "photo": null,
+                        "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "createdDate": 1580428200000,
+                        "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "lastModifiedDate": 1752739200000,
+                        "otpReference": null,
+                        "tenantId": "pb.amritsar"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - validation failed, e.g. missing id/uuid/code, employee code changed, inconsistent (removed) historical data, invalid deactivation/reactivation details, or invalid MDMS-driven codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ERR_HRMS_INVALID_CURRENT_ASSGN",
+                      "message": "There should be exactly one current assignment for the employee.",
+                      "description": "There should be exactly one current assignment for the employee.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - RequestInfo.authToken is missing, invalid or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "UNAUTHORIZED",
+                      "message": "Authentication failed, invalid or expired authToken in RequestInfo.",
+                      "description": "The authToken supplied in RequestInfo could not be validated against egov-user.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - the authenticated user's roles do not permit this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ACCESS_FORBIDDEN",
+                      "message": "User does not have the privileges to access this API.",
+                      "description": "The role(s) associated with the requester do not permit this action.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - no employee exists for the given uuid (surfaced by this service as a 400 ErrorRes with code ERR_HRMS_UPDATE_EMPLOYEE_NOT_EXIST_CODE, since CustomException is always mapped to HTTP 400 by egov-tracer).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ERR_HRMS_UPDATE_EMPLOYEE_NOT_EXIST_CODE",
+                      "message": "No employee found for given UUID.",
+                      "description": "No employee found for given UUID.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - an unhandled exception occurred while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Error while processing request",
+                      "description": "An unexpected error occurred while processing the request. Contact system administrator.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees/_search": {
+      "post": {
+        "tags": [
+          "Employee"
+        ],
+        "summary": "Search employees",
+        "description": "Searches employees by any combination of the query parameters below. The JSON request body carries only a RequestInfo (search criteria travel as query parameters, bound via @ModelAttribute). If no criteria at all are supplied (an 'open search'), the caller's RequestInfo.userInfo.roles must include one of the roles configured as open-search-enabled, otherwise a 400 is returned. CITIZEN-type users may not search by `ids`. Passing `asOnDate` requires `departments`+`designations`; passing `roles`, `phone` or `names` requires `tenantId`.",
+        "operationId": "searchEmployees",
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "query",
+            "required": false,
+            "description": "Filter by employee code(s).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "PB-EMP-000145"
+            ]
+          },
+          {
+            "name": "names",
+            "in": "query",
+            "required": false,
+            "description": "Filter by employee/user name(s). Requires tenantId to also be supplied.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "Gurpreet Singh"
+            ]
+          },
+          {
+            "name": "departments",
+            "in": "query",
+            "required": false,
+            "description": "Filter by department code(s).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "PUBLIC_HEALTH_ENGINEERING"
+            ]
+          },
+          {
+            "name": "designations",
+            "in": "query",
+            "required": false,
+            "description": "Filter by designation code(s).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "JUNIOR_ENGINEER"
+            ]
+          },
+          {
+            "name": "asOnDate",
+            "in": "query",
+            "required": false,
+            "description": "Epoch millis. When supplied, at least one department and one designation must also be supplied.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "example": 1752739200000
+          },
+          {
+            "name": "roles",
+            "in": "query",
+            "required": false,
+            "description": "Filter by role code(s). Requires tenantId to also be supplied.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "JUNIOR_ENGINEER"
+            ]
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "description": "Filter by employee numeric id(s). Not permitted for CITIZEN-type requesters.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              145
+            ]
+          },
+          {
+            "name": "employeestatuses",
+            "in": "query",
+            "required": false,
+            "description": "Filter by employee status(es).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "EMPLOYED"
+            ]
+          },
+          {
+            "name": "employeetypes",
+            "in": "query",
+            "required": false,
+            "description": "Filter by employee type(s).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "PERMANENT"
+            ]
+          },
+          {
+            "name": "uuids",
+            "in": "query",
+            "required": false,
+            "description": "Filter by employee/user uuid(s).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "b1e5a945-8b2c-477e-9c2e-77d1a9535e94"
+            ]
+          },
+          {
+            "name": "positions",
+            "in": "query",
+            "required": false,
+            "description": "Filter by assignment position id(s).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              500123
+            ]
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "required": false,
+            "description": "Filter by active/inactive status.",
+            "schema": {
+              "type": "boolean"
+            },
+            "example": true
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": false,
+            "description": "Tenant id. Mandatory when searching by phone, names, or roles.",
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "example": "pb.amritsar"
+          },
+          {
+            "name": "phone",
+            "in": "query",
+            "required": false,
+            "description": "Filter by the employee's user mobile number. Requires tenantId to also be supplied.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "9876543210"
+          },
+          {
+            "name": "boundaryCodes",
+            "in": "query",
+            "required": false,
+            "description": "Filter by jurisdiction boundary code(s).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "example": [
+              "amritsar"
+            ]
+          },
+          {
+            "name": "searchOnlyInBoundary",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "example": false
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Pagination offset.",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 0
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Pagination page size.",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 10
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestInfoWrapper"
+              },
+              "example": {
+                "RequestInfo": {
+                  "apiId": "org.egov.hrms",
+                  "ver": "1.0",
+                  "ts": 1752739200000,
+                  "action": "_create",
+                  "did": "web",
+                  "key": "",
+                  "msgId": "20260717103000|en_IN",
+                  "requesterId": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                  "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5NTM1ZTk0Yi1hMWU1LTRhNDUtOGIyYy03N2UwYzJlNzdkMWEiLCJpYXQiOjE3NTI3MzkyMDB9.7Kk3s9m1XyZbT0vQeR8pL2N4jH6dG1wA5cF3bE9tU0o",
+                  "userInfo": {
+                    "id": 101,
+                    "uuid": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                    "userName": "hrms-admin",
+                    "name": "Harpreet Singh",
+                    "type": "EMPLOYEE",
+                    "mobileNumber": "9988776655",
+                    "tenantId": "pb.amritsar",
+                    "roles": [
+                      {
+                        "code": "HRMS_ADMIN",
+                        "name": "HRMS Administrator",
+                        "tenantId": "pb.amritsar"
+                      },
+                      {
+                        "code": "EMPLOYEE_CREATOR",
+                        "name": "Employee Creator",
+                        "tenantId": "pb.amritsar"
+                      }
+                    ]
+                  },
+                  "correlationId": "c2e77d1a-9535-4e94-b1a5-4a458b2c77e0"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK - list of employees matching the criteria (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeResponse"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "successful"
+                  },
+                  "Employees": [
+                    {
+                      "id": 145,
+                      "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                      "code": "PB-EMP-000145",
+                      "employeeStatus": "EMPLOYED",
+                      "employeeType": "PERMANENT",
+                      "dateOfAppointment": 1580428200000,
+                      "jurisdictions": [
+                        {
+                          "id": "1245",
+                          "hierarchy": "REVENUE",
+                          "boundary": "amritsar",
+                          "boundaryType": "City",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "assignments": [
+                        {
+                          "id": "3301",
+                          "position": 500123,
+                          "designation": "JUNIOR_ENGINEER",
+                          "department": "PUBLIC_HEALTH_ENGINEERING",
+                          "fromDate": 1580428200000,
+                          "toDate": null,
+                          "govtOrderNumber": "GO/2020/0145",
+                          "tenantid": "pb.amritsar",
+                          "reportingTo": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                          "isHOD": false,
+                          "isCurrentAssignment": true,
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "serviceHistory": [
+                        {
+                          "id": "4501",
+                          "serviceStatus": "EMPLOYED",
+                          "serviceFrom": 1580428200000,
+                          "serviceTo": null,
+                          "orderNo": "SO/2020/0087",
+                          "location": "amritsar",
+                          "tenantId": "pb.amritsar",
+                          "isCurrentPosition": true,
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "isActive": true,
+                      "education": [
+                        {
+                          "id": "5601",
+                          "qualification": "BE_BTECH",
+                          "stream": "CIVIL_ENGINEERING",
+                          "yearOfPassing": 946684800000,
+                          "university": "Punjab Technical University",
+                          "remarks": "First division",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "tests": [
+                        {
+                          "id": "6701",
+                          "test": "DEPARTMENTAL_PROMOTION_TEST",
+                          "yearOfPassing": 1104537600000,
+                          "remarks": "Passed with distinction",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          },
+                          "isActive": true
+                        }
+                      ],
+                      "tenantId": "pb.amritsar",
+                      "documents": [
+                        {
+                          "id": "7801",
+                          "documentName": "Appointment order",
+                          "documentId": "e4h-hrms/1234567/FILESTORE-KEY-0001",
+                          "referenceType": "HEADER",
+                          "referenceId": "145",
+                          "tenantId": "pb.amritsar",
+                          "auditDetails": {
+                            "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "createdDate": 1580428200000,
+                            "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                            "lastModifiedDate": 1752739200000
+                          }
+                        }
+                      ],
+                      "deactivationDetails": [],
+                      "reactivationDetails": [],
+                      "auditDetails": {
+                        "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "createdDate": 1580428200000,
+                        "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "lastModifiedDate": 1752739200000
+                      },
+                      "reActivateEmployee": false,
+                      "user": {
+                        "id": 5001,
+                        "uuid": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94",
+                        "userName": "PB-EMP-000145",
+                        "password": null,
+                        "salutation": "Mr.",
+                        "name": "Gurpreet Singh",
+                        "gender": "MALE",
+                        "mobileNumber": "9876543210",
+                        "emailId": "gurpreet.singh@example.com",
+                        "altContactNumber": "9123456780",
+                        "pan": "ABCPS1234K",
+                        "aadhaarNumber": "123456789012",
+                        "permanentAddress": "House No 12, Model Town",
+                        "permanentCity": "Amritsar",
+                        "permanentPincode": "143001",
+                        "correspondenceCity": "Amritsar",
+                        "correspondencePincode": "143001",
+                        "correspondenceAddress": "House No 12, Model Town",
+                        "active": true,
+                        "dob": 473385000000,
+                        "pwdExpiryDate": 1783382400000,
+                        "locale": "en_IN",
+                        "type": "EMPLOYEE",
+                        "signature": null,
+                        "accountLocked": false,
+                        "roles": [
+                          {
+                            "name": "Junior Engineer",
+                            "code": "JUNIOR_ENGINEER",
+                            "description": "Junior Engineer role for PHED",
+                            "tenantId": "pb.amritsar"
+                          }
+                        ],
+                        "fatherOrHusbandName": "Balwinder Singh",
+                        "relationship": "FATHER",
+                        "bloodGroup": "B_POSITIVE",
+                        "identificationMark": "Mole on left cheek",
+                        "photo": null,
+                        "createdBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "createdDate": 1580428200000,
+                        "lastModifiedBy": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                        "lastModifiedDate": 1752739200000,
+                        "otpReference": null,
+                        "tenantId": "pb.amritsar"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - invalid search combination, e.g. an open search from a non-privileged role, `ids` used by a CITIZEN-type caller, `asOnDate` without both departments and designations, or `roles`/`phone`/`names` supplied without `tenantId`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ERR_HRMS_INVALID_SEARCH_REQ",
+                      "message": "Open search is disabled for this user.",
+                      "description": "Open search is disabled for this user.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - RequestInfo.authToken is missing, invalid or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "UNAUTHORIZED",
+                      "message": "Authentication failed, invalid or expired authToken in RequestInfo.",
+                      "description": "The authToken supplied in RequestInfo could not be validated against egov-user.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - the authenticated user's roles do not permit this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ACCESS_FORBIDDEN",
+                      "message": "User does not have the privileges to access this API.",
+                      "description": "The role(s) associated with the requester do not permit this action.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - not used by this endpoint (an empty match returns 200 with an empty Employees array).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ERR_HRMS_UPDATE_EMPLOYEE_NOT_EXIST_CODE",
+                      "message": "No employee found for given UUID.",
+                      "description": "No employee found for given UUID.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - an unhandled exception occurred while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Error while processing request",
+                      "description": "An unexpected error occurred while processing the request. Contact system administrator.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees/_count": {
+      "post": {
+        "tags": [
+          "Employee"
+        ],
+        "summary": "Get the total employee count for a tenant",
+        "description": "Returns the total number of employee records for the given tenantId. Unlike the other three endpoints, the JSON request body here is a bare RequestInfo object (its fields at the top level) rather than being wrapped under a `RequestInfo` key.",
+        "operationId": "countEmployees",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": true,
+            "description": "Tenant to count employees for.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "pb.amritsar"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "A bare RequestInfo object (NOT wrapped in a `RequestInfo` key).",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestInfo"
+              },
+              "example": {
+                "apiId": "org.egov.hrms",
+                "ver": "1.0",
+                "ts": 1752739200000,
+                "action": "_count",
+                "did": "web",
+                "key": "",
+                "msgId": "20260717103000|en_IN",
+                "requesterId": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                "authToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5NTM1ZTk0Yi1hMWU1LTRhNDUtOGIyYy03N2UwYzJlNzdkMWEiLCJpYXQiOjE3NTI3MzkyMDB9.7Kk3s9m1XyZbT0vQeR8pL2N4jH6dG1wA5cF3bE9tU0o",
+                "userInfo": {
+                  "id": 101,
+                  "uuid": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a",
+                  "userName": "hrms-admin",
+                  "name": "Harpreet Singh",
+                  "type": "EMPLOYEE",
+                  "mobileNumber": "9988776655",
+                  "tenantId": "pb.amritsar",
+                  "roles": [
+                    {
+                      "code": "HRMS_ADMIN",
+                      "name": "HRMS Administrator",
+                      "tenantId": "pb.amritsar"
+                    },
+                    {
+                      "code": "EMPLOYEE_CREATOR",
+                      "name": "Employee Creator",
+                      "tenantId": "pb.amritsar"
+                    }
+                  ]
+                },
+                "correlationId": "c2e77d1a-9535-4e94-b1a5-4a458b2c77e0"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK - total employee count for the tenant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeCountResponse"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "successful"
+                  },
+                  "EmployeCount": {
+                    "totalEmployee": "428"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - tenantId query parameter missing/blank, or no employee records exist for the given tenantId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ERR_HRMS_COUNT_EMP",
+                      "message": "Please provide tenantid to get count of the employee",
+                      "description": "Please provide tenantid to get count of the employee",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - RequestInfo.authToken is missing, invalid or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "UNAUTHORIZED",
+                      "message": "Authentication failed, invalid or expired authToken in RequestInfo.",
+                      "description": "The authToken supplied in RequestInfo could not be validated against egov-user.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - the authenticated user's roles do not permit this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "ACCESS_FORBIDDEN",
+                      "message": "User does not have the privileges to access this API.",
+                      "description": "The role(s) associated with the requester do not permit this action.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - not applicable; an unmatched tenantId is instead reported as a 400 with code NO_RECORDS.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "NO_RECORDS",
+                      "message": "No records found for the tenantId: pb.amritsar",
+                      "description": "No records found for the tenantId: pb.amritsar",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - an unhandled exception occurred while processing the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRes"
+                },
+                "example": {
+                  "ResponseInfo": {
+                    "apiId": "org.egov.hrms",
+                    "ver": "1.0",
+                    "ts": 1752739201000,
+                    "resMsgId": "uief87324",
+                    "msgId": "20260717103000|en_IN",
+                    "status": "failed"
+                  },
+                  "Errors": [
+                    {
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Error while processing request",
+                      "description": "An unexpected error occurred while processing the request. Contact system administrator.",
+                      "params": []
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RequestInfoRole": {
+        "type": "object",
+        "description": "A single role held by the requesting user, as embedded in RequestInfo.userInfo.roles.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "HRMS_ADMIN"
+          },
+          "name": {
+            "type": "string",
+            "example": "HRMS Administrator"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "pb.amritsar"
+          }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "Identity of the calling user, embedded inside RequestInfo. Together with RequestInfo.authToken this is the sole authentication/authorization mechanism used by this service -- there is no separate Authorization header.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 101
+          },
+          "uuid": {
+            "type": "string",
+            "example": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a"
+          },
+          "userName": {
+            "type": "string",
+            "example": "hrms-admin"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Harpreet Singh"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "description": "e.g. EMPLOYEE, CITIZEN, SYSTEM",
+            "example": "EMPLOYEE"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "9988776655"
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequestInfoRole"
+            }
+          }
+        },
+        "required": [
+          "uuid",
+          "userName",
+          "roles"
+        ]
+      },
+      "RequestInfo": {
+        "type": "object",
+        "description": "Standard eGov DIGIT request envelope. AUTHENTICATION NOTE: this service has no separate `Authorization` header scheme -- the caller's Bearer JWT (obtained via egov-user's /user/oauth/token or /user/_login) is carried as `authToken`, alongside the caller's identity in `userInfo`. All eGov-HRMS endpoints authenticate/authorize purely from this embedded RequestInfo.",
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "nullable": true,
+            "example": "org.egov.hrms"
+          },
+          "ver": {
+            "type": "string",
+            "nullable": true,
+            "example": "1.0"
+          },
+          "ts": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Epoch millis.",
+            "example": 1752739200000
+          },
+          "action": {
+            "type": "string",
+            "nullable": true,
+            "example": "_create"
+          },
+          "did": {
+            "type": "string",
+            "nullable": true
+          },
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "msgId": {
+            "type": "string",
+            "nullable": true,
+            "example": "20260717103000|en_IN"
+          },
+          "requesterId": {
+            "type": "string",
+            "nullable": true,
+            "example": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a"
+          },
+          "authToken": {
+            "type": "string",
+            "nullable": true,
+            "description": "Bearer JWT obtained from egov-user's OAuth login (/user/oauth/token or /user/_login). This field is the auth carrier for the whole request -- there is no separate Authorization header.",
+            "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5NTM1ZTk0Yi1hMWU1LTRhNDUtOGIyYy03N2UwYzJlNzdkMWEiLCJpYXQiOjE3NTI3MzkyMDB9.7Kk3s9m1XyZbT0vQeR8pL2N4jH6dG1wA5cF3bE9tU0o"
+          },
+          "userInfo": {
+            "$ref": "#/components/schemas/UserInfo"
+          },
+          "correlationId": {
+            "type": "string",
+            "nullable": true,
+            "example": "c2e77d1a-9535-4e94-b1a5-4a458b2c77e0"
+          }
+        }
+      },
+      "ResponseInfo": {
+        "type": "object",
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "example": "org.egov.hrms"
+          },
+          "ver": {
+            "type": "string",
+            "nullable": true,
+            "example": "1.0"
+          },
+          "ts": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 1752739201000
+          },
+          "resMsgId": {
+            "type": "string",
+            "nullable": true,
+            "example": "uief87324"
+          },
+          "msgId": {
+            "type": "string",
+            "nullable": true,
+            "example": "20260717103000|en_IN"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "successful",
+              "failed"
+            ],
+            "example": "successful"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "ERR_HRMS_INVALID_CURRENT_ASSGN"
+          },
+          "message": {
+            "type": "string",
+            "example": "There should be exactly one current assignment for the employee."
+          },
+          "description": {
+            "type": "string",
+            "example": "There should be exactly one current assignment for the employee."
+          },
+          "params": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ErrorRes": {
+        "type": "object",
+        "description": "Default error body produced by egov-tracer for any CustomException raised in this service (e.g. by EmployeeValidator). Returned with HTTP 400 unless otherwise noted.",
+        "properties": {
+          "ResponseInfo": {
+            "$ref": "#/components/schemas/ResponseInfo"
+          },
+          "Errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "RequestInfoWrapper": {
+        "type": "object",
+        "description": "Envelope carrying only a RequestInfo, used as the JSON body of the employee search API (search criteria itself is passed as query parameters).",
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          }
+        },
+        "required": [
+          "RequestInfo"
+        ]
+      },
+      "AuditDetails": {
+        "type": "object",
+        "properties": {
+          "createdBy": {
+            "type": "string",
+            "nullable": true,
+            "example": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a"
+          },
+          "createdDate": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 1580428200000
+          },
+          "lastModifiedBy": {
+            "type": "string",
+            "nullable": true,
+            "example": "9535e94b-a1e5-4a45-8b2c-77e0c2e77d1a"
+          },
+          "lastModifiedDate": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 1752739200000
+          }
+        }
+      },
+      "GuardianRelation": {
+        "type": "string",
+        "enum": [
+          "FATHER",
+          "MOTHER",
+          "HUSBAND",
+          "OTHER"
+        ],
+        "description": "Relationship of the employee to the guardian named in User.fatherOrHusbandName."
+      },
+      "EmployeeDocumentReferenceType": {
+        "type": "string",
+        "enum": [
+          "HEADER",
+          "ASSIGNMENT",
+          "JURISDICTION",
+          "SERVICE",
+          "EDUCATION",
+          "TEST",
+          "DEACTIVATION"
+        ],
+        "description": "Which part of the Employee record a document is attached to."
+      },
+      "HrmsRole": {
+        "type": "object",
+        "description": "A role assigned to the employee's user account (org.egov.hrms.model.Role), validated against MDMS master data (common-masters.Role) on create/update.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "example": "Junior Engineer"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "example": "JUNIOR_ENGINEER"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 256,
+            "nullable": true,
+            "example": "Junior Engineer role for PHED"
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 256,
+            "nullable": true,
+            "example": "pb.amritsar"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "description": "The egov-user account backing an Employee. Created/updated in egov-user by this service as part of employee create/update.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 5001
+          },
+          "uuid": {
+            "type": "string",
+            "maxLength": 1024,
+            "nullable": true,
+            "example": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94"
+          },
+          "userName": {
+            "type": "string",
+            "maxLength": 180,
+            "nullable": true,
+            "example": "PB-EMP-000145"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "salutation": {
+            "type": "string",
+            "maxLength": 5,
+            "nullable": true,
+            "example": "Mr."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 250,
+            "pattern": "^[a-zA-Z \\-'`\\.]*$",
+            "example": "Gurpreet Singh"
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free-form in the DTO; conventionally one of MALE, FEMALE, OTHERS.",
+            "example": "MALE"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "example": "9876543210"
+          },
+          "emailId": {
+            "type": "string",
+            "maxLength": 128,
+            "nullable": true,
+            "example": "gurpreet.singh@example.com"
+          },
+          "altContactNumber": {
+            "type": "string",
+            "maxLength": 50,
+            "nullable": true,
+            "example": "9123456780"
+          },
+          "pan": {
+            "type": "string",
+            "maxLength": 10,
+            "nullable": true,
+            "example": "ABCPS1234K"
+          },
+          "aadhaarNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{12}$",
+            "nullable": true,
+            "example": "123456789012"
+          },
+          "permanentAddress": {
+            "type": "string",
+            "maxLength": 300,
+            "nullable": true,
+            "example": "House No 12, Model Town"
+          },
+          "permanentCity": {
+            "type": "string",
+            "maxLength": 300,
+            "nullable": true,
+            "example": "Amritsar"
+          },
+          "permanentPincode": {
+            "type": "string",
+            "maxLength": 10,
+            "nullable": true,
+            "example": "143001"
+          },
+          "correspondenceCity": {
+            "type": "string",
+            "maxLength": 300,
+            "nullable": true,
+            "example": "Amritsar"
+          },
+          "correspondencePincode": {
+            "type": "string",
+            "maxLength": 10,
+            "nullable": true,
+            "example": "143001"
+          },
+          "correspondenceAddress": {
+            "type": "string",
+            "maxLength": 300,
+            "nullable": true,
+            "example": "House No 12, Model Town"
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "dob": {
+            "type": "integer",
+            "format": "int64",
+            "example": 473385000000
+          },
+          "pwdExpiryDate": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 1783382400000
+          },
+          "locale": {
+            "type": "string",
+            "maxLength": 16,
+            "nullable": true,
+            "example": "en_IN"
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 50,
+            "nullable": true,
+            "description": "Free-form in the DTO; conventionally one of EMPLOYEE, CITIZEN, SYSTEM.",
+            "example": "EMPLOYEE"
+          },
+          "signature": {
+            "type": "string",
+            "maxLength": 36,
+            "nullable": true
+          },
+          "accountLocked": {
+            "type": "boolean",
+            "nullable": true,
+            "example": false
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HrmsRole"
+            }
+          },
+          "fatherOrHusbandName": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "example": "Balwinder Singh"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/GuardianRelation"
+          },
+          "bloodGroup": {
+            "type": "string",
+            "maxLength": 32,
+            "nullable": true,
+            "example": "B_POSITIVE"
+          },
+          "identificationMark": {
+            "type": "string",
+            "maxLength": 300,
+            "nullable": true,
+            "example": "Mole on left cheek"
+          },
+          "photo": {
+            "type": "string",
+            "maxLength": 36,
+            "nullable": true
+          },
+          "createdBy": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "createdDate": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "lastModifiedBy": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "lastModifiedDate": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "otpReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 256,
+            "nullable": true,
+            "example": "pb.amritsar"
+          }
+        },
+        "required": [
+          "name",
+          "mobileNumber",
+          "dob"
+        ]
+      },
+      "Jurisdiction": {
+        "type": "object",
+        "description": "A single administrative-hierarchy assignment for the employee (e.g. REVENUE hierarchy at the amritsar boundary).",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": "1245"
+          },
+          "hierarchy": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "example": "REVENUE"
+          },
+          "boundary": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "example": "amritsar"
+          },
+          "boundaryType": {
+            "type": "string",
+            "maxLength": 256,
+            "example": "City"
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          }
+        },
+        "required": [
+          "hierarchy",
+          "boundary",
+          "boundaryType"
+        ]
+      },
+      "Assignment": {
+        "type": "object",
+        "description": "A single posting/assignment held by the employee. Exactly one assignment per employee must have isCurrentAssignment=true, and assignment periods must not overlap.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": "3301"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 500123
+          },
+          "designation": {
+            "type": "string",
+            "example": "JUNIOR_ENGINEER"
+          },
+          "department": {
+            "type": "string",
+            "example": "PUBLIC_HEALTH_ENGINEERING"
+          },
+          "fromDate": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1580428200000
+          },
+          "toDate": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Must be null for the current assignment, required for past assignments."
+          },
+          "govtOrderNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "GO/2020/0145"
+          },
+          "tenantid": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "reportingTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94"
+          },
+          "isHOD": {
+            "type": "boolean",
+            "default": false,
+            "example": false
+          },
+          "isCurrentAssignment": {
+            "type": "boolean",
+            "example": true
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          }
+        },
+        "required": [
+          "designation",
+          "department",
+          "fromDate",
+          "isCurrentAssignment"
+        ]
+      },
+      "ServiceHistory": {
+        "type": "object",
+        "description": "A single service-period record for the employee. At most one entry may have isCurrentPosition=true.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": "4501"
+          },
+          "serviceStatus": {
+            "type": "string",
+            "nullable": true,
+            "example": "EMPLOYED"
+          },
+          "serviceFrom": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 1580428200000
+          },
+          "serviceTo": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "orderNo": {
+            "type": "string",
+            "nullable": true,
+            "example": "SO/2020/0087"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "example": "amritsar"
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "isCurrentPosition": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          }
+        }
+      },
+      "EducationalQualification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": "5601"
+          },
+          "qualification": {
+            "type": "string",
+            "example": "BE_BTECH"
+          },
+          "stream": {
+            "type": "string",
+            "example": "CIVIL_ENGINEERING"
+          },
+          "yearOfPassing": {
+            "type": "integer",
+            "format": "int64",
+            "example": 946684800000
+          },
+          "university": {
+            "type": "string",
+            "nullable": true,
+            "example": "Punjab Technical University"
+          },
+          "remarks": {
+            "type": "string",
+            "nullable": true,
+            "example": "First division"
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          }
+        },
+        "required": [
+          "qualification",
+          "stream",
+          "yearOfPassing"
+        ]
+      },
+      "DepartmentalTest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": "6701"
+          },
+          "test": {
+            "type": "string",
+            "example": "DEPARTMENTAL_PROMOTION_TEST"
+          },
+          "yearOfPassing": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1104537600000
+          },
+          "remarks": {
+            "type": "string",
+            "nullable": true,
+            "example": "Passed with distinction"
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          }
+        },
+        "required": [
+          "test",
+          "yearOfPassing"
+        ]
+      },
+      "EmployeeDocument": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": "7801"
+          },
+          "documentName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Appointment order"
+          },
+          "documentId": {
+            "type": "string",
+            "nullable": true,
+            "example": "e4h-hrms/1234567/FILESTORE-KEY-0001"
+          },
+          "referenceType": {
+            "$ref": "#/components/schemas/EmployeeDocumentReferenceType"
+          },
+          "referenceId": {
+            "type": "string",
+            "nullable": true,
+            "example": "145"
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          }
+        }
+      },
+      "DeactivationDetails": {
+        "type": "object",
+        "description": "Required whenever an employee is deactivated (isActive set to false); effectiveFrom must be the current date.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": "8901"
+          },
+          "reasonForDeactivation": {
+            "type": "string",
+            "description": "Validated against MDMS master common-masters.DeactivationReason.",
+            "example": "RETIRED"
+          },
+          "orderNo": {
+            "type": "string",
+            "nullable": true,
+            "example": "DO/2026/0012"
+          },
+          "remarks": {
+            "type": "string",
+            "nullable": true,
+            "example": "Superannuation"
+          },
+          "effectiveFrom": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1752652800000
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          }
+        },
+        "required": [
+          "reasonForDeactivation",
+          "effectiveFrom"
+        ]
+      },
+      "ReactivationDetails": {
+        "type": "object",
+        "description": "Provided when a previously deactivated employee is reactivated (isActive=true and reActivateEmployee=true); effectiveFrom must fall between the deactivation date and the current date.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "example": "9001"
+          },
+          "reasonForReactivation": {
+            "type": "string",
+            "example": "REINSTATEMENT"
+          },
+          "orderNo": {
+            "type": "string",
+            "nullable": true,
+            "example": "RO/2026/0004"
+          },
+          "remarks": {
+            "type": "string",
+            "nullable": true,
+            "example": "Reinstated on appeal"
+          },
+          "effectiveFrom": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1752739200000
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true,
+            "example": "pb.amritsar"
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          }
+        },
+        "required": [
+          "reasonForReactivation",
+          "effectiveFrom"
+        ]
+      },
+      "Employee": {
+        "type": "object",
+        "description": "A single employee record together with its embedded egov-user account, jurisdictions, assignments and history.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Required (and immutable) on update.",
+            "example": 145
+          },
+          "uuid": {
+            "type": "string",
+            "maxLength": 1024,
+            "nullable": true,
+            "description": "Required on update.",
+            "example": "b1e5a945-8b2c-477e-9c2e-77d1a9535e94"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "nullable": true,
+            "description": "Employee code / username; immutable once set.",
+            "example": "PB-EMP-000145"
+          },
+          "employeeStatus": {
+            "type": "string",
+            "maxLength": 250,
+            "nullable": true,
+            "example": "EMPLOYED"
+          },
+          "employeeType": {
+            "type": "string",
+            "maxLength": 250,
+            "description": "Validated against MDMS master common-masters.EmployeeType.",
+            "example": "PERMANENT"
+          },
+          "dateOfAppointment": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "example": 1580428200000
+          },
+          "jurisdictions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/Jurisdiction"
+            }
+          },
+          "assignments": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Assignment"
+            }
+          },
+          "serviceHistory": {
+            "type": "array",
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/components/schemas/ServiceHistory"
+            }
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "education": {
+            "type": "array",
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/components/schemas/EducationalQualification"
+            }
+          },
+          "tests": {
+            "type": "array",
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/components/schemas/DepartmentalTest"
+            }
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 250,
+            "example": "pb.amritsar"
+          },
+          "documents": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/EmployeeDocument"
+            }
+          },
+          "deactivationDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeactivationDetails"
+            }
+          },
+          "reactivationDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReactivationDetails"
+            }
+          },
+          "auditDetails": {
+            "$ref": "#/components/schemas/AuditDetails"
+          },
+          "reActivateEmployee": {
+            "type": "boolean",
+            "nullable": true,
+            "example": false
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "employeeType",
+          "jurisdictions",
+          "assignments",
+          "tenantId",
+          "user"
+        ]
+      },
+      "EmployeeRequest": {
+        "type": "object",
+        "properties": {
+          "RequestInfo": {
+            "$ref": "#/components/schemas/RequestInfo"
+          },
+          "Employees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Employee"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "RequestInfo",
+          "Employees"
+        ]
+      },
+      "EmployeeResponse": {
+        "type": "object",
+        "properties": {
+          "ResponseInfo": {
+            "$ref": "#/components/schemas/ResponseInfo"
+          },
+          "Employees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Employee"
+            }
+          }
+        }
+      },
+      "EmployeeCountResult": {
+        "type": "object",
+        "properties": {
+          "totalEmployee": {
+            "type": "string",
+            "example": "428"
+          }
+        }
+      },
+      "EmployeeCountResponse": {
+        "type": "object",
+        "description": "Ad-hoc map returned by the /_count endpoint (not a strongly-typed DTO in the service).",
+        "properties": {
+          "ResponseInfo": {
+            "$ref": "#/components/schemas/ResponseInfo"
+          },
+          "EmployeCount": {
+            "$ref": "#/components/schemas/EmployeeCountResult"
+          }
+        }
+      }
+    }
+  }
+}
