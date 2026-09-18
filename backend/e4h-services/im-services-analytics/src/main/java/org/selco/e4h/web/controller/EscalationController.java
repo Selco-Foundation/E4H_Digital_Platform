@@ -26,6 +26,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.util.EscalationTemplateType;
 import org.selco.e4h.util.ElasticSearchClient;
+import org.selco.e4h.util.EscalationTicketUtil;
 
 /**
  * Controller for SLA escalation processing
@@ -718,8 +719,8 @@ public class EscalationController {
                 String facilityName = resolveFacilityName(data);
                 String ninOrHfr = getStringValue(data, "nin_hfr_id");
                 // Use state code for state identification
-                String district = getStringValue(data, "district");
-                String block = getStringValue(data, "block");
+                String district = EscalationTicketUtil.resolveBoundaryNameOrFlag(getStringValue(data, "district"));
+                String block = EscalationTicketUtil.resolveBoundaryNameOrFlag(getStringValue(data, "block"));
                 String hfType = resolveHfType(data);
                 String vendor = resolveVendor(data);
                 String status = extractApplicationStatus(data);
@@ -773,14 +774,28 @@ public class EscalationController {
      * Extract state code from boundary in ticket data
      * Returns null if boundary or stateCode is not found
      */
+    /**
+     * Some indexed tickets have no {@code incident.boundary} object at all, but do carry a plain
+     * state name directly on {@code Data.state} (e.g. "Arunachal Pradesh"). Falling back to that -
+     * reformatted to the same "India_StateName" (no spaces) shape MDMS-derived state codes use, e.g.
+     * "India_ArunachalPradesh" - keeps those tickets from being silently dropped from this report.
+     */
     private String extractBoundaryStateCodeFromData(Map<String, Object> data) {
         Map<String, Object> incident = (Map<String, Object>) data.get("incident");
-        if (incident == null) return null;
-        
-        Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
-        if (boundary == null) return null;
-        
-        return getStringValue(boundary, "stateCode");
+        if (incident != null) {
+            Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
+            if (boundary != null) {
+                String stateCode = getStringValue(boundary, "stateCode");
+                if (!stateCode.isEmpty()) {
+                    return stateCode;
+                }
+            }
+        }
+        String plainState = getStringValue(data, "state");
+        if (plainState.isEmpty()) {
+            return null;
+        }
+        return "India_" + plainState.replaceAll("\\s+", "");
     }
 
     private String resolveFacilityName(Map<String, Object> data) {
