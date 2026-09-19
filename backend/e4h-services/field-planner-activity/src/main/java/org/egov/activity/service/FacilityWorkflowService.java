@@ -66,12 +66,22 @@ public class FacilityWorkflowService {
 
 
      public List<ProcessInstance> getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo) {
+         return getProcessInstanceById(businessId, tenantId, requestInfo, null);
+     }
+
+    /**
+     * @param limit rows the workflow search may return, sent explicitly because workflow-v2 defaults
+     *              it to 10 and would silently drop the oldest transitions of a long history; null
+     *              keeps that default. Values above the workflow's own max limit are ignored by it.
+     */
+     public List<ProcessInstance> getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo, Integer limit) {
         log.trace("getProcessInstanceById method invoked for businessId: {}, tenantId: {}", businessId, tenantId);
         log.debug("Fetching process instances for businessId: {}", businessId);
         String url = activityConfiguration.getWfHost() + activityConfiguration.getWfSearchPath()
             + "?tenantId=" + tenantId
             + "&businessIds=" + businessId
-            + "&history=" + true;
+            + "&history=" + true
+            + (limit != null ? "&limit=" + limit : "");
 
         // Wrap RequestInfo in RequestInfoWrapper
         RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
