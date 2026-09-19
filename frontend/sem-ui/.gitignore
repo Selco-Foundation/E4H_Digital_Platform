@@ -1,0 +1,12 @@
+node_modules
+.pnpm-cache
+.pnpm-data
+.pnpm-store
+dist
+build
+.env
+.env.local
+*.log
+.DS_Store
+coverage
+.turbo
