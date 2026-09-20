@@ -27,6 +27,9 @@ public class InstallationReportDocument {
     @JsonProperty("projectId")
     private String projectId = null;
 
+    @JsonProperty("projectName")
+    private String projectName = null;
+
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
 }

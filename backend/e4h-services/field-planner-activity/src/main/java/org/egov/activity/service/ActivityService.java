@@ -354,6 +354,7 @@ public class ActivityService {
                     .facilityName(activityFacility.getFacility() != null
                             ? activityFacility.getFacility().getFacilityName() : null)
                     .projectId(resolveProjectId(activityFacility))
+                    .projectName(resolveProjectName(activityFacility))
                     .fieldPlanId(activityFacility.getFieldPlanId())
                     .build());
         }
@@ -429,6 +430,15 @@ public class ActivityService {
             return fieldPlan.getProjectId();
         }
         return fieldPlan.getProject() != null ? fieldPlan.getProject().getId() : null;
+    }
+
+    /* Carried by the installation plan's project, which field-planner joins on every plan search. */
+    private static String resolveProjectName(ActivityFacility activityFacility) {
+        FieldPlan fieldPlan = activityFacility.getFieldPlan();
+        if (fieldPlan == null || fieldPlan.getProject() == null) {
+            return null;
+        }
+        return fieldPlan.getProject().getName();
     }
 
     private String resolveTenantId(String tenantId) {
