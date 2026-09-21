@@ -14,8 +14,10 @@ import org.springframework.stereotype.Service;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Orchestrates CO2 batch processing and indexing.
@@ -48,12 +50,30 @@ public class CarbonEmissionBatchService {
                 targeted ? facilityIds.size() : 0);
 
         Co2ReferenceBundle references = referenceClient.fetchReferenceData(tenantId);
+        // Rows the scan visited, deduplicated. The registry paginates with LIMIT/OFFSET, so a row
+        // can be visited twice (and another never) if the ordering is not stable between pages;
+        // every visit publishes messages, but repeat visits reuse the same document _id and
+        // overwrite in ES. Comparing this against the visit count is what makes that visible.
+        Set<String> distinctFacilityIds = new LinkedHashSet<>();
         int scanned = targeted
-                ? processFromFacilityIdList(requestInfo, tenantId, current, references, facilityIds)
-                : processFromFacilityRegistry(requestInfo, tenantId, current, references);
+                ? processFromFacilityIdList(requestInfo, tenantId, current, references, facilityIds,
+                        distinctFacilityIds)
+                : processFromFacilityRegistry(requestInfo, tenantId, current, references,
+                        distinctFacilityIds);
 
-        log.info("CO2 batch completed tenantId={} facilitiesScanned={} mode={}",
-                tenantId, scanned, targeted ? "facilityIds" : "fullRegistry");
+        int repeatVisits = scanned - distinctFacilityIds.size();
+        log.info("CO2 batch completed tenantId={} facilitiesScanned={} distinctFacilities={} "
+                        + "repeatVisits={} mode={}",
+                tenantId, scanned, distinctFacilityIds.size(), repeatVisits,
+                targeted ? "facilityIds" : "fullRegistry");
+        if (repeatVisits > 0) {
+            log.error("CO2 batch visited {} facility row(s) more than once tenantId={} "
+                            + "(scanned={} distinct={}). Those repeats republish the same document "
+                            + "_ids and overwrite in ES, and an equivalent number of facilities was "
+                            + "almost certainly never scanned at all — the index will end up short "
+                            + "even though every message was produced and consumed.",
+                    repeatVisits, tenantId, scanned, distinctFacilityIds.size());
+        }
     }
 
     /**
@@ -63,7 +83,8 @@ public class CarbonEmissionBatchService {
                                           String tenantId,
                                           YearMonth current,
                                           Co2ReferenceBundle references,
-                                          List<String> facilityIds) {
+                                          List<String> facilityIds,
+                                          Set<String> distinctFacilityIds) {
         int batchSize = properties.getFacilityBatchSize();
         int scanned = 0;
 
@@ -80,6 +101,7 @@ public class CarbonEmissionBatchService {
                 log.warn("Registry returned fewer facilities than requested tenantId={} requested={} found={}",
                         tenantId, chunk.size(), facilities.size());
             }
+            recordVisits(facilities, distinctFacilityIds, tenantId, i);
             processFacilityBatch(requestInfo, tenantId, facilities, current, references);
             scanned += facilities.size();
         }
@@ -93,7 +115,8 @@ public class CarbonEmissionBatchService {
     private int processFromFacilityRegistry(RequestInfo requestInfo,
                                             String tenantId,
                                             YearMonth current,
-                                            Co2ReferenceBundle references) {
+                                            Co2ReferenceBundle references,
+                                            Set<String> distinctFacilityIds) {
         int batchSize = properties.getFacilityBatchSize();
         int offset = 0;
         int scanned = 0;
@@ -115,6 +138,7 @@ public class CarbonEmissionBatchService {
                         tenantId, totalCount, batchSize);
             }
 
+            recordVisits(facilities, distinctFacilityIds, tenantId, offset);
             processFacilityBatch(requestInfo, tenantId, facilities, current, references);
             scanned += facilities.size();
             offset += facilities.size();
@@ -124,6 +148,45 @@ public class CarbonEmissionBatchService {
             }
         }
         return scanned;
+    }
+
+    /**
+     * Records which facility rows a page returned and reports any already seen on an earlier page.
+     *
+     * <p>A repeat means the two pages overlapped, which with LIMIT/OFFSET pagination also implies a
+     * gap somewhere else in the scan. Logged per page so the offset window that overlapped is
+     * identifiable rather than only the total at the end.
+     */
+    private void recordVisits(List<Co2FacilityContext> facilities,
+                              Set<String> distinctFacilityIds,
+                              String tenantId,
+                              int offset) {
+        List<String> repeats = new ArrayList<>();
+        int blankIds = 0;
+        for (Co2FacilityContext facility : facilities) {
+            String facilityId = facility.getFacilityId();
+            if (facilityId == null || facilityId.isBlank()) {
+                blankIds++;
+                continue;
+            }
+            if (!distinctFacilityIds.add(facilityId)) {
+                repeats.add(facilityId);
+            }
+        }
+        if (blankIds > 0) {
+            // These build a document _id of "<tenant>_null_<year>_<month>", so every such facility
+            // collapses onto one document per period.
+            log.error("Registry page returned {} facility row(s) with no facilityId tenantId={} offset={} "
+                            + "— their documents share one _id and overwrite each other",
+                    blankIds, tenantId, offset);
+        }
+        if (!repeats.isEmpty()) {
+            log.error("Registry page at offset={} returned {} facility row(s) already seen earlier in "
+                            + "this scan tenantId={} firstFew={} — pages are overlapping, so other "
+                            + "facilities are being skipped entirely",
+                    offset, repeats.size(), tenantId,
+                    repeats.subList(0, Math.min(5, repeats.size())));
+        }
     }
 
     private void processFacilityBatch(RequestInfo requestInfo,
