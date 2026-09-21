@@ -99,7 +99,7 @@ const SystemParameterReport = ({ t, file, supportingDocuments, installationImage
             target="_blank"
             rel="noopener noreferrer"
             href={file.fileUrl}
-            download={"installation-completion-report.pdf"}
+            download={file.name}
           >
             <div style={{ display: "flex", alignItems: "center" }}>
               <PdfIcon style={{ marginRight: "12px" }} />
