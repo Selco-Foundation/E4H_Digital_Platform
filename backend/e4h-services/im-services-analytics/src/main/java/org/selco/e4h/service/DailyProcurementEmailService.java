@@ -49,7 +49,7 @@ public class DailyProcurementEmailService {
         }
         StringBuilder html = new StringBuilder();
         for (StateDailyBreachSection section : sections) {
-            html.append("<p class=\"banner b-slate\">&gt;")
+            html.append("<p class=\"banner b-slate\">")
                     .append(commonUtility.escapeHtml(section.getStateName())).append("</p>");
             html.append("<table class=\"t-slate\"><thead><tr><th>Vendor</th><th class=\"right\">Count of Tickets</th></tr></thead><tbody>");
             html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false));
