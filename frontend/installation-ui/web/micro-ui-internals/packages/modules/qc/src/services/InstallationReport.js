@@ -18,7 +18,7 @@ export const InstallationReportService = {
   },
 
   fetchReportDocument: async (report) => {
-    if (!report.filestoreId || !report.facilityName || !report.projectId) {
+    if (!report.filestoreId || !report.facilityName || !report.projectName) {
       throw new Error("COMMON_INSTALLATION_REPORT_DOWNLOAD_FAILED");
     }
     const files = await FilestoreService.fetchDocumentFromFilestore(report.filestoreId);
