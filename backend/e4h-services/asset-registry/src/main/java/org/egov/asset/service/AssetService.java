@@ -97,17 +97,20 @@ public class AssetService {
     }
 
     /**
-     * Flags the asset as a potential duplicate when the same Asset Brand + Asset Serial Number +
-     * Asset Type combination already exists in the registry, by writing {@code isPotentialDuplicate}
-     * into its assetDetails (persisted as-is in the asset_details JSONB column).
+     * Flags the asset as a potential duplicate when the same Asset Brand + Asset Serial Number
+     * combination already exists in the registry, by writing {@code isPotentialDuplicate} into its
+     * assetDetails (persisted as-is in the asset_details JSONB column).
      * <p>
-     * The flag is informational only: a duplicate is never rejected, the asset is created either
-     * way. It is written on every asset, true or false, so consumers never have to tell a
+     * The flag is informational only: a duplicate is never rejected, the asset is created or updated
+     * either way. It is written on every asset, true or false, so consumers never have to tell a
      * non-duplicate apart from an asset created before this check existed.
+     * <p>
+     * Runs on both create and update: an update can move an asset onto an already used brand +
+     * serial number, and can equally move it off one, so the flag is always re-evaluated.
      */
     void enrichPotentialDuplicate(Asset asset) {
         log.trace("AssetService::enrichPotentialDuplicate called");
-        boolean isPotentialDuplicate = hasAssetWithSameBrandSerialNumberAndType(asset);
+        boolean isPotentialDuplicate = hasAssetWithSameBrandAndSerialNumber(asset);
 
         // Copied rather than mutated in place: the map comes straight from the request body and
         // nothing guarantees it is modifiable.
@@ -127,36 +130,43 @@ public class AssetService {
     }
 
     /**
-     * True when the registry already holds an asset of this type with this brand and serial number.
-     * The lookup is global - no tenant, facility or workflow status narrowing - as required by the
-     * duplicate rule. A blank brand, serial number or asset type cannot form the duplicate key, so
-     * it never matches.
+     * True when the registry already holds another asset with this brand and serial number. The
+     * lookup is global - no tenant, facility, asset type or workflow status narrowing - as required
+     * by the duplicate rule. A blank brand or serial number cannot form the duplicate key, so it
+     * never matches.
+     * <p>
+     * Asset type is deliberately not part of the key: the flag is advisory, so missing a duplicate
+     * costs more than flagging one, and the same serial number keyed under two different asset types
+     * is itself a data-entry mistake worth surfacing.
+     * <p>
+     * The asset's own row is excluded, otherwise every update of an unchanged asset would match
+     * itself. On create that row does not exist yet, so excluding it changes nothing.
      */
-    private boolean hasAssetWithSameBrandSerialNumberAndType(Asset asset) {
-        log.trace("AssetService::hasAssetWithSameBrandSerialNumberAndType called");
+    private boolean hasAssetWithSameBrandAndSerialNumber(Asset asset) {
+        log.trace("AssetService::hasAssetWithSameBrandAndSerialNumber called");
         String brandId = asset.getBrandID();
         String serialNumber = asset.getSerialNumber();
-        String assetTypeId = asset.getAssetTypeID();
-        if (brandId == null || brandId.isBlank()
-                || serialNumber == null || serialNumber.isBlank()
-                || assetTypeId == null || assetTypeId.isBlank()) {
-            log.debug("Incomplete duplicate key, skipping lookup | assetId={} assetTypeID={} brandID={} serialNumber={}",
-                    asset.getAssetId(), assetTypeId, brandId, serialNumber);
+        if (brandId == null || brandId.isBlank() || serialNumber == null || serialNumber.isBlank()) {
+            log.debug("Incomplete duplicate key, skipping lookup | assetId={} brandID={} serialNumber={}",
+                    asset.getAssetId(), brandId, serialNumber);
             return false;
         }
 
-        String query = "SELECT COUNT(*) FROM asset WHERE brand_id = ? AND serial_number = ?"
-                + " AND UPPER(asset_type_id) = UPPER(?)";
-        Object[] params = {brandId, serialNumber, assetTypeId};
+        StringBuilder query = new StringBuilder("SELECT COUNT(*) FROM asset WHERE brand_id = ? AND serial_number = ?");
+        List<Object> params = new ArrayList<>(List.of(brandId, serialNumber));
+        if (asset.getAssetId() != null && !asset.getAssetId().isBlank()) {
+            query.append(" AND asset_id <> ?");
+            params.add(asset.getAssetId());
+        }
 
         try {
-            Integer count = jdbcTemplate.queryForObject(query, params, Integer.class);
-            log.info("Duplicate lookup completed | assetTypeID={} brandID={} serialNumber={} matches={}",
-                    assetTypeId, brandId, serialNumber, count);
+            Integer count = jdbcTemplate.queryForObject(query.toString(), params.toArray(), Integer.class);
+            log.info("Duplicate lookup completed | brandID={} serialNumber={} matches={}",
+                    brandId, serialNumber, count);
             return count != null && count > 0;
         } catch (Exception e) {
-            log.error("Error checking for duplicate asset | assetTypeID={} brandID={} serialNumber={} error={}",
-                    assetTypeId, brandId, serialNumber, e.getMessage(), e);
+            log.error("Error checking for duplicate asset | brandID={} serialNumber={} error={}",
+                    brandId, serialNumber, e.getMessage(), e);
             throw new CustomException("ASSET_DUPLICATE_CHECK_ERROR",
                     "Failed to check for duplicate assets: " + e.getMessage());
         }
@@ -395,6 +405,9 @@ public class AssetService {
             updated.getAuditDetails().setLastModifiedTime(System.currentTimeMillis());
             log.debug("Updated audit details for assetId={}", updated.getAssetId());
         }
+
+        enrichPotentialDuplicate(updated);
+
         log.info("Pushing asset update to repository | assetId={}", assetId);
         assetRepository.pushUpdateAsset(updated);
         log.info("Asset updated successfully | assetId={} tenantId={}", assetId, updated.getTenantId());

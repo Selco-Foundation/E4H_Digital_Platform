@@ -37,8 +37,8 @@ public class AssetConstants {
             Arrays.asList("Lithium", "Lead Acid"));
 
     /**
-     * assetDetails key flagging an asset whose Asset Brand + Asset Serial Number + Asset Type
-     * combination already exists somewhere in the registry.
+     * assetDetails key flagging an asset whose Asset Brand + Asset Serial Number combination already
+     * exists somewhere in the registry, whatever its asset type.
      */
     public static final String IS_POTENTIAL_DUPLICATE = "isPotentialDuplicate";
 
