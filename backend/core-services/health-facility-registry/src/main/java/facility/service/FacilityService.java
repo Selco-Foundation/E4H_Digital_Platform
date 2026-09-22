@@ -2231,11 +2231,24 @@ public class FacilityService {
         return segments[segments.length - 1];
     }
 
+    /**
+     * Sort for bulk search, always ending in a unique tiebreaker.
+     *
+     * <p>{@code created_at} / {@code updated_at} are not unique — facilities loaded in the same
+     * import share a timestamp, and rows with a null timestamp all land together under
+     * {@code NULLS LAST}. Postgres may return tied rows in any order, and it need not be the same
+     * order across the separate queries a LIMIT/OFFSET walk issues. A caller paging through the
+     * whole table would then see some facilities twice and miss others entirely, with nothing in
+     * the response to indicate it happened.
+     *
+     * <p>Appending {@code fac.id} makes the total order deterministic, so every row is returned
+     * exactly once across a full scan.
+     */
     private String buildBulkSearchOrderBy(FacilityBulkSearchCriteria criteria) {
         String sortBy = criteria.getSortBy() != null ? criteria.getSortBy().trim().toLowerCase() : "updated_at";
         String column = ("created_at".equals(sortBy) || "createdat".equals(sortBy)) ? "fac.created_at" : "fac.updated_at";
         boolean asc = "asc".equalsIgnoreCase(criteria.getSortOrder());
-        return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST ";
+        return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST, fac.id ASC ";
     }
 
 }
