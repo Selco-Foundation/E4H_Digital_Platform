@@ -47,3 +47,24 @@ const useInstallationReport = (projectId) => {
 };
 
 export default useInstallationReport;
+
+// Fetch a single PDF only when the download icon is clicked.
+export const useInstallationReportDownload = (fileUrl) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["PM_INSTALLATION_REPORT_PDF", fileUrl];
+  const { refetch, isFetching } = useQuery(
+    queryKey,
+    () => InstallationReportService.fetchReportPdf(fileUrl),
+    { enabled: false, retry: false, cacheTime: 0 }
+  );
+  const fetchPdf = async () => {
+    try {
+      const result = await refetch({ throwOnError: true });
+      return result.data;
+    } finally {
+      // Release the PDF from the query cache after handing it to the download handler.
+      queryClient.removeQueries(queryKey, { exact: true });
+    }
+  };
+  return { fetchPdf, isFetching };
+};
