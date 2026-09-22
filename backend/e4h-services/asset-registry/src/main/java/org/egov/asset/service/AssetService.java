@@ -8,6 +8,7 @@ import org.egov.asset.mapper.DocumentRowMapper;
 import org.egov.asset.repository.AssetRepository;
 import org.egov.asset.util.AssetConstants;
 import org.egov.asset.util.ErrorConstants;
+import org.egov.asset.util.FacilityUtil;
 import org.egov.asset.util.IdgenUtil;
 import org.egov.asset.util.ResponseInfoFactory;
 import org.egov.asset.web.models.Asset;
@@ -34,15 +35,17 @@ public class AssetService {
     private final IdgenUtil idgenUtil;
     private final AssetRepository assetRepository;
     private final ResponseInfoFactory responseInfoFactory;
+    private final FacilityUtil facilityUtil;
 
     @Autowired
-    public AssetService(JdbcTemplate jdbcTemplate, AssetRowMapper assetRowMapper, DocumentRowMapper documentRowMapper, IdgenUtil idgenUtil, AssetRepository assetRepository, ResponseInfoFactory responseInfoFactory) {
+    public AssetService(JdbcTemplate jdbcTemplate, AssetRowMapper assetRowMapper, DocumentRowMapper documentRowMapper, IdgenUtil idgenUtil, AssetRepository assetRepository, ResponseInfoFactory responseInfoFactory, FacilityUtil facilityUtil) {
         this.jdbcTemplate = jdbcTemplate;
         this.assetRowMapper = assetRowMapper;
         this.documentRowMapper = documentRowMapper;
         this.idgenUtil = idgenUtil;
         this.assetRepository = assetRepository;
         this.responseInfoFactory = responseInfoFactory;
+        this.facilityUtil = facilityUtil;
     }
 
     public AssetCreateResponse createAsset(AssetCreateRequest request) {
@@ -110,7 +113,8 @@ public class AssetService {
      */
     void enrichPotentialDuplicate(Asset asset) {
         log.trace("AssetService::enrichPotentialDuplicate called");
-        boolean isPotentialDuplicate = hasAssetWithSameBrandAndSerialNumber(asset);
+        DuplicateMatch match = findDuplicate(asset);
+        boolean isPotentialDuplicate = match != null;
 
         // Copied rather than mutated in place: the map comes straight from the request body and
         // nothing guarantees it is modifiable.
@@ -118,22 +122,36 @@ public class AssetService {
                 ? new LinkedHashMap<>()
                 : new LinkedHashMap<>(asset.getAssetDetails());
         assetDetails.put(AssetConstants.IS_POTENTIAL_DUPLICATE, isPotentialDuplicate);
-        asset.setAssetDetails(assetDetails);
 
         if (isPotentialDuplicate) {
-            log.info("Potential duplicate asset | assetId={} assetTypeID={} brandID={} serialNumber={}",
-                    asset.getAssetId(), asset.getAssetTypeID(), asset.getBrandID(), asset.getSerialNumber());
+            // Names where the serial number was already submitted, so the UI can say which health
+            // facility it clashes with. Null when facility-service cannot resolve it - the duplicate
+            // flag still stands on its own.
+            String facilityName = facilityUtil.getFacilityName(match.tenantId(), match.facilityId());
+            assetDetails.put(AssetConstants.DUPLICATE_FACILITY_NAME, facilityName);
+            log.info("Potential duplicate asset | assetId={} assetTypeID={} brandID={} serialNumber={} duplicateFacilityId={} duplicateFacilityName={}",
+                    asset.getAssetId(), asset.getAssetTypeID(), asset.getBrandID(), asset.getSerialNumber(),
+                    match.facilityId(), facilityName);
         } else {
+            // An update can clear a duplicate - a corrected serial number must not keep pointing at
+            // the facility it used to clash with.
+            assetDetails.remove(AssetConstants.DUPLICATE_FACILITY_NAME);
             log.info("No duplicate found | assetId={} assetTypeID={} brandID={} serialNumber={}",
                     asset.getAssetId(), asset.getAssetTypeID(), asset.getBrandID(), asset.getSerialNumber());
         }
+
+        asset.setAssetDetails(assetDetails);
+    }
+
+    /* The already recorded asset a duplicate serial number was submitted from. */
+    private record DuplicateMatch(String facilityId, String tenantId) {
     }
 
     /**
-     * True when the registry already holds another asset with this brand and serial number. The
-     * lookup is global - no tenant, facility, asset type or workflow status narrowing - as required
-     * by the duplicate rule. A blank brand or serial number cannot form the duplicate key, so it
-     * never matches.
+     * The asset already holding this brand and serial number, or null when there is none. The lookup
+     * is global - no tenant, facility, asset type or workflow status narrowing - as required by the
+     * duplicate rule. A blank brand or serial number cannot form the duplicate key, so it never
+     * matches.
      * <p>
      * Asset type is deliberately not part of the key: the flag is advisory, so missing a duplicate
      * costs more than flagging one, and the same serial number keyed under two different asset types
@@ -141,29 +159,34 @@ public class AssetService {
      * <p>
      * The asset's own row is excluded, otherwise every update of an unchanged asset would match
      * itself. On create that row does not exist yet, so excluding it changes nothing.
+     * <p>
+     * The oldest match is returned: with several, that is the submission the incoming one repeats.
      */
-    private boolean hasAssetWithSameBrandAndSerialNumber(Asset asset) {
-        log.trace("AssetService::hasAssetWithSameBrandAndSerialNumber called");
+    private DuplicateMatch findDuplicate(Asset asset) {
+        log.trace("AssetService::findDuplicate called");
         String brandId = asset.getBrandID();
         String serialNumber = asset.getSerialNumber();
         if (brandId == null || brandId.isBlank() || serialNumber == null || serialNumber.isBlank()) {
             log.debug("Incomplete duplicate key, skipping lookup | assetId={} brandID={} serialNumber={}",
                     asset.getAssetId(), brandId, serialNumber);
-            return false;
+            return null;
         }
 
-        StringBuilder query = new StringBuilder("SELECT COUNT(*) FROM asset WHERE brand_id = ? AND serial_number = ?");
+        StringBuilder query = new StringBuilder(
+                "SELECT facility_id, tenant_id FROM asset WHERE brand_id = ? AND serial_number = ?");
         List<Object> params = new ArrayList<>(List.of(brandId, serialNumber));
         if (asset.getAssetId() != null && !asset.getAssetId().isBlank()) {
             query.append(" AND asset_id <> ?");
             params.add(asset.getAssetId());
         }
+        query.append(" ORDER BY created_time ASC LIMIT 1");
 
         try {
-            Integer count = jdbcTemplate.queryForObject(query.toString(), params.toArray(), Integer.class);
-            log.info("Duplicate lookup completed | brandID={} serialNumber={} matches={}",
-                    brandId, serialNumber, count);
-            return count != null && count > 0;
+            List<DuplicateMatch> matches = jdbcTemplate.query(query.toString(), params.toArray(),
+                    (rs, rowNum) -> new DuplicateMatch(rs.getString("facility_id"), rs.getString("tenant_id")));
+            log.info("Duplicate lookup completed | brandID={} serialNumber={} duplicateFound={}",
+                    brandId, serialNumber, !matches.isEmpty());
+            return matches.isEmpty() ? null : matches.get(0);
         } catch (Exception e) {
             log.error("Error checking for duplicate asset | brandID={} serialNumber={} error={}",
                     brandId, serialNumber, e.getMessage(), e);
