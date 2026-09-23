@@ -43,8 +43,9 @@ public class AssetConstants {
     public static final String IS_POTENTIAL_DUPLICATE = "isPotentialDuplicate";
 
     /**
-     * assetDetails key naming the health facility the same brand + serial number was already
-     * submitted from. Only present alongside isPotentialDuplicate = true.
+     * assetDetails key holding the list of health facility names the same brand + serial number was
+     * already submitted from, oldest submission first. Only present alongside
+     * isPotentialDuplicate = true.
      */
     public static final String DUPLICATE_FACILITY_NAME = "duplicateFacilityName";
 
