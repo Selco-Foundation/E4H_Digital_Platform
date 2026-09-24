@@ -66,20 +66,25 @@ const Summary = ({
     dispatch(setRejectionReasons(section, rejectionReasons.filter((r) => r.id !== reason.id)));
   };
 
-  const AssetInfoItem = (title, value) => (
+  const AssetInfoItem = (title, value, highlighted = false) => (
     <div style={{
       display: "flex",
       marginBottom: "10px",
+      ...(highlighted && {
+        flexWrap: "wrap",
+      }),
     }}>
       <div style={{
         fontWeight: "bold",
         width: "150px",
+        ...(highlighted && { flexShrink: 0 }),
       }}>
         {title}
       </div>
       <div style={{
         width: "220px",
-        wordBreak: "break-word"
+        wordBreak: "break-word",
+        ...(highlighted && { flex: "1 1 220px", color: "#B91900" }),
       }}>
         {value || t("CORE_COMMON_NOT_APPLICABLE")}
       </div>
@@ -222,7 +227,28 @@ const Summary = ({
 
             {items?.map((item, index) => (
               <Section key={index} title={`${t(`QC_INSTALLATION_${section}`)} ${index + 1}`}>
-                {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SERIAL_NUMBER`), item.serialNumber)}
+                {AssetInfoItem(
+                  t("QC_INSTALLATION_ASSET_SERIAL_NUMBER"),
+                  item.isPotentialDuplicate === true ? (
+                    <React.Fragment>
+                      <strong>{item.serialNumber || t("CORE_COMMON_NOT_APPLICABLE")}</strong>{" "}
+                      <span>
+                        ({t(
+                          Array.isArray(item.duplicateFacilityName) && item.duplicateFacilityName.length > 1
+                            ? "QC_INSTALLATION_ASSET_DUPLICATE_SERIAL_FACILITIES"
+                            : "QC_INSTALLATION_ASSET_DUPLICATE_SERIAL_FACILITY",
+                          {
+                            facilityName: Array.isArray(item.duplicateFacilityName)
+                              ? item.duplicateFacilityName.join(", ")
+                              : item.duplicateFacilityName,
+                            interpolation: { escapeValue: false },
+                          }
+                        )})
+                      </span>
+                    </React.Fragment>
+                  ) : item.serialNumber,
+                  item.isPotentialDuplicate === true
+                )}
                 {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), item.capacity)}
                 {item.documents && item.documents.length > 0 && (
                   <div style={{display: "flex", gap: "10px"}}>

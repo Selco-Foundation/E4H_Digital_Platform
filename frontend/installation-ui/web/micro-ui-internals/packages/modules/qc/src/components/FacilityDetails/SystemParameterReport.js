@@ -1,11 +1,40 @@
-import React, {useState} from "react";
+import React, {useState, useRef} from "react";
 import { PdfIcon } from "@egovernments/digit-ui-svg-components";
-import { ImageViewer } from "@egovernments/digit-ui-react-components";
+import { ImageViewer, DownloadIcon, Toast } from "@egovernments/digit-ui-react-components";
 import CustomFileIcon from "../Custom/CustomFileIcon";
+
+import { useInstallationReportDownload } from "../../hooks/useInstallationReport";
 
 const SystemParameterReport = ({ t, file, supportingDocuments, installationImages, installationCompletionCertificate, assetHandoverDocument }) => {
 
   const [imageToView, setImageToView] = useState(null);
+  const [downloadError, setDownloadError] = useState(false);
+  const downloading = useRef(false);
+  const { fetchPdf, isFetching } = useInstallationReportDownload(file.fileUrl);
+
+  // Save a local blob so the download uses the displayed name instead of the storage URL filename.
+  const handleDownload = async () => {
+    // Block repeated clicks immediately, before the query loading state updates.
+    if (downloading.current) return;
+    downloading.current = true;
+    setDownloadError(false);
+    try {
+      const blob = await fetchPdf();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Allow the browser to start saving before releasing the temporary URL.
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      setDownloadError(true);
+    } finally {
+      downloading.current = false;
+    }
+  };
 
   const installationCompletionCertificatePresent = installationCompletionCertificate.length > 0;
   const assetHandoverDocumentPresent = assetHandoverDocument.length > 0;
@@ -99,7 +128,7 @@ const SystemParameterReport = ({ t, file, supportingDocuments, installationImage
             target="_blank"
             rel="noopener noreferrer"
             href={file.fileUrl}
-            download={"installation-completion-report.pdf"}
+            download={file.name}
           >
             <div style={{ display: "flex", alignItems: "center" }}>
               <PdfIcon style={{ marginRight: "12px" }} />
@@ -109,8 +138,20 @@ const SystemParameterReport = ({ t, file, supportingDocuments, installationImage
               </div>
             </div>
           </a>
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={isFetching}
+            aria-busy={isFetching}
+            aria-label={t("CORE_COMMON_DOWNLOAD")}
+            title={t("CORE_COMMON_DOWNLOAD")}
+            style={{ marginLeft: "16px", opacity: isFetching ? 0.5 : 1, backgroundColor: "transparent", border: "none", color: "#d35400", padding: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "16px", display: "flex", alignItems: "center", gap: "5px", height: "40px" }}
+          >
+            <DownloadIcon fill="#d35400" />
+          </button>
         </div>
       </div>
+      {downloadError && <Toast error label={t("COMMON_INSTALLATION_REPORT_DOWNLOAD_FAILED")} onClose={() => setDownloadError(false)} />}
       {installationCompletionCertificatePresent && <AdditionalDocuments index={2} heading={t("INSTALLATION_COMPLETION_CERTIFICATE")} additionalDocuments={installationCompletionCertificate} />}
       {assetHandoverDocumentPresent && <AdditionalDocuments index={3} heading={t("ASSET_HANDOVER_DOCUMENT")} additionalDocuments={assetHandoverDocument} />}
       {supportingDocumentsPresent && <AdditionalDocuments index={4} heading={t("SUPPORTING_DOCUMENTS")} additionalDocuments={supportingDocuments} />}

@@ -371,6 +371,7 @@ const FacilityTable = ({ t }) => {
             </div>
             <SearchActionCentre
               t={t}
+              fieldPlanId={fieldPlan?.fieldPlan?.id}
               mainCheckBox={mainCheck}
               selectedFacilities={selectedFacilities}
               projectQueryFilter={projectQueryFilter}
