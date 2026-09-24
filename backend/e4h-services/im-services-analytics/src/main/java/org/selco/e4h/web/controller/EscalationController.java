@@ -526,6 +526,7 @@ public class EscalationController {
 
         if (EscalationTemplateType.WEEKLY_SENIOR_PROGRAM_MANAGER.equals(templateType)) {
             Map<String, List<EscalationRecipient>> recipientsByEmail = new HashMap<>();
+            Map<String, User> userByEmail = new HashMap<>();
             for (String tenantId : activeTenantIds) {
                 String state = activeTenantIdsName.get(tenantId);
                 if (state == null || state.isBlank()) {
@@ -535,6 +536,7 @@ public class EscalationController {
                 for (User user : users) {
                     if (user.getEmailId() != null && !user.getEmailId().isBlank()) {
                         recipientsByEmail.computeIfAbsent(user.getEmailId(), k -> new ArrayList<>()).add(recipient);
+                        userByEmail.putIfAbsent(user.getEmailId(), user);
                     }
                 }
             }
@@ -553,7 +555,10 @@ public class EscalationController {
 
                 WeeklyEscalationAnalytics analytics = weeklyEscalationAnalyticsService.buildAnalytics(stateCodes, requestInfo);
                 String downloadUrl = uploadWeeklyCsv(stateCodes, requestInfo);
-                User user = getUserByEmailId(requestInfo, emailId);
+                // Reuse the user record already looked up scoped to this role (searchUsersByRoleAndBoundaryCode
+                // above with List.of(role)) - a separate any-role re-lookup here previously picked up the wrong
+                // user (e.g. a Procurement-role account sharing the same email) when one email has multiple roles.
+                User user = userByEmail.get(emailId);
                 if (user == null) {
                     user = new User();
                     user.setEmailId(emailId);
@@ -619,51 +624,6 @@ public class EscalationController {
         return 99;
     }
 
-    /**
-     * Get user by email ID from user service
-     */
-    private User getUserByEmailId(RequestInfo requestInfo, String emailId) {
-        try {
-            // Search for users with this email ID across all active tenants
-            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
-            Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
-            for (String tenantId : activeTenantIds) {
-                // Search for users with any role in this tenant
-                String state = activeTenantIdsName.get(tenantId);
-                List<String> allRoles = Arrays.asList(
-                        "STATE_POC", "SENIOR_PROGRAM_MANAGER", "PROCUREMENT", "LEADERSHIP", "VENDOR", "ADMIN");
-                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, allRoles);
-                
-                for (User user : users) {
-                    if (emailId.equals(user.getEmailId())) {
-                        log.info("Found user: {} for email: {}", user.getName(), emailId);
-                        return user;
-                    }
-                }
-            }
-            
-            // Also check country-level users with boundary "India"
-            List<String> allRoles = Arrays.asList(
-                    "STATE_POC", "SENIOR_PROGRAM_MANAGER", "PROCUREMENT", "LEADERSHIP", "VENDOR", "ADMIN");
-            List<User> countryUsers = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", allRoles);
-            
-            for (User user : countryUsers) {
-                if (emailId.equals(user.getEmailId())) {
-                    log.info("Found country-level user: {} for email: {}", user.getName(), emailId);
-                    return user;
-                }
-            }
-            
-            log.warn("No user found for email: {}", emailId);
-            return null;
-            
-        } catch (Exception e) {
-            log.error("Error fetching user by email ID: {}", emailId, e);
-            return null;
-        }
-    }
-    
-    
     /**
      * Send email via Kafka without CSV attachments (download buttons are used instead)
      */
