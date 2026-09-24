@@ -14,6 +14,9 @@ import lombok.Setter;
 public class WeeklyStateNfTrendRow {
     private String stateName;
     private int totalNfLastWeek;
+    private int facilitiesMovedToFunctional;
+    private int newNonFunctionalThisWeek;
     private int totalNfThisWeek;
+    private int totalFacilitiesThisWeek;
     private double nfPctThisWeek;
 }

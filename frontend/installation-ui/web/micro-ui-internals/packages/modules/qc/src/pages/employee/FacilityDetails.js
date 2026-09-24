@@ -12,6 +12,8 @@ import InfoCard from "../../components/FacilityDetails/InfoCard";
 import InstallationImageReviewCard from "../../components/FacilityDetails/InstallationImageReviewCard";
 import { getInstallationImageCriteriaBySystemType } from "../../utilities/installationImages";
 
+import { getInstallationReportFilename } from "../../utilities/installationReportDownload";
+
 const sectionLoaderStyle = {
   width: "95%",
   minWidth: "900px",
@@ -228,7 +230,7 @@ const FacilityDetails = ({t}) => {
           section="INSTALLATION_COMPLETION_REPORT"
           report={aggregatedDocuments?.bomCompletionReport ? {
             ...aggregatedDocuments?.bomCompletionReport,
-            name: `${facilityDetails.facilityName}.pdf`
+            name: getInstallationReportFilename(facilityDetails.facilityName, facilityDetails.projectName)
           } : null}
           supportingDocuments={aggregatedDocuments.installationReportDocuments}
           installationCompletionCertificate={aggregatedDocuments.installationCompletionCertificate}

@@ -22,6 +22,9 @@ public class EscalationTicket {
     @JsonProperty("ticketNumber")
     private String ticketNumber;
     
+    @JsonProperty("stateName")
+    private String stateName;
+
     @JsonProperty("district")
     private String district;
     
