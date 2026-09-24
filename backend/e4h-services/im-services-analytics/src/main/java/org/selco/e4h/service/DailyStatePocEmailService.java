@@ -35,13 +35,13 @@ public class DailyStatePocEmailService {
             variables.put("STATE_NAME", commonUtility.escapeHtml(summary.getStateName()));
             variables.put("AS_OF_DATE", commonUtility.escapeHtml(summary.getAsOfDate()));
             variables.put("NEW_CRM_SECTION", EscalationEmailTemplateHelper.renderActorTable(commonUtility,
-                    summary.getNewCrmBreaches(), false, "t-red", "CRM Name", "Count of Tickets Breached"));
+                    summary.getNewCrmBreaches(), false, "#b83227", "#f97316", "CRM Name", "Count of Tickets Breached"));
             variables.put("NEW_TECH_POC_SECTION", EscalationEmailTemplateHelper.renderActorTable(commonUtility,
-                    summary.getNewTechPocBreaches(), true, "t-magenta", "Tech PoC Name", "Current Status", "Count of Tickets Breached"));
+                    summary.getNewTechPocBreaches(), true, "#9c1458", "#f97316", "Tech PoC Name", "Current Status", "Count of Tickets Breached"));
             variables.put("PREVIOUS_CRM_SECTION", EscalationEmailTemplateHelper.renderActorTable(commonUtility,
-                    summary.getPreviouslyOpenCrmBreaches(), true, "t-orange", "CRM", "Current Status", "Count of Tickets"));
+                    summary.getPreviouslyOpenCrmBreaches(), true, "#dd6b20", "#f97316", "CRM", "Current Status", "Count of Tickets"));
             variables.put("PREVIOUS_TECH_POC_SECTION", EscalationEmailTemplateHelper.renderActorTable(commonUtility,
-                    summary.getPreviouslyOpenTechPocBreaches(), true, "t-orange", "Tech PoC", "Current Status", "Count of Tickets"));
+                    summary.getPreviouslyOpenTechPocBreaches(), true, "#dd6b20", "#f97316", "Tech PoC", "Current Status", "Count of Tickets"));
             variables.put("DOWNLOAD_BUTTON", EscalationEmailTemplateHelper.renderDownloadButton(downloadUrl));
             variables.put("DASHBOARD_URL", summary.getDashboardUrl());
             variables.put("SELCO_LOGO", commonUtility.getSelcoLogoUrl());

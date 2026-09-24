@@ -45,14 +45,17 @@ public class DailyProcurementEmailService {
 
     private String renderStateSections(List<StateDailyBreachSection> sections) {
         if (sections == null || sections.isEmpty()) {
-            return "<p class=\"muted\">No new escalations today.</p>";
+            return "<p style=\"color:#6b7280;font-size:13px;\">No new escalations today.</p>";
         }
         StringBuilder html = new StringBuilder();
         for (StateDailyBreachSection section : sections) {
-            html.append("<p class=\"banner b-slate\">")
+            html.append("<p style=\"color:#fff;font-weight:700;padding:10px 14px;border-radius:2px;margin:20px 0 8px;font-size:14px;background:#55707f;\">")
                     .append(commonUtility.escapeHtml(section.getStateName())).append("</p>");
-            html.append("<table class=\"t-slate\"><thead><tr><th>Vendor</th><th class=\"right\">Count of Tickets</th></tr></thead><tbody>");
-            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false));
+            html.append("<table style=\"width:100%;border-collapse:collapse;margin-top:8px;\"><thead><tr>")
+                    .append("<th style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left;color:#fff;font-weight:700;background:#55707f;\">Vendor</th>")
+                    .append("<th style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;color:#fff;font-weight:700;background:#55707f;\">Count of Tickets</th>")
+                    .append("</tr></thead><tbody>");
+            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false, "#dc2626"));
             html.append("</tbody></table>");
         }
         return html.toString();
@@ -60,14 +63,14 @@ public class DailyProcurementEmailService {
 
     private String renderPreviousRows(List<VendorStateCountRow> rows) {
         if (rows == null || rows.isEmpty()) {
-            return "<tr><td colspan=\"3\" class=\"muted center\">No breaches</td></tr>";
+            return "<tr><td colspan=\"3\" style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#6b7280;text-align:center;\">No breaches</td></tr>";
         }
         StringBuilder html = new StringBuilder();
         for (VendorStateCountRow row : rows) {
             html.append("<tr>");
-            html.append("<td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>");
-            html.append("<td>").append(commonUtility.escapeHtml(row.getVendorName())).append("</td>");
-            html.append("<td class=\"right\"><span class=\"badge\">").append(row.getCount()).append("</span></td>");
+            html.append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left;\">").append(commonUtility.escapeHtml(row.getStateName())).append("</td>");
+            html.append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left;\">").append(commonUtility.escapeHtml(row.getVendorName())).append("</td>");
+            html.append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;\"><span style=\"display:inline-block;min-width:32px;padding:6px 10px;border-radius:10px;background:#fee4e2;border:1px solid #dc2626;font-weight:700;text-align:center;\">").append(row.getCount()).append("</span></td>");
             html.append("</tr>");
         }
         return html.toString();
