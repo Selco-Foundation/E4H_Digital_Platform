@@ -99,6 +99,7 @@ public class WeeklyEscalationAnalyticsService {
 
         List<WeeklyVendorPerformanceRow> vendorPerformance = buildVendorPerformance(acc.vendorAgg);
         List<WeeklyBottleneckRow> bottlenecks = buildBottlenecks(acc);
+        List<WeeklyBottleneckRow> vendorBottlenecks = buildVendorBottlenecks(acc);
         List<WeeklyFacilityRestoredRow> facilitiesRestored = buildFacilitiesRestored(acc);
         List<WeeklyEscalationEffectivenessRow> effectiveness = buildEffectiveness(acc);
         List<WeeklyTrendMetric> overallTrend = buildOverallTrend(priorWeekCounts, thisWeekCounts);
@@ -122,6 +123,7 @@ public class WeeklyEscalationAnalyticsService {
                 .overviewByState(acc.overviewByState)
                 .vendorPerformance(vendorPerformance)
                 .bottlenecks(bottlenecks)
+                .vendorBottlenecks(vendorBottlenecks)
                 .facilitiesWithOpenTickets(acc.facilities.size())
                 .nfFacilitiesWithOpenTickets(acc.nfFacilities.size())
                 .openTheftCases(acc.openTheftCases)
@@ -152,6 +154,9 @@ public class WeeklyEscalationAnalyticsService {
         Map<String, Double> bottleneckDaysOpenSum = new HashMap<>();
         Map<String, Map<String, Long>> bottleneckCountsByState = new HashMap<>();
         int totalOpenBreached = 0;
+        Map<String, Long> vendorBottleneckCounts = new HashMap<>();
+        Map<String, Double> vendorBottleneckDaysOpenSum = new HashMap<>();
+        int totalVendorOpenBreached = 0;
         Set<String> facilities = new HashSet<>();
         Set<String> nfFacilities = new HashSet<>();
         Map<String, Set<String>> restoredFacilitiesByState = new HashMap<>();
@@ -241,14 +246,26 @@ public class WeeklyEscalationAnalyticsService {
 
             if (breached) {
                 String statusLabel = EscalationActorUtil.resolveStatusLabel(ticket.getApplicationStatus());
+                Double daysOpen = filedDate != null
+                        ? (System.currentTimeMillis() - filedDate) / (double) DAY_MS : null;
+
                 acc.bottleneckCounts.merge(statusLabel, 1L, Long::sum);
                 acc.totalOpenBreached++;
-                if (filedDate != null) {
-                    double daysOpen = (System.currentTimeMillis() - filedDate) / (double) DAY_MS;
+                if (daysOpen != null) {
                     acc.bottleneckDaysOpenSum.merge(statusLabel, daysOpen, Double::sum);
                 }
                 acc.bottleneckCountsByState.computeIfAbsent(stateCode, k -> new HashMap<>())
                         .merge(statusLabel, 1L, Long::sum);
+
+                // Weekly Procurement should only see vendor-stage tickets, not CRM/Tech PoC/State SPOC ones.
+                if (EscalationActorUtil.classifyByWorkflowState(ticket.getApplicationStatus())
+                        == EscalationActorUtil.ActorBucket.VENDOR) {
+                    acc.vendorBottleneckCounts.merge(statusLabel, 1L, Long::sum);
+                    acc.totalVendorOpenBreached++;
+                    if (daysOpen != null) {
+                        acc.vendorBottleneckDaysOpenSum.merge(statusLabel, daysOpen, Double::sum);
+                    }
+                }
             }
         }
 
@@ -467,6 +484,23 @@ public class WeeklyEscalationAnalyticsService {
                 .map(e -> {
                     double pct = acc.totalOpenBreached > 0 ? (e.getValue() * 100.0 / acc.totalOpenBreached) : 0;
                     double avgDays = acc.bottleneckDaysOpenSum.getOrDefault(e.getKey(), 0.0) / e.getValue();
+                    return WeeklyBottleneckRow.builder()
+                            .statusLabel(e.getKey())
+                            .count(e.getValue())
+                            .pctOfTotalOpen(Math.round(pct * 10.0) / 10.0)
+                            .avgDaysOpen(Math.round(avgDays * 10.0) / 10.0)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    /** Same as {@link #buildBottlenecks}, scoped to vendor-stage tickets only - see {@link WeeklyEscalationAnalytics#getVendorBottlenecks()}. */
+    private List<WeeklyBottleneckRow> buildVendorBottlenecks(WeekAccumulator acc) {
+        return acc.vendorBottleneckCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(e -> {
+                    double pct = acc.totalVendorOpenBreached > 0 ? (e.getValue() * 100.0 / acc.totalVendorOpenBreached) : 0;
+                    double avgDays = acc.vendorBottleneckDaysOpenSum.getOrDefault(e.getKey(), 0.0) / e.getValue();
                     return WeeklyBottleneckRow.builder()
                             .statusLabel(e.getKey())
                             .count(e.getValue())
