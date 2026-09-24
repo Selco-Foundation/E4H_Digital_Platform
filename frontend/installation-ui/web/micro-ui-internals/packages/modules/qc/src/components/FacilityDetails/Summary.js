@@ -233,10 +233,17 @@ const Summary = ({
                     <React.Fragment>
                       <strong>{item.serialNumber || t("CORE_COMMON_NOT_APPLICABLE")}</strong>{" "}
                       <span>
-                        ({t("QC_INSTALLATION_ASSET_DUPLICATE_SERIAL_FACILITY", {
-                          facilityName: item.duplicateFacilityName,
-                          interpolation: { escapeValue: false },
-                        })})
+                        ({t(
+                          Array.isArray(item.duplicateFacilityName) && item.duplicateFacilityName.length > 1
+                            ? "QC_INSTALLATION_ASSET_DUPLICATE_SERIAL_FACILITIES"
+                            : "QC_INSTALLATION_ASSET_DUPLICATE_SERIAL_FACILITY",
+                          {
+                            facilityName: Array.isArray(item.duplicateFacilityName)
+                              ? item.duplicateFacilityName.join(", ")
+                              : item.duplicateFacilityName,
+                            interpolation: { escapeValue: false },
+                          }
+                        )})
                       </span>
                     </React.Fragment>
                   ) : item.serialNumber,
