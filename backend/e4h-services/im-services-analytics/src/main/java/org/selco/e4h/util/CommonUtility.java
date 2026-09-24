@@ -5,10 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.web.models.ArrowData;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-
-import java.util.Base64;
 
 /**
  * Common utility class to consolidate duplicate methods across services
@@ -24,7 +21,19 @@ public class CommonUtility {
     
     @Value("${saura.emitra.base.url}")
     private String sauraEmitraBaseUrl;
-    
+
+    @Value("${egov.filestore.baseUrl}")
+    private String fileStoreBaseUrl;
+
+    @Value("${egov.filestore.download.endpoint}")
+    private String fileStoreDownloadEndpoint;
+
+    @Value("${escalation.email.logo.selco.filestoreid}")
+    private String selcoLogoFileStoreId;
+
+    @Value("${escalation.email.logo.saura.filestoreid}")
+    private String sauraLogoFileStoreId;
+
     static {
         // Configure ObjectMapper to handle potential serialization issues
         objectMapper.configure(com.fasterxml.jackson.databind.SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
@@ -43,7 +52,7 @@ public class CommonUtility {
         
         String normalizedId = tenantId.toLowerCase().trim();
         log.debug("Normalized tenant ID: {}", normalizedId);
-        
+
         // Handle state codes with underscores (e.g., "INDIA_KARNATAKA" -> "Karnataka")
         if (normalizedId.contains("_")) {
             String[] parts = normalizedId.split("_");
@@ -160,51 +169,6 @@ public class CommonUtility {
     }
 
     /**
-     * Load logo image and encode as base64 data URI
-     */
-    public String loadLogoAsBase64(String logoFileName) {
-        log.trace("Loading logo file as base64: {}", logoFileName);
-        try {
-            log.info("Loading logo file: {}", logoFileName);
-            ClassPathResource logoResource = new ClassPathResource("templates/" + logoFileName);
-            
-            if (!logoResource.exists()) {
-                log.error("Logo file does not exist: templates/{}", logoFileName);
-                return getPlaceholderLogo();
-            }
-            
-            byte[] logoBytes = logoResource.getInputStream().readAllBytes();
-            log.debug("Read {} bytes from logo file", logoBytes.length);
-            log.info("Successfully loaded logo: {} ({} bytes)", logoFileName, logoBytes.length);
-            
-            String base64Logo = Base64.getEncoder().encodeToString(logoBytes);
-            log.debug("Encoded logo to base64, length: {}", base64Logo.length());
-            
-            // Determine MIME type based on file extension
-            String mimeType = logoFileName.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
-            log.debug("Determined MIME type: {}", mimeType);
-            
-            // Return data URI
-            String dataUri = "data:" + mimeType + ";base64," + base64Logo;
-            log.debug("Generated data URI for {}: {} characters", logoFileName, dataUri.length());
-            
-            return dataUri;
-            
-        } catch (Exception e) {
-            log.error("Failed to load logo: {}", logoFileName, e);
-            return getPlaceholderLogo();
-        }
-    }
-
-    /**
-     * Get placeholder logo when real logo fails to load
-     */
-    private String getPlaceholderLogo() {
-        log.warn("Using placeholder logo due to loading failure");
-        return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-    }
-
-    /**
      * Generate Saura eMitra URL
      * Since all states now use tenantId "in", all states use the common login link
      */
@@ -253,6 +217,19 @@ public class CommonUtility {
      */
     public String generateDownloadUrl(String fileStoreId, String tenantId, String fileStoreBaseUrl, String downloadEndpoint) {
         return fileStoreBaseUrl + downloadEndpoint + "?tenantId=" + tenantId + "&fileStoreId=" + fileStoreId;
+    }
+
+    /**
+     * Public, unauthenticated filestore URL for the SELCO logo - used instead of a base64 data
+     * URI because Gmail and most webmail clients strip inline data: images from HTML email bodies.
+     */
+    public String getSelcoLogoUrl() {
+        return generateDownloadUrl(selcoLogoFileStoreId, "in", fileStoreBaseUrl, fileStoreDownloadEndpoint);
+    }
+
+    /** Same as {@link #getSelcoLogoUrl()}, for the Saura eMitra logo. */
+    public String getSauraLogoUrl() {
+        return generateDownloadUrl(sauraLogoFileStoreId, "in", fileStoreBaseUrl, fileStoreDownloadEndpoint);
     }
 
     /**
@@ -305,7 +282,7 @@ public class CommonUtility {
         log.trace("Calculating arrow for percentage change: start={}, end={}, isFunctional={}", startPct, endPct, isFunctional);
         double change = endPct - startPct;
         log.debug("Percentage change: {}", change);
-        
+
         // No arrow if change is less than 0.1%
         if (Math.abs(change) < 0.1) {
             log.debug("Change is less than 0.1%, returning empty arrow");
@@ -315,7 +292,7 @@ public class CommonUtility {
         boolean increase = change > 0;
         boolean isUpArrow = increase;
         log.debug("Arrow direction: {}, isUpArrow: {}", increase ? "up" : "down", isUpArrow);
-        
+
         // Determine color based on whether change is good or bad
         // Functional: increase = good (green), decrease = bad (red)
         // Non-Functional: increase = bad (red), decrease = good (green)
@@ -326,7 +303,7 @@ public class CommonUtility {
             color = increase ? "%23dc2626" : "%2316a34a"; // Red for increase, green for decrease
         }
         log.debug("Arrow color determined: {}", color);
-        
+
         // Arrow class matches the actual arrow direction (up or down)
         String arrowClass = increase ? "up" : "down";
         

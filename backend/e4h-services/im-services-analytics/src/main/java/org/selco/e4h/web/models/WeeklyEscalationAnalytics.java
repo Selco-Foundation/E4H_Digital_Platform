@@ -33,6 +33,11 @@ public class WeeklyEscalationAnalytics {
     @Builder.Default
     private List<WeeklyBottleneckRow> bottlenecks = new ArrayList<>();
 
+    /** Same breakdown as {@link #bottlenecks}, but scoped to tickets currently with a vendor only -
+     * used by Weekly Procurement, which should not show CRM/Tech PoC/State SPOC-stage tickets. */
+    @Builder.Default
+    private List<WeeklyBottleneckRow> vendorBottlenecks = new ArrayList<>();
+
     private int facilitiesWithOpenTickets;
     private int nfFacilitiesWithOpenTickets;
 

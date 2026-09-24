@@ -45,14 +45,17 @@ public class DailySeniorProgramManagerEmailService {
 
     private String renderStateSections(java.util.List<StateDailyBreachSection> sections) {
         if (sections == null || sections.isEmpty()) {
-            return "<p class=\"muted\">No new breaches today across your states.</p>";
+            return "<p style=\"color:#6b7280;font-size:13px;\">No new breaches today across your states.</p>";
         }
         StringBuilder html = new StringBuilder();
         for (StateDailyBreachSection section : sections) {
-            html.append("<p class=\"banner b-slate\">&gt;")
+            html.append("<p style=\"color:#fff;font-weight:700;padding:10px 14px;border-radius:2px;margin:20px 0 8px;font-size:14px;background:#55707f;\">")
                     .append(commonUtility.escapeHtml(section.getStateName())).append("</p>");
-            html.append("<table class=\"t-slate\"><thead><tr><th>Role Name</th><th class=\"right\">Count of Tickets</th></tr></thead><tbody>");
-            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false));
+            html.append("<table style=\"width:100%;border-collapse:collapse;margin-top:8px;\"><thead><tr>")
+                    .append("<th style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left;color:#fff;font-weight:700;background:#55707f;\">Role Name</th>")
+                    .append("<th style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;color:#fff;font-weight:700;background:#55707f;\">Count of Tickets</th>")
+                    .append("</tr></thead><tbody>");
+            html.append(EscalationEmailTemplateHelper.renderActorRows(commonUtility, section.getBreaches(), false, "#f97316"));
             html.append("</tbody></table>");
         }
         return html.toString();
@@ -60,7 +63,7 @@ public class DailySeniorProgramManagerEmailService {
 
     private String renderPreviouslyOpenRows(java.util.List<StatePreviouslyOpenRow> rows) {
         if (rows == null || rows.isEmpty()) {
-            return "<tr><td colspan=\"4\" class=\"muted center\">No data</td></tr>";
+            return "<tr><td colspan=\"4\" style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#6b7280;text-align:center;\">No data</td></tr>";
         }
         StringBuilder html = new StringBuilder();
         long totalStatePoc = 0;
@@ -69,15 +72,15 @@ public class DailySeniorProgramManagerEmailService {
             long total = row.getStatePocCount() + row.getVendorCount();
             totalStatePoc += row.getStatePocCount();
             totalVendor += row.getVendorCount();
-            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
-                    .append("<td class=\"right\">").append(row.getStatePocCount()).append("</td>")
-                    .append("<td class=\"right\">").append(row.getVendorCount()).append("</td>")
-                    .append("<td class=\"right\">").append(total).append("</td></tr>");
+            html.append("<tr><td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left;\">").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
+                    .append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;\">").append(row.getStatePocCount()).append("</td>")
+                    .append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;\">").append(row.getVendorCount()).append("</td>")
+                    .append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;\">").append(total).append("</td></tr>");
         }
-        html.append("<tr><td style=\"font-weight:700\">TOTAL</td>")
-                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalStatePoc).append("</td>")
-                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalVendor).append("</td>")
-                .append("<td class=\"right\" style=\"font-weight:700\">").append(totalStatePoc + totalVendor).append("</td></tr>");
+        html.append("<tr><td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;font-weight:700;\">TOTAL</td>")
+                .append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;font-weight:700;\">").append(totalStatePoc).append("</td>")
+                .append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;font-weight:700;\">").append(totalVendor).append("</td>")
+                .append("<td style=\"padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;font-weight:700;\">").append(totalStatePoc + totalVendor).append("</td></tr>");
         return html.toString();
     }
 }
