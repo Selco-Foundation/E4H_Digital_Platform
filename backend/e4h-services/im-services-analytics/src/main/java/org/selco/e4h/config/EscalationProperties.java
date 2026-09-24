@@ -17,7 +17,7 @@ public class EscalationProperties {
     @Getter
     @Setter
     public static class Leadership {
-        private double nfThresholdPct = 7.0;
+        private double nfThresholdPct = 5.0;
     }
 
     @Getter
