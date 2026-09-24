@@ -25,11 +25,16 @@ public final class EscalationEmailTemplateHelper {
         return result;
     }
 
+    /**
+     * Gmail and most webmail clients strip inline {@code data:} URI images from HTML email
+     * bodies, so the logos are served from a real public filestore URL instead of embedded as
+     * base64 - see {@link CommonUtility#getSelcoLogoUrl()} / {@link CommonUtility#getSauraLogoUrl()}.
+     */
     public static Map<String, String> baseBrandingVariables(CommonUtility commonUtility, String recipientName) {
         Map<String, String> variables = new HashMap<>();
         variables.put("NAME", commonUtility.escapeHtml(recipientName));
-        variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
-        variables.put("SAURA_LOGO", commonUtility.loadLogoAsBase64("SauraEmitra.png"));
+        variables.put("SELCO_LOGO", commonUtility.getSelcoLogoUrl());
+        variables.put("SAURA_LOGO", commonUtility.getSauraLogoUrl());
         return variables;
     }
 
@@ -68,6 +73,29 @@ public final class EscalationEmailTemplateHelper {
             html.append("</tr>");
         }
         appendMoreRow(html, colspan, sorted.size());
+        return html.toString();
+    }
+
+    /**
+     * Renders a full actor-count table (colored header + rows), or - when there are no rows -
+     * just a plain "No Breaches" message with no header at all. Showing an empty table with only
+     * a colored header bar and nothing underneath reads as broken, so the header is suppressed
+     * along with the rows rather than left dangling above an empty body.
+     */
+    public static String renderActorTable(CommonUtility commonUtility, java.util.List<org.selco.e4h.web.models.ActorCountRow> rows,
+                                          boolean includeStatus, String tableClass, String... headers) {
+        if (rows == null || rows.isEmpty()) {
+            return "<p class=\"muted\">No Breaches</p>";
+        }
+        StringBuilder html = new StringBuilder();
+        html.append("<table class=\"").append(tableClass).append("\"><thead><tr>");
+        for (int i = 0; i < headers.length; i++) {
+            boolean isLast = i == headers.length - 1;
+            html.append(isLast ? "<th class=\"right\">" : "<th>").append(headers[i]).append("</th>");
+        }
+        html.append("</tr></thead><tbody>");
+        html.append(renderActorRows(commonUtility, rows, includeStatus));
+        html.append("</tbody></table>");
         return html.toString();
     }
 

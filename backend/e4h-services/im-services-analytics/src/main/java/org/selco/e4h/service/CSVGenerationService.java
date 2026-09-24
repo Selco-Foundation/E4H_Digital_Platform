@@ -36,12 +36,11 @@ public class CSVGenerationService {
     private static final String[] HEADERS = {
             "Ticket Number", "State", "District", "Block", "Health Facility Name", "Health Facility Type",
             "Is Solar System Working", "Issue Type", "Issue Sub-Type", "Priority", "Mapped Vendor",
-            "Current Ticket Status", "SLA Compliance for Current Status", "Defined SLA Duration for Current Status",
-            "SLA Compliance for Overall Ticket", "Defined Overall SLA Duration", "Comments", "Ticket Filed Date"
+            "Current Ticket Status", "SLA Compliance for Overall Ticket", "Comments", "Ticket Filed Date"
     };
 
     private static final int[] COLUMN_WIDTHS_CHARS = {
-            22, 16, 16, 16, 28, 20, 16, 18, 20, 10, 24, 22, 14, 16, 14, 16, 40, 18
+            22, 16, 16, 16, 28, 20, 16, 18, 20, 10, 24, 22, 14, 40, 18
     };
 
     /**
@@ -101,10 +100,7 @@ public class CSVGenerationService {
         writeCell(row, column++, ticket.getPriority(), styles);
         writeCell(row, column++, ticket.getMappedVendor(), styles);
         writeCell(row, column++, ticket.getCurrentTicketStatus(), styles);
-        writeCell(row, column++, ticket.getSlaComplianceCurrentStatus() ? "Yes" : "No", styles);
-        writeCell(row, column++, ticket.getDefinedSlaDurationCurrentStatus(), styles);
         writeCell(row, column++, ticket.getSlaComplianceOverallTicket() ? "Yes" : "No", styles);
-        writeCell(row, column++, ticket.getDefinedOverallSlaDuration(), styles);
         writeCell(row, column++, ticket.getComments(), styles);
         writeCell(row, column, formatDate(ticket.getTicketFiledDate()), styles);
     }

@@ -56,61 +56,18 @@
               <p class="muted">The following breaches have been recorded today and require your immediate attention:</p>
 
               <p class="banner b-red" style="margin-top:16px;font-size:13px">SLA Breaches from CRM</p>
-              <table class="t-red">
-                <thead>
-                  <tr>
-                    <th>CRM Name</th>
-                    <th>Count of Tickets Breached</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${NEW_CRM_ROWS}
-                </tbody>
-              </table>
+              ${NEW_CRM_SECTION}
 
               <p class="banner b-magenta" style="margin-top:16px;font-size:13px">SLA Breaches from Tech PoC</p>
-              <table class="t-magenta">
-                <thead>
-                  <tr>
-                    <th>Tech PoC Name</th>
-                    <th>Current Status</th>
-                    <th class="right">Count of Tickets Breached</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${NEW_TECH_POC_ROWS}
-                </tbody>
-              </table>
+              ${NEW_TECH_POC_SECTION}
 
               <p class="banner b-orange">Section 2 - Previously Flagged Breaches Still Open</p>
 
               <p class="banner b-orange" style="margin-top:16px;font-size:13px">CRM</p>
-              <table class="t-orange">
-                <thead>
-                  <tr>
-                    <th>CRM</th>
-                    <th>Current Status</th>
-                    <th class="right">Count of Tickets</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${PREVIOUS_CRM_ROWS}
-                </tbody>
-              </table>
+              ${PREVIOUS_CRM_SECTION}
 
               <p class="banner b-orange" style="margin-top:16px;font-size:13px">Tech PoC</p>
-              <table class="t-orange">
-                <thead>
-                  <tr>
-                    <th>Tech PoC</th>
-                    <th>Current Status</th>
-                    <th class="right">Count of Tickets</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${PREVIOUS_TECH_POC_ROWS}
-                </tbody>
-              </table>
+              ${PREVIOUS_TECH_POC_SECTION}
 
               <p class="banner b-slate">Resources</p>
               <table role="presentation" width="100%"><tr>
@@ -134,7 +91,6 @@
                 <li>Follow up with the CRM and/or Tech PoC on all flagged breaches immediately.</li>
                 <li>For Out of Warranty tickets: confirm fund arrangement status and update the system.</li>
                 <li>For Out of Scope tickets: coordinate with the relevant stakeholders and take a decision (assign to vendor or decline with reason).</li>
-                <li>If you are facing challenges with any specific ticket, escalate to your SPM directly.</li>
               </ul>
               <p class="muted">If you need support, please reach out to your SPM.</p>
 
