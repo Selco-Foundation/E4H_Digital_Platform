@@ -109,6 +109,9 @@ public class CommonUtility {
             case "ml":
             case "meghalaya":
                 return "Meghalaya";
+            case "ap":
+            case "arunachalpradesh":
+                return "Arunachal Pradesh";
             case "in":
             case "india":
                 return "India";
