@@ -11,6 +11,7 @@ import org.egov.activity.service.ActivityFacilityUsersService;
 import org.egov.activity.service.ActivityService;
 import org.egov.activity.service.FacilityWorkflowService;
 import org.egov.activity.web.models.*;
+import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.producer.Producer;
@@ -176,6 +177,45 @@ public class ActivityApiController {
                 .build();
 
         return ResponseEntity.ok(projectResponse);
+    }
+
+    /**
+     * Installation reports (INSTALLATION_REPORT_BOM) of every activity facility of one installation
+     * plan approved by QC SPOC.
+     */
+    @PostMapping("/installation-report/fieldplan/_search")
+    public ResponseEntity<InstallationReportDocumentResponse> searchInstallationReportsByFieldPlan(
+            @ApiParam(value = "Request info.", required = true) @Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
+            @RequestParam("fieldPlanId") String fieldPlanId,
+            @RequestParam(value = "tenantId", required = false) String tenantId) {
+        log.info("Received request to search installation reports for fieldPlanId: {}", fieldPlanId);
+        List<InstallationReportDocument> documents = activityService.searchInstallationReportDocumentsByFieldPlanId(
+                requestInfoWrapper.getRequestInfo(), fieldPlanId, tenantId);
+        return ResponseEntity.ok(buildInstallationReportResponse(requestInfoWrapper, documents));
+    }
+
+    /**
+     * Same, for every installation plan of a project.
+     */
+    @PostMapping("/installation-report/project/_search")
+    public ResponseEntity<InstallationReportDocumentResponse> searchInstallationReportsByProject(
+            @ApiParam(value = "Request info.", required = true) @Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
+            @RequestParam("projectId") String projectId,
+            @RequestParam(value = "tenantId", required = false) String tenantId) {
+        log.info("Received request to search installation reports for projectId: {}", projectId);
+        List<InstallationReportDocument> documents = activityService.searchInstallationReportDocumentsByProjectId(
+                requestInfoWrapper.getRequestInfo(), projectId, tenantId);
+        return ResponseEntity.ok(buildInstallationReportResponse(requestInfoWrapper, documents));
+    }
+
+    private InstallationReportDocumentResponse buildInstallationReportResponse(RequestInfoWrapper requestInfoWrapper,
+                                                                              List<InstallationReportDocument> documents) {
+        log.debug("Returning {} installation report documents", documents.size());
+        return InstallationReportDocumentResponse.builder()
+                .responseInfo(ResponseInfoFactory.createResponseInfo(requestInfoWrapper.getRequestInfo(), true))
+                .installationReportDocuments(documents)
+                .totalCount(documents.size())
+                .build();
     }
 
     @RequestMapping(value = "/_assign-activity", method = RequestMethod.POST)
