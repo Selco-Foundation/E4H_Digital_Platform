@@ -162,6 +162,8 @@ public class BomPdfService {
         // both levels in one call.
         Boundary boundary = (facility != null) ? facility.getBoundary() : null;
         Map<String, String> boundaryNames = localizeBoundary(boundary, requestInfo);
+        String projectName = activityFacility.getFieldPlan() != null && activityFacility.getFieldPlan().getProject() != null
+                ? (activityFacility.getFieldPlan().getProject().getName() != null ? activityFacility.getFieldPlan().getProject().getName() : null) : null;
 
         data.put("health_facility_name", facility != null ? facility.getFacilityName() : null);
         data.put("health_facility_address", facility != null && facility.getAddress() != null
@@ -177,15 +179,14 @@ public class BomPdfService {
         data.put("project_date", resolveProjectDate(requestInfo, activityFacility).format(PROJECT_DATE_FORMATTER));
         data.put("po_wo_number", activityFacility.getFieldPlan() != null
                 ? activityFacility.getFieldPlan().getPocNumber() : null);
-        data.put("report_title", buildReportTitle((String) data.get("health_facility_name"),
-                (String) data.get("project_number")));
+        data.put("report_title", buildReportTitle((String) data.get("health_facility_name"), projectName));
 
         return data;
     }
 
     /**
      * The report's centered heading, e.g. {@code Chingkhu_Sambei_KA-2525-10-00049}: the health
-     * facility name followed by the project number, both underscore-joined and with any inner
+     * facility name followed by the project name, both underscore-joined and with any inner
      * whitespace turned into underscores.
      * <p>
      * Never null - a missing part is simply left out, and with neither part the template renders an
