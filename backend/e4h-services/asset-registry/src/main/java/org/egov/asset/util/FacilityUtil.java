@@ -58,6 +58,42 @@ public class FacilityUtil {
     }
 
 
+    /**
+     * Name of one health facility, or null when it cannot be resolved.
+     * <p>
+     * Never throws, unlike {@link #searchFacility}: callers use this to enrich data they are already
+     * committed to saving, so a facility-service hiccup must not fail the operation under way.
+     */
+    public String getFacilityName(String tenantId, String facilityId) {
+        log.trace("FacilityUtil::getFacilityName called");
+        if (tenantId == null || tenantId.isBlank() || facilityId == null || facilityId.isBlank()) {
+            return null;
+        }
+        String url = prepareFacilityRequest(tenantId, facilityId);
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Accept", "application/json");
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.GET,
+                    new HttpEntity<>(headers), new ParameterizedTypeReference<Map<String, Object>>() {});
+
+            Object facilities = response.getBody() != null ? response.getBody().get("facilities") : null;
+            if (!(facilities instanceof List<?> facilityList) || facilityList.isEmpty()
+                    || !(facilityList.get(0) instanceof Map<?, ?> facility)) {
+                log.warn("No facility returned | tenantId={} facilityId={}", tenantId, facilityId);
+                return null;
+            }
+            // facility-service serializes the name as facility_name; facilityName is tolerated in
+            // case that contract ever changes.
+            Object name = facility.get("facility_name") != null
+                    ? facility.get("facility_name") : facility.get("facilityName");
+            return name != null ? String.valueOf(name) : null;
+        } catch (Exception e) {
+            log.error("Error fetching facility name | tenantId={} facilityId={} url={} error={}",
+                    tenantId, facilityId, url, e.getMessage(), e);
+            return null;
+        }
+    }
+
     private String prepareFacilityRequest(String tenantId, String facilityId) {
         String url = configuration.getFacilityHost() + configuration.getFacilitySearchPath();
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
