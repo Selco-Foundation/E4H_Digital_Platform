@@ -52,7 +52,7 @@ const ReportLevelView = ({ t }) => {
   const [pageOffset, setPageOffset] = useState(() => getInitialPaginationValue(location.search, "pageOffset", 0));
   const [selectedStatuses, setSelectedStatuses] = useState(() => getInitialStatuses(location.search));
   const [searchableFilters, setSearchableFilters] = useState(() => getInitialSearchableFilters(location.search, t));
-  const { isLoading, isError, data } = useReportLevelVisits(pageSize, pageOffset, selectedStatuses, searchableFilters);
+  const { isLoading, isFetching, isError, data } = useReportLevelVisits(pageSize, pageOffset, selectedStatuses, searchableFilters);
   const reportLevelLabel = t("AMC_REPORT_LEVEL_VIEW");
 
   // Store active filters and pagination in the URL so refresh/detail-back keeps the report state.
@@ -195,7 +195,7 @@ const ReportLevelView = ({ t }) => {
 
   // Render loading, error, table, and empty states for report-level view.
   const renderState = () => {
-    if (isLoading) {
+    if (isLoading || isFetching) {
       return (
         <div style={{
           display: "flex",

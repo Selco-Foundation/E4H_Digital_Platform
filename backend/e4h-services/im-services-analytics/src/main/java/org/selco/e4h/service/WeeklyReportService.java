@@ -246,7 +246,7 @@ public class WeeklyReportService {
         log.trace("Getting functional metrics for stateCode: {}, date: {}", stateCode, date);
         try {
             // Query Elasticsearch for tickets as of the specified date
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchAllRequiredTickets(false);
             log.info("Fetched {} total tickets from ES for tenant: {}", tickets.size(), stateCode);
             log.debug("Querying functional metrics for date: {}", date);
 
@@ -305,6 +305,77 @@ public class WeeklyReportService {
     
     
     /**
+     * Facility keys (deduplicated) that are Non-Functional as of {@code asOfDate} - each facility's
+     * status is taken from its most-recently-filed ticket on/before that date (not the oldest, which
+     * {@link #getAgeBucketData} uses for a different purpose - tracking how long an issue has been
+     * open, not the facility's status as of a given snapshot). Callers diff two snapshots (week start
+     * vs week end) to get "newly Non-Functional this week" / "moved to Functional this week" counts.
+     */
+    private Set<String> getNonFunctionalFacilityKeys(String stateCode, Date asOfDate) {
+        log.trace("Getting non-functional facility keys for stateCode: {}, asOfDate: {}", stateCode, asOfDate);
+        try {
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchAllRequiredTickets(false);
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
+
+            Map<String, TicketData> latestTicketByFacility = new HashMap<>();
+            for (Map<String, Object> ticket : filteredTickets) {
+                TicketData ticketData = extractTicketData(ticket);
+                if (ticketData == null || ticketData.getFiledDate() == null
+                        || ticketData.getFiledDate() > asOfDate.getTime()) {
+                    continue;
+                }
+                String facilityStateCode = extractBoundaryStateCode(ticketData);
+                if (facilityStateCode == null) {
+                    continue;
+                }
+                String facilityKey = generateFacilityKey(ticketData.getData(), facilityStateCode);
+                TicketData existing = latestTicketByFacility.get(facilityKey);
+                if (existing == null || existing.getFiledDate() == null
+                        || ticketData.getFiledDate() > existing.getFiledDate()) {
+                    latestTicketByFacility.put(facilityKey, ticketData);
+                }
+            }
+
+            Set<String> nonFunctionalFacilities = new HashSet<>();
+            for (Map.Entry<String, TicketData> entry : latestTicketByFacility.entrySet()) {
+                if (SYSTEM_STATUS_NON_FUNCTIONAL.equals(entry.getValue().getSystemFunctional())) {
+                    nonFunctionalFacilities.add(entry.getKey());
+                }
+            }
+            log.debug("Found {} non-functional facilities for {} as of {}",
+                    nonFunctionalFacilities.size(), stateCode, asOfDate);
+            return nonFunctionalFacilities;
+        } catch (Exception e) {
+            log.error("Error getting non-functional facility keys for tenant: {} as of {}", stateCode, asOfDate, e);
+            return new HashSet<>();
+        }
+    }
+
+    /**
+     * @return int[]{newlyNonFunctional, movedToFunctional} for {@code stateCode} between the two
+     *         previous-week boundary dates, via a set difference of Non-Functional facility snapshots.
+     */
+    public int[] getNfFacilityChangeCounts(String stateCode) {
+        Date[] weekDates = getPreviousWeekDates();
+        Set<String> startNf = getNonFunctionalFacilityKeys(stateCode, weekDates[0]);
+        Set<String> endNf = getNonFunctionalFacilityKeys(stateCode, weekDates[1]);
+
+        int newlyNonFunctional = 0;
+        for (String facility : endNf) {
+            if (!startNf.contains(facility)) {
+                newlyNonFunctional++;
+            }
+        }
+        int movedToFunctional = 0;
+        for (String facility : startNf) {
+            if (!endNf.contains(facility)) {
+                movedToFunctional++;
+            }
+        }
+        return new int[]{newlyNonFunctional, movedToFunctional};
+    }
+
+    /**
      * Get age bucket data for non-functional systems
      * Uses the correct age bucket logic
      * - 1 Week: 8 ≤ age in days ≤ 30
@@ -318,7 +389,7 @@ public class WeeklyReportService {
         log.trace("Getting age bucket data for stateCode: {}", stateCode);
         try {
             // Query Elasticsearch for all open tickets
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchAllRequiredTickets(false);
             log.debug("Fetched {} tickets from Elasticsearch", tickets.size());
             
             // Filter tickets by boundary.stateCode (not tenantId, since all tickets are now under 'in')
@@ -390,7 +461,7 @@ public class WeeklyReportService {
         log.trace("Getting state-wise age bucket data for stateCode: {}", stateCode);
         try {
             // Query Elasticsearch for all open tickets
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchAllRequiredTickets(false);
             log.debug("Fetched {} tickets from Elasticsearch", tickets.size());
             
             // Filter tickets by boundary.stateCode (not tenantId, since all tickets are now under 'in')

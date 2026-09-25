@@ -94,11 +94,10 @@ const getVendorOptions = (visits) => {
   const options = {};
 
   visits.forEach((visit) => {
-    const code = visit?.assignedVendorId || visit?.assignedVendor;
-    if (code) {
-      options[code] = {
-        code,
-        name: visit?.assignedVendor || code,
+    if (visit?.assignedVendorId && visit?.assignedVendor) {
+      options[visit.assignedVendorId] = {
+        code: visit.assignedVendorId,
+        name: visit.assignedVendor,
       };
     }
   });
@@ -129,20 +128,6 @@ const getFilterOptions = (visits, filters = {}) => {
   };
 };
 
-const applySearchableFilters = (visits, filters = {}) => {
-  return visits.filter((visit) => {
-    if (filters.state?.code && visit.state !== filters.state.code) return false;
-    if (filters.district?.code && visit.district !== filters.district.code) return false;
-    if (filters.block?.code && visit.block !== filters.block.code) return false;
-    if (filters.vendor?.code && ![visit.assignedVendorId, visit.assignedVendor].includes(filters.vendor.code)) return false;
-    return true;
-  });
-};
-
-const hasSearchableFilters = (filters = {}) => {
-  return ["state", "district", "block", "vendor"].some((key) => filters?.[key]?.code);
-};
-
 // Fetch AMC visits for reviewer report-level view.
 const fetchReportLevelVisits = async (filter, limit, offset, searchableFilters) => {
   // Fetch only the visible table page; pagination controls provide limit and offset.
@@ -150,16 +135,12 @@ const fetchReportLevelVisits = async (filter, limit, offset, searchableFilters) 
   const scheduledVisits = visitsResponse?.ScheduledVisits || [];
   const visits = formatVisits(scheduledVisits);
   const filterOptions = getFilterOptions(visits, searchableFilters);
-  const activeSearchableFilters = hasSearchableFilters(searchableFilters);
-  const filteredVisits = activeSearchableFilters ? applySearchableFilters(visits, searchableFilters) : visits;
 
   return {
-    visits: filteredVisits,
-    totalCount: activeSearchableFilters
-      ? filteredVisits.length
-      : visitsResponse?.TotalCount !== undefined && visitsResponse?.TotalCount !== null
-        ? visitsResponse.TotalCount
-        : scheduledVisits.length,
+    visits,
+    totalCount: visitsResponse?.TotalCount !== undefined && visitsResponse?.TotalCount !== null
+      ? visitsResponse.TotalCount
+      : scheduledVisits.length,
     filterOptions,
   };
 };
@@ -176,6 +157,22 @@ const useReportLevelVisits = (pageSize, pageOffset, statuses = [], searchableFil
   if (statuses.length) {
     // Status checkboxes are sent as backend status filters.
     filter.searchCriteria.statuses = statuses;
+  }
+
+  if (searchableFilters.state?.code) {
+    filter.searchCriteria.states = [searchableFilters.state.code];
+  }
+
+  if (searchableFilters.district?.code) {
+    filter.searchCriteria.districts = [searchableFilters.district.code];
+  }
+
+  if (searchableFilters.block?.code) {
+    filter.searchCriteria.blocks = [searchableFilters.block.code];
+  }
+
+  if (searchableFilters.vendor?.code) {
+    filter.searchCriteria.vendorIds = [searchableFilters.vendor.code];
   }
 
   const limit = pageSize || 10;
