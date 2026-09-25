@@ -55,36 +55,41 @@ public class WeeklyProcurementEmailService {
                 + trend.getArrow() + " " + Math.abs(trend.getChangePct()) + "% vs last week)</p>";
     }
 
+    private static final String CELL = "padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left;";
+    private static final String CELL_RIGHT = "padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;";
+    private static final String CELL_MUTED_CENTER = "padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#6b7280;text-align:center;";
+
     private String renderVendorRows(WeeklyEscalationAnalytics analytics) {
         if (analytics.getVendorPerformance() == null || analytics.getVendorPerformance().isEmpty()) {
-            return "<tr><td colspan=\"6\" class=\"muted center\">No vendor data</td></tr>";
+            return "<tr><td colspan=\"6\" style=\"" + CELL_MUTED_CENTER + "\">No vendor data</td></tr>";
         }
         java.util.List<WeeklyVendorPerformanceRow> rows = analytics.getVendorPerformance();
         StringBuilder html = new StringBuilder();
         for (WeeklyVendorPerformanceRow row : rows.subList(0, Math.min(rows.size(), EscalationEmailTemplateHelper.MAX_DISPLAY_ROWS))) {
             html.append("<tr>");
-            html.append("<td>").append(commonUtility.escapeHtml(row.getVendorName())).append("</td>");
-            html.append("<td class=\"right\">").append(row.getNewBreachesThisWeek()).append("</td>");
-            html.append("<td class=\"right\">").append(row.getResolvedWithinSlaCount()).append("</td>");
-            html.append("<td class=\"right\">").append(row.getResolvedAfterBreachCount()).append("</td>");
-            html.append("<td class=\"right\">").append(row.getResponseRatePct()).append("%</td>");
-            html.append("<td class=\"right\">").append(row.getResolutionRatePct()).append("%</td>");
+            html.append("<td style=\"").append(CELL).append("\">").append(commonUtility.escapeHtml(row.getVendorName())).append("</td>");
+            html.append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getNewBreachesThisWeek()).append("</td>");
+            html.append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getResolvedWithinSlaCount()).append("</td>");
+            html.append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getResolvedAfterBreachCount()).append("</td>");
+            html.append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getResponseRatePct()).append("%</td>");
+            html.append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getResolutionRatePct()).append("%</td>");
             html.append("</tr>");
         }
         EscalationEmailTemplateHelper.appendMoreRow(html, 6, rows.size());
         return html.toString();
     }
 
+    /** Vendor-scoped only - Procurement should not see CRM/Tech PoC/State SPOC-stage tickets. */
     private String renderBottlenecks(WeeklyEscalationAnalytics analytics) {
-        if (analytics.getBottlenecks() == null || analytics.getBottlenecks().isEmpty()) {
-            return "<tr><td colspan=\"3\" class=\"muted center\">No bottlenecks</td></tr>";
+        if (analytics.getVendorBottlenecks() == null || analytics.getVendorBottlenecks().isEmpty()) {
+            return "<tr><td colspan=\"3\" style=\"" + CELL_MUTED_CENTER + "\">No bottlenecks</td></tr>";
         }
-        java.util.List<WeeklyBottleneckRow> rows = analytics.getBottlenecks();
+        java.util.List<WeeklyBottleneckRow> rows = analytics.getVendorBottlenecks();
         StringBuilder html = new StringBuilder();
         for (WeeklyBottleneckRow row : rows.subList(0, Math.min(rows.size(), EscalationEmailTemplateHelper.MAX_DISPLAY_ROWS))) {
-            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStatusLabel())).append("</td>")
-                    .append("<td class=\"right\">").append(row.getCount()).append("</td>")
-                    .append("<td class=\"right\">").append(row.getPctOfTotalOpen()).append("%</td></tr>");
+            html.append("<tr><td style=\"").append(CELL).append("\">").append(commonUtility.escapeHtml(row.getStatusLabel())).append("</td>")
+                    .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getCount()).append("</td>")
+                    .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getPctOfTotalOpen()).append("%</td></tr>");
         }
         EscalationEmailTemplateHelper.appendMoreRow(html, 3, rows.size());
         return html.toString();
@@ -92,18 +97,18 @@ public class WeeklyProcurementEmailService {
 
     private String renderFacilityRows(WeeklyEscalationAnalytics analytics) {
         if (analytics.getFacilitiesRestored() == null || analytics.getFacilitiesRestored().isEmpty()) {
-            return "<tr><td colspan=\"3\" class=\"muted center\">No facilities restored this week</td></tr>";
+            return "<tr><td colspan=\"3\" style=\"" + CELL_MUTED_CENTER + "\">No facilities restored this week</td></tr>";
         }
         StringBuilder html = new StringBuilder();
         int total = 0;
         for (WeeklyFacilityRestoredRow row : analytics.getFacilitiesRestored()) {
             total += row.getRestoredCount();
-            html.append("<tr><td>").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
-                    .append("<td class=\"right\">").append(row.getRestoredCount()).append("</td>")
-                    .append("<td>").append(commonUtility.escapeHtml(row.getVendorNames())).append("</td></tr>");
+            html.append("<tr><td style=\"").append(CELL).append("\">").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
+                    .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getRestoredCount()).append("</td>")
+                    .append("<td style=\"").append(CELL).append("\">").append(commonUtility.escapeHtml(row.getVendorNames())).append("</td></tr>");
         }
-        html.append("<tr><td style=\"font-weight:700\">TOTAL</td><td class=\"right\" style=\"font-weight:700\">")
-                .append(total).append("</td><td></td></tr>");
+        html.append("<tr><td style=\"").append(CELL).append("font-weight:700\">TOTAL</td><td style=\"").append(CELL_RIGHT).append("font-weight:700\">")
+                .append(total).append("</td><td style=\"").append(CELL).append("\"></td></tr>");
         return html.toString();
     }
 }

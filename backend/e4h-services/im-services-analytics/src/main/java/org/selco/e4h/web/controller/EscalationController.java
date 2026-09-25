@@ -27,6 +27,18 @@ import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.util.EscalationTemplateType;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.EscalationTicketUtil;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.ByteArrayOutputStream;
 
 /**
  * Controller for SLA escalation processing
@@ -514,6 +526,7 @@ public class EscalationController {
 
         if (EscalationTemplateType.WEEKLY_SENIOR_PROGRAM_MANAGER.equals(templateType)) {
             Map<String, List<EscalationRecipient>> recipientsByEmail = new HashMap<>();
+            Map<String, User> userByEmail = new HashMap<>();
             for (String tenantId : activeTenantIds) {
                 String state = activeTenantIdsName.get(tenantId);
                 if (state == null || state.isBlank()) {
@@ -523,6 +536,7 @@ public class EscalationController {
                 for (User user : users) {
                     if (user.getEmailId() != null && !user.getEmailId().isBlank()) {
                         recipientsByEmail.computeIfAbsent(user.getEmailId(), k -> new ArrayList<>()).add(recipient);
+                        userByEmail.putIfAbsent(user.getEmailId(), user);
                     }
                 }
             }
@@ -541,7 +555,10 @@ public class EscalationController {
 
                 WeeklyEscalationAnalytics analytics = weeklyEscalationAnalyticsService.buildAnalytics(stateCodes, requestInfo);
                 String downloadUrl = uploadWeeklyCsv(stateCodes, requestInfo);
-                User user = getUserByEmailId(requestInfo, emailId);
+                // Reuse the user record already looked up scoped to this role (searchUsersByRoleAndBoundaryCode
+                // above with List.of(role)) - a separate any-role re-lookup here previously picked up the wrong
+                // user (e.g. a Procurement-role account sharing the same email) when one email has multiple roles.
+                User user = userByEmail.get(emailId);
                 if (user == null) {
                     user = new User();
                     user.setEmailId(emailId);
@@ -573,12 +590,12 @@ public class EscalationController {
 
     private String uploadWeeklyCsv(Set<String> stateCodes, RequestInfo requestInfo) {
         try {
-            String csv = generateConsolidatedWeeklyCsv(stateCodes, requestInfo);
+            byte[] workbook = generateConsolidatedWeeklyWorkbook(stateCodes, requestInfo);
             String fileName = generateCsvFileName();
-            String fileStoreId = uploadCsvToFileStore(csv, fileName, "in", requestInfo);
+            String fileStoreId = uploadWorkbookToFileStore(workbook, fileName, "in", requestInfo);
             return buildDownloadUrl(fileStoreId);
         } catch (Exception e) {
-            log.error("Failed to upload weekly CSV", e);
+            log.error("Failed to upload weekly workbook", e);
             return "#";
         }
     }
@@ -607,51 +624,6 @@ public class EscalationController {
         return 99;
     }
 
-    /**
-     * Get user by email ID from user service
-     */
-    private User getUserByEmailId(RequestInfo requestInfo, String emailId) {
-        try {
-            // Search for users with this email ID across all active tenants
-            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
-            Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
-            for (String tenantId : activeTenantIds) {
-                // Search for users with any role in this tenant
-                String state = activeTenantIdsName.get(tenantId);
-                List<String> allRoles = Arrays.asList(
-                        "STATE_POC", "SENIOR_PROGRAM_MANAGER", "PROCUREMENT", "LEADERSHIP", "VENDOR", "ADMIN");
-                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, allRoles);
-                
-                for (User user : users) {
-                    if (emailId.equals(user.getEmailId())) {
-                        log.info("Found user: {} for email: {}", user.getName(), emailId);
-                        return user;
-                    }
-                }
-            }
-            
-            // Also check country-level users with boundary "India"
-            List<String> allRoles = Arrays.asList(
-                    "STATE_POC", "SENIOR_PROGRAM_MANAGER", "PROCUREMENT", "LEADERSHIP", "VENDOR", "ADMIN");
-            List<User> countryUsers = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", allRoles);
-            
-            for (User user : countryUsers) {
-                if (emailId.equals(user.getEmailId())) {
-                    log.info("Found country-level user: {} for email: {}", user.getName(), emailId);
-                    return user;
-                }
-            }
-            
-            log.warn("No user found for email: {}", emailId);
-            return null;
-            
-        } catch (Exception e) {
-            log.error("Error fetching user by email ID: {}", emailId, e);
-            return null;
-        }
-    }
-    
-    
     /**
      * Send email via Kafka without CSV attachments (download buttons are used instead)
      */
@@ -693,15 +665,18 @@ public class EscalationController {
      * to be uploaded under tenantId = "in".
      * Uses boundary.stateCode to filter tickets since all tickets are now under tenantId "in".
      */
-    private String generateConsolidatedWeeklyCsv(Set<String> stateCodes, RequestInfo requestInfo) {
-        StringBuilder csv = new StringBuilder();
-        appendCsvHeader(csv);
+    private static final String[] WEEKLY_WORKBOOK_HEADERS = {
+            "Health Facility", "NIN OR HFR", "Solar Working", "State", "District", "Block",
+            "Health Facility Type", "Mapped Vendor", "No of Ticket", "Open Ticket", "Closed Ticket"
+    };
 
+    private byte[] generateConsolidatedWeeklyWorkbook(Set<String> stateCodes, RequestInfo requestInfo) {
         try {
-            // true = include closed tickets too, since this report splits counts into Open/Closed;
-            // fetching only-open tickets here would make "Closed Ticket" permanently read 0.
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, true);
-            log.info("Consolidated CSV: fetched {} tickets from ES, filtering by {} state codes", tickets.size(), stateCodes.size());
+            // Paginated: a single size:10000 call would silently truncate now that the index holds
+            // more tickets than that (see ElasticSearchClient.fetchAllRequiredTickets). true = include
+            // closed tickets too, since this report splits counts into Open/Closed.
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchAllRequiredTickets(true);
+            log.info("Consolidated workbook: fetched {} tickets from ES, filtering by {} state codes", tickets.size(), stateCodes.size());
 
             Map<String, Map<String, Object>> facilityAgg = new LinkedHashMap<>();
             int filteredCount = 0;
@@ -730,8 +705,8 @@ public class EscalationController {
                 Map<String, Object> row = getOrCreateFacilityRow(facilityAgg, facilityName, ninOrHfr, ticketStateCode, district, block, hfType, vendor);
                 incrementCounts(row, isClosed, isFunctional);
             }
-            
-            log.info("Consolidated CSV: filtered to {} tickets matching state codes", filteredCount);
+
+            log.info("Consolidated workbook: filtered to {} tickets matching state codes", filteredCount);
 
             // Sort only for readability (State -> District -> Block -> Facility); every field value
             // stays exactly as returned by the API, only the row order changes.
@@ -741,17 +716,75 @@ public class EscalationController {
                     .thenComparing(r -> (String) r.get("district"), String.CASE_INSENSITIVE_ORDER)
                     .thenComparing(r -> (String) r.get("block"), String.CASE_INSENSITIVE_ORDER)
                     .thenComparing(r -> (String) r.get("facility"), String.CASE_INSENSITIVE_ORDER));
-            sortedRows.forEach(r -> appendCsvRow(csv, r));
 
+            return writeWeeklyWorkbook(sortedRows);
         } catch (Exception e) {
-            log.error("Error generating consolidated weekly CSV", e);
+            log.error("Error generating consolidated weekly workbook", e);
+            return new byte[0];
         }
-
-        return csv.toString();
     }
 
-    private void appendCsvHeader(StringBuilder csv) {
-        csv.append("\"Health Facility\",\"NIN OR HFR\",\"Solar Working\",\"State\",\"District\",\"Block\",\"Health Facility Type\",\"Mapped Vendor\",\"No of Ticket\",\"Open Ticket\",\"Closed Ticket\"\r\n");
+    /** Bold, shaded, frozen header row - matches the daily ticket-details workbook's styling. */
+    private byte[] writeWeeklyWorkbook(List<Map<String, Object>> rows) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Font boldFont = workbook.createFont();
+            boldFont.setBold(true);
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFont(boldFont);
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setWrapText(true);
+
+            CellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setBorderBottom(BorderStyle.THIN);
+
+            Sheet sheet = workbook.createSheet("Ticket Rollup");
+            Row headerRow = sheet.createRow(0);
+            for (int column = 0; column < WEEKLY_WORKBOOK_HEADERS.length; column++) {
+                Cell cell = headerRow.createCell(column);
+                cell.setCellValue(WEEKLY_WORKBOOK_HEADERS[column]);
+                cell.setCellStyle(headerStyle);
+            }
+            sheet.createFreezePane(0, 1);
+
+            int rowIndex = 1;
+            for (Map<String, Object> row : rows) {
+                Row sheetRow = sheet.createRow(rowIndex++);
+                writeWeeklyWorkbookCell(sheetRow, 0, (String) row.get("facility"), dataStyle);
+                writeWeeklyWorkbookCell(sheetRow, 1, (String) row.get("nin"), dataStyle);
+                writeWeeklyWorkbookCell(sheetRow, 2, (String) row.get("solarWorking"), dataStyle);
+                writeWeeklyWorkbookCell(sheetRow, 3, (String) row.get("state"), dataStyle);
+                writeWeeklyWorkbookCell(sheetRow, 4, (String) row.get("district"), dataStyle);
+                writeWeeklyWorkbookCell(sheetRow, 5, (String) row.get("block"), dataStyle);
+                writeWeeklyWorkbookCell(sheetRow, 6, (String) row.get("type"), dataStyle);
+                writeWeeklyWorkbookCell(sheetRow, 7, (String) row.get("vendor"), dataStyle);
+                Cell totalCell = sheetRow.createCell(8);
+                totalCell.setCellValue((Long) row.get("total"));
+                totalCell.setCellStyle(dataStyle);
+                Cell openCell = sheetRow.createCell(9);
+                openCell.setCellValue((Long) row.get("open"));
+                openCell.setCellStyle(dataStyle);
+                Cell closedCell = sheetRow.createCell(10);
+                closedCell.setCellValue((Long) row.get("closed"));
+                closedCell.setCellStyle(dataStyle);
+            }
+
+            int[] widthsChars = {28, 16, 14, 16, 16, 16, 20, 24, 14, 14, 14};
+            for (int column = 0; column < widthsChars.length; column++) {
+                sheet.setColumnWidth(column, widthsChars[column] * 256);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    private void writeWeeklyWorkbookCell(Row row, int column, String value, CellStyle style) {
+        Cell cell = row.createCell(column);
+        cell.setCellValue(value == null ? "" : value);
+        cell.setCellStyle(style);
     }
 
     /**
@@ -870,21 +903,6 @@ public class EscalationController {
         if (isFunctional) row.put("solarWorking", "Yes");
     }
 
-    private void appendCsvRow(StringBuilder csv, Map<String, Object> row) {
-        csv.append(escapeCsvField((String) row.get("facility"))).append(",")
-           .append(escapeCsvField((String) row.get("nin"))).append(",")
-           .append(escapeCsvField((String) row.get("solarWorking"))).append(",")
-           .append(escapeCsvField((String) row.get("state"))).append(",")
-           .append(escapeCsvField((String) row.get("district"))).append(",")
-           .append(escapeCsvField((String) row.get("block"))).append(",")
-           .append(escapeCsvField((String) row.get("type"))).append(",")
-           .append(escapeCsvField((String) row.get("vendor"))).append(",")
-           .append(row.get("total")).append(",")
-           .append(row.get("open")).append(",")
-           .append(row.get("closed")).append("\r\n");
-    }
-
-    
     /**
      * Helper method to safely get string value from map
      */
@@ -892,18 +910,7 @@ public class EscalationController {
         Object value = map.get(key);
         return value != null ? value.toString() : "";
     }
-    
-    /**
-     * Helper method to escape CSV fields
-     */
-    private String escapeCsvField(String field) {
-        if (field == null) return "";
-        if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
-            return "\"" + field.replace("\"", "\"\"") + "\"";
-        }
-        return field;
-    }
-    
+
     /**
      * Generate CSV filename for weekly report
      */
@@ -912,7 +919,7 @@ public class EscalationController {
         dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
         String timestamp = dateFormat.format(new Date());
         
-        return String.format("weekly_report_%s.csv", timestamp);
+        return String.format("weekly_report_%s.xlsx", timestamp);
     }
     
     /**
@@ -1009,111 +1016,6 @@ public class EscalationController {
         };
     }
 
-    /**
-     * Upload CSV file to FileStore
-     */
-    private String uploadCsvToFileStore(String csvContent, String fileName, String tenantId, RequestInfo requestInfo) {
-        try {
-            log.info("Uploading CSV file: {} to FileStore for tenant: {}", fileName, tenantId);
-            
-            // Create MultipartFile from CSV content
-            MultipartFile csvFile = createMultipartFileFromContent(csvContent, fileName, "text/csv");
-            
-            // Create ProcessingContext for StorageUtil
-            ProcessingContext context = ProcessingContext.builder()
-                    .tenantId(tenantId)
-                    .module("Incident")
-                    .tag("escalation-csv")
-                    .requestInfo(commonUtility.convertRequestInfoToJson(requestInfo))
-                    .build();
-            
-            // Upload to FileStore using existing StorageUtil
-            StorageResponse response = storageUtil.uploadToFileStorage(Arrays.asList(csvFile), context);
-            
-            if (response != null && response.getFiles() != null && !response.getFiles().isEmpty()) {
-                String fileStoreId = response.getFiles().get(0).getFileStoreId();
-                log.info("Successfully uploaded CSV file: {} with fileStoreId: {}", fileName, fileStoreId);
-                return fileStoreId;
-            } else {
-                log.error("Failed to upload CSV file: {}", fileName);
-                return null;
-            }
-            
-        } catch (Exception e) {
-            log.error("Error uploading CSV file: {} for tenant: {}", fileName, tenantId, e);
-            return null;
-        }
-    }
-    
-    /**
-     * Create MultipartFile from string content
-     */
-    private MultipartFile createMultipartFileFromContent(String content, String fileName, String contentType) {
-        return new MultipartFile() {
-            @Override
-            public String getName() {
-                return "file";
-            }
-            
-            @Override
-            public String getOriginalFilename() {
-                return fileName;
-            }
-            
-            @Override
-            public String getContentType() {
-                return contentType;
-            }
-            
-            @Override
-            public boolean isEmpty() {
-                return content == null || content.isEmpty();
-            }
-            
-            @Override
-            public long getSize() {
-                return content != null ? content.getBytes().length : 0;
-            }
-            
-            @Override
-            public byte[] getBytes() throws IOException {
-                return content != null ? content.getBytes() : new byte[0];
-            }
-            
-            @Override
-            public InputStream getInputStream() throws IOException {
-                return new ByteArrayInputStream(getBytes());
-            }
-            
-            @Override
-            public void transferTo(java.io.File dest) throws IOException, IllegalStateException {
-                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
-                    fos.write(getBytes());
-                }
-            }
-            
-            @Override
-            public Resource getResource() {
-                try {
-                    return new ByteArrayResource(getBytes()) {
-                        @Override
-                        public String getFilename() {
-                            return fileName;
-                        }
-                    };
-                } catch (IOException e) {
-                    log.error("Error creating resource for file: {}", fileName, e);
-                    return new ByteArrayResource(new byte[0]) {
-                        @Override
-                        public String getFilename() {
-                            return fileName;
-                        }
-                    };
-                }
-            }
-        };
-    }
-    
     /**
      * Health check endpoint
      */
