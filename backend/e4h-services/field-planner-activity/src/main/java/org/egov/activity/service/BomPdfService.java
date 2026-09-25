@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.egov.activity.util.ActivityConstants.INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX;
@@ -161,6 +162,8 @@ public class BomPdfService {
         // both levels in one call.
         Boundary boundary = (facility != null) ? facility.getBoundary() : null;
         Map<String, String> boundaryNames = localizeBoundary(boundary, requestInfo);
+        String projectName = activityFacility.getFieldPlan() != null && activityFacility.getFieldPlan().getProject() != null
+                ? (activityFacility.getFieldPlan().getProject().getName() != null ? activityFacility.getFieldPlan().getProject().getName() : null) : null;
 
         data.put("health_facility_name", facility != null ? facility.getFacilityName() : null);
         data.put("health_facility_address", facility != null && facility.getAddress() != null
@@ -176,8 +179,30 @@ public class BomPdfService {
         data.put("project_date", resolveProjectDate(requestInfo, activityFacility).format(PROJECT_DATE_FORMATTER));
         data.put("po_wo_number", activityFacility.getFieldPlan() != null
                 ? activityFacility.getFieldPlan().getPocNumber() : null);
+        data.put("report_title", buildReportTitle((String) data.get("health_facility_name"), projectName));
 
         return data;
+    }
+
+    /**
+     * The report's centered heading, e.g. {@code Chingkhu_Sambei_KA-2525-10-00049}: the health
+     * facility name followed by the project number, both underscore-joined and with any inner
+     * whitespace turned into underscores.
+     * <p>
+     * Never null - a missing part is simply left out, and with neither part the template renders an
+     * empty heading rather than the raw {@code {{report_title}}} placeholder.
+     */
+    private String buildReportTitle(String facilityName, String projectNumber) {
+        String title = Stream.of(facilityName, projectNumber)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(part -> !part.isEmpty())
+                .map(part -> part.replaceAll("\\s+", "_"))
+                .collect(Collectors.joining("_"));
+        if (title.isEmpty()) {
+            log.warn("Neither facility name nor project number available - BOM report title left empty");
+        }
+        return title;
     }
 
     /**
