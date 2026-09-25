@@ -162,6 +162,8 @@ public class BomPdfService {
         // both levels in one call.
         Boundary boundary = (facility != null) ? facility.getBoundary() : null;
         Map<String, String> boundaryNames = localizeBoundary(boundary, requestInfo);
+        String projectName = activityFacility.getFieldPlan() != null && activityFacility.getFieldPlan().getProject() != null
+                ? (activityFacility.getFieldPlan().getProject().getName() != null ? activityFacility.getFieldPlan().getProject().getName() : null) : null;
 
         data.put("health_facility_name", facility != null ? facility.getFacilityName() : null);
         data.put("health_facility_address", facility != null && facility.getAddress() != null
@@ -177,8 +179,7 @@ public class BomPdfService {
         data.put("project_date", resolveProjectDate(requestInfo, activityFacility).format(PROJECT_DATE_FORMATTER));
         data.put("po_wo_number", activityFacility.getFieldPlan() != null
                 ? activityFacility.getFieldPlan().getPocNumber() : null);
-        data.put("report_title", buildReportTitle((String) data.get("health_facility_name"),
-                (String) data.get("project_number")));
+        data.put("report_title", buildReportTitle((String) data.get("health_facility_name"), projectName));
 
         return data;
     }
