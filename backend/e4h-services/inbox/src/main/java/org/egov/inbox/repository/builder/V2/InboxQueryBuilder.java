@@ -610,6 +610,32 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
     }
 
 
+    /**
+     * Terms aggregation over the mapped vendor of every ticket the caller's inbox query matches, so the
+     * dropdown only ever offers vendors the caller can actually act on. Deliberately reuses
+     * {@link #getESQuery} rather than rebuilding the filters, so tenant, jurisdiction and status scoping
+     * stay identical to the inbox listing - if the two drift apart, the dropdown starts offering vendors
+     * whose tickets the caller cannot see.
+     */
+    public Map<String, Object> getMappedVendorAggregationQuery(InboxRequest inboxRequest) {
+        Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
+
+        // Only the aggregation is of interest, the hits themselves are not.
+        baseEsQuery.put(SIZE_KEY, 0);
+
+        Map<String, Object> innerTermsQuery = new HashMap<>();
+        innerTermsQuery.put(FIELD_KEY, MAPPED_VENDOR_NAME_KEYWORD_PATH);
+        innerTermsQuery.put(SIZE_KEY, MAPPED_VENDOR_AGGREGATION_SIZE);
+        // Alphabetical, so the UI can render the list as it comes.
+        innerTermsQuery.put(ORDER_KEY, Collections.singletonMap("_key", "asc"));
+
+        baseEsQuery.put(AGGS_KEY, Collections.singletonMap(MAPPED_VENDOR_AGGREGATION_KEY,
+                Collections.singletonMap(TERMS_KEY, innerTermsQuery)));
+
+        log.info("📄 Mapped vendor aggregation query: {}", baseEsQuery);
+        return baseEsQuery;
+    }
+
     private void appendStatusCountAggsNode(Map<String, Object> baseEsQuery) {
         Map<String, Object> aggsNode = new HashMap<>();
         aggsNode.put("statusCount", new HashMap<>());

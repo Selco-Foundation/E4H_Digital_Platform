@@ -1,6 +1,7 @@
 package org.egov.activity.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.models.RequestInfoWrapper;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@Slf4j
 public class FacilityWorkflowService {
 
     @Qualifier("objectMapper")
@@ -31,6 +33,8 @@ public class FacilityWorkflowService {
     }
 
     public ProcessInstance transitionWorkflow(ActivityFacility activityFacility, String action, List<Document> documents, RequestInfo requestInfo, String workflowComment) {
+        log.trace("transitionWorkflow method invoked for activityFacilityId: {}, action: {}", activityFacility.getId(), action);
+        log.info("Transitioning workflow for activity facility: {}, action: {}", activityFacility.getId(), action);
         ProcessInstance instance = ProcessInstance.builder()
                 .businessId(activityFacility.getId())
                 .tenantId(activityFacility.getTenantId())
@@ -47,21 +51,37 @@ public class FacilityWorkflowService {
                 .build();
 
         String url = activityConfiguration.getWfHost() + activityConfiguration.getWfTransitionPath();
+        log.debug("Calling workflow service transition endpoint: {}", url);
         Object response = repository.fetchResult(new StringBuilder(url), wfRequest);
 
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
         if (wfResponse == null || wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty()) {
+            log.error("Empty response from workflow transition, activityFacilityId: {}, action: {}", activityFacility.getId(), action);
             throw new CustomException("WORKFLOW_ERROR", "Empty response from workflow transition");
         }
+        String newState = wfResponse.getProcessInstances().get(0).getState() != null ? wfResponse.getProcessInstances().get(0).getState().getState() : "null";
+        log.debug("Workflow transition successful, new state: {}", newState);
         return wfResponse.getProcessInstances().get(0);
     }
 
 
      public List<ProcessInstance> getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo) {
+         return getProcessInstanceById(businessId, tenantId, requestInfo, null);
+     }
+
+    /**
+     * @param limit rows the workflow search may return, sent explicitly because workflow-v2 defaults
+     *              it to 10 and would silently drop the oldest transitions of a long history; null
+     *              keeps that default. Values above the workflow's own max limit are ignored by it.
+     */
+     public List<ProcessInstance> getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo, Integer limit) {
+        log.trace("getProcessInstanceById method invoked for businessId: {}, tenantId: {}", businessId, tenantId);
+        log.debug("Fetching process instances for businessId: {}", businessId);
         String url = activityConfiguration.getWfHost() + activityConfiguration.getWfSearchPath()
             + "?tenantId=" + tenantId
             + "&businessIds=" + businessId
-            + "&history=" + true;
+            + "&history=" + true
+            + (limit != null ? "&limit=" + limit : "");
 
         // Wrap RequestInfo in RequestInfoWrapper
         RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
@@ -71,8 +91,11 @@ public class FacilityWorkflowService {
         Object response = repository.fetchResult(new StringBuilder(url), requestInfoWrapper);
 
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
-        return (wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty())
+        List<ProcessInstance> processInstances = (wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty())
             ? null
             : wfResponse.getProcessInstances();
+        int instanceCount = processInstances != null ? processInstances.size() : 0;
+        log.debug("Retrieved {} process instances for businessId: {}", instanceCount, businessId);
+        return processInstances;
     }
 }
