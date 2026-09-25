@@ -74,8 +74,8 @@ public class ElasticSearchClient {
             Map<String, Object> initialRequest = buildRequiredTicketQuery(0, pageSize, closedTickets);
             initialRequest.remove("from"); // scroll has no concept of an offset
 
-            Map<String, Object> response = restTemplate.postForObject(
-                    searchUri, new HttpEntity<>(initialRequest, updateService.buildHeaders()), Map.class);
+            Map<String, Object> response = postForObjectWithRetry(
+                    searchUri, new HttpEntity<>(initialRequest, updateService.buildHeaders()));
 
             for (int page = 0; page < maxPages && response != null; page++) {
                 scrollId = (String) response.get("_scroll_id");
@@ -95,8 +95,8 @@ public class ElasticSearchClient {
                 Map<String, Object> scrollRequest = new HashMap<>();
                 scrollRequest.put("scroll", SCROLL_KEEP_ALIVE);
                 scrollRequest.put("scroll_id", scrollId);
-                response = restTemplate.postForObject(
-                        scrollUri, new HttpEntity<>(scrollRequest, updateService.buildHeaders()), Map.class);
+                response = postForObjectWithRetry(
+                        scrollUri, new HttpEntity<>(scrollRequest, updateService.buildHeaders()));
             }
             log.info("fetchAllRequiredTickets: fetched {} documents across scroll pages", allDocs.size());
             return allDocs;
@@ -325,8 +325,8 @@ public class ElasticSearchClient {
             initialRequest.put("size", pageSize);
             initialRequest.put("track_total_hits", true);
 
-            Map<String, Object> response = restTemplate.postForObject(
-                    searchUri, new HttpEntity<>(initialRequest, updateService.buildHeaders()), Map.class);
+            Map<String, Object> response = postForObjectWithRetry(
+                    searchUri, new HttpEntity<>(initialRequest, updateService.buildHeaders()));
 
             for (int page = 0; page < maxPages && response != null; page++) {
                 scrollId = (String) response.get("_scroll_id");
@@ -346,8 +346,8 @@ public class ElasticSearchClient {
                 Map<String, Object> scrollRequest = new HashMap<>();
                 scrollRequest.put("scroll", SCROLL_KEEP_ALIVE);
                 scrollRequest.put("scroll_id", scrollId);
-                response = restTemplate.postForObject(
-                        scrollUri, new HttpEntity<>(scrollRequest, updateService.buildHeaders()), Map.class);
+                response = postForObjectWithRetry(
+                        scrollUri, new HttpEntity<>(scrollRequest, updateService.buildHeaders()));
             }
 
             log.info("searchAllTickets: fetched {} total tickets across scroll pages", allTickets.size());
@@ -358,6 +358,34 @@ public class ElasticSearchClient {
         } finally {
             clearScroll(scrollId);
         }
+    }
+
+    /**
+     * Scroll pagination issues many sequential requests in a tight loop (e.g. one full scan per
+     * state for the weekly NF trend snapshot), so a single transient connection blip - a dropped
+     * TLS handshake, a slow GC pause on the ES side - fails the whole page instead of just that
+     * request. Retry a few times with a short backoff before giving up on a page.
+     */
+    private Map<String, Object> postForObjectWithRetry(String uri, HttpEntity<?> entity) {
+        final int maxAttempts = 3;
+        RuntimeException lastFailure = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return restTemplate.postForObject(uri, entity, Map.class);
+            } catch (RuntimeException e) {
+                lastFailure = e;
+                log.warn("ES request to {} failed (attempt {}/{}): {}", uri, attempt, maxAttempts, e.getMessage());
+                if (attempt < maxAttempts) {
+                    try {
+                        Thread.sleep(400L * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw lastFailure;
+                    }
+                }
+            }
+        }
+        throw lastFailure;
     }
 
     /** Best-effort cleanup so the scroll context doesn't linger on the cluster until it expires. */
