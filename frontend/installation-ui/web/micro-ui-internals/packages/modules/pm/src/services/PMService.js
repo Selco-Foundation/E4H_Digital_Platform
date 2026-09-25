@@ -388,7 +388,7 @@ export const PMService = {
     });
   },
 
-  uploadAMCFacilityDataTemplate: async (file, projectId, amcFormData) => {
+  uploadAMCFacilityDataTemplate: async (file, projectId, amcFormData, amcPlanId) => {
     const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(amcFormData.activityDetails.activityUserAssignment, projectId);
     const userInfoList = [];
     for (const formattedActivityOrganizationUser of formattedActivityOrganizationUsers) {
@@ -448,6 +448,10 @@ export const PMService = {
       const uploadRequest = new FormData();
       uploadRequest.append("amc_file", validatedFile.data);
       uploadRequest.append("project_id", projectId);
+      // Send amc_plan_id only when adding facilities to an existing AMC plan; omit it for new AMC plan creation.
+      if (amcPlanId) {
+        uploadRequest.append("amc_plan_id", amcPlanId);
+      }
       uploadRequest.append("user_info_list", JSON.stringify(userInfoList));
       uploadRequest.append("geography_details", JSON.stringify(formatAMCGeographyDetails(amcFormData.geographyDetails)));
       const uploadResponse = await IngestionService.uploadAMCFacilityData(uploadRequest)

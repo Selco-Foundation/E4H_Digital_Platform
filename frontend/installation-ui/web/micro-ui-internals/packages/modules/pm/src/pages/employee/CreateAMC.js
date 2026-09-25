@@ -38,6 +38,12 @@ const getAuditDetails = (savedAuditDetails) => {
   };
 };
 
+const getAMCPlansFromResponse = (response) => response?.AmcPlans || [];
+
+const getAMCPlanName = (amcPlan = {}) => (
+  amcPlan.name || ""
+);
+
 const formatAMCGeographyDetailsForUpdate = (geographyDetails = {}) => ({
   state: geographyDetails?.state?.code || geographyDetails?.state,
   districts: geographyDetails?.districts?.map((district) => district?.code || district) || [],
@@ -63,11 +69,14 @@ const CreateAMC = () => {
   const [backAlert, setBackAlert] = useState(null);
   const [boundaryData, setBoundaryData] = useState(null);
   const [savedAMCConfiguration, setSavedAMCConfiguration] = useState(null);
+  const [savedAMCPlanName, setSavedAMCPlanName] = useState("");
   const [organizationIds, setOrganizationIds] = useState([""]);
   const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
-  const amcConfigurationId = new URLSearchParams(window.location.search).get("amcConfigurationId");
+  const searchParams = new URLSearchParams(window.location.search);
+  const amcConfigurationId = searchParams.get("amcConfigurationId");
+  const amcPlanId = searchParams.get("amc_plan_id") || searchParams.get("amcPlanId");
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
 
@@ -189,17 +198,62 @@ const CreateAMC = () => {
   useEffect(() => {
     let ignore = false;
 
-    const setSavedAMCGeographyDetails = async () => {
-      if (!amcConfigurationId || !fetchedBoundaryData) {
+    // Existing AMC plan pages receive amc_plan_id in the URL; fetch its name for the title below the project name.
+    const fetchSavedAMCPlanName = async () => {
+      if (!amcPlanId) {
+        setSavedAMCPlanName("");
         return;
       }
 
       try {
-        const response = await AMCService.fetchAMCConfigurations({
+        const response = await AMCService.fetchAMCPlans({
           searchCriteria: {
             tenantId,
-            ids: [amcConfigurationId],
+            ids: [amcPlanId],
           },
+        }, 1, 0);
+
+        if (ignore) {
+          return;
+        }
+
+        setSavedAMCPlanName(getAMCPlanName(getAMCPlansFromResponse(response)?.[0]));
+      } catch (error) {
+        if (!ignore) {
+          console.error("Error fetching AMC plan", error);
+        }
+      }
+    };
+
+    void fetchSavedAMCPlanName();
+
+    return () => {
+      ignore = true;
+    };
+  }, [amcPlanId, tenantId]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    // Existing AMC plans are loaded by amcPlanIds; older configuration links continue to load by configuration ids.
+    const setSavedAMCGeographyDetails = async () => {
+      if ((!amcConfigurationId && !amcPlanId) || !fetchedBoundaryData) {
+        return;
+      }
+
+      try {
+        const searchCriteria = {
+          tenantId,
+        };
+
+        if (amcConfigurationId) {
+          searchCriteria.ids = [amcConfigurationId];
+        } else if (amcPlanId) {
+          searchCriteria.amcPlanIds = [amcPlanId];
+        }
+
+        const response = await AMCService.fetchAMCConfigurations({
+          searchCriteria,
         });
 
         if (ignore) {
@@ -249,7 +303,7 @@ const CreateAMC = () => {
     return () => {
       ignore = true;
     };
-  }, [amcConfigurationId, fetchedBoundaryData, tenantId, t]);
+  }, [amcConfigurationId, amcPlanId, fetchedBoundaryData, tenantId, t]);
 
   useEffect(() => {
     const assignments = savedAMCConfiguration?.assignments;
@@ -340,7 +394,7 @@ const CreateAMC = () => {
     setBlockUI(true);
     let uploadedFile;
     try {
-      const response = await PMService.uploadAMCFacilityDataTemplate(chosenFile, createdProject.id, persistedFormData);
+      const response = await PMService.uploadAMCFacilityDataTemplate(chosenFile, createdProject.id, persistedFormData, amcPlanId);
       setBlockUI(false);
 
       if (response.errorCode === "INVALID_TEMPLATE") {
@@ -370,6 +424,7 @@ const CreateAMC = () => {
         })
         setInvalidDataError(null);
         setUploadedValidFile(true);
+        await queryClient.invalidateQueries(["AMC_PLAN"]);
         await queryClient.invalidateQueries(["AMC_CONFIGURATION"]);
         uploadedFile = {
           name: response.file.name || chosenFile.name,
@@ -939,6 +994,11 @@ const CreateAMC = () => {
       {createdProject?.name && (
         <div style={{fontSize: "40px", fontWeight: "700", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
           {createdProject?.name}
+        </div>
+      )}
+      {savedAMCPlanName && (
+        <div style={{fontSize: "32px", fontWeight: "700", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
+          {savedAMCPlanName}
         </div>
       )}
       <Stepper
