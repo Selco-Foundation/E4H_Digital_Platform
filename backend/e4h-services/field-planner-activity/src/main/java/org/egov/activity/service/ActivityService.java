@@ -28,6 +28,7 @@ import java.sql.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.egov.activity.util.ActivityConstants.APPROVED_BY_QC_SPOC;
 import static org.egov.activity.util.ActivityConstants.INSTALLATION_REPORT_PART_B_EDITOR;
 import static org.egov.activity.util.ActivityConstants.SUBMITTED_BY_SUPERVISOR;
 import static org.egov.common.utils.CommonUtils.populateErrorDetails;
@@ -293,6 +294,155 @@ public class ActivityService {
         }
 
             return activityFacilities;
+    }
+
+    /**
+     * The generated installation report (INSTALLATION_REPORT_BOM) of every activity facility of one
+     * installation plan that QC SPOC has approved.
+     */
+    public List<InstallationReportDocument> searchInstallationReportDocumentsByFieldPlanId(RequestInfo requestInfo, String fieldPlanId, String tenantId) {
+        log.info("Fetching installation report documents for fieldPlanId: {}", fieldPlanId);
+        return collectInstallationReportDocuments(requestInfo, List.of(fieldPlanId), resolveTenantId(tenantId));
+    }
+
+    /**
+     * Same, for every installation plan of a project: the plans are resolved from field-planner
+     * first, then their approved activity facilities are read in one search.
+     */
+    public List<InstallationReportDocument> searchInstallationReportDocumentsByProjectId(RequestInfo requestInfo, String projectId, String tenantId) {
+        log.info("Fetching installation report documents for projectId: {}", projectId);
+        String resolvedTenantId = resolveTenantId(tenantId);
+        List<String> fieldPlanIds = activityValidator.getFieldPlanIdsByProjectId(requestInfo, projectId, resolvedTenantId);
+        if (fieldPlanIds.isEmpty()) {
+            log.warn("No installation plan found for projectId: {} - returning no installation report", projectId);
+            return Collections.emptyList();
+        }
+        return collectInstallationReportDocuments(requestInfo, fieldPlanIds, resolvedTenantId);
+    }
+
+    private List<InstallationReportDocument> collectInstallationReportDocuments(RequestInfo requestInfo, List<String> fieldPlanIds, String tenantId) {
+        ActivityFacilitySearchCriteria criteria = ActivityFacilitySearchCriteria.builder()
+                .fieldPlanId(fieldPlanIds)
+                .statuses(List.of(APPROVED_BY_QC_SPOC))
+                .tenantId(tenantId)
+                .build();
+        ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
+                .requestInfo(requestInfo)
+                .criteria(criteria)
+                .build();
+
+        List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest,
+                activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(), tenantId, false, null);
+        log.debug("Found {} approved activity facilities across {} installation plans",
+                activityFacilities != null ? activityFacilities.size() : 0, fieldPlanIds.size());
+        if (activityFacilities == null || activityFacilities.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<InstallationReportDocument> installationReportDocuments = new ArrayList<>();
+        for (ActivityFacility activityFacility : activityFacilities) {
+            Document report = findLatestInstallationReportDocument(activityFacility, requestInfo);
+            if (report == null) {
+                // Approved without a generated report: possible for facilities approved before the
+                // report was generated backend side. Skipped rather than returned with a null id.
+                log.warn("No {} document found for approved activityFacilityId: {}",
+                        INSTALLATION_REPORT_BOM_DOCUMENT_TYPE, activityFacility.getId());
+                continue;
+            }
+            installationReportDocuments.add(InstallationReportDocument.builder()
+                    .filestoreId(report.getFileStoreId())
+                    .facilityName(activityFacility.getFacility() != null
+                            ? activityFacility.getFacility().getFacilityName() : null)
+                    .projectId(resolveProjectId(activityFacility))
+                    .projectName(resolveProjectName(activityFacility))
+                    .fieldPlanId(activityFacility.getFieldPlanId())
+                    .build());
+        }
+        log.info("Returning {} installation report documents out of {} approved activity facilities",
+                installationReportDocuments.size(), activityFacilities.size());
+        return installationReportDocuments;
+    }
+
+    /**
+     * The most recent INSTALLATION_REPORT_BOM document carried by the activity facility's workflow
+     * history. A re-submitted report leaves one such document per submission, and only the last one
+     * reflects the facility as approved.
+     */
+    private Document findLatestInstallationReportDocument(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        List<ProcessInstance> processInstances = workflowService.getProcessInstanceById(
+                activityFacility.getId(), activityFacility.getTenantId(), requestInfo, activityConfiguration.getMaxLimit());
+        if (processInstances == null || processInstances.isEmpty()) {
+            return null;
+        }
+
+        // Sorted rather than trusting the workflow's own ordering, so "the last one" stays the last
+        // one whichever order the search returns.
+        List<ProcessInstance> orderedByTime = new ArrayList<>(processInstances);
+        orderedByTime.sort(Comparator.comparingLong(ActivityService::processInstanceTime));
+
+        Document latest = null;
+        long latestTime = Long.MIN_VALUE;
+        for (ProcessInstance processInstance : orderedByTime) {
+            if (processInstance.getDocuments() == null) {
+                continue;
+            }
+            long processInstanceTime = processInstanceTime(processInstance);
+            for (Document document : processInstance.getDocuments()) {
+                if (document == null || document.getFileStoreId() == null
+                        || !INSTALLATION_REPORT_BOM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType())) {
+                    continue;
+                }
+                long documentTime = documentTime(document, processInstanceTime);
+                if (documentTime >= latestTime) {
+                    latest = document;
+                    latestTime = documentTime;
+                }
+            }
+        }
+        return latest;
+    }
+
+    /* Transition time, falling back on the document's own audit details when the workflow has none. */
+    private static long processInstanceTime(ProcessInstance processInstance) {
+        if (processInstance.getAuditDetails() == null) {
+            return 0L;
+        }
+        if (processInstance.getAuditDetails().getCreatedTime() != null) {
+            return processInstance.getAuditDetails().getCreatedTime();
+        }
+        return processInstance.getAuditDetails().getLastModifiedTime() != null
+                ? processInstance.getAuditDetails().getLastModifiedTime() : 0L;
+    }
+
+    private static long documentTime(Document document, long fallback) {
+        if (document.getAuditDetails() != null && document.getAuditDetails().getCreatedTime() != null) {
+            return document.getAuditDetails().getCreatedTime();
+        }
+        return fallback;
+    }
+
+    private static String resolveProjectId(ActivityFacility activityFacility) {
+        FieldPlan fieldPlan = activityFacility.getFieldPlan();
+        if (fieldPlan == null) {
+            return null;
+        }
+        if (fieldPlan.getProjectId() != null) {
+            return fieldPlan.getProjectId();
+        }
+        return fieldPlan.getProject() != null ? fieldPlan.getProject().getId() : null;
+    }
+
+    /* Carried by the installation plan's project, which field-planner joins on every plan search. */
+    private static String resolveProjectName(ActivityFacility activityFacility) {
+        FieldPlan fieldPlan = activityFacility.getFieldPlan();
+        if (fieldPlan == null || fieldPlan.getProject() == null) {
+            return null;
+        }
+        return fieldPlan.getProject().getName();
+    }
+
+    private String resolveTenantId(String tenantId) {
+        return (tenantId == null || tenantId.isBlank()) ? activityConfiguration.getTenantId() : tenantId;
     }
 
     public List<FacilityStatusAgregation> getStatusFacilityAssignmentsAgregation(String fieldPlanId) {
