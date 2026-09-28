@@ -1,0 +1,710 @@
+
+openapi: 3.1.0
+info:
+  title: Asset Registry API
+  version: "1.0.0"
+  description: >
+    API specification for managing a comprehensive registry of assets in a facility, including their Annual Maintenance Contracts (AMCs) and associated visit records. It supports creating, updating, and searching assets; managing lifecycle workflows; handling AMC contracts independently; and logging AMC service visits for audit, compliance, and performance monitoring.
+    It supports creating, updating, searching assets, and updating workflow status.
+
+servers:
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: Assets
+    description: Endpoints related to asset management
+  - name: Bulk
+    description: Bulk APIs for asset management
+  - name: AMC Visits
+    description: Endpoints to manage individual AMC visit records
+  - name: Annual Maintenance Contract
+    description: Endpoints to setup, search for and update AMCs
+
+paths:
+  /v1/asset/_create:
+    post:
+      tags:
+        - Assets
+      summary: Create a new asset
+      operationId: createAsset
+      requestBody:
+        description: Asset data to be added to the registry
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreateUpdateRequest'
+      responses:
+        '201':
+          description: Asset created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetCreateUpdateResponse'
+        '400':
+          description: Invalid input data
+
+  /v1/asset/_update:
+    post:
+      tags:
+        - Assets
+      summary: Update an existing asset
+      operationId: updateAsset
+      requestBody:
+        description: Asset data with updates (assetID must be included in the URL path)
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreateUpdateRequest'
+      responses:
+        '200':
+          description: Asset updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetCreateUpdateResponse'
+        '400':
+          description: Invalid input data
+        '404':
+          description: Asset not found
+
+  /v1/asset/_search:
+    get:
+      tags:
+        - Assets
+      summary: Search assets
+      operationId: searchAssets
+      requestBody:
+        description: Asset data to be searched for
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetSearchRequest'
+      responses:
+        '200':
+          description: A list of assets matching the search criteria
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Asset'
+        '400':
+          description: Invalid query parameters
+
+  /v1/asset/workflow/_update:
+    post:
+      tags:
+        - Assets
+      summary: Update asset workflow status
+      operationId: updateAssetWorkflow
+      parameters:
+        - name: assetID
+          in: path
+          required: true
+          description: System-generated unique identifier for the asset
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Workflow status update for an asset
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow status updated successfully
+        '400':
+          description: Invalid input data
+
+  /v1/asset/bulk/_create:
+    post:
+      tags:
+        - Bulk
+      summary: Bulk create assets
+      operationId: bulkCreateAsset
+      requestBody:
+        description: Asset data to be added to the registry
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkAssetCreateRequest'
+      responses:
+        '201':
+          description: Assets created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkAssetCreateResponse'
+        '400':
+          description: Invalid input data
+  
+  /v1/asset/amc/_create:
+    post:
+      tags:
+        - Annual Maintenance Contract
+      summary: Create a new AMC record for an asset
+      operationId: createAssetAMC
+      requestBody:
+        description: AMC contract details and visit history
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetAMCRequest'
+      responses:
+        '201':
+          description: AMC record created successfully
+
+  /v1/asset/amc/_update:
+    post:
+      tags:
+        - Annual Maintenance Contract
+      summary: Update an existing AMC record
+      operationId: updateAssetAMC
+      parameters:
+        - name: amcId
+          in: path
+          required: true
+          description: System-generated unique identifier for the AMC
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Updated AMC contract or visit information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetAMCRequest'
+      responses:
+        '200':
+          description: AMC record updated successfully
+        '404':
+          description: AMC record not found
+
+  /v1/asset/amc/_search:
+    get:
+      tags:
+        - Annual Maintenance Contract
+      summary: Search AMC records for assets
+      operationId: searchAssetAMC
+      parameters:
+        - in: query
+          name: assetID
+          schema:
+            type: string
+            format: uuid
+          description: Filter AMC records for a specific asset
+        - in: query
+          name: contractNumber
+          schema:
+            type: string
+          description: Filter by AMC contract number
+      responses:
+        '200':
+          description: A list of AMC records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssetAMC'
+        '400':
+          description: Invalid search parameters
+
+  /v1/asset/amc/visit/_create:
+    post:
+      tags:
+        - AMC Visits
+      summary: Create a new AMC visit entry
+      operationId: createAMCVisit
+      requestBody:
+        required: true
+        description: AMC visit details to be logged
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetAMCVisitRequest'
+      responses:
+        '201':
+          description: AMC visit created successfully
+
+  /v1/asset/amc/visit/_update:
+    post:
+      tags:
+        - AMC Visits
+      summary: Update an existing AMC visit
+      operationId: updateAMCVisit
+      parameters:
+        - name: visitID
+          in: path
+          required: true
+          description: Unique identifier of the AMC visit record
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: Updated AMC visit information
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetAMCVisitRequest'
+      responses:
+        '200':
+          description: AMC visit updated successfully
+        '404':
+          description: Visit not found
+
+  /v1/asset/amc/visit/_search:
+    get:
+      tags:
+        - AMC Visits
+      summary: Search AMC visit records
+      operationId: searchAMCVisits
+      parameters:
+        - in: query
+          name: assetID
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: facilityID
+          schema:
+            type: string
+        - in: query
+          name: visitDate
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of AMC visit records for a given facility or asset
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssetAMCVisit'
+        '400':
+          description: Invalid search parameters
+
+components:
+  schemas:
+    Asset:
+      type: object
+      required:
+        - facilityID
+        - assetTypeID
+        - serialNumber
+        - brandID
+        - modelNumber
+        - warrantyStartDate
+        - warrantyDuration
+        - warrantyEndDate
+      properties:
+        tenant_id:
+          type: string
+          description: The tenant ID where this record is created
+        assetID:
+          type: string
+          format: uuid
+          readOnly: true
+          description: System-generated unique identifier for the asset
+          example: b1234e9a-1234-4567-89ab-cdef12345678
+          minLength: 36
+          maxLength: 36
+        facilityID:
+          type: string
+          format: uuid
+          description: Unique identifier of the facility the asset belongs to. This is the UUID of the facility - not HFR or NIN ID.
+          minLength: 36
+          maxLength: 36
+        assetTypeID:
+          type: string
+          description: Master data code identifying the type of asset
+          minLength: 2
+          maxLength: 64
+        serialNumber:
+          type: string
+          description: User entered serial number of the asset
+        modelNumber:
+          type: string
+          description: User entered model number for an asset
+        brandID:
+          type: string
+          description: Master data code of the brand from MDMS. 
+          minLength: 2
+          maxLength: 64
+        assetDetails:
+          type: object
+          description: Custom key-value pair details of the asset specific to asset type. These can be defined in the master schema per asset type. The schema should be used to validate the payload.
+          additionalProperties: true
+        warrantyStartDate:
+          type: string
+          format: datetime
+          description: Start date of the warranty in ISO 8601 format with Z offset
+        warrantyDuration:
+          type: string
+          description: Duration of the warranty in ISO 8601 format (e.g., P1Y2M) 
+        warrantyEndDate:
+          type: string
+          format: date
+          description: End date of the warranty in ISO 8601 format with Z offset          
+        wfStatus:
+          type: string
+          description: Workflow status of the asset. Cannot be updated. Only returned in responses.
+          readOnly: true
+        isActive:
+          type: boolean
+          description: Field for soft delete
+        documents:
+          description: Store any documents associated with the asset
+          type: array
+          items:
+            $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Document'
+        auditDetails:
+          readOnly: true
+          description: System generated; to be consumed by end users of the API
+          $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/AuditDetails'
+        additionalDetails:
+          type: object
+          description: Extra key-value pair object for implementation specific customizations.
+
+    AssetCreate:
+      type: object
+      properties:
+        Asset:
+            $ref: '#/components/schemas/Asset'
+        workflow:
+            $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Workflow'
+      required:
+        - Asset
+        - workflow
+      
+    AssetUpdate:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: The tenant ID where this record is created
+        assetID:
+          type: string
+          format: uuid
+          readOnly: true
+          description: System-generated unique identifier for the asset
+          example: b1234e9a-1234-4567-89ab-cdef12345678
+          minLength: 36
+          maxLength: 36
+        warrantyStartDate:
+          type: string
+          format: datetime
+          description: Start date of the warranty in ISO 8601 format with Z offset
+        warrantyDuration:
+          type: string
+          description: Duration of the warranty in ISO 8601 format (e.g., P1Y2M) 
+        warrantyEndDate:
+          type: string
+          format: date
+          description: End date of the warranty in ISO 8601 format with Z offset       
+
+    AssetWorkflowUpdate:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: The tenant ID where this record is created
+        assetID:
+          type: string
+          format: uuid
+          readOnly: true
+          description: System-generated unique identifier for the asset
+          example: b1234e9a-1234-4567-89ab-cdef12345678
+          minLength: 36
+          maxLength: 36
+        workflow:
+          $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Workflow'
+
+    AssetSearchCriteria:
+      type: object
+      description: Criteria to search for assets. tenant_id is mandatory. Send one of the rest 
+      properties: 
+        tenant_id:
+          type: string
+          description: The tenant ID where this record is created
+        assetID:
+          type: string
+          format: uuid
+          readOnly: true
+          description: System-generated unique identifier for the asset
+          example: b1234e9a-1234-4567-89ab-cdef12345678
+          minLength: 36
+          maxLength: 36
+        facilityID:
+          type: string
+          format: uuid
+          description: Unique identifier of the facility the asset belongs to. This is the UUID of the facility - not HFR or NIN ID.
+          minLength: 36
+          maxLength: 36
+        serialNumber:
+          type: string
+          description: User entered serial number of the asset
+        modelNumber:
+          type: string
+          description: User entered model number for an asset
+        brandID:
+          type: string
+          description: Master data code of the brand from MDMS. 
+          minLength: 2
+          maxLength: 64
+        wfStatus:
+          type: string
+      required:
+        - tenant_id
+        
+    
+    AssetCreateRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        assetDetail:
+          $ref: '#/components/schemas/AssetCreate'
+      required:
+        - RequestInfo
+        - assetDetail
+
+    AssetUpdateRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        assetDetail:
+          $ref: '#/components/schemas/AssetUpdate'
+      required:
+        - RequestInfo
+        - assetDetail
+    
+    AssetSearchRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        criteria:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetSearchCriteria'
+      required:
+        - RequestInfo
+        - criteria
+    
+    BulkAssetCreateRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        assetDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetCreate'
+      required:
+        - RequestInfo
+        - assetDetails
+    
+    BulkAssetCreateResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/ResponseInfo
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+      required:
+        - ResponseInfo
+        - assets
+
+    AssetCreateResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/ResponseInfo
+        asset:
+          $ref: '#/components/schemas/Asset'
+      required:
+        - ResponseInfo
+        - asset
+
+    AssetWorkflowRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        assetWorkflow:
+          $ref: '#/components/schemas/AssetWorkflowUpdate'
+      required:
+        - RequestInfo
+        - assetWorkflow
+
+    AssetAMCRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        AMC:
+          $ref: '#/components/schemas/AssetAMC'
+      required:
+        - RequestInfo
+        - AMC
+
+    AssetAMC:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: The tenant ID where this record is created
+        amcID:
+          type: string
+          format: uuid
+          description: System-generated unique ID for the AMC record
+          minLength: 36
+          maxLength: 36
+        assetID:
+          type: string
+          format: uuid
+          description: The assetID associated with this AMC
+          minLength: 36
+          maxLength: 36
+        contractNumber:
+          type: string
+          description: Contract number provided by the AMC vendor
+        vendorCode:
+          type: string
+          description: AMC vendor code from the vendor registry
+        contractStartDate:
+          type: integer
+          description: Start date of the AMC in epoch time (milliseconds)
+        contractEndDate:
+          type: integer
+          description: End date of the AMC in epoch time (milliseconds)
+        visitSchedule:
+          type: array
+          description: Scheduled visits as per the contract
+          items:
+            type: string
+            format: date
+        visits:
+          type: array
+          description: Records of actual maintenance visits
+          items:
+            $ref: '#/components/schemas/AssetAMCVisit'
+        documents:
+          description: Store any documents associated with the asset
+          type: array
+          items:
+            $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Document'
+        auditDetails:
+          readOnly: true
+          description: System generated; to be consumed by end users of the API
+          $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/AuditDetails'
+        additionalDetails:
+          type: object
+          description: Optional key-value pair object for implementation specific customizations.
+
+    AssetAMCVisit:
+      type: object
+      description: Description of an AMC visit
+      properties:
+        tenant_id:
+          type: string
+          description: The tenant ID where this record is created
+        visitId:
+          type: string
+          format: uuid
+          description: System generated ID for an AMC visit
+        assetId:
+          type: string
+          format: uuid
+          description: The assetID associated with this AMC visit
+        facilityId:
+          type: string
+          format: uuid
+          description: The facility ID associated with the AMC visit
+        scheduledDate:
+          type: integer
+          description: Scheduled date of visit in epoch time as per AMC contract
+        visitDate:
+          type: integer
+          description: Date when the actual visit happened
+        engineerName:
+          type: string
+          description: Name of the maintenance engineer
+        observations:
+          type: string
+          description: Any issues found or actions taken
+          example: "Replaced air filter. Minor vibrations noted in compressor."
+        nextDueDate:
+          type: string
+          format: date
+          description: Suggested next visit date, if applicable
+        visitStatus:
+          type: string
+          enum: [SCHEDULED, PENDING, COMPLETED, OVERDUE, CANCELLED]
+          description: Status of the visit
+          example: "COMPLETED"
+        additionalDetails:
+          type: object
+          additionalProperties: true
+
+    AssetAMCVisitRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+        AMCVisit:
+          $ref: '#/components/schemas/AssetAMCVisit'
+      required:
+        - RequestInfo
+        - AMCVisit
+
+    InverterDetails:
+      type: object
+      description: This describes the master schema needed for an inverter asset. To be created in MDMS and validated against 
+      properties:
+        capacity:
+          type: integer
+          description: Capacity of the inverter in KW
+    
+    PanelDetails:
+      type: object
+      description: This describes the master schema needed for a panel asset. To be created in MDMS and validated against 
+      properties:
+        capacity:
+          type: integer
+          description: Capacity of the inverter in KW
+    
+    BatteryDetails:
+      type: object
+      description: This describes the master schema needed for a battery. To be created in MDMS and validated against 
+      properties:
+        capacity:
+          type: integer
+          description: Capacity of the inverter in AH
+        
+   
