@@ -231,7 +231,7 @@ const Summary = ({
                   t("QC_INSTALLATION_ASSET_SERIAL_NUMBER"),
                   item.isPotentialDuplicate === true ? (
                     <React.Fragment>
-                      <strong>{item.serialNumber || t("CORE_COMMON_NOT_APPLICABLE")}</strong>{" "}
+                      <span style={{ fontWeight: 400 }}>{item.serialNumber || t("CORE_COMMON_NOT_APPLICABLE")}</span>{" "}
                       <span>
                         ({t(
                           Array.isArray(item.duplicateFacilityName) && item.duplicateFacilityName.length > 1
@@ -239,14 +239,14 @@ const Summary = ({
                             : "QC_INSTALLATION_ASSET_DUPLICATE_SERIAL_FACILITY",
                           {
                             facilityName: Array.isArray(item.duplicateFacilityName)
-                              ? item.duplicateFacilityName.join(", ")
-                              : item.duplicateFacilityName,
+                              ? item.duplicateFacilityName.map((name) => `"${name}"`).join(", ")
+                              : item.duplicateFacilityName ? `"${item.duplicateFacilityName}"` : item.duplicateFacilityName,
                             interpolation: { escapeValue: false },
                           }
                         )})
                       </span>
                     </React.Fragment>
-                  ) : item.serialNumber,
+                  ) : <span style={{ fontWeight: 400 }}>{item.serialNumber || t("CORE_COMMON_NOT_APPLICABLE")}</span>,
                   item.isPotentialDuplicate === true
                 )}
                 {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), item.capacity)}
