@@ -220,7 +220,7 @@ public class EscalationController {
                     escalationRecipient.getBoundaryLevel(), escalationRecipient.getTemplateType(),
                     escalationRecipient.getEscalations() != null ? escalationRecipient.getEscalations().size() : 0);
 
-            if ("daily".equals(escalationType) && EscalationTemplateType.DAILY_STATE_POC.equals(escalationRecipient.getTemplateType())) {
+            if ("daily".equals(escalationType) && EscalationTemplateType.DAILY_STATE_SPOC.equals(escalationRecipient.getTemplateType())) {
                 processDailyStatePocEscalation(requestInfo, escalationRecipient, activeTenantIds);
                 return;
             }
@@ -244,7 +244,7 @@ public class EscalationController {
     }
 
     /**
-     * Process daily State POC escalation using the new template (new vs previously open sections).
+     * Process daily State SPOC escalation using the new template (new vs previously open sections).
      */
     private void processDailyStatePocEscalation(RequestInfo requestInfo,
                                                 EscalationRecipient escalationRecipient,
@@ -254,12 +254,12 @@ public class EscalationController {
         List<EscalationRoleEscalationItem> items = escalationRecipient.getEscalations();
 
         if (items == null || items.isEmpty()) {
-            log.warn("No escalation items configured for daily State POC recipient: {}", escalationId);
+            log.warn("No escalation items configured for daily State SPOC recipient: {}", escalationId);
             return;
         }
 
         if (!"state".equals(escalationRecipient.getBoundaryLevel())) {
-            log.warn("Daily State POC template is only supported at state boundary level, recipient: {}", escalationId);
+            log.warn("Daily State SPOC template is only supported at state boundary level, recipient: {}", escalationId);
             return;
         }
 
@@ -278,7 +278,7 @@ public class EscalationController {
                 List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes);
 
                 if (users.isEmpty()) {
-                    log.warn("No State POC users found for state: {} tenant: {}", state, tenantId);
+                    log.warn("No State SPOC users found for state: {} tenant: {}", state, tenantId);
                     escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
                     continue;
                 }
@@ -314,7 +314,7 @@ public class EscalationController {
 
                 for (User user : users) {
                     if (user.getEmailId() == null || user.getEmailId().isBlank()) {
-                        log.warn("State POC user {} has no email, skipping", user.getName());
+                        log.warn("State SPOC user {} has no email, skipping", user.getName());
                         continue;
                     }
 
@@ -329,11 +329,11 @@ public class EscalationController {
                 }
 
                 escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
-                log.info("Completed daily State POC escalation for state: {} with {} new and {} previously open tickets",
+                log.info("Completed daily State SPOC escalation for state: {} with {} new and {} previously open tickets",
                         state, newBreaches.size(), previouslyOpen.size());
 
             } catch (Exception e) {
-                log.error("Error processing daily State POC escalation for tenant: {}", tenantId, e);
+                log.error("Error processing daily State SPOC escalation for tenant: {}", tenantId, e);
                 escalationStatusService.publishFailureStatus("daily", escalationId, tenantId, recipientRoleName, e.getMessage());
             }
         }
