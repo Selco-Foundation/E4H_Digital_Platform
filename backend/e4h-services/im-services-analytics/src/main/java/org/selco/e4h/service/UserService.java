@@ -81,7 +81,7 @@ public class UserService {
             
             // For country-level searches (boundary "India"), add searchOnlyInBoundary=true for exact boundary matching
             StringBuilder urlBuilder = new StringBuilder(consumerConfiguration.getHrmsHost() + consumerConfiguration.getHrmsSearchUrl());
-            urlBuilder.append("?tenantId=in&limit=1000&roles=").append(roles);
+            urlBuilder.append("?tenantId=in&limit=1000&isActive=true&roles=").append(roles);
             urlBuilder.append("&offset=0&boundaryCodes=").append(boundaryCode);
             
             // Add searchOnlyInBoundary=true for country-level boundary to ensure exact match
