@@ -260,7 +260,7 @@ public class SLABreachDetectionService {
      * on {@code Data.state} (e.g. "Karnataka", "Arunachal Pradesh") - reformatted the same
      * "India_StateNameNoSpaces" way MDMS-derived state codes are shaped, and verified directly against
      * the ES index. Without this fallback, ~1,900 tickets are invisible to every state-scoped query here,
-     * silently undercounting State POC / SPM breach detection for their affected states.
+     * silently undercounting State SPOC / SPM breach detection for their affected states.
      */
     private Map<String, Object> buildStateScopeFilter(String state) {
         Map<String, Object> tenantPrefix = new HashMap<>();

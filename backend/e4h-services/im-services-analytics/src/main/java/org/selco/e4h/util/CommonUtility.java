@@ -248,7 +248,7 @@ public class CommonUtility {
         // Role-specific formatting rules
         switch (workflowState) {
             case "PENDING_ASSIGNMENT_OUT_OF_WARRANTY":
-                return "Out of Warranty - Pending State POC";
+                return "Out of Warranty - Pending State SPOC";
 
             case "PENDINGFORASSIGNMENT":
                 return "Pending Assignment - with CRM";
