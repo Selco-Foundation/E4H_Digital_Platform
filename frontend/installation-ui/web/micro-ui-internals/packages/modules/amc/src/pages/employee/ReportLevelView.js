@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {Loader, Table} from "@egovernments/digit-ui-react-components";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import useReportLevelVisits from "../../hooks/useReportLevelVisits";
+import useStateOptions from "../../hooks/useStateOptions";
 import StatusFilter from "../../components/ReportLevelView/StatusFilter";
 
 const getQueryParams = (search) => new URLSearchParams(search || "");
@@ -53,6 +54,8 @@ const ReportLevelView = ({ t }) => {
   const [selectedStatuses, setSelectedStatuses] = useState(() => getInitialStatuses(location.search));
   const [searchableFilters, setSearchableFilters] = useState(() => getInitialSearchableFilters(location.search, t));
   const { isLoading, isFetching, isError, data } = useReportLevelVisits(pageSize, pageOffset, selectedStatuses, searchableFilters);
+  // State options come from the complete boundary list, independently of report pagination and filters.
+  const { isLoading: statesLoading, isError: statesError, data: states } = useStateOptions();
   const reportLevelLabel = t("AMC_REPORT_LEVEL_VIEW");
 
   // Store active filters and pagination in the URL so refresh/detail-back keeps the report state.
@@ -195,7 +198,7 @@ const ReportLevelView = ({ t }) => {
 
   // Render loading, error, table, and empty states for report-level view.
   const renderState = () => {
-    if (isLoading || isFetching) {
+    if (isLoading || isFetching || statesLoading) {
       return (
         <div style={{
           display: "flex",
@@ -211,7 +214,7 @@ const ReportLevelView = ({ t }) => {
       );
     }
 
-    if (isError) {
+    if (isError || statesError) {
       return (
         <div style={{
           display: "flex",
@@ -306,7 +309,7 @@ const ReportLevelView = ({ t }) => {
             selectedStatuses={selectedStatuses}
             searchableFilters={searchableFilters}
             statusesList={statusesList}
-            filterOptions={data?.filterOptions}
+            filterOptions={{ ...data?.filterOptions, states }}
             onFilterChange={handleStatusFilterChange}
             onSearchableFilterChange={handleSearchableFilterChange}
           />
