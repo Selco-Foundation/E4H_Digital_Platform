@@ -60,7 +60,7 @@ public final class EscalationActorUtil {
         return switch (bucket) {
             case CRM -> "CRM";
             case TECH_POC -> "Tech PoC";
-            case STATE_SPOC -> "State POC";
+            case STATE_SPOC -> "State SPOC";
             case VENDOR -> "Vendor";
             default -> "Unknown";
         };
