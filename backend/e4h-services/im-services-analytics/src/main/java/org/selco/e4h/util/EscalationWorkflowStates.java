@@ -15,7 +15,7 @@ public final class EscalationWorkflowStates {
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
     public static final String PENDING_RESOLUTION_OUT_OF_SCOPE = "PENDING_RESOLUTION_OUT_OF_SCOPE";
 
-    public static final List<String> STATE_POC_DAILY_STATES = List.of(
+    public static final List<String> STATE_SPOC_DAILY_STATES = List.of(
             PENDING_FOR_ASSIGNMENT,
             RMS_DEVICE_PENDING_TECH_POC,
             OUT_OF_WARRANTY_PENDING_TECH_POC
