@@ -1653,8 +1653,11 @@ Future<void> _performSubmissionForActivityFacility({
           auditDetails: (saved.assetId?.isNotEmpty ?? false) ? audit : null,
         );
 
-        final updatedAsset =
-            await repo.createOrUpdateAsset(asset: assetModel, isar: isar);
+        final updatedAsset = await repo.createOrUpdateAsset(
+          asset: assetModel,
+          isar: isar,
+          cacheEntryId: saved.id,
+        );
         await _saveCheckpoint(
           isar: isar,
           activityFacilityId: activityFacilityId,

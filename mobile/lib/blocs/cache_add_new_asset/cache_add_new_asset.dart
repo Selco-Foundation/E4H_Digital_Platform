@@ -49,27 +49,7 @@ class CacheAddNewAssetBloc
   ) async {
     try {
       await isar.writeTxn(() async {
-        final existing = await isar.cacheAddNewAssets
-            .where()
-            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
-            .filter()
-            .assetTypeEqualTo(event.entry.assetType)
-            .serialNumberEqualTo(event.entry.serialNumber)
-            .findFirst();
-
-        if (existing != null) {
-          existing.documentId = event.entry.documentId;
-          existing.assetId = event.entry.assetId;
-          existing.itemNumber = event.entry.itemNumber;
-          existing.photoPath = event.entry.photoPath;
-          existing.longitude = event.entry.longitude;
-          existing.latitude = event.entry.latitude;
-          existing.documentType = "ASSET";
-          existing.updatedAt = DateTime.now();
-          await isar.cacheAddNewAssets.put(existing);
-        } else {
-          await isar.cacheAddNewAssets.put(event.entry);
-        }
+        await isar.cacheAddNewAssets.put(event.entry);
       });
       emit(CacheAddNewAssetState.added(event.entry));
     } catch (e) {
@@ -83,35 +63,11 @@ class CacheAddNewAssetBloc
   ) async {
     try {
       await isar.writeTxn(() async {
-        final existing = await isar.cacheAddNewAssets
-            .where()
-            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
-            .filter()
-            .assetTypeEqualTo(event.entry.assetType)
-            .serialNumberEqualTo(event.entry.serialNumber)
-            .findFirst();
-
-        if (existing != null) {
-          existing.itemNumber = event.entry.itemNumber;
-          existing.documentId = event.entry.documentId;
-          existing.documentType = "ASSET";
-          existing.photoPath = event.entry.photoPath;
-          existing.longitude = event.entry.longitude;
-          existing.latitude = event.entry.latitude;
-          existing.updatedAt = DateTime.now();
-          await isar.cacheAddNewAssets.put(existing);
-        } else {
-          await isar.cacheAddNewAssets.put(event.entry);
-        }
+        event.entry.updatedAt = DateTime.now();
+        await isar.cacheAddNewAssets.put(event.entry);
       });
 
-      final updatedEntry = await isar.cacheAddNewAssets
-          .where()
-          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
-          .filter()
-          .assetTypeEqualTo(event.entry.assetType)
-          .serialNumberEqualTo(event.entry.serialNumber)
-          .findFirst();
+      final updatedEntry = await isar.cacheAddNewAssets.get(event.entry.id);
 
       if (updatedEntry != null) {
         emit(CacheAddNewAssetState.updated(updatedEntry));

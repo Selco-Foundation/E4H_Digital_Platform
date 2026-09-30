@@ -670,7 +670,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     required String assetType,
   }) {
     return DigitCard(
-      key: ValueKey(asset.serialNumber.isEmpty ? index : asset.serialNumber),
+      key: ObjectKey(asset),
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

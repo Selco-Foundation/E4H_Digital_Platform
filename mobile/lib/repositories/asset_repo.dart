@@ -86,8 +86,11 @@ class AssetRepository {
     }
   }
 
-  Future<Asset> createOrUpdateAsset(
-      {required Asset asset, required Isar isar}) async {
+  Future<Asset> createOrUpdateAsset({
+    required Asset asset,
+    required Isar isar,
+    required int cacheEntryId,
+  }) async {
     final isCreate = asset.assetId == null || asset.assetId!.isEmpty;
     final endpoint = isCreate ? '_create' : '_update?assetID=${asset.assetId}';
 
@@ -120,7 +123,11 @@ class AssetRepository {
       AppLogger.instance.info("updated AssetId ${updatedAsset.assetId}");
 
       if ((updatedAsset.assetId ?? '').isNotEmpty) {
-        await _writeBackAssetIdToCache(isar: isar, asset: updatedAsset);
+        await _writeBackAssetIdToCacheEntry(
+          isar: isar,
+          cacheEntryId: cacheEntryId,
+          assetId: updatedAsset.assetId!,
+        );
       }
 
       return updatedAsset;
@@ -131,18 +138,20 @@ class AssetRepository {
         AppLogger.instance.info(
             "Fetching Duplicate isCreate: $isCreate isDuplicate: $isDuplicate");
 
-        final remote = await _fetchAssetBySerial(
+        final remote = await _fetchAssetBySerialAndBrand(
           activityFacilityId: asset.activityFacilityID ?? '',
           serialNumber: asset.serialNumber ?? '',
+          brandId: asset.brandID ?? '',
         );
 
         final remoteAssetId =
             (remote?['assetId'] ?? remote?['assetID'] ?? '').toString();
 
         if (remoteAssetId.isNotEmpty) {
-          await _writeBackAssetIdToCache(
+          await _writeBackAssetIdToCacheEntry(
             isar: isar,
-            asset: asset.copyWith(assetId: remoteAssetId),
+            cacheEntryId: cacheEntryId,
+            assetId: remoteAssetId,
           );
 
           final retryAssetMap = Map<String, dynamic>.from(asset.toJson());
@@ -162,6 +171,13 @@ class AssetRepository {
             final aj = m['asset'] ?? m['Asset'];
             final updated =
                 Asset.fromJson(Map<String, dynamic>.from(aj as Map));
+            if ((updated.assetId ?? '').isNotEmpty) {
+              await _writeBackAssetIdToCacheEntry(
+                isar: isar,
+                cacheEntryId: cacheEntryId,
+                assetId: updated.assetId!,
+              );
+            }
             return updated;
           }
         }
@@ -210,6 +226,11 @@ class AssetRepository {
       }
 
       await isar.writeTxn(() async {
+        await isar.cacheAddNewAssets
+            .where()
+            .activityFacilityIdEqualTo(activityFacilityId)
+            .deleteAll();
+
         for (var entry in byType.entries) {
           final type = entry.key;
           final list = entry.value;
@@ -290,18 +311,6 @@ class AssetRepository {
 
           for (var asset in list) {
             final serial = asset.serialNumber ?? '';
-            final oldList = await isar.cacheAddNewAssets
-                .where()
-                .activityFacilityIdEqualTo(activityFacilityId)
-                .filter()
-                .assetTypeEqualTo(type)
-                .and()
-                .serialNumberEqualTo(serial)
-                .findAll();
-            for (var old in oldList) {
-              await isar.cacheAddNewAssets.delete(old.id);
-            }
-
             for (var doc in asset.documents ?? []) {
               if (doc.documentType == 'ASSET') {
                 await isar.cacheAddNewAssets.put(
@@ -311,7 +320,7 @@ class AssetRepository {
                     activityFacilityId: activityFacilityId,
                     assetType: type,
                     itemNumber: asset.assetDetails?.inverterCapacity ?? '',
-                    serialNumber: serial ?? '',
+                    serialNumber: serial,
                     photoPath: doc.fileStore ?? '',
                     latitude: doc.geoLocation?.latitude?.toString() ?? '',
                     longitude: doc.geoLocation?.longitude?.toString() ?? '',
@@ -488,22 +497,22 @@ class AssetRepository {
     }
   }
 
-  Future<Map<String, dynamic>?> _fetchAssetBySerial({
+  Future<Map<String, dynamic>?> _fetchAssetBySerialAndBrand({
     required String activityFacilityId,
-    String? serialNumber,
+    required String serialNumber,
+    required String brandId,
   }) async {
-    final sn = (serialNumber ?? '').trim();
+    final sn = serialNumber.trim();
+    final brand = brandId.trim();
 
-    if (sn.isEmpty) return null;
+    if (sn.isEmpty || brand.isEmpty) return null;
 
     final criteria = <String, dynamic>{
       'tenantId': envConfig.variables.tenantId,
       'activityFacilityID': activityFacilityId,
+      'serialNumber': [sn],
+      'brandID': [brand],
     };
-
-    if (sn.isNotEmpty) {
-      criteria['serialNumber'] = [sn];
-    }
 
     final resp = await _dio.post(
       '/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}',
@@ -514,13 +523,12 @@ class AssetRepository {
       final data = resp.data;
 
       if (data is List) {
-        if (sn.isNotEmpty) {
-          return data.cast<Map<String, dynamic>?>().firstWhere(
-                (m) => (m?['serialNumber'] ?? '').toString() == sn,
-                orElse: () => null,
-              );
-        }
-        return null;
+        return data.cast<Map<String, dynamic>?>().firstWhere(
+              (m) =>
+                  (m?['serialNumber'] ?? '').toString().trim() == sn &&
+                  (m?['brandID'] ?? '').toString().trim() == brand,
+              orElse: () => null,
+            );
       }
     }
 
@@ -547,24 +555,18 @@ class AssetRepository {
     return null;
   }
 
-  Future<void> _writeBackAssetIdToCache({
+  Future<void> _writeBackAssetIdToCacheEntry({
     required Isar isar,
-    required Asset asset,
+    required int cacheEntryId,
+    required String assetId,
   }) async {
-    final typeKey = (asset.assetTypeID ?? '').toLowerCase();
-    final serial = asset.serialNumber ?? '';
-    if (typeKey.isEmpty || serial.isEmpty || (asset.assetId ?? '').isEmpty)
-      return;
+    if (assetId.isEmpty) return;
 
     await isar.writeTxn(() async {
-      final existing = await isar.cacheAddNewAssets
-          .where()
-          .assetTypeEqualTo(typeKey)
-          .filter()
-          .serialNumberEqualTo(serial)
-          .findFirst();
+      final existing = await isar.cacheAddNewAssets.get(cacheEntryId);
       if (existing != null) {
-        existing.assetId = asset.assetId;
+        existing.assetId = assetId;
+        existing.updatedAt = DateTime.now();
         await isar.cacheAddNewAssets.put(existing);
       }
     });
