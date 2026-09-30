@@ -18,7 +18,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DailyStatePocEmailService {
 
-    private static final String TEMPLATE_PATH = "templates/daily_state_poc_email.html";
+    private static final String TEMPLATE_PATH = "templates/daily_state_spoc_email.html";
 
     private final CommonUtility commonUtility;
 
@@ -48,8 +48,8 @@ public class DailyStatePocEmailService {
             variables.put("SAURA_LOGO", commonUtility.getSauraLogoUrl());
             return replaceTemplateVariables(template, variables);
         } catch (Exception e) {
-            log.error("Failed to generate daily State POC email HTML", e);
-            return "<html><body><p>Daily State POC escalation email could not be generated.</p></body></html>";
+            log.error("Failed to generate daily State SPOC email HTML", e);
+            return "<html><body><p>Daily State SPOC escalation email could not be generated.</p></body></html>";
         }
     }
 

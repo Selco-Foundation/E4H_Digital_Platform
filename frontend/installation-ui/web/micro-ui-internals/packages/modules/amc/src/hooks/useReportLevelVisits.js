@@ -121,7 +121,6 @@ const getFilterOptions = (visits, filters = {}) => {
 
   // District and block dropdowns depend on selected parent location.
   return {
-    states: getUniqueOptions(visits, "state", "boundary"),
     districts: getUniqueOptions(districtVisits, "district", "boundary"),
     blocks: getUniqueOptions(blockVisits, "block", "boundary"),
     vendors: getVendorOptions(blockVisits),
