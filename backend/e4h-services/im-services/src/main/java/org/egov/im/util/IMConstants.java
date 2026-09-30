@@ -255,6 +255,8 @@ public class IMConstants {
 
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
 
+    public static final String PENDING_RESOLUTION_SPARE_PART_NEEDED = "PENDING_RESOLUTION_SPARE_PART_NEEDED";
+
     public static final String OUT_OF_WARRANTY_ACTION = "OUT_OF_WARRANTY";
     public static final String MARK_OUT_OF_SCOPE_ACTION = "MARK_OUT_OF_SCOPE";
     public static final String REVISE_ACTION = "REVISE";
@@ -264,4 +266,27 @@ public class IMConstants {
     public static final String ASIA_KOLKATA = "Asia/Kolkata";
 
     public static final String PENDINGFORASSIGNMENT_PREFIX = "PENDINGFORASSIGNMENT_";
+
+    /**
+     * Assigns an out-of-scope ticket to a vendor other than the one that already worked it, landing in
+     * PENDINGRESOLUTION instead of PENDING_RESOLUTION_OUT_OF_SCOPE. Emitted only by
+     * WorkflowService, never by a client: the workflow action carries the SYSTEM role so that it stays
+     * out of the actions offered to the SPOC.
+     */
+    public static final String ASSIGN_NEW_VENDOR = "ASSIGN_NEW_VENDOR";
+
+    /** Role the workflow config grants to machine-driven transitions (the CLOSE action carries it too). */
+    public static final String ROLE_SYSTEM = "SYSTEM";
+
+    /**
+     * Statuses in which a vendor holds the ticket. The most recent transition into one of them names
+     * the vendor that was working the ticket - there is no vendor column on the incident, the
+     * assignment lives only in the workflow history.
+     */
+    public static final List<String> VENDOR_HOLDING_STATUSES = Collections.unmodifiableList(Arrays.asList(
+            PENDINGATVENDOR,                        // "PENDINGRESOLUTION"
+            RMS_DEVICE_PENDINGRESOLUTION,
+            PENDING_RESOLUTION_OUT_OF_SCOPE,
+            PENDING_RESOLUTION_OUT_OF_WARRANTY,
+            PENDING_RESOLUTION_SPARE_PART_NEEDED));
 }
