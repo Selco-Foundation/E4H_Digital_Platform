@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:image_picker_android/image_picker_android.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
 
@@ -62,6 +64,12 @@ late Dio _dio;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final imagePickerImplementation = ImagePickerPlatform.instance;
+  if (imagePickerImplementation is ImagePickerAndroid) {
+    imagePickerImplementation.useAndroidPhotoPicker = true;
+  }
+
   initializeMappers();
 
   await envConfig.initialize();
