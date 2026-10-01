@@ -294,6 +294,11 @@ public class ActivityValidator {
             throw new CustomException("ACTIVITY", "Activity are mandatory");
         }
 
+        // Prefetch facilities (one/few chunked bulk calls) and cache field plans by id, instead of
+        // one HTTP call per facility for each lookup - avoids O(n) external round trips for large batches.
+        Map<String, Facility> facilitiesById = prefetchFacilitiesForValidate(request.getRequestInfo(), request.getActivityFacilities());
+        Map<String, FieldPlan> fieldPlanCache = new HashMap<>();
+
         for (ActivityFacility activityFacility : request.getActivityFacilities()) {
             if (activityFacility == null) {
                 log.error("Activity Assignment is mandatory in Activities");
@@ -304,8 +309,10 @@ public class ActivityValidator {
                 log.error("Installation Plan ID is mandatory in Installation Plans");
                 throw new CustomException("FieldPlan", "Project ID is mandatory");
             }
-            // Get existing installation plan with fieldPlanId from project service
-            FieldPlan existingFieldPlan = getFieldPlanById(request.getRequestInfo(), activityFacility.getFieldPlanId(), activityFacility.getTenantId());
+            // Get existing installation plan with fieldPlanId from project service (cached per fieldPlanId
+            // since every facility in a batch typically shares the same field plan)
+            FieldPlan existingFieldPlan = fieldPlanCache.computeIfAbsent(activityFacility.getFieldPlanId(),
+                    id -> getFieldPlanById(request.getRequestInfo(), id, activityFacility.getTenantId()));
             if (existingFieldPlan == null) {
                 log.error("Installation Plan ID do not exist");
                 throw new CustomException("Activity_FieldPlan", "Installation Plan ID do not exist");
@@ -316,8 +323,8 @@ public class ActivityValidator {
                 throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
             }
 
-            // Get existing facility with facilityId from facility service
-            Facility existingfacility = getFacilityById(activityFacility.getFacilityId());
+            // Get existing facility with facilityId from the prefetched bulk-search result
+            Facility existingfacility = facilitiesById.get(activityFacility.getFacilityId());
             if (existingfacility == null) {
                 log.error("Facility ID do not exist");
                 throw new CustomException("Activity_ERROR", "Facility ID do not exist");
@@ -335,6 +342,58 @@ public class ActivityValidator {
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    private static final int FACILITY_BULK_VALIDATE_CHUNK_SIZE = 500;
+
+    // Facility validation: chunked POST _bulk-search (not per-row GET).
+    private Map<String, Facility> prefetchFacilitiesForValidate(RequestInfo requestInfo, List<ActivityFacility> activityFacilities) {
+        LinkedHashSet<String> facilityIds = new LinkedHashSet<>();
+        LinkedHashSet<String> tenantIds = new LinkedHashSet<>();
+        for (ActivityFacility activityFacility : activityFacilities) {
+            if (activityFacility == null) {
+                continue;
+            }
+            if (activityFacility.getFacilityId() != null) {
+                facilityIds.add(activityFacility.getFacilityId());
+            }
+            if (StringUtils.isNotBlank(activityFacility.getTenantId())) {
+                tenantIds.add(activityFacility.getTenantId());
+            }
+        }
+        if (facilityIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        List<String> tenantList = tenantIds.isEmpty() ? List.of(config.getTenantId()) : new ArrayList<>(tenantIds);
+        Map<String, Facility> byFacilityId = new HashMap<>();
+        List<String> idList = new ArrayList<>(facilityIds);
+        for (int i = 0; i < idList.size(); i += FACILITY_BULK_VALIDATE_CHUNK_SIZE) {
+            int end = Math.min(i + FACILITY_BULK_VALIDATE_CHUNK_SIZE, idList.size());
+            List<String> chunk = new ArrayList<>(idList.subList(i, end));
+            mergeFacilitiesFromBulkSearch(byFacilityId, requestInfo, tenantList, chunk);
+        }
+        log.debug("Prefetched {} facility record(s) for {} distinct facility id(s)", byFacilityId.size(), facilityIds.size());
+        return byFacilityId;
+    }
+
+    private void mergeFacilitiesFromBulkSearch(Map<String, Facility> sink, RequestInfo requestInfo, List<String> tenantIds, List<String> facilityIdsChunk) {
+        String url = config.getFacilityServiceHost() + config.getFacilityBulkSearchUrl();
+        FacilityBulkSearchCriteria facilityCriteria = FacilityBulkSearchCriteria.forTenantAndFacilityIds(tenantIds, facilityIdsChunk);
+        FacilityBulkSearchApiRequest body = FacilityBulkSearchApiRequest.builder()
+                .requestInfo(requestInfo)
+                .facility(facilityCriteria)
+                .build();
+        log.debug("Calling facility bulk search at URL: {}, facility id count: {}", url, facilityIdsChunk.size());
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), body, Map.class);
+        FacilitySearchResponse parsed = mapper.convertValue(response, FacilitySearchResponse.class);
+        if (parsed == null || parsed.getFacilities() == null) {
+            return;
+        }
+        for (Facility facility : parsed.getFacilities()) {
+            if (facility.getFacilityId() != null) {
+                sink.put(facility.getFacilityId(), facility);
+            }
+        }
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {

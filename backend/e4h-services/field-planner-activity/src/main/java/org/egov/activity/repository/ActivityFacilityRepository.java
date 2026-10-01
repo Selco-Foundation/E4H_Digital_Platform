@@ -68,6 +68,20 @@ public class ActivityFacilityRepository extends GenericRepository<ActivityFacili
         return null;
     }
 
+    /**
+     * Fetches all Activity rows matching any of the given codes in a single IN-clause query, for
+     * bulk enrichment of large batches (avoids one query per item).
+     */
+    public List<Activity> getActivitiesByCodes(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(codes).build();
+        List<Object> preparedStmtList = new ArrayList<>();
+        String query = queryBuilder.getActivityDataList(criteria, preparedStmtList);
+        return jdbcTemplate.query(query, activityDataRowMapper, preparedStmtList.toArray());
+    }
+
     public Integer getActivitiesFacilityCount(ActivityFacilitySearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         List<Object> preparedStatement = new ArrayList<>();
         String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);

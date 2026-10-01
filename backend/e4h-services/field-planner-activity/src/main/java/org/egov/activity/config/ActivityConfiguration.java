@@ -38,6 +38,9 @@ public class ActivityConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
+    @Value("${egov.v2.bulk.search.facility.url}")
+    private String facilityBulkSearchUrl;
+
     @Value("${egov.pdf.host}")
     private String pdfServiceHost;
 
