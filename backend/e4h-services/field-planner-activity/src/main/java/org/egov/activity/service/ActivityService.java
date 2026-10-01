@@ -114,9 +114,19 @@ public class ActivityService {
         List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
 
         try {
+            // Resolve all distinct activity codes in one query instead of one query per facility -
+            // most/all facilities in a batch share the same activity code.
+            List<String> activityCodes = activityFacilities.stream()
+                    .map(ActivityFacility::getActivityId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            Map<String, Activity> activityByCode = activityFacilityRepository.getActivitiesByCodes(activityCodes).stream()
+                    .collect(Collectors.toMap(Activity::getCode, activity -> activity, (a, b) -> a));
+
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.trace("Enriching activity facility with id: {}", activityFacility.getId());
-                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo(), activityByCode);
                 List<ActivityFacilityUser> usersFacility = new ArrayList<>();
                 // Get reviewer users. Can see facility activity on UI directly by getting installation plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
