@@ -79,6 +79,27 @@ public class ActivityEnrichment {
         activityFacility.setAuditDetails(auditDetails);
     }
 
+    /**
+     * Same as {@link #enrichActivityFacilityRequestOnCreate(ActivityFacility, RequestInfo)} but resolves
+     * the activity code from a precomputed {activityCode -> Activity} map instead of querying the DB per
+     * item - used when enriching a batch, since most/all facilities in a batch share the same activity code.
+     */
+    public void enrichActivityFacilityRequestOnCreate(ActivityFacility activityFacility, RequestInfo requestInfo, Map<String, Activity> activityByCode) {
+        log.trace("enrichActivityFacilityRequestOnCreate (batch) method invoked");
+        activityFacility.setId(UUID.randomUUID().toString());
+        activityFacility.setStatus(SCHEDULED_STATUS);
+        activityFacility.setIsDeleted(false);
+        log.debug("Setting activity facility id: {}, status: {}", activityFacility.getId(), SCHEDULED_STATUS);
+        Activity existingActivity = activityByCode.get(activityFacility.getActivityId());
+        if (existingActivity == null) {
+            throw new CustomException("ACTIVITY", "Activity code do not exist on Activity Table");
+        }
+        activityFacility.setActivityId(existingActivity.getId());
+        log.debug("Activity facility enriched with activityId: {}", existingActivity.getId());
+        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
+        activityFacility.setAuditDetails(auditDetails);
+    }
+
     public void enrichActivityAssignmentOnSearch(RequestInfo requestInfo, ActivityAssignment activityAssignment) {
         log.trace("enrichActivityAssignmentOnSearch method invoked for activityAssignmentId: {}", activityAssignment.getId());
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
