@@ -85,7 +85,7 @@ public class ActivityService {
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
-        log.info("received request to create bulk activity bulk");
+        log.trace("createActivity method invoked");
         List<Activity> activities = request.getActivities();
         int activityCount = activities != null ? activities.size() : 0;
         log.info("Received request to create bulk activities, count: {}", activityCount);
@@ -175,12 +175,9 @@ public class ActivityService {
                 facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
             }
 
-            // Batched by actual serialized size, not item count: each item's additionalDetails
-            // carries a BOM template copy whose size varies by systemType, so a fixed item count
-            // can't guarantee staying under the producer's max.request.size for every template.
+            log.debug("Pushing activity facilities to topic: {}", activityConfiguration.getCreateActivityFacilityTopic());
             pushActivityFacilitiesInSizeBatches(activityFacilities, request.getRequestInfo());
-
-            log.info("successfully created activity facility");
+            log.info("Successfully created {} activity facilities", facilityCount);
         } catch (Exception exception) {
             log.error("Error occurred while creating activity facilities, count: {}", facilityCount, exception);
         }
