@@ -103,7 +103,7 @@ class AuthRepository {
     final secureStore = SecureStore();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
 
-    AppLogger.instance.info("refreshing token accessInfo $accessInfo");
+    AppLogger.instance.info("Refreshing authentication token");
     if (accessInfo!.refresh_token == null) {
       throw Exception("No refresh token stored");
     }

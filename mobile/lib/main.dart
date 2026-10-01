@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:digit_forms_engine/blocs/app_localization.dart'
     as forms_localization;
@@ -8,6 +10,7 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -83,7 +86,18 @@ void main() async {
 
   if (!kIsWeb && Platform.isAndroid) {
     await Firebase.initializeApp();
-    await AppLogger.initAnalytics();
+    await AppLogger.initCrashlytics();
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stackTrace) {
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          error,
+          stackTrace,
+          fatal: true,
+        ),
+      );
+      return true;
+    };
   }
 
   if (AppSharedPreferences().isFirstLaunch) {

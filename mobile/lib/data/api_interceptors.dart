@@ -87,7 +87,6 @@ class AuthTokenInterceptor extends Interceptor {
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
     AppLogger.instance.info(options.path, title: "path");
-    AppLogger.instance.info(options.data, title: "data");
     if (options.data is Map) {
       options.data = {
         ...options.data,

@@ -1,36 +1,40 @@
 import 'dart:async';
 
-import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+
+import 'log_sanitizer.dart';
 
 class AppLogger {
   static AppLogger get instance => _instance;
   static const _instance = AppLogger._();
 
-  static FirebaseAnalytics? _analytics;
-  static bool _analyticsEnabled = false;
-  static const int _maxParamLength = 100;
+  static FirebaseCrashlytics? _crashlytics;
+  static bool _crashlyticsEnabled = false;
 
   const AppLogger._();
 
-  static Future<void> initAnalytics() async {
+  static Future<void> initCrashlytics() async {
     try {
-      _analytics = FirebaseAnalytics.instance;
-      _analyticsEnabled = true;
+      _crashlytics = FirebaseCrashlytics.instance;
+      _crashlyticsEnabled = true;
     } catch (_) {
-      _analyticsEnabled = false;
+      _crashlyticsEnabled = false;
     }
   }
 
+  @Deprecated('Use initCrashlytics instead.')
+  static Future<void> initAnalytics() => initCrashlytics();
+
   void debug(dynamic input, {String? title}) {
     _printMessage(input, title: title, level: Level.CONFIG);
-    unawaited(_sendLogEvent(level: 'debug', input: input, title: title));
+    unawaited(_sendLog(level: 'debug', input: input, title: title));
   }
 
   void info(dynamic input, {String? title}) {
     _printMessage(input, title: title, level: Level.INFO);
-    unawaited(_sendLogEvent(level: 'info', input: input, title: title));
+    unawaited(_sendLog(level: 'info', input: input, title: title));
   }
 
   void error({
@@ -45,11 +49,10 @@ class AppLogger {
     );
 
     unawaited(
-      _sendLogEvent(
-        level: 'error',
-        input: message,
+      _sendError(
+        message: message,
         title: title,
-        hasStack: stackTrace != null,
+        stackTrace: stackTrace,
       ),
     );
   }
@@ -92,42 +95,57 @@ class AppLogger {
     );
   }
 
-  Future<void> _sendLogEvent({
+  Future<void> _sendLog({
     required String level,
     required dynamic input,
     String? title,
-    bool? hasStack,
   }) async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      return;
-    }
-    if (!_analyticsEnabled || _analytics == null) {
+    final crashlytics = _androidCrashlytics;
+    if (crashlytics == null) {
       return;
     }
 
     try {
-      final resolvedTitle = _toAnalyticsValue(title ?? runtimeType.toString());
-      final resolvedMessage = _toAnalyticsValue(input?.toString());
+      final resolvedTitle = sanitizeRemoteLog(title ?? runtimeType.toString());
+      final resolvedMessage = sanitizeRemoteLog(input);
+      await crashlytics.log('[$level] $resolvedTitle: $resolvedMessage');
+    } catch (_) {
+      // Logging should never fail app flows.
+    }
+  }
 
-      await _analytics!.logEvent(
-        name: 'app_log',
-        parameters: <String, Object>{
-          'level': _toAnalyticsValue(level),
-          'title': resolvedTitle,
-          'message': resolvedMessage,
-          if (hasStack != null) 'has_stack': hasStack ? 1 : 0,
-        },
+  Future<void> _sendError({
+    required String title,
+    String? message,
+    StackTrace? stackTrace,
+  }) async {
+    final crashlytics = _androidCrashlytics;
+    if (crashlytics == null) {
+      return;
+    }
+
+    try {
+      final resolvedTitle = sanitizeRemoteLog(title);
+      final resolvedMessage = sanitizeRemoteLog(message);
+      await crashlytics.log('[error] $resolvedTitle: $resolvedMessage');
+      await crashlytics.recordError(
+        StateError(resolvedMessage.isEmpty ? resolvedTitle : resolvedMessage),
+        stackTrace ?? StackTrace.current,
+        reason: resolvedTitle,
+        fatal: false,
       );
     } catch (_) {
       // Logging should never fail app flows.
     }
   }
 
-  String _toAnalyticsValue(String? value) {
-    final sanitized = (value ?? '').replaceAll(RegExp(r'[\u0000-\u001F]'), ' ');
-    if (sanitized.length <= _maxParamLength) {
-      return sanitized;
+  FirebaseCrashlytics? get _androidCrashlytics {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return null;
     }
-    return sanitized.substring(0, _maxParamLength);
+    if (!_crashlyticsEnabled) {
+      return null;
+    }
+    return _crashlytics;
   }
 }
