@@ -47,6 +47,9 @@ public class FieldPlannerConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
+    @Value("${egov.v2.bulk.search.facility.url}")
+    private String facilityBulkSearchUrl;
+
     @Value("${egov.fieldplan.activity.host}")
     private String fieldPlanActivityServiceHost;
 
@@ -55,6 +58,14 @@ public class FieldPlannerConfiguration {
 
     @Value("${egov.facility.activity.create.url}")
     private String facilityActivityCreateUrl;
+
+    /**
+     * Number of ActivityFacility items sent per HTTP call to facilityActivityCreateUrl. Caps the
+     * batch Kafka message / in-memory payload size on the activity service side for field plans
+     * with a large facility count (avoids OutOfMemoryError there).
+     */
+    @Value("${fieldplan.activity.facility.create.batch.size:50}")
+    private Integer facilityActivityCreateBatchSize;
 
     @Value("${egov.fieldplan.activity.update.url}")
     private String fieldPlanActivityUpdateUrl;
