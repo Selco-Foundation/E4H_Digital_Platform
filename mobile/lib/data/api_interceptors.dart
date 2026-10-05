@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../model/request/requestInfo.dart';
@@ -13,6 +14,65 @@ import 'secure_storage/secureStore.dart';
 typedef SessionExpiredCallback = Future<void> Function();
 
 const String suppressSessionExpiryExtraKey = 'suppressSessionExpiry';
+const String suppressBodyLoggingExtraKey = 'suppressBodyLogging';
+
+typedef HttpBodyLogWriter = void Function(String message);
+
+class DebugHttpBodyLoggingInterceptor extends Interceptor {
+  DebugHttpBodyLoggingInterceptor({HttpBodyLogWriter? logWriter})
+      : _logWriter = logWriter ?? debugPrint;
+
+  final HttpBodyLogWriter _logWriter;
+
+  @override
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) {
+    if (_shouldLog(options)) {
+      _logWriter(
+        '[HTTP REQUEST] ${options.method} ${options.uri}\n'
+        'Body: ${options.data}',
+      );
+    }
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(
+    Response response,
+    ResponseInterceptorHandler handler,
+  ) {
+    if (_shouldLog(response.requestOptions)) {
+      _logWriter(
+        '[HTTP RESPONSE] ${response.statusCode} '
+        '${response.requestOptions.method} ${response.requestOptions.uri}\n'
+        'Body: ${response.data}',
+      );
+    }
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (_shouldLog(err.requestOptions)) {
+      _logWriter(
+        '[HTTP ERROR RESPONSE] ${err.response?.statusCode} '
+        '${err.requestOptions.method} ${err.requestOptions.uri}\n'
+        'Body: ${err.response?.data}',
+      );
+    }
+    handler.next(err);
+  }
+
+  bool _shouldLog(RequestOptions options) {
+    if (!kDebugMode || options.extra[suppressBodyLoggingExtraKey] == true) {
+      return false;
+    }
+
+    return !options.uri.path.toLowerCase().contains('mdms');
+  }
+}
 
 class AuthTokenInterceptor extends Interceptor {
   final _lock = Lock();
