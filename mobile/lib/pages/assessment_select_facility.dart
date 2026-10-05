@@ -48,7 +48,7 @@ class AssessmentSelectFacilityPage extends StatelessWidget {
     final isar = context.read<ActivityFacilityBloc>().isar;
     return BlocProvider(
       create: (_) => AssessmentQueueBloc(
-        repository: AssessmentQueueRepository(),
+        repository: AssessmentQueueRepository(assessorId: assessorId),
         draftRepository: AssessmentDraftRepository(isar),
         assessmentMode: assessmentMode,
         assessorId: assessorId,

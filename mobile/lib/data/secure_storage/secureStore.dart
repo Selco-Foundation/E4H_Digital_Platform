@@ -52,6 +52,28 @@ class SecureStore {
   );
   SecureStore();
 
+  Future<Map<String, dynamic>?> getAssessmentResponse(List<Object> key) async {
+    final raw =
+        await storage.read(key: 'assessmentResponse:${jsonEncode(key)}');
+    if (raw == null) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Future<void> setAssessmentResponse(
+    List<Object> key,
+    Map<String, dynamic> response,
+  ) async {
+    await storage.write(
+      key: 'assessmentResponse:${jsonEncode(key)}',
+      value: jsonEncode(response),
+    );
+  }
+
   Future setLocalizations(
       LocalizationModel localizationList, String locale) async {
     String jsonLocalizationList = json.encode(localizationList.toJson());

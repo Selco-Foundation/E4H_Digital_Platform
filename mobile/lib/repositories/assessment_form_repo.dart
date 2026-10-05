@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../data/remote_client.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../model/assessment/assessment_form.dart';
 import '../model/assessment/assessment_form_type.dart';
@@ -23,19 +24,23 @@ class AssessmentFormRepository {
   final Dio _dio;
   final AppInitRepo _appInitRepo;
   final String? _tenantId;
+  final SecureStore _storage;
 
   AssessmentFormRepository({
     Dio? dio,
     AppInitRepo? appInitRepo,
     String? tenantId,
+    SecureStore? storage,
   })  : _dio = dio ?? DioClient().dio,
         _tenantId = tenantId,
+        _storage = storage ?? SecureStore(),
         _appInitRepo = appInitRepo ?? AppInitRepo();
 
   Future<AssessmentFormResolution> resolveForm({
     required String planFacilityId,
     required String facilityCategory,
     required AssessmentMode assessmentMode,
+    String? tenantId,
   }) async {
     final expected = AssessmentFormType.expectedFor(
       facilityCategory: facilityCategory,
@@ -54,7 +59,7 @@ class AssessmentFormRepository {
           'planFacilityId': planFacilityId,
           'facilityCategory': expected.facilityCategory,
           'assessmentPhase': expected.phase.name,
-          'tenantId': _tenantId ?? envConfig.variables.tenantId,
+          'tenantId': tenantId ?? _tenantId ?? envConfig.variables.tenantId,
         },
       );
       final resolution = AssessmentFormResolution.fromJson(
@@ -76,6 +81,13 @@ class AssessmentFormRepository {
   Future<AssessmentFacilityDetails?> getFacilityDetails({
     required String facilityId,
   }) async {
+    final cacheKey = <Object>[
+      'facility',
+      _tenantId ?? envConfig.variables.tenantId,
+      facilityId,
+    ];
+    final cached = await _storage.getAssessmentResponse(cacheKey);
+    if (cached != null) return AssessmentFacilityDetails.fromJson(cached);
     try {
       final response = await _dio.get(
         facilitySearchPath,
@@ -95,9 +107,10 @@ class AssessmentFormRepository {
       if (facilities is! List || facilities.isEmpty) return null;
       final first = facilities.first;
       if (first is! Map) return null;
-      return AssessmentFacilityDetails.fromJson(
-        Map<String, dynamic>.from(first),
-      );
+      final data = Map<String, dynamic>.from(first);
+      final details = AssessmentFacilityDetails.fromJson(data);
+      await _storage.setAssessmentResponse(cacheKey, data);
+      return details;
     } on DioException catch (error) {
       throw _parseDioError(error);
     }
@@ -334,6 +347,14 @@ class AssessmentFormRepository {
   Future<AssessmentSubmissionResponse> submitAssessment(
     AssessmentSubmissionRequest request,
   ) async {
+    await resolveForm(
+      tenantId: request.tenantId,
+      planFacilityId: request.planFacilityId,
+      facilityCategory: request.facilityCategory,
+      assessmentMode: request.assessmentPhase == AssessmentPhase.PHONE
+          ? AssessmentMode.remote
+          : AssessmentMode.onSite,
+    );
     final path = switch (request.assessmentPhase) {
       AssessmentPhase.PHONE => phoneSubmissionPath,
       AssessmentPhase.FIELD => fieldSubmissionPath,

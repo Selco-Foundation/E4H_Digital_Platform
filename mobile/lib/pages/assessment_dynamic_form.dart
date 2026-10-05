@@ -123,12 +123,15 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         final facilityDetails = _getFacilityDetails(
           widget.facility.facilityId,
         );
-        final resolution = await _repository.resolveForm(
-          planFacilityId: planFacilityId,
+        final expected = AssessmentFormType.expectedFor(
           facilityCategory: category,
-          assessmentMode: widget.assessmentMode,
+          mode: widget.assessmentMode,
         );
-        formType = resolution.formType;
+        if (expected == null) {
+          throw const FormatException(
+              'Unsupported assessment facility category');
+        }
+        formType = expected;
         _facilityDetails = await facilityDetails;
         schema = await _repository.loadMobileSchema(formType);
       }
