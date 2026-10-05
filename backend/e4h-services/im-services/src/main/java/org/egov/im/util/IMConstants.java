@@ -264,4 +264,26 @@ public class IMConstants {
     public static final String ASIA_KOLKATA = "Asia/Kolkata";
 
     public static final String PENDINGFORASSIGNMENT_PREFIX = "PENDINGFORASSIGNMENT_";
+
+    /** Role the workflow config grants to machine-driven transitions (the CLOSE action carries it too). */
+    public static final String ROLE_SYSTEM = "SYSTEM";
+
+    /**
+     * Roles whose work is pooled rather than owned: a ticket waiting on one of them is left with no
+     * assignee, exactly as a freshly raised ticket waiting on CRM is, so that every holder of the role
+     * with jurisdiction over the ticket's boundary sees it and can act on it.
+     *
+     * @see org.egov.im.service.WorkflowService#clearAssigneesForPooledState
+     */
+    public static final List<String> POOLED_ROLES = Collections.unmodifiableList(Arrays.asList(
+            ROLE_COMPLAINT_FACILITATOR_1,   // State SPOC
+            ROLE_COMPLAINT_FACILITATOR_2)); // Tech POC
+
+    /**
+     * Workflow roles that no real user holds. They appear on auto-escalation and system-close actions,
+     * so they say nothing about who a state is waiting on and are ignored when deciding whether a
+     * state is pooled.
+     */
+    public static final List<String> MACHINE_ROLES = Collections.unmodifiableList(Arrays.asList(
+            ROLE_SYSTEM, "AUTO_ESCALATE", "COMPLAINT_CLOSER"));
 }
