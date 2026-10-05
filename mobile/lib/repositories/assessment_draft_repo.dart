@@ -86,6 +86,19 @@ class AssessmentDraftRepository {
     return saved;
   }
 
+  Future<CacheAssessmentDraft?> find({
+    required String tenantId,
+    required String assessorId,
+    required String planFacilityId,
+    required AssessmentPhase phase,
+  }) async {
+    final draft = await isar.cacheAssessmentDrafts
+        .where()
+        .draftKeyEqualTo(key(tenantId, planFacilityId, phase))
+        .findFirst();
+    return draft?.assessorId == assessorId ? draft : null;
+  }
+
   Future<List<CacheAssessmentDraft>> listDrafts(String assessorId) {
     return isar.cacheAssessmentDrafts
         .filter()

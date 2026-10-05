@@ -116,6 +116,7 @@ abstract class _$AppRouter extends RootStackRouter {
         child: AssessmentSelectFacilityPage(
           key: args.key,
           assessmentMode: args.assessmentMode,
+          bookmarksOnly: args.bookmarksOnly,
         ),
       );
     },
@@ -681,12 +682,14 @@ class AssessmentSelectFacilityRoute
   AssessmentSelectFacilityRoute({
     Key? key,
     required AssessmentMode assessmentMode,
+    bool bookmarksOnly = false,
     List<PageRouteInfo>? children,
   }) : super(
           AssessmentSelectFacilityRoute.name,
           args: AssessmentSelectFacilityRouteArgs(
             key: key,
             assessmentMode: assessmentMode,
+            bookmarksOnly: bookmarksOnly,
           ),
           initialChildren: children,
         );
@@ -701,15 +704,18 @@ class AssessmentSelectFacilityRouteArgs {
   const AssessmentSelectFacilityRouteArgs({
     this.key,
     required this.assessmentMode,
+    this.bookmarksOnly = false,
   });
 
   final Key? key;
 
   final AssessmentMode assessmentMode;
 
+  final bool bookmarksOnly;
+
   @override
   String toString() {
-    return 'AssessmentSelectFacilityRouteArgs{key: $key, assessmentMode: $assessmentMode}';
+    return 'AssessmentSelectFacilityRouteArgs{key: $key, assessmentMode: $assessmentMode, bookmarksOnly: $bookmarksOnly}';
   }
 }
 

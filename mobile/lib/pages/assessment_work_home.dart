@@ -10,6 +10,8 @@ import '../blocs/auth/authbloc.dart';
 import '../model/assessment/assessment_form_type.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../repositories/assessment_draft_repo.dart';
+import '../repositories/assessment_bookmark_repo.dart';
+import '../utils/envConfig.dart';
 import '../repositories/assessment_queue_repo.dart';
 import '../router/app_router.dart';
 import '../utils/constants.dart';
@@ -56,6 +58,8 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
   int _remoteCount = 0;
   int _onSiteCount = 0;
   int _draftCount = 0;
+  int _remoteBookmarkCount = 0;
+  int _onSiteBookmarkCount = 0;
 
   @override
   void initState() {
@@ -88,14 +92,26 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
       assessorId: assessorId,
       allowedPhases: allowedPhases,
     );
+    final bookmarksFuture = Future.wait<int>([
+      for (final phase in [AssessmentPhase.PHONE, AssessmentPhase.FIELD])
+        AssessmentBookmarkRepository(
+                tenantId: envConfig.variables.tenantId,
+                assessorId: assessorId,
+                phase: phase)
+            .count()
+            .onError((_, __) => 0),
+    ]);
     final counts = await queueCountsFuture;
     final draftCount = await draftCountFuture;
+    final bookmarks = await bookmarksFuture;
 
     if (!mounted) return;
     setState(() {
       _remoteCount = counts.remote;
       _onSiteCount = counts.onSite;
       _draftCount = draftCount;
+      _remoteBookmarkCount = bookmarks[0];
+      _onSiteBookmarkCount = bookmarks[1];
     });
   }
 
@@ -125,6 +141,12 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
     await context.router.push(
       AssessmentSelectFacilityRoute(assessmentMode: AssessmentMode.onSite),
     );
+    await _loadCounts();
+  }
+
+  Future<void> _openBookmarks(AssessmentMode mode) async {
+    await context.router.push(AssessmentSelectFacilityRoute(
+        assessmentMode: mode, bookmarksOnly: true));
     await _loadCounts();
   }
 
@@ -181,6 +203,12 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
                   remoteCount: _remoteCount,
                   onSiteCount: _onSiteCount,
                   draftCount: _draftCount,
+                  remoteBookmarkCount: _remoteBookmarkCount,
+                  onSiteBookmarkCount: _onSiteBookmarkCount,
+                  onRemoteBookmarksPressed: () =>
+                      _openBookmarks(AssessmentMode.remote),
+                  onOnSiteBookmarksPressed: () =>
+                      _openBookmarks(AssessmentMode.onSite),
                   onRemotePressed: _openRemoteAssessments,
                   onOnSitePressed: _openOnSiteAssessments,
                   onDraftsPressed: _openDrafts,
@@ -200,6 +228,10 @@ class AssessmentWorkCards extends StatelessWidget {
   final int remoteCount;
   final int onSiteCount;
   final int draftCount;
+  final int remoteBookmarkCount;
+  final int onSiteBookmarkCount;
+  final VoidCallback onRemoteBookmarksPressed;
+  final VoidCallback onOnSiteBookmarksPressed;
   final VoidCallback onRemotePressed;
   final VoidCallback onOnSitePressed;
   final VoidCallback onDraftsPressed;
@@ -211,6 +243,10 @@ class AssessmentWorkCards extends StatelessWidget {
     required this.remoteCount,
     required this.onSiteCount,
     required this.draftCount,
+    required this.remoteBookmarkCount,
+    required this.onSiteBookmarkCount,
+    required this.onRemoteBookmarksPressed,
+    required this.onOnSiteBookmarksPressed,
     required this.onRemotePressed,
     required this.onOnSitePressed,
     required this.onDraftsPressed,
@@ -239,6 +275,22 @@ class AssessmentWorkCards extends StatelessWidget {
             description: context.translate(
               i18.assessmentWorkHome.newOnSiteDescription,
             ),
+          ),
+        if (hasRemoteAssessment)
+          ReportCard(
+            badgeCount: remoteBookmarkCount,
+            onPress: onRemoteBookmarksPressed,
+            icon: Icons.bookmark,
+            heading: context.translate(i18.assessmentBookmarks.remote),
+            description: context.translate(i18.assessmentBookmarks.description),
+          ),
+        if (hasOnSiteAssessment)
+          ReportCard(
+            badgeCount: onSiteBookmarkCount,
+            onPress: onOnSiteBookmarksPressed,
+            icon: Icons.bookmark,
+            heading: context.translate(i18.assessmentBookmarks.onSite),
+            description: context.translate(i18.assessmentBookmarks.description),
           ),
         ReportCard(
           badgeCount: draftCount,

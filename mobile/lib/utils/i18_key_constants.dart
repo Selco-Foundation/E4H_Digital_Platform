@@ -625,3 +625,18 @@ class SyncLoading {
   String get completedSuffix => 'SYNC_LOADING_COMPLETED_SUFFIX';
   String get of => 'SYNC_LOADING_OF';
 }
+
+const assessmentBookmarks = AssessmentBookmarks();
+
+class AssessmentBookmarks {
+  const AssessmentBookmarks();
+  String get remote => 'ASSESSMENT_BOOKMARKS_REMOTE';
+  String get onSite => 'ASSESSMENT_BOOKMARKS_ON_SITE';
+  String get description => 'ASSESSMENT_BOOKMARKS_DESCRIPTION';
+  String get add => 'ASSESSMENT_BOOKMARKS_ADD';
+  String get remove => 'ASSESSMENT_BOOKMARKS_REMOVE';
+  String get empty => 'ASSESSMENT_BOOKMARKS_EMPTY';
+  String get saveFailed => 'ASSESSMENT_BOOKMARKS_SAVE_FAILED';
+  String get savedAt => 'ASSESSMENT_BOOKMARKS_SAVED_AT';
+  String get openDraft => 'ASSESSMENT_BOOKMARKS_OPEN_DRAFT';
+}

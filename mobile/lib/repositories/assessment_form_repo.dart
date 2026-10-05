@@ -11,6 +11,7 @@ import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'app_init_repo.dart' hide envConfig;
 import 'assessment_api_paths.dart';
+import 'assessment_bookmark_repo.dart';
 
 class AssessmentFormRepository {
   static const mobileSchemaCode = 'assessment.AssessmentMobileFormSchema';
@@ -379,6 +380,21 @@ class AssessmentFormRepository {
         },
         title: 'assessmentSubmissionResult',
       );
+      try {
+        final user = (await _storage.getAccessInfo())?.userRequest;
+        final assessorId = user?.uuid ?? user?.userName;
+        if (assessorId != null && assessorId.isNotEmpty) {
+          await AssessmentBookmarkRepository(
+                  storage: _storage,
+                  tenantId: request.tenantId,
+                  assessorId: assessorId,
+                  phase: request.assessmentPhase)
+              .remove(request.planFacilityId);
+        }
+      } catch (error) {
+        AppLogger.instance.error(
+            title: 'Assessment bookmark cleanup', message: error.toString());
+      }
       return result;
     } on DioException catch (error) {
       throw _parseDioError(error);

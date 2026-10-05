@@ -4,6 +4,8 @@ class AssessmentQueueContact {
 
   const AssessmentQueueContact({this.name, this.phone});
 
+  Map<String, dynamic> toJson() => {'name': name, 'phone': phone};
+
   factory AssessmentQueueContact.fromJson(
     Object? value, {
     String? fallbackName,
@@ -58,6 +60,25 @@ class AssessmentQueueFacility {
     this.fieldStatus,
     this.lastActionTime,
   });
+
+  Map<String, dynamic> toJson() => {
+        'planFacilityId': planFacilityId,
+        'planId': planId,
+        'facilityId': facilityId,
+        'facilityName': facilityName,
+        'facilityCategory': facilityCategory,
+        'facilityType': facilityType,
+        'facilityCode': facilityCode,
+        'address': address,
+        'state': state,
+        'district': district,
+        'block': block,
+        'phoneStatus': phoneStatus,
+        'fieldStatus': fieldStatus,
+        'lastActionTime': lastActionTime,
+        'facilityInCharge': facilityInCharge.toJson(),
+        'alternativeContact': alternativeContact.toJson(),
+      };
 
   factory AssessmentQueueFacility.fromJson(Map<String, dynamic> json) {
     return AssessmentQueueFacility(

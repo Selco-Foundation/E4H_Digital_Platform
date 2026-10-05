@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:selco/data/secure_storage/secureStore.dart';
 import 'package:selco/data/network_manager.dart';
+import 'package:selco/model/response/responsemodel.dart';
 import 'package:selco/model/assessment/assessment_form.dart';
 import 'package:selco/model/assessment/assessment_form_type.dart';
 import 'package:selco/model/assessment/assessment_mode.dart';
@@ -12,6 +13,8 @@ import 'package:selco/repositories/assessment_queue_repo.dart';
 
 class MemoryStore extends SecureStore {
   final responses = <String, Map<String, dynamic>>{};
+  @override
+  Future<ResponseModel?> getAccessInfo() async => null;
   @override
   Future<Map<String, dynamic>?> getAssessmentResponse(List<Object> key) async =>
       responses[jsonEncode(key)];

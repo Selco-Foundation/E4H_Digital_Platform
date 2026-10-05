@@ -21,10 +21,13 @@ import '../model/assessment/assessment_form.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../model/assessment/assessment_queue.dart';
 import '../repositories/assessment_draft_repo.dart';
+import '../repositories/assessment_bookmark_repo.dart';
 import '../repositories/assessment_form_repo.dart';
 import '../repositories/assessment_queue_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/envConfig.dart';
+import '../model/assessment/assessment_form_type.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/cards/assessment_facility_card.dart';
@@ -33,10 +36,12 @@ import '../widgets/header/back_navigation_help_header.dart';
 @RoutePage()
 class AssessmentSelectFacilityPage extends StatelessWidget {
   final AssessmentMode assessmentMode;
+  final bool bookmarksOnly;
 
   const AssessmentSelectFacilityPage({
     super.key,
     required this.assessmentMode,
+    this.bookmarksOnly = false,
   });
 
   @override
@@ -52,18 +57,29 @@ class AssessmentSelectFacilityPage extends StatelessWidget {
         draftRepository: AssessmentDraftRepository(isar),
         assessmentMode: assessmentMode,
         assessorId: assessorId,
+        bookmarksOnly: bookmarksOnly,
+        bookmarkRepository: AssessmentBookmarkRepository(
+          tenantId: envConfig.variables.tenantId,
+          assessorId: assessorId,
+          phase: assessmentMode == AssessmentMode.remote
+              ? AssessmentPhase.PHONE
+              : AssessmentPhase.FIELD,
+        ),
       )..add(const AssessmentQueueLoadInitial()),
-      child: AssessmentSelectFacilityView(assessmentMode: assessmentMode),
+      child: AssessmentSelectFacilityView(
+          assessmentMode: assessmentMode, bookmarksOnly: bookmarksOnly),
     );
   }
 }
 
 class AssessmentSelectFacilityView extends StatefulWidget {
   final AssessmentMode assessmentMode;
+  final bool bookmarksOnly;
 
   const AssessmentSelectFacilityView({
     super.key,
     required this.assessmentMode,
+    this.bookmarksOnly = false,
   });
 
   @override
@@ -81,6 +97,69 @@ class _AssessmentSelectFacilityViewState
       AssessmentFormRepository();
   String _searchQuery = '';
   String _sortOrder = 'DESC';
+  bool _bookmarksLoaded = false;
+  Set<String> _bookmarkIds = {};
+  Set<String> _draftIds = {};
+  final Set<String> _savingBookmarks = {};
+  int _bookmarkGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadBookmarkState());
+  }
+
+  Future<void> _loadBookmarkState() async {
+    final generation = ++_bookmarkGeneration;
+    try {
+      final bloc = context.read<AssessmentQueueBloc>();
+      final ids = await bloc.bookmarkRepository!.ids();
+      final drafts = await bloc.draftRepository.draftedPlanFacilityIds(
+        assessorId: bloc.assessorId,
+        phase: widget.assessmentMode == AssessmentMode.remote
+            ? AssessmentPhase.PHONE
+            : AssessmentPhase.FIELD,
+      );
+      if (!mounted || generation != _bookmarkGeneration) return;
+      setState(() {
+        _bookmarksLoaded = true;
+        _bookmarkIds = ids;
+        _draftIds = drafts;
+      });
+    } catch (_) {
+      if (mounted) _showBookmarkError();
+    }
+  }
+
+  void _showBookmarkError() {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+      context.translate(i18.assessmentBookmarks.saveFailed),
+    )));
+  }
+
+  Future<void> _toggleBookmark(AssessmentQueueFacility facility) async {
+    final id = facility.planFacilityId?.trim();
+    if (id == null || id.isEmpty || _savingBookmarks.contains(id)) return;
+    setState(() => _savingBookmarks.add(id));
+    ++_bookmarkGeneration;
+    try {
+      final repository =
+          context.read<AssessmentQueueBloc>().bookmarkRepository!;
+      if (_bookmarkIds.contains(id)) {
+        await repository.remove(id);
+      } else {
+        await repository.save(facility);
+      }
+      if (!mounted) return;
+      await _loadBookmarkState();
+      if (mounted && widget.bookmarksOnly) _loadInitial();
+    } catch (_) {
+      if (mounted) _showBookmarkError();
+    } finally {
+      if (mounted) setState(() => _savingBookmarks.remove(id));
+    }
+  }
 
   @override
   void dispose() {
@@ -91,7 +170,8 @@ class _AssessmentSelectFacilityViewState
   void _onSearchChanged(String value) {
     _searchTimer?.cancel();
     _searchQuery = value.trim();
-    if (_searchQuery.isNotEmpty &&
+    if (!widget.bookmarksOnly &&
+        _searchQuery.isNotEmpty &&
         _searchQuery.length < minFacilitySearchQueryLength) {
       return;
     }
@@ -110,6 +190,8 @@ class _AssessmentSelectFacilityViewState
 
   Future<void> _refresh() async {
     final bloc = context.read<AssessmentQueueBloc>();
+    await _loadBookmarkState();
+    if (!mounted) return;
     _requestRefresh(bloc);
     await bloc.stream.firstWhere(
       (state) =>
@@ -190,7 +272,13 @@ class _AssessmentSelectFacilityViewState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              context.translate(i18.assessmentSelectFacility.title),
+              widget.bookmarksOnly
+                  ? context.translate(
+                      widget.assessmentMode == AssessmentMode.remote
+                          ? i18.assessmentBookmarks.remote
+                          : i18.assessmentBookmarks.onSite,
+                    )
+                  : context.translate(i18.assessmentSelectFacility.title),
               style: textTheme.bodyL.copyWith(
                 color: theme.colorTheme.text.primary,
               ),
@@ -278,9 +366,10 @@ class _AssessmentSelectFacilityViewState
             padding: const EdgeInsets.symmetric(vertical: spacer4),
             child: Center(
               child: Text(
-                context.translate(
-                  i18.assessmentSelectFacility.noFacilitiesFound,
-                ),
+                widget.bookmarksOnly
+                    ? context.translate(i18.assessmentBookmarks.empty)
+                    : context.translate(
+                        i18.assessmentSelectFacility.noFacilitiesFound),
                 style: textTheme.bodyS.copyWith(
                   color: theme.colorTheme.text.secondary,
                 ),
@@ -305,6 +394,14 @@ class _AssessmentSelectFacilityViewState
                   facility.facilityId ??
                   facility.hashCode,
             ),
+            isBookmarked: widget.bookmarksOnly ||
+                _bookmarkIds.contains(facility.planFacilityId?.trim()),
+            isSavingBookmark: !_bookmarksLoaded ||
+                _savingBookmarks.contains(facility.planFacilityId?.trim()),
+            onToggleBookmark: facility.planFacilityId?.trim().isNotEmpty == true
+                ? () => _toggleBookmark(facility)
+                : null,
+            hasDraft: _draftIds.contains(facility.planFacilityId?.trim()),
             facilityName: _displayValue(facility.facilityName),
             status: _statusLabel(facility),
             state: _displayValue(facility.state),
@@ -341,14 +438,35 @@ class _AssessmentSelectFacilityViewState
   }
 
   Future<void> _startAssessment(AssessmentQueueFacility facility) async {
-    await context.router.push<void>(
-      AssessmentDynamicFormRoute(
-        facility: facility,
-        assessmentMode: widget.assessmentMode,
-        onSubmissionSucceeded: _requestRefresh,
-      ),
-    );
-    if (mounted) _requestRefresh();
+    try {
+      final bloc = context.read<AssessmentQueueBloc>();
+      final draft = await bloc.draftRepository.find(
+        tenantId: envConfig.variables.tenantId,
+        assessorId: bloc.assessorId,
+        planFacilityId: facility.planFacilityId ?? '',
+        phase: widget.assessmentMode == AssessmentMode.remote
+            ? AssessmentPhase.PHONE
+            : AssessmentPhase.FIELD,
+      );
+      if (!mounted) return;
+      await context.router.push<void>(
+        AssessmentDynamicFormRoute(
+          facility: facility,
+          assessmentMode: widget.assessmentMode,
+          draftRequest:
+              draft == null ? null : bloc.draftRepository.requestOf(draft),
+          draftFacilityDefaults: draft == null
+              ? null
+              : bloc.draftRepository.facilityDefaultsOf(draft),
+          onSubmissionSucceeded: _requestRefresh,
+        ),
+      );
+      if (!mounted) return;
+      await _loadBookmarkState();
+      if (mounted) _requestRefresh();
+    } catch (_) {
+      if (mounted) _showStatusUpdateMessage(i18.assessmentDraft.loadFailed);
+    }
   }
 
   Future<bool> _updateUnableToContactStatus(
@@ -401,7 +519,10 @@ class _AssessmentSelectFacilityViewState
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
             Text(
-              context.translate(i18.assessmentSelectFacility.lastActionTime),
+              widget.bookmarksOnly
+                  ? context.translate(i18.assessmentBookmarks.savedAt)
+                  : context
+                      .translate(i18.assessmentSelectFacility.lastActionTime),
               style: textTheme.headingS.copyWith(
                 color: theme.colorTheme.text.primary,
               ),

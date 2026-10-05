@@ -14,6 +14,10 @@ import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
 
 class AssessmentFacilityCard extends StatefulWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
+  final bool hasDraft;
   final String facilityName;
   final String status;
   final String state;
@@ -26,6 +30,10 @@ class AssessmentFacilityCard extends StatefulWidget {
 
   const AssessmentFacilityCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
+    this.hasDraft = false,
     required this.facilityName,
     required this.status,
     required this.state,
@@ -78,11 +86,32 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.facilityName,
-              style: textTheme.headingL.copyWith(
-                color: theme.colorTheme.text.primary,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                    child: Text(
+                  widget.facilityName,
+                  style: textTheme.headingL
+                      .copyWith(color: theme.colorTheme.text.primary),
+                )),
+                if (widget.onToggleBookmark != null)
+                  Semantics(
+                    toggled: widget.isBookmarked,
+                    child: IconButton(
+                      tooltip: widget.isBookmarked
+                          ? context.translate(i18.assessmentBookmarks.remove)
+                          : context.translate(i18.assessmentBookmarks.add),
+                      onPressed: widget.isSavingBookmark
+                          ? null
+                          : widget.onToggleBookmark,
+                      color: theme.colorTheme.primary.primary1,
+                      icon: Icon(widget.isBookmarked
+                          ? Icons.bookmark
+                          : Icons.bookmark_border),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
@@ -102,7 +131,7 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
               label: context.translate(i18.common.block),
               value: _detailText(widget.block, textTheme, theme),
             ),
-            if (widget.isRemoteAssessor) ...[
+            if (widget.isRemoteAssessor && !widget.hasDraft) ...[
               const SizedBox(height: spacer4),
               DigitCard(
                 cardType: CardType.secondary,
@@ -212,9 +241,10 @@ class _AssessmentFacilityCardState extends State<AssessmentFacilityCard> {
                       ? context.translate(
                           i18.assessmentSelectFacility.updateStatus,
                         )
-                      : context.translate(
-                          i18.assessmentSelectFacility.startAssessment,
-                        ),
+                      : widget.hasDraft
+                          ? context.translate(i18.assessmentBookmarks.openDraft)
+                          : context.translate(
+                              i18.assessmentSelectFacility.startAssessment),
               onPressed: _hasUnableToContactReason
                   ? _updateStatus
                   : widget.onStartAssessment,
