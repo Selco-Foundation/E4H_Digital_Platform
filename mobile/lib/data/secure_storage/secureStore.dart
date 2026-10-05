@@ -98,6 +98,32 @@ class SecureStore {
     );
   }
 
+  Future<Map<String, dynamic>> getReportBookmarks(
+    String kind,
+    String tenantId,
+    String userId,
+    String userType,
+  ) async {
+    final raw = await storage.read(
+      key: 'reportBookmarks:${jsonEncode([kind, tenantId, userId, userType])}',
+    );
+    if (raw == null) return {};
+    return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+  }
+
+  Future<void> setReportBookmarks(
+    String kind,
+    String tenantId,
+    String userId,
+    String userType,
+    Map<String, dynamic> entries,
+  ) =>
+      storage.write(
+        key:
+            'reportBookmarks:${jsonEncode([kind, tenantId, userId, userType])}',
+        value: jsonEncode(entries),
+      );
+
   Future setLocalizations(
       LocalizationModel localizationList, String locale) async {
     String jsonLocalizationList = json.encode(localizationList.toJson());

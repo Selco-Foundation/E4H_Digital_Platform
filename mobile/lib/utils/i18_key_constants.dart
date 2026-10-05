@@ -44,6 +44,9 @@ const selectAssetType = SelectAssetType();
 const specification = Specification();
 const submittedSaveSuccess = SubmittedSaveSuccess();
 const syncLoading = SyncLoading();
+const assessmentBookmarks = AssessmentBookmarks();
+const installationBookmarks = InstallationBookmarks();
+const amcBookmarks = AmcBookmarks();
 
 class Common {
   const Common();
@@ -626,8 +629,6 @@ class SyncLoading {
   String get of => 'SYNC_LOADING_OF';
 }
 
-const assessmentBookmarks = AssessmentBookmarks();
-
 class AssessmentBookmarks {
   const AssessmentBookmarks();
   String get remote => 'ASSESSMENT_BOOKMARKS_REMOTE';
@@ -639,4 +640,26 @@ class AssessmentBookmarks {
   String get saveFailed => 'ASSESSMENT_BOOKMARKS_SAVE_FAILED';
   String get savedAt => 'ASSESSMENT_BOOKMARKS_SAVED_AT';
   String get openDraft => 'ASSESSMENT_BOOKMARKS_OPEN_DRAFT';
+}
+
+class InstallationBookmarks {
+  const InstallationBookmarks();
+  String get title => 'INSTALLATION_BOOKMARKS_TITLE';
+  String get description => 'INSTALLATION_BOOKMARKS_DESCRIPTION';
+  String get add => 'INSTALLATION_BOOKMARKS_ADD';
+  String get remove => 'INSTALLATION_BOOKMARKS_REMOVE';
+  String get empty => 'INSTALLATION_BOOKMARKS_EMPTY';
+  String get saveFailed => 'INSTALLATION_BOOKMARKS_SAVE_FAILED';
+  String get savedAt => 'INSTALLATION_BOOKMARKS_SAVED_AT';
+}
+
+class AmcBookmarks {
+  const AmcBookmarks();
+  String get title => 'AMC_BOOKMARKS_TITLE';
+  String get description => 'AMC_BOOKMARKS_DESCRIPTION';
+  String get add => 'AMC_BOOKMARKS_ADD';
+  String get remove => 'AMC_BOOKMARKS_REMOVE';
+  String get empty => 'AMC_BOOKMARKS_EMPTY';
+  String get saveFailed => 'AMC_BOOKMARKS_SAVE_FAILED';
+  String get savedAt => 'AMC_BOOKMARKS_SAVED_AT';
 }

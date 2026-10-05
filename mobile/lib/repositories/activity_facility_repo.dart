@@ -9,6 +9,7 @@ import '../data/nosql/cache_completion_report.dart';
 import '../data/nosql/cache_prefilled_activity_facility.dart';
 import '../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../data/remote_client.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/activity_facility/activity_facility.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
@@ -16,6 +17,8 @@ import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'dynamic_form_repo.dart';
+
+import 'report_bookmark_repo.dart';
 
 class PaginatedActivityFacilities {
   final List<ActivityFacilityWorkflow> items;
@@ -30,9 +33,13 @@ class PaginatedActivityFacilities {
 }
 
 class ActivityFacilityRemoteRepository {
-  ActivityFacilityRemoteRepository();
-
-  final dio = DioClient().dio;
+  final Dio dio;
+  final SecureStore bookmarkStorage;
+  final String? bookmarkTenantId;
+  ActivityFacilityRemoteRepository(
+      {Dio? dio, SecureStore? bookmarkStorage, this.bookmarkTenantId})
+      : dio = dio ?? DioClient().dio,
+        bookmarkStorage = bookmarkStorage ?? SecureStore();
 
   FutureOr<List<ActivityFacilityWorkflow>> searchByWorkflow(
       {required ActivityFacilitySearchModel body,
@@ -146,6 +153,11 @@ class ActivityFacilityRemoteRepository {
           resp.statusCode != 204) {
         throw Exception('Workflow update failed (${resp.statusCode})');
       }
+      await removeSubmittedReportBookmark(
+          id: activityFacilityId,
+          action: action,
+          storage: bookmarkStorage,
+          tenantId: bookmarkTenantId);
     } on DioError catch (dioErr) {
       throw DioErrorParser.parse(dioErr);
     }
@@ -433,8 +445,7 @@ class UnsubmittedActivityFacilityRepository {
       remoteList = <ActivityFacilityWorkflow>[];
     }
     final col = _isar.cacheUnsubmittedActivityFacilitys;
-    final localEntries =
-        await col.where().userTypeEqualTo(userType).findAll();
+    final localEntries = await col.where().userTypeEqualTo(userType).findAll();
     final localWorkflows = localEntries
         .map((e) => ActivityFacilityWorkflow(
             activityFacility: e.activityFacility, status: e.status))

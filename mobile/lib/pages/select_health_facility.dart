@@ -26,18 +26,23 @@ import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/cards/report_detail_row.dart';
+import '../widgets/bookmarks/report_bookmarks.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
 class SelectHealthFacilityPage extends StatefulWidget {
-  const SelectHealthFacilityPage({super.key});
+  final bool bookmarksOnly;
+  const SelectHealthFacilityPage({super.key, this.bookmarksOnly = false});
 
   @override
   State<SelectHealthFacilityPage> createState() =>
       _SelectHealthFacilityPageState();
 }
 
-class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
+class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
+    with
+        ReportBookmarksState<SelectHealthFacilityPage,
+            ActivityFacilityWorkflow> {
   static const _scrollThreshold = 200.0;
 
   String? _sortDirection;
@@ -49,11 +54,35 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchProject();
+      if (!mounted) return;
+      bookmarks =
+          reportBookmarksFor<ActivityFacilityWorkflow>(context, amc: false);
+      bookmarkSaveFailedKey = i18.installationBookmarks.saveFailed;
+      _reloadBookmarks();
+      if (!widget.bookmarksOnly) _fetchProject();
     });
   }
 
+  Future<void> _reloadBookmarks() async {
+    await loadBookmarks(
+        only: widget.bookmarksOnly,
+        query: _searchQuery,
+        sortOrder: _sortDirection ?? 'DESC');
+    if (!mounted || !widget.bookmarksOnly) return;
+    for (final project in bookmarkedItems) {
+      for (final type in const ['inverter', 'battery', 'panel']) {
+        context
+            .read<CacheAssetCountBloc>()
+            .add(CacheAssetCountEvent.get(project.activityFacility.id, type));
+      }
+    }
+  }
+
   void _fetchProject() {
+    if (widget.bookmarksOnly) {
+      _reloadBookmarks();
+      return;
+    }
     final statuses = _workflowStatuses();
 
     if (_searchQuery.isNotEmpty) {
@@ -86,6 +115,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   }
 
   void _tryLoadMore() {
+    if (widget.bookmarksOnly) return;
     context.read<ActivityFacilityBloc>().add(
           ActivityFacilityEvent.loadMoreActivityFacility(
             workflowStatuses: _workflowStatuses(),
@@ -95,7 +125,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
         );
   }
 
-  void _handleProjectTap(ActivityFacilityWorkflow project) {
+  Future<void> _handleProjectTap(ActivityFacilityWorkflow project) async {
     context.read<CacheActivityFacilityAssetBloc>().add(
           CacheActivityFacilityAssetEvent.add(CacheActivityFacilityAsset(
               activityFacilityId: project.activityFacility.id)),
@@ -104,8 +134,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
         .read<SelectedActivityFacilityBloc>()
         .add(SelectedActivityFacilityEvent.select(project));
     // context.router.push(const AssetCountRoute());
-    context.router.push(OverallAssetSummaryRoute(
+    await context.router.push(OverallAssetSummaryRoute(
         refresh: DateTime.now().millisecondsSinceEpoch));
+    if (mounted) await _reloadBookmarks();
   }
 
   double _fractionForProject(String projectId) {
@@ -205,28 +236,39 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                     child: BlocBuilder<ActivityFacilityBloc,
                         ActivityFacilityState>(
                       builder: (context, state) {
-                        return state.maybeWhen(
-                          initial: () => _loadingIndicator(),
-                          loading: () => _loadingIndicator(),
-                          paginatedLoaded: (items, hasMore, totalCount,
-                              fromCache, isLoadingMore, rawFetchedCount) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildProjectList(items),
-                                if (isLoadingMore)
-                                  const Padding(
-                                    padding: EdgeInsets.only(bottom: spacer4),
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
+                        if (widget.bookmarksOnly) {
+                          if (bookmarksLoading) return _loadingIndicator();
+                          if (bookmarksFailed) {
+                            return bookmarkLoadError(_reloadBookmarks);
+                          }
+                          return _buildProjectList(bookmarkedItems);
+                        }
+                        return Column(children: [
+                          if (bookmarksFailed)
+                            bookmarkLoadError(_reloadBookmarks),
+                          state.maybeWhen(
+                            initial: () => _loadingIndicator(),
+                            loading: () => _loadingIndicator(),
+                            paginatedLoaded: (items, hasMore, totalCount,
+                                fromCache, isLoadingMore, rawFetchedCount) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildProjectList(items),
+                                  if (isLoadingMore)
+                                    const Padding(
+                                      padding: EdgeInsets.only(bottom: spacer4),
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
                                     ),
-                                  ),
-                              ],
-                            );
-                          },
-                          searchLoading: () => _loadingIndicator(),
-                          orElse: () => const SizedBox.shrink(),
-                        );
+                                ],
+                              );
+                            },
+                            searchLoading: () => _loadingIndicator(),
+                            orElse: () => const SizedBox.shrink(),
+                          ),
+                        ]);
                       },
                     ),
                   ),
@@ -256,7 +298,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              context.translate(i18.selectHealthFacility.title),
+              context.translate(widget.bookmarksOnly
+                  ? i18.installationBookmarks.title
+                  : i18.selectHealthFacility.title),
               style: textTheme.bodyL
                   .copyWith(color: theme.colorTheme.text.primary),
             ),
@@ -297,8 +341,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: spacer4),
         child: Center(
-            child: Text(
-                context.translate(i18.selectHealthFacility.noProjectsFound))),
+            child: Text(context.translate(widget.bookmarksOnly
+                ? i18.installationBookmarks.empty
+                : i18.selectHealthFacility.noProjectsFound))),
       );
     }
     return Padding(
@@ -314,6 +359,14 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
               );
               return InstallationReportCard(
                 onPress: () => _handleProjectTap(project),
+                isBookmarked:
+                    bookmarkIds.contains(project.activityFacility.id.trim()),
+                isSavingBookmark: !bookmarksLoaded ||
+                    savingBookmarks
+                        .contains(project.activityFacility.id.trim()),
+                onToggleBookmark: project.activityFacility.id.trim().isEmpty
+                    ? null
+                    : () => toggleBookmark(project, reload: _reloadBookmarks),
                 activityFacility: project,
                 projectId: project.activityFacility.id,
                 title: project.activityFacility.facility?.facilityName ?? '—',
@@ -346,7 +399,10 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text(context.translate(i18.common.submissionDate),
+            Text(
+                context.translate(widget.bookmarksOnly
+                    ? i18.installationBookmarks.savedAt
+                    : i18.common.submissionDate),
                 style: textTheme.headingS
                     .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
@@ -369,7 +425,11 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                 Expanded(
                   child: DigitButton(
                     label: context.translate(i18.common.clear),
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    onPressed: () {
+                      setState(() => _sortDirection = null);
+                      Navigator.of(ctx).pop();
+                      _fetchProject();
+                    },
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
                     mainAxisSize: MainAxisSize.min,
@@ -381,12 +441,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                     label: context.translate(i18.common.sort),
                     isDisabled: _sortDirection == null,
                     onPressed: () {
-                      context.read<ActivityFacilityBloc>().add(
-                            ActivityFacilityEvent.fetchActivityFacilitySorted(
-                              workflowStatuses: _workflowStatuses(),
-                              sortDirection: _sortDirection!,
-                            ),
-                          );
+                      _fetchProject();
                       Navigator.of(ctx).pop();
                     },
                     type: DigitButtonType.primary,
@@ -404,6 +459,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
 }
 
 class InstallationReportCard extends StatelessWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
   final ActivityFacilityWorkflow? activityFacility;
   final String? projectId;
   final String? title;
@@ -418,6 +476,9 @@ class InstallationReportCard extends StatelessWidget {
 
   const InstallationReportCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
     this.activityFacility,
     this.projectId,
     this.title,
@@ -458,12 +519,19 @@ class InstallationReportCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "$title",
-                  style: textTheme.headingL.copyWith(
-                    color: theme.colorTheme.text.primary,
-                  ),
-                ),
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(
+                      child: Text("$title",
+                          style: textTheme.headingL
+                              .copyWith(color: theme.colorTheme.text.primary))),
+                  if (onToggleBookmark != null)
+                    ReportBookmarkButton(
+                        selected: isBookmarked,
+                        saving: isSavingBookmark,
+                        onPressed: onToggleBookmark,
+                        addLabelKey: i18.installationBookmarks.add,
+                        removeLabelKey: i18.installationBookmarks.remove),
+                ]),
                 const SizedBox(height: spacer4),
                 const DigitDivider(dividerType: DividerType.small),
                 ReportDetailRow(
@@ -564,13 +632,7 @@ class InstallationReportCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.max,
                   label: context
                       .translate(i18.selectHealthFacility.submitForApproval),
-                  onPressed: () {
-                    context.read<SelectedActivityFacilityBloc>().add(
-                        SelectedActivityFacilityEvent.select(
-                            activityFacility!));
-                    context.router.push(OverallAssetSummaryRoute(
-                        refresh: DateTime.now().millisecondsSinceEpoch));
-                  },
+                  onPressed: onPress,
                   isDisabled: (fraction * 100).round() >= 98 ? false : true,
                   type: DigitButtonType.secondary,
                   size: DigitButtonSize.large,

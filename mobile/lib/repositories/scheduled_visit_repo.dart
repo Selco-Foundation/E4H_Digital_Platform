@@ -13,6 +13,8 @@ import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 
+import 'report_bookmark_repo.dart';
+
 class PaginatedScheduledVisits {
   final List<ScheduledVisit> items;
   final int totalCount;
@@ -26,9 +28,13 @@ class PaginatedScheduledVisits {
 }
 
 class ScheduledVisitRemoteRepository {
-  ScheduledVisitRemoteRepository();
-
-  final dio = DioClient().dio;
+  final Dio dio;
+  final SecureStore bookmarkStorage;
+  final String? bookmarkTenantId;
+  ScheduledVisitRemoteRepository(
+      {Dio? dio, SecureStore? bookmarkStorage, this.bookmarkTenantId})
+      : dio = dio ?? DioClient().dio,
+        bookmarkStorage = bookmarkStorage ?? SecureStore();
 
   Future<ScheduledVisitSearchResponse> search({
     required ScheduledVisitSearchCriteria criteria,
@@ -95,6 +101,11 @@ class ScheduledVisitRemoteRepository {
       };
 
       await dio.post(path, data: body);
+      await removeSubmittedReportBookmark(
+          id: visitId,
+          action: status ?? 'SUBMIT_VISIT_REPORT',
+          storage: bookmarkStorage,
+          tenantId: bookmarkTenantId);
     } on DioError catch (e) {
       AppLogger.instance.info(
         'ScheduledVisitRemoteRepository.updateVisitWorkflow DioError=$e',

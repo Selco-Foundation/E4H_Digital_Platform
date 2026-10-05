@@ -78,9 +78,14 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     AmcSelectFacilityRoute.name: (routeData) {
+      final args = routeData.argsAs<AmcSelectFacilityRouteArgs>(
+          orElse: () => const AmcSelectFacilityRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const AmcSelectFacilityPage(),
+        child: AmcSelectFacilityPage(
+          key: args.key,
+          bookmarksOnly: args.bookmarksOnly,
+        ),
       );
     },
     AssessmentDraftRoute.name: (routeData) {
@@ -338,9 +343,14 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     SelectHealthFacilityRoute.name: (routeData) {
+      final args = routeData.argsAs<SelectHealthFacilityRouteArgs>(
+          orElse: () => const SelectHealthFacilityRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const SelectHealthFacilityPage(),
+        child: SelectHealthFacilityPage(
+          key: args.key,
+          bookmarksOnly: args.bookmarksOnly,
+        ),
       );
     },
     SetupNewPasswordRoute.name: (routeData) {
@@ -576,16 +586,40 @@ class AmcReportHomeRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [AmcSelectFacilityPage]
-class AmcSelectFacilityRoute extends PageRouteInfo<void> {
-  const AmcSelectFacilityRoute({List<PageRouteInfo>? children})
-      : super(
+class AmcSelectFacilityRoute extends PageRouteInfo<AmcSelectFacilityRouteArgs> {
+  AmcSelectFacilityRoute({
+    Key? key,
+    bool bookmarksOnly = false,
+    List<PageRouteInfo>? children,
+  }) : super(
           AmcSelectFacilityRoute.name,
+          args: AmcSelectFacilityRouteArgs(
+            key: key,
+            bookmarksOnly: bookmarksOnly,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'AmcSelectFacilityRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<AmcSelectFacilityRouteArgs> page =
+      PageInfo<AmcSelectFacilityRouteArgs>(name);
+}
+
+class AmcSelectFacilityRouteArgs {
+  const AmcSelectFacilityRouteArgs({
+    this.key,
+    this.bookmarksOnly = false,
+  });
+
+  final Key? key;
+
+  final bool bookmarksOnly;
+
+  @override
+  String toString() {
+    return 'AmcSelectFacilityRouteArgs{key: $key, bookmarksOnly: $bookmarksOnly}';
+  }
 }
 
 /// generated route for
@@ -1407,16 +1441,41 @@ class SelectAssetTypeRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [SelectHealthFacilityPage]
-class SelectHealthFacilityRoute extends PageRouteInfo<void> {
-  const SelectHealthFacilityRoute({List<PageRouteInfo>? children})
-      : super(
+class SelectHealthFacilityRoute
+    extends PageRouteInfo<SelectHealthFacilityRouteArgs> {
+  SelectHealthFacilityRoute({
+    Key? key,
+    bool bookmarksOnly = false,
+    List<PageRouteInfo>? children,
+  }) : super(
           SelectHealthFacilityRoute.name,
+          args: SelectHealthFacilityRouteArgs(
+            key: key,
+            bookmarksOnly: bookmarksOnly,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'SelectHealthFacilityRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<SelectHealthFacilityRouteArgs> page =
+      PageInfo<SelectHealthFacilityRouteArgs>(name);
+}
+
+class SelectHealthFacilityRouteArgs {
+  const SelectHealthFacilityRouteArgs({
+    this.key,
+    this.bookmarksOnly = false,
+  });
+
+  final Key? key;
+
+  final bool bookmarksOnly;
+
+  @override
+  String toString() {
+    return 'SelectHealthFacilityRouteArgs{key: $key, bookmarksOnly: $bookmarksOnly}';
+  }
 }
 
 /// generated route for
