@@ -85,7 +85,7 @@ public class ActivityService {
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
-        log.info("received request to create bulk activity bulk");
+        log.trace("createActivity method invoked");
         List<Activity> activities = request.getActivities();
         int activityCount = activities != null ? activities.size() : 0;
         log.info("Received request to create bulk activities, count: {}", activityCount);
@@ -115,9 +115,19 @@ public class ActivityService {
         List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
 
         try {
+            // Resolve all distinct activity codes in one query instead of one query per facility -
+            // most/all facilities in a batch share the same activity code.
+            List<String> activityCodes = activityFacilities.stream()
+                    .map(ActivityFacility::getActivityId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            Map<String, Activity> activityByCode = activityFacilityRepository.getActivitiesByCodes(activityCodes).stream()
+                    .collect(Collectors.toMap(Activity::getCode, activity -> activity, (a, b) -> a));
+
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.trace("Enriching activity facility with id: {}", activityFacility.getId());
-                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo(), activityByCode);
                 List<ActivityFacilityUser> usersFacility = new ArrayList<>();
                 // Get reviewer users. Can see facility activity on UI directly by getting installation plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
@@ -175,12 +185,9 @@ public class ActivityService {
                 facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
             }
 
-            // Batched by actual serialized size, not item count: each item's additionalDetails
-            // carries a BOM template copy whose size varies by systemType, so a fixed item count
-            // can't guarantee staying under the producer's max.request.size for every template.
+            log.debug("Pushing activity facilities to topic: {}", activityConfiguration.getCreateActivityFacilityTopic());
             pushActivityFacilitiesInSizeBatches(activityFacilities, request.getRequestInfo());
-
-            log.info("successfully created activity facility");
+            log.info("Successfully created {} activity facilities", facilityCount);
         } catch (Exception exception) {
             log.error("Error occurred while creating activity facilities, count: {}", facilityCount, exception);
         }
