@@ -861,12 +861,19 @@ public class FieldPlannerService {
         log.trace("Entering createFacilityActivity method");
         log.info("Creating facility activities, count: {}", activityFacilities.size());
 
-        ActivityFacilityBulkRequest request = ActivityFacilityBulkRequest.builder().activityFacilities(activityFacilities).requestInfo(requestInfo).build();
         String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFacilityActivityCreateUrl();
-        log.debug("Calling facility activity service at URL: {}", url);
+        int batchSize = fieldPlannerConfiguration.getFacilityActivityCreateBatchSize();
 
-        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
-        ActivityFacilityResponse activityFacilityResponse = mapper.convertValue(response, ActivityFacilityResponse.class);
+        for (int fromIndex = 0; fromIndex < activityFacilities.size(); fromIndex += batchSize) {
+            int toIndex = Math.min(fromIndex + batchSize, activityFacilities.size());
+            List<ActivityFacility> batch = activityFacilities.subList(fromIndex, toIndex);
+            ActivityFacilityBulkRequest request = ActivityFacilityBulkRequest.builder().activityFacilities(batch).requestInfo(requestInfo).build();
+            log.debug("Calling facility activity service at URL: {} with batch of {}", url, batch.size());
+
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+            ActivityFacilityResponse activityFacilityResponse = mapper.convertValue(response, ActivityFacilityResponse.class);
+        }
+
         log.info("Successfully created {} facility activities", activityFacilities.size());
         log.trace("Exiting createFacilityActivity method");
     }
