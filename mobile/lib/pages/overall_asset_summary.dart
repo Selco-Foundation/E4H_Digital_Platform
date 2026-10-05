@@ -25,6 +25,7 @@ import '../blocs/user_type/user_type.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
+import '../repositories/asset_submission_eligibility_repo.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/asset_handover_document_repo.dart';
 import '../repositories/installation_completion_certificate_repo.dart';
@@ -546,180 +547,185 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                             footer: BlocBuilder<OverallAssetSummaryBloc,
                                 OverallAssetSummaryState>(
                               builder: (context, overallState) {
-                                int batteryCount = 0,
-                                    inverterCount = 0,
-                                    panelCount = 0;
-
-                                overallState.when(
-                                  initial: () {},
-                                  loading: () {},
-                                  error: (_) {},
-                                  loaded: (bCount, iCount, pCount) {
-                                    batteryCount = bCount;
-                                    inverterCount = iCount;
-                                    panelCount = pCount;
-                                  },
-                                );
-
                                 final String resolvedUserType =
                                     userState.maybeWhen(
                                   supervisor: () => USER_TYPES.SUPERVISOR.name,
                                   orElse: () => USER_TYPES.FIELD_STAFF.name,
                                 );
 
-                                final bool isDisabled = (batteryCount == 0 ||
-                                    inverterCount == 0 ||
-                                    panelCount == 0);
-
-                                return reportState.maybeWhen(
-                                  submitted: () => const SizedBox.shrink(),
-                                  orElse: () => FooterButton(
-                                    showSuffixIcon: false,
-                                    text: progress?.isActive == true
-                                        ? 'Submitting...'
-                                        : context.translate(
-                                            i18.common.coreCommonSubmit),
-                                    isDisabled: progress?.isActive == true
-                                        ? true
-                                        : isDisabled,
-                                    onPress: progress?.isActive == true
-                                        ? () {}
-                                        : () async {
-                                            if (isDisabled) return;
-                                            final isar = context
-                                                .read<ActivityFacilityBloc>()
-                                                .isar;
-                                            if (resolvedUserType ==
+                                return FutureBuilder<bool>(
+                                  key: ValueKey(_currentProjectId),
+                                  future: AssetSubmissionEligibilityRepository(
+                                    context.read<ActivityFacilityBloc>().isar,
+                                  ).hasReadyAssets(_currentProjectId ?? ''),
+                                  builder: (context, readiness) {
+                                    final isDisabled = readiness.data != true;
+                                    return reportState.maybeWhen(
+                                      submitted: () => const SizedBox.shrink(),
+                                      orElse: () => FooterButton(
+                                        showSuffixIcon: false,
+                                        text: progress?.isActive == true
+                                            ? 'Submitting...'
+                                            : context.translate(
+                                                i18.common.coreCommonSubmit),
+                                        isDisabled: progress?.isActive == true
+                                            ? true
+                                            : isDisabled,
+                                        onPress: progress?.isActive == true
+                                            ? () {}
+                                            : () async {
+                                                if (isDisabled) return;
+                                                final isar = context
+                                                    .read<
+                                                        ActivityFacilityBloc>()
+                                                    .isar;
+                                                if (resolvedUserType ==
+                                                        USER_TYPES
+                                                            .SUPERVISOR.name &&
+                                                    !await _hasInstallationImages()) {
+                                                  _showInstallationImagesRequiredPopup();
+                                                  return;
+                                                }
+                                                if (resolvedUserType ==
                                                     USER_TYPES
-                                                        .SUPERVISOR.name &&
-                                                !await _hasInstallationImages()) {
-                                              _showInstallationImagesRequiredPopup();
-                                              return;
-                                            }
-                                            if (resolvedUserType ==
-                                                USER_TYPES.SUPERVISOR.name) {
-                                              final missingDocumentMessage =
-                                                  await _missingRequiredDocumentMessage();
-                                              if (!mounted) return;
-                                              if (missingDocumentMessage !=
-                                                  null) {
-                                                _showRequiredDocumentPopup(
-                                                  missingDocumentMessage,
-                                                );
-                                                return;
-                                              }
-                                              final missingBomFormKeysMessage =
-                                                  await missingRequiredBomFormKeysMessage(
-                                                isar: isar,
-                                                activityFacilityId:
-                                                    _currentProjectId!,
-                                                userType: resolvedUserType,
-                                                systemCode: _system,
-                                              );
-                                              if (!mounted) return;
-                                              if (missingBomFormKeysMessage !=
-                                                  null) {
-                                                _showRequiredBomFormKeysPopup(
-                                                  missingBomFormKeysMessage,
-                                                );
-                                                return;
-                                              }
-                                            }
-                                            await _ensureLocationLoaded();
-                                            if (!mounted) return;
-
-                                            final selState = this
-                                                .context
-                                                .read<
-                                                    SelectedActivityFacilityBloc>()
-                                                .state;
-                                            selState.whenOrNull(
-                                                selected: (project) {
-                                              this
-                                                  .context
-                                                  .read<ActivityFacilityBloc>()
-                                                  .add(
-                                                    ActivityFacilityEvent
-                                                        .addUnSubmitted(project,
-                                                            resolvedUserType),
+                                                        .SUPERVISOR.name) {
+                                                  final missingDocumentMessage =
+                                                      await _missingRequiredDocumentMessage();
+                                                  if (!mounted) return;
+                                                  if (missingDocumentMessage !=
+                                                      null) {
+                                                    _showRequiredDocumentPopup(
+                                                      missingDocumentMessage,
+                                                    );
+                                                    return;
+                                                  }
+                                                  final missingBomFormKeysMessage =
+                                                      await missingRequiredBomFormKeysMessage(
+                                                    isar: isar,
+                                                    activityFacilityId:
+                                                        _currentProjectId!,
+                                                    userType: resolvedUserType,
+                                                    systemCode: _system,
                                                   );
+                                                  if (!mounted) return;
+                                                  if (missingBomFormKeysMessage !=
+                                                      null) {
+                                                    _showRequiredBomFormKeysPopup(
+                                                      missingBomFormKeysMessage,
+                                                    );
+                                                    return;
+                                                  }
+                                                }
+                                                await _ensureLocationLoaded();
+                                                if (!mounted) return;
 
-                                              final lat =
-                                                  _latitude?.toString() ?? '';
-                                              final lng =
-                                                  _longitude?.toString() ?? '';
+                                                final selState = this
+                                                    .context
+                                                    .read<
+                                                        SelectedActivityFacilityBloc>()
+                                                    .state;
+                                                selState.whenOrNull(
+                                                    selected: (project) {
+                                                  this
+                                                      .context
+                                                      .read<
+                                                          ActivityFacilityBloc>()
+                                                      .add(
+                                                        ActivityFacilityEvent
+                                                            .addUnSubmitted(
+                                                                project,
+                                                                resolvedUserType),
+                                                      );
 
-                                              final keptExisting =
-                                                  _existingReports.map((e) =>
-                                                      CompletionFileInput(
-                                                        projectId:
-                                                            _currentProjectId!,
-                                                        filePath: e.filePath,
-                                                        fileType: e.fileType,
-                                                        fileName: e.fileName,
-                                                        latitude: lat,
-                                                        longitude: lng,
-                                                        index: null,
-                                                      ));
+                                                  final lat =
+                                                      _latitude?.toString() ??
+                                                          '';
+                                                  final lng =
+                                                      _longitude?.toString() ??
+                                                          '';
 
-                                              final pickedInputs = _pickedFiles
-                                                  .where((pf) =>
-                                                      pf.path != null &&
-                                                      pf.path!.isNotEmpty)
-                                                  .map((pf) =>
-                                                      CompletionFileInput(
-                                                        projectId:
-                                                            _currentProjectId!,
-                                                        filePath: pf.path!,
-                                                        fileType: inferFileType(
-                                                            pf.path!),
-                                                        fileName:
-                                                            pf.name.isNotEmpty
-                                                                ? pf.name
-                                                                : p.basename(
-                                                                    pf.path!),
-                                                        latitude: lat,
-                                                        longitude: lng,
-                                                        index: null,
-                                                      ));
+                                                  final keptExisting =
+                                                      _existingReports.map((e) =>
+                                                          CompletionFileInput(
+                                                            projectId:
+                                                                _currentProjectId!,
+                                                            filePath:
+                                                                e.filePath,
+                                                            fileType:
+                                                                e.fileType,
+                                                            fileName:
+                                                                e.fileName,
+                                                            latitude: lat,
+                                                            longitude: lng,
+                                                            index: null,
+                                                          ));
 
-                                              final inputs = [
-                                                ...keptExisting,
-                                                ...pickedInputs
-                                              ].toList();
+                                                  final pickedInputs =
+                                                      _pickedFiles
+                                                          .where((pf) =>
+                                                              pf.path != null &&
+                                                              pf.path!
+                                                                  .isNotEmpty)
+                                                          .map((pf) =>
+                                                              CompletionFileInput(
+                                                                projectId:
+                                                                    _currentProjectId!,
+                                                                filePath:
+                                                                    pf.path!,
+                                                                fileType:
+                                                                    inferFileType(
+                                                                        pf.path!),
+                                                                fileName: pf
+                                                                        .name
+                                                                        .isNotEmpty
+                                                                    ? pf.name
+                                                                    : p.basename(
+                                                                        pf.path!),
+                                                                latitude: lat,
+                                                                longitude: lng,
+                                                                index: null,
+                                                              ));
 
-                                              context
-                                                  .read<
-                                                      CacheCompletionReportBloc>()
-                                                  .add(
-                                                    CacheCompletionReportEvent
-                                                        .replaceAllForProject(
-                                                      projectId:
-                                                          _currentProjectId!,
-                                                      files: inputs,
-                                                    ),
-                                                  );
-                                              context
-                                                  .read<AssetSubmissionBloc>()
-                                                  .add(
-                                                    AssetSubmissionEvent
-                                                        .submitAll(
-                                                      activityFacilityId:
-                                                          project
-                                                              .activityFacility
-                                                              .id,
-                                                      facilityId: project
-                                                              .activityFacility
-                                                              .facility
-                                                              ?.facilityId ??
-                                                          "",
-                                                      userType:
-                                                          resolvedUserType,
-                                                    ),
-                                                  );
-                                            });
-                                          },
-                                  ),
+                                                  final inputs = [
+                                                    ...keptExisting,
+                                                    ...pickedInputs
+                                                  ].toList();
+
+                                                  context
+                                                      .read<
+                                                          CacheCompletionReportBloc>()
+                                                      .add(
+                                                        CacheCompletionReportEvent
+                                                            .replaceAllForProject(
+                                                          projectId:
+                                                              _currentProjectId!,
+                                                          files: inputs,
+                                                        ),
+                                                      );
+                                                  context
+                                                      .read<
+                                                          AssetSubmissionBloc>()
+                                                      .add(
+                                                        AssetSubmissionEvent
+                                                            .submitAll(
+                                                          activityFacilityId:
+                                                              project
+                                                                  .activityFacility
+                                                                  .id,
+                                                          facilityId: project
+                                                                  .activityFacility
+                                                                  .facility
+                                                                  ?.facilityId ??
+                                                              "",
+                                                          userType:
+                                                              resolvedUserType,
+                                                        ),
+                                                      );
+                                                });
+                                              },
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             ),

@@ -27,6 +27,7 @@ import '../model/asset/asset.dart';
 import '../model/audit_details/audit_details.dart';
 import '../model/document/document.dart';
 import '../model/transaction/transaction.dart';
+import '../repositories/asset_submission_eligibility_repo.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/app_init_repo.dart';
@@ -1050,7 +1051,6 @@ Future<void> _performSubmissionForActivityFacility({
 }) async {
   try {
     final repo = AssetRepository();
-    const types = ['inverter', 'battery', 'panel'];
     final now = DateTime.now().toUtc();
     final currentUserId = await SecureStore().getSelectedIndividual() ?? '';
     final remoteRepo = ActivityFacilityRemoteRepository();
@@ -1066,21 +1066,17 @@ Future<void> _performSubmissionForActivityFacility({
       service: service,
     );
 
-    final assetsByType = <String, List<CacheAddNewAsset>>{};
+    final eligibility = AssetSubmissionEligibilityRepository(isar);
+    if (!await eligibility.hasReadyAssets(activityFacilityId)) {
+      throw Exception('No completed asset type is available for submission.');
+    }
+    final assetsByType =
+        await eligibility.savedAssetsByType(activityFacilityId);
+    final types = assetsByType.keys.toList();
     final specByType = <String, CacheSpecification>{};
     final detailByType = <String, CacheAssetDetail>{};
 
     for (final type in types) {
-      final assets = await isar.cacheAddNewAssets
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .filter()
-          .assetTypeEqualTo(type)
-          .findAll();
-      if (assets.isEmpty) {
-        throw Exception("No cached assets found for type $type.");
-      }
-
       final spec = await isar.cacheSpecifications
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
@@ -1097,7 +1093,6 @@ Future<void> _performSubmissionForActivityFacility({
         throw Exception("Missing specification or detail for type $type.");
       }
 
-      assetsByType[type] = assets;
       specByType[type] = spec;
       detailByType[type] = detail;
     }

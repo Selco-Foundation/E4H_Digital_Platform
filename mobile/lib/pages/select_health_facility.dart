@@ -21,6 +21,7 @@ import '../data/nosql/cache_activity_facility_asset.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
+import '../repositories/asset_submission_eligibility_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -628,14 +629,20 @@ class InstallationReportCard extends StatelessWidget {
                   size: DigitButtonSize.large,
                 ),
                 const SizedBox(height: spacer4),
-                DigitButton(
-                  mainAxisSize: MainAxisSize.max,
-                  label: context
-                      .translate(i18.selectHealthFacility.submitForApproval),
-                  onPressed: onPress,
-                  isDisabled: (fraction * 100).round() >= 98 ? false : true,
-                  type: DigitButtonType.secondary,
-                  size: DigitButtonSize.large,
+                FutureBuilder<bool>(
+                  key: ValueKey(projectId),
+                  future: AssetSubmissionEligibilityRepository(
+                    context.read<ActivityFacilityBloc>().isar,
+                  ).hasReadyAssets(projectId ?? ''),
+                  builder: (context, readiness) => DigitButton(
+                    mainAxisSize: MainAxisSize.max,
+                    label: context
+                        .translate(i18.selectHealthFacility.submitForApproval),
+                    onPressed: onPress,
+                    isDisabled: readiness.data != true,
+                    type: DigitButtonType.secondary,
+                    size: DigitButtonSize.large,
+                  ),
                 ),
               ],
             )
