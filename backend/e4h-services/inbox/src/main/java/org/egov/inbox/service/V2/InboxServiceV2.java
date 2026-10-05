@@ -103,6 +103,8 @@ public class InboxServiceV2 {
             }
         }
 
+        applyActionableStatusScope(inboxRequest);
+
         // Récupération de la configuration
         log.debug("Fetching inbox query configuration from MDMS");
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
@@ -371,6 +373,36 @@ public class InboxServiceV2 {
         return inboxItemsList;
     }
 
+
+    /**
+     * Narrows the inbox to the statuses the caller's roles can actually act on.
+     * <p>
+     * A State SPOC or Tech POC ticket carries no assignee - im-services pools those states so that any
+     * holder of the role can pick the ticket up - so the inbox cannot find them by assignee and reaches
+     * them by role instead. The roles on each state's actions are, by definition, the roles that state
+     * is waiting on, which is what {@link #enrichActionableStatusesFromRole} reads off the business
+     * service. Jurisdiction is left to the {@code jurisdictionSearchCriteria} the client already sends,
+     * which scopes the result within the role.
+     * <p>
+     * Every count on the response (total, status map, nearing SLA) rebuilds its query from the same
+     * request, so narrowing it here covers them as well as the items.
+     * <p>
+     * Best-effort: a failure to reach the workflow engine leaves the request untouched, which is the
+     * behaviour that predates this scoping. An inbox must not fail to load because a lookup failed.
+     */
+    private void applyActionableStatusScope(InboxRequest inboxRequest) {
+        try {
+            List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
+            if (CollectionUtils.isEmpty(businessServices)) {
+                log.warn("⚠️ No business services returned, leaving the requested statuses untouched");
+                return;
+            }
+            enrichActionableStatusesFromRole(inboxRequest, businessServices);
+        } catch (Exception e) {
+            log.error("❌ Failed to scope the inbox to the caller's actionable statuses, "
+                    + "leaving the requested statuses untouched", e);
+        }
+    }
 
     private void enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
         log.trace("Method invoked: enrichActionableStatusesFromRole");
