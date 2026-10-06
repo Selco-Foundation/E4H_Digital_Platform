@@ -9,8 +9,6 @@ import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/cards/report_card.dart';
-import '../widgets/bookmarks/report_bookmarks.dart';
-import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -24,7 +22,6 @@ class InstallationReportPage extends StatefulWidget {
 }
 
 class _InstallationReportPageState extends State<InstallationReportPage> {
-  int _bookmarkRefresh = 0;
   late var userType = "";
 
   @override
@@ -79,38 +76,22 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                           reportCountsLoaded:
                               (newCount, inboxCount, submittedCount) =>
                                   newCount),
-                      onPress: () async {
+                      onPress: () {
                         context.read<ReportTypeBloc>().add(
                             const ReportTypeEvent.typeSelected("new-report"));
-                        await context.router.push(SelectHealthFacilityRoute());
-                        if (mounted) {
-                          setState(() => _bookmarkRefresh++);
-                        }
+                        context.router.push(SelectHealthFacilityRoute());
                       },
                       icon: Icons.add_box_outlined,
                       heading: 'New Report',
                       description:
                           'View list of assigned health facilities, search for health facility and create installation report',
                     ),
-                    ReportBookmarksHomeCard<ActivityFacilityWorkflow>(
-                      refreshToken: _bookmarkRefresh,
-                      amc: false,
-                      onOpen: () async {
-                        context.read<ReportTypeBloc>().add(
-                            const ReportTypeEvent.typeSelected('new-report'));
-                        await context.router.push(
-                            SelectHealthFacilityRoute(bookmarksOnly: true));
-                      },
-                    ),
                     ReportCard(
-                      onPress: () async {
+                      onPress: () {
                         context
                             .read<ReportTypeBloc>()
                             .add(const ReportTypeEvent.typeSelected("inbox"));
-                        await context.router.push(const InboxRoute());
-                        if (mounted) {
-                          setState(() => _bookmarkRefresh++);
-                        }
+                        context.router.push(const InboxRoute());
                       },
                       badgeCount: state.maybeWhen(
                           orElse: () => 0,
@@ -124,13 +105,10 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                           : 'View reports that have been approved/rejected',
                     ),
                     ReportCard(
-                        onPress: () async {
+                        onPress: () {
                           context.read<ReportTypeBloc>().add(
                               const ReportTypeEvent.typeSelected("submitted"));
-                          await context.router.push(const DraftRoute());
-                          if (mounted) {
-                            setState(() => _bookmarkRefresh++);
-                          }
+                          context.router.push(const DraftRoute());
                         },
                         icon: Icons.assignment_late,
                         badgeCount: state.maybeWhen(

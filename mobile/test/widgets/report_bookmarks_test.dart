@@ -1,5 +1,4 @@
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/theme/digit_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -17,6 +16,13 @@ import 'package:selco/model/activity_facility_workflow/activity_facility_workflo
 import 'package:selco/model/response/responsemodel.dart';
 import 'package:selco/model/scheduled_visit/scheduled_visit.dart';
 import 'package:selco/pages/amc_select_facility.dart';
+import 'package:selco/pages/inbox.dart';
+import 'package:selco/pages/installation_report_home.dart';
+import 'package:selco/blocs/inbox_type/inbox_type.dart';
+import 'package:selco/blocs/report_type/report_type.dart';
+import 'package:digit_ui_components/digit_components.dart';
+import 'package:digit_ui_components/models/RadioButtonModel.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_tab.dart';
 import 'package:selco/pages/select_health_facility.dart';
 import 'package:selco/repositories/report_bookmark_repo.dart';
 import 'package:selco/repositories/dynamic_form_repo.dart';
@@ -122,6 +128,19 @@ class NoSearchVisits extends Bloc<ScheduledVisitEvent, ScheduledVisitState>
       throw StateError('Unexpected visit access');
 }
 
+class RecordingActivity
+    extends Bloc<ActivityFacilityEvent, ActivityFacilityState>
+    implements ActivityFacilityBloc {
+  final events = <ActivityFacilityEvent>[];
+  RecordingActivity()
+      : super(const ActivityFacilityState.paginatedLoaded(
+            items: [], hasMore: false, totalCount: 0));
+  @override
+  Isar get isar => UnusedIsar();
+  @override
+  void add(ActivityFacilityEvent event) => events.add(event);
+}
+
 class FakeCounts extends Bloc<CacheAssetCountEvent, CacheAssetCountState>
     implements CacheAssetCountBloc {
   FakeCounts() : super(const CacheAssetCountState.initial());
@@ -155,17 +174,22 @@ void main() {
   ActivityFacilityWorkflow facility(String id, String name) =>
       ActivityFacilityWorkflow(
           activityFacility: ActivityFacility(
-              id: id, facility: Facility()..facilityName = name));
+              id: id, facility: Facility()..facilityName = name),
+          status: 'ASSIGNED_TO_FIELD_STAFF');
 
-  Widget app(Widget child) {
+  Widget app(Widget child,
+      {ActivityFacilityBloc? activityBloc, bool supervisor = false}) {
     final router = AppRouter();
     addTearDown(router.dispose);
     final auth = FakeAuth();
     final type = UserTypeBloc();
-    final activity = NoSearchActivity();
+    if (supervisor) type.add(const UserTypeEvent.typeSelected('supervisor'));
+    final activity = activityBloc ?? NoSearchActivity();
     final visits = NoSearchVisits();
     final counts = FakeCounts();
     final init = FakeInit();
+    final inboxType = InboxTypeBloc();
+    final reportType = ReportTypeBloc();
     addTearDown(() async {
       await auth.close();
       await type.close();
@@ -173,9 +197,13 @@ void main() {
       await visits.close();
       await counts.close();
       await init.close();
+      await inboxType.close();
+      await reportType.close();
     });
     return MultiBlocProvider(
         providers: [
+          BlocProvider<InboxTypeBloc>.value(value: inboxType),
+          BlocProvider<ReportTypeBloc>.value(value: reportType),
           BlocProvider<AuthBloc>.value(value: auth),
           BlocProvider<UserTypeBloc>.value(value: type),
           BlocProvider<ActivityFacilityBloc>.value(value: activity),
@@ -378,4 +406,133 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+  Future<void> filter(WidgetTester tester, String code,
+      {bool apply = true}) async {
+    await tester.ensureVisible(find.byIcon(Icons.import_export));
+    await tester.tap(find.byIcon(Icons.import_export));
+    await tester.pumpAndSettle();
+    final radio = tester.widget<RadioList>(find.byType(RadioList));
+    expect(radio.radioDigitButtons.map((option) => option.code),
+        ['DESC', 'ASC', 'BOOKMARKED']);
+    radio.onChanged(RadioButtonModel(code: code, name: code));
+    await tester.pump();
+    if (apply) {
+      tester
+          .widgetList<DigitButton>(find.byType(DigitButton))
+          .singleWhere((button) => button.label == i18.common.sort)
+          .onPressed();
+    } else {
+      Navigator.of(tester.element(find.byType(RadioList))).pop();
+    }
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+      'New Report filter switches locally, keeps search, and restores normal loading',
+      (tester) async {
+    await installations().save(facility('one', 'Clinic One'));
+    final activity = RecordingActivity();
+    await tester.pumpWidget(
+        app(const SelectHealthFacilityPage(), activityBloc: activity));
+    await tester.pumpAndSettle();
+    final initialRequests = activity.events.length;
+    await filter(tester, 'BOOKMARKED', apply: false);
+    expect(find.text('Clinic One'), findsNothing);
+    expect(activity.events.length, initialRequests);
+    await filter(tester, 'BOOKMARKED');
+    expect(find.text('Clinic One'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'C');
+    await tester.pumpAndSettle();
+    expect(find.text('Clinic One'), findsOneWidget);
+    expect(activity.events.length, initialRequests);
+    await filter(tester, 'DESC');
+    expect(activity.events.length, greaterThan(initialRequests));
+    expect(find.text('Clinic One'), findsNothing);
+    await filter(tester, 'BOOKMARKED');
+    final beforeClear = activity.events.length;
+    await tester.tap(find.byIcon(Icons.import_export));
+    await tester.pumpAndSettle();
+    tester
+        .widgetList<DigitButton>(find.byType(DigitButton))
+        .singleWhere((button) => button.label == i18.common.clear)
+        .onPressed();
+    await tester.pumpAndSettle();
+    expect(activity.events.length, greaterThan(beforeClear));
+    expect(find.text('Clinic One'), findsNothing);
+  });
+
+  testWidgets(
+      'Inbox bookmark filter respects tabs and unbookmarking without remote searches',
+      (tester) async {
+    await installations().save(facility('rejected', 'Rejected Clinic')
+        .copyWith(status: 'REJECTED_BY_FIELD_SUPERVISOR'));
+    await installations().save(facility('approved', 'Approved Clinic')
+        .copyWith(status: 'APPROVED_BY_SUPERVISOR'));
+    await installations().save(facility('assigned', 'Assigned Clinic'));
+    final activity = RecordingActivity();
+    await tester.pumpWidget(app(const InboxPage(), activityBloc: activity));
+    await tester.pumpAndSettle();
+    final initialRequests = activity.events.length;
+    await filter(tester, 'BOOKMARKED');
+    expect(find.text('Rejected Clinic'), findsOneWidget);
+    expect(find.text('Approved Clinic'), findsNothing);
+    expect(find.text('Assigned Clinic'), findsNothing);
+    tester.widget<DigitTabBar>(find.byType(DigitTabBar)).onTabSelected(1);
+    await tester.pumpAndSettle();
+    expect(find.text('Approved Clinic'), findsOneWidget);
+    expect(find.text('Rejected Clinic'), findsNothing);
+    await tester.enterText(find.byType(TextField), 'Approved');
+    tester.testTextInput.hide();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byIcon(Icons.bookmark));
+    await tester.tap(find.byIcon(Icons.bookmark));
+    await tester.pumpAndSettle();
+    expect(find.text('Approved Clinic'), findsNothing);
+    expect(activity.events.length, initialRequests);
+    await filter(tester, 'ASC');
+    expect(activity.events.length, greaterThan(initialRequests));
+  });
+  testWidgets(
+      'supervisor Inbox bookmarks follow review, rejected and approved tabs',
+      (tester) async {
+    final repo = InstallationBookmarkRepository(
+        tenantId: envConfig.variables.tenantId,
+        userId: 'user',
+        userType: 'SUPERVISOR');
+    for (final entry in [
+      ('review', 'SUBMITTED_BY_FIELD_STAFF'),
+      ('rejected', 'REJECTED_BY_QC_SPOC'),
+      ('approved', 'APPROVED_BY_QC_SPOC'),
+    ]) {
+      await repo.save(facility(entry.$1, entry.$1).copyWith(status: entry.$2));
+    }
+    final activity = RecordingActivity();
+    await tester.pumpWidget(
+        app(const InboxPage(), activityBloc: activity, supervisor: true));
+    await tester.pumpAndSettle();
+    final requests = activity.events.length;
+    await filter(tester, 'BOOKMARKED');
+    expect(find.text('review'), findsOneWidget);
+    expect(find.text('rejected'), findsNothing);
+    tester.widget<DigitTabBar>(find.byType(DigitTabBar)).onTabSelected(1);
+    await tester.pumpAndSettle();
+    expect(find.text('rejected'), findsOneWidget);
+    expect(find.text('review'), findsNothing);
+    tester.widget<DigitTabBar>(find.byType(DigitTabBar)).onTabSelected(2);
+    await tester.pumpAndSettle();
+    expect(find.text('approved'), findsOneWidget);
+    expect(find.text('rejected'), findsNothing);
+    expect(activity.events.length, requests);
+  });
+
+  testWidgets('installation home keeps its three existing sections',
+      (tester) async {
+    await tester.pumpWidget(
+        app(const InstallationReportPage(), activityBloc: RecordingActivity()));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReportCard), findsNWidgets(3));
+    expect(find.text(i18.installationBookmarks.title), findsNothing);
+    expect(find.byType(ReportBookmarksHomeCard<ActivityFacilityWorkflow>),
+        findsNothing);
+  });
 }

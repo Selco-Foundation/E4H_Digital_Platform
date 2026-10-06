@@ -20,6 +20,7 @@ import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
+import '../widgets/bookmarks/report_bookmarks.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/cards/inbox_report_rejected_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -32,17 +33,24 @@ class InboxPage extends StatefulWidget {
   State<InboxPage> createState() => _InboxPageState();
 }
 
-class _InboxPageState extends State<InboxPage> {
+class _InboxPageState extends State<InboxPage>
+    with ReportBookmarksState<InboxPage, ActivityFacilityWorkflow> {
   static const _scrollThreshold = 200.0;
 
   int _selectedTabIndex = 0;
   String _searchQuery = '';
   String? _sortDirection;
+  bool get _bookmarksOnly => _sortDirection == 'BOOKMARKED';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      bookmarks =
+          reportBookmarksFor<ActivityFacilityWorkflow>(context, amc: false);
+      bookmarkSaveFailedKey = i18.installationBookmarks.saveFailed;
+      _reloadBookmarks();
       final userState = context.read<UserTypeBloc>().state;
       if (userState.maybeWhen(supervisor: () => true, orElse: () => false)) {
         context.read<InboxTypeBloc>().add(const InboxTypeEvent.typeSelected(0));
@@ -52,6 +60,9 @@ class _InboxPageState extends State<InboxPage> {
       _fetchProjects(userState, _selectedTabIndex);
     });
   }
+
+  Future<void> _reloadBookmarks() =>
+      loadBookmarks(only: _bookmarksOnly, query: _searchQuery);
 
   void _fetchProjects(UserTypeState userState, int tabIndex) {
     context
@@ -66,6 +77,10 @@ class _InboxPageState extends State<InboxPage> {
           .add(const ReportTypeEvent.typeSelected("send-back"));
     }
 
+    if (_bookmarksOnly) {
+      _reloadBookmarks();
+      return;
+    }
     if (_searchQuery.isNotEmpty) {
       context.read<ActivityFacilityBloc>().add(
             ActivityFacilityEvent.fetchActivityFacilityBySearch(
@@ -118,6 +133,7 @@ class _InboxPageState extends State<InboxPage> {
   }
 
   void _tryLoadMore(UserTypeState userState) {
+    if (_bookmarksOnly) return;
     context.read<ActivityFacilityBloc>().add(
           ActivityFacilityEvent.loadMoreActivityFacility(
             workflowStatuses:
@@ -132,7 +148,7 @@ class _InboxPageState extends State<InboxPage> {
     setState(() {
       _selectedTabIndex = index;
       _searchQuery = '';
-      _sortDirection = null;
+      if (!_bookmarksOnly) _sortDirection = null;
     });
 
     context.read<InboxTypeBloc>().add(
@@ -225,13 +241,15 @@ class _InboxPageState extends State<InboxPage> {
                             children: [
                               Expanded(
                                 child: DigitSearchFormInput(
-                                  innerLabel: context
-                                      .translate(i18.inbox.searchHealthFacility),
+                                  innerLabel: context.translate(
+                                      i18.inbox.searchHealthFacility),
                                   suffixIcon: Icons.search,
                                   onChange: (text) {
                                     setState(() {
                                       _searchQuery = text;
-                                      _sortDirection = null;
+                                      if (!_bookmarksOnly) {
+                                        _sortDirection = null;
+                                      }
                                     });
                                     _fetchProjects(
                                         userState, _selectedTabIndex);
@@ -273,13 +291,32 @@ class _InboxPageState extends State<InboxPage> {
                         ],
                       ),
                       const SizedBox(height: spacer4),
+                      if (!_bookmarksOnly && bookmarksFailed)
+                        bookmarkLoadError(_reloadBookmarks),
                       BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
                         builder: (context, projectState) {
+                          if (_bookmarksOnly) {
+                            if (bookmarksLoading) return _loadingIndicator();
+                            if (bookmarksFailed) {
+                              return bookmarkLoadError(_reloadBookmarks);
+                            }
+                            final statuses = _workflowStatusesForTab(
+                                userState, _selectedTabIndex);
+                            return _buildList(
+                                bookmarkedItems
+                                    .where((project) =>
+                                        statuses.contains(project.status))
+                                    .toList(),
+                                userState);
+                          }
                           return projectState.maybeWhen(
                             initial: () => _loadingIndicator(),
                             loading: () => _loadingIndicator(),
-                            paginatedLoaded: (items, hasMore, totalCount,
-                                    fromCache, isLoadingMore,
+                            paginatedLoaded: (items,
+                                    hasMore,
+                                    totalCount,
+                                    fromCache,
+                                    isLoadingMore,
                                     rawFetchedCount) =>
                                 _buildList(
                               items,
@@ -334,12 +371,24 @@ class _InboxPageState extends State<InboxPage> {
                   );
                   return inboxState.when(
                     submitted: () => InboxReportCard(
-                        onPress: () {
+                        isBookmarked: bookmarkIds
+                            .contains(project.activityFacility.id.trim()),
+                        isSavingBookmark: !bookmarksLoaded ||
+                            savingBookmarks
+                                .contains(project.activityFacility.id.trim()),
+                        onToggleBookmark: project.activityFacility.id
+                                .trim()
+                                .isEmpty
+                            ? null
+                            : () => toggleBookmark(project,
+                                reload: _reloadBookmarks),
+                        onPress: () async {
                           context.read<SelectedActivityFacilityBloc>().add(
                                 SelectedActivityFacilityEvent.select(project),
                               );
-                          context.router.push(InboxAssetSummaryRoute(
+                          await context.router.push(InboxAssetSummaryRoute(
                               refresh: DateTime.now().millisecondsSinceEpoch));
+                          if (mounted) await _reloadBookmarks();
                         },
                         title:
                             project.activityFacility.facility?.facilityName ??
@@ -352,6 +401,17 @@ class _InboxPageState extends State<InboxPage> {
                         district: locality.district,
                         block: locality.block),
                     rejected: () => InboxReportRejectedCard(
+                      isBookmarked: bookmarkIds
+                          .contains(project.activityFacility.id.trim()),
+                      isSavingBookmark: !bookmarksLoaded ||
+                          savingBookmarks
+                              .contains(project.activityFacility.id.trim()),
+                      onToggleBookmark: project.activityFacility.id
+                              .trim()
+                              .isEmpty
+                          ? null
+                          : () =>
+                              toggleBookmark(project, reload: _reloadBookmarks),
                       title: project.activityFacility.facility?.facilityName ??
                           '---',
                       status: project.status ?? '---',
@@ -361,21 +421,34 @@ class _InboxPageState extends State<InboxPage> {
                       dateAssigned:
                           project.workflow?.auditDetails?.lastModifiedTime ??
                               DateTime.now(),
-                      onPress: () {
+                      onPress: () async {
                         context.read<SelectedActivityFacilityBloc>().add(
                               SelectedActivityFacilityEvent.select(project),
                             );
-                        context.router.push(SubmitForApprovalRoute(
+                        await context.router.push(SubmitForApprovalRoute(
                             refresh: DateTime.now().millisecondsSinceEpoch));
+                        if (mounted) await _reloadBookmarks();
                       },
                     ),
                     approved: () => InboxReportCard(
-                        onPress: () {
+                        isBookmarked: bookmarkIds
+                            .contains(project.activityFacility.id.trim()),
+                        isSavingBookmark: !bookmarksLoaded ||
+                            savingBookmarks
+                                .contains(project.activityFacility.id.trim()),
+                        onToggleBookmark: project.activityFacility.id
+                                .trim()
+                                .isEmpty
+                            ? null
+                            : () => toggleBookmark(project,
+                                reload: _reloadBookmarks),
+                        onPress: () async {
                           context.read<SelectedActivityFacilityBloc>().add(
                                 SelectedActivityFacilityEvent.select(project),
                               );
-                          context.router.push(InboxAssetSummaryRoute(
+                          await context.router.push(InboxAssetSummaryRoute(
                               refresh: DateTime.now().millisecondsSinceEpoch));
+                          if (mounted) await _reloadBookmarks();
                         },
                         title:
                             project.activityFacility.facility?.facilityName ??
@@ -406,6 +479,7 @@ class _InboxPageState extends State<InboxPage> {
 
   void _showSortPopup(
       DigitTextTheme textTheme, ThemeData theme, UserTypeState userState) {
+    var selectedFilter = _sortDirection;
     showCustomPopup(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -415,7 +489,7 @@ class _InboxPageState extends State<InboxPage> {
           type: PopUpType.simple,
           additionalWidgets: [
             RadioList(
-              groupValue: _sortDirection ?? '',
+              groupValue: selectedFilter ?? '',
               containerPadding: const EdgeInsets.symmetric(vertical: spacer2),
               radioDigitButtons: [
                 RadioButtonModel(
@@ -424,9 +498,12 @@ class _InboxPageState extends State<InboxPage> {
                 RadioButtonModel(
                     code: 'ASC',
                     name: context.translate(i18.common.oldestFirst)),
+                RadioButtonModel(
+                    code: 'BOOKMARKED',
+                    name: context.translate(i18.installationBookmarks.filter)),
               ],
               onChanged: (val) =>
-                  popupSetState(() => _sortDirection = val.code),
+                  popupSetState(() => selectedFilter = val.code),
             ),
             Row(
               children: [
@@ -451,8 +528,9 @@ class _InboxPageState extends State<InboxPage> {
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
                     label: context.translate(i18.common.sort),
-                    isDisabled: _sortDirection == null,
+                    isDisabled: selectedFilter == null,
                     onPressed: () {
+                      setState(() => _sortDirection = selectedFilter);
                       Navigator.of(ctx).pop();
                       _fetchProjects(userState, _selectedTabIndex);
                     },

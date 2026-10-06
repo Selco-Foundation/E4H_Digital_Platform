@@ -47,6 +47,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
   static const _scrollThreshold = 200.0;
 
   String? _sortDirection;
+  bool get _bookmarksOnly => _sortDirection == 'BOOKMARKED';
   String _searchQuery = '';
 
   final Map<String, Map<String, int>> _progress = {};
@@ -54,22 +55,21 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
   @override
   void initState() {
     super.initState();
+    if (widget.bookmarksOnly) _sortDirection = 'BOOKMARKED';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       bookmarks =
           reportBookmarksFor<ActivityFacilityWorkflow>(context, amc: false);
       bookmarkSaveFailedKey = i18.installationBookmarks.saveFailed;
       _reloadBookmarks();
-      if (!widget.bookmarksOnly) _fetchProject();
+      if (!_bookmarksOnly) _fetchProject();
     });
   }
 
   Future<void> _reloadBookmarks() async {
     await loadBookmarks(
-        only: widget.bookmarksOnly,
-        query: _searchQuery,
-        sortOrder: _sortDirection ?? 'DESC');
-    if (!mounted || !widget.bookmarksOnly) return;
+        only: _bookmarksOnly, query: _searchQuery, sortOrder: 'DESC');
+    if (!mounted || !_bookmarksOnly) return;
     for (final project in bookmarkedItems) {
       for (final type in const ['inverter', 'battery', 'panel']) {
         context
@@ -80,7 +80,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
   }
 
   void _fetchProject() {
-    if (widget.bookmarksOnly) {
+    if (_bookmarksOnly) {
       _reloadBookmarks();
       return;
     }
@@ -116,7 +116,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
   }
 
   void _tryLoadMore() {
-    if (widget.bookmarksOnly) return;
+    if (_bookmarksOnly) return;
     context.read<ActivityFacilityBloc>().add(
           ActivityFacilityEvent.loadMoreActivityFacility(
             workflowStatuses: _workflowStatuses(),
@@ -237,12 +237,15 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
                     child: BlocBuilder<ActivityFacilityBloc,
                         ActivityFacilityState>(
                       builder: (context, state) {
-                        if (widget.bookmarksOnly) {
+                        if (_bookmarksOnly) {
                           if (bookmarksLoading) return _loadingIndicator();
                           if (bookmarksFailed) {
                             return bookmarkLoadError(_reloadBookmarks);
                           }
-                          return _buildProjectList(bookmarkedItems);
+                          return _buildProjectList(bookmarkedItems
+                              .where((project) =>
+                                  _workflowStatuses().contains(project.status))
+                              .toList());
                         }
                         return Column(children: [
                           if (bookmarksFailed)
@@ -299,9 +302,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              context.translate(widget.bookmarksOnly
-                  ? i18.installationBookmarks.title
-                  : i18.selectHealthFacility.title),
+              context.translate(i18.selectHealthFacility.title),
               style: textTheme.bodyL
                   .copyWith(color: theme.colorTheme.text.primary),
             ),
@@ -314,7 +315,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
                     onChange: (text) {
                       setState(() {
                         _searchQuery = text;
-                        _sortDirection = null;
+                        if (!_bookmarksOnly) _sortDirection = null;
                       });
                       _fetchProject();
                     },
@@ -342,7 +343,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: spacer4),
         child: Center(
-            child: Text(context.translate(widget.bookmarksOnly
+            child: Text(context.translate(_bookmarksOnly
                 ? i18.installationBookmarks.empty
                 : i18.selectHealthFacility.noProjectsFound))),
       );
@@ -391,6 +392,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
   }
 
   void _showSortPopup(DigitTextTheme textTheme, ThemeData theme) {
+    var selectedFilter = _sortDirection;
     showCustomPopup(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -401,17 +403,17 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
             Text(
-                context.translate(widget.bookmarksOnly
+                context.translate(_bookmarksOnly
                     ? i18.installationBookmarks.savedAt
                     : i18.common.submissionDate),
                 style: textTheme.headingS
                     .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
-              groupValue: _sortDirection ?? '',
+              groupValue: selectedFilter ?? '',
               containerPadding:
                   const EdgeInsets.symmetric(horizontal: 0, vertical: spacer2),
               onChanged: (value) =>
-                  popupSetState(() => _sortDirection = value.code),
+                  popupSetState(() => selectedFilter = value.code),
               radioDigitButtons: [
                 RadioButtonModel(
                     code: 'DESC',
@@ -419,6 +421,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
                 RadioButtonModel(
                     code: 'ASC',
                     name: context.translate(i18.common.oldestFirst)),
+                RadioButtonModel(
+                    code: 'BOOKMARKED',
+                    name: context.translate(i18.installationBookmarks.filter)),
               ],
             ),
             Row(
@@ -440,8 +445,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
                 Expanded(
                   child: DigitButton(
                     label: context.translate(i18.common.sort),
-                    isDisabled: _sortDirection == null,
+                    isDisabled: selectedFilter == null,
                     onPressed: () {
+                      setState(() => _sortDirection = selectedFilter);
                       _fetchProject();
                       Navigator.of(ctx).pop();
                     },

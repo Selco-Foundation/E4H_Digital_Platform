@@ -11,8 +11,12 @@ import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import '../../utils/utils.dart';
 import 'report_detail_row.dart';
+import '../bookmarks/report_bookmarks.dart';
 
 class InboxReportCard extends StatelessWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
   final String? title;
   final String? status;
   final String? state;
@@ -28,6 +32,9 @@ class InboxReportCard extends StatelessWidget {
 
   const InboxReportCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
     this.title,
     this.status,
     this.state,
@@ -52,11 +59,21 @@ class InboxReportCard extends StatelessWidget {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "${title}",
-            style: textTheme.headingM
-                .copyWith(color: theme.colorTheme.primary.primary2),
-          ),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+                child: Text(
+              "$title",
+              style: textTheme.headingM
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            )),
+            if (onToggleBookmark != null)
+              ReportBookmarkButton(
+                  selected: isBookmarked,
+                  saving: isSavingBookmark,
+                  onPressed: onToggleBookmark,
+                  addLabelKey: i18.installationBookmarks.add,
+                  removeLabelKey: i18.installationBookmarks.remove),
+          ]),
           const SizedBox(height: spacer4),
           const DigitDivider(dividerType: DividerType.small),
           ReportDetailRow(

@@ -644,6 +644,7 @@ class AssessmentBookmarks {
 
 class InstallationBookmarks {
   const InstallationBookmarks();
+  String get filter => 'INSTALLATION_BOOKMARKS_FILTER';
   String get title => 'INSTALLATION_BOOKMARKS_TITLE';
   String get description => 'INSTALLATION_BOOKMARKS_DESCRIPTION';
   String get add => 'INSTALLATION_BOOKMARKS_ADD';
