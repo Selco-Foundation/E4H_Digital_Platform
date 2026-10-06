@@ -10,6 +10,7 @@ import org.egov.inbox.repository.ServiceRequestRepository;
 import org.egov.inbox.util.BpaConstants;
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.FSMConstants;
+import org.egov.inbox.util.InboxConstants;
 import org.egov.inbox.web.model.InboxRequest;
 import org.egov.inbox.web.model.RequestInfoWrapper;
 import org.egov.inbox.web.model.workflow.BusinessService;
@@ -311,19 +312,32 @@ public class WorkflowService {
         	
         	String statelevelTenantId=entry.getKey().split("\\.")[0];
         	
-            if(entry.getKey().equals(criteria.getTenantId()) || (entry.getValue().contains(FSMConstants.FSM_DSO) && entry.getKey().equals(statelevelTenantId)) ){
+            boolean exactScope = entry.getKey().equals(criteria.getTenantId())
+                    || (entry.getValue().contains(FSMConstants.FSM_DSO) && entry.getKey().equals(statelevelTenantId));
+            // A role held above the requested tenant only counts for the pooled roles, and only those
+            // roles are matched through it - a COMPLAINT_RESOLVER held at the same tenant must not be
+            // widened along with the facilitator that earned the ancestor match.
+            List<String> roleCodes = exactScope ? entry.getValue()
+                    : pooledRolesCovering(entry.getKey(), criteria.getTenantId(), entry.getValue());
+
+            if(exactScope || !CollectionUtils.isEmpty(roleCodes) ){
                 List<BusinessService> businessServicesByTenantId = new ArrayList();
                 if(entry.getKey().split("\\.").length==1){
                     businessServicesByTenantId = tenantIdToBuisnessSevicesMap.get(criteria.getTenantId());
               }else{
                     businessServicesByTenantId = tenantIdToBuisnessSevicesMap.get(entry.getKey());
               }
+                // A role scoped above the tenant the inbox is queried at has no business services of
+                // its own; the ones fetched for the requested tenant are the ticket's.
+                if(businessServicesByTenantId == null){
+                    businessServicesByTenantId = tenantIdToBuisnessSevicesMap.get(criteria.getTenantId());
+                }
                 if(businessServicesByTenantId != null ) {
                 	 businessServicesByTenantId.forEach(service -> {
                          List<State> states = service.getStates();
                          states.forEach(state -> {
                              Set<String> stateRoles = stateToRoleMap.get(state.getUuid());
-                             if(!CollectionUtils.isEmpty(stateRoles) && !Collections.disjoint(stateRoles,entry.getValue())){
+                             if(!CollectionUtils.isEmpty(stateRoles) && !Collections.disjoint(stateRoles,roleCodes)){
                                  actionableStatuses.put(state.getUuid(), state.getApplicationStatus());
                              }
 
@@ -336,6 +350,31 @@ public class WorkflowService {
         return actionableStatuses;
     }
     
+    /**
+     * The pooled roles among {@code roleCodes} that, held at {@code roleTenantId}, govern tickets of
+     * {@code requestedTenantId}.
+     * <p>
+     * Only the pooled roles ({@link InboxConstants#POOLED_ROLES}) reach down from an ancestor tenant.
+     * State SPOC and Tech POC are registered against the state-level tenant, so requiring their role
+     * tenant to equal the tenant the inbox is queried at - which the UI sends at district or facility
+     * level - would leave them with no actionable statuses and an empty inbox. Their tickets are pooled
+     * across the whole jurisdiction, which is what makes an ancestor tenant the right scope; the
+     * jurisdiction filter the client sends still narrows the result within it.
+     * <p>
+     * Ancestry is compared on whole dot separated segments, so "in.kar" does not swallow "in.karnataka".
+     *
+     * @return the qualifying pooled roles, empty when the tenant is not an ancestor or none are held
+     */
+    private List<String> pooledRolesCovering(String roleTenantId, String requestedTenantId, List<String> roleCodes){
+        if(StringUtils.isEmpty(roleTenantId) || StringUtils.isEmpty(requestedTenantId)
+                || !requestedTenantId.startsWith(roleTenantId + ".")){
+            return Collections.emptyList();
+        }
+        return roleCodes.stream()
+                .filter(InboxConstants.POOLED_ROLES::contains)
+                .collect(Collectors.toList());
+    }
+
     /**
      * Gets the map of tenantId to roles the user is assigned
      * @param requestInfo RequestInfo of the request

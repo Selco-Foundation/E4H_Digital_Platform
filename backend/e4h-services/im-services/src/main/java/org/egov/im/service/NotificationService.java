@@ -35,6 +35,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
@@ -779,14 +780,14 @@ public class NotificationService {
         return getHRMSEmployee(request, role, request.getIncident().getBoundaryCode());
     }
 
-    public Map<String, String> getHRMSEmployee(IncidentRequest request, String role, String boundaryCode) {
-        Map<String, String> reassigneeDetails = new HashMap<>();
-
-        List<String> employeeName = null;
-        List<String> employeeMobile = null;
-        List<String> employeeUUID = null;
-
-        StringBuilder url = null;
+    /**
+     * Builds the HRMS search for a role, applying the jurisdiction each role is registered at.
+     *
+     * <p>When the request carries assignees the search is narrowed to them, so the caller gets the
+     * assigned user rather than whoever else holds the role. A pooled state has no assignees, which is
+     * what makes the search return the whole role.
+     */
+    private StringBuilder buildHRMSSearchUrl(IncidentRequest request, String role, String boundaryCode) {
         String tenantId = request.getIncident().getTenantId();
         boolean isStateJurisdictionRole = ROLE_COMPLAINT_FACILITATOR_1.equals(role) || ROLE_COMPLAINT_FACILITATOR_2.equals(role);
         if (isStateJurisdictionRole && tenantId != null && tenantId.contains(".")) {
@@ -800,9 +801,50 @@ public class NotificationService {
             boundaryCode = null;
         }
         if (request.getWorkflow() != null && request.getWorkflow().getAssignes() != null)
-            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, boundaryCode);
-        else
-            url = hrmsUtils.getHRMSURI(null, tenantId, role, boundaryCode);
+            return hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, boundaryCode);
+        return hrmsUtils.getHRMSURI(null, tenantId, role, boundaryCode);
+    }
+
+    /**
+     * Mobile numbers of every active employee holding {@code role} within the ticket's jurisdiction.
+     *
+     * <p>Used for the pooled roles, where the ticket belongs to the role rather than to a person and
+     * so everyone who can act on it has to be told. {@link #getHRMSEmployee} answers the same search
+     * but keeps only the first match, which is right for a role a single named person fills.
+     *
+     * @return the distinct mobile numbers, empty when HRMS returns nobody or the response cannot be
+     *         parsed
+     */
+    public List<String> getHRMSEmployeeMobiles(IncidentRequest request, String role) {
+        StringBuilder url = buildHRMSSearchUrl(request, role, request.getIncident().getBoundaryCode());
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
+        Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
+
+        List<String> employeeMobile;
+        try {
+            employeeMobile = JsonPath.read(response, HRMS_EMP_MOBILE_JSONPATH);
+        } catch (Exception e) {
+            log.error("Failed to parse HRMS response for role {} on incident {}", role,
+                    request.getIncident().getIncidentId(), e);
+            return Collections.emptyList();
+        }
+        if (CollectionUtils.isEmpty(employeeMobile)) {
+            return Collections.emptyList();
+        }
+        return employeeMobile.stream()
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    public Map<String, String> getHRMSEmployee(IncidentRequest request, String role, String boundaryCode) {
+        Map<String, String> reassigneeDetails = new HashMap<>();
+
+        List<String> employeeName = null;
+        List<String> employeeMobile = null;
+        List<String> employeeUUID = null;
+
+        StringBuilder url = buildHRMSSearchUrl(request, role, boundaryCode);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
         Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
 
