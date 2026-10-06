@@ -57,7 +57,6 @@ class AssessmentSelectFacilityPage extends StatelessWidget {
         draftRepository: AssessmentDraftRepository(isar),
         assessmentMode: assessmentMode,
         assessorId: assessorId,
-        bookmarksOnly: bookmarksOnly,
         bookmarkRepository: AssessmentBookmarkRepository(
           tenantId: envConfig.variables.tenantId,
           assessorId: assessorId,
@@ -65,7 +64,8 @@ class AssessmentSelectFacilityPage extends StatelessWidget {
               ? AssessmentPhase.PHONE
               : AssessmentPhase.FIELD,
         ),
-      )..add(const AssessmentQueueLoadInitial()),
+      )..add(AssessmentQueueLoadInitial(
+          sortOrder: bookmarksOnly ? 'BOOKMARKED' : 'DESC')),
       child: AssessmentSelectFacilityView(
           assessmentMode: assessmentMode, bookmarksOnly: bookmarksOnly),
     );
@@ -97,6 +97,7 @@ class _AssessmentSelectFacilityViewState
       AssessmentFormRepository();
   String _searchQuery = '';
   String _sortOrder = 'DESC';
+  bool get _bookmarksOnly => _sortOrder == 'BOOKMARKED';
   bool _bookmarksLoaded = false;
   Set<String> _bookmarkIds = {};
   Set<String> _draftIds = {};
@@ -106,6 +107,7 @@ class _AssessmentSelectFacilityViewState
   @override
   void initState() {
     super.initState();
+    if (widget.bookmarksOnly) _sortOrder = 'BOOKMARKED';
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadBookmarkState());
   }
 
@@ -153,7 +155,7 @@ class _AssessmentSelectFacilityViewState
       }
       if (!mounted) return;
       await _loadBookmarkState();
-      if (mounted && widget.bookmarksOnly) _loadInitial();
+      if (mounted && _bookmarksOnly) _loadInitial();
     } catch (_) {
       if (mounted) _showBookmarkError();
     } finally {
@@ -170,7 +172,7 @@ class _AssessmentSelectFacilityViewState
   void _onSearchChanged(String value) {
     _searchTimer?.cancel();
     _searchQuery = value.trim();
-    if (!widget.bookmarksOnly &&
+    if (!_bookmarksOnly &&
         _searchQuery.isNotEmpty &&
         _searchQuery.length < minFacilitySearchQueryLength) {
       return;
@@ -272,13 +274,7 @@ class _AssessmentSelectFacilityViewState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.bookmarksOnly
-                  ? context.translate(
-                      widget.assessmentMode == AssessmentMode.remote
-                          ? i18.assessmentBookmarks.remote
-                          : i18.assessmentBookmarks.onSite,
-                    )
-                  : context.translate(i18.assessmentSelectFacility.title),
+              context.translate(i18.assessmentSelectFacility.title),
               style: textTheme.bodyL.copyWith(
                 color: theme.colorTheme.text.primary,
               ),
@@ -366,7 +362,7 @@ class _AssessmentSelectFacilityViewState
             padding: const EdgeInsets.symmetric(vertical: spacer4),
             child: Center(
               child: Text(
-                widget.bookmarksOnly
+                _bookmarksOnly
                     ? context.translate(i18.assessmentBookmarks.empty)
                     : context.translate(
                         i18.assessmentSelectFacility.noFacilitiesFound),
@@ -394,7 +390,7 @@ class _AssessmentSelectFacilityViewState
                   facility.facilityId ??
                   facility.hashCode,
             ),
-            isBookmarked: widget.bookmarksOnly ||
+            isBookmarked: _bookmarksOnly ||
                 _bookmarkIds.contains(facility.planFacilityId?.trim()),
             isSavingBookmark: !_bookmarksLoaded ||
                 _savingBookmarks.contains(facility.planFacilityId?.trim()),
@@ -519,7 +515,7 @@ class _AssessmentSelectFacilityViewState
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
             Text(
-              widget.bookmarksOnly
+              _bookmarksOnly
                   ? context.translate(i18.assessmentBookmarks.savedAt)
                   : context
                       .translate(i18.assessmentSelectFacility.lastActionTime),
@@ -545,6 +541,9 @@ class _AssessmentSelectFacilityViewState
                   code: 'ASC',
                   name: context.translate(i18.common.oldestFirst),
                 ),
+                RadioButtonModel(
+                    code: 'BOOKMARKED',
+                    name: context.translate(i18.assessmentBookmarks.filter)),
               ],
             ),
             Row(

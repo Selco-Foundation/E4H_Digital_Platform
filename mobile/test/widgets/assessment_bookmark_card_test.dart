@@ -43,7 +43,7 @@ void main() {
         tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNull);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('home shows separate counts and respects phase roles',
+  testWidgets('home keeps normal cards and respects phase roles',
       (tester) async {
     Widget home(bool field) => MaterialApp(
         theme: DigitTheme.instance.mobileTheme,
@@ -55,21 +55,17 @@ void main() {
           remoteCount: 0,
           onSiteCount: 0,
           draftCount: 0,
-          remoteBookmarkCount: 2,
-          onSiteBookmarkCount: 3,
-          onRemoteBookmarksPressed: () {},
-          onOnSiteBookmarksPressed: () {},
           onRemotePressed: () {},
           onOnSitePressed: () {},
           onDraftsPressed: () {},
         ))));
     await tester.pumpWidget(home(true));
-    expect(find.text('ASSESSMENT_BOOKMARKS_REMOTE'), findsOneWidget);
-    expect(find.text('ASSESSMENT_BOOKMARKS_ON_SITE'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget);
+    expect(find.text('ASSESSMENT_BOOKMARKS_REMOTE'), findsNothing);
+    expect(find.text('ASSESSMENT_BOOKMARKS_ON_SITE'), findsNothing);
+    expect(find.text('ASSESSMENT_WORK_HOME_NEW_REMOTE'), findsOneWidget);
+    expect(find.text('ASSESSMENT_WORK_HOME_NEW_ON_SITE'), findsOneWidget);
     await tester.pumpWidget(home(false));
-    expect(find.text('ASSESSMENT_BOOKMARKS_REMOTE'), findsOneWidget);
+    expect(find.text('ASSESSMENT_BOOKMARKS_REMOTE'), findsNothing);
     expect(find.text('ASSESSMENT_BOOKMARKS_ON_SITE'), findsNothing);
   });
 }

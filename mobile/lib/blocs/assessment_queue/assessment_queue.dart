@@ -21,7 +21,6 @@ class AssessmentQueueBloc
   final AssessmentMode assessmentMode;
   final String assessorId;
   final AssessmentBookmarkRepository? bookmarkRepository;
-  final bool bookmarksOnly;
   int _requestGeneration = 0;
 
   AssessmentQueueBloc({
@@ -30,7 +29,6 @@ class AssessmentQueueBloc
     required this.assessmentMode,
     required this.assessorId,
     this.bookmarkRepository,
-    this.bookmarksOnly = false,
   }) : super(const AssessmentQueueInitial()) {
     on<AssessmentQueueLoadInitial>(_onLoadInitial);
     on<AssessmentQueueRefresh>(_onRefresh);
@@ -67,9 +65,9 @@ class AssessmentQueueBloc
     final generation = ++_requestGeneration;
     emit(const AssessmentQueueLoading());
     try {
-      if (bookmarksOnly) {
+      if (sortOrder == 'BOOKMARKED') {
         final facilities =
-            await bookmarkRepository!.list(query: query, sortOrder: sortOrder);
+            await bookmarkRepository!.list(query: query, sortOrder: 'DESC');
         if (generation != _requestGeneration) return;
         emit(AssessmentQueueLoaded(
             facilities: facilities,
@@ -101,6 +99,7 @@ class AssessmentQueueBloc
     AssessmentQueueLoadMore event,
     Emitter<AssessmentQueueState> emit,
   ) async {
+    if (event.sortOrder == 'BOOKMARKED') return;
     final current = state;
     if (current is! AssessmentQueueLoaded ||
         !current.hasMore ||

@@ -630,6 +630,7 @@ class SyncLoading {
 }
 
 class AssessmentBookmarks {
+  String get filter => 'ASSESSMENT_BOOKMARKS_FILTER';
   const AssessmentBookmarks();
   String get remote => 'ASSESSMENT_BOOKMARKS_REMOTE';
   String get onSite => 'ASSESSMENT_BOOKMARKS_ON_SITE';
@@ -655,6 +656,7 @@ class InstallationBookmarks {
 }
 
 class AmcBookmarks {
+  String get filter => 'AMC_BOOKMARKS_FILTER';
   const AmcBookmarks();
   String get title => 'AMC_BOOKMARKS_TITLE';
   String get description => 'AMC_BOOKMARKS_DESCRIPTION';

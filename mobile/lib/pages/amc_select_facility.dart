@@ -41,6 +41,7 @@ class AmcSelectFacilityPage extends StatefulWidget {
 class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
     with ReportBookmarksState<AmcSelectFacilityPage, ScheduledVisit> {
   String? _sortDirection;
+  bool get _bookmarksOnly => _sortDirection == 'BOOKMARKED';
   String _searchQuery = '';
 
   List<String> _statuses() {
@@ -50,19 +51,18 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
   @override
   void initState() {
     super.initState();
+    if (widget.bookmarksOnly) _sortDirection = 'BOOKMARKED';
     bookmarks = reportBookmarksFor<ScheduledVisit>(context, amc: true);
     bookmarkSaveFailedKey = i18.amcBookmarks.saveFailed;
     _reloadBookmarks();
-    if (!widget.bookmarksOnly) _fetchVisits();
+    if (!_bookmarksOnly) _fetchVisits();
   }
 
   Future<void> _reloadBookmarks() => loadBookmarks(
-      only: widget.bookmarksOnly,
-      query: _searchQuery,
-      sortOrder: _sortDirection ?? 'DESC');
+      only: _bookmarksOnly, query: _searchQuery, sortOrder: 'DESC');
 
   void _fetchVisits() {
-    if (widget.bookmarksOnly) {
+    if (_bookmarksOnly) {
       _reloadBookmarks();
       return;
     }
@@ -98,21 +98,22 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
 
     return BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
       builder: (context, state) {
-        if (widget.bookmarksOnly) {
+        if (_bookmarksOnly) {
           state = bookmarksLoading
               ? const ScheduledVisitState.loading()
               : bookmarksFailed
                   ? const ScheduledVisitState.failure('bookmark')
                   : ScheduledVisitState.loaded(
-                      items: bookmarkedItems,
+                      items: bookmarkedItems
+                          .where((visit) => _statuses().contains(visit.status))
+                          .toList(),
                       hasMore: false,
                       totalCount: bookmarkedItems.length,
                       fromCache: true);
         }
         return NotificationListener<ScrollNotification>(
           onNotification: (notification) {
-            if (!widget.bookmarksOnly &&
-                notification is ScrollUpdateNotification) {
+            if (!_bookmarksOnly && notification is ScrollUpdateNotification) {
               final max = notification.metrics.maxScrollExtent;
               final current = notification.metrics.pixels;
 
@@ -155,7 +156,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
                       child: _buildSearchAndSortControls(textTheme, theme),
                     ),
                     const SizedBox(height: spacer2),
-                    if (!widget.bookmarksOnly && bookmarksFailed)
+                    if (!_bookmarksOnly && bookmarksFailed)
                       bookmarkLoadError(_reloadBookmarks),
                     state.maybeWhen(
                       loading: () => const Center(
@@ -164,7 +165,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
                           child: CircularProgressIndicator(),
                         ),
                       ),
-                      failure: (msg) => widget.bookmarksOnly
+                      failure: (msg) => _bookmarksOnly
                           ? bookmarkLoadError(_reloadBookmarks)
                           : Padding(
                               padding: const EdgeInsets.all(spacer2),
@@ -181,7 +182,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
                           return Padding(
                             padding: const EdgeInsets.all(spacer4),
                             child: Text(
-                              context.translate(widget.bookmarksOnly
+                              context.translate(_bookmarksOnly
                                   ? i18.amcBookmarks.empty
                                   : i18.amcSelectFacility.noVisitsFound),
                               style: textTheme.bodyS.copyWith(
@@ -338,9 +339,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              context.translate(widget.bookmarksOnly
-                  ? i18.amcBookmarks.title
-                  : i18.amcSelectFacility.title),
+              context.translate(i18.amcSelectFacility.title),
               style: textTheme.bodyL
                   .copyWith(color: theme.colorTheme.text.primary),
             ),
@@ -353,9 +352,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
                     onChange: (text) {
                       setState(() {
                         _searchQuery = text;
-                        _sortDirection = null;
+                        if (!_bookmarksOnly) _sortDirection = null;
                       });
-                      if (widget.bookmarksOnly ||
+                      if (_bookmarksOnly ||
                           text.isEmpty ||
                           text.length >= minFacilitySearchQueryLength) {
                         _fetchVisits();
@@ -381,6 +380,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
   }
 
   void _showSortPopup(DigitTextTheme textTheme, ThemeData theme) {
+    var selectedFilter = _sortDirection;
     showCustomPopup(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -391,17 +391,17 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
             Text(
-                context.translate(widget.bookmarksOnly
+                context.translate(_bookmarksOnly
                     ? i18.amcBookmarks.savedAt
                     : i18.common.submissionDate),
                 style: textTheme.headingS
                     .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
-              groupValue: _sortDirection ?? '',
+              groupValue: selectedFilter ?? '',
               containerPadding:
                   const EdgeInsets.symmetric(horizontal: 0, vertical: spacer2),
               onChanged: (value) =>
-                  popupSetState(() => _sortDirection = value.code),
+                  popupSetState(() => selectedFilter = value.code),
               radioDigitButtons: [
                 RadioButtonModel(
                     code: 'DESC',
@@ -409,6 +409,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
                 RadioButtonModel(
                     code: 'ASC',
                     name: context.translate(i18.common.oldestFirst)),
+                RadioButtonModel(
+                    code: 'BOOKMARKED',
+                    name: context.translate(i18.amcBookmarks.filter)),
               ],
             ),
             Row(
@@ -432,8 +435,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
                 Expanded(
                   child: DigitButton(
                     label: context.translate(i18.common.sort),
-                    isDisabled: _sortDirection == null,
+                    isDisabled: selectedFilter == null,
                     onPressed: () {
+                      setState(() => _sortDirection = selectedFilter);
                       Navigator.of(ctx).pop();
                       _fetchVisits();
                     },

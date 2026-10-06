@@ -11,8 +11,6 @@ import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/cards/report_card.dart';
-import '../widgets/bookmarks/report_bookmarks.dart';
-import '../model/scheduled_visit/scheduled_visit.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -24,7 +22,6 @@ class AmcReportHomePage extends StatefulWidget {
 }
 
 class _AmcReportHomePageState extends State<AmcReportHomePage> {
-  int _bookmarkRefresh = 0;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -60,25 +57,11 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                         .read<ReportTypeBloc>()
                         .add(const ReportTypeEvent.typeSelected("new-report"));
                     await context.router.push(AmcSelectFacilityRoute());
-                    if (mounted) {
-                      setState(() => _bookmarkRefresh++);
-                    }
                   },
                   icon: Icons.add_box_outlined,
                   heading: context.translate(i18.amcReportHome.newAmcReport),
                   description: context
                       .translate(i18.amcReportHome.newAmcReportDescription),
-                ),
-                ReportBookmarksHomeCard<ScheduledVisit>(
-                  refreshToken: _bookmarkRefresh,
-                  amc: true,
-                  onOpen: () async {
-                    context
-                        .read<ReportTypeBloc>()
-                        .add(const ReportTypeEvent.typeSelected('new-report'));
-                    await context.router
-                        .push(AmcSelectFacilityRoute(bookmarksOnly: true));
-                  },
                 ),
                 ReportCard(
                   onPress: () async {
@@ -86,9 +69,6 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                         .read<ReportTypeBloc>()
                         .add(const ReportTypeEvent.typeSelected("inbox"));
                     await context.router.push(const AmcInboxRoute());
-                    if (mounted) {
-                      setState(() => _bookmarkRefresh++);
-                    }
                   },
                   icon: Icons.toc,
                   heading: context.translate(i18.inbox.title),
@@ -101,9 +81,6 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                           .read<ReportTypeBloc>()
                           .add(const ReportTypeEvent.typeSelected("submitted"));
                       await context.router.push(const AmcDraftRoute());
-                      if (mounted) {
-                        setState(() => _bookmarkRefresh++);
-                      }
                     },
                     icon: Icons.assignment_late,
                     heading: context.translate(i18.amcDraft.pendingApproval),

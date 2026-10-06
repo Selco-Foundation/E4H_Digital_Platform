@@ -71,8 +71,12 @@ class InboxReportCard extends StatelessWidget {
                   selected: isBookmarked,
                   saving: isSavingBookmark,
                   onPressed: onToggleBookmark,
-                  addLabelKey: i18.installationBookmarks.add,
-                  removeLabelKey: i18.installationBookmarks.remove),
+                  addLabelKey: isAmc == true
+                      ? i18.amcBookmarks.add
+                      : i18.installationBookmarks.add,
+                  removeLabelKey: isAmc == true
+                      ? i18.amcBookmarks.remove
+                      : i18.installationBookmarks.remove),
           ]),
           const SizedBox(height: spacer4),
           const DigitDivider(dividerType: DividerType.small),

@@ -58,6 +58,14 @@ class UnusedIsar implements Isar {
       throw StateError('Bookmarks must not access draft storage');
 }
 
+class EmptyDrafts extends AssessmentDraftRepository {
+  EmptyDrafts() : super(UnusedIsar());
+  @override
+  Future<Set<String>> draftedPlanFacilityIds(
+          {required String assessorId, required AssessmentPhase phase}) async =>
+      {};
+}
+
 const facility = AssessmentQueueFacility(
     planFacilityId: 'plan-facility',
     facilityId: 'facility',
@@ -111,21 +119,82 @@ void main() {
       draftRepository: AssessmentDraftRepository(UnusedIsar()),
       assessmentMode: AssessmentMode.remote,
       assessorId: 'user',
-      bookmarksOnly: true,
       bookmarkRepository: bookmarks,
     );
     final loaded =
         bloc.stream.firstWhere((state) => state is AssessmentQueueLoaded);
-    bloc.add(const AssessmentQueueLoadInitial(query: 'clinic'));
+    bloc.add(const AssessmentQueueLoadInitial(
+        query: 'clinic', sortOrder: 'BOOKMARKED'));
     final state = await loaded as AssessmentQueueLoaded;
     expect(state.facilities.single.planFacilityId, facility.planFacilityId);
     expect(state.hasMore, isFalse);
     final empty =
         bloc.stream.firstWhere((state) => state is AssessmentQueueLoaded);
-    bloc.add(const AssessmentQueueRefresh(query: 'missing'));
+    bloc.add(const AssessmentQueueRefresh(
+        query: 'missing', sortOrder: 'BOOKMARKED'));
     expect((await empty as AssessmentQueueLoaded).facilities, isEmpty);
     await bloc.close();
   });
+  for (final mode in AssessmentMode.values) {
+    test('$mode switches between bookmarked local results and normal queue',
+        () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final store = BookmarkStore();
+      final phase = mode == AssessmentMode.remote
+          ? AssessmentPhase.PHONE
+          : AssessmentPhase.FIELD;
+      final bookmarks = AssessmentBookmarkRepository(
+          storage: store, tenantId: 'tenant', assessorId: 'user', phase: phase);
+      await bookmarks.save(facility);
+      final requests = <RequestOptions>[];
+      final dio = Dio();
+      dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+        requests.add(options);
+        handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'queue': [], 'count': 0}));
+      }));
+      final bloc = AssessmentQueueBloc(
+          repository: AssessmentQueueRepository(
+              dio: dio, storage: store, tenantId: 'tenant', assessorId: 'user'),
+          draftRepository: EmptyDrafts(),
+          assessmentMode: mode,
+          assessorId: 'user',
+          bookmarkRepository: bookmarks);
+      Future<AssessmentQueueLoaded> load(String sort,
+          {String query = ''}) async {
+        final result =
+            bloc.stream.firstWhere((state) => state is AssessmentQueueLoaded);
+        bloc.add(AssessmentQueueLoadInitial(query: query, sortOrder: sort));
+        return await result as AssessmentQueueLoaded;
+      }
+
+      expect(
+          (await load('BOOKMARKED', query: 'c'))
+              .facilities
+              .single
+              .planFacilityId,
+          facility.planFacilityId);
+      expect((await load('BOOKMARKED', query: 'missing')).facilities, isEmpty);
+      expect(requests, isEmpty);
+      final state = await load('BOOKMARKED');
+      expect(state.hasMore, isFalse);
+      bloc.add(const AssessmentQueueLoadMore(sortOrder: 'BOOKMARKED'));
+      await Future<void>.delayed(Duration.zero);
+      expect(requests, isEmpty);
+      await load('ASC');
+      expect(requests.length, 1);
+      await load('BOOKMARKED');
+      expect(requests.length, 1);
+      await load('DESC');
+      expect(requests.length, 2);
+      await bookmarks.remove(facility.planFacilityId!);
+      expect((await load('BOOKMARKED')).facilities, isEmpty);
+      await bloc.close();
+    });
+  }
+
   test('failed bookmark saves and removals preserve persisted entries',
       () async {
     final store = BookmarkStore();

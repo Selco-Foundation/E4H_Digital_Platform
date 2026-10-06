@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,6 +17,16 @@ import 'package:selco/model/activity_facility_workflow/activity_facility_workflo
 import 'package:selco/model/response/responsemodel.dart';
 import 'package:selco/model/scheduled_visit/scheduled_visit.dart';
 import 'package:selco/pages/amc_select_facility.dart';
+import 'package:selco/pages/amc_inbox.dart';
+import 'package:selco/pages/assessment_select_facility.dart';
+import 'package:selco/blocs/assessment_queue/assessment_queue.dart';
+import 'package:selco/model/assessment/assessment_mode.dart';
+import 'package:selco/model/assessment/assessment_form_type.dart';
+import 'package:selco/model/assessment/assessment_queue.dart';
+import 'package:selco/repositories/assessment_bookmark_repo.dart';
+import 'package:selco/repositories/assessment_draft_repo.dart';
+import 'package:selco/repositories/assessment_queue_repo.dart';
+import 'package:selco/pages/amc_report_home.dart';
 import 'package:selco/pages/inbox.dart';
 import 'package:selco/pages/installation_report_home.dart';
 import 'package:selco/blocs/inbox_type/inbox_type.dart';
@@ -141,6 +152,29 @@ class RecordingActivity
   void add(ActivityFacilityEvent event) => events.add(event);
 }
 
+class EmptyAssessmentDrafts extends AssessmentDraftRepository {
+  EmptyAssessmentDrafts() : super(UnusedIsar());
+  @override
+  Future<Set<String>> draftedPlanFacilityIds(
+          {required String assessorId, required AssessmentPhase phase}) async =>
+      {};
+}
+
+class RecordingVisits extends Bloc<ScheduledVisitEvent, ScheduledVisitState>
+    implements ScheduledVisitBloc {
+  final events = <ScheduledVisitEvent>[];
+  RecordingVisits()
+      : super(const ScheduledVisitState.loaded(
+            items: [], hasMore: false, totalCount: 0));
+  @override
+  Isar get isar => DraftIsar();
+  @override
+  void add(ScheduledVisitEvent event) => events.add(event);
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw StateError('Unexpected visit access');
+}
+
 class FakeCounts extends Bloc<CacheAssetCountEvent, CacheAssetCountState>
     implements CacheAssetCountBloc {
   FakeCounts() : super(const CacheAssetCountState.initial());
@@ -178,14 +212,16 @@ void main() {
           status: 'ASSIGNED_TO_FIELD_STAFF');
 
   Widget app(Widget child,
-      {ActivityFacilityBloc? activityBloc, bool supervisor = false}) {
+      {ActivityFacilityBloc? activityBloc,
+      bool supervisor = false,
+      ScheduledVisitBloc? visitBloc}) {
     final router = AppRouter();
     addTearDown(router.dispose);
     final auth = FakeAuth();
     final type = UserTypeBloc();
     if (supervisor) type.add(const UserTypeEvent.typeSelected('supervisor'));
     final activity = activityBloc ?? NoSearchActivity();
-    final visits = NoSearchVisits();
+    final visits = visitBloc ?? NoSearchVisits();
     final counts = FakeCounts();
     final init = FakeInit();
     final inboxType = InboxTypeBloc();
@@ -303,7 +339,9 @@ void main() {
       'AMC bookmarked visit resumes its local draft and removes locally',
       (tester) async {
     await visits().save(ScheduledVisit(
-        id: 'one', facility: Facility()..facilityName = 'AMC Clinic'));
+        id: 'one',
+        status: 'SCHEDULED',
+        facility: Facility()..facilityName = 'AMC Clinic'));
     await tester
         .pumpWidget(app(const AmcSelectFacilityPage(bookmarksOnly: true)));
     await tester.pumpAndSettle();
@@ -426,6 +464,154 @@ void main() {
     }
     await tester.pumpAndSettle();
   }
+
+  for (final mode in AssessmentMode.values) {
+    testWidgets(
+        '$mode assessment filter searches locally, removes bookmarks and restores normal loading',
+        (tester) async {
+      final phase = mode == AssessmentMode.remote
+          ? AssessmentPhase.PHONE
+          : AssessmentPhase.FIELD;
+      final bookmarks = AssessmentBookmarkRepository(
+          tenantId: envConfig.variables.tenantId,
+          assessorId: 'user',
+          phase: phase);
+      await bookmarks.save(const AssessmentQueueFacility(
+          planFacilityId: 'one', facilityName: 'Assessment Clinic'));
+      var requests = 0;
+      final dio = Dio();
+      dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+        requests++;
+        handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'queue': [], 'count': 0}));
+      }));
+      final bloc = AssessmentQueueBloc(
+          repository: AssessmentQueueRepository(
+              dio: dio,
+              tenantId: envConfig.variables.tenantId,
+              assessorId: 'user'),
+          draftRepository: EmptyAssessmentDrafts(),
+          assessmentMode: mode,
+          assessorId: 'user',
+          bookmarkRepository: bookmarks)
+        ..add(const AssessmentQueueLoadInitial());
+      addTearDown(bloc.close);
+      await tester.pumpWidget(app(BlocProvider.value(
+          value: bloc,
+          child: AssessmentSelectFacilityView(assessmentMode: mode))));
+      await tester.pumpAndSettle();
+      final initialRequests = requests;
+      await filter(tester, 'BOOKMARKED', apply: false);
+      expect(find.text('Assessment Clinic'), findsNothing);
+      await filter(tester, 'BOOKMARKED');
+      expect(find.text('Assessment Clinic'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'A');
+      await tester.pumpAndSettle(const Duration(milliseconds: 350));
+      expect(find.text('Assessment Clinic'), findsOneWidget);
+      expect(requests, initialRequests);
+      await tester.ensureVisible(find.byIcon(Icons.bookmark));
+      await tester.tap(find.byIcon(Icons.bookmark));
+      await tester.pumpAndSettle();
+      expect(find.text(i18.assessmentBookmarks.empty), findsOneWidget);
+      expect(requests, initialRequests);
+      await filter(tester, 'ASC');
+      expect(requests, greaterThan(initialRequests));
+      await filter(tester, 'BOOKMARKED');
+      final beforeClear = requests;
+      await tester.tap(find.byIcon(Icons.import_export));
+      await tester.pumpAndSettle();
+      tester
+          .widgetList<DigitButton>(find.byType(DigitButton))
+          .singleWhere((button) => button.label == i18.common.clear)
+          .onPressed();
+      await tester.pumpAndSettle();
+      expect(requests, greaterThan(beforeClear));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+      'AMC New Report filter applies locally and restores normal loading',
+      (tester) async {
+    await visits().save(ScheduledVisit(
+        id: 'one',
+        status: 'SCHEDULED',
+        facility: Facility()..facilityName = 'AMC Clinic'));
+    await visits().save(ScheduledVisit(
+        id: 'other',
+        status: 'APPROVED',
+        facility: Facility()..facilityName = 'Approved Clinic'));
+    final bloc = RecordingVisits();
+    await tester
+        .pumpWidget(app(const AmcSelectFacilityPage(), visitBloc: bloc));
+    await tester.pumpAndSettle();
+    final requests = bloc.events.length;
+    await filter(tester, 'BOOKMARKED', apply: false);
+    expect(find.text('AMC Clinic'), findsNothing);
+    await filter(tester, 'BOOKMARKED');
+    expect(find.text('AMC Clinic'), findsOneWidget);
+    expect(find.text('Approved Clinic'), findsNothing);
+    await tester.enterText(find.byType(TextField), 'A');
+    await tester.pumpAndSettle();
+    expect(find.text('AMC Clinic'), findsOneWidget);
+    expect(bloc.events.length, requests);
+    await filter(tester, 'ASC');
+    expect(bloc.events.length, greaterThan(requests));
+    await filter(tester, 'BOOKMARKED');
+    await tester.tap(find.byIcon(Icons.import_export));
+    await tester.pumpAndSettle();
+    final beforeClear = bloc.events.length;
+    tester
+        .widgetList<DigitButton>(find.byType(DigitButton))
+        .singleWhere((button) => button.label == i18.common.clear)
+        .onPressed();
+    await tester.pumpAndSettle();
+    expect(bloc.events.length, greaterThan(beforeClear));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'AMC Inbox bookmarks keep local search across status tabs and remove immediately',
+      (tester) async {
+    await visits().save(ScheduledVisit(
+        id: 'rejected',
+        status: 'REJECTED',
+        facility: Facility()..facilityName = 'Rejected Clinic'));
+    await visits().save(ScheduledVisit(
+        id: 'approved',
+        status: 'APPROVED',
+        facility: Facility()..facilityName = 'Approved Clinic'));
+    final bloc = RecordingVisits();
+    await tester.pumpWidget(app(const AmcInboxPage(), visitBloc: bloc));
+    await tester.pumpAndSettle();
+    final requests = bloc.events.length;
+    await filter(tester, 'BOOKMARKED');
+    expect(find.text('Rejected Clinic'), findsOneWidget);
+    expect(find.text('Approved Clinic'), findsNothing);
+    await tester.enterText(find.byType(TextField), 'C');
+    await tester.pumpAndSettle();
+    tester.widget<DigitTabBar>(find.byType(DigitTabBar)).onTabSelected(1);
+    await tester.pumpAndSettle();
+    expect(find.text('Approved Clinic'), findsOneWidget);
+    expect(find.byTooltip(i18.amcBookmarks.remove), findsOneWidget);
+    await tester.ensureVisible(find.byIcon(Icons.bookmark));
+    await tester.tap(find.byIcon(Icons.bookmark));
+    await tester.pumpAndSettle();
+    expect(find.text(i18.amcBookmarks.empty), findsOneWidget);
+    expect(bloc.events.length, requests);
+    await filter(tester, 'DESC');
+    expect(bloc.events.length, greaterThan(requests));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AMC home keeps its three normal cards', (tester) async {
+    await tester.pumpWidget(app(const AmcReportHomePage()));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReportCard), findsNWidgets(3));
+    expect(find.byIcon(Icons.bookmark), findsNothing);
+  });
 
   testWidgets(
       'New Report filter switches locally, keeps search, and restores normal loading',
