@@ -3,7 +3,9 @@ package org.egov.im.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
+import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
+import org.egov.im.util.VendorOrganisationUtil;
 import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Workflow;
@@ -64,13 +66,17 @@ class WorkflowServicePooledStateTest {
     private MDMSUtils mdmsUtils;
     @Mock
     private SLAService slaService;
+    @Mock
+    private IMUtils imUtils;
+    @Mock
+    private VendorOrganisationUtil vendorOrganisationUtil;
 
     private WorkflowService workflowService;
 
     @BeforeEach
     void setUp() {
         workflowService = new WorkflowService(imConfiguration, repository, new ObjectMapper(), notificationService,
-                mdmsUtils, slaService);
+                mdmsUtils, slaService, imUtils, vendorOrganisationUtil);
     }
 
     @Test
