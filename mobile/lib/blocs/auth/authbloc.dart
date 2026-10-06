@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../data/network_manager.dart';
+import '../../data/api_interceptors.dart';
 import '../../data/secure_storage/secureStore.dart';
 import '../../model/dataModel.dart';
 import '../../model/login/loginModel.dart';
@@ -61,6 +62,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             userRequest: _userRequest)),
       ]);
 
+      AuthTokenInterceptor.resetLogoutGuard();
       await authRepository.reportLogin(_userRequest);
 
       emit(AuthState.authenticated(

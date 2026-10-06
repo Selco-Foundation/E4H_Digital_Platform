@@ -53,6 +53,9 @@ import 'blocs/user_type/user_type.dart';
 import 'data/app_shared_preferences.dart';
 import 'data/nosql/localization.dart';
 import 'data/remote_client.dart';
+import 'data/api_interceptors.dart';
+import 'utils/extensions.dart';
+import 'utils/i18_key_constants.dart' as i18;
 import 'model/appconfig/mdmsResponse.dart';
 import 'model/data_model.init.dart';
 import 'repositories/app_init_repo.dart';
@@ -119,6 +122,41 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   final _approuter = AppRouter();
+  late final AuthBloc _authBloc;
+  late final SessionExpiredCallback _sessionExpiredCallback;
+
+  @override
+  void initState() {
+    super.initState();
+    _authBloc = AuthBloc()..add(const AuthEvent.attemptLoad());
+    _sessionExpiredCallback = () async {
+      if (!mounted) return;
+      _authBloc.add(const AuthEvent.logout());
+      await _approuter.replaceAll(const [
+        UnauthenticatedRouteWrapper(children: [WelcomeRoute()])
+      ]);
+      if (!mounted) return;
+      final messenger = scaffoldMessengerKey.currentState;
+      if (messenger != null) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(SnackBar(
+          content: Text(messenger.context.translate(i18.common.sessionExpired)),
+        ));
+      }
+    };
+    AuthTokenInterceptor.onSessionExpired = _sessionExpiredCallback;
+  }
+
+  @override
+  void dispose() {
+    if (AuthTokenInterceptor.onSessionExpired == _sessionExpiredCallback) {
+      AuthTokenInterceptor.onSessionExpired = null;
+    }
+    _authBloc.close();
+    _approuter.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -129,9 +167,7 @@ class _MainAppState extends State<MainApp> {
               create: (context) =>
                   AppInitialization()..add(const InitEvent.onLaunch()),
             ),
-            BlocProvider(
-                create: (context) =>
-                    AuthBloc()..add(const AuthEvent.attemptLoad())),
+            BlocProvider<AuthBloc>.value(value: _authBloc),
             BlocProvider(create: (context) => UserOtpBloc()),
             BlocProvider<ActivityFacilityBloc>(
                 create: (context) => ActivityFacilityBloc(widget.isar)),

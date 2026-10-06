@@ -14,6 +14,10 @@ import '../model/role_actions/role_actions_model.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 
+class MissingRefreshCredentials implements Exception {
+  const MissingRefreshCredentials();
+}
+
 class AuthRepository {
   AuthRepository();
 
@@ -104,8 +108,9 @@ class AuthRepository {
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
 
     AppLogger.instance.info("Refreshing authentication token");
-    if (accessInfo!.refresh_token == null) {
-      throw Exception("No refresh token stored");
+    if (accessInfo == null ||
+        accessInfo.refresh_token?.trim().isNotEmpty != true) {
+      throw const MissingRefreshCredentials();
     }
 
     final dio = Dio()..options.baseUrl = envConfig.variables.baseUrl;
