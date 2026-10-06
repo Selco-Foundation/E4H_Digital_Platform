@@ -50,6 +50,7 @@ const amcBookmarks = AmcBookmarks();
 
 class Common {
   const Common();
+  String get sessionExpired => 'COMMON_SESSION_EXPIRED';
   String get coreCommonProceed => 'CORE_COMMON_PROCEED';
   String get coreCommonSubmit => 'CORE_COMMON_SUBMIT';
   String get coreCommonSave => 'CORE_COMMON_SAVE';
