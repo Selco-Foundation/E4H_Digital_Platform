@@ -2,9 +2,11 @@ package facility.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.web.models.BoundaryInfo;
 import facility.web.models.Facility;
+import facility.util.FacilityAmcFieldsHelper;
 import facility.util.FacilityMappedVendorHelper;
 import facility.web.models.FacilityKibanaIndex;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +16,9 @@ import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -37,6 +41,14 @@ public class FacilityKibanaMapper {
     private final ServiceRequestRepository serviceRequestRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper mapper;
+    private final Configuration configs;
+    private final IncidentStatusDao incidentStatusDao;
+    private final FacilityProjectClient facilityProjectClient;
+
+    private static final String LOCALIZATION_MODULE = "rainmaker-in";
+    private static final String LOCALIZATION_LOCALE = "en_IN";
+    /** Boundary localizations are stored at national tenant (see ingestion-service / FacilityService). */
+    private static final String LOCALIZATION_TENANT_ID = "in";
 
     @Value("${egov.boundary.host}")
     private String boundaryHost;
@@ -99,17 +111,12 @@ public class FacilityKibanaMapper {
             builder.geoPoint(geoPoint);
         }
 
-        // Keep index behavior deterministic: default to FUNCTIONAL unless explicitly provided.
-        String solarPanelStatus = "FUNCTIONAL";
-        if (facility.getAdditionalDetails() != null) {
-            Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
-            if (solarStatus != null && !solarStatus.toString().isBlank()) {
-                solarPanelStatus = solarStatus.toString();
-            }
-        }
-        builder.solarPanelStatus(solarPanelStatus);
+        applySolarPanelStatus(facility, builder);
 
         applyMappedVendorFields(facility, builder);
+        if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {
+            builder.solutionDesignType(facility.getFacilityDetails().getSolarSolutionDesignType().name());
+        }
 
         // Fetch boundary hierarchy and extract codes
         BoundaryCodes boundaryCodes = fetchBoundaryHierarchy(facility, requestInfo);
@@ -124,10 +131,11 @@ public class FacilityKibanaMapper {
             districtCode = boundaryCodes.getDistrictCode();
             stateCode = boundaryCodes.getStateCode();
             countryCode = boundaryCodes.getCountryCode();
-            // Top-level state/district/block are human-readable labels (not full hierarchy codes)
-            builder.block(boundaryHierarchyCodeToDisplayLabel(blockCode))
-                   .district(boundaryHierarchyCodeToDisplayLabel(districtCode))
-                   .state(boundaryHierarchyCodeToDisplayLabel(stateCode));
+            // Top-level state/district/block are human-readable labels from localization (spaces preserved)
+            Map<String, String> boundaryLabels = fetchBoundaryDisplayLabels(requestInfo, stateCode, districtCode, blockCode);
+            builder.block(resolveBoundaryDisplayLabel(blockCode, boundaryLabels))
+                   .district(resolveBoundaryDisplayLabel(districtCode, boundaryLabels))
+                   .state(resolveBoundaryDisplayLabel(stateCode, boundaryLabels));
         }
         
         // Build boundary info from fetched hierarchy (use extracted values)
@@ -144,6 +152,13 @@ public class FacilityKibanaMapper {
         }
 
         FacilityKibanaIndex result = builder.build();
+        // Populate the project name mapped to this facility so it lands in the index.
+        result.setProjectName(resolveProjectName(facility, requestInfo, null));
+        // AMC fields live only on the index (amc-scheduler-service owns them and they are never
+        // persisted here), so this freshly-built document has no source to rebuild them from - carry
+        // whatever is already indexed forward, otherwise an operator re-index would wipe them.
+        FacilityAmcFieldsHelper.copyAmcFields(
+                fetchExistingKibanaIndex(facility.getFacilityId(), facility.getTenantId()), result);
         // Log the full boundary object in the result
         if (result.getBoundary() != null) {
             log.info("Boundary in FacilityKibanaIndex: {}", result.getBoundary());
@@ -151,6 +166,36 @@ public class FacilityKibanaMapper {
             log.warn("Boundary is null in FacilityKibanaIndex for facility {}", facility.getFacilityId());
         }
         return result;
+    }
+
+    /**
+     * Derives solar panel status and the time the facility went non-functional, and sets both on
+     * {@code builder}.
+     *
+     * <p>Status is computed the same way the im-services-analytics Kafka listener does: NON_FUNCTIONAL
+     * when any open incident for this boundary code is non-functional, else FUNCTIONAL. An explicit
+     * value in {@code additionalDetails} still takes precedence over the incident-derived status.
+     */
+    private void applySolarPanelStatus(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        IncidentStatusDao.SolarPanelState solarPanelState =
+                incidentStatusDao.resolveSolarPanelState(facility.getBoundaryCode());
+        String solarPanelStatus = solarPanelState.status();
+        Long nonFunctionalTimestamp = solarPanelState.nonFunctionalSince();
+
+        Object override = facility.getAdditionalDetails() != null
+                ? facility.getAdditionalDetails().get("solarPanelStatus")
+                : null;
+        if (override != null && !override.toString().isBlank()) {
+            solarPanelStatus = override.toString();
+            // The override replaces the incident-derived status, so the incident-derived timestamp no
+            // longer describes it. Keep it only while the override still says non-functional.
+            if (!IncidentStatusDao.NON_FUNCTIONAL.equals(solarPanelStatus)) {
+                nonFunctionalTimestamp = null;
+            }
+        }
+
+        builder.solarPanelStatus(solarPanelStatus);
+        builder.nonFunctionalTimestamp(nonFunctionalTimestamp);
     }
 
     /**
@@ -189,14 +234,18 @@ public class FacilityKibanaMapper {
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
         }
-        if (StringUtils.isNotBlank(facility.getMappedVendorName())) {
-            existingDoc.setMappedVendorName(facility.getMappedVendorName());
-            log.info("Updated Kibana field mappedVendorName for facilityId={}", facility.getFacilityId());
+        existingDoc.setMappedVendorName(facility.getMappedVendorName());
+        existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+        log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
+                facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
+        if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {
+            existingDoc.setSolutionDesignType(facility.getFacilityDetails().getSolarSolutionDesignType().name());
         }
-        if (StringUtils.isNotBlank(facility.getMappedVendorUserName())) {
-            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
-            log.info("Updated Kibana field mappedVendorUserName for facilityId={}", facility.getFacilityId());
-        }
+        // AMC fields need no handling here: existingDoc was deserialized from the indexed document, so
+        // it already carries them and they round-trip untouched.
+        // Refresh projectName from the project service; keep the already-indexed value when the
+        // lookup yields nothing so it is never lost on a re-index.
+        existingDoc.setProjectName(resolveProjectName(facility, requestInfo, existingDoc.getProjectName()));
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
                 facility.getFacilityId(), facility.getTenantId());
@@ -228,9 +277,27 @@ public class FacilityKibanaMapper {
         }
 
         existingDoc.setCode(trimmedCode);
+        existingDoc.setProjectName(resolveProjectName(facility, effectiveInfo, existingDoc.getProjectName()));
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Patched Kibana code for facilityId={} tenantId={}", facility.getFacilityId(), facility.getTenantId());
         return existingDoc;
+    }
+
+    /**
+     * Resolves the project name for a facility from the project service. Falls back to
+     * {@code existingProjectName} (the value already in the index) when the lookup yields
+     * nothing, so an existing projectName is never lost on a full-document re-index.
+     */
+    private String resolveProjectName(Facility facility, RequestInfo requestInfo, String existingProjectName) {
+        if (facility == null || facility.getFacilityId() == null || facility.getFacilityId().isBlank()) {
+            return existingProjectName;
+        }
+        String fetched = facilityProjectClient.fetchProjectName(
+                requestInfo, facility.getTenantId(), facility.getFacilityId());
+        if (fetched != null && !fetched.isBlank()) {
+            return fetched;
+        }
+        return existingProjectName;
     }
 
     /**
@@ -271,8 +338,125 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * The boundary relationship API returns hierarchical codes (e.g. {@code India_Nagaland_Zunheboto}).
-     * Indexed documents expect the display fragment (e.g. Nagaland, Zunheboto) like legacy rows.
+     * Resolves a human-readable boundary label via egov-localization ({@code Boundary_{code}}).
+     * Falls back to the last hierarchy segment when localization is missing or unavailable.
+     */
+    private String resolveBoundaryDisplayLabel(String boundaryCode, Map<String, String> labels) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return null;
+        }
+        String localizationCode = toLocalizationCode(boundaryCode);
+        if (labels != null) {
+            String localized = labels.get(localizationCode);
+            if (localized != null && !localized.isBlank()) {
+                return localized;
+            }
+        }
+        return boundaryHierarchyCodeToDisplayLabel(boundaryCode);
+    }
+
+    private Map<String, String> fetchBoundaryDisplayLabels(RequestInfo requestInfo, String... boundaryCodes) {
+        List<String> localizationCodes = new ArrayList<>();
+        for (String code : boundaryCodes) {
+            if (code != null && !code.isBlank()) {
+                localizationCodes.add(toLocalizationCode(code));
+            }
+        }
+        if (localizationCodes.isEmpty()) {
+            return Map.of();
+        }
+
+        String searchUrl = buildLocalizationSearchUrl();
+        if (searchUrl == null || searchUrl.isBlank()) {
+            log.warn("Localization search URL not configured; using code fragment fallback for boundaries");
+            return Map.of();
+        }
+
+        String url = UriComponentsBuilder.fromHttpUrl(searchUrl)
+                .queryParam("tenantId", LOCALIZATION_TENANT_ID)
+                .queryParam("module", LOCALIZATION_MODULE)
+                .queryParam("locale", LOCALIZATION_LOCALE)
+                .queryParam("codes", String.join(",", localizationCodes))
+                .build()
+                .toUriString();
+
+        Map<String, Object> body = new HashMap<>();
+        if (requestInfo != null) {
+            body.put("RequestInfo", requestInfo);
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url, HttpMethod.POST, new HttpEntity<>(body.isEmpty() ? null : body, headers), String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("Localization search returned no labels for codes={}", localizationCodes);
+                return Map.of();
+            }
+            return parseLocalizationMessages(response.getBody());
+        } catch (Exception e) {
+            log.warn("Localization search failed for boundary codes {}: {}", localizationCodes, e.getMessage());
+            return Map.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> parseLocalizationMessages(String responseBody) {
+        Map<String, String> result = new HashMap<>();
+        try {
+            Map<String, Object> root = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
+            Object messagesObj = root.get("messages");
+            if (!(messagesObj instanceof List)) {
+                return result;
+            }
+            for (Object messageObj : (List<?>) messagesObj) {
+                if (!(messageObj instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> message = (Map<String, Object>) messageObj;
+                String code = (String) message.get("code");
+                String text = (String) message.get("message");
+                if (code != null && !code.isBlank() && text != null && !text.isBlank()) {
+                    result.put(code, text);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse localization response: {}", e.getMessage());
+        }
+        return result;
+    }
+
+    private String buildLocalizationSearchUrl() {
+        String host = configs.getLocalizationHost();
+        String contextPath = configs.getLocalizationContextPath();
+        String searchEndpoint = configs.getLocalizationSearchEndpoint();
+        if (host == null || host.isBlank() || contextPath == null || contextPath.isBlank()
+                || searchEndpoint == null || searchEndpoint.isBlank()) {
+            return null;
+        }
+        return host + contextPath + searchEndpoint;
+    }
+
+    private static String toLocalizationCode(String boundaryCode) {
+        if (boundaryCode.startsWith("Boundary_")) {
+            return boundaryCode;
+        }
+        return "Boundary_" + boundaryCode;
+    }
+
+    /**
+     * Fallback when localization is unavailable: last segment of private static String boundaryHierarchyCodeToDisplayLabel(String boundaryCode) {
+     if (boundaryCode == null || boundaryCode.isBlank()) {
+     return null;
+     }
+     int i = boundaryCode.lastIndexOf('_');
+     if (i < 0) {
+     return boundaryCode;
+     }
+     return boundaryCode.substring(i + 1);
+     }the hierarchy code (spaces not restored).
      */
     private static String boundaryHierarchyCodeToDisplayLabel(String boundaryCode) {
         if (boundaryCode == null || boundaryCode.isBlank()) {
@@ -344,7 +528,9 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * Fetches boundary hierarchy from boundary service and extracts codes by boundary type
+     * Fetches boundary hierarchy from boundary service and extracts codes by boundary type.
+     * When the Facility relationship is not yet persisted (async Kafka create), falls back to the
+     * parent block code which is already present in boundary_relationship.
      */
     private BoundaryCodes fetchBoundaryHierarchy(Facility facility, RequestInfo requestInfo) {
         if (facility.getBoundaryCode() == null || facility.getTenantId() == null) {
@@ -353,31 +539,98 @@ public class FacilityKibanaMapper {
         }
 
         try {
-            // Boundary service expects a standard RequestInfo wrapper as body
-            Map<String, Object> requestBody =
-                    requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+            BoundaryCodes codes = fetchBoundaryHierarchyForCode(
+                    facility.getTenantId(),
+                    facility.getBoundaryCode(),
+                    "Facility",
+                    requestInfo
+            );
 
-            // Build URI with query parameters
-            String uri = UriComponentsBuilder.fromUriString(boundaryHost)
-                    .path(boundaryRelationshipSearchPath)
-                    .queryParam("tenantId", facility.getTenantId())
-                    .queryParam("includeParents", true)
-                    .queryParam("includeChildren", false)
-                    .queryParam("codes", facility.getBoundaryCode())
-                    .toUriString();
+            if (!hasParentHierarchy(codes)) {
+                String blockBoundaryCode = deriveBlockBoundaryCode(
+                        facility.getBoundaryCode(), facility.getFacilityId());
+                if (blockBoundaryCode != null) {
+                    log.info(
+                            "Parent hierarchy missing for facility {}; resolving via block boundary {}",
+                            facility.getFacilityId(), blockBoundaryCode
+                    );
+                    BoundaryCodes blockHierarchy = fetchBoundaryHierarchyForCode(
+                            facility.getTenantId(),
+                            blockBoundaryCode,
+                            "Block",
+                            requestInfo
+                    );
+                    codes = mergeBoundaryCodes(blockHierarchy, codes, facility);
+                }
+            } else if (codes.getFacilityCode() == null) {
+                codes.setFacilityCode(facility.getBoundaryCode());
+            }
 
-            // Call boundary service
-            Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
-            Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
-
-            // Parse response and extract codes
-            return parseBoundaryHierarchy(response);
-
+            return codes;
         } catch (Exception e) {
-            log.error("Error fetching boundary hierarchy for facility {}: {}", 
-                     facility.getFacilityId(), e.getMessage(), e);
+            log.error("Error fetching boundary hierarchy for facility {}: {}",
+                    facility.getFacilityId(), e.getMessage(), e);
             return null;
         }
+    }
+
+    private BoundaryCodes fetchBoundaryHierarchyForCode(
+            String tenantId,
+            String boundaryCode,
+            String boundaryType,
+            RequestInfo requestInfo
+    ) {
+        Map<String, Object> requestBody =
+                requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+
+        String uri = UriComponentsBuilder.fromUriString(boundaryHost)
+                .path(boundaryRelationshipSearchPath)
+                .queryParam("tenantId", tenantId)
+                .queryParam("hierarchyType", configs.getBoundaryHierarchyType())
+                .queryParam("boundaryType", boundaryType)
+                .queryParam("includeParents", true)
+                .queryParam("includeChildren", false)
+                .queryParam("codes", boundaryCode)
+                .toUriString();
+
+        Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
+        Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
+        return parseBoundaryHierarchy(response);
+    }
+
+    private static boolean hasParentHierarchy(BoundaryCodes codes) {
+        return codes != null && codes.getBlockCode() != null && !codes.getBlockCode().isBlank();
+    }
+
+    private static String deriveBlockBoundaryCode(String facilityBoundaryCode, String facilityId) {
+        if (facilityBoundaryCode == null || facilityId == null) {
+            return null;
+        }
+        String suffix = "_" + facilityId;
+        if (!facilityBoundaryCode.endsWith(suffix)) {
+            return null;
+        }
+        return facilityBoundaryCode.substring(0, facilityBoundaryCode.length() - suffix.length());
+    }
+
+    private static BoundaryCodes mergeBoundaryCodes(
+            BoundaryCodes fromBlock,
+            BoundaryCodes fromFacility,
+            Facility facility
+    ) {
+        BoundaryCodes merged = new BoundaryCodes();
+        if (fromBlock != null) {
+            merged.setCountryCode(fromBlock.getCountryCode());
+            merged.setStateCode(fromBlock.getStateCode());
+            merged.setDistrictCode(fromBlock.getDistrictCode());
+            merged.setBlockCode(fromBlock.getBlockCode());
+        }
+        if (fromFacility != null && fromFacility.getFacilityCode() != null) {
+            merged.setFacilityCode(fromFacility.getFacilityCode());
+        } else if (facility.getBoundaryCode() != null) {
+            merged.setFacilityCode(facility.getBoundaryCode());
+        }
+        return merged;
     }
 
     /**
@@ -720,6 +973,260 @@ public class FacilityKibanaMapper {
             log.warn("Unable to fetch existing Kibana document for facility {} and tenant {}: {}",
                     facilityId, tenantId, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Deletes the Elasticsearch document(s) for a facility, matched by {@code Data.facilityId.keyword}
+     * (optionally scoped by tenant). Uses {@code _delete_by_query} so a missing document is a no-op.
+     *
+     * @return number of documents deleted, or {@code -1} when the delete call failed
+     */
+    @SuppressWarnings("unchecked")
+    public int deleteKibanaIndexByFacilityId(String facilityId, String tenantId) {
+        if (facilityId == null || facilityId.isBlank()) {
+            log.warn("Skipping Kibana delete: facilityId is null or blank");
+            return -1;
+        }
+
+        log.info("Deleting Kibana document(s) for facilityId={} tenantId={}", facilityId, tenantId);
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            Map<String, Object> deleteQuery = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses))
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_delete_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(deleteQuery, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> body = response != null ? response.getBody() : null;
+            int deleted = 0;
+            if (body != null && body.get("deleted") instanceof Number) {
+                deleted = ((Number) body.get("deleted")).intValue();
+            }
+            log.info("Deleted {} Kibana document(s) for facilityId={} tenantId={}", deleted, facilityId, tenantId);
+            return deleted;
+        } catch (Exception e) {
+            log.error("Unable to delete Kibana document for facility {} and tenant {}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
+        }
+    }
+
+    /** Lightweight view of an indexed facility, used by the projectName backfill. */
+    public static class IndexedFacilityRef {
+        private final String facilityId;
+        private final String tenantId;
+        private final String projectName;
+
+        public IndexedFacilityRef(String facilityId, String tenantId, String projectName) {
+            this.facilityId = facilityId;
+            this.tenantId = tenantId;
+            this.projectName = projectName;
+        }
+
+        public String getFacilityId() { return facilityId; }
+        public String getTenantId() { return tenantId; }
+        public String getProjectName() { return projectName; }
+    }
+
+    /**
+     * Scans every document in the health facility index (paginated via {@code search_after}) and
+     * returns a {@link IndexedFacilityRef} per document. Optionally filtered by tenant.
+     *
+     * @param tenantId when non-blank, only documents for this tenant are returned
+     * @param pageSize ES page size; defaults to 500 when non-positive
+     */
+    @SuppressWarnings("unchecked")
+    public List<IndexedFacilityRef> fetchAllIndexedFacilities(String tenantId, int pageSize) {
+        List<IndexedFacilityRef> all = new ArrayList<>();
+        int size = pageSize > 0 ? pageSize : 500;
+        String uri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH;
+        List<Object> searchAfter = null;
+
+        try {
+            while (true) {
+                Map<String, Object> query = new LinkedHashMap<>();
+                query.put("size", size);
+                if (tenantId != null && !tenantId.isBlank()) {
+                    query.put("query", Map.of("bool", Map.of("must", List.of(
+                            Map.of("term", Map.of("Data.tenantId.keyword", tenantId))))));
+                } else {
+                    query.put("query", Map.of("match_all", Map.of()));
+                }
+                query.put("sort", List.of(Map.of("Data.facilityId.keyword", Map.of("order", "asc"))));
+                if (searchAfter != null) {
+                    query.put("search_after", searchAfter);
+                }
+
+                HttpEntity<Object> entity = new HttpEntity<>(query, buildHeaders());
+                Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+                if (response == null) {
+                    break;
+                }
+                Object hitsObj = response.get("hits");
+                if (!(hitsObj instanceof Map)) {
+                    break;
+                }
+                Object hitListObj = ((Map<String, Object>) hitsObj).get("hits");
+                if (!(hitListObj instanceof List) || ((List<?>) hitListObj).isEmpty()) {
+                    break;
+                }
+
+                List<?> hitList = (List<?>) hitListObj;
+                for (Object hitObj : hitList) {
+                    if (!(hitObj instanceof Map)) {
+                        continue;
+                    }
+                    Map<String, Object> hit = (Map<String, Object>) hitObj;
+                    Object sortObj = hit.get("sort");
+                    if (sortObj instanceof List) {
+                        searchAfter = new ArrayList<>((List<Object>) sortObj);
+                    }
+                    Object sourceObj = hit.get("_source");
+                    if (!(sourceObj instanceof Map)) {
+                        continue;
+                    }
+                    Object dataObj = ((Map<String, Object>) sourceObj).get("Data");
+                    if (!(dataObj instanceof Map)) {
+                        continue;
+                    }
+                    Map<String, Object> data = (Map<String, Object>) dataObj;
+                    String facilityId = (String) data.get("facilityId");
+                    if (facilityId == null || facilityId.isBlank()) {
+                        continue;
+                    }
+                    all.add(new IndexedFacilityRef(
+                            facilityId,
+                            (String) data.get("tenantId"),
+                            (String) data.get("projectName")));
+                }
+
+                if (hitList.size() < size) {
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed while scanning health facility index for projectName backfill: {}", e.getMessage(), e);
+        }
+        log.info("Scanned {} indexed facilities (tenantId={})", all.size(), tenantId);
+        return all;
+    }
+
+    /**
+     * Sets {@code Data.projectName} on the indexed document(s) for a facility via
+     * {@code _update_by_query} (partial update — all other fields are left untouched).
+     *
+     * @return number of documents updated, or {@code -1} when the update call failed
+     */
+    @SuppressWarnings("unchecked")
+    public int updateProjectNameByFacilityId(String facilityId, String tenantId, String projectName) {
+        if (facilityId == null || facilityId.isBlank()) {
+            return -1;
+        }
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            Map<String, Object> body = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses)),
+                    "script", Map.of(
+                            "source", "ctx._source.Data.projectName = params.projectName",
+                            "lang", "painless",
+                            "params", Collections.singletonMap("projectName", projectName))
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_update_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(body, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> respBody = response != null ? response.getBody() : null;
+            int updated = 0;
+            if (respBody != null && respBody.get("updated") instanceof Number) {
+                updated = ((Number) respBody.get("updated")).intValue();
+            }
+            return updated;
+        } catch (Exception e) {
+            log.error("Unable to update projectName for facilityId={} tenantId={}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
+        }
+    }
+
+    /**
+     * Writes AMC fields onto the indexed document(s) for a facility via {@code _update_by_query},
+     * touching nothing else. This is deliberately index-only: AMC data belongs to
+     * amc-scheduler-service and is <em>not</em> persisted in the facility table, so it never goes
+     * through the facility {@code _update} API (whose payload the persister would write to
+     * {@code additional_details}) nor through the indexer Kafka topic.
+     *
+     * <p>Keys mapped to {@code null} are written as null, which is how a cleared AMC or a shortened
+     * cadence clears the previously indexed value instead of leaving an orphan behind.
+     *
+     * <p>{@code _update_by_query} only touches documents that already exist: a facility that is not
+     * indexed yet (e.g. not ONM-ready) is a no-op, reported as 0 updated.
+     *
+     * @return number of documents updated, or {@code -1} when the update call failed
+     */
+    public int updateAmcFieldsByFacilityId(String facilityId, String tenantId, Map<String, Object> amcFields) {
+        if (facilityId == null || facilityId.isBlank()) {
+            log.warn("Skipping AMC index update: facilityId is null or blank");
+            return -1;
+        }
+        if (amcFields == null || amcFields.isEmpty()) {
+            log.debug("Skipping AMC index update for facilityId={}: no fields supplied", facilityId);
+            return 0;
+        }
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            // HashMap, not Map.of: the values are intentionally nullable.
+            Map<String, Object> params = new HashMap<>();
+            params.put("amcFields", amcFields);
+
+            Map<String, Object> body = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses)),
+                    "script", Map.of(
+                            "source", "if (ctx._source.Data == null) { ctx._source.Data = [:]; } "
+                                    + "for (entry in params.amcFields.entrySet()) { "
+                                    + "ctx._source.Data[entry.getKey()] = entry.getValue(); }",
+                            "lang", "painless",
+                            "params", params)
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_update_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(body, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> respBody = response != null ? response.getBody() : null;
+            int updated = 0;
+            if (respBody != null && respBody.get("updated") instanceof Number) {
+                updated = ((Number) respBody.get("updated")).intValue();
+            }
+            if (updated == 0) {
+                log.info("AMC index update matched no document for facilityId={} tenantId={} "
+                        + "(facility not indexed yet?)", facilityId, tenantId);
+            } else {
+                log.info("Updated AMC fields on {} indexed document(s) for facilityId={}", updated, facilityId);
+            }
+            return updated;
+        } catch (Exception e) {
+            log.error("Unable to update AMC fields for facilityId={} tenantId={}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
         }
     }
 }

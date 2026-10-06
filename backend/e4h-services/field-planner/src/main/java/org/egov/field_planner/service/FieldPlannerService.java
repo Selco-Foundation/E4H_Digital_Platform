@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.core.AdditionalFields;
+import org.egov.common.models.core.Field;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
@@ -48,6 +50,10 @@ public class FieldPlannerService {
 
     private final FieldPlannerFacilityService facilityService;
 
+    private final FieldPlanTemplateService fieldPlanTemplateService;
+
+    private final FieldPlannerAnalyticsService fieldPlannerAnalyticsService;
+
     @Autowired
     @Qualifier("objectMapper")
     ObjectMapper mapper;
@@ -56,7 +62,8 @@ public class FieldPlannerService {
     public FieldPlannerService(
             FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators, FieldPlannerFacilityService facilityService,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
-            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository) {
+            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository,
+            FieldPlanTemplateService fieldPlanTemplateService, FieldPlannerAnalyticsService fieldPlannerAnalyticsService) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -67,113 +74,128 @@ public class FieldPlannerService {
             this.fieldPlanServiceUtil = fieldPlanServiceUtil;
             this.serviceRequestRepository = serviceRequestRepository;
             this.facilityService = facilityService;
+            this.fieldPlanTemplateService = fieldPlanTemplateService;
+            this.fieldPlannerAnalyticsService = fieldPlannerAnalyticsService;
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
         log.trace("Entering createFieldPlan method");
-        log.info("Starting field plan creation request");
+        log.info("Starting installation plan creation request");
 
         fieldPlannerValidator.validateCreateFieldPlanRequest(fieldPlanRequest);
-        log.debug("Field plan creation request validated successfully");
+        log.debug("Installation plan creation request validated successfully");
 
         for (FieldPlan fieldPlan : fieldPlanRequest.getFieldPlans()) {
-            log.trace("Processing field plan for tenant: {}", fieldPlan.getTenantId());
+            log.trace("Processing installation plan for tenant: {}", fieldPlan.getTenantId());
 
             String baseName = getStateActivitiesYearFormat(fieldPlanRequest, fieldPlan.getTenantId(), fieldPlan);
 //            String baseName = "KA-MT_HO-2024";
             if(baseName == null){
-                log.error("Cannot generate field plan name for tenant: {}", fieldPlan.getTenantId());
-                throw new CustomException("FORMAT ERROR", "Cannot generate the fieldplan name");
+                log.error("Cannot generate installation plan name for tenant: {}", fieldPlan.getTenantId());
+                throw new CustomException("FORMAT ERROR", "Cannot generate the installation plan name");
             }
-            log.debug("Generated base name for field plan: {}", baseName);
+            log.debug("Generated base name for installation plan: {}", baseName);
 
             fieldPlan.setName(baseName);
             NameResult result = CheckDuplicateAndGenerateName(fieldPlan);
             if (result.isDuplicate()) {
                 fieldPlan.setIsDuplicate(true);
                 fieldPlan.setName(result.getGeneratedName());
-                log.info("Duplicate field plan name found, using generated name: {}", result.getGeneratedName());
+                log.info("Duplicate installation plan name found, using generated name: {}", result.getGeneratedName());
             } else {
                 log.debug("No duplicate found, using base name: {}", result.getGeneratedName());
             }
 
             fieldPlannerEnrichment.enrichFieldPlanOnCreate(fieldPlan, fieldPlanRequest.getRequestInfo());
-            log.info("Field plan enriched with ID: {} and audit details", fieldPlan.getId());
+            log.info("Installation plan enriched with ID: {} and audit details", fieldPlan.getId());
 
             producer.push(fieldPlannerConfiguration.getSaveFieldPlanTopic(), fieldPlanRequest);
-            log.info("Field plan creation request pushed to Kafka topic: {}", fieldPlannerConfiguration.getSaveFieldPlanTopic());
+            log.info("Installation plan creation request pushed to Kafka topic: {}", fieldPlannerConfiguration.getSaveFieldPlanTopic());
         }
 
-        log.info("Field plan creation request processed successfully");
+        // One FIELD_PLAN_CREATE event per plan, after the persister push so a rejected create
+        // publishes nothing. Outside the loop because the loop pushes the whole request each pass
+        // (best-effort, never throws).
+        fieldPlannerAnalyticsService.publishCreateEvents(fieldPlanRequest);
+
+        log.info("Installation plan creation request processed successfully");
         log.trace("Exiting createFieldPlan method");
         return fieldPlanRequest;
     }
 
     public FieldPlanRequest updateFieldPlan(FieldPlanRequest request) {
         log.trace("Entering updateFieldPlan method");
-        log.info("Starting field plan update request");
+        log.info("Starting installation plan update request");
 
         /*
          * Validate the update fieldPlan request
          */
         fieldPlannerValidator.validateUpdateFieldPlanRequest(request);
-        log.debug("Field plan update request validated successfully");
+        log.debug("Installation plan update request validated successfully");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
         List<FieldPlan> fieldPlansFromDB = searchFieldPlan(
                 getSearchFieldPlanRequest(request.getFieldPlans(), request.getRequestInfo()),
                 fieldPlannerConfiguration.getMaxLimit(), fieldPlannerConfiguration.getDefaultOffset(),
                 request.getFieldPlans().get(0).getTenantId(), false, null, null, null);
-        log.info("Fetched {} field plans from database for update", fieldPlansFromDB.size());
+        log.info("Fetched {} installation plans from database for update", fieldPlansFromDB.size());
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         fieldPlannerValidator.validateUpdateAgainstDB(request.getFieldPlans(), fieldPlansFromDB);
-        log.debug("Field plan update request validated against database records");
+        log.debug("Installation plan update request validated against database records");
 
         /*
          * Process each fieldPlan in the update request
          */
         for (FieldPlan fieldPlan : request.getFieldPlans()) {
-            log.trace("Processing update for field plan ID: {}", fieldPlan.getId());
+            log.trace("Processing update for installation plan ID: {}", fieldPlan.getId());
             processFieldPlanUpdate(request, fieldPlan, fieldPlansFromDB);
         }
 
-        log.info("Field plan update request processed successfully");
+        log.info("Installation plan update request processed successfully");
         log.trace("Exiting updateFieldPlan method");
         return request;
     }
 
     public Integer countAllFieldPlans(FieldPlanSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         log.trace("Entering countAllFieldPlans method");
-        log.debug("Counting field plans for tenant: {}", tenantId);
+        log.debug("Counting installation plans for tenant: {}", tenantId);
         Integer count = fieldPlannerRepository.getFieldPlanCount(request, tenantId, lastChangedSince, includeDeleted);
-        log.debug("Field plan count: {}", count);
+        log.debug("Installation plan count: {}", count);
         log.trace("Exiting countAllFieldPlans method");
         return count;
     }
 
     public NameResult CheckDuplicateAndGenerateName(FieldPlan fieldPlan) {
-        log.trace("Entering CheckDuplicateAndGenerateName method for field plan");
+        log.trace("Entering CheckDuplicateAndGenerateName method for installation plan");
         boolean isDuplicate = false;
         String baseName = fieldPlan.getName();
         String generatedName = baseName;
+        log.debug("Checking for duplicate name with base name: {}", baseName);
+
         List<FieldPlan> fieldPlans = fieldPlannerRepository.getHighestFielPlanName(fieldPlan);
         if (fieldPlans!=null && !fieldPlans.isEmpty()){
             FieldPlan fieldPlanDB = fieldPlans.get(0);
             isDuplicate = true;
             int nextSuffix = extractAndIncrementSuffix(fieldPlanDB.getName(), baseName);
             generatedName = baseName+ "-" + nextSuffix;
+            log.debug("Duplicate found, generated name with suffix: {}", generatedName);
+        } else {
+            log.debug("No duplicate found, using base name");
         }
 
+        log.trace("Exiting CheckDuplicateAndGenerateName method");
         return new NameResult(isDuplicate, generatedName);
     }
 
     private int extractAndIncrementSuffix(String existingName, String baseName) {
+        log.trace("Entering extractAndIncrementSuffix method");
         if (existingName == null || !existingName.startsWith(baseName)) {
+            log.debug("Existing name does not start with base name, returning suffix 1");
             return 1;
         }
 
@@ -188,16 +210,21 @@ public class FieldPlannerService {
 
             // Parse the suffix number
             int currentSuffix = Integer.parseInt(suffixPart);
-            return currentSuffix + 1;
+            int nextSuffix = currentSuffix + 1;
+            log.debug("Extracted suffix: {}, next suffix: {}", currentSuffix, nextSuffix);
+            log.trace("Exiting extractAndIncrementSuffix method");
+            return nextSuffix;
 
         } catch (NumberFormatException e) {
-            log.warn("Could not parse suffix from existing name: {}", existingName);
+            log.warn("Could not parse suffix from existing name: {}, defaulting to suffix 1", existingName);
             return 1;
         }
     }
 
     private String getStateActivitiesYearFormat(FieldPlanRequest request, String tenantId, FieldPlan fieldPlan) {
-        //Get MDMS data using create fieldPlan request and tenantId
+        log.trace("Entering getStateActivitiesYearFormat method");
+        log.debug("Generating installation plan name format for tenant: {}", tenantId);
+
         Object mdmsData = mdmsUtils.mDMSCall(request, tenantId);
         String mdmsRes = "$.MdmsRes.";
         final String jsonPathForActivities = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ACTIVITIES;
@@ -230,40 +257,36 @@ public class FieldPlannerService {
             concatenatedActivityCode = activities.stream()
                     .map(activity -> (String) activity.get("code"))
                     .collect(Collectors.joining("_"));
+            log.debug("Concatenated activity codes: {}", concatenatedActivityCode);
 
             LocalDateTime endDate = LocalDateTime.ofInstant(
                     Instant.ofEpochMilli(fieldPlan.getEndDate()),
                     ZoneId.systemDefault()
             );
             int endYear = endDate.getYear();
+            log.debug("Extracted end year: {}", endYear);
 
             baseName = String.format("%s-%s-%s", stateCode, concatenatedActivityCode, endYear);
-//
-//            for (Object map : activitiesRes) {
-//                LinkedHashMap<String, Object> activity = (LinkedHashMap<String, Object>) map;
-//                String name = (String) activity.get("name");
-//                if (state.equalsIgnoreCase(name)) {
-//                    stateCode = (String) activity.get("code");
-//                    break; // on s’arrête dès qu’on trouve
-//                }
-//            }
+            log.debug("Generated base name: {}", baseName);
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Error generating installation plan name format for tenant: {}", tenantId, e);
             throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
         }
 
-
+        log.trace("Exiting getStateActivitiesYearFormat method");
         return baseName;
     }
 
     /**
-     * Checks if any data that affects field plan name generation has changed
+     * Checks if any data that affects installation plan name generation has changed
      * Name is affected by: endDate, activity, address.boundary (state)
      */
     private boolean hasNameAffectingDataChanged(FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
+        log.trace("Entering hasNameAffectingDataChanged method for installation plan ID: {}", fieldPlan.getId());
         // Check if end date changed
         if (!Objects.equals(fieldPlan.getEndDate(), fieldPlanFromDB.getEndDate())) {
-            log.info("End date changed for field plan: {} - name regeneration needed", fieldPlan.getId());
+            log.info("End date changed for installation plan: {} - name regeneration needed", fieldPlan.getId());
+            log.trace("Exiting hasNameAffectingDataChanged method");
             return true;
         }
 
@@ -271,24 +294,27 @@ public class FieldPlannerService {
         List<Map<String, Object>> currentActivities = fieldPlan.getActivities() != null ? fieldPlan.getActivities() : null;
         List<Map<String, Object>> existingActivities = fieldPlanFromDB.getActivities() != null ? fieldPlanFromDB.getActivities() : null;
         if (!Objects.equals(currentActivities, existingActivities)) {
-            log.info("Activity list changed for field plan: {} - name regeneration needed", fieldPlan.getId());
+            log.info("Activity list changed for installation plan: {} - name regeneration needed", fieldPlan.getId());
+            log.trace("Exiting hasNameAffectingDataChanged method");
             return true;
         }
 
-        log.info("No name-affecting data changed for field plan: {}", fieldPlan.getId());
+        log.info("No name-affecting data changed for installation plan: {}", fieldPlan.getId());
+        log.trace("Exiting hasNameAffectingDataChanged method");
         return false;
     }
 
     /**
-     * Handles fieldPlan name regeneration during updates
+     * Handles installation plan name regeneration during updates
      * Compares the new base name with existing name and updates if different
      */
     private void handleFieldPlanNameUpdate(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
+        log.trace("Entering handleFieldPlanNameUpdate method for installation plan ID: {}", fieldPlan.getId());
         try {
 
             // Check if name-affecting data has changed
             if (!hasNameAffectingDataChanged(fieldPlan, fieldPlanFromDB)) {
-                log.info("No name-affecting data changed for field plan: {}, keeping existing name: {}",
+                log.info("No name-affecting data changed for installation plan: {}, keeping existing name: {}",
                         fieldPlan.getId(), fieldPlanFromDB.getName());
                 return;
             }
@@ -296,42 +322,45 @@ public class FieldPlannerService {
             String newBaseName = getStateActivitiesYearFormat(request, fieldPlan.getTenantId(), fieldPlan);
 //            String baseName = "KA-MT_HO-2024";
             if(newBaseName == null){
-                throw new CustomException("FORMAT ERROR", "Cannot generate the fieldplan name");
+                throw new CustomException("FORMAT ERROR", "Cannot generate the installation plan name");
             };
 
             String existingName = fieldPlanFromDB.getName();
             // Extract base name from existing name (remove any suffix like -1, -2, etc.)
             String existingBaseName = removeLastSuffix(existingName);
             if (newBaseName.equals(existingBaseName)) {
-                log.info("FieldPlan name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
+                log.info("Installation Plan name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
                 return;
             }
 
-            log.info("FieldPlan name needs update. Existing: {}, New: {}", existingName, newBaseName);
+            log.info("Installation Plan name needs update. Existing: {}, New: {}", existingName, newBaseName);
             fieldPlan.setName(newBaseName);
             NameResult result = CheckDuplicateAndGenerateName(fieldPlan);
             if (result.isDuplicate()) {
                 fieldPlan.setIsDuplicate(true);
                 fieldPlan.setName(result.getGeneratedName());
-                log.info("Duplicate found. Using generated name: " + result.getGeneratedName());
-//                return fieldPlanRequest;
+                log.info("Duplicate found, using generated name: {}", result.getGeneratedName());
             } else {
-                log.info("No duplicate. Name is: " + result.getGeneratedName());
+                log.debug("No duplicate found, using base name: {}", result.getGeneratedName());
             }
 
         } catch (Exception e) {
-            log.error("Error handling fieldPlan name update for fieldPlan: {}", fieldPlan.getId(), e);
+            log.error("Error handling installation plan name update for installation plan ID: {}", fieldPlan.getId(), e);
             // Don't throw exception - continue with update even if name generation fails
         }
+        log.trace("Exiting handleFieldPlanNameUpdate method");
     }
 
     public static String removeLastSuffix(String code) {
+        log.trace("Entering removeLastSuffix method");
         if (code == null || code.isEmpty()) {
+            log.debug("Code is null or empty, returning as is");
             return code;
         }
 
         int lastDash = code.lastIndexOf('-');
         if (lastDash == -1) {
+            log.debug("No dash found in code, returning as is");
             return code; // pas de tiret donc rien à enlever
         }
 
@@ -339,31 +368,48 @@ public class FieldPlannerService {
 
         // Vérifie si le suffixe est numérique OU alphanumérique
         if (suffix.matches("[A-Za-z0-9]+")) {
-            return code.substring(0, lastDash); // enlève le suffixe
+            String result = code.substring(0, lastDash);
+            log.debug("Removed suffix: {} from code: {}, result: {}", suffix, code, result);
+            log.trace("Exiting removeLastSuffix method");
+            return result; // enlève le suffixe
         }
 
+        log.debug("Suffix does not match pattern, returning original code");
+        log.trace("Exiting removeLastSuffix method");
         return code; // si le suffixe contient autre chose, on garde
     }
 
-    /* Construct FieldPlan Request object for search which contains fieldplan id and tenantId */
+    /* Construct Installation Plan Request object for search which contains installation plan id and tenantId */
     private FieldPlanSearchRequest getSearchFieldPlanRequest(List<FieldPlan> fieldPlans, RequestInfo requestInfo) {
+        log.trace("Entering getSearchFieldPlanRequest method");
+        log.debug("Building search request for {} installation plans", fieldPlans.size());
         List<String> fieldPlanIds = fieldPlans.stream().map(FieldPlan::getId).toList();
         FieldPlanSearchCriteria criteria = FieldPlanSearchCriteria.builder().ids(fieldPlanIds).tenantId(fieldPlans.get(0).getTenantId()).build();
-        return FieldPlanSearchRequest.builder()
+        FieldPlanSearchRequest result = FieldPlanSearchRequest.builder()
                 .requestInfo(requestInfo)
                 .fieldPlan(criteria)
                 .build();
+        log.trace("Exiting getSearchFieldPlanRequest method");
+        return result;
     }
 
     public List<FieldPlan> searchFieldPlan(FieldPlanSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
+        log.trace("Entering searchFieldPlan method");
+        log.info("Starting installation plan search for tenant: {}", tenantId);
+
         fieldPlannerValidator.validateSearchFieldPlanRequest(request, limit, offset, tenantId, createdFrom, createdTo);
+        log.debug("Installation plan search request validated, limit: {}, offset: {}", limit, offset);
+
         List<FieldPlan> fieldPlanList = fieldPlannerRepository.getFieldPlans(request, limit, offset, tenantId, includeDeleted, lastChangedSince, createdFrom, createdTo);
+        log.info("Installation plan search completed, found {} results", fieldPlanList.size());
+        log.trace("Exiting searchFieldPlan method");
         return fieldPlanList;
     }
 
     private void processFieldPlanUpdate(FieldPlanRequest request, FieldPlan fieldPlan, List<FieldPlan> fieldPlansFromDB) {
+        log.trace("Entering processFieldPlanUpdate method for installation plan ID: {}", fieldPlan.getId());
         /*
-         * Convert fieldplan ID to string for comparison
+         * Convert installation plan ID to string for comparison
          */
         String fieldPlanId = String.valueOf(fieldPlan.getId());
 
@@ -372,6 +418,7 @@ public class FieldPlannerService {
          */
         FieldPlan fielPlanFromDB = findFieldPlanById(fieldPlanId, fieldPlansFromDB);
         boolean isCascadingFieldPlanDateUpdate = request.isCascadingFieldPlanDateUpdate();
+        log.debug("Cascading installation plan date update: {}", isCascadingFieldPlanDateUpdate);
 
         if (fielPlanFromDB != null) {
             /*
@@ -383,17 +430,30 @@ public class FieldPlannerService {
              * Merge additional details of the fieldPlan from the request and fieldPlan from DB
              */
             fieldPlanServiceUtil.mergeAdditionalDetails(fieldPlan, fielPlanFromDB);
+            log.debug("Merged additional details for installation plan ID: {}", fieldPlanId);
 
             /*
-             * Handle cases where cascading fieldPlan date update is true
+             * Handle cases where cascading installation plan date update is true
              */
             if (isCascadingFieldPlanDateUpdate) {
+                log.info("Processing cascading installation plan date update for installation plan ID: {}", fieldPlanId);
+                // Read before the update: analytics only tracks the update that schedules the plan,
+                // so it needs the status the plan came from to ignore the DRAFT edits before it.
+                String priorStatus = fielPlanFromDB.getStatus();
                 handleUpdateFieldPlan(request, fieldPlan, fielPlanFromDB);
+                // Only reached once the update has been pushed to the persister — a plan that failed
+                // validation above threw and never gets here (best-effort, never throws).
+                fieldPlannerAnalyticsService.publishScheduledEvent(request.getRequestInfo(), fieldPlan,
+                        fielPlanFromDB, priorStatus);
             }
+        } else {
+            log.warn("Installation plan not found in database for ID: {}", fieldPlanId);
         }
+        log.trace("Exiting processFieldPlanUpdate method");
     }
 
     private void handleUpdateFieldPlan(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
+        log.trace("Entering handleUpdateFieldPlan method for installation plan ID: {}", fieldPlan.getId());
         /*
          * Save original values of start date, end date, and additional details
          */
@@ -419,7 +479,7 @@ public class FieldPlannerService {
         if (!isValidCascadingUpdate(fieldPlanFromDB, fieldPlan)) {
             throw new CustomException(
                     "FIELDPLANE_CASCADE_UPDATE_ERROR",
-                    "Can only update FieldPlan dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Installation Plan dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 
@@ -437,35 +497,35 @@ public class FieldPlannerService {
          */
         fieldPlannerEnrichment.enrichFieldPlanRequestOnUpdate(fieldPlan, fieldPlanFromDB, request.getRequestInfo());
 
-        // If status equals to scheduled, so dont update the fieldplan name
+        // If status equals to scheduled, so dont update the installation plan name
         if(StringUtils.equals(fieldPlan.getStatus(), "SCHEDULED")){
             try {
-                // Check if INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF is assigned and if at least one facility is linked to the fieldplan
+                // Check if INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF is assigned and if at least one facility is linked to the installation plan
                 if (fieldPlan == null) {
-                    log.error("Field Plan is mandatory");
-                    throw new CustomException("FIELDPLAN", "Field Plan is mandatory");
+                    log.error("Installation Plan is mandatory");
+                    throw new CustomException("FIELDPLAN", "Installation Plan is mandatory");
                 }
                 if (fieldPlan.getId() == null) {
-                    log.error("FieldPlan ID is mandatory");
-                    throw new CustomException("FIELDPLAN", "FieldPlan ID");
+                    log.error("Installation Plan ID is mandatory");
+                    throw new CustomException("FIELDPLAN", "Installation Plan ID");
                 }
 
                 List<ActivityAssignment> activityAssignmentList = getFieldPlanActivityAssignment(request, fieldPlan);
                 if(activityAssignmentList==null || activityAssignmentList.isEmpty()){
-                    log.error("Activity Assignment is empty for the fieldplan");
-                    throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
+                    log.error("Activity Assignment is empty for the installation plan");
+                    throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the installation plan");
                 }
-                // Check if at least one INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF are already link to field plan
+                // Check if at least one INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF are already link to installation plan
                 if(!hasRequiredUsers(activityAssignmentList)){
-                    throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and FIELD_STAFF and FIELD_SUPERVISOR need to be assigned for the fieldplan");
+                    throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and FIELD_STAFF and FIELD_SUPERVISOR need to be assigned for the installation plan");
                 }
 
                 sendActivityAssignmentEmail(request, activityAssignmentList);
 
                 SearchResponse<FieldPlanFacility> fieldPlanFacilitySearchResponse = getFieldPlanFacilities(request, fieldPlan);
                 if(fieldPlanFacilitySearchResponse== null || fieldPlanFacilitySearchResponse.getResponse().isEmpty() || fieldPlanFacilitySearchResponse.getTotalCount()==0){
-                    log.error("No facility is linked to the fieldplan");
-                    throw new CustomException("FIELDPLAN", "No facility is linked to the fieldplan");
+                    log.error("No facility is linked to the installation plan");
+                    throw new CustomException("FIELDPLAN", "No facility is linked to the installation plan");
                 }
                 // Call facility activity create with bulk facility activity
                 List<FieldPlanFacility> fieldPlanFacilities = fieldPlanFacilitySearchResponse.getResponse();
@@ -479,7 +539,12 @@ public class FieldPlannerService {
                                     item -> (String) ((Map<String, Object>) item.getRole()).get("code"),
                                     Collectors.mapping(item -> (String) item.getAssignedTo(), Collectors.toList())
                             ));
+                    // Fetched once for the whole batch rather than once per facility/component -
+                    // asset-registry.BrandSchema doesn't change within a single scheduling run.
+                    Map<String, Map<String, String>> brandCodeByNameByAssetType =
+                            fetchBrandCodeByNameByAssetType(request.getRequestInfo());
                     for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
+                        Map<String, Object> additionalDetails = buildActivityFacilityAdditionalDetails(request, fieldPlanFacility, brandCodeByNameByAssetType);
                         for(Map<String, Object> activity : fieldPlan.getActivities()){
                             ActivityFacility activityFacility = ActivityFacility.builder()
                                     .tenantId("in")
@@ -491,6 +556,7 @@ public class FieldPlannerService {
                                     .reviewerUser(roleToIds.get(INSTALLATION_REVIEWER_ROLE))
                                     .fieldStaffUsers(roleToIds.get(FIELD_STAFF_ROLE))
                                     .fieldSupervisorUsers(roleToIds.get(FIELD_SUPERVISOR_ROLE))
+                                    .additionalDetails(additionalDetails)
                                     .build();
 
                             activityFacilities.add(activityFacility);
@@ -512,17 +578,183 @@ public class FieldPlannerService {
         handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
 
         /*
-         * Check and enrich cascading fieldPlan dates and push the update to the message broker
+         * Check and enrich cascading installation plan dates and push the update to the message broker
          */
+        log.debug("Pushing installation plan update to Kafka topic: {}", fieldPlannerConfiguration.getUpdateFieldPlanTopic());
         producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTopic(), request);
     }
 
+    /**
+     * Builds the additionalDetails for an ActivityFacility being created on SCHEDULED installation plan
+     * update: the matching FieldPlanTemplate's templateData (by fieldPlanId + systemType, the
+     * latter read from the FieldPlanFacility's own additionalFields) under key "bom", merged with
+     * the FieldPlanFacility's additionalFields themselves (facilityType/systemType/
+     * solarSolutionDesignType/totalSystemCapacity, as set at link time).
+     */
+    private Map<String, Object> buildActivityFacilityAdditionalDetails(
+            FieldPlanRequest request, FieldPlanFacility fieldPlanFacility, Map<String, Map<String, String>> brandCodeByNameByAssetType) {
+        log.trace("Entering buildActivityFacilityAdditionalDetails method for facility: {}", fieldPlanFacility.getFacilityId());
+        Map<String, Object> additionalDetails = new HashMap<>(extractAdditionalFieldsAsMap(fieldPlanFacility.getAdditionalFields()));
+
+        String systemType = (String) additionalDetails.get("systemType");
+        String totalSystemCapacity = (String) additionalDetails.get("totalSystemCapacity");
+        if (StringUtils.equalsIgnoreCase(totalSystemCapacity, "CUSTOM")) {
+            totalSystemCapacity = (String) additionalDetails.get("customTotalSystemCapacity");
+        }
+        if (StringUtils.isNotBlank(systemType)) {
+            FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType, totalSystemCapacity);
+            if (template != null && template.getTemplateData() != null) {
+                Map<String, Object> templateData = template.getTemplateData();
+                additionalDetails.put("bom", templateData);
+                additionalDetails.put("panel", buildBomComponent(templateData, "solar_module_capacity", "solar_module_make",
+                        brandCodeByNameByAssetType.getOrDefault("PANEL", Collections.emptyMap())));
+                additionalDetails.put("battery", buildBomComponent(templateData, "solar_battery_capacity", "solar_battery_make",
+                        brandCodeByNameByAssetType.getOrDefault("BATTERY", Collections.emptyMap())));
+                additionalDetails.put("inverter", buildInverterComponent(templateData,
+                        brandCodeByNameByAssetType.getOrDefault("INVERTER", Collections.emptyMap())));
+            } else {
+                log.warn("No FieldPlanTemplate found for fieldPlanId: {}, systemType: {}", fieldPlanFacility.getFieldPlanId(), systemType);
+            }
+        } else {
+            log.warn("FieldPlanFacility {} has no systemType in additionalFields - skipping BOM template lookup", fieldPlanFacility.getFacilityId());
+        }
+
+        log.trace("Exiting buildActivityFacilityAdditionalDetails method");
+        return additionalDetails;
+    }
+
+    // The BOM template's "inverter" component is named differently per system type - only one
+    // of these key pairs is ever present in a given templateData (each FieldPlanTemplate is
+    // generated from exactly one system type's template), so the first pair found wins:
+    //   - inverter_*: AC_OFF_GRID and AC_ON_GRID templates
+    //   - solar_hybrid_pcu_*: AC_HYBRID template
+    //   - solar_charge_controller_*: DC_OFF_GRID template (no dedicated inverter - CCU serves that role)
+    private static final List<String[]> INVERTER_KEY_CANDIDATES = List.of(
+            new String[]{"inverter_capacity", "inverter_make"},
+            new String[]{"solar_on_grid_pcu_inverter_capacity", "solar_on_grid_pcu_inverter_make"},
+            new String[]{"solar_hybrid_pcu_capacity", "solar_hybrid_pcu_make"},
+            new String[]{"solar_charge_controller_capacity", "solar_charge_controller_make"}
+    );
+
+    private Map<String, Object> buildInverterComponent(Map<String, Object> templateData, Map<String, String> inverterBrandCodeByName) {
+        for (String[] candidate : INVERTER_KEY_CANDIDATES) {
+            if (templateData.containsKey(candidate[0]) || templateData.containsKey(candidate[1])) {
+                return buildBomComponent(templateData, candidate[0], candidate[1], inverterBrandCodeByName);
+            }
+        }
+        return buildBomComponent(templateData, INVERTER_KEY_CANDIDATES.get(0)[0], INVERTER_KEY_CANDIDATES.get(0)[1], inverterBrandCodeByName);
+    }
+
+    private static final String BRAND_SCHEMA_CODE = "asset-registry.BrandSchema";
+
+    /**
+     * Fetches every active brand registered in MDMS asset-registry.BrandSchema, grouped by
+     * asset type (PANEL/BATTERY/INVERTER) and indexed by brand name -> brand code (e.g.
+     * PANEL: {"Gautam Solar" -> "GAUTAM_SOLAR", "ReNew" -> "RENEW", ...}). Returns an empty map
+     * (never throws) if MDMS can't be reached - brandCode then simply comes out null for every
+     * component rather than blocking the whole installation plan scheduling run.
+     */
+    private Map<String, Map<String, String>> fetchBrandCodeByNameByAssetType(RequestInfo requestInfo) {
+        Map<String, Map<String, String>> result = new HashMap<>();
+        try {
+            Map<String, Object> mdmsCriteria = new HashMap<>();
+            mdmsCriteria.put("tenantId", "in");
+            mdmsCriteria.put("schemaCode", BRAND_SCHEMA_CODE);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("RequestInfo", requestInfo);
+            payload.put("MdmsCriteria", mdmsCriteria);
+
+            String url = fieldPlannerConfiguration.getMdmsHost() + fieldPlannerConfiguration.getMdmsV2SearchEndpoint();
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), payload);
+            JsonNode mdmsArray = mapper.valueToTree(response).path("mdms");
+            for (JsonNode mdmsEntry : mdmsArray) {
+                for (JsonNode brand : mdmsEntry.path("data").path("Brand")) {
+                    if (brand.path("active").isBoolean() && !brand.path("active").asBoolean()) {
+                        continue;
+                    }
+                    String assetType = brand.path("asset_type_code").asText(null);
+                    String name = brand.path("name").asText(null);
+                    String code = brand.path("code").asText(null);
+                    if (assetType == null || name == null || code == null) {
+                        continue;
+                    }
+                    result.computeIfAbsent(assetType, k -> new HashMap<>()).put(name, code);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error fetching {} for brand code lookup", BRAND_SCHEMA_CODE, e);
+        }
+        return result;
+    }
+
+    /**
+     * Builds a {capacity, brandCode, brandName} component (panel/battery/inverter) from the
+     * FieldPlanTemplate's flat templateData: brandCode is looked up from MDMS
+     * asset-registry.BrandSchema by brand name (e.g. make "Gautam Solar" -> brandCode
+     * "GAUTAM_SOLAR"), not derived from the name text itself - null if the name isn't a
+     * registered brand for this asset type (shouldn't happen once /icc-reports' own brand name
+     * validation is in place, but this stays defensive for already-stored data predating it).
+     */
+    private Map<String, Object> buildBomComponent(
+            Map<String, Object> templateData, String capacityKey, String makeKey, Map<String, String> brandCodeByName) {
+        Object capacity = templateData.get(capacityKey);
+        Object make = templateData.get(makeKey);
+        Map<String, Object> component = new HashMap<>();
+        component.put("capacity", capacity);
+        component.put("brandCode", make != null ? brandCodeByName.get(make.toString()) : null);
+        component.put("brandName", make);
+        return component;
+    }
+
+    private Map<String, Object> extractAdditionalFieldsAsMap(AdditionalFields additionalFields) {
+        if (additionalFields == null || additionalFields.getFields() == null) {
+            return new HashMap<>();
+        }
+        Map<String, Object> result = new HashMap<>();
+        for (Field field : additionalFields.getFields()) {
+            if (field.getKey() != null) {
+                result.put(field.getKey(), field.getValue());
+            }
+        }
+        return result;
+    }
+
+    private FieldPlanTemplate findFieldPlanTemplate(FieldPlanRequest request, String fieldPlanId, String systemType, String totalSystemCapacity) {
+        try {
+            FieldPlanTemplateSearchCriteria criteria = FieldPlanTemplateSearchCriteria.builder()
+                    .fieldPlanId(List.of(fieldPlanId))
+                    .systemType(List.of(systemType))
+                    .totalCapacity(List.of(totalSystemCapacity))
+                    .build();
+            FieldPlanTemplateSearchRequest searchRequest = FieldPlanTemplateSearchRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .criteria(criteria)
+                    .build();
+            List<FieldPlanTemplate> templates = fieldPlanTemplateService.search(
+                    searchRequest,
+                    fieldPlannerConfiguration.getMaxLimit(),
+                    fieldPlannerConfiguration.getDefaultOffset(),
+                    "in",
+                    null
+            );
+            return (templates != null && !templates.isEmpty()) ? templates.get(0) : null;
+        } catch (Exception e) {
+            log.error("Error searching installation plan template for fieldPlanId: {}, systemType: {}", fieldPlanId, systemType, e);
+            return null;
+        }
+    }
+
     private boolean isValidCascadingUpdate(FieldPlan fieldPlanFromDB, FieldPlan fieldPlan) {
+        log.trace("Entering isValidCascadingUpdate method");
         // Check if only allowed fields are being updated
-        return Objects.equals(fieldPlanFromDB.getId(), fieldPlan.getId()) &&
+        boolean isValid = Objects.equals(fieldPlanFromDB.getId(), fieldPlan.getId()) &&
                 Objects.equals(fieldPlanFromDB.getTenantId(), fieldPlan.getTenantId()) &&
                 isValidGeographyDetailsUpdate(fieldPlanFromDB.getGeographyDetails(), fieldPlan.getGeographyDetails());
+        log.debug("Cascading update validation result: {}", isValid);
+        log.trace("Exiting isValidCascadingUpdate method");
         // Note: We allow startDate, endDate, name, geographyDetails, activities and auditDetails to be different
+        return isValid;
     }
 
     /**
@@ -531,10 +763,15 @@ public class FieldPlannerService {
      * Read-only: justificationCode field
      */
     private boolean isValidGeographyDetailsUpdate(Object originalGeographyDetails, Object newGeographyDetails) {
+        log.trace("Entering isValidGeographyDetailsUpdate method");
         if (originalGeographyDetails == null && newGeographyDetails == null) {
+            log.debug("Both geography details are null, validation passed");
+            log.trace("Exiting isValidGeographyDetailsUpdate method");
             return true;
         }
         if (originalGeographyDetails == null || newGeographyDetails == null) {
+            log.debug("One geography details is null, validation failed");
+            log.trace("Exiting isValidGeographyDetailsUpdate method");
             return false;
         }
 
@@ -548,64 +785,102 @@ public class FieldPlannerService {
             JsonNode newState = newNode.get("state");
             if (!Objects.equals(originalState, newState)) {
                 log.warn("State cannot be changed during cascading update");
+                log.trace("Exiting isValidGeographyDetailsUpdate method");
                 return false;
             }
 
+            log.debug("Geography details update validation passed");
+            log.trace("Exiting isValidGeographyDetailsUpdate method");
             return true;
 
         } catch (Exception e) {
             log.error("Error validating geographyDetails update", e);
+            log.trace("Exiting isValidGeographyDetailsUpdate method");
             return false;
         }
     }
 
     private FieldPlan findFieldPlanById(String fieldPlanId, List<FieldPlan> fieldPlansFromDB) {
-        /*
-         * Find and return the fieldPlan with the matching ID from the list of fieldplan fetched from the database
-         */
-        return fieldPlansFromDB.stream()
+        log.trace("Entering findFieldPlanById method for installation plan ID: {}", fieldPlanId);
+        FieldPlan result = fieldPlansFromDB.stream()
                 .filter(p -> fieldPlanId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
+        if (result != null) {
+            log.debug("Installation plan found for ID: {}", fieldPlanId);
+        } else {
+            log.debug("Installation plan not found for ID: {}", fieldPlanId);
+        }
+        log.trace("Exiting findFieldPlanById method");
+        return result;
     }
 
     public List<ActivityAssignment> getFieldPlanActivityAssignment(FieldPlanRequest request, FieldPlan fieldPlan) {
+        log.trace("Entering getFieldPlanActivityAssignment method for installation plan ID: {}", fieldPlan.getId());
+        log.debug("Fetching activity assignments for installation plan: {}", fieldPlan.getId());
         String fieldPlanId = fieldPlan.getId();
         ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder().fieldPlanId(List.of(fieldPlanId)).tenantId(fieldPlan.getTenantId()).build();
         ActivityAssignmentSearchRequest assignmentSearchRequest = ActivityAssignmentSearchRequest.builder().criteria(criteria).requestInfo(request.getRequestInfo()).build();
         String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFieldPlanActivitySearchUrl()+ "?tenantId="+fieldPlan.getTenantId()+"&offset=0&limit=100";
+        log.debug("Calling activity assignment service at URL: {}", url);
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), assignmentSearchRequest);
         ActivityAssignmentResponse activityAssignmentList = mapper.convertValue(response, ActivityAssignmentResponse.class);
         if(activityAssignmentList != null && activityAssignmentList.getActivityAssignment() !=null){
+            log.debug("Found {} activity assignments", activityAssignmentList.getActivityAssignment().size());
+            log.trace("Exiting getFieldPlanActivityAssignment method");
             return activityAssignmentList.getActivityAssignment();
         }
+        log.warn("No activity assignments found for installation plan: {}", fieldPlanId);
+        log.trace("Exiting getFieldPlanActivityAssignment method");
         return null;
     }
 
     public List<ActivityAssignment> updateFieldPlanActivityAssignment(FieldPlanRequest request, List<ActivityAssignment> activityAssignmentList) {
+        log.trace("Entering updateFieldPlanActivityAssignment method");
+        log.info("Updating {} activity assignments", activityAssignmentList.size());
         ActivityAssignmentBulkRequest activityAssignmentBulkRequest = ActivityAssignmentBulkRequest.builder()
                 .requestInfo(request.getRequestInfo())
                 .activityAssignments(activityAssignmentList)
                 .build();
         String tenantId = activityAssignmentList.get(0).getTenantId();
         String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFieldPlanActivityUpdateUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
+        log.debug("Calling activity assignment update service at URL: {}", url);
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), activityAssignmentBulkRequest);
         ActivityAssignmentResponse assignmentResponse = mapper.convertValue(response, ActivityAssignmentResponse.class);
         if(assignmentResponse != null && assignmentResponse.getActivityAssignment() !=null){
+            log.info("Successfully updated {} activity assignments", assignmentResponse.getActivityAssignment().size());
+            log.trace("Exiting updateFieldPlanActivityAssignment method");
             return assignmentResponse.getActivityAssignment();
         }
+        log.warn("Activity assignment update returned null or empty response");
+        log.trace("Exiting updateFieldPlanActivityAssignment method");
         return null;
     }
 
     public void createFacilityActivity(RequestInfo requestInfo, List<ActivityFacility> activityFacilities) {
-        ActivityFacilityBulkRequest request = ActivityFacilityBulkRequest.builder().activityFacilities(activityFacilities).requestInfo(requestInfo).build();
+        log.trace("Entering createFacilityActivity method");
+        log.info("Creating facility activities, count: {}", activityFacilities.size());
+
         String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFacilityActivityCreateUrl();
-        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
-        ActivityFacilityResponse activityFacilityResponse = mapper.convertValue(response, ActivityFacilityResponse.class);
-        log.info("All facility activities are added");
+        int batchSize = fieldPlannerConfiguration.getFacilityActivityCreateBatchSize();
+
+        for (int fromIndex = 0; fromIndex < activityFacilities.size(); fromIndex += batchSize) {
+            int toIndex = Math.min(fromIndex + batchSize, activityFacilities.size());
+            List<ActivityFacility> batch = activityFacilities.subList(fromIndex, toIndex);
+            ActivityFacilityBulkRequest request = ActivityFacilityBulkRequest.builder().activityFacilities(batch).requestInfo(requestInfo).build();
+            log.debug("Calling facility activity service at URL: {} with batch of {}", url, batch.size());
+
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+            ActivityFacilityResponse activityFacilityResponse = mapper.convertValue(response, ActivityFacilityResponse.class);
+        }
+
+        log.info("Successfully created {} facility activities", activityFacilities.size());
+        log.trace("Exiting createFacilityActivity method");
     }
 
     public boolean hasRequiredUsers(List<ActivityAssignment> activityAssignmentList) {
+        log.trace("Entering hasRequiredUsers method");
+        log.debug("Checking for required users in {} activity assignments", activityAssignmentList.size());
         boolean hasFieldStaff = false;
         boolean hasFieldSupervisor = false;
         boolean hasReviewer = false;
@@ -622,10 +897,14 @@ public class FieldPlannerService {
                 hasReviewer = true;
             }
             if (hasFieldStaff && hasFieldSupervisor && hasReviewer) {
+                log.debug("All required users found: fieldStaff={}, fieldSupervisor={}, reviewer={}", hasFieldStaff, hasFieldSupervisor, hasReviewer);
+                log.trace("Exiting hasRequiredUsers method");
                 return true;
             }
         }
 
+        log.warn("Required users not found: fieldStaff={}, fieldSupervisor={}, reviewer={}", hasFieldStaff, hasFieldSupervisor, hasReviewer);
+        log.trace("Exiting hasRequiredUsers method");
         return false;
     }
 
@@ -633,6 +912,8 @@ public class FieldPlannerService {
      * Gets all facilities currently linked to a project
      */
     private List<FieldPlanFacility> getFacilitiesLinkedToFacility(String fieldPlanId, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering getFacilitiesLinkedToFacility method for installation plan ID: {}", fieldPlanId);
+        log.debug("Fetching facilities linked to installation plan: {}", fieldPlanId);
         try {
             List<String> fieldPlanIds = new ArrayList<>();
             fieldPlanIds.add(fieldPlanId);
@@ -656,25 +937,57 @@ public class FieldPlannerService {
                     false
             );
 
-            return (searchResponse != null && searchResponse.getResponse() != null)
+            List<FieldPlanFacility> result = (searchResponse != null && searchResponse.getResponse() != null)
                     ? searchResponse.getResponse()
                     : new ArrayList<>();
+            log.debug("Found {} facilities linked to installation plan: {}", result.size(), fieldPlanId);
+            log.trace("Exiting getFacilitiesLinkedToFacility method");
+            return result;
 
         } catch (Exception e) {
             log.error("Error getting facilities linked to project: {}", fieldPlanId, e);
+            log.trace("Exiting getFacilitiesLinkedToFacility method");
             return new ArrayList<>();
         }
     }
 
+    /**
+     * Fetches every FieldPlanFacility linked to the field plan, paginating past
+     * fieldPlannerConfiguration.getMaxLimit() rather than returning a single capped page - a field
+     * plan with more linked facilities than that limit (e.g. 210 facilities vs a limit of 200)
+     * would otherwise silently lose the remainder: handleUpdateFieldPlan builds one ActivityFacility
+     * per row returned here, so a truncated page means the missing facilities never get scheduled.
+     */
     public SearchResponse<FieldPlanFacility> getFieldPlanFacilities(FieldPlanRequest request, FieldPlan fieldPlan) throws Exception {
+        log.trace("Entering getFieldPlanFacilities method for installation plan ID: {}", fieldPlan.getId());
+        log.debug("Fetching installation plan facilities for installation plan: {}", fieldPlan.getId());
         List<String> listFieldPlanId = new ArrayList<>();
         listFieldPlanId.add(fieldPlan.getId());
         FieldPlanFacilitySearch criteria = FieldPlanFacilitySearch.builder().field_plan_id(listFieldPlanId).build();
-        FieldPlanFacilitySearchRequest searchRequest =  FieldPlanFacilitySearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(criteria).build();
-        SearchResponse<FieldPlanFacility> response = facilityService.search(searchRequest, fieldPlannerConfiguration.getMaxLimit(), fieldPlannerConfiguration.getDefaultOffset(),
-                request.getFieldPlans().get(0).getTenantId(), null, false);
+        FieldPlanFacilitySearchRequest searchRequest = FieldPlanFacilitySearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(criteria).build();
+        String tenantId = request.getFieldPlans().get(0).getTenantId();
+        int pageSize = fieldPlannerConfiguration.getMaxLimit();
 
-        return response;
+        List<FieldPlanFacility> allFacilities = new ArrayList<>();
+        long totalCount = 0;
+        int offset = 0;
+        while (true) {
+            SearchResponse<FieldPlanFacility> page = facilityService.search(searchRequest, pageSize, offset, tenantId, null, false);
+            if (page == null || page.getResponse() == null || page.getResponse().isEmpty()) {
+                break;
+            }
+            allFacilities.addAll(page.getResponse());
+            totalCount = page.getTotalCount();
+            offset += page.getResponse().size();
+            if (allFacilities.size() >= totalCount) {
+                break;
+            }
+        }
+
+        return SearchResponse.<FieldPlanFacility>builder()
+                .response(allFacilities)
+                .totalCount(totalCount)
+                .build();
     }
 
     /**
@@ -683,17 +996,18 @@ public class FieldPlannerService {
      * Only allows unlinking for Draft projects (status = null)
      */
     private void handleFacilityUnlinkingOnGeographyChange(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
+        log.trace("Entering handleFacilityUnlinkingOnGeographyChange method for installation plan ID: {}", fieldPlan.getId());
         try {
             // Guard: Only process unlinking if geographyDetails is explicitly present in the request
             if (fieldPlan.getGeographyDetails() == null) {
-                log.debug("No geographyDetails in request for field plan: {} - skipping facility unlinking", fieldPlan.getId());
+                log.debug("No geographyDetails in request for installation plan: {} - skipping facility unlinking", fieldPlan.getId());
                 return;
             }
 
-            // STATUS CHECK: Only allow facility unlinking for Draft field plan (status = null or missing)
+            // STATUS CHECK: Only allow facility unlinking for Draft installation plan (status = null or missing)
             String fieldPlanStatus = fieldPlan.getStatus();
             if (!fieldPlanStatus.equals(DRAFT_STATUS)) {
-                log.info("Field Plan {} has status '{}' - facility unlinking not allowed. Only Draft field  plans (status=DRAFT) can unlink facilities.",
+                log.info("Installation Plan {} has status '{}' - facility unlinking not allowed. Only Draft installation plans (status=DRAFT) can unlink facilities.",
                         fieldPlan.getId(), fieldPlanStatus);
                 return;
             }
@@ -703,7 +1017,7 @@ public class FieldPlannerService {
 
             // Check if boundary codes have changed
             if (!oldBoundaryCodes.equals(newBoundaryCodes)) {
-                log.info("Geography details changed for field  plan: {}. Old boundaries: {}, New boundaries: {}",
+                log.info("Geography details changed for installation plan: {}. Old boundaries: {}, New boundaries: {}",
                         fieldPlan.getId(), oldBoundaryCodes, newBoundaryCodes);
 
                 // Unlink facilities that are no longer associated with the new boundary codes
@@ -715,20 +1029,25 @@ public class FieldPlannerService {
             log.error("Error handling facility unlinking for project: {}", fieldPlan.getId(), e);
             // Don't throw exception - continue with update even if facility unlinking fails
         }
+        log.trace("Exiting handleFacilityUnlinkingOnGeographyChange method");
     }
 
     /**
      * Extracts boundary codes from geography details in additional details
      */
     private Set<String> extractBoundaryCodesFromGeographyDetails(Object geographyDetails) {
+        log.trace("Entering extractBoundaryCodesFromGeographyDetails method");
         Set<String> boundaryCodes = new HashSet<>();
 
         if (geographyDetails == null) {
+            log.debug("Geography details is null, returning empty set");
+            log.trace("Exiting extractBoundaryCodesFromGeographyDetails method");
             return boundaryCodes;
         }
 
         try {
             JsonNode geographyDetailsNode = mapper.valueToTree(geographyDetails);
+            log.debug("Extracting boundary codes from geography details");
             if (geographyDetailsNode != null) {
                 // Extract boundary codes from blocks
                 JsonNode blocks = geographyDetailsNode.get("blocks");
@@ -741,25 +1060,28 @@ public class FieldPlannerService {
                     }
                 }
             }
+            log.debug("Extracted {} boundary codes", boundaryCodes.size());
         } catch (Exception e) {
             log.error("Error extracting boundary codes from geography details", e);
         }
 
+        log.trace("Exiting extractBoundaryCodesFromGeographyDetails method");
         return boundaryCodes;
     }
 
     /**
-     * Unlinks facilities that are no longer associated with the fieldplan's new boundary codes
+     * Unlinks facilities that are no longer associated with the installation plan's new boundary codes
      */
     private void unlinkFieldplanFacilities(String fieldPlanId, String tenantId, RequestInfo requestInfo, Set<String> newBoundaryCodes) {
+        log.trace("Entering unlinkFieldplanFacilities method for installation plan ID: {}", fieldPlanId);
         try {
-            log.info("Starting selective facility unlinking for field plan: {} with new boundary codes: {}", fieldPlanId, newBoundaryCodes);
+            log.info("Starting selective facility unlinking for installation plan: {} with new boundary codes: {}", fieldPlanId, newBoundaryCodes);
 
-            // Step 1: Get all facilities currently linked to the field plan
+            // Step 1: Get all facilities currently linked to the installation plan
             List<FieldPlanFacility> linkedFieldPlanFacilities = getFacilitiesLinkedToFacility(fieldPlanId, tenantId, requestInfo);
 
             if (linkedFieldPlanFacilities.isEmpty()) {
-                log.info("No facilities currently linked to field plan: {}", fieldPlanId);
+                log.info("No facilities currently linked to installation plan: {}", fieldPlanId);
                 return;
             }
 
@@ -768,22 +1090,22 @@ public class FieldPlannerService {
 
             // Defensive guard: if boundaries are non-empty but lookup yielded zero, skip unlink to avoid data loss
             if (!newBoundaryCodes.isEmpty() && facilitiesInNewBoundaries.isEmpty()) {
-                log.warn("Facility lookup returned 0 results for non-empty boundaries {}. Skipping unlink to avoid accidental data loss for field plan: {}",
+                log.warn("Facility lookup returned 0 results for non-empty boundaries {}. Skipping unlink to avoid accidental data loss for installation plan: {}",
                         newBoundaryCodes, fieldPlanId);
                 return;
             }
 
-            // Step 3: Find facilities to unlink (linked to field plan but not in new boundary codes)
+            // Step 3: Find facilities to unlink (linked to installation plan but not in new boundary codes)
             List<FieldPlanFacility> facilitiesToUnlink = linkedFieldPlanFacilities.stream()
                     .filter(projectFacility -> !facilitiesInNewBoundaries.contains(projectFacility.getFacilityId()))
                     .collect(Collectors.toList());
 
             if (facilitiesToUnlink.isEmpty()) {
-                log.info("No facilities need to be unlinked for field plan: {}", fieldPlanId);
+                log.info("No facilities need to be unlinked for installation plan: {}", fieldPlanId);
                 return;
             }
 
-            log.info("Found {} facilities to unlink out of {} linked facilities for field plan: {}",
+            log.info("Found {} facilities to unlink out of {} linked facilities for installation plan: {}",
                     facilitiesToUnlink.size(), linkedFieldPlanFacilities.size(), fieldPlanId);
 
             // Step 4: Set isDeleted = true for the identified facilities using update API
@@ -823,15 +1145,20 @@ public class FieldPlannerService {
      * Gets all facility IDs associated with the given boundary codes
      */
     private Set<String> getFacilitiesByBoundaryCodes(Set<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering getFacilitiesByBoundaryCodes method");
+        log.debug("Getting facilities for {} boundary codes", boundaryCodes.size());
         Set<String> facilityIds = new HashSet<>();
 
         if (boundaryCodes.isEmpty()) {
+            log.debug("Boundary codes set is empty, returning empty set");
+            log.trace("Exiting getFacilitiesByBoundaryCodes method");
             return facilityIds;
         }
 
         try {
             // Search facilities by boundary codes
             for (String boundaryCode : boundaryCodes) {
+                log.debug("Searching facilities for boundary code: {}", boundaryCode);
                 Set<String> facilitiesForBoundary = facilityService.searchFacilitiesByBoundaryCode(boundaryCode, tenantId, requestInfo);
                 facilityIds.addAll(facilitiesForBoundary);
             }
@@ -842,12 +1169,16 @@ public class FieldPlannerService {
             log.error("Error getting facilities by boundary codes: {}", boundaryCodes, e);
         }
 
+        log.trace("Exiting getFacilitiesByBoundaryCodes method");
         return facilityIds;
     }
 
     private void sendActivityAssignmentEmail(FieldPlanRequest request, List<ActivityAssignment> activityAssignmentList){
+        log.trace("Entering sendActivityAssignmentEmail method");
+        log.info("Sending activity assignment emails, count: {}", activityAssignmentList.size());
+
         for (ActivityAssignment activityAssignment : activityAssignmentList) {
-            log.info("processing {} valid entities", activityAssignment);
+            log.trace("Processing activity assignment for user: {}", activityAssignment.getAssignedTo());
             if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty() && !activityAssignment.getIsEmailSent()){
                 Employee employee =  getUserById(request, activityAssignment.getAssignedTo());
                 List<FieldPlan> fieldPlans = searchFieldPlan(
@@ -868,17 +1199,24 @@ public class FieldPlannerService {
         }
 
         updateFieldPlanActivityAssignment(request, activityAssignmentList);
+        log.info("Activity assignment emails processed successfully");
+        log.trace("Exiting sendActivityAssignmentEmail method");
     }
 
     public Employee getUserById(Object request, String userId) {
+        log.trace("Entering getUserById method for user ID: {}", userId);
+        log.debug("Fetching employee details from HRMS service");
 
         String url = fieldPlannerConfiguration.getHrmsHost() + fieldPlannerConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            log.error("Employee not found with ID: {}", userId);
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
         }
+        log.debug("Successfully retrieved employee details for user ID: {}", userId);
+        log.trace("Exiting getUserById method");
         return employeeResponse.getEmployees().get(0);
     }
 

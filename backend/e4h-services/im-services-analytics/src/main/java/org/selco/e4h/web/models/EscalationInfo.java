@@ -20,4 +20,7 @@ public class EscalationInfo {
 
     @JsonProperty("recipientRole")
     private String recipientRole;
+
+    @JsonProperty("applicationStatus")
+    private String applicationStatus;
 }

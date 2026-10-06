@@ -1,0 +1,21 @@
+{
+  "tenantId": "in",
+  "module": "facility",
+  "SystemType": [
+    {
+      "active": true,
+      "code": "DC_OFF_GRID",
+      "name": "DC Off-grid"
+    },
+    {
+      "active": true,
+      "code": "AC_OFF_GRID",
+      "name": "AC Off-grid"
+    },
+    {
+      "active": true,
+      "code": "AC_HYBRID",
+      "name": "AC Hybrid"
+    }
+  ]
+}

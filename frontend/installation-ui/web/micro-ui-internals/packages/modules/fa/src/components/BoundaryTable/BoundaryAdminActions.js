@@ -146,7 +146,7 @@ const BoundaryAdminActions = ({ t }) => {
           messages: [
             {
               code: `Boundary_${code}`,
-              message: name,
+              message: name?.trim()?.replace(/\s+/g, " "),
               module: "rainmaker-in",
               locale: "en_IN",
             },

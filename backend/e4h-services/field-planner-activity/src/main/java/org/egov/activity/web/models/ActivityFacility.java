@@ -32,6 +32,9 @@ public class ActivityFacility {
     @JsonProperty("assignedEmployeeUser")
     private User assignedEmployeeUser = null;
 
+    @JsonProperty("staffVendorName")
+    private String staffVendorName = null;
+
     @JsonProperty("fieldStaffUsers")
     private List<String> fieldStaffUsers = null;
 

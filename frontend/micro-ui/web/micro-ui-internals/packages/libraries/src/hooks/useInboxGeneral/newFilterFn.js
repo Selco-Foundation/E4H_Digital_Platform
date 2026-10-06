@@ -14,7 +14,7 @@ export const filterFunctions = {
       applicationNumber, mobileNumber, limit,
       offset, sortBy, sortOrder, total,
       applicationStatus, services, incidentType,
-      facility, assignee, nearingSLA, state, district, block, isSystemFunctional, wfStatus
+      facility, assignee, nearingSLA, state, district, block, isSystemFunctional, wfStatus, mappedVendorName
     } = filtersArg || {};
 
     if (filtersArg?.IncidentWrappers) {
@@ -85,6 +85,10 @@ export const filterFunctions = {
         convertIsSystemFunctional = isSystemFunctional.split(",");
       }
       searchFilters.systemFunctional = convertIsSystemFunctional;
+    }
+
+    if (mappedVendorName) {
+      searchFilters.mappedVendorName = mappedVendorName;
     }
 
     if (assignee && !wfStatus) {

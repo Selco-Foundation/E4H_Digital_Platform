@@ -28,6 +28,8 @@ public class StartupRunner implements CommandLineRunner {
         configMap.put("HYBRID_SINGLE_PHASE", activityConfiguration.getBomHybridSinglePhase());
         configMap.put("HYBRID_THREE_PHASE", activityConfiguration.getBomHybridThreePhase());
         configMap.put("DC", activityConfiguration.getBomDCSystem());
+        configMap.put("AC_ON_GRID_SINGLE_PHASE", activityConfiguration.getBomACOnGridSinglePhase());
+        configMap.put("AC_ON_GRID_THREE_PHASE", activityConfiguration.getBomACOnGridSThreePhase());
     }
 
     public Map<String, String> getConfigMap() {

@@ -26,6 +26,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -115,26 +117,37 @@ public class ProjectFacilityService {
 
 
     public List<ProjectFacility> create(ProjectFacilityBulkRequest request, boolean isBulk) {
-        log.info("received request to create bulk project facility");
+        log.trace("Entering create (bulk facilities)");
+        log.info("Received request to create bulk project facilities");
         Tuple<List<ProjectFacility>, Map<ProjectFacility, ErrorDetails>> tuple = validate(validators,
                 isApplicableForCreate, request,
                 isBulk);
 
         Map<ProjectFacility, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectFacility> validEntities = tuple.getX();
+        log.debug("Validation completed - {} valid facilities, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
                 log.info("processing {} valid entities", validEntities.size());
                 enrichmentService.create(validEntities, request);
+                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(validEntities);
+                log.debug("Saving facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getCreateProjectFacilityTopic());
+                log.debug("Fetching associated project and facility details");
                 Project existingProject = searchProject(request);
                 Facility facility = getFacilityById(request);
+                log.debug("Enriching project with facility details");
                 Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "facility", facility);
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
                 ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
+                log.debug("Pushing project update to Kafka");
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
                 log.info("successfully created project facility");
+                refreshProjectNamesAfterFacilityCreate(validEntities, request.getRequestInfo(), facilityCountBeforeSave);
+                log.info("Successfully created {} project facilities", validEntities.size());
+            } else {
+                log.warn("No valid facilities to create after validation");
             }
         } catch (Exception exception) {
             log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
@@ -142,7 +155,7 @@ public class ProjectFacilityService {
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting create (bulk facilities)");
         return validEntities;
     }
 
@@ -165,10 +178,24 @@ public class ProjectFacilityService {
         List<ProjectFacility> validEntities = tuple.getX();
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info("Processing {} valid entities", validEntities.size());
+                List<ProjectFacility> deactivatedFacilities = validEntities.stream()
+                        .filter(pf -> Boolean.TRUE.equals(pf.getIsDeleted()))
+                        .collect(Collectors.toList());
+                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(
+                        deactivatedFacilities.isEmpty() ? validEntities : deactivatedFacilities);
+                log.debug("Enriching facilities before update");
                 enrichmentService.update(validEntities, request);
+                log.debug("Saving updated facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getUpdateProjectFacilityTopic());
-                log.info("successfully updated bulk project facility");
+                if (!deactivatedFacilities.isEmpty()) {
+                    log.info("Refreshing project name after soft-deleting {} facilities", deactivatedFacilities.size());
+                    refreshProjectNamesAfterFacilityDelete(deactivatedFacilities, request.getRequestInfo(),
+                            facilityCountBeforeSave);
+                }
+                log.info("Successfully updated {} project facilities", validEntities.size());
+            } else {
+                log.warn("No valid facilities to update after validation");
             }
         } catch (Exception exception) {
             log.error("error occurred while updating project facility", ExceptionUtils.getStackTrace(exception));
@@ -176,7 +203,7 @@ public class ProjectFacilityService {
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting update (bulk facilities)");
         return validEntities;
     }
 
@@ -189,18 +216,27 @@ public class ProjectFacilityService {
     }
 
     public List<ProjectFacility> delete(ProjectFacilityBulkRequest request, boolean isBulk) {
+        log.trace("Entering delete (bulk facilities)");
+        log.info("Received request to delete bulk project facilities");
         Tuple<List<ProjectFacility>, Map<ProjectFacility, ErrorDetails>> tuple = validate(validators,
                 isApplicableForDelete, request,
                 isBulk);
 
         Map<ProjectFacility, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectFacility> validEntities = tuple.getX();
+        log.debug("Validation completed - {} valid facilities, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info("Processing {} valid entities", validEntities.size());
+                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(validEntities);
+                log.debug("Enriching facilities before delete");
                 enrichmentService.delete(validEntities, request);
+                log.debug("Saving deleted facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getDeleteProjectFacilityTopic());
-                log.info("successfully deleted entities");
+                refreshProjectNamesAfterFacilityDelete(validEntities, request.getRequestInfo(), facilityCountBeforeSave);
+                log.info("Successfully deleted {} project facilities", validEntities.size());
+            } else {
+                log.warn("No valid facilities to delete after validation");
             }
         } catch (Exception exception) {
             log.error("error occurred while deleting entities: {}", ExceptionUtils.getStackTrace(exception));
@@ -208,18 +244,20 @@ public class ProjectFacilityService {
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting delete (bulk facilities)");
         return validEntities;
     }
 
     private Tuple<List<ProjectFacility>, Map<ProjectFacility, ErrorDetails>> validate(List<Validator<ProjectFacilityBulkRequest, ProjectFacility>> validators,
                                                                                       Predicate<Validator<ProjectFacilityBulkRequest, ProjectFacility>> applicableValidators,
                                                                                       ProjectFacilityBulkRequest request, boolean isBulk) {
-        log.info("validating request");
+        log.trace("Entering validate for {} facilities", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
+        log.debug("Validating request with {} validators", validators.size());
         Map<ProjectFacility, ErrorDetails> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors()).toList();
-        log.info("validation successful, found valid project facility");
+        log.debug("Validation completed - {} valid facilities out of {}", validEntities.size(), request.getProjectFacilities().size());
+        log.trace("Exiting validate");
         return new Tuple<>(validEntities, errorDetailsMap);
     }
 
@@ -229,22 +267,29 @@ public class ProjectFacilityService {
                                                   String tenantId,
                                                   Long lastChangedSince,
                                                   Boolean includeDeleted) throws Exception {
-        log.info("received request to search project facility");
+        log.trace("Entering search");
+        log.info("Received request to search project facilities");
 
         if (isSearchByIdOnly(projectFacilitySearchRequest.getProjectFacility())) {
-            log.info("searching project facility by id");
+            log.info("Searching project facilities by ID");
             List<String> ids = projectFacilitySearchRequest.getProjectFacility().getId();
-            log.info("fetching project facility with ids: {}", ids);
+            log.debug("Fetching project facilities with {} IDs", ids != null ? ids.size() : 0);
             List<ProjectFacility> projectfacilities = projectFacilityRepository.findById(ids, includeDeleted).stream()
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
                     .toList();
+            log.info("Search by ID completed - found {} facilities", projectfacilities.size());
+            log.trace("Exiting search");
             return SearchResponse.<ProjectFacility>builder().response(projectfacilities).build();
         }
-        log.info("searching project facility using criteria");
-        return projectFacilityRepository.findWithCount(projectFacilitySearchRequest.getProjectFacility(),
+        log.info("Searching project facilities using criteria");
+        log.debug("Search parameters - limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
+        SearchResponse<ProjectFacility> result = projectFacilityRepository.findWithCount(projectFacilitySearchRequest.getProjectFacility(),
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
+        log.info("Search by criteria completed - found {} facilities", result.getResponse() != null ? result.getResponse().size() : 0);
+        log.trace("Exiting search");
+        return result;
     }
 
     public Project searchProject(ProjectFacilityBulkRequest request) throws Exception {
@@ -291,6 +336,50 @@ public class ProjectFacilityService {
             return facilityList.getFacilities().get(0);
         }
         return null;
+    }
+
+    private Map<String, Integer> captureFacilityCountBaselines(List<ProjectFacility> facilities) {
+        Map<String, Integer> baselines = new HashMap<>();
+        for (ProjectFacility facility : facilities) {
+            if (StringUtils.isBlank(facility.getProjectId())) {
+                continue;
+            }
+            baselines.computeIfAbsent(facility.getProjectId(), projectId ->
+                    projectService.countLinkedFacilities(projectId, facility.getTenantId()));
+        }
+        return baselines;
+    }
+
+    private void refreshProjectNamesAfterFacilityCreate(List<ProjectFacility> facilities, RequestInfo requestInfo,
+                                                        Map<String, Integer> facilityCountBeforeSave) {
+        facilities.stream()
+                .filter(pf -> StringUtils.isNotBlank(pf.getProjectId()))
+                .collect(Collectors.groupingBy(ProjectFacility::getProjectId))
+                .forEach((projectId, projectFacilities) -> {
+                    int baseline = facilityCountBeforeSave.getOrDefault(projectId, 0);
+                    int expectedCount = baseline + projectFacilities.size();
+                    projectService.refreshProjectNameAfterFacilityChange(
+                            projectId,
+                            projectFacilities.get(0).getTenantId(),
+                            requestInfo,
+                            expectedCount);
+                });
+    }
+
+    private void refreshProjectNamesAfterFacilityDelete(List<ProjectFacility> facilities, RequestInfo requestInfo,
+                                                        Map<String, Integer> facilityCountBeforeSave) {
+        facilities.stream()
+                .filter(pf -> StringUtils.isNotBlank(pf.getProjectId()))
+                .collect(Collectors.groupingBy(ProjectFacility::getProjectId))
+                .forEach((projectId, projectFacilities) -> {
+                    int baseline = facilityCountBeforeSave.getOrDefault(projectId, 0);
+                    int expectedCount = Math.max(0, baseline - projectFacilities.size());
+                    projectService.refreshProjectNameAfterFacilityChange(
+                            projectId,
+                            projectFacilities.get(0).getTenantId(),
+                            requestInfo,
+                            expectedCount);
+                });
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {

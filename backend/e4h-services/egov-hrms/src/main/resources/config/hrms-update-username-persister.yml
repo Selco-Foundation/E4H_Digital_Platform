@@ -1,0 +1,20 @@
+serviceMaps:
+  serviceName: HRMS
+  mappings:
+  - version: 1.0
+    name: hrms-update-username
+    description: Updates the employee code in eg_hrms_employee and the encrypted username in eg_user for the given employee uuid
+    fromTopic: update-hrms-username
+    isTransaction: true
+    queryMaps:
+    - query: UPDATE eg_hrms_employee SET code = ? WHERE uuid = ?;
+      basePath: $
+      jsonMaps:
+      - jsonPath: $.code
+      - jsonPath: $.uuid
+
+    - query: UPDATE eg_user SET username = ? WHERE uuid = ?;
+      basePath: $
+      jsonMaps:
+      - jsonPath: $.username
+      - jsonPath: $.uuid

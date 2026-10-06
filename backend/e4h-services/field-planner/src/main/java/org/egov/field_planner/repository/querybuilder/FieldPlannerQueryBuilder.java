@@ -7,6 +7,7 @@ import org.egov.common.models.core.URLParams;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
+import org.egov.field_planner.util.FieldPlannerConstants;
 import org.egov.field_planner.web.models.FieldPlanSearchRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -38,6 +39,8 @@ public class FieldPlannerQueryBuilder {
             "from field_plans fp LEFT JOIN project prj ON prj.id = fp.project_id ";
     private static final String FIELDPLAN_COUNT_QUERY = "SELECT COUNT(*) FROM field_plans fp ";
 
+    private static final String FETCH_ICC_TEMPLATE_QUERY = "SELECT * FROM icc_templates ";
+
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY fp_lastModifiedTime DESC , fieldPlanId) offset_ FROM " +
             "({})" +
@@ -65,44 +68,56 @@ public class FieldPlannerQueryBuilder {
     }
 
     private static void addClause(String tenantId, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        log.trace("Entering addClause method for tenant: {}", tenantId);
         if (StringUtils.isNotBlank(tenantId)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             if (!tenantId.contains(DOT)) {
-                log.info("State level tenant");
+                log.debug("State level tenant: {}", tenantId);
                 queryBuilder.append(" fp.tenant_id like ? ");
                 preparedStmtList.add(tenantId + '%');
             } else {
-                log.info("City level tenant");
+                log.debug("City level tenant: {}", tenantId);
                 queryBuilder.append(" fp.tenant_id=? ");
                 preparedStmtList.add(tenantId);
             }
         }
+        log.trace("Exiting addClause method");
     }
 
     public String getHighestFielPlanNameQuery(FieldPlan fieldPlan, List<Object> preparedStmtList) {
+        log.trace("Entering getHighestFielPlanNameQuery method");
+        log.debug("Building query for highest installation plan name, tenant: {}", fieldPlan.getTenantId());
+        
         StringBuilder queryBuilder = new StringBuilder(FETCH_FIELDPLAN_QUERY);
         if (StringUtils.isNotBlank(fieldPlan.getName())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" LOWER(fp.name) LIKE ? ");
             preparedStmtList.add(fieldPlan.getName().toLowerCase() + "%");
+            log.debug("Added name filter to query");
         }
         if (StringUtils.isNotBlank(fieldPlan.getTenantId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            log.info("State level tenant");
+            log.debug("State level tenant");
             queryBuilder.append(" tenant_id like ? ");
             preparedStmtList.add(fieldPlan.getTenantId() + '%');
         }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
         queryBuilder.append("ORDER BY created_time DESC LIMIT 1;");
 
+        log.trace("Exiting getHighestFielPlanNameQuery method");
         return queryBuilder.toString();
     }
 
     public String getFieldPlanSearchQuery(FieldPlanSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
+        log.trace("Entering getFieldPlanSearchQuery method");
+        log.debug("Building installation plan search query, isCountQuery: {}", criteria.isCountQuery());
+        
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? FIELDPLAN_COUNT_QUERY : FETCH_FIELDPLAN_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder, criteria);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
 
 //        if (criteria.getFromDate() != null && criteria.getFromDate() != 0) {
@@ -121,15 +136,19 @@ public class FieldPlannerQueryBuilder {
         addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
 
         if (criteria.isCountQuery()) {
+            log.debug("Returning count query");
+            log.trace("Exiting getFieldPlanSearchQuery method");
             return queryBuilder.toString();
         }
 
         //Wrap constructed SQL query with where criteria in pagination query
+        log.debug("Wrapping query with pagination, limit: {}, offset: {}", urlParams.getLimit(), urlParams.getOffset());
+        log.trace("Exiting getFieldPlanSearchQuery method");
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
     }
 
     private void extracted(Long lastChangedSince, List<Object> preparedStmtList, FieldPlanSearchCriteria fieldPlan, StringBuilder queryBuilder) {
-
+        log.trace("Entering extracted method for query building");
         if (!CollectionUtils.isEmpty(fieldPlan.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fp.id IN (").append(createQuery(fieldPlan.getIds())).append(")");
@@ -168,16 +187,40 @@ public class FieldPlannerQueryBuilder {
             queryBuilder.append(" ( fp.last_modified_by >= ? )");
             preparedStmtList.add(lastChangedSince);
         }
+        log.trace("Exiting extracted method");
+    }
+
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" fp.plan_type = ? ");
+        preparedStmtList.add(FieldPlannerConstants.PLAN_TYPE_FIELD_PLAN);
+    }
+
+    /**
+     * List/search queries stay scoped to FIELD_PLAN. ID lookups skip plan_type so internal callers
+     * (e.g. activity assignment for assessment plans) can resolve any row in field_plans.
+     */
+    private void addFieldPlanTypeFilter(List<Object> preparedStmtList, StringBuilder queryBuilder,
+                                        FieldPlanSearchCriteria criteria) {
+        if (!CollectionUtils.isEmpty(criteria.getIds())) {
+            return;
+        }
+        addFieldPlanTypeFilter(preparedStmtList, queryBuilder);
     }
 
     private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {
+        log.trace("Entering addIsDeletedCondition method, includeDeleted: {}", includeDeleted);
         if (!includeDeleted) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fp.isdeleted = false ");
+            log.debug("Added isDeleted condition to query");
         }
+        log.trace("Exiting addIsDeletedCondition method");
     }
 
     private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam) {
+        log.trace("Entering addPaginationWrapper method");
+        log.debug("Adding pagination wrapper, limitParam: {}, offsetParam: {}", limitParam, offsetParam);
         int limit = config.getDefaultLimit();
         int offset = config.getDefaultOffset();
         String finalQuery = paginationWrapper.replace("{}", query);
@@ -194,26 +237,53 @@ public class FieldPlannerQueryBuilder {
 
         preparedStmtList.add(offset);
         preparedStmtList.add(limit + offset);
-
+        log.debug("Pagination wrapper added, final limit: {}, offset: {}", limit, offset);
+        log.trace("Exiting addPaginationWrapper method");
         return finalQuery;
     }
 
     /* Returns query to get total projects count based on project search params */
     public String getSearchCountQueryString(FieldPlanSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted, List<Object> preparedStatement) {
+        log.trace("Entering getSearchCountQueryString method");
+        log.debug("Building count query for tenant: {}", tenantId);
         FieldPlanSearchCriteria criteria = request.getFieldPlan();
         criteria.setCountQuery(true);
         URLParams urlParams = URLParams.builder().tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
-        return getFieldPlanSearchQuery(criteria, urlParams, preparedStatement);
+        String result = getFieldPlanSearchQuery(criteria, urlParams, preparedStatement);
+        log.trace("Exiting getSearchCountQueryString method");
+        return result;
     }
 
     private String createQuery(Collection<String> ids) {
+        log.trace("Entering createQuery method for {} IDs", ids.size());
         StringBuilder builder = new StringBuilder();
         int length = ids.size();
         for (int i = 0; i < length; i++) {
             builder.append(" ? ");
             if (i != length - 1) builder.append(",");
         }
+        log.trace("Exiting createQuery method");
         return builder.toString();
+    }
+
+    public String getIccTemplateQuery(String systemType, String totalSystemCapacity, List<Object> preparedStmtList) {
+        log.info("Entering getIccTemplateQuery method");
+
+        StringBuilder queryBuilder = new StringBuilder(FETCH_ICC_TEMPLATE_QUERY);
+        if (StringUtils.isNotBlank(systemType)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" system_type = ? ");
+            preparedStmtList.add(systemType);
+            log.debug("Added name filter to query");
+        }
+        if (StringUtils.isNotBlank(totalSystemCapacity)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" total_system_capacity = ? ");
+            preparedStmtList.add(totalSystemCapacity);
+        }
+
+        log.trace("Exiting getIccTemplateQuery method");
+        return queryBuilder.toString();
     }
 
 }

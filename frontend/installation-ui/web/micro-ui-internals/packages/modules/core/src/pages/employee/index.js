@@ -15,6 +15,7 @@ import UserProfile from "../citizen/Home/UserProfile";
 import ErrorComponent from "../../components/ErrorComponent";
 import { PrivateRoute } from "@egovernments/digit-ui-components";
 import ImageComponent from "../../components/ImageComponent";
+import TermsPrivacyPolicy from "./TermsPrivacyPolicy";
 const userScreensExempted = ["user/landing", "user/profile", "user/error", "user/productPage"];
 
 const EmployeeApp = ({
@@ -61,6 +62,12 @@ const EmployeeApp = ({
   return (
     <div className="employee">
       <Switch>
+        <Route exact path={`${path}/privacy-policy`}>
+          <TermsPrivacyPolicy stateCode={stateCode} type="privacy" />
+        </Route>
+        <Route exact path={`${path}/terms-of-use`}>
+          <TermsPrivacyPolicy stateCode={stateCode} type="terms" />
+        </Route>
         <Route path={`${path}/user`}>
           {isUserProfile && (
             <TopBarSideBar

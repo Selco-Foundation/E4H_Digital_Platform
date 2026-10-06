@@ -9,6 +9,7 @@ import BoundaryTable from "./BoundaryTable";
 import UploadBoundary from "./UploadBoundary";
 import Response from "@selco/digit-ui-module-pm/src/pages/employee/Response";
 import ActivityDetails from "./ActivityDetails";
+import AssessmentDetails from "./AssessmentDetails";
 import BulkAddFacilities from "./BulkAddFacilities";
 
 const FAApp = () => {
@@ -42,6 +43,13 @@ const FAApp = () => {
       content: navigator.workingActivity?.activityType || "",
       internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}/activities/${
         navigator.workingActivity?.activityFacilityId
+      }`,
+      show: true,
+    },
+    assessmentDetails: {
+      content: t("ASSESSMENT_DETAILS"),
+      internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}/assessments/${
+        navigator.workingAssessment?.planFacilityId
       }`,
       show: true,
     },
@@ -121,6 +129,13 @@ const FAApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.facilityDetails, breadCrumbsConfig.activityDetails]}
           />
           <ActivityDetails />
+        </Route>
+        <Route path={`${path}/facilities/:facilityId/assessments/:planFacilityId`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.facilityDetails, breadCrumbsConfig.assessmentDetails]}
+          />
+          <AssessmentDetails />
         </Route>
       </Switch>
     </div>

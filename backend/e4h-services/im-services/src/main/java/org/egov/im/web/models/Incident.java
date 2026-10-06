@@ -134,4 +134,14 @@ public class Incident   {
 
         @JsonProperty("warrantyStatus")
         private WarrantyStatus warrantyStatus;
+
+        /**
+         * uuid of the COMPLAINT_RESOLVER the ticket is currently handed to, or null while nobody
+         * holds it. Resolved from the workflow assignees on every update, so it is server-owned and
+         * ignored if supplied by a caller. The display name and username are looked up from HRMS
+         * when the ticket is indexed, never stored here.
+         */
+        @SafeHtml
+        @JsonProperty("mappedVendorUuid")
+        private String mappedVendorUuid = null;
 }

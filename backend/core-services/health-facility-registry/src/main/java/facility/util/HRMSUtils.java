@@ -10,8 +10,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -50,6 +49,50 @@ public class HRMSUtils {
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with username: " + codes);
         }
         return employeeResponse.getEmployees().get(0);
+    }
+
+    /**
+     * Searches for the first employee (active or inactive) assigned to the given boundary
+     * (facility) code. Does not filter by active status so callers can detect and reactivate an
+     * existing-but-inactive POC employee rather than mistakenly creating a duplicate.
+     * Returns null (rather than throwing) when no employee is found, since that is a valid
+     * outcome for callers reconciling a facility's HRMS-side username.
+     */
+    public Employee getEmployeeByBoundaryCode(Object requestInfo, String boundaryCode) {
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in&boundaryCodes=" + boundaryCode + "&roles=COMPLAINANT&searchOnlyInBoundary=true";
+        Map<String, Object> searchRequest = new HashMap<>();
+        searchRequest.put("RequestInfo", requestInfo);
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            return null;
+        }
+        return employeeResponse.getEmployees().get(0);
+    }
+
+    /**
+     * Calls egov-hrms {@code /employees/_update_username} to force eg_user.username to match
+     * eg_hrms_employee.code for the given employee uuid.
+     */
+    public boolean updateHrmsUsername(Object requestInfo, String uuid, String code, String tenantId) {
+        String url = config.getHrmsHost() + config.getHrmsUpdateUsernameEndPoint();
+        Map<String, Object> employee = new HashMap<>();
+        employee.put("tenantId", tenantId);
+        employee.put("uuid", uuid);
+        employee.put("code", code);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("RequestInfo", requestInfo);
+        body.put("employee", employee);
+        try {
+            serviceRequestRepository.fetchResult(new StringBuilder(url), body);
+            return true;
+        } catch (Exception e) {
+            log.error("Error calling HRMS update-username for uuid {}: {}", uuid, e.getMessage(), e);
+            return false;
+        }
     }
 
     public List<Employee> getUserByPhoneNumber(Object request, String phoneNumber) {
@@ -104,6 +147,54 @@ public class HRMSUtils {
             employee.setJurisdictions(buildJurisdictions(user.getJurisdiction()));
         }
         return employee;
+    }
+
+    public Jurisdiction buildFacilityJurisdiction(String boundaryCode, String tenantId) {
+        return Jurisdiction.builder()
+                .hierarchy("ADMIN")
+                .boundary(boundaryCode)
+                .boundaryType("Facility")
+                .tenantId(tenantId)
+                .isActive(true)
+                .build();
+    }
+
+    /**
+     * Adds or re-activates a facility boundary in the employee jurisdiction list (vendor user mapping).
+     */
+    public List<Jurisdiction> mergeFacilityJurisdiction(List<Jurisdiction> existing, Jurisdiction facilityJurisdiction) {
+        List<Jurisdiction> merged = new ArrayList<>();
+        if (existing != null) {
+            merged.addAll(existing);
+        }
+        if (facilityJurisdiction == null || facilityJurisdiction.getBoundary() == null) {
+            return merged;
+        }
+
+        int idx = indexOfJurisdictionByBoundary(merged, facilityJurisdiction.getBoundary());
+        if (idx >= 0) {
+            Jurisdiction target = merged.get(idx);
+            target.setHierarchy(facilityJurisdiction.getHierarchy());
+            target.setBoundaryType(facilityJurisdiction.getBoundaryType());
+            target.setTenantId(facilityJurisdiction.getTenantId());
+            target.setIsActive(true);
+        } else {
+            merged.add(facilityJurisdiction);
+        }
+        return merged;
+    }
+
+    private int indexOfJurisdictionByBoundary(List<Jurisdiction> jurisdictions, String boundary) {
+        if (jurisdictions == null || boundary == null) {
+            return -1;
+        }
+        for (int i = 0; i < jurisdictions.size(); i++) {
+            Jurisdiction j = jurisdictions.get(i);
+            if (j != null && boundary.equalsIgnoreCase(Objects.toString(j.getBoundary(), ""))) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public List<Jurisdiction> buildJurisdictions(List<String> boundaryCodes) {

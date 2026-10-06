@@ -1,7 +1,7 @@
 import React from "react";
 import CustomErrorIcon from "../Custom/CustomErrorIcon";
 
-const UploadErrorCard = ({ t, viewActionLabel, cardLabel, onViewErrors }) => {
+const UploadErrorCard = ({ cardLabel }) => {
   return (
     <div
       style={{
@@ -14,27 +14,10 @@ const UploadErrorCard = ({ t, viewActionLabel, cardLabel, onViewErrors }) => {
         color: "#B91900",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <CustomErrorIcon iconFill={"#B91900"} />
-        <span style={{ color: "#B91900", fontSize: "16px", fontWeight: 500 }}>{cardLabel}</span>
+        <span style={{ color: "#B91900", fontSize: "16px", fontWeight: 600 }}>{cardLabel}</span>
       </div>
-
-      <button
-        type={"button"}
-        onClick={onViewErrors}
-        style={{
-          backgroundColor: "#B91900",
-          border: "none",
-          padding: "10px 20px",
-          color: "#fff",
-          fontSize: "14px",
-          fontWeight: "bold",
-          borderRadius: "4px",
-          cursor: "pointer",
-        }}
-      >
-        {t(viewActionLabel)}
-      </button>
     </div>
   );
 };

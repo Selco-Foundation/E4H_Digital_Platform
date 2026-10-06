@@ -8,6 +8,7 @@ import org.egov.inbox.util.ResponseInfoFactory;
 import org.egov.inbox.web.model.InboxRequest;
 import org.egov.inbox.web.model.InboxResponse;
 import org.egov.inbox.web.model.ProjectResponse;
+import org.egov.inbox.web.model.V2.MappedVendorResponse;
 import org.egov.inbox.web.model.V2.SearchRequest;
 import org.egov.inbox.web.model.V2.SearchResponse;
 import org.egov.tracer.config.TracerConfiguration;
@@ -71,6 +72,22 @@ public class InboxV2Controller {
         }
     }
 
+
+    /**
+     * Distinct mapped vendors for the vendor filter dropdown. Takes the same body as /v2/_search so the
+     * list stays in step with whatever the inbox is currently scoped to, minus any mappedVendorName the
+     * UI has already applied.
+     */
+    @PostMapping(value = "/mappedVendor/_search")
+    public ResponseEntity<MappedVendorResponse> searchMappedVendors(@Valid @RequestBody InboxRequest inboxRequest) {
+        log.info("Received request to list mapped vendors with filters: {}", inboxRequest);
+
+        MappedVendorResponse mappedVendorResponse = inboxService.getMappedVendors(inboxRequest);
+        mappedVendorResponse.setResponseInfo(
+                responseInfoFactory.createResponseInfoFromRequestInfo(inboxRequest.getRequestInfo(), true));
+
+        return new ResponseEntity<>(mappedVendorResponse, HttpStatus.OK);
+    }
 
     @PostMapping(value = "/_getFields")
     public ResponseEntity<SearchResponse> searchFields(@Valid @RequestBody SearchRequest searchRequest) {

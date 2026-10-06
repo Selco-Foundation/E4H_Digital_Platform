@@ -61,4 +61,7 @@ public class HealthFacilityDetails {
             message = "POC Designation pattern is incorrect"
     )
     private String pocDesignation;
+
+    @JsonProperty("vendor_code")
+    private String vendorCode;
 }

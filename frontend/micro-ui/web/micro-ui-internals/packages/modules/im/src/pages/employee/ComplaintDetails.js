@@ -89,6 +89,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     stateArray?.[0]?.assigneeRoles?.length > 0 ? stateArray?.[0]?.assigneeRoles?.join(",") : "",
     complaintDetails,
     complaintDetails?.incident?.boundaryCode,
+    true,
     true
   );
   const employeeData = useEmployeeData
@@ -387,7 +388,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             message: "REJECT_OOS_TICKET_COMMENT_MANDATORY",
           },
           {
-            condition: isAssignOutOfScope && comments?.trim()?.length < 500,
+            condition: isAssignOutOfScope && comments?.trim()?.length < 50,
             message: "ASSIGN_OOS_TICKET_COMMENT_MANDATORY",
           },
           {

@@ -2,12 +2,28 @@ import React, { useEffect, useState } from "react";
 import { Dropdown, DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
+const isOtherReason = (reason) => {
+  return [reason?.label, reason?.name, reason?.code, reason?.i18nKey]
+    .some((value) => ["other", "others"].includes(value?.toString?.().trim().toLowerCase()));
+};
+
+const sortReasonsWithOtherLast = (a, b) => {
+  const isAOther = isOtherReason(a);
+  const isBOther = isOtherReason(b);
+
+  if (isAOther && !isBOther) return 1;
+  if (!isAOther && isBOther) return -1;
+
+  return a.label.localeCompare(b.label);
+};
+
 const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existingReason, rejectionReasons }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const [reasonOptions, setReasonOptions] = useState([]);
   const [reasonMenu, setReasonMenu] = useState([]);
   const [reason, setReason] = useState(existingReason);
+  const [validationError, setValidationError] = useState("");
 
   const { data: mdmsData } = Digit.Hooks.useCustomMDMS(
     tenantId,
@@ -26,19 +42,22 @@ const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existi
     setReasonOptions(
       (mdmsData?.["Installation"]?.["RejectionReasons"] || [])
         .map((rejectionReason) => ({ ...rejectionReason, label: rejectionReason.name }))
-        .sort((a, b) => a.label.localeCompare(b.label))
+        .sort(sortReasonsWithOtherLast)
     );
   }, [mdmsData]);
 
   useEffect(() => {
     const savedRejectionReasons = rejectionReasons.map(r => r.reason);
     const newReasonMenu = reasonOptions.filter(option => (option.label === existingReason.reason || !savedRejectionReasons.includes(option.label)));
-    newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
+    newReasonMenu.sort(sortReasonsWithOtherLast);
     setReasonMenu(newReasonMenu);
   }, [rejectionReasons, reasonOptions]);
 
   const updateReason = (id, key, value) => {
     setReason({ ...reason, [key]: value });
+    if (validationError) {
+      setValidationError("");
+    }
   };
 
   const handleDeletion = () => {
@@ -47,6 +66,11 @@ const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existi
   };
 
   const handleSave = () => {
+    if (isOtherReason({ label: reason.reason }) && !reason.comment?.trim()) {
+      setValidationError(t("OTHER_ERRMSG"));
+      return;
+    }
+
     onUpdate(reason);
     onClose();
   };
@@ -88,6 +112,9 @@ const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existi
               placeholder={t("ES_ADDITIONAL_DETAILS_PLACEHOLDER")}
               style={{ fontFamily: "Roboto" }}
             />
+            {validationError && (
+              <div style={styles.errorText}>{validationError}</div>
+            )}
           </div>
         <div style={styles.footer}>
           <button onClick={onClose} style={styles.cancelBtn}>{t("CS_COMMON_CANCEL")}</button>
@@ -145,6 +172,9 @@ const styles = {
   saveBtn: {
     backgroundColor: '#C1440E', color: '#fff', border: 'none', padding: '8px 20px',
     fontWeight: 'bold', borderRadius: 2, cursor: 'pointer', width: "40%"
+  },
+  errorText: {
+    color: '#d4351c', fontSize: 12, marginTop: -8, marginBottom: 8
   }
 };
 

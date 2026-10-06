@@ -3,12 +3,33 @@ import Section from "./Section";
 import AddRejectionReasonModal from "./AddRejectionReasonModal";
 import SystemParameterReport from "./SystemParameterReport";
 import EditRejectionReasonModal from "./EditRejectionReasonModal";
+import AssetImageViewer from "./AssetImageViewer";
 import { useDispatch, useSelector } from "react-redux";
 import { setRejectionReasons } from "../../redux/actions";
-import { ImageViewer } from "@egovernments/digit-ui-react-components";
+import { ImageViewer, Loader } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
-const Summary = ({ t, sectionName, section, count, specifications, details, items, images, videos, report, isReport, supportingDocuments = [], installationImages = [] }) => {
+const Summary = ({
+  t,
+  sectionName,
+  section,
+  count,
+  specifications,
+  details,
+  items,
+  images,
+  videos,
+  report,
+  isReport,
+  customTitle,
+  renderContent,
+  isLoadingContent = false,
+  onExpand,
+  supportingDocuments = [],
+  installationImages = [],
+  installationCompletionCertificate = [],
+  assetHandoverDocument = []
+}) => {
 
   const [expanded, setExpanded] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
@@ -18,40 +39,71 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const rejectionReasons = rejectionData?.[section] || [];
   const [imageToView, setImageToView] = useState(null);
+  const [assetImageToView, setAssetImageToView] = useState(null);
+  const rejectionSectionLabel = customTitle || t(`QC_${section}_SUMMARY`);
+
+  const toggleExpanded = () => {
+    if (!expanded && onExpand) {
+      onExpand();
+    }
+    setExpanded((prev) => !prev);
+  };
 
   const handleSave = (data) => {
-    dispatch(setRejectionReasons(section, [...rejectionReasons, ...data.filter((reason) => reason?.reason?.trim())]));
+    dispatch(setRejectionReasons(section, [
+      ...rejectionReasons,
+      ...data
+        .filter((reason) => reason?.reason?.trim())
+        .map((reason) => ({ ...reason, sectionLabel: rejectionSectionLabel })),
+    ]));
   };
 
   const handleUpdate = (reason) => {
-    dispatch(setRejectionReasons(section, rejectionReasons.map((r) => r.id === reason.id ? reason : r)));
+    dispatch(setRejectionReasons(section, rejectionReasons.map((r) => r.id === reason.id ? { ...reason, sectionLabel: rejectionSectionLabel } : r)));
   };
 
   const handleDelete = (reason) => {
     dispatch(setRejectionReasons(section, rejectionReasons.filter((r) => r.id !== reason.id)));
   };
 
-  const AssetInfoItem = (title, value) => (
+  const AssetInfoItem = (title, value, highlighted = false) => (
     <div style={{
-      width: "300px",
       display: "flex",
-      marginBottom: "10px"
+      marginBottom: "10px",
+      ...(highlighted && {
+        flexWrap: "wrap",
+      }),
     }}>
       <div style={{
         fontWeight: "bold",
-        width: "50%"
+        width: "150px",
+        ...(highlighted && { flexShrink: 0 }),
       }}>
         {title}
       </div>
-      <div>{value || t("CORE_COMMON_NOT_APPLICABLE")}</div>
+      <div style={{
+        width: "220px",
+        wordBreak: "break-word",
+        ...(highlighted && { flex: "1 1 220px", color: "#B91900" }),
+      }}>
+        {value || t("CORE_COMMON_NOT_APPLICABLE")}
+      </div>
     </div>
   )
 
-  const AssetImages = (images) => (
+  const AssetImages = (images, item) => (
     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
       {images.map((doc, idx) => (
-        <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(doc)}>
-          <img src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
+        <div
+          key={idx}
+          style={{ cursor: "pointer" }}
+          onClick={() => setAssetImageToView({
+            src: doc,
+            serialNumber: item?.serialNumber,
+            capacity: item?.capacity
+          })}
+        >
+          <img loading="lazy" decoding="async" src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
         </div>
       ))}
     </div>
@@ -83,16 +135,19 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
           borderBottom: expanded ? "1px solid #eee" : "none",
         }}
       >
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: "1 1 auto", minWidth: 0, maxWidth: "calc(100% - 260px)" }}>
           <div
             style={{
               margin: 0,
               color: "#0B4B66",
               fontSize: "32px",
               fontWeight: "bold",
+              maxWidth: "100%",
+              overflowWrap: "break-word",
+              lineHeight: "30px",
             }}
           >
-            {t(`QC_${section}_SUMMARY`)}
+            {customTitle || t(`QC_${section}_SUMMARY`)}
           </div>
           <button
             style={{
@@ -108,7 +163,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               alignItems: "center",
               justifyContent: "center",
             }}
-            onClick={() => setExpanded((prev) => !prev)}
+            onClick={toggleExpanded}
           >
             {expanded ? "−" : "+"}
           </button>
@@ -135,12 +190,27 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
       </div>
 
       {expanded &&
-        (isReport ? (
-          report && <SystemParameterReport t={t} file={report} supportingDocuments={supportingDocuments} installationImages={installationImages} />
+        (isLoadingContent ? (
+          <div style={{ padding: "20px" }}>
+            <Loader />
+          </div>
+        ) : renderContent ? (
+          renderContent({ setImageToView })
+        ) : isReport ? (
+          report ? <SystemParameterReport
+            t={t}
+            file={report}
+            supportingDocuments={supportingDocuments}
+            installationImages={installationImages}
+            installationCompletionCertificate={installationCompletionCertificate}
+            assetHandoverDocument={assetHandoverDocument}
+          /> : (
+            <div style={{ padding: "20px" }}>{t("CORE_COMMON_NOT_APPLICABLE")}</div>
+          )
         ) : (
           <div style={{ padding: "20px" }}>
             <Section title={t(`QC_INSTALLATION_ASSET_COUNT`)}>
-              {AssetInfoItem(sectionName, count)}
+              {AssetInfoItem(t(`QC_INSTALLATION_${section}`), count)}
             </Section>
 
             <Section title={t(`QC_INSTALLATION_${section}_SPECIFICATIONS`)}>
@@ -155,21 +225,36 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), t(`QC_INSTALLATION_BRAND_${details.brand}`))}
             </Section>
 
-            {section === "BATTERY" && (
-              <Section title={t(`QC_INSTALLATION_CAPACITY`)}>
-                {AssetInfoItem(t(`QC_INSTALLATION_ASSET_VOLTAGE`), specifications.voltage)}
-              </Section>
-            )}
-
             {items?.map((item, index) => (
               <Section key={index} title={`${t(`QC_INSTALLATION_${section}`)} ${index + 1}`}>
-                {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SERIAL_NUMBER`), item.serialNumber)}
+                {AssetInfoItem(
+                  t("QC_INSTALLATION_ASSET_SERIAL_NUMBER"),
+                  item.isPotentialDuplicate === true ? (
+                    <React.Fragment>
+                      <span style={{ fontWeight: 400 }}>{item.serialNumber || t("CORE_COMMON_NOT_APPLICABLE")}</span>{" "}
+                      <span>
+                        ({t(
+                          Array.isArray(item.duplicateFacilityName) && item.duplicateFacilityName.length > 1
+                            ? "QC_INSTALLATION_ASSET_DUPLICATE_SERIAL_FACILITIES"
+                            : "QC_INSTALLATION_ASSET_DUPLICATE_SERIAL_FACILITY",
+                          {
+                            facilityName: Array.isArray(item.duplicateFacilityName)
+                              ? item.duplicateFacilityName.map((name) => `"${name}"`).join(", ")
+                              : item.duplicateFacilityName ? `"${item.duplicateFacilityName}"` : item.duplicateFacilityName,
+                            interpolation: { escapeValue: false },
+                          }
+                        )})
+                      </span>
+                    </React.Fragment>
+                  ) : <span style={{ fontWeight: 400 }}>{item.serialNumber || t("CORE_COMMON_NOT_APPLICABLE")}</span>,
+                  item.isPotentialDuplicate === true
+                )}
                 {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), item.capacity)}
                 {item.documents && item.documents.length > 0 && (
                   <div style={{display: "flex", gap: "10px"}}>
                     {AssetInfoItem(
                       t(`QC_INSTALLATION_ASSET_IMAGE`),
-                      AssetImages(item.documents)
+                      AssetImages(item.documents, item)
                     )}
                   </div>
                 )}
@@ -181,14 +266,12 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                   {images.map((img, idx) => (
                     <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(img)}>
-                      <img src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
+                      <img loading="lazy" decoding="async" src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
                     </div>
                   ))}
                 </div>
               </Section>
             )}
-
-            {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
 
             {videos?.length > 0 && (
               <Section title={t(`QC_INSTALLATION_${section}_VIDEOS`)}>
@@ -219,7 +302,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
                             gap: "10px",
                           }}
                         >
-                          <video width="50" height="50" controls={true}>
+                          <video width="50" height="50" controls={true} preload="metadata">
                             <source src={video.fileUrl} type="video/mp4" />
                           </video>
                           <div>
@@ -237,6 +320,11 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
             )}
           </div>
         ))}
+
+      {assetImageToView && (
+        <AssetImageViewer t={t} image={assetImageToView} onClose={() => setAssetImageToView(null)} />
+      )}
+      {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
 
       {showRejectionModal && (
         <AddRejectionReasonModal

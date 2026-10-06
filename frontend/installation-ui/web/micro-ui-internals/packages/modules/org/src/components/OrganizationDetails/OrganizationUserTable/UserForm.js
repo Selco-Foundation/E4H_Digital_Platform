@@ -142,6 +142,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             populators: {
               name: "email",
               error: t("CORE_COMMON_REQUIRED"),
+              validation: { pattern: { value: Digit.Utils.getPattern("Email"), message: t("CS_PROFILE_EMAIL_ERRORMSG") } },
             },
           },
           {

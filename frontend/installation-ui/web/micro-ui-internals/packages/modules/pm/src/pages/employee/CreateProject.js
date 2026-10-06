@@ -148,7 +148,8 @@ const CreateProject = () => {
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
           key: "error",
-          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
+          label: response.apiErrorMessage || t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR"),
+          translate: false,
         })
         setInvalidDataError(null);
 
@@ -221,7 +222,10 @@ const CreateProject = () => {
             nextRoute: "project-duration",
             populators: {
               name: "justificationCode",
-              error: t("CORE_COMMON_REQUIRED"),
+              error: t("JUSTIFICATION_CODE_VALIDATION_ERROR"),
+              validation: {
+                pattern: /^(?:JUS|SFJ)-\d{5}(?:-\d)?$/,
+              },
             },
           },
           {
@@ -358,7 +362,6 @@ const CreateProject = () => {
               allowedFileTypes: [".csv", ".xls", ".xlsx"],
               handleFileUpload: handleFacilityDataUpload,
               invalidDataError: invalidDataError,
-              errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
               heading: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA",
               description: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA_DESC",
               t,
@@ -563,13 +566,14 @@ const CreateProject = () => {
         response = await ProjectService.updateProjectWorkflow(createdProject.id, "SCHEDULED", "Schedule Project");
       }
 
-      await invalidateProjectData();
+      const upsertedProjectData = await invalidateProjectData();
+      const upsertedProject =  upsertedProjectData?.projects?.[0] || {};
       dispatch(populateResponsePage({
         response: response,
         message: !!createdProject?.status ? t("PM_COMMON_PROJECT_UPDATED") : t("PM_COMMON_PROJECT_CREATED"),
-        createdId: createdProject.name,
+        createdId: upsertedProject.name,
         info: t("PM_COMMON_PROJECT_NAME"),
-        secondaryRedirectionLabel: t("PM_LABEL_CREATE_FIELD_PLAN"),
+        secondaryRedirectionLabel: t("PM_LABEL_MANAGE_PROJECT"),
         onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
       }))
       history.push(`/${window?.contextPath}/employee/pm/response`);
@@ -616,6 +620,7 @@ const CreateProject = () => {
         break;
       case 3:
         await handleCompleteProjectCreation();
+        break;
     }
   }
 
@@ -757,7 +762,7 @@ const CreateProject = () => {
             ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
             ...(mobileView ? {bottom: "120px"} : {})
           }}
-          label={t(toast.label)}
+          label={toast.translate === false ? toast.label : t(toast.label)}
           isDleteBtn={true}
           onClose={() => setToast(null)}
         />

@@ -131,6 +131,29 @@ public class IMConfiguration {
     @Value("${im.kafka.save.topic.indexer}")
     private String saveTopicIndexer;
 
+    @Value("${im.kafka.user.analytics.topic}")
+    private String userAnalyticsTopic;
+
+    @Value("${im.kafka.kibana.login.topic}")
+    private String kibanaLoginTopic;
+
+    @Value("${im.kafka.kibana.login.tenantid}")
+    private String kibanaLoginTenantId;
+
+    // Elasticsearch read-side config. Used to carry the already-indexed mappedVendor forward on
+    // update, so a re-index does not blank a vendor that was set by an earlier assignment.
+    @Value("${egov.es.host}")
+    private String esHost;
+
+    @Value("${egov.es.username}")
+    private String esUsername;
+
+    @Value("${egov.es.password}")
+    private String esPassword;
+
+    @Value("${egov.es.incident.index}")
+    private String esIncidentIndex;
+
     @Value("${im.default.offset}")
     private Integer defaultOffset;
 
@@ -156,6 +179,21 @@ public class IMConfiguration {
 
     @Value("${egov.hrms.search.endpoint}")
     private String hrmsEndPoint;
+
+    //Vendor registry - resolves which vendor organisation a user belongs to
+    @Value("${egov.vendor.host}")
+    private String vendorHost;
+
+    @Value("${egov.vendor.organisation.user.search.path}")
+    private String vendorOrganisationUserSearchPath;
+
+    /**
+     * When true, an ASSIGN out of OUT_OF_SCOPE to a vendor other than the previous one is turned into
+     * the ASSIGN_NEW_VENDOR transition. Keep it false until that action exists in the workflow
+     * business service of every tenant, otherwise the assignment fails with INVALID ACTION.
+     */
+    @Value("${im.out.of.scope.new.vendor.transition.enabled:false}")
+    private Boolean outOfScopeNewVendorTransitionEnabled;
 
     //Notification
     @Value("${egov.user.event.notification.enabled}")

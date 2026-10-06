@@ -47,38 +47,47 @@ public class ProjectEnrichment {
 
     /* Enrich Project on Create Request */
     public void enrichProjectOnCreate(ProjectRequest request, List<Project> parentProjects) {
+        log.trace("Entering enrichProjectOnCreate");
+        log.info("Starting project enrichment for create request");
         RequestInfo requestInfo = request.getRequestInfo();
         List<Project> projects = request.getProjects();
+        log.debug("Enriching {} projects", projects != null ? projects.size() : 0);
 
         String rootTenantId = projects.get(0).getTenantId().split("\\.")[0];
+        log.debug("Root tenant ID: {}", rootTenantId);
 
-        //Get Project Ids from Idgen Service for Number of projects present in Projects
-        List<String> projectNumbers = getIdList(requestInfo, rootTenantId
-                , config.getIdgenProjectNumberName(), "", projects.size());
+        log.debug("Generating project numbers from IdGen service");
+        List<String> projectNumbers = getIdList(requestInfo, rootTenantId,
+                config.getIdgenProjectNumberName(), "", projects.size());
+        log.debug("Generated {} project numbers", projectNumbers != null ? projectNumbers.size() : 0);
 
         for (int i = 0; i < projects.size(); i++) {
-
             if (projectNumbers != null && !projectNumbers.isEmpty()) {
                 projects.get(i).setProjectNumber(projectNumbers.get(i));
                 log.info("Project numbers set for projects");
             } else {
                 log.error("Error occurred while generating project numbers from IdGen service");
-                throw new CustomException("PROJECT_NUMBER_NOT_GENERATED", "Error occurred while generating project numbers from IdGen service");
+                throw new CustomException("PROJECT_NUMBER_NOT_GENERATED",
+                        "Error occurred while generating project numbers from IdGen service");
             }
 
             //Enrich Project id and audit details
+            log.debug("Enriching project ID and audit details for project index: {}", i);
             enrichProjectRequestOnCreate(projects.get(i), requestInfo, parentProjects);
             log.info("Enriched project request with id and Audit details");
 
             //Enrich Address id and audit details
+            log.debug("Enriching project address for project index: {}", i);
             enrichProjectAddressOnCreate(projects.get(i));
             log.info("Enriched project Address with id and Audit details");
 
             //Enrich target id and audit details
+            log.debug("Enriching project targets for project index: {}", i);
             enrichProjectTargetOnCreate(projects.get(i), requestInfo);
             log.info("Enriched target with id and Audit details");
 
             //Enrich document id and audit details
+            log.debug("Enriching project documents for project index: {}", i);
             enrichProjectDocumentOnCreate(projects.get(i), requestInfo);
             log.info("Enriched documents with id and Audit details");
 
@@ -88,8 +97,11 @@ public class ProjectEnrichment {
 
     /* Enrich Project on Update Request */
     public void enrichProjectOnUpdate(ProjectRequest request, Project project, Project projectFromDB) {
+        log.trace("Entering enrichProjectOnUpdate for project: {}", project.getId());
+        log.info("Starting project enrichment for update request");
         RequestInfo requestInfo = request.getRequestInfo();
         //Updating lastModifiedTime and lastModifiedBy for Project
+        log.debug("Enriching project audit details");
         enrichProjectRequestOnUpdate(project, projectFromDB, requestInfo);
         log.info("Enriched project in update project request");
 
@@ -108,17 +120,23 @@ public class ProjectEnrichment {
 
     /* Enrich Project with id and audit details */
     private void enrichProjectRequestOnCreate(Project projectRequest, RequestInfo requestInfo, List<Project> parentProjects) {
+        log.trace("Entering enrichProjectRequestOnCreate for project");
         projectRequest.setId(UUID.randomUUID().toString());
         log.info("Project id set to " + projectRequest.getId());
         AuditDetails auditDetails = projectServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         projectRequest.setAuditDetails(auditDetails);
+        log.debug("Audit details set for project");
         if (parentProjects != null && StringUtils.isNotBlank(projectRequest.getParent())) {
+            log.debug("Enriching project hierarchy with parent");
             enrichProjectHierarchy(projectRequest, parentProjects);
         }
+        log.trace("Exiting enrichProjectRequestOnCreate");
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichProjectRequestOnUpdate(Project projectRequest, Project projectFromDB, RequestInfo requestInfo) {
+        log.trace("Entering enrichProjectRequestOnUpdate for project: {}", projectRequest.getId());
+        log.debug("Updating audit details for project");
         projectRequest.setAuditDetails(projectFromDB.getAuditDetails());
         AuditDetails auditDetails = projectServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), projectFromDB.getAuditDetails(), false);
         projectRequest.setAuditDetails(auditDetails);
@@ -470,7 +488,7 @@ public class ProjectEnrichment {
         } catch (Exception exception) {
             log.error("error while calling id gen service", ExceptionUtils.getStackTrace(exception));
             throw new CustomException("IDGEN_ERROR",
-                    String.format("error while calling id gen service for %s", idformat));
+                    String.format("error while calling id gen service for %s", idKey));
         }
     }
 }

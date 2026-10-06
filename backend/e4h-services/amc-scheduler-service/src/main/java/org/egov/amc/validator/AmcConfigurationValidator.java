@@ -11,6 +11,7 @@ import org.egov.common.models.project.*;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.AmcConfigurationRepository;
 import org.egov.amc.util.AmcConfigurationServiceUtil;
+import org.egov.amc.util.AmcConstants;
 import org.egov.amc.util.MDMSUtils;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,10 +50,13 @@ public class AmcConfigurationValidator {
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public AmcConfigurationValidator(ServiceRequestClient serviceRequestRepository, ServiceRequestRepository requestRepository, AmcConfigurationServiceUtil amcConfigurationServiceUtil){
+    private final AmcConfigurationRepository amcConfigurationRepository;
+
+    public AmcConfigurationValidator(ServiceRequestClient serviceRequestRepository, ServiceRequestRepository requestRepository, AmcConfigurationServiceUtil amcConfigurationServiceUtil, AmcConfigurationRepository amcConfigurationRepository){
         this.serviceRequestRepository = serviceRequestRepository;
         this.requestRepository = requestRepository;
         this.amcConfigurationServiceUtil = amcConfigurationServiceUtil;
+        this.amcConfigurationRepository = amcConfigurationRepository;
     }
 
     public void validateCreateAmcConfigurationRequest(AmcConfigurationRequest request) {
@@ -66,10 +70,104 @@ public class AmcConfigurationValidator {
         validateRequestInfo(requestInfo);
         //Verify if AmcConfiguration request and mandatory fields are present
         validateAmcConfigurationRequest(request);
+        //Reject duplicates up front - the database would otherwise reject them after the API replied
+        validateUniqueInstallationOnCreate(request);
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
         log.debug("Create AMC configuration request validation completed successfully");
+    }
+
+    /**
+     * Enforces ux_amc_configuration_unique_installation before anything is published.
+     *
+     * <p>This has to be checked here, not left to the database: persistence goes through Kafka, so the
+     * API has already answered 202 by the time the INSERT runs. A unique-index violation would only
+     * surface in the persister's logs - the caller would believe the configuration was created, and
+     * the bulk-ingest Excel would report "success" for a row that silently went nowhere.
+     *
+     * <p>The check mirrors the index predicate exactly: the uniqueness rule is scoped to
+     * status = 'ACTIVE', independently of is_active, so a soft-deleted row that still carries
+     * status = 'ACTIVE' does occupy the slot and must be reported.
+     */
+    private void validateUniqueInstallationOnCreate(AmcConfigurationRequest request) {
+        List<AmcConfiguration> amcConfigurations = request.getAmcConfigurations();
+
+        // 1. Duplicates inside the request itself - a bulk ingest can easily send the same facility twice.
+        Map<String, AmcConfiguration> byInstallation = new LinkedHashMap<>();
+        for (AmcConfiguration amcConfiguration : amcConfigurations) {
+            String key = buildInstallationKey(amcConfiguration);
+            if (byInstallation.containsKey(key)) {
+                log.error("Duplicate AMC configuration in request for installation {}", key);
+                throw new CustomException("DUPLICATE_AMC_CONFIGURATION",
+                        "The request contains more than one AMC configuration for facility "
+                                + amcConfiguration.getFacilityId() + " on project " + amcConfiguration.getProjectId()
+                                + " with vendor " + amcConfiguration.getVendorId()
+                                + ". Only one active configuration is allowed per facility, project and vendor.");
+            }
+            byInstallation.put(key, amcConfiguration);
+        }
+
+        // 2. Duplicates against what is already stored.
+        String tenantId = amcConfigurations.get(0).getTenantId();
+        List<String> facilityIds = amcConfigurations.stream()
+                .map(AmcConfiguration::getFacilityId).filter(Objects::nonNull).distinct().toList();
+        List<String> projectIds = amcConfigurations.stream()
+                .map(AmcConfiguration::getProjectId).filter(Objects::nonNull).distinct().toList();
+        if (facilityIds.isEmpty() || projectIds.isEmpty()) {
+            return;
+        }
+
+        for (AmcConfiguration existing : fetchActiveConfigurations(request.getRequestInfo(), tenantId, facilityIds, projectIds)) {
+            AmcConfiguration conflicting = byInstallation.get(buildInstallationKey(existing));
+            if (conflicting != null) {
+                log.error("AMC configuration {} already active for facility {} on project {}",
+                        existing.getId(), existing.getFacilityId(), existing.getProjectId());
+                throw new CustomException("DUPLICATE_AMC_CONFIGURATION",
+                        "An active AMC configuration (" + existing.getId() + ") already exists for facility "
+                                + conflicting.getFacilityId() + " on project " + conflicting.getProjectId()
+                                + " with vendor " + conflicting.getVendorId()
+                                + ". Update it instead of creating a new one.");
+            }
+        }
+    }
+
+    /* Paginated so a large bulk ingest cannot silently outrun the server-side limit clamp. */
+    private List<AmcConfiguration> fetchActiveConfigurations(RequestInfo requestInfo, String tenantId,
+                                                             List<String> facilityIds, List<String> projectIds) {
+        AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder()
+                .tenantId(tenantId)
+                .facilityIds(facilityIds)
+                .projectIds(projectIds)
+                .statuses(List.of(AmcConstants.AMC_CONFIGURATION_ACTIVE_STATUS))
+                .build();
+        AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder()
+                .RequestInfo(requestInfo)
+                .searchCriteria(criteria)
+                .build();
+
+        List<AmcConfiguration> all = new ArrayList<>();
+        int pageSize = config.getMaxLimit();
+        int offset = 0;
+        while (true) {
+            // includeDeleted = true: the index ignores is_active, so the pre-check must too.
+            List<AmcConfiguration> page = amcConfigurationRepository.getAmcConfiguration(
+                    searchRequest, pageSize, offset, tenantId, true, null);
+            if (page == null || page.isEmpty()) {
+                break;
+            }
+            all.addAll(page);
+            if (page.size() < pageSize) {
+                break;
+            }
+            offset += pageSize;
+        }
+        return all;
+    }
+
+    private String buildInstallationKey(AmcConfiguration amcConfiguration) {
+        return amcConfiguration.getTenantId() + "|" + amcConfiguration.getFacilityId()
+                + "|" + amcConfiguration.getProjectId() + "|" + amcConfiguration.getVendorId();
     }
 
     private void validateAmcConfigurationRequest(AmcConfigurationRequest request) {
@@ -171,6 +269,10 @@ public class AmcConfigurationValidator {
             throw new CustomException("Amc Configuration Assignment", "Assignment are mandatory");
         }
 
+        // All assignments on one AMC configuration represent the same PO/work-order, so pocNumber
+        // must be present on every assignment and identical across the list - collected here and
+        // checked once after the loop rather than per-assignment.
+        Set<String> distinctPocNumbers = new LinkedHashSet<>();
         for (AmcConfigurationAssignment assignment : request) {
             if (assignment == null) {
                 log.error("Amc Configuration Assignment is mandatory in AmcConfiguration");
@@ -186,6 +288,19 @@ public class AmcConfigurationValidator {
                 log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
                 errorMap.put("TENANT_ID_ASSIGNMENT", "Tenant ID is mandatory");
             }
+
+            if (StringUtils.isBlank(assignment.getPocNumber())) {
+                log.error("pocNumber is mandatory in Amc Configuration Assignment for assignedUser: {}", assignment.getAssignedUser());
+                errorMap.put("POC_NUMBER_ASSIGNMENT", " PO/WO/CNT is mandatory for every AMC configuration assignment");
+            } else {
+                distinctPocNumbers.add(assignment.getPocNumber().trim());
+            }
+        }
+
+        if (distinctPocNumbers.size() > 1) {
+            log.error("AMC configuration assignments have differing pocNumber values: {}", distinctPocNumbers);
+            errorMap.put("POC_NUMBER_MISMATCH",
+                    "All AMC configuration assignments must have the same  PO/WO/CNT; found: " + distinctPocNumbers);
         }
 
         if (!errorMap.isEmpty())
@@ -328,6 +443,35 @@ public class AmcConfigurationValidator {
         }
     }
 
+    /*
+     * Minimal subset of validateUpdateAmcConfigurationRequest's checks - just enough to safely search
+     * the DB by id before the sentinel fields (durationMonths/visitFrequencyMonths=1,
+     * configurationEndDate=1) are resolved into real values. The full validation still runs
+     * afterwards via validateUpdateAmcConfigurationRequest, so this duplication is harmless.
+     */
+    public void validateUpdateRequestIdentifiers(AmcConfigurationRequest request) {
+        log.trace("Entering validateUpdateRequestIdentifiers method");
+        validateRequestInfo(request.getRequestInfo());
+
+        if (CollectionUtils.isEmpty(request.getAmcConfigurations())) {
+            log.error("AMC configuration list is empty. AMC configurations are mandatory");
+            throw new CustomException("AmcConfiguration", "AMC configurations are mandatory");
+        }
+
+        for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
+            if (StringUtils.isBlank(amcConfiguration.getId())) {
+                log.error("AMC configuration ID is mandatory for update");
+                throw new CustomException("UPDATE_AMC_Configuration", "Amc Configuration Id is mandatory");
+            }
+            if (StringUtils.isBlank(amcConfiguration.getTenantId())) {
+                log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
+                throw new CustomException("TENANT_ID", TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
+            }
+        }
+        validateMultipleTenantIds(request);
+        log.debug("Update request identifier validation completed successfully");
+    }
+
     /* Validates Update Project request body */
     public void validateUpdateAmcConfigurationRequest(AmcConfigurationRequest request) {
         log.trace("Entering validateUpdateAmcConfigurationRequest method");
@@ -429,18 +573,61 @@ public class AmcConfigurationValidator {
             log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
             throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
-        if ((amcConfiguration.getIds()==null || amcConfiguration.getIds().isEmpty()) && (amcConfiguration.getProjectIds()==null || amcConfiguration.getProjectIds().isEmpty())
-                && (amcConfiguration.getStatuses()==null || amcConfiguration.getStatuses().isEmpty()) && (amcConfiguration.getVendorIds()==null || amcConfiguration.getVendorIds().isEmpty())
-                && (amcConfiguration.getFacilityIds()==null || amcConfiguration.getFacilityIds().isEmpty()) && (amcConfiguration.getAssignedUsers()==null || amcConfiguration.getAssignedUsers().isEmpty())
-                && (amcConfiguration.getConfigurationStartDate() == null || amcConfiguration.getConfigurationStartDate() == 0)
-                && (amcConfiguration.getConfigurationEndDate() == null || amcConfiguration.getConfigurationEndDate() == 0)) {
-            log.error("Any one amcConfiguration search field is required for AmcConfiguration Search");
-            throw new CustomException("AMC_CONFIGURATION_SEARCH_FIELDS", "Any one amc configuration search field is required");
-        }
+//        if ((amcConfiguration.getIds()==null || amcConfiguration.getIds().isEmpty()) && (amcConfiguration.getProjectIds()==null || amcConfiguration.getProjectIds().isEmpty())
+//                && (amcConfiguration.getStatuses()==null || amcConfiguration.getStatuses().isEmpty()) && (amcConfiguration.getVendorIds()==null || amcConfiguration.getVendorIds().isEmpty())
+//                && (amcConfiguration.getFacilityIds()==null || amcConfiguration.getFacilityIds().isEmpty()) && (amcConfiguration.getAssignedUsers()==null || amcConfiguration.getAssignedUsers().isEmpty())
+//                && (amcConfiguration.getConfigurationStartDate() == null || amcConfiguration.getConfigurationStartDate() == 0)
+//                && (amcConfiguration.getConfigurationEndDate() == null || amcConfiguration.getConfigurationEndDate() == 0)) {
+//            log.error("Any one amcConfiguration search field is required for AmcConfiguration Search");
+//            throw new CustomException("AMC_CONFIGURATION_SEARCH_FIELDS", "Any one amc configuration search field is required");
+//        }
 
         if (!amcConfiguration.getTenantId().equals(tenantId)) {
             log.error("Tenant Id must be same in URL param as well as AMC CONFIGURATION request body");
             throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and AMC CONFIGURATION request");
+        }
+    }
+
+    /*
+     * Delete only needs to identify the rows to remove, so - unlike update - it deliberately does NOT
+     * reuse validateAmcConfigurationRequest: requiring a full payload (assetTypes, assignments,
+     * durationMonths, ...) just to delete would force every caller to round-trip a search first.
+     */
+    public void validateDeleteAmcConfigurationRequest(AmcConfigurationRequest request) {
+        log.trace("Entering validateDeleteAmcConfigurationRequest method");
+        validateRequestInfo(request.getRequestInfo());
+
+        if (CollectionUtils.isEmpty(request.getAmcConfigurations())) {
+            log.error("AMC configuration list is empty. AMC configurations are mandatory");
+            throw new CustomException("AMC_CONFIGURATIONS", "AmcConfigurations are mandatory");
+        }
+
+        for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
+            if (StringUtils.isBlank(amcConfiguration.getId())) {
+                log.error("AMC configuration id is mandatory in delete request");
+                throw new CustomException("AMC_CONFIGURATION_ID", "AmcConfiguration id is mandatory in delete request");
+            }
+            if (StringUtils.isBlank(amcConfiguration.getTenantId())) {
+                log.error("Tenant id is mandatory in delete request");
+                throw new CustomException("TENANT_ID", TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
+            }
+        }
+        validateMultipleTenantIds(request);
+        log.debug("Delete AMC configuration request validation completed successfully");
+    }
+
+    /* Validates that every configuration targeted by a delete actually exists in the database */
+    public void validateDeleteAgainstDB(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB) {
+        Set<String> idsInDB = amcConfigurationsFromDB == null
+                ? Collections.emptySet()
+                : amcConfigurationsFromDB.stream().map(AmcConfiguration::getId).collect(java.util.stream.Collectors.toSet());
+
+        for (AmcConfiguration amcConfiguration : amcConfigurationsFromRequest) {
+            if (!idsInDB.contains(amcConfiguration.getId())) {
+                log.error("AMC configuration ID {} does not exist in the system", amcConfiguration.getId());
+                throw new CustomException("INVALID_AmcConfiguration_DELETE",
+                        "The amcConfiguration id " + amcConfiguration.getId() + " that you are trying to delete does not exist");
+            }
         }
     }
 
@@ -456,7 +643,18 @@ public class AmcConfigurationValidator {
 
     /* Validates projects data in update request against projects data fetched from database */
     public void validateUpdateAgainstDB(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB) {
-        log.trace("Entering validateUpdateAgainstDB method, request count: {}, DB count: {}", 
+        validateUpdateAgainstDB(amcConfigurationsFromRequest, amcConfigurationsFromDB, Collections.emptySet());
+    }
+
+    /**
+     * @param durationDrivenEndDateIds configurations whose end date was recomputed by the service from
+     *                                 a new durationMonths. Shortening the duration legitimately pulls
+     *                                 the end date back, so the "end date cannot be decreased" rule -
+     *                                 which exists to stop clients from silently truncating a running
+     *                                 contract - does not apply to them.
+     */
+    public void validateUpdateAgainstDB(List<AmcConfiguration> amcConfigurationsFromRequest, List<AmcConfiguration> amcConfigurationsFromDB, Set<String> durationDrivenEndDateIds) {
+        log.trace("Entering validateUpdateAgainstDB method, request count: {}, DB count: {}",
                 amcConfigurationsFromRequest != null ? amcConfigurationsFromRequest.size() : 0,
                 amcConfigurationsFromDB != null ? amcConfigurationsFromDB.size() : 0);
         if (CollectionUtils.isEmpty(amcConfigurationsFromDB)) {
@@ -483,13 +681,15 @@ public class AmcConfigurationValidator {
             }
         log.debug("Update against DB validation completed successfully for {} AMC configuration(s)", amcConfigurationsFromRequest.size());
 
-            validateStartDateAndEndDateAgainstDB(amcConfiguration, amcConfigurationFromDB, currentTimestamp, nextDateTimestampUTC);
+            boolean endDateIsDurationDriven = durationDrivenEndDateIds != null
+                    && durationDrivenEndDateIds.contains(amcConfiguration.getId());
+            validateStartDateAndEndDateAgainstDB(amcConfiguration, amcConfigurationFromDB, currentTimestamp, nextDateTimestampUTC, endDateIsDurationDriven);
 
 //            validateUpdateAddressAgainstDB(project, projectFromDB);
         }
     }
 
-    private void validateStartDateAndEndDateAgainstDB(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
+    private void validateStartDateAndEndDateAgainstDB(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC, boolean endDateIsDurationDriven) {
         String errorMessage = "";
         // Check if the amcConfiguration start date is not null and whether it's different from the one in the database
         errorMessage = getErrorMessage(amcConfiguration, amcConfigurationFromDB, currentTimestamp, nextDateTimestampUTC, errorMessage);
@@ -503,7 +703,8 @@ public class AmcConfigurationValidator {
         // Check if the project end date is not null and whether it's different from the one in the database
         if (amcConfiguration.getConfigurationEndDate() != null) {
             // Check if the project end date is before the current timestamp or within 24 hours from the next date's midnight
-            if (amcConfiguration.getConfigurationEndDate().compareTo(amcConfigurationFromDB.getConfigurationEndDate()) < 0) {
+            if (!endDateIsDurationDriven
+                    && amcConfiguration.getConfigurationEndDate().compareTo(amcConfigurationFromDB.getConfigurationEndDate()) < 0) {
                 if (amcConfiguration.getConfigurationEndDate().compareTo(currentTimestamp) < 0) {
                     errorMessage = "The amc configuration end date cannot be updated as it has already ended. The amc configuration end date cannot be decreased to a past date.";
                 } else if (amcConfiguration.getConfigurationEndDate().compareTo(nextDateTimestampUTC) < 0) {
@@ -520,18 +721,15 @@ public class AmcConfigurationValidator {
         }
     }
 
+    /**
+     * configurationStartDate is intentionally NOT restricted to "not already started"/"24h in
+     * advance" here (unlike configurationEndDate below): it now reflects an external fact - the
+     * Installation Report Submission Date - which is virtually always in the past by the time an
+     * AMC configuration is set up or corrected, so a forward-planning-style restriction would block
+     * legitimate updates. Only presence is still required.
+     */
     private static String getErrorMessage(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
-        if (amcConfiguration.getConfigurationStartDate() != null) {
-            // Check if the project start date is different from the one in the database
-            if (amcConfiguration.getConfigurationStartDate().compareTo(amcConfigurationFromDB.getConfigurationStartDate()) != 0) {
-                // Check if the project start date is before the current timestamp or within 24 hours from the next date's midnight
-                if (amcConfigurationFromDB.getConfigurationStartDate().compareTo(currentTimestamp) < 0) {
-                    errorMessage = "The amcConfiguration start date cannot be updated as the amcConfiguration has already started.";
-                } else if (amcConfiguration.getConfigurationStartDate().compareTo(nextDateTimestampUTC) < 0) {
-                    errorMessage = "The amcConfiguration start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
-                }
-            }
-        } else {
+        if (amcConfiguration.getConfigurationStartDate() == null) {
             errorMessage = "The project start date cannot be updated as it is null.";
         }
         return errorMessage;

@@ -12,6 +12,7 @@ const Inbox = () => {
   const { userName, roles } = Digit.UserService.getUser().info;
   const [totalRecords, setTotalRecords] = useState(0);
   const { nearing } = Digit.Hooks.useQueryParams();
+  const isStateProgramManagerUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_1");
   const isTechPocUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
 
   const isCodePresent = (array, codeToCheck) => array.some((item) => item.code === codeToCheck);
@@ -31,7 +32,7 @@ const Inbox = () => {
       }
     })() || {
       filters: {
-        wfFilters: isCodePresent(roles, "COMPLAINT_RESOLVER")
+        wfFilters: isCodePresent(roles, "COMPLAINT_RESOLVER") || isStateProgramManagerUser
           ? { assignee: [{ code: userName }] }
           : isTechPocUser
           ? {

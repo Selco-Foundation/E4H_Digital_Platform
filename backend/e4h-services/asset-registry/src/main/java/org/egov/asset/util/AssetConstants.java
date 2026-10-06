@@ -36,4 +36,17 @@ public class AssetConstants {
     public static final Set<String> VALID_BATTERY_TYPES = new HashSet<>(
             Arrays.asList("Lithium", "Lead Acid"));
 
+    /**
+     * assetDetails key flagging an asset whose Asset Brand + Asset Serial Number combination already
+     * exists somewhere in the registry, whatever its asset type.
+     */
+    public static final String IS_POTENTIAL_DUPLICATE = "isPotentialDuplicate";
+
+    /**
+     * assetDetails key holding the list of health facility names the same brand + serial number was
+     * already submitted from, oldest submission first. Only present alongside
+     * isPotentialDuplicate = true.
+     */
+    public static final String DUPLICATE_FACILITY_NAME = "duplicateFacilityName";
+
 }

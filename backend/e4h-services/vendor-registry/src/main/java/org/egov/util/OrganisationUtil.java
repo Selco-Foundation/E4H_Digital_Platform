@@ -86,7 +86,27 @@ public class OrganisationUtil {
         }
     }
 
+    /**
+     * True when {@code value} carries egov-enc-service's {@code keyId|ciphertext} envelope, i.e. it
+     * is safe to hand to the decrypt endpoint. A bare mobile number returns false — passing one to
+     * {@code _decrypt} makes egov-enc-service throw {@code "<value>: Invalid Ciphertext"}.
+     */
+    public static boolean isEncrypted(String value) {
+        if (value == null) {
+            return false;
+        }
+        int separator = value.indexOf('|');
+        if (separator <= 0 || separator == value.length() - 1) {
+            return false;
+        }
+        return value.substring(0, separator).chars().allMatch(Character::isDigit);
+    }
+
+    /** Encrypts a plaintext mobile number; an already-encrypted value is returned unchanged. */
     public String encryptMobileNumber(String mobileNumber){
+        if (isEncrypted(mobileNumber)) {
+            return mobileNumber;
+        }
         String encryptedMobileNumber = null;
         if(mobileNumber!=null && !mobileNumber.isBlank()){
             EncryptObject object = EncryptObject.builder()
@@ -114,9 +134,16 @@ public class OrganisationUtil {
         return encryptedMobileNumber;
     }
 
+    /**
+     * Decrypts an encrypted mobile number. Legacy rows holding a plaintext number, and
+     * egov-enc-service failures, both yield {@code mobileNumber} unchanged rather than an exception —
+     * one bad row must not fail the whole organisation search.
+     */
     public String decryptMobileNumber(String mobileNumber){
-        String decryptedMobileNumber = null;
-        if(mobileNumber!=null && !mobileNumber.isBlank()){
+        if (!isEncrypted(mobileNumber)) {
+            return mobileNumber;
+        }
+        try {
             EncryptObject object = EncryptObject.builder()
                     .mobileNumber(mobileNumber)
                     .build();
@@ -126,15 +153,21 @@ public class OrganisationUtil {
                     .decryptionRequests(List.of(userMap))
                     .build();
             List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.decryptObject(request);
-            for (Map<String, EncryptObject> map : response) {
-                EncryptObject user = map.get("userObject"); // clé du JSON
-                if (user != null) {
-                    log.info("Mobile decrypté : {}", user.getMobileNumber());
-                    decryptedMobileNumber = user.getMobileNumber();
+            String decryptedMobileNumber = null;
+            if (response != null) {
+                for (Map<String, EncryptObject> map : response) {
+                    EncryptObject user = map.get("userObject");
+                    if (user != null) {
+                        decryptedMobileNumber = user.getMobileNumber();
+                    }
                 }
             }
+            return decryptedMobileNumber != null && !decryptedMobileNumber.isBlank()
+                    ? decryptedMobileNumber : mobileNumber;
+        } catch (Exception e) {
+            log.error("Could not decrypt POC mobile number, returning stored value as-is: {}", e.getMessage());
+            return mobileNumber;
         }
-        return decryptedMobileNumber;
     }
 
     public List<ActivityAssignment> getFieldPlanActivityAssignment(DeleteOrgUserRequest request) {

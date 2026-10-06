@@ -140,15 +140,26 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
   const activityFacilityData = activityFacilitiesResponse?.facility?.[0];
 
   const facility = activityFacilityData?.activityFacility?.facility || {};
+  const additionalDetails = activityFacilityData?.activityFacility?.additionalDetails || {};
   const assigneeDetails = activityFacilityData?.activityFacility?.assignedEmployeeUser || {};
   const auditTrail = generateAuditTrail(activityFacilityData.workflow, activityFacilityData.transactions);
   const { assetAggregation, documentAggregation } = await getAssetAggregation(activityFacilityData.workflow);
+  const solarSolutionDesignType = additionalDetails.solarSolutionDesignType;
+  const totalSystemCapacity = additionalDetails.totalSystemCapacity;
 
   return {
     facilityDetails: {
       id: activityFacilityData?.activityFacility?.id,
       facilityName: activityFacilityData?.activityFacility?.facility?.facility_name,
       facilityId: activityFacilityData?.activityFacility?.facilityId,
+      fieldPlanName: activityFacilityData?.activityFacility?.fieldPlan?.name,
+      systemType: additionalDetails.systemType,
+      solarSolutionDesignType: solarSolutionDesignType?.toUpperCase() === "CUSTOM"
+        ? additionalDetails.customSolarSolutionDesignType || solarSolutionDesignType
+        : solarSolutionDesignType,
+      totalSystemCapacity: totalSystemCapacity?.toUpperCase() === "CUSTOM"
+        ? additionalDetails.customTotalSystemCapacity || totalSystemCapacity
+        : totalSystemCapacity,
       facilityType: facility.facility_type,
       status: activityFacilityData?.activityFacility?.status,
       block: activityFacilityData?.activityFacility?.facility?.boundaryCode,

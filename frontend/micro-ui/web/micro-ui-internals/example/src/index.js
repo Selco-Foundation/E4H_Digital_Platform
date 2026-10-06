@@ -36,6 +36,26 @@ const initTokens = (stateCode) => {
 
   if (userType !== "CITIZEN") {
     window.Digit.SessionStorage.set("User", { access_token: token, info: userType !== "CITIZEN" ? JSON.parse(employeeInfo) : citizenInfo });
+
+    const safeParseJurisdiction = (value) => {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const jurisdictionBoundaries = safeParseJurisdiction(window.localStorage.getItem("Jurisdiction.Boundaries"));
+    const jurisdictionCurrentBoundary = safeParseJurisdiction(window.localStorage.getItem("Jurisdiction.CurrentBoundary"));
+    if (jurisdictionBoundaries) {
+      window.Digit.SessionStorage.set("Jurisdiction.Boundaries", jurisdictionBoundaries);
+    }
+    if (jurisdictionCurrentBoundary) {
+      window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", jurisdictionCurrentBoundary);
+    } else if (jurisdictionBoundaries) {
+      window.Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", jurisdictionBoundaries);
+    }
   } else {
     // if (!window.Digit.SessionStorage.get("User")?.extraRoleInfo) window.Digit.SessionStorage.set("User", { access_token: token, info: citizenInfo });
   }

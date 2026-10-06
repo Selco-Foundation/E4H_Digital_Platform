@@ -28,12 +28,16 @@ import java.sql.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.egov.activity.util.ActivityConstants.APPROVED_BY_QC_SPOC;
+import static org.egov.activity.util.ActivityConstants.INSTALLATION_REPORT_PART_B_EDITOR;
 import static org.egov.activity.util.ActivityConstants.SUBMITTED_BY_SUPERVISOR;
 import static org.egov.common.utils.CommonUtils.populateErrorDetails;
 
 @Service
 @Slf4j
 public class ActivityService {
+
+    private static final String INSTALLATION_REPORT_BOM_DOCUMENT_TYPE = "INSTALLATION_REPORT_BOM";
 
     private final ActivityFacilityRepository activityFacilityRepository;
 
@@ -52,13 +56,16 @@ public class ActivityService {
 
     private final AmcSchedulerService amcSchedulerService;
 
+    private final ActivityAnalyticsService activityAnalyticsService;
+    private final BomPdfService bomPdfService;
+
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
 
     @Autowired
     public ActivityService(
             ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService) {
+            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService, BomPdfService bomPdfService) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityFacilityRepository = activityFacilityRepository;
@@ -73,38 +80,56 @@ public class ActivityService {
             this.activityAssignmentRepository = activityAssignmentRepository;
             this.boundaryUtil = boundaryUtil;
             this.amcSchedulerService = amcSchedulerService;
+            this.activityAnalyticsService = activityAnalyticsService;
+            this.bomPdfService = bomPdfService;
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
-        log.info("received request to create bulk activity bulk");
+        log.trace("createActivity method invoked");
         List<Activity> activities = request.getActivities();
+        int activityCount = activities != null ? activities.size() : 0;
+        log.info("Received request to create bulk activities, count: {}", activityCount);
         try {
+            log.debug("Processing {} activities for enrichment", activityCount);
             for (Activity activity : activities) {
-                log.info("processing {} valid entities", activity);
+                log.trace("Enriching activity with id: {}", activity.getId());
                 activityEnrichment.enrichActivityRequestOnCreate(activity, request.getRequestInfo());
             }
+            log.debug("Pushing activities to topic: {}", activityConfiguration.getCreateActivityTopic());
             producer.push(activityConfiguration.getCreateActivityTopic(), request);
-            log.info("successfully created activity");
+            log.info("Successfully created {} activities", activityCount);
         } catch (Exception exception) {
-            log.error("error occurred while creating activity: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating activities, count: {}", activityCount, exception);
         }
 
         return activities;
     }
 
     public List<ActivityFacility> createActivityFacility(ActivityFacilityBulkRequest request) {
-        log.info("received request to create bulk fieldplan facility");
-
+        log.trace("createActivityFacility method invoked");
+        log.info("Received request to create bulk activity facilities");
         activityValidator.validateCreateActivityFacilityRequest(request);
         List<ActivityFacility> activityFacilities = request.getActivityFacilities();
+        int facilityCount = activityFacilities != null ? activityFacilities.size() : 0;
+        log.debug("Processing {} activity facilities", facilityCount);
         List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
 
         try {
+            // Resolve all distinct activity codes in one query instead of one query per facility -
+            // most/all facilities in a batch share the same activity code.
+            List<String> activityCodes = activityFacilities.stream()
+                    .map(ActivityFacility::getActivityId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            Map<String, Activity> activityByCode = activityFacilityRepository.getActivitiesByCodes(activityCodes).stream()
+                    .collect(Collectors.toMap(Activity::getCode, activity -> activity, (a, b) -> a));
+
             for (ActivityFacility activityFacility : activityFacilities) {
-                log.info("processing {} valid entities", activityFacility);
-                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+                log.trace("Enriching activity facility with id: {}", activityFacility.getId());
+                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo(), activityByCode);
                 List<ActivityFacilityUser> usersFacility = new ArrayList<>();
-                // Get reviewer users. Can see facility activity on UI directly by getting field plan first
+                // Get reviewer users. Can see facility activity on UI directly by getting installation plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
                     for (String userId : activityFacility.getReviewerUser()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
@@ -152,6 +177,7 @@ public class ActivityService {
 
             // Create linked users, so that reviewer, staff and supervisor are linked to each activity facility. Reviewer can see list of activities on UI.
             if(activityFacilityUsers != null && !activityFacilityUsers.isEmpty()){
+                log.debug("Creating {} activity facility user mappings", activityFacilityUsers.size());
                 ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
                         .requestInfo(request.getRequestInfo())
                         .activityFacilityUsers(activityFacilityUsers)
@@ -159,73 +185,155 @@ public class ActivityService {
                 facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
             }
 
-            producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
-            log.info("successfully created activity facility");
+            log.debug("Pushing activity facilities to topic: {}", activityConfiguration.getCreateActivityFacilityTopic());
+            pushActivityFacilitiesInSizeBatches(activityFacilities, request.getRequestInfo());
+            log.info("Successfully created {} activity facilities", facilityCount);
         } catch (Exception exception) {
-            log.error("error occurred while creating Activity facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating activity facilities, count: {}", facilityCount, exception);
         }
 
         return activityFacilities;
     }
 
-    public List<ActivityAssignment> createActivityAssignment(ActivityAssignmentBulkRequest request) {
-        log.info("received request to create bulk fieldplan facility");
+    /**
+     * Splits activityFacilities into consecutive runs whose combined serialized size stays under
+     * {@link ActivityConfiguration#getCreateActivityFacilityBatchMaxBytes()}, and pushes one Kafka
+     * message per run. A single item that alone exceeds the threshold is still pushed alone
+     * (best effort) rather than dropped - that item's own producer.push failure surfaces normally.
+     */
+    private void pushActivityFacilitiesInSizeBatches(List<ActivityFacility> activityFacilities, RequestInfo requestInfo) {
+        int maxBatchBytes = activityConfiguration.getCreateActivityFacilityBatchMaxBytes();
+        List<ActivityFacility> currentBatch = new ArrayList<>();
+        long currentBatchBytes = 0;
 
+        for (ActivityFacility activityFacility : activityFacilities) {
+            long itemBytes = estimateSerializedSize(activityFacility);
+            if (!currentBatch.isEmpty() && currentBatchBytes + itemBytes > maxBatchBytes) {
+                pushActivityFacilityBatch(currentBatch, requestInfo);
+                currentBatch = new ArrayList<>();
+                currentBatchBytes = 0;
+            }
+            currentBatch.add(activityFacility);
+            currentBatchBytes += itemBytes;
+        }
+        if (!currentBatch.isEmpty()) {
+            pushActivityFacilityBatch(currentBatch, requestInfo);
+        }
+    }
+
+    private void pushActivityFacilityBatch(List<ActivityFacility> batch, RequestInfo requestInfo) {
+        ActivityFacilityBulkRequest batchRequest = ActivityFacilityBulkRequest.builder()
+                .requestInfo(requestInfo)
+                .activityFacilities(batch)
+                .build();
+        producer.push(activityConfiguration.getCreateActivityFacilityTopic(), batchRequest);
+        log.info("Pushed activity facility batch of {} items", batch.size());
+    }
+
+    private long estimateSerializedSize(ActivityFacility activityFacility) {
+        try {
+            return mapper.writeValueAsBytes(activityFacility).length;
+        } catch (Exception e) {
+            log.warn("Could not estimate serialized size for activityFacility {}, assuming 0 bytes", activityFacility.getId(), e);
+            return 0;
+        }
+    }
+
+    public List<ActivityAssignment> createActivityAssignment(ActivityAssignmentBulkRequest request) {
+        log.trace("createActivityAssignment method invoked");
+        log.info("Received request to create bulk activity assignments");
         activityValidator.validateCreateActivityAssignmentRequest(request);
         List<ActivityAssignment> activityAssignments = request.getActivityAssignments();
+        int assignmentCount = activityAssignments != null ? activityAssignments.size() : 0;
+        log.debug("Processing {} activity assignments", assignmentCount);
         try {
             for (ActivityAssignment activityAssignment : activityAssignments) {
-                log.info("processing {} valid entities", activityAssignment);
+                log.trace("Enriching activity assignment with id: {}", activityAssignment.getId());
                 activityEnrichment.enrichActivityAssignmentOnCreate(activityAssignment, request.getRequestInfo());
             }
-            log.info("successfully created Activity Assignment");
+            log.debug("Pushing activity assignments to topic: {}", activityConfiguration.getCreateActivityAssignmentTopic());
             producer.push(activityConfiguration.getCreateActivityAssignmentTopic(), request);
+            log.info("Successfully created {} activity assignments", assignmentCount);
+
+            // One analytics event per staffing row, after the persister push so a failed create
+            // publishes nothing (best-effort, never throws).
+            activityAnalyticsService.publishAssignmentEvents(request.getRequestInfo(), activityAssignments);
         } catch (Exception exception) {
-            log.error("error occurred while creating Activity Assignment: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating activity assignments, count: {}", assignmentCount, exception);
         }
 
         return activityAssignments;
     }
 
     public List<ActivityAssignment> unassignActivityAssignment(ActivityAssignmentBulkRequest request) {
-        log.info("received request to unassign bulk Activity facility");
-
+        log.trace("unassignActivityAssignment method invoked");
+        log.info("Received request to unassign bulk activity assignments");
         activityValidator.validateDeleteActivityAssignmentRequest(request);
         List<ActivityAssignment> activityAssignments = request.getActivityAssignments();
+        int assignmentCount = activityAssignments != null ? activityAssignments.size() : 0;
+        log.debug("Processing {} activity assignments for unassignment", assignmentCount);
         try {
             for (ActivityAssignment activityAssignment : activityAssignments) {
-                log.info("processing {} valid entities", activityAssignment);
+                log.trace("Unassigning activity assignment with id: {}", activityAssignment.getId());
                 activityEnrichment.enrichFieldPlanRequestOnDelete(activityAssignment, request.getRequestInfo());
             }
-            log.info("successfully unassign fieldplan activities");
+            log.debug("Pushing unassignment request to topic: {}", activityConfiguration.getUnassignActivityAssignmentTopic());
             producer.push(activityConfiguration.getUnassignActivityAssignmentTopic(), request);
+            log.info("Successfully unassigned {} activity assignments", assignmentCount);
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while unassigning activity assignments, count: {}", assignmentCount, exception);
         }
 
         return activityAssignments;
     }
 
     public List<ActivityFacility> searchActivityFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        log.trace("searchActivityFacility method invoked with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
+        log.debug("Fetching activity facilities from repository");
         List<ActivityFacility> activityFacilities = activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        List<String> fieldPlanIds = activityFacilities.stream()
+                .map(ActivityFacility::getFieldPlanId)
+                .filter(Objects::nonNull)
+                .filter(id -> !id.isEmpty())
+                .distinct()
+                .toList();
+        Map<String, String> pocNumbersByFieldPlanId = activityAssignmentRepository.getFirstPocNumbersByFieldPlanIds(fieldPlanIds);
+        Map<String, String> assignedToByFieldPlanId = activityAssignmentRepository.getAssignedToByFieldPlanIdsAndRole(
+                fieldPlanIds, INSTALLATION_REPORT_PART_B_EDITOR);
+        List<String> partBEditorUserIds = assignedToByFieldPlanId.values().stream()
+                .filter(Objects::nonNull)
+                .filter(id -> !id.isEmpty())
+                .distinct()
+                .toList();
+        Map<String, String> vendorNameByUserId = fetchVendorNamesByUserIds(partBEditorUserIds, tenantId, request.getRequestInfo());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
-        log.debug("🌍 Loaded {} boundaries for enrichment", listBlock.size());
+        log.debug("Loaded {} boundaries for enrichment", listBlock.size());
         for (ActivityFacility activityFacility : activityFacilities) {
-            log.info("processing get activity code", activityFacility);
+            log.trace("Enriching activity facility with id: {}", activityFacility.getId());
             activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
+            if (activityFacility.getFieldPlan() != null && activityFacility.getFieldPlanId() != null) {
+                activityFacility.getFieldPlan().setPocNumber(pocNumbersByFieldPlanId.get(activityFacility.getFieldPlanId()));
+            }
+
+            if (activityFacility.getFieldPlanId() != null) {
+                String partBEditorUserId = assignedToByFieldPlanId.get(activityFacility.getFieldPlanId());
+                if (partBEditorUserId != null) {
+                    activityFacility.setStaffVendorName(vendorNameByUserId.get(partBEditorUserId));
+                }
+            }
 
             if(activityFacility.getFacility() == null)
                 continue;
 
             Object additionalDetails = activityFacility.getFacility().getAdditionalDetails();
             String boundaryCode = activityFacility.getFacility().getBoundaryCode();
-            log.trace("🔎 Processing projectId={} with boundaryCode={}", activityFacility.getFacility().getId(), boundaryCode);
+            log.trace("Processing facilityId={} with boundaryCode={}", activityFacility.getFacility().getId(), boundaryCode);
 
             if (boundaryCode != null) {
                 Boundary boundary = listBlock.get(boundaryCode);
                 if (boundary != null) {
-                    log.debug("✨ Enriching projectId={} with state={} and district={}", activityFacility.getId(), boundary.getState(), boundary.getDistrict());
+                    log.debug("Enriching activityFacilityId={} with state={} and district={}", activityFacility.getId(), boundary.getState(), boundary.getDistrict());
 
                     Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
                     activityFacility.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
@@ -234,12 +342,161 @@ public class ActivityService {
                     enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
                     activityFacility.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
                 } else {
-                    log.warn("⚠️ No boundary found for code={} in projectId={}", boundaryCode, activityFacility.getId());
+                    log.warn("No boundary found for code={} in activityFacilityId={}", boundaryCode, activityFacility.getId());
                 }
             }
         }
 
             return activityFacilities;
+    }
+
+    /**
+     * The generated installation report (INSTALLATION_REPORT_BOM) of every activity facility of one
+     * installation plan that QC SPOC has approved.
+     */
+    public List<InstallationReportDocument> searchInstallationReportDocumentsByFieldPlanId(RequestInfo requestInfo, String fieldPlanId, String tenantId) {
+        log.info("Fetching installation report documents for fieldPlanId: {}", fieldPlanId);
+        return collectInstallationReportDocuments(requestInfo, List.of(fieldPlanId), resolveTenantId(tenantId));
+    }
+
+    /**
+     * Same, for every installation plan of a project: the plans are resolved from field-planner
+     * first, then their approved activity facilities are read in one search.
+     */
+    public List<InstallationReportDocument> searchInstallationReportDocumentsByProjectId(RequestInfo requestInfo, String projectId, String tenantId) {
+        log.info("Fetching installation report documents for projectId: {}", projectId);
+        String resolvedTenantId = resolveTenantId(tenantId);
+        List<String> fieldPlanIds = activityValidator.getFieldPlanIdsByProjectId(requestInfo, projectId, resolvedTenantId);
+        if (fieldPlanIds.isEmpty()) {
+            log.warn("No installation plan found for projectId: {} - returning no installation report", projectId);
+            return Collections.emptyList();
+        }
+        return collectInstallationReportDocuments(requestInfo, fieldPlanIds, resolvedTenantId);
+    }
+
+    private List<InstallationReportDocument> collectInstallationReportDocuments(RequestInfo requestInfo, List<String> fieldPlanIds, String tenantId) {
+        ActivityFacilitySearchCriteria criteria = ActivityFacilitySearchCriteria.builder()
+                .fieldPlanId(fieldPlanIds)
+                .statuses(List.of(APPROVED_BY_QC_SPOC))
+                .tenantId(tenantId)
+                .build();
+        ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
+                .requestInfo(requestInfo)
+                .criteria(criteria)
+                .build();
+
+        List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest,
+                activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(), tenantId, false, null);
+        log.debug("Found {} approved activity facilities across {} installation plans",
+                activityFacilities != null ? activityFacilities.size() : 0, fieldPlanIds.size());
+        if (activityFacilities == null || activityFacilities.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<InstallationReportDocument> installationReportDocuments = new ArrayList<>();
+        for (ActivityFacility activityFacility : activityFacilities) {
+            Document report = findLatestInstallationReportDocument(activityFacility, requestInfo);
+            if (report == null) {
+                // Approved without a generated report: possible for facilities approved before the
+                // report was generated backend side. Skipped rather than returned with a null id.
+                log.warn("No {} document found for approved activityFacilityId: {}",
+                        INSTALLATION_REPORT_BOM_DOCUMENT_TYPE, activityFacility.getId());
+                continue;
+            }
+            installationReportDocuments.add(InstallationReportDocument.builder()
+                    .filestoreId(report.getFileStoreId())
+                    .facilityName(activityFacility.getFacility() != null
+                            ? activityFacility.getFacility().getFacilityName() : null)
+                    .projectId(resolveProjectId(activityFacility))
+                    .projectName(resolveProjectName(activityFacility))
+                    .fieldPlanId(activityFacility.getFieldPlanId())
+                    .build());
+        }
+        log.info("Returning {} installation report documents out of {} approved activity facilities",
+                installationReportDocuments.size(), activityFacilities.size());
+        return installationReportDocuments;
+    }
+
+    /**
+     * The most recent INSTALLATION_REPORT_BOM document carried by the activity facility's workflow
+     * history. A re-submitted report leaves one such document per submission, and only the last one
+     * reflects the facility as approved.
+     */
+    private Document findLatestInstallationReportDocument(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        List<ProcessInstance> processInstances = workflowService.getProcessInstanceById(
+                activityFacility.getId(), activityFacility.getTenantId(), requestInfo, activityConfiguration.getMaxLimit());
+        if (processInstances == null || processInstances.isEmpty()) {
+            return null;
+        }
+
+        // Sorted rather than trusting the workflow's own ordering, so "the last one" stays the last
+        // one whichever order the search returns.
+        List<ProcessInstance> orderedByTime = new ArrayList<>(processInstances);
+        orderedByTime.sort(Comparator.comparingLong(ActivityService::processInstanceTime));
+
+        Document latest = null;
+        long latestTime = Long.MIN_VALUE;
+        for (ProcessInstance processInstance : orderedByTime) {
+            if (processInstance.getDocuments() == null) {
+                continue;
+            }
+            long processInstanceTime = processInstanceTime(processInstance);
+            for (Document document : processInstance.getDocuments()) {
+                if (document == null || document.getFileStoreId() == null
+                        || !INSTALLATION_REPORT_BOM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType())) {
+                    continue;
+                }
+                long documentTime = documentTime(document, processInstanceTime);
+                if (documentTime >= latestTime) {
+                    latest = document;
+                    latestTime = documentTime;
+                }
+            }
+        }
+        return latest;
+    }
+
+    /* Transition time, falling back on the document's own audit details when the workflow has none. */
+    private static long processInstanceTime(ProcessInstance processInstance) {
+        if (processInstance.getAuditDetails() == null) {
+            return 0L;
+        }
+        if (processInstance.getAuditDetails().getCreatedTime() != null) {
+            return processInstance.getAuditDetails().getCreatedTime();
+        }
+        return processInstance.getAuditDetails().getLastModifiedTime() != null
+                ? processInstance.getAuditDetails().getLastModifiedTime() : 0L;
+    }
+
+    private static long documentTime(Document document, long fallback) {
+        if (document.getAuditDetails() != null && document.getAuditDetails().getCreatedTime() != null) {
+            return document.getAuditDetails().getCreatedTime();
+        }
+        return fallback;
+    }
+
+    private static String resolveProjectId(ActivityFacility activityFacility) {
+        FieldPlan fieldPlan = activityFacility.getFieldPlan();
+        if (fieldPlan == null) {
+            return null;
+        }
+        if (fieldPlan.getProjectId() != null) {
+            return fieldPlan.getProjectId();
+        }
+        return fieldPlan.getProject() != null ? fieldPlan.getProject().getId() : null;
+    }
+
+    /* Carried by the installation plan's project, which field-planner joins on every plan search. */
+    private static String resolveProjectName(ActivityFacility activityFacility) {
+        FieldPlan fieldPlan = activityFacility.getFieldPlan();
+        if (fieldPlan == null || fieldPlan.getProject() == null) {
+            return null;
+        }
+        return fieldPlan.getProject().getName();
+    }
+
+    private String resolveTenantId(String tenantId) {
+        return (tenantId == null || tenantId.isBlank()) ? activityConfiguration.getTenantId() : tenantId;
     }
 
     public List<FacilityStatusAgregation> getStatusFacilityAssignmentsAgregation(String fieldPlanId) {
@@ -294,12 +551,16 @@ public class ActivityService {
     }
 
     public List<ActivityFacility> delete(ActivityFacilityBulkRequest request) {
-        log.info("received request to delete bulk activity facility staff");
+        log.trace("delete method invoked");
+        log.info("Received request to delete bulk activity facilities");
         activityValidator.validateActivityFacilityDeleteRequest(request);
         List<ActivityFacility> validEntities = request.getActivityFacilities();
+        int deleteCount = validEntities != null ? validEntities.size() : 0;
+        log.debug("Processing {} activity facilities for deletion", deleteCount);
         try {
             if (!validEntities.isEmpty()) {
                 for (ActivityFacility activityFacility : validEntities) {
+                    log.trace("Deleting activity facility with id: {}", activityFacility.getId());
                     // 1. Fetch the existing facility
                     ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder()
                             .ids(List.of(activityFacility.getId()))
@@ -314,30 +575,36 @@ public class ActivityService {
                     List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
                             activityConfiguration.getTenantId(), false, null);
                     if(activityFacilities == null || activityFacilities.isEmpty()){
-                        log.error("Activity Facility ID do not exist");
+                        log.error("Activity facility not found for deletion, id: {}", activityFacility.getId());
                         throw new CustomException("Activity Facility Delete", "Activity Facility ID do not exist");
                     }
                     activityFacility.setIsDeleted(true);
                     activityEnrichment.enrichActivityFacilityRequestOnUpdate(activityFacility, activityFacilities.get(0), request.getRequestInfo());
+                    log.debug("Pushing delete request to topic: {}", activityConfiguration.getDeleteActivityFacilityTopic());
                     producer.push(activityConfiguration.getDeleteActivityFacilityTopic(), request);
                     log.info("successfully updated bulk project staff");
                 }
+                log.info("Successfully marked {} activity facilities as deleted", deleteCount);
             }
         } catch (Exception exception) {
-            log.error("error occurred while updating project staff", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while deleting activity facilities, count: {}", deleteCount, exception);
         }
 
         return validEntities;
     }
 
     public List<ActivityAssignment> searchAssignedActivity(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        log.trace("searchAssignedActivity method invoked with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
         activityValidator.validateSearchAssignActivityRequest(request, limit, offset, tenantId);
+        log.debug("Fetching activity assignments from repository");
         List<ActivityAssignment> activityFacilities = activityAssignmentRepository.getActivitiesAssignment(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        log.debug("Retrieved {} activity assignments from repository", activityFacilities != null ? activityFacilities.size() : 0);
         for (ActivityAssignment activityAssignment : activityFacilities) {
-            log.info("processing get activity code", activityAssignment);
+            log.trace("Enriching activity assignment with id: {}", activityAssignment.getId());
             activityEnrichment.enrichActivityAssignmentOnSearch(request.getRequestInfo(), activityAssignment);
             List<FacilityStatusAgregation> statusAgregations = getStatusFacilityAssignmentsAgregation(activityAssignment.getFieldPlanId());
             if (statusAgregations != null) {
+                log.debug("Adding status aggregation for fieldPlanId: {}", activityAssignment.getFieldPlanId());
                 Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "statusAgregation", statusAgregations);
                 activityAssignment.setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
             }
@@ -346,6 +613,18 @@ public class ActivityService {
     }
 
     public FacilityStatusWrapper updateFacilityWorkflow(FacilityWorkflowRequest request) throws Exception {
+        return updateFacilityWorkflow(request, activityAnalyticsService.newContext());
+    }
+
+    /**
+     * @param analyticsContext memo for the analytics MDMS + localization lookups, shared across a
+     *                         whole bulk workflow update so those calls are made once per request
+     *                         rather than once per activity facility
+     */
+    private FacilityStatusWrapper updateFacilityWorkflow(FacilityWorkflowRequest request,
+                                                         ActivityAnalyticsService.AnalyticsContext analyticsContext) throws Exception {
+        log.trace("updateFacilityWorkflow method invoked for activityFacilityId: {}", request.getActivityFacilityId());
+        log.info("Updating workflow for activity facility: {}, action: {}", request.getActivityFacilityId(), request.getWorkflow().getAction());
         // 1. Fetch the existing facility
         ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder()
                 .ids(List.of(request.getActivityFacilityId()))
@@ -357,18 +636,33 @@ public class ActivityService {
                 .requestInfo(request.getRequestInfo())
                 .build();
 
+        log.debug("Fetching existing activity facility for workflow update");
         List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
                 activityConfiguration.getTenantId(), false, null);
 
         if (activityFacilities == null || activityFacilities.isEmpty()) {
+            log.error("Activity facility not found for workflow update, id: {}", request.getActivityFacilityId());
             throw new CustomException("FACILITY_NOT_FOUND", "Activity Facility not found with ID: " + request.getActivityFacilityId());
         }
 
         ActivityFacility existingActivityFacitlity = activityFacilities.get(0);
+        // Captured before step 3 overwrites it with the post-transition state: analytics needs the
+        // state the action fired FROM to tell a submission apart from a re-submission.
+        String priorStatus = existingActivityFacitlity.getStatus();
+
+        // On every (re)submission, the BOM installation report PDF is regenerated and attached to
+        // the workflow's documents BEFORE the transition call - that call is the only place
+        // documents travel to workflow-v2. Regenerating every time (rather than skipping when one
+        // is already present) is required so project_date and any BOM/serial-number changes stay
+        // current across a reject-then-resubmit cycle.
+        if ("SUBMIT_REPORT_A".equalsIgnoreCase(request.getWorkflow().getAction()) || "SUBMIT_REPORT_B".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            attachBomInstallationReportDocument(request, existingActivityFacitlity);
+        }
 
         // 2. Call workflow transition
         ProcessInstance updatedWorkflow;
         try {
+            log.debug("Transitioning workflow with action: {}", request.getWorkflow().getAction());
             updatedWorkflow = workflowService.transitionWorkflow(
                     existingActivityFacitlity,
                     request.getWorkflow().getAction(),
@@ -376,19 +670,21 @@ public class ActivityService {
                     request.getRequestInfo(),
                     request.getWorkflow().getComments()
             );
+            log.debug("Workflow transition successful, new state: {}", updatedWorkflow.getState() != null ? updatedWorkflow.getState().getState() : "null");
         } catch (Exception e) {
-            e.printStackTrace();
-            log.error(e.getMessage());
+            log.error("Failed to transition workflow for activity facility: {}, action: {}", request.getActivityFacilityId(), request.getWorkflow().getAction(), e);
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for facility: " + request.getActivityFacilityId());
         }
 
         if(request.getTransactions() != null && !request.getTransactions().isEmpty()) {
+            log.debug("Processing {} transactions for workflow update", request.getTransactions().size());
             handleTransactionsAndComment(request, updatedWorkflow);
         }
 
         // 3. Inject workflow status into activity facility
         existingActivityFacitlity.setStatus(updatedWorkflow.getState().getState());
+        log.debug("Updated activity facility status to: {}", updatedWorkflow.getState().getState());
 
         // 4. Create a new Activity Instance instance with enriched additionalDetails
         ActivityFacility updatedActivityFacility = ActivityFacility.builder()
@@ -412,10 +708,12 @@ public class ActivityService {
                 .build();
 
         // 6. Perform enriched update using standard handler
+        log.debug("Updating activity facility after workflow transition");
         handleUpdateActivityFacility(enrichedRequest, updatedActivityFacility, existingActivityFacitlity);
 
         // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
         if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            log.info("Processing approval side effects for activity facility: {}", existingActivityFacitlity.getId());
             // once facility is fetched we need to fetch assets for that facility
             String activityFacilityId = existingActivityFacitlity.getId();
             if (activityFacilityId != null) {
@@ -429,7 +727,49 @@ public class ActivityService {
             }
         }
 
+        // Step 11: One analytics event per transition — installation report submitted / re-submitted /
+        // approved / rejected / flagged, driven by the action + priorStatus (best-effort, never
+        // throws). Sits here rather than in the controller so the bulk endpoint, which loops over
+        // this method, is instrumented too.
+        activityAnalyticsService.publishWorkflowEvent(request.getRequestInfo(), existingActivityFacitlity,
+                request.getWorkflow().getAction(), priorStatus, analyticsContext);
+
+        log.info("Workflow update completed for activity facility: {}, new status: {}", request.getActivityFacilityId(), updatedWorkflow.getState().getState());
         return new FacilityStatusWrapper(updatedActivityFacility, updatedWorkflow.getState().getState(), null, null);
+    }
+
+    /**
+     * Drops any INSTALLATION_REPORT_BOM document already on the workflow - carried over from an
+     * earlier submission - so a regenerated report never ends up duplicated alongside the stale one.
+     */
+    private void removeExistingBomInstallationReportDocument(Workflow workflow) {
+        List<Document> documents = workflow.getDocuments();
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
+        documents.removeIf(document -> document != null
+                && INSTALLATION_REPORT_BOM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType()));
+    }
+
+    private void attachBomInstallationReportDocument(FacilityWorkflowRequest request, ActivityFacility activityFacility) {
+        log.trace("Entering attachBomInstallationReportDocument method for activityFacilityId: {}", activityFacility.getId());
+        // Regenerate on every (re)submission so project_date and any BOM/serial-number changes stay
+        // current - drop any stale BOM report document before generating the fresh one.
+        removeExistingBomInstallationReportDocument(request.getWorkflow());
+        // Read before addDocumentsItem below, so the report never carries its own previous output.
+        List<Document> workflowDocuments = request.getWorkflow().getDocuments();
+        String fileStoreId = bomPdfService.generateInstallationReportPdf(request.getRequestInfo(), activityFacility, workflowDocuments);
+        AuditDetails auditDetails = activityServiceUtil.getAuditDetails(request.getRequestInfo().getUserInfo().getUuid(), null, true);
+
+        Document pdfDocument = Document.builder()
+                .documentType(INSTALLATION_REPORT_BOM_DOCUMENT_TYPE)
+                .fileStoreId(fileStoreId)
+                .documentUid("BOM-" + activityFacility.getId() + "-" + System.currentTimeMillis())
+                .auditDetails(auditDetails)
+                .build();
+
+        request.getWorkflow().addDocumentsItem(pdfDocument);
+        log.info("BOM installation report document attached to workflow for activityFacilityId: {}", activityFacility.getId());
     }
 
     private void handleTransactionsAndComment(FacilityWorkflowRequest request, ProcessInstance updatedWorkflow) {
@@ -469,8 +809,8 @@ public class ActivityService {
      *  - Call facility-service update API to set is_onm_ready = true
      */
     private void markFacilityOnmReady(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        String facilityId = activityFacility.getFacilityId();
         try {
-            String facilityId = activityFacility.getFacilityId();
             if (facilityId == null || facilityId.isEmpty()) {
                 log.warn("Cannot mark facility ONM ready: facilityId is null for activityFacility {}", activityFacility.getId());
                 return;
@@ -509,15 +849,18 @@ public class ActivityService {
             String url = activityConfiguration.getFacilityServiceHost()
                     + activityConfiguration.getFacilityServiceUpdateUrl();
 
-            log.info("Marking facility {} as ONM ready via {}", facilityId, url);
+            log.info("Marking facility as ONM ready, facilityId: {}, activityFacilityId: {}", facilityId, activityFacility.getId());
+            log.debug("Calling facility service update endpoint: {}", url);
             serviceRequest.fetchResult(new StringBuilder(url), updateRequest);
+            log.debug("Successfully marked facility as ONM ready, facilityId: {}", facilityId);
         } catch (Exception e) {
-            log.error("Failed to mark facility ONM ready for activityFacility {}: {}",
-                    activityFacility.getId(), e.getMessage(), e);
+            log.error("Failed to mark facility ONM ready, facilityId: {}, activityFacilityId: {}", facilityId, activityFacility.getId(), e);
         }
     }
 
     private void updateAssetsForFacility(ActivityFacility activityFacility, RequestInfo requestInfo, String facilityId) throws CustomException {
+        log.trace("updateAssetsForFacility method invoked for activityFacilityId: {}, facilityId: {}", activityFacility.getId(), facilityId);
+        log.debug("Searching assets for facility: {}", facilityId);
         AssetSearchCriteria assetSearchCriteria = AssetSearchCriteria.builder()
                 .activityFacilityID(facilityId)
                 .tenantId(activityFacility.getTenantId())
@@ -533,21 +876,28 @@ public class ActivityService {
 
         try {
             List<Asset> assets = serviceRequest.fetchResult(assetSearchUri, assetSearchRequest, new TypeReference<List<Asset>>() {});
+            int assetCount = assets != null ? assets.size() : 0;
+            log.debug("Found {} assets for facility: {}", assetCount, facilityId);
             if (assets != null && !assets.isEmpty()) {
                 for (Asset asset : assets) {
+                    log.trace("Updating operational status for asset: {}", asset.getAssetId());
                     updateAssetOperationalStatus(asset, requestInfo);
                 }
+                log.info("Successfully updated operational status for {} assets", assetCount);
+            } else {
+                log.debug("No assets found for facility: {}", facilityId);
             }
         } catch (ServiceCallException e) {
-            log.error("Service call failed while processing assets for project {}: {}", activityFacility.getId(), e.getMessage());
+            log.error("Service call failed while processing assets, activityFacilityId: {}, facilityId: {}", activityFacility.getId(), facilityId, e);
             throw new CustomException("ASSET_UPDATE_FAILED", "Failed to update asset operational status");
         } catch (Exception e) {
-            log.error("Unexpected error while processing assets for project {}: {}", activityFacility.getId(), e.getMessage(), e);
+            log.error("Unexpected error while processing assets, activityFacilityId: {}, facilityId: {}", activityFacility.getId(), facilityId, e);
             throw new CustomException("ASSET_PROCESSING_ERROR", "An error occurred while processing assets");
         }
     }
 
     private void updateAssetOperationalStatus(Asset asset, RequestInfo requestInfo) {
+        log.trace("updateAssetOperationalStatus method invoked for assetId: {}", asset.getAssetId());
         try {
             asset.setIsOperational(true);
 
@@ -566,19 +916,23 @@ public class ActivityService {
                     .assetDetail(assetCreate)
                     .build();
 
+            log.debug("Updating asset operational status, assetId: {}", asset.getAssetId());
             serviceRequest.fetchResult(assetUpdateUri, createRequest);
+            log.debug("Successfully updated asset operational status, assetId: {}", asset.getAssetId());
         } catch (Exception e) {
-            log.error("Failed to update asset {}: {}", asset.getAssetId(), e.getMessage());
+            log.error("Failed to update asset operational status, assetId: {}", asset.getAssetId(), e);
         }
     }
 
     public Map<String, Object> updateBulkActivityFacilityWorkflow(FacilityBulkApproveRequest facilityBulkApproveRequest) throws Exception {
-
+        log.trace("updateBulkActivityFacilityWorkflow method invoked, isAllSelected: {}", facilityBulkApproveRequest.getIsAllSelected());
+        log.info("Starting bulk workflow update, isAllSelected: {}", facilityBulkApproveRequest.getIsAllSelected());
         List<String> activityFacilityIds = new ArrayList<>();
         int totalActivityFacilities = 0;
         int finalActivityFacilities = 0;
 
         if (facilityBulkApproveRequest.getIsAllSelected()) {
+            log.debug("Processing all selected activity facilities with filters");
             // Case 1: Search all activityFacilitiesList using filters
             if(facilityBulkApproveRequest.getFilters() == null){
                 throw new CustomException("INVALID_REQUEST", "Filters are required when isAllSelected is true");
@@ -596,8 +950,9 @@ public class ActivityService {
                     activityConfiguration.getTenantId(), false, null);
             totalActivityFacilities = countAllFacilityActivities(searchRequest, activityConfiguration.getTenantId(), null, null);
 
-            // only those activity facilities whose status is SUBMITTED_BY_SUPERVISOR
+            //             // only those activity facilities whose status is SUBMITTED_BY_SUPERVISOR
             List<ActivityFacility> activityFacilitiesList = activityFacilities.stream().filter(this::hasSubmittedBySupervisorStatus).toList();
+            log.debug("Filtered {} activity facilities with SUBMITTED_BY_SUPERVISOR status from {} total", activityFacilitiesList.size(), activityFacilities.size());
 
             finalActivityFacilities = activityFacilitiesList.size();
             activityFacilityIds = activityFacilitiesList.stream().map(ActivityFacility::getId).collect(Collectors.toList());
@@ -606,13 +961,16 @@ public class ActivityService {
             if (facilityBulkApproveRequest.getActivityFacilityIds() != null && !facilityBulkApproveRequest.getActivityFacilityIds().isEmpty()) {
                 activityFacilityIds = facilityBulkApproveRequest.getActivityFacilityIds();
                 totalActivityFacilities = activityFacilityIds.size();
+                log.debug("Processing {} provided activity facility IDs", totalActivityFacilities);
             } else {
+                log.error("Activity facility IDs are required when isAllSelected is false");
                 throw new CustomException("INVALID_REQUEST", "activity facility IDs are required when isAllSelected is false");
             }
         }
         Map<String, Object> result = new HashMap<>();
         // Validate that we have projects to process
         if (activityFacilityIds.isEmpty()) {
+            log.warn("No activity facilities to process for bulk workflow update");
             result.put("failedActivityFacilitiesIDs", new ArrayList<>());
             result.put("succeededActivityFacilitiesIDs", new ArrayList<>());
             result.put("totalActivityFacilties", 0);
@@ -620,25 +978,30 @@ public class ActivityService {
         }
 
         // Update workflow for all project IDs
-        log.info("Starting bulk workflow update for {} activity facility", activityFacilityIds.size());
+        log.info("Starting bulk workflow update for {} activity facilities", activityFacilityIds.size());
         List<String> failedActivityFacilityIDs = new ArrayList<>();
         List<String> succeededActivityFacilityIDs = new ArrayList<>();
+        // One analytics memo for the whole batch: the MDMS masters are fetched once and each state
+        // is localized once, instead of once per activity facility in the loop below.
+        ActivityAnalyticsService.AnalyticsContext analyticsContext = activityAnalyticsService.newContext();
         for (String activityFacilityId : activityFacilityIds) {
             try {
+                log.trace("Processing workflow update for activity facility: {}", activityFacilityId);
                 FacilityWorkflowRequest workflowRequest = FacilityWorkflowRequest.builder()
                         .requestInfo(facilityBulkApproveRequest.getRequestInfo())
                         .activityFacilityId(activityFacilityId)
                         .workflow(facilityBulkApproveRequest.getWorkflow())
                         .build();
 
-                FacilityStatusWrapper updatedProject = updateFacilityWorkflow(workflowRequest);
-                log.info("Successfully updated workflow for activity facility: {}", activityFacilityId);
+                FacilityStatusWrapper updatedProject = updateFacilityWorkflow(workflowRequest, analyticsContext);
+                log.debug("Successfully updated workflow for activity facility: {}", activityFacilityId);
                 succeededActivityFacilityIDs.add(activityFacilityId);
             } catch (Exception e) {
-                log.error("Failed to update workflow for activity facility {}: {}", activityFacilityId, e.getMessage());
+                log.error("Failed to update workflow for activity facility: {}", activityFacilityId, e);
                 failedActivityFacilityIDs.add(activityFacilityId);
             }
         }
+        log.info("Bulk workflow update completed. Succeeded: {}, Failed: {}", succeededActivityFacilityIDs.size(), failedActivityFacilityIDs.size());
 
         result.put("failedActivityFacilityIDs", failedActivityFacilityIDs);
         result.put("succeededActivityFacilityIDs", succeededActivityFacilityIDs);
@@ -664,23 +1027,27 @@ public class ActivityService {
     }
 
     public ActivityFacilityBulkRequest updateActivityFacility(ActivityFacilityBulkRequest request) {
+        log.trace("updateActivityFacility method invoked");
+        int facilityCount = request.getActivityFacilities() != null ? request.getActivityFacilities().size() : 0;
+        log.info("Received request to update {} activity facilities", facilityCount);
         /*
          * Validate the update activity request
          */
         activityValidator.validateCreateActivityFacilityRequest(request);
-        log.info("Update activity facility request validated");
+        log.debug("Activity facility update request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
+        log.debug("Fetching existing activity facilities from database");
         List<ActivityFacility> activityFacilityListFromDB = searchActivityFacility(
                 getSearchActivityFacilityRequest(request.getActivityFacilities(), request.getRequestInfo()),
                 activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
                 request.getActivityFacilities().get(0).getTenantId(), false, null);
-        log.info("Fetched activities for update request");
+        log.debug("Retrieved {} activity facilities from database for update", activityFacilityListFromDB != null ? activityFacilityListFromDB.size() : 0);
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         activityValidator.validateUpdateAgainstDB(request.getActivityFacilities(), activityFacilityListFromDB);
 
@@ -695,23 +1062,27 @@ public class ActivityService {
     }
 
     public ActivityAssignmentBulkRequest updateActivityAssignment(ActivityAssignmentBulkRequest request) {
+        log.trace("updateActivityAssignment method invoked");
+        int assignmentCount = request.getActivityAssignments() != null ? request.getActivityAssignments().size() : 0;
+        log.info("Received request to update {} activity assignments", assignmentCount);
         /*
          * Validate the update activity request
          */
         activityValidator.validateUpdateActivityAssignment(request);
-        log.info("Update activity assignment request validated");
+        log.debug("Activity assignment update request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
+        log.debug("Fetching existing activity assignments from database");
         List<ActivityAssignment> activityAssignmentListFromDB = searchAssignedActivity(
                 getSearchActivityAssignmentRequest(request.getActivityAssignments(), request.getRequestInfo()),
                 activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
                 request.getActivityAssignments().get(0).getTenantId(), false, null);
-        log.info("Fetched activities for update request");
+        log.debug("Retrieved {} activity assignments from database for update", activityAssignmentListFromDB != null ? activityAssignmentListFromDB.size() : 0);
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         activityValidator.validateUpdateActivityAssignmentAgainstDB(request.getActivityAssignments(), activityAssignmentListFromDB);
 
@@ -798,7 +1169,7 @@ public class ActivityService {
         if (!isValidCascadingUpdateActivityFacility(activityFacilityFromDB, activityFacility)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 
@@ -821,7 +1192,7 @@ public class ActivityService {
         if (!isValidCascadingUpdateActivityAssignment(activityAssignmentFromDB, activityAssignment)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 
@@ -1168,6 +1539,121 @@ public class ActivityService {
         return (List<?>) orgUsersObj;
     }
 
+    /**
+     * Resolves vendor organisation names for users assigned as INSTALLATION_REPORT_PART_B_EDITOR
+     * on the same installation plan (via activity assignment search criteria).
+     */
+    private Map<String, String> fetchVendorNamesByUserIds(List<String> userIds, String tenantId, RequestInfo requestInfo) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            OrgUserSearchCriteria criteria = OrgUserSearchCriteria.builder()
+                    .userId(userIds)
+                    .tenantId(tenantId)
+                    .build();
+            OrgUserSearchRequest searchRequest = OrgUserSearchRequest.builder()
+                    .requestInfo(requestInfo)
+                    .criteria(criteria)
+                    .build();
+
+            List<?> orgUsers = searchOrgUsers(searchRequest, tenantId, 0, Math.max(userIds.size(), 10));
+            if (orgUsers.isEmpty()) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, String> organisationIdByUserId = new HashMap<>();
+            for (Object obj : orgUsers) {
+                if (!(obj instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> orgUser = (Map<String, Object>) obj;
+                Object userIdObj = orgUser.get("userId");
+                Object organisationIdObj = orgUser.get("organizationId");
+                if (userIdObj == null || organisationIdObj == null) {
+                    continue;
+                }
+                organisationIdByUserId.putIfAbsent(userIdObj.toString(), organisationIdObj.toString());
+            }
+
+            if (organisationIdByUserId.isEmpty()) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, String> organisationNameById = fetchOrganisationNamesByIds(
+                    organisationIdByUserId.values().stream().distinct().toList(),
+                    tenantId,
+                    requestInfo
+            );
+
+            Map<String, String> vendorNameByUserId = new HashMap<>();
+            organisationIdByUserId.forEach((userId, organisationId) -> {
+                String organisationName = organisationNameById.get(organisationId);
+                if (organisationName != null) {
+                    vendorNameByUserId.put(userId, organisationName);
+                }
+            });
+            return vendorNameByUserId;
+        } catch (Exception e) {
+            log.error("Error while fetching vendor names for userIds {}", userIds, e);
+            return Collections.emptyMap();
+        }
+    }
+
+    private Map<String, String> fetchOrganisationNamesByIds(List<String> organisationIds, String tenantId, RequestInfo requestInfo) {
+        if (organisationIds == null || organisationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            Map<String, Object> searchCriteria = new HashMap<>();
+            searchCriteria.put("ids", organisationIds);
+            searchCriteria.put("tenantId", tenantId);
+
+            Map<String, Object> searchRequest = new HashMap<>();
+            searchRequest.put("RequestInfo", requestInfo);
+            searchRequest.put("SearchCriteria", searchCriteria);
+
+            StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
+                    .append(activityConfiguration.getOrganisationSearchUrl())
+                    .append("?tenantId=").append(tenantId)
+                    .append("&limit=").append(organisationIds.size());
+
+            Map<String, Object> response = serviceRequest.fetchResult(
+                    url,
+                    searchRequest,
+                    new TypeReference<Map<String, Object>>() {
+                    });
+
+            if (response == null) {
+                return Collections.emptyMap();
+            }
+
+            Object organisationsObj = response.get("organisations");
+            if (!(organisationsObj instanceof List)) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, String> organisationNameById = new HashMap<>();
+            for (Object obj : (List<?>) organisationsObj) {
+                if (!(obj instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> organisation = (Map<String, Object>) obj;
+                Object idObj = organisation.get("id");
+                Object nameObj = organisation.get("name");
+                if (idObj != null && nameObj != null) {
+                    organisationNameById.put(idObj.toString(), nameObj.toString());
+                }
+            }
+            return organisationNameById;
+        } catch (Exception e) {
+            log.error("Error while fetching organisation names for organisationIds {}", organisationIds, e);
+            return Collections.emptyMap();
+        }
+    }
+
     private void updateComplaintResolverJurisdictionsWithFacility(Map<String, Object> orgUser,
                                                                   ActivityFacility activityFacility,
                                                                   RequestInfo requestInfo) {
@@ -1262,15 +1748,17 @@ public class ActivityService {
         try {
             log.info("Triggering installation completion side effects for activity facility: {}", activityFacilityId);
 
-            // Get project ID from field plan
+            // Get project ID from installation plan
             String projectId = null;
             if (activityFacility.getFieldPlanId() != null) {
+                log.debug("Fetching installation plan for fieldPlanId: {}", activityFacility.getFieldPlanId());
                 FieldPlan fieldPlan = activityValidator.getFieldPlanById(
                         requestInfo,
                         activityFacility.getFieldPlanId(),
                         activityFacility.getTenantId());
                 if (fieldPlan != null) {
                     projectId = fieldPlan.getProjectId();
+                    log.debug("Retrieved projectId: {} from installation plan", projectId);
                 }
             }
 
@@ -1280,6 +1768,7 @@ public class ActivityService {
             }
 
             // Fetch installed assets for this facility
+            log.debug("Fetching installed assets for activity facility: {}", activityFacilityId);
             AssetSearchCriteria assetSearchCriteria = AssetSearchCriteria.builder()
                     .activityFacilityID(activityFacilityId)
                     .tenantId(activityFacility.getTenantId())
@@ -1299,18 +1788,22 @@ public class ActivityService {
                     new TypeReference<>() {
                     });
 
+            int assetCount = installedAssets != null ? installedAssets.size() : 0;
             if (installedAssets == null || installedAssets.isEmpty()) {
                 log.info("No installed assets found for activity facility: {}. Skipping AMC side effects.", activityFacilityId);
                 return;
             }
+            log.debug("Found {} installed assets for activity facility: {}", assetCount, activityFacilityId);
 
             // Get installation date
             Long installationDate = activityFacility.getAuditDetails().getLastModifiedTime();
             if (installationDate == null) {
                 installationDate = System.currentTimeMillis();
+                log.debug("Using current timestamp as installation date");
             }
 
             // Call AMC scheduler service to process installation completion
+            log.debug("Calling AMC scheduler service for installation completion, projectId: {}, facilityId: {}", projectId, activityFacility.getFacilityId());
             amcSchedulerService.processInstallationCompletion(
                     projectId,
                     activityFacility.getFacilityId(),
@@ -1320,11 +1813,10 @@ public class ActivityService {
                     requestInfo
             );
 
-            log.info("Successfully triggered installation completion side effects for activity facility: {}", activityFacilityId);
+            log.info("Successfully triggered installation completion side effects for activity facility: {}, assets processed: {}", activityFacilityId, assetCount);
 
         } catch (Exception e) {
-            log.error("Error triggering installation completion side effects for activity facility {}: {}",
-                    activityFacilityId, e.getMessage(), e);
+            log.error("Error triggering installation completion side effects for activity facility: {}", activityFacilityId, e);
         }
     }
 

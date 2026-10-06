@@ -91,4 +91,16 @@ public class IndexView {
 
     @JsonProperty("boundary")
     private Boundary boundary;
+
+    /**
+     * Program role the ticket is currently waiting on, resolved from the roles allowed to act on its
+     * current workflow state. Null once the ticket reaches a terminal state.
+     * @see org.egov.im.service.CurrentOwnerService
+     */
+    @JsonProperty("currentOwner")
+    private String currentOwner;
+
+    /** Workflow system role {@link #currentOwner} was derived from. */
+    @JsonProperty("currentOwnerSystemRole")
+    private String currentOwnerSystemRole;
 }

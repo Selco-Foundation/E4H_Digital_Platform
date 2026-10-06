@@ -9,8 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 /**
- * LLD: single SQL join for projectId/projectName by facility IDs (no field-planner calls).
- * Returns facility–project links excluding FieldPlan and Facility ({@code projectType} only).
+ * Fetches project mappings for a list of facilities.
  */
 @Repository
 @RequiredArgsConstructor
@@ -18,9 +17,7 @@ public class Co2ProjectLookupRepository {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    /**
-     * One project per facility: latest non-deleted link (avoids arbitrary DISTINCT row / HashMap overwrite).
-     */
+    /** Returns one latest non-deleted project per facility. */
     private static final String SQL = """
             SELECT DISTINCT ON (pf.facilityid)
                    pf.facilityid AS facility_id,

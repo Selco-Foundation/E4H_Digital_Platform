@@ -38,6 +38,9 @@ public class ActivityConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
+    @Value("${egov.v2.bulk.search.facility.url}")
+    private String facilityBulkSearchUrl;
+
     @Value("${egov.pdf.host}")
     private String pdfServiceHost;
 
@@ -46,6 +49,15 @@ public class ActivityConfiguration {
 
     @Value("${egov.createandsave.pdf.url}")
     private String pdfCreateSaveFilestore;
+
+    @Value("${egov.ingestion.host}")
+    private String ingestionServiceHost;
+
+    @Value("${egov.ingestion.document.append.url}")
+    private String ingestionDocumentAppendUrl;
+
+    @Value("${egov.ingestion.document.append.module}")
+    private String ingestionDocumentAppendModule;
 
     @Value("${egov.kafka.notification.email.topic}")
     private String notificationEmailTopic;
@@ -64,6 +76,12 @@ public class ActivityConfiguration {
 
     @Value("${egov.dc.system.key}")
     private String bomDCSystem;
+
+    @Value("${egov.on.grid.single.phase.key}")
+    private String bomACOnGridSinglePhase;
+
+    @Value("${egov.on.grid.three.phase.key}")
+    private String bomACOnGridSThreePhase;
 
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
@@ -87,6 +105,16 @@ public class ActivityConfiguration {
 
     @Value("${activity.facility.kafka.create.topic}")
     private String createActivityFacilityTopic;
+
+    /**
+     * Max serialized size (bytes) of the ActivityFacility list pushed per Kafka message on
+     * {@link #createActivityFacilityTopic}. Sized by bytes rather than item count because each
+     * item's additionalDetails carries a BOM template copy whose size varies by systemType - a
+     * fixed item count can't guarantee staying under the producer's max.request.size (default
+     * 1 MiB) for every template. Default keeps ~50% margin below that default.
+     */
+    @Value("${activity.facility.create.kafka.batch.max.bytes:500000}")
+    private Integer createActivityFacilityBatchMaxBytes;
 
     @Value("${activity.kafka.create.topic}")
     private String createActivityTopic;
@@ -169,6 +197,9 @@ public class ActivityConfiguration {
     @Value("${egov.vendor.user.update.url}")
     private String orgUserUpdateUrl;
 
+    @Value("${egov.vendor.organisation.search.url}")
+    private String organisationSearchUrl;
+
     @Value("${facility.management.transaction.kafka.create.topic}")
     private String transactionPersistTopic;
 
@@ -183,6 +214,10 @@ public class ActivityConfiguration {
 
     @Value("${egov.asset.update.url}")
     private String assetUpdateUrl;
+
+    // Defaulted inline so environments that predate this property still start.
+    @Value("${egov.asset.search.limit:1000}")
+    private Integer assetSearchLimit;
 
     @Value("${email.activity.assignment.subject}")
     private String activityEmailSubject;
@@ -201,4 +236,22 @@ public class ActivityConfiguration {
 
     @Value("${egov.amc.scheduler.visit.generate.url}")
     private String amcVisitGenerateUrl;
+
+    //Localization
+    @Value("${egov.localization.host}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
+    /**
+     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
+     * (SEM), health-facility-registry, boundary-service, amc-scheduler-service and project publish
+     * to — see ActivityAnalyticsService.
+     */
+    @Value("${activity.kafka.user.analytics.topic:user-analytics-event}")
+    private String userAnalyticsTopic;
 }

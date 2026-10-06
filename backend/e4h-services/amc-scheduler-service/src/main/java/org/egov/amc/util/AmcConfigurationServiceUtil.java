@@ -49,6 +49,22 @@ public class AmcConfigurationServiceUtil {
                     .createdTime(auditDetails.getCreatedTime()).lastModifiedTime(time).build();
     }
 
+    /**
+     * Adds calendar months to an epoch-millis timestamp, using the same LocalDate/start-of-day
+     * convention as {@link #generateAmcVisits(long, long, int)}. Callers that derive a configuration
+     * end date from durationMonths must use this rather than a days-per-month approximation, so the
+     * last generated visit lands exactly on the end date instead of drifting past it.
+     */
+    public long addMonths(long epochMillis, int months) {
+        return Instant.ofEpochMilli(epochMillis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+                .plusMonths(months)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
+    }
+
     // Generates AMC visits based on AMC Duration (in months) and AMC Frequency
     public List<Long> generateAmcVisits(long startDateMillis, long endDateMillis, int frequencyMonths) {
         if (startDateMillis <= 0) {

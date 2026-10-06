@@ -55,6 +55,16 @@ public class ProjectAddressQueryBuilder {
     private static final String CHECK_PROJECT_NAME_EXISTS_QUERY = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ?";
     private static final String CHECK_PROJECT_NAME_EXISTS_EXCLUDING_PROJECT_QUERY = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ? AND id != ?";
     private static final String FIND_HIGHEST_EXISTING_PROJECT_NAME_QUERY = "SELECT name FROM project WHERE name LIKE ? AND tenantid = ? ORDER BY name ASC";
+    private static final String CHECK_JUSTIFICATION_CODE_EXISTS_QUERY =
+            "SELECT COUNT(*) FROM project WHERE tenantid = ? "
+                    + "AND (isdeleted IS NULL OR isdeleted = false) "
+                    + "AND (parent IS NULL OR TRIM(parent) = '') "
+                    + "AND COALESCE(projecttype, '') NOT IN ('FieldPlan', 'Facility') "
+                    + "AND additionaldetails IS NOT NULL "
+                    + "AND jsonb_typeof(additionaldetails) = 'object' "
+                    + "AND UPPER(TRIM(additionaldetails ->> 'justificationCode')) = ?";
+    private static final String CHECK_JUSTIFICATION_CODE_EXISTS_EXCLUDING_PROJECT_QUERY =
+            CHECK_JUSTIFICATION_CODE_EXISTS_QUERY + " AND id != ?";
 
     private final ProjectConfiguration config;
 
@@ -534,6 +544,14 @@ public class ProjectAddressQueryBuilder {
      */
     public String getFindHighestExistingProjectNameQuery() {
         return FIND_HIGHEST_EXISTING_PROJECT_NAME_QUERY;
+    }
+
+    public String getCheckJustificationCodeExistsQuery() {
+        return CHECK_JUSTIFICATION_CODE_EXISTS_QUERY;
+    }
+
+    public String getCheckJustificationCodeExistsExcludingProjectQuery() {
+        return CHECK_JUSTIFICATION_CODE_EXISTS_EXCLUDING_PROJECT_QUERY;
     }
 
     /**

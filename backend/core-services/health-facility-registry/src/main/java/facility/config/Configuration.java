@@ -80,6 +80,9 @@ public class Configuration {
     @Value("${egov.hrms.create.endpoint}")
     private String hrmsCreateEndPoint;
 
+    @Value("${egov.hrms.update.username.endpoint}")
+    private String hrmsUpdateUsernameEndPoint;
+
 //    @Value("${egov.hrms.create.endpoint}")
 //    private String hrmsCreateEndpoint;
 
@@ -121,6 +124,16 @@ public class Configuration {
     @Value("${egov.localization.upsert.path}")
     private String localizationUpsertPath;
 
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
+    /**
+     * Shared user-analytics topic feeding the user-analytics-report index. Same topic im-services
+     * publishes SEM events to — see FacilityAnalyticsService.
+     */
+    @Value("${facility.kafka.user.analytics.topic:user-analytics-event}")
+    private String userAnalyticsTopic;
+
     /**
      * Base URL for im-services (e.g. {@code http://localhost:8880}). When blank, incident boundary sync after facility block update is skipped.
      */
@@ -141,4 +154,36 @@ public class Configuration {
      */
     @Value("${facility.boundary.backfill.enabled:false}")
     private boolean facilityBoundaryBackfillEnabled;
+
+    /**
+     * Operator endpoint {@code POST /v2/facility/_reindex-kibana}. Disabled by default.
+     */
+    @Value("${facility.kibana.reindex.enabled:false}")
+    private boolean facilityKibanaReindexEnabled;
+
+    /**
+     * Operator endpoint {@code POST /v2/facility/_backfill-project-name}. Disabled by default.
+     */
+    @Value("${facility.project-name.backfill.enabled:false}")
+    private boolean facilityProjectNameBackfillEnabled;
+
+    @Value("${egov.vendor.host:}")
+    private String vendorHost;
+
+    @Value("${egov.vendor.organisation.search.path:/vendor/organisation/v1/_search}")
+    private String vendorOrganisationSearchPath;
+
+    @Value("${egov.vendor.organisation.user.search.path:/vendor/organisation/v1/user/_search}")
+    private String vendorOrganisationUserSearchPath;
+
+    /**
+     * Project service base URL (e.g. {@code http://localhost:8081}) used to resolve the
+     * project name mapped to a facility for the health facility index. When blank, the
+     * projectName lookup is skipped.
+     */
+    @Value("${egov.project.host:}")
+    private String projectHost;
+
+    @Value("${egov.project.fetch-by-facilities.path:/project/v1/fetchProjectsByFacilities}")
+    private String projectFetchByFacilitiesPath;
 }

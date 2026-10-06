@@ -100,6 +100,104 @@ export const IngestionService = {
     });
   },
 
+  downloadAssessmentFacilityDataTemplate : async (requestData) => {
+    const endpoint = "/ingestion-service/template/assessmentPlanIncludeTemplate";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    await CustomRequest({
+      url : endpoint,
+      data : requestData,
+      userService : true,
+      method : "POST",
+      auth : true,
+      headers : headers,
+      fileDownload: true,
+      responseType: "blob",
+      defaultFilename: "download.xlsx"
+    });
+  },
+
+  downloadAssessmentFacilityExport : async (requestData) => {
+    const endpoint = "/ingestion-service/template/assessmentPlanFacilityExport";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    await CustomRequest({
+      url : endpoint,
+      data : requestData,
+      userService : true,
+      method : "POST",
+      auth : true,
+      headers : headers,
+      fileDownload: true,
+      responseType: "blob",
+      defaultFilename: "download.xlsx"
+    });
+  },
+
+  validateAssessmentPlanFacilityData: async (filledFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/assessmentPlanIncludeValidateData";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : filledFacilityData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    })
+  },
+
+  uploadAssessmentPlanFacilityData : async (validatedFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/assessmentPlanIncludeApply";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : validatedFacilityData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    });
+  },
+
+  uploadICCReports : async (iccReportsData) => {
+    const endpoint = "/ingestion-service/ingest/icc-reports";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : iccReportsData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    });
+  },
+
+  upsertICCReports : async (iccReportsData) => {
+    const endpoint = "/ingestion-service/ingest/icc-reports/_update";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : iccReportsData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    });
+  },
+
   downloadAMCFacilityDataTemplate : async (requestData) => {
     const endpoint = "/ingestion-service/template/amcConfigurationTemplate";
     const headers = {

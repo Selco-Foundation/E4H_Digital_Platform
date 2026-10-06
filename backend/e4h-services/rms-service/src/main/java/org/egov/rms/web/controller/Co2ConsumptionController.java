@@ -18,8 +18,8 @@ public class Co2ConsumptionController {
     private final Co2ElmeasureConsumptionService co2ElmeasureConsumptionService;
 
     /**
-     * Fetches monthly solar/grid/total kWh from Selco Elmeasure dashboard API
-     * (POST /selco/dashboard/table_data) for each center/facility request.
+     * Fetches monthly solar/grid/total kWh from Selco Elmeasure graph API
+     * (POST /selco/center_details/graph, graphType solarVsGrid_Eb) for each center/facility request.
      */
     @PostMapping("/monthly/batch")
     public ResponseEntity<MonthlyConsumptionBatchResponse> fetchMonthlyBatch(

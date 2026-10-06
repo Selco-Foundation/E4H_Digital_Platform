@@ -3,11 +3,10 @@ import Enums from "./enums/index";
 import mergeConfig from "./config/mergeConfig";
 import { useStore } from "./services/index";
 import { initI18n } from "./translations/index";
-
 import { Storage, PersistantStorage } from "./services/atoms/Utils/Storage";
+import { Request } from "./services/atoms/Utils/Request";
 import { UploadServices } from "./services/atoms/UploadServices";
 import JsDictionary from "./services/atoms/JsDictionary";
-
 import { LocationService } from "./services/elements/Location";
 import { LocalityService } from "./services/elements/Localities";
 import { CustomService } from "./services/elements/CustomService";
@@ -93,4 +92,4 @@ const initLibraries = () => {
   });
 };
 
-export { initLibraries, Enums, Hooks, subFormRegistry };
+export { initLibraries, Enums, Hooks, subFormRegistry, Request, ULBService, Utils };

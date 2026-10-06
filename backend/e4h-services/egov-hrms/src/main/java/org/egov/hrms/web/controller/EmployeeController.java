@@ -47,6 +47,8 @@ import org.egov.hrms.web.contract.EmployeeRequest;
 import org.egov.hrms.web.contract.EmployeeResponse;
 import org.egov.hrms.web.contract.EmployeeSearchCriteria;
 import org.egov.hrms.web.contract.RequestInfoWrapper;
+import org.egov.hrms.web.contract.UpdateUsernameRequest;
+import org.egov.hrms.web.contract.UpdateUsernameResponse;
 import org.egov.hrms.web.validator.EmployeeValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -120,6 +122,24 @@ public class EmployeeController {
 		EmployeeResponse employeeResponse = employeeService.search(criteria, requestInfoWrapper.getRequestInfo());
 		return new ResponseEntity<>(employeeResponse,HttpStatus.OK);
 	}
+
+	/**
+	 * Maps Post Requests for _update_username. Updates the employee code in eg_hrms_employee
+	 * and the (encrypted) username in eg_user for the given employee uuid.
+	 *
+	 * @param updateUsernameRequest
+	 * @return ResponseEntity<?>
+	 */
+	@PostMapping(value = "/_update_username")
+	@ResponseBody
+	public ResponseEntity<?> updateUsername(@RequestBody @Valid UpdateUsernameRequest updateUsernameRequest) {
+		log.trace("EmployeeController.updateUsername invoked");
+		log.info("Username update request received for employee uuid: {}", updateUsernameRequest.getEmployee().getUuid());
+		UpdateUsernameResponse updateUsernameResponse = employeeService.updateUsername(updateUsernameRequest);
+		log.info("Username update request completed successfully for employee uuid: {}", updateUsernameRequest.getEmployee().getUuid());
+		return new ResponseEntity<>(updateUsernameResponse, HttpStatus.ACCEPTED);
+	}
+
 
 	@PostMapping("_count")
 	@ResponseBody

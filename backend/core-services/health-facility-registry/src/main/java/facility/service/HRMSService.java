@@ -1,10 +1,13 @@
 package facility.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.util.MdmsUtil;
 import facility.web.models.Facility;
 import facility.web.models.HealthFacilityDetails;
+import facility.web.models.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
@@ -29,6 +32,7 @@ public class HRMSService {
     private final ServiceRequestRepository serviceRequestRepository;
     private final Configuration configs;
     private final MdmsUtil mdmsUtil;
+    private final ObjectMapper mapper;
 
     /**
      * Searches for an employee by mobile number (phone number) in HRMS.
@@ -364,6 +368,42 @@ public class HRMSService {
             log.trace("Exiting updateUserPassword method");
         } catch (Exception e) {
             log.error("Error updating user password: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Resets the password of an existing user to the configured default password.
+     * Used when a facility is marked ONM ready and a POC user with the given HFR/NIN
+     * already exists, so the POC always lands on the known default credentials.
+     *
+     * @param user        The existing user (must carry uuid or id) to reset
+     * @param requestInfo RequestInfo for the API call
+     */
+    public void resetUserPasswordToDefault(User user, RequestInfo requestInfo) {
+        log.trace("Entering resetUserPasswordToDefault method");
+        if (user == null || (user.getUuid() == null && user.getId() == null)) {
+            log.warn("Cannot reset password to default: user is null or missing uuid/id");
+            return;
+        }
+        try {
+            // Preserve all existing user fields and only override the password to avoid wiping data
+            Map<String, Object> userMap = mapper.convertValue(user, new TypeReference<Map<String, Object>>() {});
+            userMap.put("password", configs.getDefaultUserPassword());
+
+            Map<String, Object> userUpdateRequest = new HashMap<>();
+            userUpdateRequest.put("RequestInfo", requestInfo);
+            userUpdateRequest.put("user", userMap);
+
+            String updateUri = configs.getUserHost() + configs.getUserContextPath() + configs.getUserUpdateEndpoint();
+
+            log.debug("Resetting password to default for user: {}", sanitizeForLog(user.getUserName()));
+            serviceRequestRepository.fetchResult(new StringBuilder(updateUri), userUpdateRequest);
+
+            log.info("Successfully reset password to default for user: {}", sanitizeForLog(user.getUserName()));
+            log.trace("Exiting resetUserPasswordToDefault method");
+        } catch (Exception e) {
+            log.error("Error resetting password to default for user {}: {}",
+                    sanitizeForLog(user.getUserName()), e.getMessage(), e);
         }
     }
 

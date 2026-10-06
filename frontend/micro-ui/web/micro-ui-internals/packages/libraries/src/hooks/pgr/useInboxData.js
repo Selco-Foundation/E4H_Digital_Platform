@@ -141,7 +141,7 @@ const combineResponses = (items, currentUserUuid, currentUser, t) => {
       phcType: incident.phcType,
       facility: incident.boundary?.facilityCode ? `Boundary_${incident.boundary.facilityCode}` : "-",
       status: incident.applicationStatus,
-      taskOwner: assignee?.name || "-",
+      taskOwner: businessObject?.currentOwner,
       sla: `${slaValue}`,
       tenantId: incident.tenantId,
       potentialDuplicate: currentUserRoles.includes("COMPLAINT_ASSESSOR") && !!incident.isPotentialDuplicate,

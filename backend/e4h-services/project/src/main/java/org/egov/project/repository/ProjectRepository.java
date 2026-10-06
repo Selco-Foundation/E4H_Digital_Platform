@@ -203,6 +203,24 @@ public class ProjectRepository extends GenericRepository<Project> {
     }
 
     /**
+     * Counts active project-facility links for a project (used for HF segment in project name).
+     */
+    public int countProjectFacilitiesByProjectId(String projectId, String tenantId) {
+        log.trace("Entering countProjectFacilitiesByProjectId for projectId: {}", projectId);
+        try {
+            String sql = "SELECT COUNT(*) FROM project_facility WHERE projectid = ? AND tenantid = ? "
+                    + "AND (isdeleted IS NULL OR isdeleted = false)";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectId, tenantId);
+            int result = count != null ? count : 0;
+            log.debug("Project facility count for project {}: {}", projectId, result);
+            return result;
+        } catch (Exception e) {
+            log.error("Error counting project facilities for project: {}", projectId, e);
+            return 0;
+        }
+    }
+
+    /**
      * Checks if a project name already exists in the database for a given tenant
      * @param projectName The project name to check
      * @param tenantId The tenant ID
@@ -228,6 +246,31 @@ public class ProjectRepository extends GenericRepository<Project> {
      * @param excludeProjectId The project ID to exclude from the check
      * @return true if the project name exists (excluding the specified project), false otherwise
      */
+    public boolean isJustificationCodeUsed(String justificationCode, String tenantId) {
+        return isJustificationCodeUsed(justificationCode, tenantId, null);
+    }
+
+    public boolean isJustificationCodeUsed(String justificationCode, String tenantId, String excludeProjectId) {
+        log.trace("Entering isJustificationCodeUsed for tenantId: {}, excludeProjectId: {}", tenantId, excludeProjectId);
+        if (StringUtils.isBlank(justificationCode) || StringUtils.isBlank(tenantId)) {
+            return false;
+        }
+        try {
+            String sql = StringUtils.isBlank(excludeProjectId)
+                    ? queryBuilder.getCheckJustificationCodeExistsQuery()
+                    : queryBuilder.getCheckJustificationCodeExistsExcludingProjectQuery();
+            Integer count = StringUtils.isBlank(excludeProjectId)
+                    ? jdbcTemplate.queryForObject(sql, Integer.class, tenantId, justificationCode)
+                    : jdbcTemplate.queryForObject(sql, Integer.class, tenantId, justificationCode, excludeProjectId);
+            boolean exists = count != null && count > 0;
+            log.debug("Justification code exists check result: {} (count: {})", exists, count);
+            return exists;
+        } catch (Exception e) {
+            log.error("Error checking justification code usage for tenantId: {}", tenantId, e);
+            return true;
+        }
+    }
+
     public boolean isProjectNameExistsExcludingProject(String projectName, String tenantId, String excludeProjectId) {
         try {
             String sql = queryBuilder.getCheckProjectNameExistsExcludingProjectQuery();

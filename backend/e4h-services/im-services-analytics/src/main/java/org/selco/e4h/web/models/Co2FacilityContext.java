@@ -16,11 +16,12 @@ public class Co2FacilityContext {
     private String tenantId;
     private String facilityName;
     private String facilityType;
-    /** Boundary code (e.g. {@code India_Karnataka}); used for archetype lookup. */
+    private String facilityCategory;
+    private String mappedVendorName;
+    private String mappedVendorUserName;
     private String state;
     private String district;
     private String block;
-    /** Human-readable names from egov-localization; indexed as {@code *Localized} fields. */
     private String stateLocalized;
     private String districtLocalized;
     private String blockLocalized;

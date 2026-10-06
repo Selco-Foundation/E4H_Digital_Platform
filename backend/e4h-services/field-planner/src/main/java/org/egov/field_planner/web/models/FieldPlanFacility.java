@@ -51,4 +51,7 @@ public class FieldPlanFacility {
     @JsonProperty("hasErrors")
     protected Boolean hasErrors;
 
+    @JsonProperty("sourcePlanFacilityId")
+    private String sourcePlanFacilityId;
+
 }

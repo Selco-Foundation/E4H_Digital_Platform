@@ -20,6 +20,10 @@
     cursor: pointer;
     opacity: 0;
     z-index: 2;
+
+    &:disabled {
+      cursor: not-allowed;
+    }
   }
 
   .custom-checkbox-svg {
@@ -40,7 +44,7 @@
     }
   }
 
-  input[type="checkbox"]:hover ~ .custom-checkbox-svg {
+  input[type="checkbox"]:hover:not(:disabled) ~ .custom-checkbox-svg {
     border-color: #c84c0e;
   }
 
@@ -49,6 +53,10 @@
     svg {
       opacity: 1;
     }
+  }
+
+  input[type="checkbox"]:disabled ~ .custom-checkbox-svg {
+    opacity: 0.5;
   }
 
   .custom-checkbox-label {

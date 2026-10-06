@@ -11,15 +11,19 @@ import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.Notification.SMSRequest;
 import org.egov.im.web.models.RequestSearchCriteria;
 import org.egov.im.web.models.TheftNotificationRequest;
-import org.egov.im.web.models.User;
+import org.egov.im.web.models.IncidentRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-import static org.egov.im.util.IMConstants.PENDINGFORASSIGNMENT_THEFT;
+import static org.egov.im.util.IMConstants.*;
 
 /**
  * Scans for theft tickets (PENDINGFORASSIGNMENT_THEFT) past the configured threshold
@@ -30,7 +34,9 @@ import static org.egov.im.util.IMConstants.PENDINGFORASSIGNMENT_THEFT;
 @Slf4j
 public class TheftNotificationService {
 
-    private static final String THEFT_NOTIFICATION_MESSAGE = "Theft ticket %s requires action";
+    private static final String THEFT_SLA_REMINDER_TEMPLATE =
+            "Theft ticket for %s with ID %s submitted on %s is nearing SLA. Only 3 days are left for resolution. "
+                    + "Please take necessary action or track ticket details on %s - SELCO Foundation";
     private static final long DEFAULT_THRESHOLD_MS = 29L * 24 * 60 * 60 * 1000; // 29 days
 
     private final IMConfiguration config;
@@ -38,16 +44,17 @@ public class TheftNotificationService {
     private final MDMSUtils mdmsUtils;
     private final NotificationUtil notificationUtil;
 
-    private final UserService userService;
+    private final NotificationService notificationService;
 
     @Autowired
     public TheftNotificationService(IMConfiguration config, IMRepository repository,
-                                    MDMSUtils mdmsUtils, NotificationUtil notificationUtil, UserService userService) {
+                                    MDMSUtils mdmsUtils, NotificationUtil notificationUtil,
+                                    NotificationService notificationService) {
         this.config = config;
         this.repository = repository;
         this.mdmsUtils = mdmsUtils;
         this.notificationUtil = notificationUtil;
-        this.userService = userService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -85,35 +92,46 @@ public class TheftNotificationService {
         }
 
         log.info("Found {} theft ticket(s) past threshold, sending SMS to CRM", incidents.size());
-        Set<String> uuids = new HashSet<>();
+        String localizationMessage = notificationUtil.getLocalizationMessages(
+                effectiveTenantId, request.getRequestInfo(), IM_MODULE);
+        String trackUrl = notificationUtil.getUrlByTenantId(localizationMessage);
+        if (!StringUtils.hasText(trackUrl)) {
+            trackUrl = config.getMobileDownloadLink();
+        }
 
-        incidents.forEach(incident -> {
-            uuids.add(incident.getAccountId());
-        });
-
-        log.trace("Searching bulk users for {} UUIDs", uuids.size());
-        Map<String, User> idToUserMap = userService.searchBulkUser(new LinkedList<>(uuids));
-        incidents.forEach(incident -> {
-            String ticketNo = incident.getIncidentId() != null ? incident.getIncidentId() : incident.getId();
-            String message = String.format(THEFT_NOTIFICATION_MESSAGE, ticketNo);
-            User user = idToUserMap.get(incident.getAccountId());
-            if (user!=null && user.getMobileNumber() !=null && !user.getMobileNumber().isEmpty()){
-                String crmMobileNumber = user.getMobileNumber();
-                List<SMSRequest> smsRequests = Collections.singletonList(SMSRequest.builder().mobileNumber(crmMobileNumber).message(message).build());
-                notificationUtil.sendSMS(incident.getTenantId(), smsRequests);
+        int sent = 0;
+        for (Incident incident : incidents) {
+            IncidentRequest incidentRequest = IncidentRequest.builder()
+                    .incident(incident)
+                    .requestInfo(request.getRequestInfo())
+                    .build();
+            Map<String, String> crmDetails = notificationService.getHRMSEmployee(incidentRequest, ROLE_COMPLAINT_ASSESSOR);
+            String crmMobile = crmDetails != null ? crmDetails.get("employeeMobile") : null;
+            if (!StringUtils.hasText(crmMobile)) {
+                log.warn("Skipping theft SLA SMS for incident {}: no CRM mobile", incident.getIncidentId());
+                continue;
             }
-        });
-//        for (Incident incident : incidents) {
-//            String ticketNo = incident.getIncidentId() != null ? incident.getIncidentId() : incident.getId();
-//            String message = String.format(THEFT_NOTIFICATION_MESSAGE, ticketNo);
-//            List<SMSRequest> smsRequests = Collections.singletonList(
-//                    SMSRequest.builder().mobileNumber(crmMobile).message(message).build()
-//            );
-//            notificationUtil.sendSMS(incident.getTenantId(), smsRequests);
-//        }
+            String message = buildTheftSlaReminderMessage(incident, trackUrl);
+            List<SMSRequest> smsRequests = Collections.singletonList(
+                    SMSRequest.builder().mobileNumber(crmMobile).message(message).build());
+            notificationUtil.sendSMS(incident.getTenantId(), smsRequests);
+            sent++;
+        }
 
+        return sent;
+    }
 
-        return incidents.size();
+    private String buildTheftSlaReminderMessage(Incident incident, String trackUrl) {
+        String ticketType = incident.getIncidentType() != null ? incident.getIncidentType() : "";
+        String ticketNo = incident.getIncidentId() != null ? incident.getIncidentId() : incident.getId();
+        String formattedDate = "";
+        if (incident.getAuditDetails() != null && incident.getAuditDetails().getCreatedTime() != null) {
+            Long createdTime = incident.getAuditDetails().getCreatedTime();
+            LocalDate date = Instant.ofEpochMilli(createdTime > 10 ? createdTime : createdTime * 1000)
+                    .atZone(ZoneId.systemDefault()).toLocalDate();
+            formattedDate = date.format(DateTimeFormatter.ofPattern(DATE_PATTERN));
+        }
+        return String.format(THEFT_SLA_REMINDER_TEMPLATE, ticketType, ticketNo, formattedDate, trackUrl);
     }
 
     private long fetchThresholdFromMdms(RequestInfo requestInfo, String tenantId) {
@@ -135,7 +153,4 @@ public class TheftNotificationService {
         return DEFAULT_THRESHOLD_MS;
     }
 
-    private void sendSms(){
-
-    }
 }

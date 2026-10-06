@@ -10,14 +10,23 @@ import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.util.BusinessHoursUtil;
+import org.egov.im.util.IMConstants;
+import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
+import org.egov.im.util.VendorOrganisationUtil;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
@@ -37,6 +46,12 @@ public class WorkflowService {
 
     private SLAService slaService;
 
+    private IMUtils imUtils;
+
+    private VendorOrganisationUtil vendorOrganisationUtil;
+
+    private CurrentOwnerService currentOwnerService;
+
     private static final Map<Priority, String> PRIORITY_BUSINESS_SERVICE_MAP = Map.of(
             Priority.HIGH, IM_BUSINESSSERVICE_HIGH,
             Priority.MEDIUM, IM_BUSINESSSERVICE_MEDIUM,
@@ -49,13 +64,17 @@ public class WorkflowService {
     @Autowired
     public WorkflowService(IMConfiguration imConfiguration,
                            ServiceRequestRepository repository,
-                           ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils, SLAService slaService) {
+                           ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils, SLAService slaService,
+                           CurrentOwnerService currentOwnerService, IMUtils imUtils, VendorOrganisationUtil vendorOrganisationUtil) {
         this.imConfiguration = imConfiguration;
         this.repository = repository;
         this.mapper = mapper;
         this.notificationService = notificationService;
         this.mdmsUtils = mdmsUtils;
         this.slaService = slaService;
+        this.currentOwnerService = currentOwnerService;
+        this.imUtils = imUtils;
+        this.vendorOrganisationUtil = vendorOrganisationUtil;
     }
 
     /*
@@ -69,10 +88,20 @@ public class WorkflowService {
         String businessService = PRIORITY_BUSINESS_SERVICE_MAP.getOrDefault(priority, IM_BUSINESSSERVICE);
         log.info("Fetching business service for tenant: {}, priority: {}, businessService: {}",
                 tenantId, priority, businessService);
-        log.trace("Building search URL and fetching business service");
+        return getBusinessServiceByName(incidentRequest.getRequestInfo(), tenantId, businessService);
+    }
+
+    /**
+     * Fetches a BusinessService definition (states, their actions and the roles on them) by name.
+     * <p>
+     * Unlike {@link #getBusinessService(IncidentRequest, Priority)} this needs no incident, so a
+     * batch caller can load each of the incident business services once instead of per ticket.
+     * Leaves {@link #states} alone: only a real transition should publish that.
+     */
+    public BusinessService getBusinessServiceByName(RequestInfo requestInfo, String tenantId, String businessService) {
+        log.trace("WorkflowService::getBusinessServiceByName method invoked");
         StringBuilder url = getSearchURLWithParams(tenantId, businessService);
-        RequestInfoWrapper requestInfoWrapper
-                = RequestInfoWrapper.builder().requestInfo(incidentRequest.getRequestInfo()).build();
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
         Object result = repository.fetchResult(url, requestInfoWrapper);
         BusinessServiceResponse response = null;
         try {
@@ -83,8 +112,8 @@ public class WorkflowService {
         }
 
         if (CollectionUtils.isEmpty(response.getBusinessServices())) {
-            log.error("Business service not found for tenant: {}, businessService: {}", tenantId, IM_BUSINESSSERVICE);
-            throw new CustomException("BUSINESSSERVICE_NOT_FOUND", "The businessService " + IM_BUSINESSSERVICE + " is not found");
+            log.error("Business service not found for tenant: {}, businessService: {}", tenantId, businessService);
+            throw new CustomException("BUSINESSSERVICE_NOT_FOUND", "The businessService " + businessService + " is not found");
         }
 
         log.debug("Business service fetched successfully");
@@ -108,13 +137,34 @@ public class WorkflowService {
                 incidentRequest.getIncident().getIncidentId(), incidentRequest.getIncident().getTenantId());
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         log.debug("Calling workflow transition for incident: {} with action: {}",
-                incidentRequest.getIncident().getIncidentId(), incidentRequest.getWorkflow().getAction());
-        ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
+                incidentRequest.getIncident().getIncidentId(), processInstance.getAction());
+        // ASSIGN_NEW_VENDOR is configured with the SYSTEM role so that it never shows up among the
+        // actions offered to the SPOC. The caller therefore needs that role for the length of the
+        // transition call, and only for it: the same RequestInfo is serialised onto Kafka and into the
+        // indexing payloads afterwards. The caller itself is never swapped for the internal
+        // microservice user - eg_wf_processinstance_v2.assigner must stay the real SPOC, it is the
+        // audit trail this very feature reads back.
+        boolean systemRoleInjected = false;
+        ProcessInstance updatedProcessInstance;
+        try {
+            if (ASSIGN_NEW_VENDOR.equals(processInstance.getAction())) {
+                systemRoleInjected = imUtils.addTransientRole(incidentRequest.getRequestInfo(), ROLE_SYSTEM,
+                        incidentRequest.getIncident().getTenantId());
+            }
+            updatedProcessInstance = callWorkFlow(workflowRequest);
+        } finally {
+            if (systemRoleInjected) {
+                imUtils.removeTransientRole(incidentRequest.getRequestInfo(), ROLE_SYSTEM,
+                        incidentRequest.getIncident().getTenantId());
+            }
+        }
         String newStatus = updatedProcessInstance.getState().getApplicationStatus();
         incidentRequest.getIncident().setApplicationStatus(newStatus);
         log.info("Workflow status updated for incident: {}. New status: {}", incidentRequest.getIncident().getIncidentId(), newStatus);
         log.trace("Enriching total SLA");
         enrichTotalSla(wrapper, updatedProcessInstance);
+        log.trace("Enriching current owner");
+        currentOwnerService.enrichCurrentOwner(wrapper, updatedProcessInstance, this.states);
         return updatedProcessInstance;
     }
 
@@ -347,9 +397,28 @@ public class WorkflowService {
                 request.getIncident().getApplicationStatus().trim().equals("PENDINGRESOLUTION") && action.equalsIgnoreCase("MARK_OUT_OF_SCOPE")) {
             reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
         }
+        else if (request.getIncident() != null && request.getIncident().getApplicationStatus() != null
+                && OUT_OF_WARRANTY_PENDING_TECH_POC.equals(request.getIncident().getApplicationStatus().trim())
+                && action.equalsIgnoreCase(APPROVE_ACTION)) {
+            String stateBoundaryCode = extractStateBoundaryCode(request.getIncident().getBoundaryCode());
+            reassignWorkflow(workflow, request, ROLE_COMPLAINT_FACILITATOR_1, stateBoundaryCode);
+        }
+        // An ASSIGN out of OUT_OF_SCOPE must land in PENDING_RESOLUTION_OUT_OF_SCOPE when the ticket goes
+        // back to the vendor that already worked it, and in PENDINGRESOLUTION when it goes to another
+        // vendor. egov-workflow-v2 cannot pick a next state at runtime (TransitionService resolves it
+        // from a static action.nextState), so the two outcomes are two actions and the choice is made
+        // here. request.getWorkflow().getAction() is deliberately left as ASSIGN: every consumer keyed
+        // on action + applicationStatus keeps working unchanged.
+        String effectiveAction = action;
+        if (incident.getApplicationStatus() != null
+                && OUT_OF_SCOPE.equals(incident.getApplicationStatus().trim())
+                && ASSIGN.equalsIgnoreCase(action)) {
+            effectiveAction = resolveOutOfScopeAssignAction(request);
+        }
+
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(incident.getIncidentId());
-        processInstance.setAction(request.getWorkflow().getAction());
+        processInstance.setAction(effectiveAction);
         processInstance.setModuleName(IM_MODULENAME);
         processInstance.setTenantId(incident.getTenantId());
         BusinessService businessService = getBusinessService(request, priority);
@@ -377,14 +446,138 @@ public class WorkflowService {
         return processInstance;
     }
 
+    /**
+     * {@link IMConstants#ASSIGN} when the out-of-scope ticket goes back to the vendor that already
+     * worked it, {@link IMConstants#ASSIGN_NEW_VENDOR} when it goes to a different vendor.
+     * <p>
+     * "Same vendor" means the same organisation, not the same person: a vendor can have several
+     * COMPLAINT_RESOLVER logins, and the clients only ever send a user uuid.
+     * <p>
+     * Anything that cannot be determined - no previous vendor in the history, no assignee on the
+     * request, an organisation vendor-registry cannot resolve - falls back to ASSIGN, which is the
+     * behaviour that predates this rule. An assignment must never fail because a lookup failed.
+     * <p>
+     * Package-private so the decision can be unit tested without driving a whole workflow transition.
+     */
+    String resolveOutOfScopeAssignAction(IncidentRequest request) {
+        log.trace("WorkflowService::resolveOutOfScopeAssignAction method invoked");
+        String incidentId = request.getIncident().getIncidentId();
+        try {
+            List<String> assignes = request.getWorkflow().getAssignes();
+            if (CollectionUtils.isEmpty(assignes) || StringUtils.isBlank(assignes.get(0))) {
+                log.debug("No assignee on the out-of-scope assign of incident: {}, keeping ASSIGN", incidentId);
+                return ASSIGN;
+            }
+            String newVendorUserUuid = assignes.get(0);
+
+            String previousVendorUserUuid = findPreviousVendorUserUuid(request);
+            if (previousVendorUserUuid == null) {
+                log.info("No previous vendor found in the history of incident: {}, keeping ASSIGN", incidentId);
+                return ASSIGN;
+            }
+            if (newVendorUserUuid.equalsIgnoreCase(previousVendorUserUuid)) {
+                log.info("Out-of-scope incident: {} reassigned to the same user, keeping ASSIGN", incidentId);
+                return ASSIGN;
+            }
+
+            String tenantId = request.getIncident().getTenantId();
+            Map<String, String> organisationIdsByUserUuid = vendorOrganisationUtil.getOrganisationIdsByUserUuids(
+                    Arrays.asList(newVendorUserUuid, previousVendorUserUuid), tenantId, request.getRequestInfo());
+            String newOrganisationId = organisationIdsByUserUuid.get(newVendorUserUuid);
+            String previousOrganisationId = organisationIdsByUserUuid.get(previousVendorUserUuid);
+            if (StringUtils.isBlank(newOrganisationId) || StringUtils.isBlank(previousOrganisationId)) {
+                log.warn("Cannot resolve both vendor organisations for incident: {} (new={}, previous={}), keeping ASSIGN",
+                        incidentId, newOrganisationId, previousOrganisationId);
+                return ASSIGN;
+            }
+
+            if (newOrganisationId.equals(previousOrganisationId)) {
+                log.info("Out-of-scope incident: {} reassigned within vendor organisation: {}, keeping ASSIGN",
+                        incidentId, newOrganisationId);
+                return ASSIGN;
+            }
+            log.info("Out-of-scope incident: {} reassigned from vendor organisation: {} to: {}, using {}",
+                    incidentId, previousOrganisationId, newOrganisationId, ASSIGN_NEW_VENDOR);
+            return ASSIGN_NEW_VENDOR;
+        } catch (Exception e) {
+            log.error("Out-of-scope vendor comparison failed for incident: {}, keeping ASSIGN", incidentId, e);
+            return ASSIGN;
+        }
+    }
+
+    /**
+     * The user of the vendor that was working the ticket before it went out of scope.
+     * <p>
+     * The incident carries no vendor: the assignment lives only in the workflow history, so it is read
+     * back from there. The most recent transition that parked the ticket with a vendor is, by
+     * definition, the previous vendor - which covers both ways into OUT_OF_SCOPE (from
+     * PENDINGRESOLUTION and from RMS_DEVICE_PENDINGRESOLUTION) as well as a ticket that already went
+     * through PENDING_RESOLUTION_OUT_OF_SCOPE once. When no such transition carries an assignee, the
+     * resolver who performed MARK_OUT_OF_SCOPE is used instead.
+     *
+     * @return the user uuid, or null when the ticket never sat with a vendor
+     */
+    private String findPreviousVendorUserUuid(IncidentRequest request) {
+        log.trace("WorkflowService::findPreviousVendorUserUuid method invoked");
+        List<ProcessInstance> history = getAllProcessInstances(request.getIncident().getTenantId(),
+                request.getIncident().getIncidentId(), request.getRequestInfo());
+        if (CollectionUtils.isEmpty(history)) {
+            return null;
+        }
+
+        // Sorted explicitly rather than trusting the workflow search order, which is an implementation
+        // detail - enrichTotalSla has to reverse it before use.
+        List<ProcessInstance> newestFirst = history.stream()
+                .sorted(Comparator.comparing(
+                        (ProcessInstance pi) -> pi.getAuditDetails() != null && pi.getAuditDetails().getLastModifiedTime() != null
+                                ? pi.getAuditDetails().getLastModifiedTime() : 0L,
+                        Comparator.reverseOrder()))
+                .collect(Collectors.toList());
+
+        for (ProcessInstance processInstance : newestFirst) {
+            String status = processInstance.getState() != null ? processInstance.getState().getApplicationStatus() : null;
+            if (status != null && VENDOR_HOLDING_STATUSES.contains(status.trim())
+                    && !CollectionUtils.isEmpty(processInstance.getAssignes())
+                    && processInstance.getAssignes().get(0) != null) {
+                return processInstance.getAssignes().get(0).getUuid();
+            }
+        }
+        for (ProcessInstance processInstance : newestFirst) {
+            if (MARK_OUT_OF_SCOPE_ACTION.equalsIgnoreCase(processInstance.getAction())
+                    && processInstance.getAssigner() != null) {
+                return processInstance.getAssigner().getUuid();
+            }
+        }
+        return null;
+    }
+
     private void reassignWorkflow(Workflow workflow, IncidentRequest request, String role) {
-        log.trace("WorkflowService::reassignWorkflow method invoked for role: {}", role);
+        reassignWorkflow(workflow, request, role, request.getIncident().getBoundaryCode());
+    }
+
+    private void reassignWorkflow(Workflow workflow, IncidentRequest request, String role, String boundaryCode) {
+        log.trace("WorkflowService::reassignWorkflow method invoked for role: {} and boundaryCode: {}", role, boundaryCode);
         workflow.setAssignes(null);
-        log.debug("Fetching employee details for role: {}", role);
-        Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, role);
+        log.debug("Fetching employee details for role: {} at boundary: {}", role, boundaryCode);
+        Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, role, boundaryCode);
         List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
         workflow.setAssignes(assignee);
         log.debug("Workflow reassigned to employee with UUID: {}", reassigneeDetails.get("employeeUUID"));
+    }
+
+    /**
+     * Extracts state-level boundary code from a facility boundary code.
+     * e.g. India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329 -> India_Karnataka
+     */
+    private String extractStateBoundaryCode(String boundaryCode) {
+        if (StringUtils.isBlank(boundaryCode)) {
+            return boundaryCode;
+        }
+        String[] parts = boundaryCode.replace('.', '_').split("_");
+        if (parts.length < 2) {
+            return boundaryCode;
+        }
+        return parts[0] + "_" + parts[1];
     }
 
     /**
@@ -415,6 +608,54 @@ public class WorkflowService {
 
         log.debug("Successfully converted {} process instances to workflow map", businessIdToWorkflow.size());
         return businessIdToWorkflow;
+    }
+
+    /**
+     * Computes and sets the workflow-derived index fields (SLA remaining, current owner) for a
+     * recovery/resync path (e.g. reindex) that already has the incident's current ProcessInstance
+     * but never went through updateWorkflowStatus(). Both depend on this.states being populated,
+     * which normally only happens as a side effect of getBusinessService() inside
+     * getProcessInstanceForIM() during a real transition; this wrapper performs that
+     * same lookup first so they have valid state definitions to work with.
+     */
+    public void enrichTotalSlaForResync(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+        log.trace("WorkflowService::enrichTotalSlaForResync method invoked");
+        IncidentRequest request = wrapper.getIncidentRequest();
+        Priority priority = slaService.getPriorityFromIMPriorityTable(request.getIncident());
+        BusinessService businessService = getBusinessService(request, priority);
+        this.states = businessService.getStates();
+        enrichTotalSla(wrapper, processInstance);
+        log.trace("Enriching current owner for resync");
+        currentOwnerService.enrichCurrentOwner(wrapper, processInstance, this.states);
+    }
+
+    /**
+     * Fetches the CURRENT ProcessInstance for an incident directly from the workflow
+     * engine (read-only search, no transition), preserving full fidelity (state,
+     * assignes as full User objects) unlike {@link #getWorkflow(List)}'s lossy
+     * Workflow conversion. Used by recovery/resync paths (e.g. reindex) that need to
+     * republish an incident's current workflow snapshot without performing an action.
+     */
+    public ProcessInstance getLatestProcessInstance(String tenantId, String incidentId, RequestInfo requestInfo) {
+        log.trace("WorkflowService::getLatestProcessInstance method invoked");
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
+        StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, incidentId);
+        Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
+
+        ProcessInstanceResponse processInstanceResponse;
+        try {
+            processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
+        } catch (IllegalArgumentException e) {
+            log.error("Failed to parse process instance response", e);
+            throw new CustomException("PARSING_ERROR", "Failed to parse response of workflow processInstance search");
+        }
+
+        if (processInstanceResponse == null || CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
+            log.error("No process instance found for incidentId: {}", incidentId);
+            throw new CustomException("WORKFLOW_NOT_FOUND", "The workflow object is not found for incidentId " + incidentId);
+        }
+
+        return processInstanceResponse.getProcessInstances().get(0);
     }
 
     private List<ProcessInstance> getAllProcessInstances(String tenantId, String IncidentId, RequestInfo requestInfo){

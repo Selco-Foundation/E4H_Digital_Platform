@@ -41,6 +41,7 @@
 package org.egov.hrms.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -54,8 +55,11 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.utils.MultiStateInstanceUtil;
 import org.egov.hrms.config.PropertiesManager;
+import org.egov.hrms.model.Assignment;
 import org.egov.hrms.model.AuditDetails;
 import org.egov.hrms.model.Employee;
+import org.egov.hrms.model.Jurisdiction;
+import org.egov.hrms.model.UpdateUsernameEvent;
 import org.egov.hrms.model.enums.UserType;
 import org.egov.hrms.producer.HRMSProducer;
 import org.egov.hrms.repository.EmployeeRepository;
@@ -66,6 +70,8 @@ import org.egov.hrms.utils.ResponseInfoFactory;
 import org.egov.hrms.web.contract.EmployeeRequest;
 import org.egov.hrms.web.contract.EmployeeResponse;
 import org.egov.hrms.web.contract.EmployeeSearchCriteria;
+import org.egov.hrms.web.contract.UpdateUsernameRequest;
+import org.egov.hrms.web.contract.UpdateUsernameResponse;
 import org.egov.hrms.web.contract.User;
 import org.egov.hrms.web.contract.UserRequest;
 import org.egov.hrms.web.contract.UserResponse;
@@ -88,6 +94,9 @@ public class EmployeeService {
 
 	@Autowired
 	private UserService userService;
+
+	@Autowired
+	private EncryptionService encryptionService;
 
 	@Autowired
 	private IdGenService idGenService;
@@ -446,10 +455,11 @@ public class EmployeeService {
 				jurisdiction.setId(UUID.randomUUID().toString());
 				jurisdiction.setAuditDetails(auditDetails);
 			}else{
-				if(!existingEmpData.getJurisdictions().stream()
-						.filter(jurisdictionData ->jurisdictionData.getId().equals(jurisdiction.getId() ))
-						.findFirst().orElse(null)
-						.equals(jurisdiction)){
+				Jurisdiction existingJurisdiction = existingEmpData.getJurisdictions().stream()
+						.filter(jurisdictionData -> jurisdictionData.getId().equals(jurisdiction.getId()))
+						.findFirst().orElse(null);
+				if (existingJurisdiction != null && !existingJurisdiction.equals(jurisdiction)
+						&& jurisdiction.getAuditDetails() != null) {
 					jurisdiction.getAuditDetails().setLastModifiedBy(requestInfo.getUserInfo().getUserName());
 					jurisdiction.getAuditDetails().setLastModifiedDate(new Date().getTime());
 				}
@@ -460,10 +470,11 @@ public class EmployeeService {
 				assignment.setId(UUID.randomUUID().toString());
 				assignment.setAuditDetails(auditDetails);
 			}else {
-				if(!existingEmpData.getAssignments().stream()
+				Assignment existingAssignment = existingEmpData.getAssignments().stream()
 						.filter(assignmentData -> assignmentData.getId().equals(assignment.getId()))
-						.findFirst().orElse(null)
-						.equals(assignment)){
+						.findFirst().orElse(null);
+				if (existingAssignment != null && !existingAssignment.equals(assignment)
+						&& assignment.getAuditDetails() != null) {
 					assignment.getAuditDetails().setLastModifiedBy(requestInfo.getUserInfo().getUserName());
 					assignment.getAuditDetails().setLastModifiedDate(new Date().getTime());
 				}
@@ -599,6 +610,51 @@ public class EmployeeService {
 		return EmployeeResponse.builder()
 				.responseInfo(factory.createResponseInfoFromRequestInfo(employeeRequest.getRequestInfo(), true))
 				.employees(employeeRequest.getEmployees()).build();
+	}
+
+	/**
+	 * Service method to update employee username. Does following:
+	 * 1. Validates that the employee exists for the given uuid and tenantId.
+	 * 2. Encrypts the new username by making a call to the encryption service.
+	 * 3. Pushes the update to Kafka for persisting the employee code and the encrypted username.
+	 *
+	 * @param request
+	 * @return
+	 */
+	public UpdateUsernameResponse updateUsername(UpdateUsernameRequest request) {
+		log.trace("EmployeeService.updateUsername invoked");
+		RequestInfo requestInfo = request.getRequestInfo();
+		String tenantId = request.getEmployee().getTenantId();
+		String uuid = request.getEmployee().getUuid();
+		String code = request.getEmployee().getCode();
+		log.info("Updating username for employee uuid: {}, tenant: {}", uuid, tenantId);
+
+		List<Employee> existingEmployees = repository.fetchEmployees(
+				EmployeeSearchCriteria.builder().uuids(Collections.singletonList(uuid)).tenantId(tenantId).build(),
+				requestInfo, propertiesManager.getStateLevelTenantId());
+		if (CollectionUtils.isEmpty(existingEmployees)) {
+			log.warn("No employee found for uuid: {}, tenant: {}", uuid, tenantId);
+			throw new CustomException(ErrorConstants.HRMS_UPDATE_EMPLOYEE_NOT_EXIST_CODE, ErrorConstants.HRMS_UPDATE_EMPLOYEE_NOT_EXIST_MSG);
+		}
+
+		log.debug("Encrypting new username for employee uuid: {}", uuid);
+		String encryptedUsername = encryptionService.encrypt(code);
+
+		UpdateUsernameEvent event = UpdateUsernameEvent.builder()
+				.tenantId(tenantId)
+				.uuid(uuid)
+				.code(code)
+				.username(encryptedUsername)
+				.build();
+
+		String topic = propertiesManager.getUpdateUsernameTopic();
+		log.info("Pushing username update to Kafka topic: {} for employee uuid: {}", topic, uuid);
+		hrmsProducer.push(tenantId, topic, event);
+		log.info("Successfully processed username update for employee uuid: {}", uuid);
+
+		return UpdateUsernameResponse.builder()
+				.responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))
+				.build();
 	}
 
 	public Map<String,Object> getEmployeeCountResponse(RequestInfo requestInfo, String tenantId){

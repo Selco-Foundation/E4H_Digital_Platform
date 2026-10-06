@@ -35,7 +35,44 @@ public class FacilityBulkSearchCriteria {
     private Boolean sendNonPaginatedResponse;
     private Integer limit;
     private Integer offset;
+    /** {@code createdAt} | {@code updatedAt}; facility-service falls back to {@code updatedAt}. */
+    private String sortBy;
+    /** {@code asc} | {@code desc}; facility-service falls back to {@code desc}. */
+    private String sortOrder;
     private Boolean isOnmReady;
+
+    /**
+     * One page of every facility in a tenant, for jobs that walk the whole registry.
+     *
+     * <p>Ordered by creation time ascending rather than facility-service's default of last-updated
+     * descending: {@code created_at} never changes, so a facility edited midway through a long walk
+     * cannot jump between pages and be skipped or indexed twice. Offset paging over a mutable sort
+     * key has no such guarantee.
+     */
+    public static FacilityBulkSearchCriteria forTenantPage(List<String> tenantIds, int limit, int offset) {
+        return FacilityBulkSearchCriteria.builder()
+                .tenantIds(new ArrayList<>(tenantIds))
+                .facilityIds(new ArrayList<>())
+                .facilityNames(new ArrayList<>())
+                .hfrIds(new ArrayList<>())
+                .ninIds(new ArrayList<>())
+                .facilityPocNames(new ArrayList<>())
+                .facilityPocPhones(new ArrayList<>())
+                .facilityPocEmails(new ArrayList<>())
+                .facilityStatus(new ArrayList<>())
+                .userIds(new ArrayList<>())
+                .boundaryCodes(new ArrayList<>())
+                .state(new ArrayList<>())
+                .district(new ArrayList<>())
+                .block(new ArrayList<>())
+                .sendNonPaginatedResponse(false)
+                .limit(limit)
+                .offset(offset)
+                .sortBy("createdAt")
+                .sortOrder("asc")
+                .isOnmReady(null)
+                .build();
+    }
 
     public static FacilityBulkSearchCriteria forTenantAndFacilityIds(
             List<String> tenantIds,

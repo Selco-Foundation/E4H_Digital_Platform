@@ -2,12 +2,28 @@ import React, { useEffect, useState } from "react";
 import { Dropdown, DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
+const isOtherReason = (reason) => {
+  return [reason?.label, reason?.name, reason?.code, reason?.i18nKey]
+    .some((value) => ["other", "others"].includes(value?.toString?.().trim().toLowerCase()));
+};
+
+const sortReasonsWithOtherLast = (a, b) => {
+  const isAOther = isOtherReason(a);
+  const isBOther = isOtherReason(b);
+
+  if (isAOther && !isBOther) return 1;
+  if (!isAOther && isBOther) return -1;
+
+  return a.label.localeCompare(b.label);
+};
+
 const AddRejectionReasonModal = ({ t, onClose, onSave, rejectionReasons }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const [reasonOptions, setReasonOptions] = useState([]);
   const [reasonMenu, setReasonMenu] = useState([]);
   const [reasons, setReasons] = useState([{ id: Date.now(), reason: "", comment: "" }]);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const { data: mdmsData } = Digit.Hooks.useCustomMDMS(
     tenantId,
@@ -30,20 +46,20 @@ const AddRejectionReasonModal = ({ t, onClose, onSave, rejectionReasons }) => {
     setReasonOptions(
       (mdmsData?.["Installation"]?.["RejectionReasons"] || [])
         .map((rejectionReason) => ({...rejectionReason, label: rejectionReason.name}))
-        .sort((a, b) => a.label.localeCompare(b.label))
+        .sort(sortReasonsWithOtherLast)
     )
   }, [mdmsData]);
 
   useEffect(() => {
     const savedRejectionCodes = rejectionReasons.map(r => r.reason);
     const newReasonMenu = reasonOptions.filter(option => !savedRejectionCodes.includes(option.label));
-    newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
+    newReasonMenu.sort(sortReasonsWithOtherLast);
     setReasonMenu(newReasonMenu);
   }, [rejectionReasons, reasonOptions]);
 
   const updateReasonsMenu = (selectedReasons) => {
     const newReasonMenu = reasonOptions.filter(option => !selectedReasons.includes(option.label));
-    newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
+    newReasonMenu.sort(sortReasonsWithOtherLast);
     setReasonMenu(newReasonMenu);
   }
 
@@ -51,6 +67,9 @@ const AddRejectionReasonModal = ({ t, onClose, onSave, rejectionReasons }) => {
     const newReasons = reasons.map(r => r.id === id ? { ...r, [key]: value } : r);
     const selectedReasons = newReasons.map(r => r.reason);
     setReasons(newReasons);
+    if (validationErrors[id]) {
+      setValidationErrors({ ...validationErrors, [id]: "" });
+    }
     updateReasonsMenu(selectedReasons);
   };
 
@@ -58,10 +77,27 @@ const AddRejectionReasonModal = ({ t, onClose, onSave, rejectionReasons }) => {
     const newReasons = reasons.filter(r => r.id !== id);
     const selectedReasons = newReasons.map(r => r.reason);
     setReasons(newReasons);
+    if (validationErrors[id]) {
+      const newValidationErrors = { ...validationErrors };
+      delete newValidationErrors[id];
+      setValidationErrors(newValidationErrors);
+    }
     updateReasonsMenu(selectedReasons);
   };
 
   const handleSave = () => {
+    const newValidationErrors = reasons.reduce((errors, reason) => {
+      if (isOtherReason({ label: reason.reason }) && !reason.comment?.trim()) {
+        errors[reason.id] = t("OTHER_ERRMSG");
+      }
+      return errors;
+    }, {});
+
+    if (Object.keys(newValidationErrors).length > 0) {
+      setValidationErrors(newValidationErrors);
+      return;
+    }
+
     onSave(reasons);
     onClose();
   };
@@ -107,6 +143,9 @@ const AddRejectionReasonModal = ({ t, onClose, onSave, rejectionReasons }) => {
               placeholder={t("ES_ADDITIONAL_DETAILS_PLACEHOLDER")}
               style={{ fontFamily: "Roboto" }}
             />
+            {validationErrors[reason.id] && (
+              <div style={styles.errorText}>{validationErrors[reason.id]}</div>
+            )}
           </div>
         ))}
 
@@ -197,6 +236,9 @@ const styles = {
   saveBtn: {
     backgroundColor: '#C1440E', color: '#fff', border: 'none', padding: '8px 20px',
     fontWeight: 'bold', borderRadius: 2, cursor: 'pointer', width: "40%"
+  },
+  errorText: {
+    color: '#d4351c', fontSize: 12, marginTop: -8, marginBottom: 8
   }
 };
 

@@ -4,6 +4,8 @@ import { Tab } from "@egovernments/digit-ui-components";
 import useFacilityDetails from "../../hooks/useFacilityDetails";
 import { populateWorkingFacility } from "../../redux/actions";
 import { useDispatch } from "react-redux";
+import { useHistory } from "react-router-dom";
+import { useQueryClient } from "react-query";
 import { useTranslation } from "react-i18next";
 import Section from "../../components/FacilityDetails/Section";
 import FacilityModal from "../../components/FacilityModal";
@@ -28,6 +30,8 @@ const FacilityDetails = () => {
   const [activeTab, setActiveTab] = useState("ACTIVITY");
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
+  const history = useHistory();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -120,6 +124,8 @@ const FacilityDetails = () => {
       const facilityCategoryCode = facilityCategoryValue?.code;
       const facilityTypeCode = facilityTypeValue?.code;
       const solarDesignCode = solarDesignValue?.code;
+      const isOperational = formData?.isOperational?.code === "YES";
+      const isOnmReady = isOperational && formData?.isOnmReady?.code === "YES";
 
       const payload = {
         FacilityUpdate: {
@@ -128,8 +134,8 @@ const FacilityDetails = () => {
           facility_name: formData?.facilityName,
           facility_category: facilityCategoryCode,
           facility_type: facilityTypeCode,
-          isActive: formData?.isOperational?.code === "YES",
-          isOnmReady: formData?.isOnmReady?.code === "YES",
+          isActive: isOperational,
+          isOnmReady: isOnmReady,
           address: {
             tenantId: tenantId,
             ...(formData?.latitude ? { latitude: parseFloat(formData.latitude) } : {}),
@@ -145,6 +151,15 @@ const FacilityDetails = () => {
       };
 
       await FacilityService.updateFacility(payload);
+
+      if (!isOperational && !isOnmReady) {
+        await queryClient.invalidateQueries(["FACILITY"]);
+        setBlockUI(false);
+        setShowEditFacilityModal(false);
+        history.push(`/${window?.contextPath}/employee/fa/facilities`);
+        return;
+      }
+
       await invalidateFacilityDetails();
 
       setBlockUI(false);

@@ -44,21 +44,13 @@ public final class FacilityMappedVendorHelper {
         if (facility == null) {
             return;
         }
-        if (StringUtils.isBlank(facility.getMappedVendorName())
-                && StringUtils.isBlank(facility.getMappedVendorUserName())) {
-            return;
-        }
         Map<String, Object> ad = facility.getAdditionalDetails();
         if (ad == null) {
             ad = new HashMap<>();
             facility.setAdditionalDetails(ad);
         }
-        if (StringUtils.isNotBlank(facility.getMappedVendorName())) {
-            ad.put(MAPPED_VENDOR_NAME_KEY, facility.getMappedVendorName());
-        }
-        if (StringUtils.isNotBlank(facility.getMappedVendorUserName())) {
-            ad.put(MAPPED_VENDOR_USER_NAME_KEY, facility.getMappedVendorUserName());
-        }
+        ad.put(MAPPED_VENDOR_NAME_KEY, facility.getMappedVendorName());
+        ad.put(MAPPED_VENDOR_USER_NAME_KEY, facility.getMappedVendorUserName());
     }
 
     public static void applyMappedVendor(Facility facility, String vendorName, String vendorUserName) {
@@ -81,26 +73,49 @@ public final class FacilityMappedVendorHelper {
             return;
         }
 
-        String vendorName = firstNonBlankString(
-                update.getMappedVendorName(),
-                extractFromAdditionalDetails(update.getAdditionalDetails(), MAPPED_VENDOR_NAME_KEY, "mapped_vendor_name"));
-        String vendorUserName = firstNonBlankString(
-                update.getMappedVendorUserName(),
-                extractFromAdditionalDetails(update.getAdditionalDetails(), MAPPED_VENDOR_USER_NAME_KEY,
-                        "mapped_vendor_user_name", "mappedVendorUsername"));
-
-        if (vendorName == null && vendorUserName == null && existingFacility != null) {
+        String existingVendorName = existingFacility != null ? existingFacility.getMappedVendorName() : null;
+        String existingVendorUserName = existingFacility != null ? existingFacility.getMappedVendorUserName() : null;
+        if (existingFacility != null
+                && (StringUtils.isBlank(existingVendorName) || StringUtils.isBlank(existingVendorUserName))) {
             hydrateFromAdditionalDetails(existingFacility);
-            vendorName = existingFacility.getMappedVendorName();
-            vendorUserName = existingFacility.getMappedVendorUserName();
+            existingVendorName = existingFacility.getMappedVendorName();
+            existingVendorUserName = existingFacility.getMappedVendorUserName();
         }
 
-        if (vendorName != null || vendorUserName != null) {
-            applyMappedVendor(facility, vendorName, vendorUserName);
-        } else if (update.getAdditionalDetails() != null) {
-            facility.setAdditionalDetails(update.getAdditionalDetails());
-            hydrateFromAdditionalDetails(facility);
+        String vendorName = resolveMappedVendorValue(
+                update.getMappedVendorName(),
+                update.getAdditionalDetails(),
+                existingVendorName,
+                MAPPED_VENDOR_NAME_KEY,
+                "mapped_vendor_name");
+        String vendorUserName = resolveMappedVendorValue(
+                update.getMappedVendorUserName(),
+                update.getAdditionalDetails(),
+                existingVendorUserName,
+                MAPPED_VENDOR_USER_NAME_KEY,
+                "mapped_vendor_user_name",
+                "mappedVendorUsername");
+
+        facility.setMappedVendorName(vendorName);
+        facility.setMappedVendorUserName(vendorUserName);
+    }
+
+    public static boolean hasMappedVendorUpdateInPayload(FacilityUpdateRequestFacilityUpdate update) {
+        if (update == null) {
+            return false;
         }
+        if (update.getMappedVendorName() != null || update.getMappedVendorUserName() != null) {
+            return true;
+        }
+        Map<String, Object> additionalDetails = update.getAdditionalDetails();
+        if (additionalDetails == null || additionalDetails.isEmpty()) {
+            return false;
+        }
+        return additionalDetails.containsKey(MAPPED_VENDOR_NAME_KEY)
+                || additionalDetails.containsKey(MAPPED_VENDOR_USER_NAME_KEY)
+                || additionalDetails.containsKey("mapped_vendor_name")
+                || additionalDetails.containsKey("mapped_vendor_user_name")
+                || additionalDetails.containsKey("mappedVendorUsername");
     }
 
     public static boolean hasMappedVendor(Facility facility) {
@@ -109,6 +124,51 @@ public final class FacilityMappedVendorHelper {
         }
         return StringUtils.isNotBlank(facility.getMappedVendorName())
                 || StringUtils.isNotBlank(facility.getMappedVendorUserName());
+    }
+
+    private static String resolveMappedVendorValue(String topLevelValue,
+                                                   Map<String, Object> additionalDetails,
+                                                   String existingValue,
+                                                   String... additionalKeys) {
+        if (StringUtils.isNotBlank(topLevelValue)) {
+            return topLevelValue.trim();
+        }
+        if (topLevelValue != null && topLevelValue.trim().isEmpty()) {
+            return null;
+        }
+        if (hasAdditionalDetailKey(additionalDetails, additionalKeys)) {
+            Object fromAdditionalDetails = getAdditionalDetailRaw(additionalDetails, additionalKeys);
+            if (fromAdditionalDetails == null) {
+                return null;
+            }
+            String normalized = fromAdditionalDetails.toString().trim();
+            return normalized.isEmpty() ? null : normalized;
+        }
+        return existingValue;
+    }
+
+    private static boolean hasAdditionalDetailKey(Map<String, Object> additionalDetails, String... keys) {
+        if (additionalDetails == null || additionalDetails.isEmpty() || keys == null) {
+            return false;
+        }
+        for (String key : keys) {
+            if (key != null && additionalDetails.containsKey(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Object getAdditionalDetailRaw(Map<String, Object> additionalDetails, String... keys) {
+        if (additionalDetails == null || additionalDetails.isEmpty() || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (key != null && additionalDetails.containsKey(key)) {
+                return additionalDetails.get(key);
+            }
+        }
+        return null;
     }
 
     private static String extractFromAdditionalDetails(Map<String, Object> ad, String... keys) {

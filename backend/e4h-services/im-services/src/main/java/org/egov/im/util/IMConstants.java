@@ -34,6 +34,38 @@ public class IMConstants {
 
     public static final String MDMS_MODULE_NAME = "Incident";
 
+    // SEM user-analytics MDMS
+    public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
+    public static final String MDMS_MASTER_SEM = "SEM";
+    public static final String MDMS_MASTER_USER_TYPE = "USER_TYPE";
+    public static final String SEM_JSONPATH = "$.MdmsRes." + USER_ANALYTICS_MODULE + "." + MDMS_MASTER_SEM;
+    public static final String USER_TYPE_JSONPATH = "$.MdmsRes." + USER_ANALYTICS_MODULE + "." + MDMS_MASTER_USER_TYPE;
+
+    // SEM event constants
+    public static final String SEM_APPLICATION = "SAURA_EMITRA";
+    public static final String SEM_ENTITY_TYPE = "TICKET";
+
+    // Login user-analytics event constants
+    public static final String USER_LOGIN_EVENT_TYPE = "USER_LOGIN";
+    public static final String USER_LOGIN_ENTITY_TYPE = "USER";
+
+    // Kibana login user-analytics event constants
+    public static final String KIBANA_LOGIN_EVENT_TYPE = "KIBANA_LOGIN";
+    public static final String KIBANA_APPLICATION = "KIBANA";
+    public static final String KIBANA_LOGIN_ENTITY_TYPE = "KIBANA_USER";
+    /** Value of the {@code event} field on the Kibana audit messages we translate. */
+    public static final String KIBANA_LOGIN_SOURCE_EVENT = "kibana_login";
+
+    /**
+     * Applications allowed to report a login. Kept as a regex so it can be used directly in the
+     * {@code @Pattern} on {@code UserRequest.application} — the caller declares which front-end the
+     * login came from, and the value is written to the shared user-analytics-report index as-is.
+     */
+    public static final String APPLICATION_PATTERN = "SAURA_EMITRA|FIELD_ASSIST|MANAGEMENT_HUB";
+
+    // Localization module holding the Boundary_* codes used to resolve the localized state name
+    public static final String BOUNDARY_LOCALIZATION_MODULE = "rainmaker-in";
+
     public static final String MDMS_SERVICEDEF_SEARCH = "$.MdmsRes.Incident.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')]";
 
     public static final String MDMS_DEPARTMENT_SEARCH = "$.MdmsRes.RAINMAKER-im.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')].department";
@@ -108,6 +140,10 @@ public class IMConstants {
 
     public static final String APPLY = "APPLY";
 
+    public static final String APPLY_RMS_DEVICE = "APPLY_RMS_DEVICE";
+
+    public static final String APPLY_THEFT = "APPLY_THEFT";
+
     public static final String CITIZEN = "CITIZEN";
 
     public static final String EMPLOYEE = "EMPLOYEE";
@@ -140,6 +176,12 @@ public class IMConstants {
 
     public static final String APPLY_PENDINGFORASSIGNMENT = "APPLY_PENDINGFORASSIGNMENT";
 
+    public static final String APPLY_RMS_DEVICE_PENDINGFORASSIGNMENT_RMS_DEVICE =
+            "APPLY_RMS_DEVICE_PENDINGFORASSIGNMENT_RMS_DEVICE";
+
+    public static final String APPLY_THEFT_PENDINGFORASSIGNMENT_THEFT =
+            "APPLY_THEFT_PENDINGFORASSIGNMENT_THEFT";
+
     public static final String REASSIGN_PENDING_FOR_REASSIGNMENT = "REASSIGN_PENDINGFORREASSIGNMENT";
 
     public static final String ASSIGN = "ASSIGN";
@@ -150,15 +192,19 @@ public class IMConstants {
     public static final String SENDBACK_PENDINGFORASSIGNMENT="SENDBACK_PENDINGFORASSIGNMENT";
     
     public static final String ASSIGN_PENDINGRESOLUTION = "ASSIGN_PENDINGRESOLUTION";
+
+    public static final String ASSIGN_RMS_DEVICE_PENDINGRESOLUTION = "ASSIGN_" + RMS_DEVICE_PENDINGRESOLUTION;
     public static final String RATE_CLOSED_AFTER_REJECTION = "RATE_CLOSEDAFTERREJECTION";
 
     public static final String RATE_CLOSED_AFTER_RESOLUTION = "RATE_CLOSEDAFTERRESOLUTION";
 
     public static final List<String> NOTIFICATION_ENABLE_FOR_STATUS = Collections
-            .unmodifiableList(Arrays.asList(SENDBACK_PENDINGFORASSIGNMENT,ASSIGN_PENDINGRESOLUTION,APPLY_PENDING_FOR_REASSIGNMENT,RESOLVE_RESOLVED,REOPEN_PENDING_FOR_ASSIGNMENT,REASSIGN_PENDINGATLME,
+            .unmodifiableList(Arrays.asList(SENDBACK_PENDINGFORASSIGNMENT,ASSIGN_PENDINGRESOLUTION,ASSIGN_RMS_DEVICE_PENDINGRESOLUTION,APPLY_PENDING_FOR_REASSIGNMENT,RESOLVE_RESOLVED,REOPEN_PENDING_FOR_ASSIGNMENT,REASSIGN_PENDINGATLME,
                     REJECT_REJECTED,ASSIGN_CITIZEN_PENDINGATLME,ASSIGN_EMPLOYEE_PENDINGATLME,CLOSE_EMPLOYEE_CLOSED_AFTER_RESOLUTION,
                     REASSIGN_CITIZEN_PENDINGATLME,REASSIGN_EMPLOYEE_PENDINGATLME,REJECT_CITIZEN_REJECTED,REOPEN_CITIZEN_PENDINGFORASSIGNMENT,
-                    REOPEN_EMPLOYEE_PENDINGFORASSIGNMENT,RESOLVE_CITIZEN_RESOLVED,APPLY_PENDINGFORASSIGNMENT,COMMENT, COMMENT_DEFAULT, DEFAULT,
+                    REOPEN_EMPLOYEE_PENDINGFORASSIGNMENT,RESOLVE_CITIZEN_RESOLVED,APPLY_PENDINGFORASSIGNMENT,
+                    APPLY_RMS_DEVICE_PENDINGFORASSIGNMENT_RMS_DEVICE, APPLY_THEFT_PENDINGFORASSIGNMENT_THEFT,
+                    COMMENT, COMMENT_DEFAULT, DEFAULT,
                     REASSIGN_PENDING_FOR_REASSIGNMENT, ASSIGN_PENDING_AT_LME, RATE_CLOSED_AFTER_REJECTION, RATE_CLOSED_AFTER_RESOLUTION));
 
     public static final String NOTIFICATION_LOCALE = "en_IN";
@@ -206,8 +252,53 @@ public class IMConstants {
     public static final String ROLE_COMPLAINANT = "COMPLAINANT";
     public static final String ROLE_COMPLAINT_ASSESSOR = "COMPLAINT_ASSESSOR";
     public static final String ROLE_COMPLAINT_RESOLVER = "COMPLAINT_RESOLVER";
+    public static final String ROLE_COMPLAINT_FACILITATOR_1 = "COMPLAINT_FACILITATOR_1";
+    public static final String ROLE_COMPLAINT_FACILITATOR_2 = "COMPLAINT_FACILITATOR_2";
+
+    // CRM: registered at state level; HRMS search runs without boundary (whole tenant).
+    // State SPOC (ROLE_COMPLAINT_FACILITATOR_1) and Tech POC (ROLE_COMPLAINT_FACILITATOR_2):
+    // registered at state jurisdiction "India_<State>"; boundary is resolved in
+    // NotificationService.getHRMSEmployee via IMUtils.extractStateBoundaryCode.
+    public static final List<String> STATE_LEVEL_ROLES = Arrays.asList(
+            ROLE_COMPLAINT_ASSESSOR);
+
+    // Placeholder indexed for a ticket that has never been assigned to a COMPLAINT_RESOLVER.
+    public static final String MAPPED_VENDOR_NOT_APPLICABLE = "Not Applicable";
+
+    public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
+
+    public static final String PENDING_RESOLUTION_SPARE_PART_NEEDED = "PENDING_RESOLUTION_SPARE_PART_NEEDED";
+
+    public static final String OUT_OF_WARRANTY_ACTION = "OUT_OF_WARRANTY";
+    public static final String MARK_OUT_OF_SCOPE_ACTION = "MARK_OUT_OF_SCOPE";
+    public static final String REVISE_ACTION = "REVISE";
+    public static final String SUBMIT_ACTION = "SUBMIT";
+    public static final String APPROVE_ACTION = "APPROVE";
 
     public static final String ASIA_KOLKATA = "Asia/Kolkata";
 
     public static final String PENDINGFORASSIGNMENT_PREFIX = "PENDINGFORASSIGNMENT_";
+
+    /**
+     * Assigns an out-of-scope ticket to a vendor other than the one that already worked it, landing in
+     * PENDINGRESOLUTION instead of PENDING_RESOLUTION_OUT_OF_SCOPE. Emitted only by
+     * WorkflowService, never by a client: the workflow action carries the SYSTEM role so that it stays
+     * out of the actions offered to the SPOC.
+     */
+    public static final String ASSIGN_NEW_VENDOR = "ASSIGN_NEW_VENDOR";
+
+    /** Role the workflow config grants to machine-driven transitions (the CLOSE action carries it too). */
+    public static final String ROLE_SYSTEM = "SYSTEM";
+
+    /**
+     * Statuses in which a vendor holds the ticket. The most recent transition into one of them names
+     * the vendor that was working the ticket - there is no vendor column on the incident, the
+     * assignment lives only in the workflow history.
+     */
+    public static final List<String> VENDOR_HOLDING_STATUSES = Collections.unmodifiableList(Arrays.asList(
+            PENDINGATVENDOR,                        // "PENDINGRESOLUTION"
+            RMS_DEVICE_PENDINGRESOLUTION,
+            PENDING_RESOLUTION_OUT_OF_SCOPE,
+            PENDING_RESOLUTION_OUT_OF_WARRANTY,
+            PENDING_RESOLUTION_SPARE_PART_NEEDED));
 }

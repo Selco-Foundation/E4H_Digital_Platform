@@ -28,7 +28,7 @@ public class RmsConsumptionClient {
     private final ObjectMapper objectMapper;
 
     /**
-     * Key: facilityId|year|month → solar kWh from Elmeasure (rms-service → POST /selco/dashboard/table_data).
+     * Key: facilityId|year|month → solar kWh from Elmeasure (rms-service → POST /selco/center_details/graph).
      */
     public Map<String, Double> fetchSolarKwhByFacilityMonth(List<Co2FacilityContext> facilities,
                                                             List<YearMonth> months) {
@@ -41,7 +41,9 @@ public class RmsConsumptionClient {
             for (YearMonth ym : months) {
                 Map<String, Object> req = new HashMap<>();
                 req.put("facilityId", f.getFacilityId());
+                req.put("facilityName", f.getFacilityName());
                 req.put("hfrId", f.getHfrId());
+                req.put("ninId", f.getNinId());
                 req.put("month", ym.getMonthValue());
                 req.put("year", ym.getYear());
                 requests.add(req);

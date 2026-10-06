@@ -67,6 +67,14 @@ public class InboxConstants {
 
     public static final String SORT_KEY = "sort";
 
+    public static final String SIZE_KEY = "size";
+
+    public static final String FIELD_KEY = "field";
+
+    public static final String AGGS_KEY = "aggs";
+
+    public static final String TERMS_KEY = "terms";
+
     public static final String TENANTID_KEY = "tenantId";
 
     public static final String SLA_REMAINING = "slaRemaining";
@@ -74,4 +82,30 @@ public class InboxConstants {
     public static final String STATE_SLA = "stateSLA";
 
     public static final String TOTAL_SLA_REMAINING = "totalSlaRemaining";
+
+    public static final String MAPPED_VENDOR_NAME = "mappedVendorName";
+
+    public static final String MAPPED_VENDOR_USER_NAME = "mappedVendorUserName";
+
+    public static final String CURRENT_OWNER = "currentOwner";
+
+    /** Keyword sub-field of mappedVendorName, aggregated on to build the vendor dropdown. */
+    public static final String MAPPED_VENDOR_NAME_KEYWORD_PATH = DATA_KEY + "." + MAPPED_VENDOR_NAME + ".keyword";
+
+    public static final String MAPPED_VENDOR_AGGREGATION_KEY = "mappedVendors";
+
+    /**
+     * Placeholder im-services indexes when a facility has no vendor mapped
+     * (IMConstants.MAPPED_VENDOR_NOT_APPLICABLE). Not a real vendor, so it is kept out of the dropdown.
+     */
+    public static final String MAPPED_VENDOR_NOT_APPLICABLE = "Not Applicable";
+
+    public static final String MAPPED_VENDOR_AGGREGATION_BUCKETS_PATH = "$.aggregations." + MAPPED_VENDOR_AGGREGATION_KEY + ".buckets.*";
+
+    /**
+     * Upper bound on the number of distinct vendors returned in one dropdown call. Well above the
+     * number of vendors onboarded in any single state, and kept explicit so a silent truncation
+     * cannot happen unnoticed - the service logs when the bucket count reaches it.
+     */
+    public static final int MAPPED_VENDOR_AGGREGATION_SIZE = 1000;
 }

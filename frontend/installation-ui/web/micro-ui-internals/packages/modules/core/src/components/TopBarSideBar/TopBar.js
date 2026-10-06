@@ -123,6 +123,27 @@ const TopBar = ({
       />
     );
   }
+
+  if (mobileView) {
+    return (
+      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px", background: "#ffffff" }}>
+        <span onClick={toggleSidebar} style={{ display: "flex", cursor: "pointer" }}>
+          <Hamburger handleClick={toggleSidebar} color="#505A5F" />
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <ImageComponent src={logoUrl} alt="Saura e-Mitra" style={{ maxHeight: "48px", maxWidth: "132px" }} />
+          {logoUrlWhite && (
+            <React.Fragment>
+              <span style={{ height: "42px", borderLeft: "1px solid #505A5F" }} />
+              <ImageComponent src={logoUrlWhite} alt="Selco Foundation" style={{ maxHeight: "42px", maxWidth: "112px" }} />
+            </React.Fragment>
+          )}
+        </div>
+        {showLanguageChange && <ChangeLanguage dropdown={true} />}
+      </div>
+    );
+  }
+
   return (
     <TopBarComponentMain
       actionFields={[

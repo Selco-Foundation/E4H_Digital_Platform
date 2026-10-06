@@ -7,7 +7,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
   const {
     t, heading, description, name, allowedFileTypes = [], file, setFile,
-    handleFileUpload, invalidDataError, errorViewLabel, setInvalidDataError
+    handleFileUpload, invalidDataError, setInvalidDataError, setToast
   } = props;
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
@@ -38,9 +38,11 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
       await handleFileUpload(uploadedFile, setFile);
       clearErrors(name);
     } else {
-      setError(name, {
-        type: "manual",
-        message: `Allowed file types are ${allowedFileTypes.join(", ")}`
+      clearErrors(name);
+      setToast?.({
+        key: "error",
+        label: "Invalid file format.Please upload a valid Excel file (xlsx).",
+        translate: false,
       });
       setFile(null);
     }
@@ -146,7 +148,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
         </p>
       </div>
       {file && <UploadedFilePreview t={t} file={file} onRemove={handleRemove} onReupload={openFileDialog} />}
-      {invalidDataError && <UploadErrorCard t={t} cardLabel={invalidDataError.label} viewActionLabel={errorViewLabel || "CORE_COMMON_VIEW_ERRORS"} />}
+      {invalidDataError && <UploadErrorCard cardLabel={invalidDataError.label} />}
     </div>
   );
 };

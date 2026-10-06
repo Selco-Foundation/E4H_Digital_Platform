@@ -6,15 +6,18 @@ const fetchProject = async (filter, limit, offset) => {
   return {
     fieldPlans: response?.FieldPlans,
     totalCount: response?.TotalCount,
+    iccTemplates: response?.iccTemplates || response?.IccTemplates || [],
   };
 }
 
 const useFieldPlan = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, sortDir = "DESC") => {
 
-  const { tenantId, ids, projectIds } = queryFilter;
+  const { tenantId, ids, projectIds, name } = queryFilter;
 
   const filter = {
-    FieldPlans : {}
+    FieldPlans : {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+    }
   };
 
   if (tenantId) {
@@ -29,6 +32,10 @@ const useFieldPlan = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, s
     filter.FieldPlans.projectIds = projectIds;
   }
 
+  if (name) {
+    filter.FieldPlans.name = name;
+  }
+
   const queryClient = useQueryClient();
   const {isLoading, isError, error, data} = useQuery(
     ["FIELD_PLAN", filter, limit, offset],
@@ -37,7 +44,10 @@ const useFieldPlan = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, s
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["FIELD_PLAN"])
+    revalidate: async () => {
+      await queryClient.invalidateQueries(["FIELD_PLAN"]);
+      return queryClient.getQueryData(["FIELD_PLAN", filter, limit, offset]);
+    }
   }
 
 }

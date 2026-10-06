@@ -32,10 +32,10 @@ const Urls = {
   EmployeeSearch: "/egov-hrms/employees/_search",
 
   InboxSearch: "/inbox/v2/_search",
+  MappedVendorSearch: "/inbox/v2/mappedVendor/_search",
 
   UserSearch: "/user/_search",
   UserLogout: "/user/_logout",
-  UserLoginReport: "/im-services/user/login/_report",
 
   Shortener: "/egov-url-shortening/shortener",
 

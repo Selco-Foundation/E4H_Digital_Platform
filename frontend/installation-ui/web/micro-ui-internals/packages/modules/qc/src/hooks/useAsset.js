@@ -5,11 +5,11 @@ import { FilestoreService } from "../services/Filestore";
 const getAssetName = (assetTypeID) => {
   switch(assetTypeID) {
     case "PANEL":
-      return "Panel";
+      return "QC_INSTALLATION_PANEL";
     case "BATTERY":
-      return "Battery";
+      return "QC_INSTALLATION_BATTERY";
     case "INVERTER":
-      return "Inverter";
+      return "QC_INSTALLATION_INVERTER";
   }
 }
 
@@ -67,6 +67,8 @@ const formatData = async (data) => {
             assetId: row?.assetId,
             serialNumber: row?.serialNumber,
             capacity: getAssetCapacity(assetType, row?.assetDetails),
+            isPotentialDuplicate: row?.assetDetails?.isPotentialDuplicate === true,
+            duplicateFacilityName: row?.assetDetails?.duplicateFacilityName,
             documents: await fetchFileStoreDocuments(row?.documents)
           }
         ]
@@ -97,6 +99,8 @@ const formatData = async (data) => {
             assetId: row?.assetId,
             serialNumber: row?.serialNumber,
             capacity: getAssetCapacity(assetType, row?.assetDetails),
+            isPotentialDuplicate: row?.assetDetails?.isPotentialDuplicate === true,
+            duplicateFacilityName: row?.assetDetails?.duplicateFacilityName,
             documents: await fetchFileStoreDocuments(row?.documents)
           }
         ]

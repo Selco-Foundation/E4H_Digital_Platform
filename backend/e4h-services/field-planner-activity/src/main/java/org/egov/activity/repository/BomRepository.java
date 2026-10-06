@@ -50,7 +50,7 @@ public class BomRepository extends GenericRepository<BillOfMaterial> {
     }
 
     public List<BillOfMaterial> getBillOfMaterials(BomSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
-        //Fetch FieldPlans based on search criteria
+        //Fetch Installation Plans based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         BomSearchCriteria criteria = request.getCriteria();
         criteria.setCountQuery(false);
