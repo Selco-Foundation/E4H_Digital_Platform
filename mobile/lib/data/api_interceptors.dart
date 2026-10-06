@@ -75,6 +75,17 @@ class DebugHttpBodyLoggingInterceptor extends Interceptor {
 }
 
 class AuthTokenInterceptor extends Interceptor {
+  AuthTokenInterceptor(
+      {AuthRepository? authRepository,
+      Dio? retryClient,
+      Future<void> Function()? ensureOnline})
+      : _authRepository = authRepository ?? AuthRepository(),
+        _retryClient = retryClient,
+        _ensureOnline = ensureOnline ?? NetworkService().ensureOnlineOrThrow;
+
+  final AuthRepository _authRepository;
+  final Dio? _retryClient;
+  final Future<void> Function() _ensureOnline;
   final _lock = Lock();
   static const _maxRetries = 5;
 
@@ -82,13 +93,17 @@ class AuthTokenInterceptor extends Interceptor {
 
   static bool _logoutTriggered = false;
 
-  static Future<void> _triggerLogoutOnce() async {
+  static void resetLogoutGuard() {
+    _logoutTriggered = false;
+  }
+
+  Future<void> _triggerLogoutOnce() async {
     if (_logoutTriggered) return;
     _logoutTriggered = true;
 
     // 1) clear stored tokens
     try {
-      await AuthRepository().logout();
+      await _authRepository.logout();
     } catch (_) {}
 
     // 2) notify UI layer (navigation + bloc)
@@ -108,6 +123,7 @@ class AuthTokenInterceptor extends Interceptor {
   }
 
   bool _refreshTokenLooksExpired(Object e) {
+    if (e is MissingRefreshCredentials) return true;
     if (e is DioError) {
       final code = e.response?.statusCode;
 
@@ -131,7 +147,7 @@ class AuthTokenInterceptor extends Interceptor {
     RequestInterceptorHandler handler,
   ) async {
     try {
-      await NetworkService().ensureOnlineOrThrow();
+      await _ensureOnline();
     } on NetworkException catch (e) {
       return handler.reject(
         DioError(
@@ -186,7 +202,7 @@ class AuthTokenInterceptor extends Interceptor {
 
     try {
       await _lock.synchronized(() async {
-        await AuthRepository().refreshToken();
+        await _authRepository.refreshToken();
       });
     } catch (e) {
       // If refresh token is invalid/expired -> logout immediately
@@ -199,7 +215,7 @@ class AuthTokenInterceptor extends Interceptor {
     }
 
     try {
-      final dio = DioClient().dio;
+      final dio = _retryClient ?? DioClient().dio;
 
       final ro = err.requestOptions;
       ro.extra = Map<String, dynamic>.from(ro.extra)
