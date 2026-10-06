@@ -1,55 +1,29 @@
-// import 'package:freezed_annotation/freezed_annotation.dart';
-//
-// import '../comment/comment.dart';
-//
-// part 'transaction.g.dart';
-//
-// @JsonSerializable(explicitToJson: true)
-// class Transaction {
-//   final String? transactionId;
-//   final String? processInstanceId;
-//   final String? projectId;
-//   final List<Comment>? comments;
-//
-//   Transaction({
-//     this.transactionId,
-//     this.processInstanceId,
-//     this.projectId,
-//     this.comments,
-//   });
-//
-//   factory Transaction.fromJson(Map<String, dynamic> json) =>
-//       _$TransactionFromJson(json);
-//   Map<String, dynamic> toJson() => _$TransactionToJson(this);
-// }
-
 import 'package:isar/isar.dart';
 
 import '../comment/comment.dart';
 
-part 'transaction.g.dart'; // optional
+part 'transaction.g.dart';
 
 @Embedded()
 class Transaction {
   String? transactionId;
   String? processInstanceId;
-  String? projectId;
+  String? activityFacilityId;
 
-  /// Embedded comments
   @Embedded()
   List<Comment>? comments;
 
   Transaction({
     this.transactionId,
     this.processInstanceId,
-    this.projectId,
+    this.activityFacilityId,
     this.comments,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) => Transaction(
         transactionId: json['transactionId']?.toString(),
         processInstanceId: json['processInstanceId']?.toString(),
-        projectId: json['projectId']?.toString(),
+        activityFacilityId: json['activityFacilityId']?.toString(),
         comments: json['comments'] is List
             ? (json['comments'] as List)
                 .map((e) => Comment.fromJson(Map<String, dynamic>.from(e)))
@@ -60,7 +34,7 @@ class Transaction {
   Map<String, dynamic> toJson() => {
         'transactionId': transactionId,
         'processInstanceId': processInstanceId,
-        'projectId': projectId,
+        'activityFacilityId': activityFacilityId,
         'comments': comments?.map((c) => c.toJson()).toList(),
       };
 }

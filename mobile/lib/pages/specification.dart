@@ -6,13 +6,14 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/blocs/specification/specification.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../blocs/specification/specification.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
@@ -42,9 +43,9 @@ class _SpecificationPageState extends State<SpecificationPage> {
           panel: () => 'panel',
         );
 
-    final selState = context.read<SelectedProjectBloc>().state;
+    final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _updateProgress(project.project.id, assetType);
+      _updateProgress(project.activityFacility.id, assetType);
     });
   }
 
@@ -52,7 +53,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
     context
         .read<CacheAssetCountBloc>()
         .add(CacheAssetCountEvent.update(CacheAssetCount(
-          projectId: projectId,
+          activityFacilityId: projectId,
           assetType: assetType,
           progress: 3,
         )));
@@ -67,7 +68,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
       builder: (context, state) {
         final specHeading = state.when(
           initial: () => 'Specification',
-          inverter: () => 'Inverter Specifications',
+          inverter: () => 'Inverter / PCU Specifications',
           battery: () => 'Battery Specifications',
           panel: () => 'Panel Specifications',
         );
@@ -92,7 +93,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                     backgroundColor: theme.colorTheme.generic.background,
                     footer: FooterButton(
                       showSuffixIcon: false,
-                      text: i18.common.coreCommonNext,
+                      text: context.translate(i18.common.coreCommonNext),
                       onPress: () {
                         context.router.push(const AssetTypeDetailRoute());
                       },
@@ -118,7 +119,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                                 color: theme.colorTheme.primary.primary2),
                           ),
                           LabeledField(
-                            label: 'System',
+                            label: context.translate(i18.assetSummary.system),
                             labelStyle: textTheme.headingS
                                 .copyWith(color: theme.colorTheme.text.primary),
                             capitalizedFirstLetter: false,
@@ -135,7 +136,8 @@ class _SpecificationPageState extends State<SpecificationPage> {
                               Expanded(
                                 flex: 3,
                                 child: LabeledField(
-                                  label: 'Total Capacity',
+                                  label: context
+                                      .translate(i18.specification.totalCapacity),
                                   labelStyle: textTheme.headingS.copyWith(
                                       color: theme.colorTheme.text.primary),
                                   capitalizedFirstLetter: false,
@@ -152,7 +154,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                               Expanded(
                                 flex: 1,
                                 child: LabeledField(
-                                  label: 'Unit',
+                                  label: context.translate(i18.common.unit),
                                   labelStyle: textTheme.headingS.copyWith(
                                       color: theme.colorTheme.text.primary),
                                   capitalizedFirstLetter: false,

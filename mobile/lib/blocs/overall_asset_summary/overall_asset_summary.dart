@@ -9,7 +9,7 @@ part 'overall_asset_summary.freezed.dart';
 @freezed
 class OverallAssetSummaryEvent with _$OverallAssetSummaryEvent {
   const factory OverallAssetSummaryEvent.loadCounts({
-    required String projectId,
+    required String activityFacilityId,
   }) = OverallAssetSummaryEventLoadCounts;
 }
 
@@ -42,21 +42,21 @@ class OverallAssetSummaryBloc
     try {
       final batteryCount = await _isar.cacheAddNewAssets
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.activityFacilityId)
           .filter()
           .assetTypeEqualTo('battery')
           .count();
 
       final inverterCount = await _isar.cacheAddNewAssets
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.activityFacilityId)
           .filter()
           .assetTypeEqualTo('inverter')
           .count();
 
       final panelCount = await _isar.cacheAddNewAssets
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.activityFacilityId)
           .filter()
           .assetTypeEqualTo('panel')
           .count();

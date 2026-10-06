@@ -4,20 +4,16 @@ import 'dart:io';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
-import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' show basename;
-import 'package:path_provider/path_provider.dart';
-import 'package:recase/recase.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_media_upload/cache_media_upload.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../router/app_router.dart';
@@ -26,6 +22,8 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
+import '../widgets/customized_digit_widget/image_uploader.dart';
+import '../widgets/customized_digit_widget/video_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -37,24 +35,21 @@ class MediaUploadPage extends StatefulWidget {
 }
 
 class _MediaUploadPageState extends State<MediaUploadPage> {
-  String? _currentProjectId;
-  int _imageKeyCounter = 0;
-  int _videoKeyCounter = 0;
-  List<PlatformFile> _selectedImages = [];
-  List<PlatformFile> _selectedVideos = [];
+  String? _currentActivityFacilityId;
+  List<File> _selectedImages = [];
+  List<File> _selectedVideos = [];
+  bool _isImagesInitLoading = false;
+  bool _isVideosInitLoading = false;
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
-
-  // ─── cache for downloaded files ───
-  final Map<String, File> _fileCache = {};
+  String userType = "";
   late String assetType = "";
 
   @override
   void initState() {
     super.initState();
 
-    // 1) start location updates:
     final locBloc = context.read<LocationBloc>();
     locBloc.add(const LocationEvent.requestPermission());
     locBloc.add(const LocationEvent.requestService());
@@ -67,27 +62,30 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
       }
     });
 
-    // 2) grab projectId & dispatch initial load:
+    userType = context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => USER_TYPES.SUPERVISOR.name,
+          orElse: () => USER_TYPES.FIELD_STAFF.name,
+        );
+
     assetType = context.read<AssetTypeBloc>().state.when(
           initial: () => '',
           inverter: () => 'inverter',
           battery: () => 'battery',
           panel: () => 'panel',
         );
-    context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
-      _currentProjectId = proj.project.id;
-      // update progress
+    context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
+        selected: (proj) {
+      _currentActivityFacilityId = proj.activityFacility.id;
       context
           .read<CacheAssetCountBloc>()
           .add(CacheAssetCountEvent.update(CacheAssetCount(
-            projectId: proj.project.id,
+            activityFacilityId: proj.activityFacility.id,
             assetType: assetType,
             progress: 6,
           )));
 
-      // fetch any previously cached media for this project/type
       context.read<CacheMediaUploadBloc>().add(
-            CacheMediaUploadEvent.get(proj.project.id, assetType),
+            CacheMediaUploadEvent.get(proj.activityFacility.id, assetType),
           );
     });
   }
@@ -95,7 +93,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
   @override
   void dispose() {
     _locSub?.cancel();
-    _fileCache.clear();
     super.dispose();
   }
 
@@ -120,62 +117,50 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
     }
   }
 
-  /// Downloads a remote file once or returns a cached local File.
-  Future<File?> _getCachedFile(String path) async {
-    if (_fileCache.containsKey(path)) {
-      return _fileCache[path];
-    }
-
-    if (isValidUuid(path)) {
-      try {
-        final uri = Uri.parse("$fileStoreFileUrl$path");
-        final response = await http.get(uri);
-        if (response.statusCode == 200) {
-          final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/${uri.pathSegments.last}');
-          await file.writeAsBytes(response.bodyBytes);
-          _fileCache[path] = file;
-          return file;
-        }
-      } catch (e) {
-        print('Error downloading image: $e');
-      }
-    } else {
-      final file = File(path);
-      if (await file.exists()) {
-        _fileCache[path] = file;
-        return file;
-      }
-    }
-    return null;
-  }
-
-  /// Populate `_selectedImages` & `_selectedVideos` from cached entries.
   Future<void> _populateFromCache(List<CacheMediaUpload> entries) async {
-    final images = <PlatformFile>[];
-    final videos = <PlatformFile>[];
+    final hasImageEntries = entries.any((e) => e.itemType == 'image');
+    final hasVideoEntries = entries.any((e) => e.itemType == 'video');
 
-    for (final e in entries) {
-      final file = await _getCachedFile(e.filePath);
-      if (file == null) continue;
-      final pf = PlatformFile(
-        name: basename(file.path),
-        path: file.path,
-        size: await file.length(),
-      );
-      if (e.itemType == 'image') {
-        images.add(pf);
-      } else if (e.itemType == 'video') {
-        videos.add(pf);
-      }
+    if (hasImageEntries || hasVideoEntries) {
+      setState(() {
+        _isImagesInitLoading = hasImageEntries;
+        _isVideosInitLoading = hasVideoEntries;
+      });
     }
 
-    setState(() {
-      _selectedImages = images;
-      _selectedVideos = videos;
-      _imageKeyCounter++;
-      _videoKeyCounter++;
-    });
+    final futures = entries.map((e) async {
+      final file = await getCachedFile(e.filePath);
+      if (file == null) return null;
+
+      return (
+        entry: e,
+        file: file,
+      );
+    }).toList();
+
+    final results = await Future.wait(futures);
+    final images = <File>[];
+    final videos = <File>[];
+
+    for (final res in results) {
+      if (res == null) continue;
+      final e = res.entry;
+      final file = res.file;
+
+      if (e.itemType == 'image') {
+        images.add(file);
+      } else if (e.itemType == 'video') {
+        videos.add(file);
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _selectedImages = images;
+        _selectedVideos = videos;
+        if (hasImageEntries) _isImagesInitLoading = false;
+        if (hasVideoEntries) _isVideosInitLoading = false;
+      });
+    }
   }
 
   @override
@@ -192,9 +177,9 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
       },
       child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
         builder: (ctx, state) {
-          assetType = assetType.titleCase;
+          final displayAssetType = assetTypeDisplayName(assetType);
 
-          final isDisabled = _selectedImages.isEmpty && _selectedVideos.isEmpty;
+          final isDisabled = _selectedImages.isEmpty;
 
           return Scaffold(
             body: ScrollableContent(
@@ -207,17 +192,16 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
               footer: FooterButton(
                 isDisabled: isDisabled,
                 showSuffixIcon: false,
-                text: i18.common.coreCommonNext,
+                text: context.translate(i18.common.coreCommonNext),
                 onPress: () async {
-                  if (_currentProjectId == null) return;
+                  if (_currentActivityFacilityId == null) return;
                   context.read<CacheMediaUploadBloc>().add(
                         CacheMediaUploadEvent.deleteAll(
-                          _currentProjectId!,
+                          _currentActivityFacilityId!,
                           assetType.toLowerCase(),
                         ),
                       );
 
-                  // wait for deletion to finish before re-adding:
                   await context.read<CacheMediaUploadBloc>().stream.firstWhere(
                         (state) => state.maybeWhen(
                           deleted: () => true,
@@ -225,14 +209,15 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           orElse: () => false,
                         ),
                       );
-                  // Save new entries
+
                   for (final file in _selectedImages) {
-                    final copied = await copyFileToLocalDir(File(file.path!));
+                    final copied = await copyFileToLocalDir(file);
                     final entry = CacheMediaUpload(
-                      projectId: _currentProjectId!,
+                      activityFacilityId: _currentActivityFacilityId!,
                       assetType: assetType.toLowerCase(),
-                      itemNumber: file.name,
+                      itemNumber: basename(file.path),
                       itemType: 'image',
+                      userType: userType,
                       filePath: copied,
                       longitude: _longitude.toString(),
                       latitude: _latitude.toString(),
@@ -242,13 +227,14 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         .add(CacheMediaUploadEvent.add(entry));
                   }
                   for (final file in _selectedVideos) {
-                    final copied = await copyFileToLocalDir(File(file.path!));
+                    final copied = await copyFileToLocalDir(file);
                     final entry = CacheMediaUpload(
-                      projectId: _currentProjectId!,
+                      activityFacilityId: _currentActivityFacilityId!,
                       assetType: assetType.toLowerCase(),
-                      itemNumber: file.name,
+                      itemNumber: basename(file.path),
                       itemType: 'video',
                       filePath: copied,
+                      userType: userType,
                       longitude: _longitude.toString(),
                       latitude: _latitude.toString(),
                     );
@@ -256,7 +242,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         .read<CacheMediaUploadBloc>()
                         .add(CacheMediaUploadEvent.add(entry));
                   }
-
                   context.router.push(const AssetSummaryRoute());
                 },
               ),
@@ -274,95 +259,76 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ],
                       ),
                       const SizedBox(height: spacer4),
-
-                      // ── Images Card ──
                       DigitCard(children: [
                         Text(
-                          '$assetType Images',
+                          '$displayAssetType ${context.translate(i18.common.images)}',
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
+                        Text(
+                          '${context.translate(i18.mediaUpload.addAllImages)} $displayAssetType',
+                          style: textTheme.bodyL.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
                         const SizedBox(height: spacer2),
-                        FileUploadWidget(
-                          allowedExtensions: const [
-                            "jpg",
-                            'jpeg',
-                            'JPG',
-                            'JPEG'
-                          ],
-                          key: ValueKey('images-$_imageKeyCounter'),
-                          label: 'Upload Images',
+                        ImageUploader(
+                          label: context.translate(i18.common.uploadImages),
                           allowMultiples: true,
-                          showPreview: true,
-                          initialFiles: _selectedImages,
-                          onFilesSelected: (files) {
+                          initialImages: _selectedImages,
+                          onImagesSelected: (files) {
                             setState(() {
                               _selectedImages = files;
-                              _imageKeyCounter++;
                             });
-                            // DEBUG: Print current state
-                            print("Images: ${_selectedImages.length}");
-                            print("Videos: ${_selectedVideos.length}");
-                            print("Files: ${files.length}");
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
-                                context.showSnackBar(const SnackBar(
-                                    content: Text('Could not fetch location')));
+                                context.showSnackBar(SnackBar(
+                                    content: Text(context.translate(
+                                        i18.common.couldNotFetchLocation))));
                               }
                             });
-                            // return <PlatformFile, String?>{};
-                            return {for (final f in files) f: null};
                           },
                         ),
+                        if (_isImagesInitLoading)
+                          const Center(child: CircularProgressIndicator())
                       ]),
-
                       const SizedBox(height: spacer4),
-
-                      // ── Videos Card ──
                       DigitCard(children: [
-                        Text(
-                          '$assetType Videos',
-                          style: textTheme.headingXl.copyWith(
-                              color: theme.colorTheme.primary.primary2),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              '$displayAssetType ${context.translate(i18.common.videos)}',
+                              style: textTheme.headingXl.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                            const SizedBox(width: spacer1),
+                            Text(
+                              context.translate(i18.common.optional),
+                              style: textTheme.bodyL.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: spacer2),
-                        FileUploadWidget(
-                          key: ValueKey('videos-$_videoKeyCounter'),
-                          label: 'Upload Videos',
+                        VideoUploader(
+                          label: context.translate(i18.common.uploadVideos),
                           allowMultiples: true,
-                          showPreview: false,
-                          allowedExtensions: const [
-                            'mp4',
-                            'mov',
-                            'mkv',
-                            'avi',
-                            'webm',
-                            'flv',
-                            'vob',
-                            'ts',
-                            'm2ts'
-                          ],
-                          initialFiles: _selectedVideos,
-                          onFilesSelected: (files) {
-                            print("Files: ${files.length}");
+                          initialVideos: _selectedVideos,
+                          onVideosSelected: (files) {
                             setState(() {
                               _selectedVideos = files;
-                              _videoKeyCounter++;
                             });
-                            // DEBUG: Print current state
-                            debugPrint("Images: ${_selectedImages.length}");
-                            debugPrint("Videos: ${_selectedVideos.length}");
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
-                                context.showSnackBar(const SnackBar(
-                                    content: Text('Could not fetch location')));
+                                context.showSnackBar(SnackBar(
+                                    content: Text(context.translate(
+                                        i18.common.couldNotFetchLocation))));
                               }
                             });
-                            //return <PlatformFile, String?>{};
-                            // **Return a map of the newly selected files** (no errors):
-                            return {for (final f in files) f: null};
                           },
                         ),
+                        if (_isVideosInitLoading)
+                          const Center(child: CircularProgressIndicator())
                       ]),
                     ],
                   ),

@@ -17,6 +17,7 @@ class CacheAddNewAssetBloc
     on<CacheAddNewAssetEventUpdate>(_updateCacheAssetDetail);
     on<CacheAddNewAssetEventDelete>(_deleteCacheAssetDetail);
     on<CacheAddNewAssetEventDeleteAll>(_deleteAllCacheAssetDetail);
+    on<CacheAddNewAssetEventReplaceAll>(_replaceAllCacheAssetDetail);
   }
 
   Future<void> _getCacheAssetDetail(
@@ -27,7 +28,7 @@ class CacheAddNewAssetBloc
     try {
       final entries = await isar.cacheAddNewAssets
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -48,27 +49,7 @@ class CacheAddNewAssetBloc
   ) async {
     try {
       await isar.writeTxn(() async {
-        // If you want to ensure only one record per projectId+assetType:
-        final existing = await isar.cacheAddNewAssets
-            .where()
-            .projectIdEqualTo(event.entry.projectId)
-            .filter()
-            .assetTypeEqualTo(event.entry.assetType)
-            .serialNumberEqualTo(event.entry.serialNumber)
-            .findFirst();
-
-        if (existing != null) {
-          // Overwrite fields if desired
-          existing.itemNumber = event.entry.itemNumber;
-          existing.photoPath = event.entry.photoPath;
-          existing.longitude = event.entry.longitude;
-          existing.latitude = event.entry.latitude;
-          existing.documentType = "ASSET";
-          existing.updatedAt = DateTime.now();
-          await isar.cacheAddNewAssets.put(existing);
-        } else {
-          await isar.cacheAddNewAssets.put(event.entry);
-        }
+        await isar.cacheAddNewAssets.put(event.entry);
       });
       emit(CacheAddNewAssetState.added(event.entry));
     } catch (e) {
@@ -82,44 +63,11 @@ class CacheAddNewAssetBloc
   ) async {
     try {
       await isar.writeTxn(() async {
-        final existing = await isar.cacheAddNewAssets
-            .where()
-            .projectIdEqualTo(event.entry.projectId)
-            .filter()
-            .assetTypeEqualTo(event.entry.assetType)
-            .serialNumberEqualTo(event.entry.serialNumber)
-            .findFirst();
-
-        if (existing != null) {
-          existing.itemNumber = event.entry.itemNumber;
-          // existing.serialNumber = event.entry.serialNumber;
-          existing.documentType = "ASSET";
-          existing.photoPath = event.entry.photoPath;
-          existing.longitude = event.entry.longitude;
-          existing.latitude = event.entry.latitude;
-          existing.updatedAt = DateTime.now();
-          await isar.cacheAddNewAssets.put(existing);
-        } else {
-          // final newEntry = CacheAddNewAsset(
-          //   projectId: event.entry.projectId,
-          //   assetType: event.entry.assetType,
-          //   itemNumber: event.entry.itemNumber,
-          //   serialNumber: event.entry.serialNumber,
-          //   photoPath: event.entry.photoPath,
-          //   latitude: event.entry.latitude,
-          //   longitude: event.entry.longitude,
-          // );
-          await isar.cacheAddNewAssets.put(event.entry);
-        }
+        event.entry.updatedAt = DateTime.now();
+        await isar.cacheAddNewAssets.put(event.entry);
       });
 
-      final updatedEntry = await isar.cacheAddNewAssets
-          .where()
-          .projectIdEqualTo(event.entry.projectId)
-          .filter()
-          .assetTypeEqualTo(event.entry.assetType)
-          .serialNumberEqualTo(event.entry.serialNumber)
-          .findFirst();
+      final updatedEntry = await isar.cacheAddNewAssets.get(event.entry.id);
 
       if (updatedEntry != null) {
         emit(CacheAddNewAssetState.updated(updatedEntry));
@@ -150,28 +98,47 @@ class CacheAddNewAssetBloc
     emit(const CacheAddNewAssetState.loading());
     try {
       await isar.writeTxn(() async {
-        final q = isar.cacheAddNewAssets
+        await isar.cacheAddNewAssets
             .where()
-            .projectIdEqualTo(event.projectId)
+            .activityFacilityIdEqualTo(event.activityFacilityId)
             .filter()
-            .assetTypeEqualTo(event.assetType);
-        final all = await q.findAll();
-        for (final e in all) {
-          await isar.cacheAddNewAssets.delete(e.id);
-        }
+            .assetTypeEqualTo(event.assetType)
+            .deleteAll();
       });
       emit(const CacheAddNewAssetState.deleted());
     } catch (e) {
       emit(CacheAddNewAssetState.error(e.toString()));
     }
   }
+
+  Future<void> _replaceAllCacheAssetDetail(
+    CacheAddNewAssetEventReplaceAll event,
+    Emitter<CacheAddNewAssetState> emit,
+  ) async {
+    emit(const CacheAddNewAssetState.loading());
+    try {
+      await isar.writeTxn(() async {
+        await isar.cacheAddNewAssets
+            .where()
+            .activityFacilityIdEqualTo(event.activityFacilityId)
+            .filter()
+            .assetTypeEqualTo(event.assetType)
+            .deleteAll();
+
+        await isar.cacheAddNewAssets.putAll(event.entries);
+      });
+
+      emit(CacheAddNewAssetState.loaded(event.entries));
+    } catch (e) {
+      emit(CacheAddNewAssetState.error(e.toString()));
+    }
+  }
 }
 
-/// Events for CacheAddNewAssetBloc
 @freezed
 class CacheAddNewAssetEvent with _$CacheAddNewAssetEvent {
   const factory CacheAddNewAssetEvent.get(
-    String projectId,
+    String activityFacilityId,
     String assetType,
   ) = CacheAddNewAssetEventGet;
 
@@ -182,12 +149,16 @@ class CacheAddNewAssetEvent with _$CacheAddNewAssetEvent {
   const factory CacheAddNewAssetEvent.delete(int id) =
       CacheAddNewAssetEventDelete;
   const factory CacheAddNewAssetEvent.deleteAll(
-    String projectId,
+    String activityFacilityId,
     String assetType,
   ) = CacheAddNewAssetEventDeleteAll;
+  const factory CacheAddNewAssetEvent.replaceAll(
+    String activityFacilityId,
+    String assetType,
+    List<CacheAddNewAsset> entries,
+  ) = CacheAddNewAssetEventReplaceAll;
 }
 
-/// States for CacheAddNewAssetBloc
 @freezed
 class CacheAddNewAssetState with _$CacheAddNewAssetState {
   const factory CacheAddNewAssetState.initial() = _Initial;

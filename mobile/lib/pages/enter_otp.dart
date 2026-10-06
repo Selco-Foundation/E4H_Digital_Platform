@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import '../blocs/auth/user_otp.dart';
 
+import '../blocs/auth/user_otp.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -78,10 +78,8 @@ class _EnterOtpPageState extends State<EnterOtpPage> {
                   children: [
                     Text(
                       "OTP Verification",
-                      style: textTheme.headingXl.copyWith(
-                          color: theme
-                              .colorTheme.primary.primary2 // Use theme color
-                          ),
+                      style: textTheme.headingXl
+                          .copyWith(color: theme.colorTheme.primary.primary2),
                     ),
                     SizedBox(
                       width: context.width,

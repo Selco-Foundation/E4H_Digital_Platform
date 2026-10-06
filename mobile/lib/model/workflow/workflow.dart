@@ -1,40 +1,30 @@
-// import 'package:freezed_annotation/freezed_annotation.dart';
-// import '../../model/document/document.dart';
-//
-// part 'workflow.g.dart';
-//
-// @JsonSerializable(explicitToJson: true)
-// class Workflow {
-//   final List<Document>? documents;
-//
-//   Workflow({
-//     this.documents,
-//   });
-//
-//   factory Workflow.fromJson(Map<String, dynamic> json) =>
-//       _$WorkflowFromJson(json);
-//   Map<String, dynamic> toJson() => _$WorkflowToJson(this);
-// }
-
 import 'dart:convert';
 
 import 'package:isar/isar.dart';
 
+import '../../data/nosql/workflow_audit_details.dart';
 import '../document/document.dart';
 
-part 'workflow.g.dart'; // optional
+part 'workflow.g.dart';
 
 @Embedded()
 class Workflow {
-  /// Embedded documents
   @Embedded()
   List<Document>? documents;
 
-  /// We also keep rawJson for any additional top-level fields the server may return.
-  /// This is persisted as JSON string to avoid Map types in embedded classes.
+  @Embedded()
+  WorkflowAuditDetails? auditDetails;
+
+  String? comment;
+
   String? rawJson;
 
-  Workflow({this.documents, this.rawJson});
+  Workflow({
+    this.documents,
+    this.auditDetails,
+    this.comment,
+    this.rawJson,
+  });
 
   @ignore
   Map<String, dynamic>? get raw =>
@@ -46,8 +36,18 @@ class Workflow {
             .map((d) => Document.fromJson(Map<String, dynamic>.from(d)))
             .toList()
         : null;
+    final details = json['auditDetails'] is Map<String, dynamic>
+        ? WorkflowAuditDetails.fromJson(
+            json['auditDetails'] as Map<String, dynamic>,
+          )
+        : null;
     final rawJson = json.isNotEmpty ? jsonEncode(json) : null;
-    return Workflow(documents: docs, rawJson: rawJson);
+    return Workflow(
+      documents: docs,
+      auditDetails: details,
+      rawJson: rawJson,
+      comment: json['comment']?.toString(),
+    );
   }
 
   Map<String, dynamic> toJson() => {

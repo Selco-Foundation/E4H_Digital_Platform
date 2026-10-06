@@ -25,16 +25,16 @@ class AssetDetails with _$AssetDetails {
     @JsonKey(name: 'totalCapacityUOM', fromJson: _anyToString)
     String? totalCapacityUOM,
     @JsonKey(name: 'capacityUnit', fromJson: _anyToString) String? capacityUnit,
-    @JsonKey(name: 'panelCapacity', fromJson: _stringOrNumToDouble)
-    double? panelCapacity,
+    @JsonKey(name: 'panelCapacity', fromJson: _anyToString)
+    String? panelCapacity,
     @JsonKey(name: 'batteryType', fromJson: _anyToString) String? batteryType,
     @JsonKey(name: 'batteryVoltage', fromJson: _stringOrNumToDouble)
     double? batteryVoltage,
-    @JsonKey(name: 'batteryCapacity', fromJson: _stringOrNumToDouble)
-    double? batteryCapacity,
+    @JsonKey(name: 'batteryCapacity', fromJson: _anyToString)
+    String? batteryCapacity,
     @JsonKey(name: 'voltageUnit', fromJson: _anyToString) String? voltageUnit,
-    @JsonKey(name: 'inverterCapacity', fromJson: _stringOrNumToDouble)
-    double? inverterCapacity,
+    @JsonKey(name: 'inverterCapacity', fromJson: _anyToString)
+    String? inverterCapacity,
     @JsonKey(name: 'invertorCapacityUnit', fromJson: _anyToString)
     String? inverterCapacityUnit,
     @JsonKey(name: 'currentUnit', fromJson: _anyToString) String? currentUnit,
@@ -49,6 +49,8 @@ class Asset with _$Asset {
   const factory Asset({
     @JsonKey(name: 'assetId', fromJson: _anyToString) String? assetId,
     @JsonKey(name: 'tenantId', fromJson: _anyToString) String? tenantId,
+    @JsonKey(name: 'activityFacilityID', fromJson: _anyToString)
+    String? activityFacilityID,
     @JsonKey(name: 'facilityID', fromJson: _anyToString) String? facilityID,
     @JsonKey(name: 'system', fromJson: _anyToString) String? system,
     @JsonKey(name: 'serialNumber', fromJson: _anyToString) String? serialNumber,

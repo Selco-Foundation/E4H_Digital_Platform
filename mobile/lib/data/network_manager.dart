@@ -20,11 +20,9 @@ class NetworkService {
   /// Returns true if the internet is reachable (opens sockets to known hosts).
   Future<bool> hasInternet(
       {Duration timeout = const Duration(seconds: 3)}) async {
-    // internet_connection_checker_plus already handles multiple endpoints + timeouts.
     return _internet.hasInternetAccess.timeout(timeout, onTimeout: () => false);
   }
 
-  /// Throws if no internet; prefer this in interceptors.
   Future<void> ensureOnlineOrThrow() async {
     final hasIface = await hasNetwork();
     if (!hasIface) {
@@ -42,4 +40,24 @@ class NetworkException implements Exception {
   const NetworkException(this.message);
   @override
   String toString() => message;
+}
+
+enum LoginErrorCode {
+  noNetwork,
+  noInternet,
+  connectionFailed,
+  requestTimeout,
+  serverError,
+  invalidCredentials,
+  unknown,
+}
+
+class AppNetworkException implements Exception {
+  final LoginErrorCode code;
+  final String? rawMessage;
+
+  const AppNetworkException(this.code, {this.rawMessage});
+
+  @override
+  String toString() => rawMessage ?? code.name;
 }

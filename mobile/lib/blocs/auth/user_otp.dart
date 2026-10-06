@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../repositories/app_init_Repo.dart';
-import '../../repositories/authRepo.dart';
+import '../../repositories/app_init_repo.dart';
+import '../../repositories/auth_repo.dart';
 
 part 'user_otp.freezed.dart';
 
@@ -37,7 +37,7 @@ class UserOtpBloc extends Bloc<UserOtpEvent, UserOtpState> {
     } catch (err) {
       String message = 'Unknown error';
       if (err is Exception) {
-        message = err.toString();
+        message = err.toString().replaceFirst('Exception: ', '');
       }
       emit(UserOtpState.error(message));
     }
@@ -49,15 +49,15 @@ class UserOtpBloc extends Bloc<UserOtpEvent, UserOtpState> {
   }
 
   FutureOr<void> _onGetOtp(_GetOtpEvent event, Emitter<UserOtpState> emit) {
-    final current = state;
-    if (current is _OtpStored) {
-      emit(UserOtpState.otpStored(current.otp));
+    if (_storedOtp != null) {
+      emit(UserOtpState.otpStored(_storedOtp!));
     } else {
       emit(const UserOtpState.error('No OTP stored'));
     }
   }
 
   FutureOr<void> _onClearOtp(_ClearOtpEvent event, Emitter<UserOtpState> emit) {
+    _storedOtp = null;
     emit(const UserOtpState.initial());
   }
 

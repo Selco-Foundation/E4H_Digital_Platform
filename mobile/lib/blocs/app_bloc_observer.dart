@@ -1,7 +1,8 @@
 import 'package:digit_ui_components/services/location_bloc.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../utils/app_logger.dart';
 
 class AppBlocObserver extends BlocObserver {
   @override
@@ -33,6 +34,7 @@ class AppBlocObserver extends BlocObserver {
     if (!kDebugMode) return;
 
     AppLogger.instance.error(
+      message: error.toString(),
       title: bloc.runtimeType.toString(),
       stackTrace: stackTrace,
     );

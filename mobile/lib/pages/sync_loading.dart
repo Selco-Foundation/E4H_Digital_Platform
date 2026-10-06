@@ -3,89 +3,113 @@ import 'dart:ui';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/asset_submission/asset_submission.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../utils/operation_progress.dart';
 
 @RoutePage()
 class SyncLoadingPage extends StatelessWidget {
-  final int completed;
-  final int total;
-  const SyncLoadingPage(
-      {super.key, required this.completed, required this.total});
+  const SyncLoadingPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-    final percent = ((completed / total) * 100).clamp(0, 100).toInt();
-    final progress = (completed / total).clamp(0.0, 1.0);
-    final isSuccessful = percent >= 98;
-
-    return Scaffold(
-      body: ScrollableContent(
-        backgroundColor: theme.colorTheme.generic.transparent,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-                vertical: spacer2, horizontal: spacer6),
-            child: Column(
-              children: [
-                SizedBox(height: context.height * 0.15),
-                CloudProgressIndicator(
-                  progress: progress,
-                  size: const Size(120, 90),
-                  strokeWidth: 3,
-                  baseColor: theme.colorTheme.alert.infoBg,
-                  //theme.colorTheme.text.disabled, // light gray
-                  progressColor:
-                      theme.colorTheme.primary.primary1, // your brand
-                ),
-                SizedBox(height: context.height * 0.03),
-                Text(
-                  isSuccessful ? "Syncing Successful!" : "Syncing data",
-                  style: textTheme.headingS.copyWith(
-                      color: isSuccessful
-                          ? const Light().alertSuccess
-                          : const Light().primary2),
-                ),
-                const SizedBox(height: spacer6),
-                LinearProgressIndicator(
-                  borderRadius: BorderRadius.circular(spacer2),
-                  backgroundColor: theme.colorTheme.generic.background,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    theme.colorTheme.alert.success,
-                  ),
-                  value: percent / 100,
-                  minHeight: spacer3,
-                ),
-                const SizedBox(height: spacer2),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isSuccessful ? "Completed" : "Syncing in progress...",
-                      style: textTheme.bodyS
-                          .copyWith(color: const Light().textDisabled),
-                    ),
-                    Text(
-                      "$percent/100",
-                      style: textTheme.headingS
-                          .copyWith(color: const Light().primary2),
-                    ),
-                  ],
-                )
-              ],
-            ),
+    return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
+      builder: (context, state) {
+        final progress = state.maybeWhen(
+          bulkProgress: (progress) => progress,
+          orElse: () => const BulkOperationProgressModel(
+            completed: 0,
+            total: 0,
+            progressPercent: 0,
+            activeCount: 0,
+            label: '',
           ),
-        ],
-      ),
+        );
+        final progressValue =
+            (progress.progressPercent.clamp(0, 100).toDouble() / 100)
+                .clamp(0.0, 1.0);
+        final isSuccessful = progress.progressPercent >= 100;
+
+        return Scaffold(
+          body: ScrollableContent(
+            backgroundColor: theme.colorTheme.generic.transparent,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    vertical: spacer2, horizontal: spacer6),
+                child: Column(
+                  children: [
+                    SizedBox(height: context.height * 0.15),
+                    CloudProgressIndicator(
+                      progress: progressValue,
+                      size: const Size(120, 90),
+                      strokeWidth: 3,
+                      baseColor: theme.colorTheme.alert.infoBg,
+                      progressColor: theme.colorTheme.primary.primary1,
+                    ),
+                    SizedBox(height: context.height * 0.03),
+                    Text(
+                      isSuccessful
+                          ? context.translate(i18.syncLoading.successful)
+                          : context.translate(i18.syncLoading.syncingReports),
+                      style: textTheme.headingS.copyWith(
+                          color: isSuccessful
+                              ? const Light().alertSuccess
+                              : const Light().primary2),
+                    ),
+                    const SizedBox(height: spacer2),
+                    Text(
+                      progress.label.isEmpty
+                          ? context.translate(i18.syncLoading.preparingSync)
+                          : context.translate(progress.label),
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyL
+                          .copyWith(color: theme.colorTheme.text.primary),
+                    ),
+                    const SizedBox(height: spacer6),
+                    LinearProgressIndicator(
+                      borderRadius: BorderRadius.circular(spacer2),
+                      backgroundColor: theme.colorTheme.generic.background,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        theme.colorTheme.alert.success,
+                      ),
+                      value: progressValue,
+                      minHeight: spacer3,
+                    ),
+                    const SizedBox(height: spacer2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${progress.completed} ${context.translate(i18.syncLoading.of)} ${progress.total} ${context.translate(i18.syncLoading.completedSuffix)}',
+                          style: textTheme.bodyS
+                              .copyWith(color: const Light().textDisabled),
+                        ),
+                        Text(
+                          "${progress.progressPercent}%",
+                          style: textTheme.headingS
+                              .copyWith(color: const Light().primary2),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
 class CloudProgressIndicator extends StatelessWidget {
-  /// 0.0 → 1.0
   final double progress;
   final double strokeWidth;
   final Color baseColor;
@@ -187,12 +211,10 @@ class _CloudPainter extends CustomPainter {
     final metrics = path.computeMetrics().toList();
     final totalLength = metrics.fold(0.0, (sum, metric) => sum + metric.length);
 
-    // NEW: Precisely locate the top of Curve 3
     // The top of Curve 3 is at the midpoint of the curve's control points
     final curve3Top = Offset(w * 0.575, h * 0.02); // (45%+70%)/2 = 57.5%
     double? startDistance;
 
-    // NEW: Improved search algorithm to find exact top point
     double currentDistance = 0;
     double minDistance = double.infinity;
 

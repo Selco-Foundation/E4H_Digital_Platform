@@ -5,6 +5,9 @@ import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:flutter/material.dart';
 
+import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
+
 class ElementAssetSummary extends StatelessWidget {
   final String text;
   final int count;
@@ -29,7 +32,6 @@ class ElementAssetSummary extends StatelessWidget {
         Stack(
           alignment: Alignment.center,
           children: [
-            // Text on the left
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -37,7 +39,6 @@ class ElementAssetSummary extends StatelessWidget {
                 style: textTheme.headingS,
               ),
             ),
-            // Centered count
             Positioned.fill(
               child: Center(
                 child: Text(
@@ -54,7 +55,7 @@ class ElementAssetSummary extends StatelessWidget {
             children: [
               DigitButton(
                 mainAxisSize: MainAxisSize.max,
-                label: 'View Summary',
+                label: context.translate(i18.sharedCards.viewSummary),
                 type: DigitButtonType.secondary,
                 size: DigitButtonSize.medium,
                 onPressed: onPress ?? () {},

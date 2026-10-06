@@ -1,10 +1,29 @@
+// ignore_for_file: file_names
+
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 EnvironmentConfiguration envConfig = EnvironmentConfiguration.instance;
+
+Uri? buildEnvironmentUrl(String baseUrl, String relativePath) {
+  final normalizedBaseUrl = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+  final normalizedPath = relativePath.trim().replaceFirst(RegExp(r'^/+'), '');
+
+  if (normalizedBaseUrl.isEmpty || normalizedPath.isEmpty) {
+    return null;
+  }
+
+  final uri = Uri.tryParse('$normalizedBaseUrl/$normalizedPath');
+  if (uri == null ||
+      !uri.hasAuthority ||
+      (uri.scheme != 'http' && uri.scheme != 'https')) {
+    return null;
+  }
+
+  return uri;
+}
 
 class EnvironmentConfiguration {
   static final EnvironmentConfiguration _instance =
@@ -25,11 +44,6 @@ class EnvironmentConfiguration {
       await _dotEnv.load();
       _variables = Variables(dotEnv: _dotEnv);
     } catch (error) {
-      AppLogger.instance.error(
-        title: runtimeType.toString(),
-        message: 'Error while accessing .env file. Using fallback values',
-      );
-
       _variables = Variables(useFallbackValues: true, dotEnv: _dotEnv);
     } finally {
       _initialized = true;
@@ -49,9 +63,9 @@ class Variables {
   final DotEnv _dotEnv;
   final bool useFallbackValues;
 
-  static const _connectTimeoutValue = 6000;
-  static const _receiveTimeoutValue = 6000;
-  static const _sendTimeoutValue = 6000;
+  static const _connectTimeoutValue = 1200000;
+  static const _receiveTimeoutValue = 1200000;
+  static const _sendTimeoutValue = 1200000;
   static const _retryTimeIntervalValue = 5;
   static const _syncDownRetryCountValue = 3;
 
@@ -94,10 +108,24 @@ class Variables {
     'https://health-dev.digit.org/',
   );
 
-  //this is the endpoint for service registry, rest are hard-coded
+  static const _privacyPolicyUrl = EnvEntry(
+    'PRIVACY_POLICY_URL',
+    '',
+  );
+
+  static const _termsAndConditionsUrl = EnvEntry(
+    'TERMS_AND_CONDITIONS_URL',
+    '',
+  );
+
   static const _mdmsApi = EnvEntry(
     'MDMS_API_PATH',
     'egov-mdms-service/v1/_search',
+  );
+
+  static const _mobileAppGlobal = EnvEntry(
+    'MOBILE_APP_GLOBAL',
+    '',
   );
 
   static const _tenantId = EnvEntry(
@@ -105,7 +133,6 @@ class Variables {
     'default',
   );
 
-  //In order to search for role-actions, use this endpoint
   static const _actionMapUrl = EnvEntry(
     'ACTIONS_API_PATH',
     'access/v1/actions/mdms/_get',
@@ -120,12 +147,32 @@ class Variables {
       ? _baseUrl.value
       : _dotEnv.get(_baseUrl.key, fallback: _baseUrl.value);
 
+  String get privacyPolicyUrl => useFallbackValues
+      ? _privacyPolicyUrl.value
+      : _dotEnv.get(
+          _privacyPolicyUrl.key,
+          fallback: _privacyPolicyUrl.value,
+        );
+
+  String get termsAndConditionsUrl => useFallbackValues
+      ? _termsAndConditionsUrl.value
+      : _dotEnv.get(
+          _termsAndConditionsUrl.key,
+          fallback: _termsAndConditionsUrl.value,
+        );
+
   String get mdmsApiPath => useFallbackValues
       ? _mdmsApi.value
       : _dotEnv.get(_mdmsApi.key, fallback: _mdmsApi.value);
 
-  String get completeMdmsApiUrl =>
-      '${baseUrl}${mdmsApiPath}'; // Concatenate base URL with API path
+  String get completeMdmsApiUrl => '$baseUrl$mdmsApiPath';
+
+  String get mobileAppGlobalUrl => useFallbackValues
+      ? _mobileAppGlobal.value
+      : _dotEnv.get(
+          _mobileAppGlobal.key,
+          fallback: _mobileAppGlobal.value,
+        );
 
   String get actionMapApiPath => useFallbackValues
       ? _actionMapUrl.value

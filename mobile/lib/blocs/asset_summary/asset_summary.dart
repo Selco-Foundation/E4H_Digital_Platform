@@ -1,5 +1,3 @@
-// lib/blocs/asset_summary/asset_summary_bloc.dart
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
@@ -13,17 +11,14 @@ import '../../model/asset_summary/asset_summary.dart';
 
 part 'asset_summary.freezed.dart';
 
-/// EVENTS
 @freezed
 class AssetSummaryEvent with _$AssetSummaryEvent {
-  /// Load (or refresh) summary for a given projectId + assetType
   const factory AssetSummaryEvent.load({
-    required String projectId,
+    required String activityFacilityId,
     required String assetType,
   }) = AssetSummaryEventLoad;
 }
 
-/// STATES
 @freezed
 class AssetSummaryState with _$AssetSummaryState {
   const factory AssetSummaryState.initial() = _Initial;
@@ -32,7 +27,6 @@ class AssetSummaryState with _$AssetSummaryState {
   const factory AssetSummaryState.error(String message) = _Error;
 }
 
-/// BLOC
 class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
   final Isar isar;
 
@@ -47,43 +41,40 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
     emit(const AssetSummaryState.loading());
 
     try {
-      final String projectId = event.projectId;
+      final String activityFacilityId = event.activityFacilityId;
       final String assetType = event.assetType;
 
-      /// 1) Fetch count entry (if any)
       final CacheAssetCount? countEntry = await isar.cacheAssetCounts
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findFirst();
 
-      /// 2) Fetch specification entry (if any)
       final CacheSpecification? specEntry = await isar.cacheSpecifications
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findFirst();
 
-      /// 3) Fetch asset detail (warranty/brand/model)
       final CacheAssetDetail? detailEntry = await isar.cacheAssetDetails
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findFirst();
 
       final List<CacheAddNewAsset> addedAssets = await isar.cacheAddNewAssets
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findAll();
 
       final List<CacheMediaUpload> mediaEntries = await isar.cacheMediaUploads
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findAll();

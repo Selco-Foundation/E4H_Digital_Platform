@@ -4,12 +4,15 @@ import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../data/network_manager.dart';
 import '../../data/secure_storage/secureStore.dart';
 import '../../model/dataModel.dart';
 import '../../model/login/loginModel.dart';
 import '../../model/response/responsemodel.dart';
-import '../../repositories/app_init_Repo.dart';
-import '../../repositories/authRepo.dart';
+import '../../repositories/app_init_repo.dart';
+import '../../repositories/auth_repo.dart';
+import '../../utils/app_logger.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 
 part 'authbloc.freezed.dart';
 
@@ -29,7 +32,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _AuthLoginEvent event, Emitter<AuthState> emit) async {
     ResponseModel response;
     final secureStore = SecureStore();
-    //Send a login request and retrieve the access_token for further requests
     emit(const AuthState.loading());
     try {
       response = await authRepository.validateLogin(LoginModel(
@@ -38,61 +40,89 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         tenantId: envConfig.variables.tenantId,
         grant_type: 'password',
         userType: 'EMPLOYEE',
+        scope: 'read',
       ));
 
       _accesstoken = response.access_token;
-      _refreshtoken = response.refresh_token!;
+      _refreshtoken = response.refresh_token ?? '';
+      if (response.userRequest == null) {
+        emit(const AuthState.error('Invalid response: missing user data'));
+        return;
+      }
       _userRequest = response.userRequest!;
 
-      //store accessToken in secure storage
-      secureStore.setAccessToken(_accesstoken);
+      await Future.wait([
+        secureStore.setAccessToken(_accesstoken),
+        secureStore.setAccessInfo(ResponseModel(
+            access_token: _accesstoken,
+            token_type: response.token_type,
+            refresh_token: _refreshtoken,
+            scope: response.scope,
+            userRequest: _userRequest)),
+      ]);
 
-      //store other access Information in secure storage
-      secureStore.setAccessInfo(ResponseModel(
-          access_token: _accesstoken,
-          token_type: response.token_type,
-          refresh_token: _refreshtoken,
-          scope: response.scope,
-          userRequest: _userRequest));
+      await authRepository.reportLogin(_userRequest);
 
-      //change to authenticated state now that we have access
       emit(AuthState.authenticated(
           accesstoken: _accesstoken,
           refreshtoken: _refreshtoken,
           userRequest: _userRequest));
+      try {
+        const String _ACTION_MASTER = 'actions-test';
+        final actionsWrapper = await authRepository.searchRoleActions({
+          "roleCodes": response.userRequest?.roles.map((e) => e.code).toList(),
+          "tenantId": envConfig.variables.tenantId,
+          "actionMaster": _ACTION_MASTER,
+          "enabled": true,
+        });
 
-      final actionsWrapper = await authRepository.searchRoleActions({
-        "roleCodes": response.userRequest?.roles.map((e) => e.code).toList(),
-        "tenantId": envConfig.variables.tenantId,
-        "actionMaster": "actions-test",
-        "enabled": true,
-      });
+        await secureStore.setRoleActions(actionsWrapper);
 
-      //role actions must also be stored in secureStore so that we don't have to make calls for it repeatedly
-      await secureStore.setRoleActions(actionsWrapper);
-
-      // final individualRemoteRepository = IndividualSearchRemoteRepository();
-
-      // final loggedInIndividual =
-      //     await individualRemoteRepository.searchIndividual(
-      //         IndividualSearchModel(
-      //           userUuid: [response.userRequest!.uuid],
-      //         ),
-      //         event.actionMap);
-
-      secureStore.setSelectedIndividual(_userRequest.userName);
-    } catch (err) {
-      String errorMessage = 'Unknown error occurred';
-      if (err is DioException) {
-        errorMessage = err.response?.data?['error_description'] ??
-            err.response?.data?['error'] ??
-            err.message ??
-            'Network error occurred';
-      } else if (err is Exception) {
-        errorMessage = err.toString();
+        secureStore.setSelectedIndividual(_userRequest.userName);
+      } catch (e) {
+        AppLogger.instance.info(e, title: 'Action Wrapper error');
       }
-      emit(AuthState.error(errorMessage));
-      // rethrow;
+    } catch (err) {
+      emit(AuthState.error(_messageKeyFromError(err)));
+    }
+  }
+
+  String _messageKeyFromError(Object err) {
+    if (err is AppNetworkException) {
+      return _keyFromCode(err.code);
+    }
+
+    if (err is DioException) {
+      final data = err.response?.data;
+      if (data is Map<String, dynamic>) {
+        final apiErr = (data['error'] ?? '').toString().toLowerCase();
+        final desc = (data['error_description'] ?? '').toString().toLowerCase();
+        if (apiErr.contains('invalid_grant') ||
+            desc.contains('bad credentials')) {
+          return i18.login.errorInvalidCredentials;
+        }
+      }
+    }
+
+    return i18.login.errorUnknown;
+  }
+
+  String _keyFromCode(LoginErrorCode code) {
+    switch (code) {
+      case LoginErrorCode.noNetwork:
+        return i18.login.errorNoNetwork;
+      case LoginErrorCode.noInternet:
+        return i18.login.errorNoInternet;
+      case LoginErrorCode.connectionFailed:
+        return i18.login.errorConnectionFailed;
+      case LoginErrorCode.requestTimeout:
+        return i18.login.errorRequestTimeout;
+      case LoginErrorCode.serverError:
+        return i18.login.errorServer;
+      case LoginErrorCode.invalidCredentials:
+        return i18.login.errorInvalidCredentials;
+      case LoginErrorCode.unknown:
+        return i18.login.errorUnknown;
     }
   }
 
@@ -102,15 +132,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthState.unauthenticated());
   }
 
-  Future<FutureOr<void>> _onLoad(
-      AuthLoadEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onLoad(AuthLoadEvent event, Emitter<AuthState> emit) async {
     final secureStore = SecureStore();
 
-    //first attempt to get the accessToken from local secure storage, if successful, the user need not go through the login page again
     ResponseModel? accessInfo;
     accessInfo = await secureStore.getAccessInfo();
 
     if (accessInfo != null) {
+      if (accessInfo.refresh_token == null || accessInfo.userRequest == null) {
+        emit(const AuthState.unauthenticated());
+        return;
+      }
       _accesstoken = accessInfo.access_token;
       _refreshtoken = accessInfo.refresh_token!;
       _userRequest = accessInfo.userRequest!;
@@ -120,7 +152,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           refreshtoken: _refreshtoken,
           userRequest: _userRequest));
     } else {
-      //stay in the unauthenicated state
       emit(const AuthState.unauthenticated());
     }
   }

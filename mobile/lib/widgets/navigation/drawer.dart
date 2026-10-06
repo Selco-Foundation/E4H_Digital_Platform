@@ -10,34 +10,19 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../blocs/auth/authbloc.dart';
 import '../../blocs/localization/app_localization.dart';
+import '../../blocs/user_type/user_type.dart';
+import '../../model/response/responsemodel.dart';
 import '../../router/app_router.dart';
 import '../../utils/i18_key_constants.dart' as i18;
+import '../../utils/role_login_resolver.dart';
+import '../../utils/utils.dart';
+import '../privacy_policy/policy_dialog_launcher.dart';
 
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // final appInitializationBloc = context.read<AppInitialization>();
-    // final appConfig =
-    //     (appInitializationBloc.state as Initialized).appConfig;
-    // final languages = appConfig;
-    // final localizationModulesList = appConfig;
-    // final authBloc = context.read<AuthBloc>();
-    // bool isDistributor = authBloc.state != const AuthState.unauthenticated()
-    //     ? context.loggedInUserRoles
-    //     .where(
-    //       (role) => role.code == RolesType.distributor.toValue(),
-    // )
-    //     .toList()
-    //     .isNotEmpty
-    //     : false;
-
-    // return BlocBuilder<AppInitialization, InitState>(
-    //   builder: (context, state) {
-    //     final actionMap = state.entityActionMapping;
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         return Padding(
@@ -48,7 +33,6 @@ class CustomDrawer extends StatelessWidget {
                 leading: GestureDetector(
                   onTap: () {
                     Navigator.of(context, rootNavigator: true).pop();
-                    // context.router.push(UserQRDetailsRoute());
                   },
                   child: QrImageView(
                     data: value.userRequest!.uuid,
@@ -68,24 +52,37 @@ class CustomDrawer extends StatelessWidget {
                 ),
                 onPressed: () {
                   Navigator.of(context, rootNavigator: true).pop();
-                  context.router.replaceAll([const HomeRoute()]);
+
+                  final List<Roles> roles = state.maybeWhen(
+                    authenticated: (_, __, userRequest) =>
+                        userRequest?.roles ?? const [],
+                    orElse: () => const [],
+                  );
+                  final resolution = RoleLoginResolver.resolveRoles(roles);
+
+                  if (resolution.requiresSelection) {
+                    context.router.replaceAll([const RoleSelectionRoute()]);
+                    return;
+                  }
+
+                  final userType =
+                      resolution.directUserType ?? USER_TYPES.FIELD_STAFF;
+                  context.read<UserTypeBloc>().add(
+                        UserTypeEvent.typeSelected(
+                          userType.name.toLowerCase(),
+                        ),
+                      );
+
+                  if (userType == USER_TYPES.AMC) {
+                    context.router.replaceAll([const AmcHomeRoute()]);
+                  } else if (userType == USER_TYPES.ASSESSOR) {
+                    context.router.replaceAll([const AssessmentHomeRoute()]);
+                  } else {
+                    context.router.replaceAll([const HomeRoute()]);
+                  }
                 },
                 icon: Icons.home,
               ),
-              // if (appInitializationBloc.state is Initialized) ...[
-              //   SidebarItem(
-              //     title: AppLocalizations.of(context).translate(
-              //       i18.common.coreCommonlanguage,
-              //     ),
-              //     isSearchEnabled: false,
-              //     icon: Icons.language,
-              //     onPressed: () {},
-              //     children: (localizationModulesList != null)
-              //         ? buildLanguage(localizationModulesList, languages,
-              //             context, appConfig)
-              //         : null,
-              //   )
-              // ],
               SidebarItem(
                 title: AppLocalizations.of(context).translate(
                   i18.common.coreCommonProfile,
@@ -102,7 +99,6 @@ class CustomDrawer extends StatelessWidget {
                   if (isOnline) {
                     if (context.mounted) {
                       Navigator.of(context, rootNavigator: true).pop();
-                      // context.router.push(ProfileRoute());
                     }
                   } else {
                     if (context.mounted) {
@@ -132,6 +128,26 @@ class CustomDrawer extends StatelessWidget {
                   }
                 },
               ),
+              SidebarItem(
+                title: AppLocalizations.of(context).translate(
+                  i18.login.privacyPolicy,
+                ),
+                onPressed: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  showPrivacyPolicy(context);
+                },
+                icon: Icons.privacy_tip_outlined,
+              ),
+              SidebarItem(
+                title: AppLocalizations.of(context).translate(
+                  i18.login.termsAndConditions,
+                ),
+                onPressed: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  showTermsAndConditions(context);
+                },
+                icon: Icons.policy_outlined,
+              ),
             ],
             logOutDigitButtonLabel: AppLocalizations.of(context)
                 .translate(i18.common.coreCommonLogout),
@@ -146,29 +162,6 @@ class CustomDrawer extends StatelessWidget {
           ),
         );
       },
-    );
-    //   },
-    // );
-  }
-}
-
-class LanguageButtonsWidget extends StatelessWidget {
-  const LanguageButtonsWidget({
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        DigitButton(
-          type: DigitButtonType.secondary,
-          label: "ENGLISH",
-          onPressed: () {},
-          size: DigitButtonSize.large,
-        ),
-      ],
     );
   }
 }

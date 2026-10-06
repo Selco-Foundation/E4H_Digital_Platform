@@ -1,31 +1,8 @@
-// import 'package:freezed_annotation/freezed_annotation.dart';
-//
-// part 'comment.g.dart';
-//
-// @JsonSerializable()
-// class Comment {
-//   final String? commentId;
-//   final String? commentMessage;
-//   final String? assetType;
-//   final String? transactionId;
-//
-//   Comment({
-//     this.commentId,
-//     this.commentMessage,
-//     this.assetType,
-//     this.transactionId,
-//   });
-//
-//   factory Comment.fromJson(Map<String, dynamic> json) =>
-//       _$CommentFromJson(json);
-//   Map<String, dynamic> toJson() => _$CommentToJson(this);
-// }
-
 import 'dart:convert';
 
 import 'package:isar/isar.dart';
 
-part 'comment.g.dart'; // optional (Isar will embed, codegen not required)
+part 'comment.g.dart';
 
 @Embedded()
 class Comment {
@@ -46,22 +23,26 @@ class Comment {
     if (raw == null || raw.isEmpty) return null;
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is Map && decoded.containsKey('reason')) {
-        return decoded.cast<String, dynamic>();
+      if (decoded is Map) {
+        final map = decoded.cast<String, dynamic>();
+        final hasReason = map.containsKey('reason');
+        final hasComment = map.containsKey('comment');
+        final hasSectionLabel = map.containsKey('sectionLabel');
+        if (hasReason || hasComment || hasSectionLabel) return map;
       }
-    } catch (_) {
-      // not JSON; ignore
-    }
+    } catch (_) {}
     return null;
   }
 
   String? get reason => _maybeParsedJson?['reason']?.toString();
 
+  String? get sectionLabel => _maybeParsedJson?['sectionLabel']?.toString();
+
   String get displayComment {
     final parsed = _maybeParsedJson;
     if (parsed != null) {
-      final txt = parsed['comment']?.toString();
-      if (txt != null && txt.isNotEmpty) return txt;
+      final val = parsed['comment'];
+      return (val is String) ? val : '';
     }
     return commentMessage ?? '';
   }

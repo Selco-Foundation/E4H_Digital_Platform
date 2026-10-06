@@ -1,18 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:selco/data/nosql/cache_add_new_asset.dart';
-import 'package:selco/data/nosql/cache_asset_count.dart';
-import 'package:selco/data/nosql/cache_asset_detail.dart';
-import 'package:selco/data/nosql/cache_completion_report.dart';
-import 'package:selco/data/nosql/cache_media_upload.dart';
-import 'package:selco/data/nosql/cache_project_facility.dart';
-import 'package:selco/data/nosql/cache_project_workflow.dart';
-import 'package:selco/data/nosql/cache_specification.dart';
-import 'package:selco/data/nosql/cache_sync_record.dart';
-import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
-import '../data/nosql/cache_project_asset.dart';
+import '../data/nosql/cache_activity_facility_asset.dart';
+import '../data/nosql/cache_assessment_draft.dart';
+import '../data/nosql/cache_activity_facility_bom_values.dart';
+import '../data/nosql/cache_activity_facility_workflow.dart';
+import '../data/nosql/cache_add_new_asset.dart';
+import '../data/nosql/cache_amc_doc.dart';
+import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
+import '../data/nosql/cache_amc_media_upload.dart';
+import '../data/nosql/cache_asset_count.dart';
+import '../data/nosql/cache_asset_detail.dart';
+import '../data/nosql/cache_asset_handover_document.dart';
+import '../data/nosql/cache_bom_doc.dart';
+import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_installation_completion_certificate.dart';
+import '../data/nosql/cache_installation_image.dart';
+import '../data/nosql/cache_operation_checkpoint.dart';
+import '../data/nosql/cache_media_upload.dart';
+import '../data/nosql/cache_prefilled_activity_facility.dart';
+import '../data/nosql/cache_prefilled_scheduled_visit.dart';
+import '../data/nosql/cache_schedule_visit_form_values.dart';
+import '../data/nosql/cache_scheduled_visit.dart';
+import '../data/nosql/cache_specification.dart';
+import '../data/nosql/cache_submission_job.dart';
+import '../data/nosql/cache_sync_record.dart';
+import '../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../data/nosql/localization.dart';
 
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -44,19 +58,33 @@ class Constants {
       return await Isar.open(
         [
           LocalizationWrapperSchema,
-          CacheProjectAssetSchema, // todo to be removed, no longer used, as there's now cache for project per assets
+          CacheAssessmentDraftSchema,
+          CacheActivityFacilityAssetSchema,
           CacheAssetCountSchema,
           CacheSpecificationSchema,
           CacheAssetDetailSchema,
           CacheAddNewAssetSchema,
           CacheMediaUploadSchema,
-          CacheProjectFacilitySchema,
-          CacheProjectWorkflowSchema,
-          CacheUnsubmittedProjectSchema,
+          CacheAssetHandoverDocumentSchema,
+          CacheActivityFacilityWorkflowSchema,
+          CacheUnsubmittedActivityFacilitySchema,
           CacheSyncRecordSchema,
           CacheCompletionReportSchema,
+          CacheInstallationCompletionCertificateSchema,
+          CacheInstallationImageSchema,
+          CacheBomDocSchema,
+          CachePrefilledActivityFacilitySchema,
+          CacheActivityFacilityBomValuesSchema,
+          CacheSubmissionJobSchema,
+          CacheOperationCheckpointSchema,
+          CacheScheduledVisitSchema,
+          CacheAmcFailedScheduledVisitSchema,
+          CacheAmcDocSchema,
+          CacheAmcMediaUploadSchema,
+          CacheScheduleVisitFormValuesSchema,
+          CachePrefilledScheduledVisitSchema,
         ],
-        name: 'HCM',
+        name: 'E4H',
         inspector: true,
         directory: directory.path,
       );
@@ -69,10 +97,11 @@ class Constants {
 }
 
 class RequestInfoData {
-  static const String apiId = 'hcm';
+  static const String apiId = 'project-api';
   static const String ver = '.01';
   static num ts = DateTime.now().millisecondsSinceEpoch;
   static const did = "1";
   static const key = "1";
   static String? authToken;
+  static String msgId = "${DateTime.now().millisecondsSinceEpoch}|en_IN";
 }

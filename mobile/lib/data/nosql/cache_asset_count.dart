@@ -7,7 +7,7 @@ class CacheAssetCount {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late String projectId;
+  late String activityFacilityId;
   @Index()
   late String assetType;
 
@@ -17,7 +17,7 @@ class CacheAssetCount {
   DateTime? updatedAt;
 
   CacheAssetCount({
-    required this.projectId,
+    required this.activityFacilityId,
     required this.assetType,
     this.count = 0,
     this.progress = 0,

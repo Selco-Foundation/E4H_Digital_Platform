@@ -16,48 +16,88 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$AssetSubmissionEvent {
-  String get userType => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)
+        submitAll,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        retry,
+    required TResult Function(String activityFacilityId) watch,
+    required TResult Function(CacheSubmissionJob? job) jobChanged,
     required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(List<CacheSubmissionJob> jobs, int watchToken)
+        bulkJobsChanged,
+    required TResult Function() dismiss,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult? Function(String activityFacilityId)? watch,
+    TResult? Function(CacheSubmissionJob? job)? jobChanged,
     TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult? Function()? dismiss,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult Function(String activityFacilityId)? watch,
+    TResult Function(CacheSubmissionJob? job)? jobChanged,
     TResult Function(String userType)? submitAllDrafts,
+    TResult Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult Function()? dismiss,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_Retry value) retry,
+    required TResult Function(_Watch value) watch,
+    required TResult Function(_JobChanged value) jobChanged,
     required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_BulkJobsChanged value) bulkJobsChanged,
+    required TResult Function(_Dismiss value) dismiss,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_Retry value)? retry,
+    TResult? Function(_Watch value)? watch,
+    TResult? Function(_JobChanged value)? jobChanged,
     TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult? Function(_Dismiss value)? dismiss,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_Retry value)? retry,
+    TResult Function(_Watch value)? watch,
+    TResult Function(_JobChanged value)? jobChanged,
     TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult Function(_Dismiss value)? dismiss,
     required TResult orElse(),
   }) =>
-      throw _privateConstructorUsedError;
-
-  @JsonKey(ignore: true)
-  $AssetSubmissionEventCopyWith<AssetSubmissionEvent> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -66,8 +106,6 @@ abstract class $AssetSubmissionEventCopyWith<$Res> {
   factory $AssetSubmissionEventCopyWith(AssetSubmissionEvent value,
           $Res Function(AssetSubmissionEvent) then) =
       _$AssetSubmissionEventCopyWithImpl<$Res, AssetSubmissionEvent>;
-  @useResult
-  $Res call({String userType});
 }
 
 /// @nodoc
@@ -80,30 +118,19 @@ class _$AssetSubmissionEventCopyWithImpl<$Res,
   final $Val _value;
   // ignore: unused_field
   final $Res Function($Val) _then;
-
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? userType = null,
-  }) {
-    return _then(_value.copyWith(
-      userType: null == userType
-          ? _value.userType
-          : userType // ignore: cast_nullable_to_non_nullable
-              as String,
-    ) as $Val);
-  }
 }
 
 /// @nodoc
-abstract class _$$SubmitAllImplCopyWith<$Res>
-    implements $AssetSubmissionEventCopyWith<$Res> {
+abstract class _$$SubmitAllImplCopyWith<$Res> {
   factory _$$SubmitAllImplCopyWith(
           _$SubmitAllImpl value, $Res Function(_$SubmitAllImpl) then) =
       __$$SubmitAllImplCopyWithImpl<$Res>;
-  @override
   @useResult
-  $Res call({String projectId, String userType});
+  $Res call(
+      {String activityFacilityId,
+      String facilityId,
+      String userType,
+      bool isRetry});
 }
 
 /// @nodoc
@@ -117,18 +144,28 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
+    Object? facilityId = null,
     Object? userType = null,
+    Object? isRetry = null,
   }) {
     return _then(_$SubmitAllImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      facilityId: null == facilityId
+          ? _value.facilityId
+          : facilityId // ignore: cast_nullable_to_non_nullable
               as String,
       userType: null == userType
           ? _value.userType
           : userType // ignore: cast_nullable_to_non_nullable
               as String,
+      isRetry: null == isRetry
+          ? _value.isRetry
+          : isRetry // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -136,16 +173,25 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SubmitAllImpl implements _SubmitAll {
-  const _$SubmitAllImpl({required this.projectId, required this.userType});
+  const _$SubmitAllImpl(
+      {required this.activityFacilityId,
+      required this.facilityId,
+      required this.userType,
+      this.isRetry = false});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
+  @override
+  final String facilityId;
   @override
   final String userType;
+  @override
+  @JsonKey()
+  final bool isRetry;
 
   @override
   String toString() {
-    return 'AssetSubmissionEvent.submitAll(projectId: $projectId, userType: $userType)';
+    return 'AssetSubmissionEvent.submitAll(activityFacilityId: $activityFacilityId, facilityId: $facilityId, userType: $userType, isRetry: $isRetry)';
   }
 
   @override
@@ -153,14 +199,18 @@ class _$SubmitAllImpl implements _SubmitAll {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SubmitAllImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
+            (identical(other.facilityId, facilityId) ||
+                other.facilityId == facilityId) &&
             (identical(other.userType, userType) ||
-                other.userType == userType));
+                other.userType == userType) &&
+            (identical(other.isRetry, isRetry) || other.isRetry == isRetry));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, userType);
+  int get hashCode => Object.hash(
+      runtimeType, activityFacilityId, facilityId, userType, isRetry);
 
   @JsonKey(ignore: true)
   @override
@@ -171,30 +221,60 @@ class _$SubmitAllImpl implements _SubmitAll {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)
+        submitAll,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        retry,
+    required TResult Function(String activityFacilityId) watch,
+    required TResult Function(CacheSubmissionJob? job) jobChanged,
     required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(List<CacheSubmissionJob> jobs, int watchToken)
+        bulkJobsChanged,
+    required TResult Function() dismiss,
   }) {
-    return submitAll(projectId, userType);
+    return submitAll(activityFacilityId, facilityId, userType, isRetry);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult? Function(String activityFacilityId)? watch,
+    TResult? Function(CacheSubmissionJob? job)? jobChanged,
     TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult? Function()? dismiss,
   }) {
-    return submitAll?.call(projectId, userType);
+    return submitAll?.call(activityFacilityId, facilityId, userType, isRetry);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult Function(String activityFacilityId)? watch,
+    TResult Function(CacheSubmissionJob? job)? jobChanged,
     TResult Function(String userType)? submitAllDrafts,
+    TResult Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult Function()? dismiss,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
-      return submitAll(projectId, userType);
+      return submitAll(activityFacilityId, facilityId, userType, isRetry);
     }
     return orElse();
   }
@@ -203,7 +283,12 @@ class _$SubmitAllImpl implements _SubmitAll {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_Retry value) retry,
+    required TResult Function(_Watch value) watch,
+    required TResult Function(_JobChanged value) jobChanged,
     required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_BulkJobsChanged value) bulkJobsChanged,
+    required TResult Function(_Dismiss value) dismiss,
   }) {
     return submitAll(this);
   }
@@ -212,7 +297,12 @@ class _$SubmitAllImpl implements _SubmitAll {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_Retry value)? retry,
+    TResult? Function(_Watch value)? watch,
+    TResult? Function(_JobChanged value)? jobChanged,
     TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult? Function(_Dismiss value)? dismiss,
   }) {
     return submitAll?.call(this);
   }
@@ -221,7 +311,12 @@ class _$SubmitAllImpl implements _SubmitAll {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_Retry value)? retry,
+    TResult Function(_Watch value)? watch,
+    TResult Function(_JobChanged value)? jobChanged,
     TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult Function(_Dismiss value)? dismiss,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
@@ -233,25 +328,588 @@ class _$SubmitAllImpl implements _SubmitAll {
 
 abstract class _SubmitAll implements AssetSubmissionEvent {
   const factory _SubmitAll(
-      {required final String projectId,
-      required final String userType}) = _$SubmitAllImpl;
+      {required final String activityFacilityId,
+      required final String facilityId,
+      required final String userType,
+      final bool isRetry}) = _$SubmitAllImpl;
 
-  String get projectId;
-  @override
+  String get activityFacilityId;
+  String get facilityId;
   String get userType;
-  @override
+  bool get isRetry;
   @JsonKey(ignore: true)
   _$$SubmitAllImplCopyWith<_$SubmitAllImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$SubmitAllDraftsImplCopyWith<$Res>
-    implements $AssetSubmissionEventCopyWith<$Res> {
+abstract class _$$RetryImplCopyWith<$Res> {
+  factory _$$RetryImplCopyWith(
+          _$RetryImpl value, $Res Function(_$RetryImpl) then) =
+      __$$RetryImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String activityFacilityId, String facilityId, String userType});
+}
+
+/// @nodoc
+class __$$RetryImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$RetryImpl>
+    implements _$$RetryImplCopyWith<$Res> {
+  __$$RetryImplCopyWithImpl(
+      _$RetryImpl _value, $Res Function(_$RetryImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? activityFacilityId = null,
+    Object? facilityId = null,
+    Object? userType = null,
+  }) {
+    return _then(_$RetryImpl(
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      facilityId: null == facilityId
+          ? _value.facilityId
+          : facilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      userType: null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$RetryImpl implements _Retry {
+  const _$RetryImpl(
+      {required this.activityFacilityId,
+      required this.facilityId,
+      required this.userType});
+
+  @override
+  final String activityFacilityId;
+  @override
+  final String facilityId;
+  @override
+  final String userType;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.retry(activityFacilityId: $activityFacilityId, facilityId: $facilityId, userType: $userType)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$RetryImpl &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
+            (identical(other.facilityId, facilityId) ||
+                other.facilityId == facilityId) &&
+            (identical(other.userType, userType) ||
+                other.userType == userType));
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, activityFacilityId, facilityId, userType);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$RetryImplCopyWith<_$RetryImpl> get copyWith =>
+      __$$RetryImplCopyWithImpl<_$RetryImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)
+        submitAll,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        retry,
+    required TResult Function(String activityFacilityId) watch,
+    required TResult Function(CacheSubmissionJob? job) jobChanged,
+    required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(List<CacheSubmissionJob> jobs, int watchToken)
+        bulkJobsChanged,
+    required TResult Function() dismiss,
+  }) {
+    return retry(activityFacilityId, facilityId, userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult? Function(String activityFacilityId)? watch,
+    TResult? Function(CacheSubmissionJob? job)? jobChanged,
+    TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult? Function()? dismiss,
+  }) {
+    return retry?.call(activityFacilityId, facilityId, userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult Function(String activityFacilityId)? watch,
+    TResult Function(CacheSubmissionJob? job)? jobChanged,
+    TResult Function(String userType)? submitAllDrafts,
+    TResult Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult Function()? dismiss,
+    required TResult orElse(),
+  }) {
+    if (retry != null) {
+      return retry(activityFacilityId, facilityId, userType);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_Retry value) retry,
+    required TResult Function(_Watch value) watch,
+    required TResult Function(_JobChanged value) jobChanged,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_BulkJobsChanged value) bulkJobsChanged,
+    required TResult Function(_Dismiss value) dismiss,
+  }) {
+    return retry(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_Retry value)? retry,
+    TResult? Function(_Watch value)? watch,
+    TResult? Function(_JobChanged value)? jobChanged,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult? Function(_Dismiss value)? dismiss,
+  }) {
+    return retry?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_Retry value)? retry,
+    TResult Function(_Watch value)? watch,
+    TResult Function(_JobChanged value)? jobChanged,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult Function(_Dismiss value)? dismiss,
+    required TResult orElse(),
+  }) {
+    if (retry != null) {
+      return retry(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Retry implements AssetSubmissionEvent {
+  const factory _Retry(
+      {required final String activityFacilityId,
+      required final String facilityId,
+      required final String userType}) = _$RetryImpl;
+
+  String get activityFacilityId;
+  String get facilityId;
+  String get userType;
+  @JsonKey(ignore: true)
+  _$$RetryImplCopyWith<_$RetryImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$WatchImplCopyWith<$Res> {
+  factory _$$WatchImplCopyWith(
+          _$WatchImpl value, $Res Function(_$WatchImpl) then) =
+      __$$WatchImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String activityFacilityId});
+}
+
+/// @nodoc
+class __$$WatchImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$WatchImpl>
+    implements _$$WatchImplCopyWith<$Res> {
+  __$$WatchImplCopyWithImpl(
+      _$WatchImpl _value, $Res Function(_$WatchImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? activityFacilityId = null,
+  }) {
+    return _then(_$WatchImpl(
+      null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$WatchImpl implements _Watch {
+  const _$WatchImpl(this.activityFacilityId);
+
+  @override
+  final String activityFacilityId;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.watch(activityFacilityId: $activityFacilityId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$WatchImpl &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, activityFacilityId);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$WatchImplCopyWith<_$WatchImpl> get copyWith =>
+      __$$WatchImplCopyWithImpl<_$WatchImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)
+        submitAll,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        retry,
+    required TResult Function(String activityFacilityId) watch,
+    required TResult Function(CacheSubmissionJob? job) jobChanged,
+    required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(List<CacheSubmissionJob> jobs, int watchToken)
+        bulkJobsChanged,
+    required TResult Function() dismiss,
+  }) {
+    return watch(activityFacilityId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult? Function(String activityFacilityId)? watch,
+    TResult? Function(CacheSubmissionJob? job)? jobChanged,
+    TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult? Function()? dismiss,
+  }) {
+    return watch?.call(activityFacilityId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult Function(String activityFacilityId)? watch,
+    TResult Function(CacheSubmissionJob? job)? jobChanged,
+    TResult Function(String userType)? submitAllDrafts,
+    TResult Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult Function()? dismiss,
+    required TResult orElse(),
+  }) {
+    if (watch != null) {
+      return watch(activityFacilityId);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_Retry value) retry,
+    required TResult Function(_Watch value) watch,
+    required TResult Function(_JobChanged value) jobChanged,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_BulkJobsChanged value) bulkJobsChanged,
+    required TResult Function(_Dismiss value) dismiss,
+  }) {
+    return watch(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_Retry value)? retry,
+    TResult? Function(_Watch value)? watch,
+    TResult? Function(_JobChanged value)? jobChanged,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult? Function(_Dismiss value)? dismiss,
+  }) {
+    return watch?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_Retry value)? retry,
+    TResult Function(_Watch value)? watch,
+    TResult Function(_JobChanged value)? jobChanged,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult Function(_Dismiss value)? dismiss,
+    required TResult orElse(),
+  }) {
+    if (watch != null) {
+      return watch(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Watch implements AssetSubmissionEvent {
+  const factory _Watch(final String activityFacilityId) = _$WatchImpl;
+
+  String get activityFacilityId;
+  @JsonKey(ignore: true)
+  _$$WatchImplCopyWith<_$WatchImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$JobChangedImplCopyWith<$Res> {
+  factory _$$JobChangedImplCopyWith(
+          _$JobChangedImpl value, $Res Function(_$JobChangedImpl) then) =
+      __$$JobChangedImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({CacheSubmissionJob? job});
+}
+
+/// @nodoc
+class __$$JobChangedImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$JobChangedImpl>
+    implements _$$JobChangedImplCopyWith<$Res> {
+  __$$JobChangedImplCopyWithImpl(
+      _$JobChangedImpl _value, $Res Function(_$JobChangedImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? job = freezed,
+  }) {
+    return _then(_$JobChangedImpl(
+      freezed == job
+          ? _value.job
+          : job // ignore: cast_nullable_to_non_nullable
+              as CacheSubmissionJob?,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$JobChangedImpl implements _JobChanged {
+  const _$JobChangedImpl(this.job);
+
+  @override
+  final CacheSubmissionJob? job;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.jobChanged(job: $job)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$JobChangedImpl &&
+            (identical(other.job, job) || other.job == job));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, job);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$JobChangedImplCopyWith<_$JobChangedImpl> get copyWith =>
+      __$$JobChangedImplCopyWithImpl<_$JobChangedImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)
+        submitAll,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        retry,
+    required TResult Function(String activityFacilityId) watch,
+    required TResult Function(CacheSubmissionJob? job) jobChanged,
+    required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(List<CacheSubmissionJob> jobs, int watchToken)
+        bulkJobsChanged,
+    required TResult Function() dismiss,
+  }) {
+    return jobChanged(job);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult? Function(String activityFacilityId)? watch,
+    TResult? Function(CacheSubmissionJob? job)? jobChanged,
+    TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult? Function()? dismiss,
+  }) {
+    return jobChanged?.call(job);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult Function(String activityFacilityId)? watch,
+    TResult Function(CacheSubmissionJob? job)? jobChanged,
+    TResult Function(String userType)? submitAllDrafts,
+    TResult Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult Function()? dismiss,
+    required TResult orElse(),
+  }) {
+    if (jobChanged != null) {
+      return jobChanged(job);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_Retry value) retry,
+    required TResult Function(_Watch value) watch,
+    required TResult Function(_JobChanged value) jobChanged,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_BulkJobsChanged value) bulkJobsChanged,
+    required TResult Function(_Dismiss value) dismiss,
+  }) {
+    return jobChanged(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_Retry value)? retry,
+    TResult? Function(_Watch value)? watch,
+    TResult? Function(_JobChanged value)? jobChanged,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult? Function(_Dismiss value)? dismiss,
+  }) {
+    return jobChanged?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_Retry value)? retry,
+    TResult Function(_Watch value)? watch,
+    TResult Function(_JobChanged value)? jobChanged,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult Function(_Dismiss value)? dismiss,
+    required TResult orElse(),
+  }) {
+    if (jobChanged != null) {
+      return jobChanged(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _JobChanged implements AssetSubmissionEvent {
+  const factory _JobChanged(final CacheSubmissionJob? job) = _$JobChangedImpl;
+
+  CacheSubmissionJob? get job;
+  @JsonKey(ignore: true)
+  _$$JobChangedImplCopyWith<_$JobChangedImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$SubmitAllDraftsImplCopyWith<$Res> {
   factory _$$SubmitAllDraftsImplCopyWith(_$SubmitAllDraftsImpl value,
           $Res Function(_$SubmitAllDraftsImpl) then) =
       __$$SubmitAllDraftsImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String userType});
 }
@@ -313,8 +971,18 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)
+        submitAll,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        retry,
+    required TResult Function(String activityFacilityId) watch,
+    required TResult Function(CacheSubmissionJob? job) jobChanged,
     required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(List<CacheSubmissionJob> jobs, int watchToken)
+        bulkJobsChanged,
+    required TResult Function() dismiss,
   }) {
     return submitAllDrafts(userType);
   }
@@ -322,8 +990,18 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult? Function(String activityFacilityId)? watch,
+    TResult? Function(CacheSubmissionJob? job)? jobChanged,
     TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult? Function()? dismiss,
   }) {
     return submitAllDrafts?.call(userType);
   }
@@ -331,8 +1009,18 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult Function(String activityFacilityId)? watch,
+    TResult Function(CacheSubmissionJob? job)? jobChanged,
     TResult Function(String userType)? submitAllDrafts,
+    TResult Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult Function()? dismiss,
     required TResult orElse(),
   }) {
     if (submitAllDrafts != null) {
@@ -345,7 +1033,12 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_Retry value) retry,
+    required TResult Function(_Watch value) watch,
+    required TResult Function(_JobChanged value) jobChanged,
     required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_BulkJobsChanged value) bulkJobsChanged,
+    required TResult Function(_Dismiss value) dismiss,
   }) {
     return submitAllDrafts(this);
   }
@@ -354,7 +1047,12 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_Retry value)? retry,
+    TResult? Function(_Watch value)? watch,
+    TResult? Function(_JobChanged value)? jobChanged,
     TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult? Function(_Dismiss value)? dismiss,
   }) {
     return submitAllDrafts?.call(this);
   }
@@ -363,7 +1061,12 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_Retry value)? retry,
+    TResult Function(_Watch value)? watch,
+    TResult Function(_JobChanged value)? jobChanged,
     TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult Function(_Dismiss value)? dismiss,
     required TResult orElse(),
   }) {
     if (submitAllDrafts != null) {
@@ -377,12 +1080,357 @@ abstract class _SubmitAllDrafts implements AssetSubmissionEvent {
   const factory _SubmitAllDrafts({required final String userType}) =
       _$SubmitAllDraftsImpl;
 
-  @override
   String get userType;
-  @override
   @JsonKey(ignore: true)
   _$$SubmitAllDraftsImplCopyWith<_$SubmitAllDraftsImpl> get copyWith =>
       throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$BulkJobsChangedImplCopyWith<$Res> {
+  factory _$$BulkJobsChangedImplCopyWith(_$BulkJobsChangedImpl value,
+          $Res Function(_$BulkJobsChangedImpl) then) =
+      __$$BulkJobsChangedImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<CacheSubmissionJob> jobs, int watchToken});
+}
+
+/// @nodoc
+class __$$BulkJobsChangedImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$BulkJobsChangedImpl>
+    implements _$$BulkJobsChangedImplCopyWith<$Res> {
+  __$$BulkJobsChangedImplCopyWithImpl(
+      _$BulkJobsChangedImpl _value, $Res Function(_$BulkJobsChangedImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? jobs = null,
+    Object? watchToken = null,
+  }) {
+    return _then(_$BulkJobsChangedImpl(
+      jobs: null == jobs
+          ? _value._jobs
+          : jobs // ignore: cast_nullable_to_non_nullable
+              as List<CacheSubmissionJob>,
+      watchToken: null == watchToken
+          ? _value.watchToken
+          : watchToken // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$BulkJobsChangedImpl implements _BulkJobsChanged {
+  const _$BulkJobsChangedImpl(
+      {required final List<CacheSubmissionJob> jobs, required this.watchToken})
+      : _jobs = jobs;
+
+  final List<CacheSubmissionJob> _jobs;
+  @override
+  List<CacheSubmissionJob> get jobs {
+    if (_jobs is EqualUnmodifiableListView) return _jobs;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_jobs);
+  }
+
+  @override
+  final int watchToken;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.bulkJobsChanged(jobs: $jobs, watchToken: $watchToken)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$BulkJobsChangedImpl &&
+            const DeepCollectionEquality().equals(other._jobs, _jobs) &&
+            (identical(other.watchToken, watchToken) ||
+                other.watchToken == watchToken));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType, const DeepCollectionEquality().hash(_jobs), watchToken);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$BulkJobsChangedImplCopyWith<_$BulkJobsChangedImpl> get copyWith =>
+      __$$BulkJobsChangedImplCopyWithImpl<_$BulkJobsChangedImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)
+        submitAll,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        retry,
+    required TResult Function(String activityFacilityId) watch,
+    required TResult Function(CacheSubmissionJob? job) jobChanged,
+    required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(List<CacheSubmissionJob> jobs, int watchToken)
+        bulkJobsChanged,
+    required TResult Function() dismiss,
+  }) {
+    return bulkJobsChanged(jobs, watchToken);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult? Function(String activityFacilityId)? watch,
+    TResult? Function(CacheSubmissionJob? job)? jobChanged,
+    TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult? Function()? dismiss,
+  }) {
+    return bulkJobsChanged?.call(jobs, watchToken);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult Function(String activityFacilityId)? watch,
+    TResult Function(CacheSubmissionJob? job)? jobChanged,
+    TResult Function(String userType)? submitAllDrafts,
+    TResult Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult Function()? dismiss,
+    required TResult orElse(),
+  }) {
+    if (bulkJobsChanged != null) {
+      return bulkJobsChanged(jobs, watchToken);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_Retry value) retry,
+    required TResult Function(_Watch value) watch,
+    required TResult Function(_JobChanged value) jobChanged,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_BulkJobsChanged value) bulkJobsChanged,
+    required TResult Function(_Dismiss value) dismiss,
+  }) {
+    return bulkJobsChanged(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_Retry value)? retry,
+    TResult? Function(_Watch value)? watch,
+    TResult? Function(_JobChanged value)? jobChanged,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult? Function(_Dismiss value)? dismiss,
+  }) {
+    return bulkJobsChanged?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_Retry value)? retry,
+    TResult Function(_Watch value)? watch,
+    TResult Function(_JobChanged value)? jobChanged,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult Function(_Dismiss value)? dismiss,
+    required TResult orElse(),
+  }) {
+    if (bulkJobsChanged != null) {
+      return bulkJobsChanged(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _BulkJobsChanged implements AssetSubmissionEvent {
+  const factory _BulkJobsChanged(
+      {required final List<CacheSubmissionJob> jobs,
+      required final int watchToken}) = _$BulkJobsChangedImpl;
+
+  List<CacheSubmissionJob> get jobs;
+  int get watchToken;
+  @JsonKey(ignore: true)
+  _$$BulkJobsChangedImplCopyWith<_$BulkJobsChangedImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$DismissImplCopyWith<$Res> {
+  factory _$$DismissImplCopyWith(
+          _$DismissImpl value, $Res Function(_$DismissImpl) then) =
+      __$$DismissImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$DismissImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$DismissImpl>
+    implements _$$DismissImplCopyWith<$Res> {
+  __$$DismissImplCopyWithImpl(
+      _$DismissImpl _value, $Res Function(_$DismissImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$DismissImpl implements _Dismiss {
+  const _$DismissImpl();
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.dismiss()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$DismissImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)
+        submitAll,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        retry,
+    required TResult Function(String activityFacilityId) watch,
+    required TResult Function(CacheSubmissionJob? job) jobChanged,
+    required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(List<CacheSubmissionJob> jobs, int watchToken)
+        bulkJobsChanged,
+    required TResult Function() dismiss,
+  }) {
+    return dismiss();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult? Function(String activityFacilityId)? watch,
+    TResult? Function(CacheSubmissionJob? job)? jobChanged,
+    TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult? Function()? dismiss,
+  }) {
+    return dismiss?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String activityFacilityId, String facilityId,
+            String userType, bool isRetry)?
+        submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        retry,
+    TResult Function(String activityFacilityId)? watch,
+    TResult Function(CacheSubmissionJob? job)? jobChanged,
+    TResult Function(String userType)? submitAllDrafts,
+    TResult Function(List<CacheSubmissionJob> jobs, int watchToken)?
+        bulkJobsChanged,
+    TResult Function()? dismiss,
+    required TResult orElse(),
+  }) {
+    if (dismiss != null) {
+      return dismiss();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_Retry value) retry,
+    required TResult Function(_Watch value) watch,
+    required TResult Function(_JobChanged value) jobChanged,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_BulkJobsChanged value) bulkJobsChanged,
+    required TResult Function(_Dismiss value) dismiss,
+  }) {
+    return dismiss(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_Retry value)? retry,
+    TResult? Function(_Watch value)? watch,
+    TResult? Function(_JobChanged value)? jobChanged,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult? Function(_Dismiss value)? dismiss,
+  }) {
+    return dismiss?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_Retry value)? retry,
+    TResult Function(_Watch value)? watch,
+    TResult Function(_JobChanged value)? jobChanged,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_BulkJobsChanged value)? bulkJobsChanged,
+    TResult Function(_Dismiss value)? dismiss,
+    required TResult orElse(),
+  }) {
+    if (dismiss != null) {
+      return dismiss(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Dismiss implements AssetSubmissionEvent {
+  const factory _Dismiss() = _$DismissImpl;
 }
 
 /// @nodoc
@@ -390,56 +1438,62 @@ mixin _$AssetSubmissionState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() loading,
+    required TResult Function(OperationProgressModel progress) inProgress,
+    required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
-    required TResult Function(String errorMessage) failure,
-    required TResult Function(int completed, int total) progress,
+    required TResult Function(BulkOperationProgressModel progress) bulkProgress,
+    required TResult Function(String errorMessage) bulkFailure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? loading,
+    TResult? Function(OperationProgressModel progress)? inProgress,
+    TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
-    TResult? Function(String errorMessage)? failure,
-    TResult? Function(int completed, int total)? progress,
+    TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult? Function(String errorMessage)? bulkFailure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? loading,
+    TResult Function(OperationProgressModel progress)? inProgress,
+    TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
-    TResult Function(String errorMessage)? failure,
-    TResult Function(int completed, int total)? progress,
+    TResult Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Success value) success,
+    required TResult Function(_InProgress value) inProgress,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Progress value) progress,
+    required TResult Function(_Success value) success,
+    required TResult Function(_BulkProgress value) bulkProgress,
+    required TResult Function(_BulkFailure value) bulkFailure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Success value)? success,
+    TResult? Function(_InProgress value)? inProgress,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Progress value)? progress,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_BulkProgress value)? bulkProgress,
+    TResult? Function(_BulkFailure value)? bulkFailure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Success value)? success,
+    TResult Function(_InProgress value)? inProgress,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Progress value)? progress,
+    TResult Function(_Success value)? success,
+    TResult Function(_BulkProgress value)? bulkProgress,
+    TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -503,10 +1557,11 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() loading,
+    required TResult Function(OperationProgressModel progress) inProgress,
+    required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
-    required TResult Function(String errorMessage) failure,
-    required TResult Function(int completed, int total) progress,
+    required TResult Function(BulkOperationProgressModel progress) bulkProgress,
+    required TResult Function(String errorMessage) bulkFailure,
   }) {
     return initial();
   }
@@ -515,10 +1570,11 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? loading,
+    TResult? Function(OperationProgressModel progress)? inProgress,
+    TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
-    TResult? Function(String errorMessage)? failure,
-    TResult? Function(int completed, int total)? progress,
+    TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult? Function(String errorMessage)? bulkFailure,
   }) {
     return initial?.call();
   }
@@ -527,10 +1583,11 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? loading,
+    TResult Function(OperationProgressModel progress)? inProgress,
+    TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
-    TResult Function(String errorMessage)? failure,
-    TResult Function(int completed, int total)? progress,
+    TResult Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -543,10 +1600,11 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Success value) success,
+    required TResult Function(_InProgress value) inProgress,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Progress value) progress,
+    required TResult Function(_Success value) success,
+    required TResult Function(_BulkProgress value) bulkProgress,
+    required TResult Function(_BulkFailure value) bulkFailure,
   }) {
     return initial(this);
   }
@@ -555,10 +1613,11 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Success value)? success,
+    TResult? Function(_InProgress value)? inProgress,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Progress value)? progress,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_BulkProgress value)? bulkProgress,
+    TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
     return initial?.call(this);
   }
@@ -567,10 +1626,11 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Success value)? success,
+    TResult Function(_InProgress value)? inProgress,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Progress value)? progress,
+    TResult Function(_Success value)? success,
+    TResult Function(_BulkProgress value)? bulkProgress,
+    TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -585,76 +1645,106 @@ abstract class _Initial implements AssetSubmissionState {
 }
 
 /// @nodoc
-abstract class _$$LoadingImplCopyWith<$Res> {
-  factory _$$LoadingImplCopyWith(
-          _$LoadingImpl value, $Res Function(_$LoadingImpl) then) =
-      __$$LoadingImplCopyWithImpl<$Res>;
+abstract class _$$InProgressImplCopyWith<$Res> {
+  factory _$$InProgressImplCopyWith(
+          _$InProgressImpl value, $Res Function(_$InProgressImpl) then) =
+      __$$InProgressImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({OperationProgressModel progress});
 }
 
 /// @nodoc
-class __$$LoadingImplCopyWithImpl<$Res>
-    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$LoadingImpl>
-    implements _$$LoadingImplCopyWith<$Res> {
-  __$$LoadingImplCopyWithImpl(
-      _$LoadingImpl _value, $Res Function(_$LoadingImpl) _then)
+class __$$InProgressImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$InProgressImpl>
+    implements _$$InProgressImplCopyWith<$Res> {
+  __$$InProgressImplCopyWithImpl(
+      _$InProgressImpl _value, $Res Function(_$InProgressImpl) _then)
       : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? progress = null,
+  }) {
+    return _then(_$InProgressImpl(
+      null == progress
+          ? _value.progress
+          : progress // ignore: cast_nullable_to_non_nullable
+              as OperationProgressModel,
+    ));
+  }
 }
 
 /// @nodoc
 
-class _$LoadingImpl implements _Loading {
-  const _$LoadingImpl();
+class _$InProgressImpl implements _InProgress {
+  const _$InProgressImpl(this.progress);
+
+  @override
+  final OperationProgressModel progress;
 
   @override
   String toString() {
-    return 'AssetSubmissionState.loading()';
+    return 'AssetSubmissionState.inProgress(progress: $progress)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$LoadingImpl);
+        (other.runtimeType == runtimeType &&
+            other is _$InProgressImpl &&
+            (identical(other.progress, progress) ||
+                other.progress == progress));
   }
 
   @override
-  int get hashCode => runtimeType.hashCode;
+  int get hashCode => Object.hash(runtimeType, progress);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$InProgressImplCopyWith<_$InProgressImpl> get copyWith =>
+      __$$InProgressImplCopyWithImpl<_$InProgressImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() loading,
+    required TResult Function(OperationProgressModel progress) inProgress,
+    required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
-    required TResult Function(String errorMessage) failure,
-    required TResult Function(int completed, int total) progress,
+    required TResult Function(BulkOperationProgressModel progress) bulkProgress,
+    required TResult Function(String errorMessage) bulkFailure,
   }) {
-    return loading();
+    return inProgress(progress);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? loading,
+    TResult? Function(OperationProgressModel progress)? inProgress,
+    TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
-    TResult? Function(String errorMessage)? failure,
-    TResult? Function(int completed, int total)? progress,
+    TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult? Function(String errorMessage)? bulkFailure,
   }) {
-    return loading?.call();
+    return inProgress?.call(progress);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? loading,
+    TResult Function(OperationProgressModel progress)? inProgress,
+    TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
-    TResult Function(String errorMessage)? failure,
-    TResult Function(int completed, int total)? progress,
+    TResult Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
-    if (loading != null) {
-      return loading();
+    if (inProgress != null) {
+      return inProgress(progress);
     }
     return orElse();
   }
@@ -663,45 +1753,212 @@ class _$LoadingImpl implements _Loading {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Success value) success,
+    required TResult Function(_InProgress value) inProgress,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Progress value) progress,
+    required TResult Function(_Success value) success,
+    required TResult Function(_BulkProgress value) bulkProgress,
+    required TResult Function(_BulkFailure value) bulkFailure,
   }) {
-    return loading(this);
+    return inProgress(this);
   }
 
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Success value)? success,
+    TResult? Function(_InProgress value)? inProgress,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Progress value)? progress,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_BulkProgress value)? bulkProgress,
+    TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
-    return loading?.call(this);
+    return inProgress?.call(this);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Success value)? success,
+    TResult Function(_InProgress value)? inProgress,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Progress value)? progress,
+    TResult Function(_Success value)? success,
+    TResult Function(_BulkProgress value)? bulkProgress,
+    TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
-    if (loading != null) {
-      return loading(this);
+    if (inProgress != null) {
+      return inProgress(this);
     }
     return orElse();
   }
 }
 
-abstract class _Loading implements AssetSubmissionState {
-  const factory _Loading() = _$LoadingImpl;
+abstract class _InProgress implements AssetSubmissionState {
+  const factory _InProgress(final OperationProgressModel progress) =
+      _$InProgressImpl;
+
+  OperationProgressModel get progress;
+  @JsonKey(ignore: true)
+  _$$InProgressImplCopyWith<_$InProgressImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$FailureImplCopyWith<$Res> {
+  factory _$$FailureImplCopyWith(
+          _$FailureImpl value, $Res Function(_$FailureImpl) then) =
+      __$$FailureImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({OperationProgressModel progress});
+}
+
+/// @nodoc
+class __$$FailureImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$FailureImpl>
+    implements _$$FailureImplCopyWith<$Res> {
+  __$$FailureImplCopyWithImpl(
+      _$FailureImpl _value, $Res Function(_$FailureImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? progress = null,
+  }) {
+    return _then(_$FailureImpl(
+      null == progress
+          ? _value.progress
+          : progress // ignore: cast_nullable_to_non_nullable
+              as OperationProgressModel,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$FailureImpl implements _Failure {
+  const _$FailureImpl(this.progress);
+
+  @override
+  final OperationProgressModel progress;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionState.failure(progress: $progress)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$FailureImpl &&
+            (identical(other.progress, progress) ||
+                other.progress == progress));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, progress);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
+      __$$FailureImplCopyWithImpl<_$FailureImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function(OperationProgressModel progress) inProgress,
+    required TResult Function(OperationProgressModel progress) failure,
+    required TResult Function() success,
+    required TResult Function(BulkOperationProgressModel progress) bulkProgress,
+    required TResult Function(String errorMessage) bulkFailure,
+  }) {
+    return failure(progress);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function(OperationProgressModel progress)? inProgress,
+    TResult? Function(OperationProgressModel progress)? failure,
+    TResult? Function()? success,
+    TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult? Function(String errorMessage)? bulkFailure,
+  }) {
+    return failure?.call(progress);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function(OperationProgressModel progress)? inProgress,
+    TResult Function(OperationProgressModel progress)? failure,
+    TResult Function()? success,
+    TResult Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult Function(String errorMessage)? bulkFailure,
+    required TResult orElse(),
+  }) {
+    if (failure != null) {
+      return failure(progress);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_InProgress value) inProgress,
+    required TResult Function(_Failure value) failure,
+    required TResult Function(_Success value) success,
+    required TResult Function(_BulkProgress value) bulkProgress,
+    required TResult Function(_BulkFailure value) bulkFailure,
+  }) {
+    return failure(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_InProgress value)? inProgress,
+    TResult? Function(_Failure value)? failure,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_BulkProgress value)? bulkProgress,
+    TResult? Function(_BulkFailure value)? bulkFailure,
+  }) {
+    return failure?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_InProgress value)? inProgress,
+    TResult Function(_Failure value)? failure,
+    TResult Function(_Success value)? success,
+    TResult Function(_BulkProgress value)? bulkProgress,
+    TResult Function(_BulkFailure value)? bulkFailure,
+    required TResult orElse(),
+  }) {
+    if (failure != null) {
+      return failure(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Failure implements AssetSubmissionState {
+  const factory _Failure(final OperationProgressModel progress) = _$FailureImpl;
+
+  OperationProgressModel get progress;
+  @JsonKey(ignore: true)
+  _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -743,10 +2000,11 @@ class _$SuccessImpl implements _Success {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() loading,
+    required TResult Function(OperationProgressModel progress) inProgress,
+    required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
-    required TResult Function(String errorMessage) failure,
-    required TResult Function(int completed, int total) progress,
+    required TResult Function(BulkOperationProgressModel progress) bulkProgress,
+    required TResult Function(String errorMessage) bulkFailure,
   }) {
     return success();
   }
@@ -755,10 +2013,11 @@ class _$SuccessImpl implements _Success {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? loading,
+    TResult? Function(OperationProgressModel progress)? inProgress,
+    TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
-    TResult? Function(String errorMessage)? failure,
-    TResult? Function(int completed, int total)? progress,
+    TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult? Function(String errorMessage)? bulkFailure,
   }) {
     return success?.call();
   }
@@ -767,10 +2026,11 @@ class _$SuccessImpl implements _Success {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? loading,
+    TResult Function(OperationProgressModel progress)? inProgress,
+    TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
-    TResult Function(String errorMessage)? failure,
-    TResult Function(int completed, int total)? progress,
+    TResult Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
     if (success != null) {
@@ -783,10 +2043,11 @@ class _$SuccessImpl implements _Success {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Success value) success,
+    required TResult Function(_InProgress value) inProgress,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Progress value) progress,
+    required TResult Function(_Success value) success,
+    required TResult Function(_BulkProgress value) bulkProgress,
+    required TResult Function(_BulkFailure value) bulkFailure,
   }) {
     return success(this);
   }
@@ -795,10 +2056,11 @@ class _$SuccessImpl implements _Success {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Success value)? success,
+    TResult? Function(_InProgress value)? inProgress,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Progress value)? progress,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_BulkProgress value)? bulkProgress,
+    TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
     return success?.call(this);
   }
@@ -807,10 +2069,11 @@ class _$SuccessImpl implements _Success {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Success value)? success,
+    TResult Function(_InProgress value)? inProgress,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Progress value)? progress,
+    TResult Function(_Success value)? success,
+    TResult Function(_BulkProgress value)? bulkProgress,
+    TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
     if (success != null) {
@@ -825,20 +2088,179 @@ abstract class _Success implements AssetSubmissionState {
 }
 
 /// @nodoc
-abstract class _$$FailureImplCopyWith<$Res> {
-  factory _$$FailureImplCopyWith(
-          _$FailureImpl value, $Res Function(_$FailureImpl) then) =
-      __$$FailureImplCopyWithImpl<$Res>;
+abstract class _$$BulkProgressImplCopyWith<$Res> {
+  factory _$$BulkProgressImplCopyWith(
+          _$BulkProgressImpl value, $Res Function(_$BulkProgressImpl) then) =
+      __$$BulkProgressImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({BulkOperationProgressModel progress});
+}
+
+/// @nodoc
+class __$$BulkProgressImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$BulkProgressImpl>
+    implements _$$BulkProgressImplCopyWith<$Res> {
+  __$$BulkProgressImplCopyWithImpl(
+      _$BulkProgressImpl _value, $Res Function(_$BulkProgressImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? progress = null,
+  }) {
+    return _then(_$BulkProgressImpl(
+      null == progress
+          ? _value.progress
+          : progress // ignore: cast_nullable_to_non_nullable
+              as BulkOperationProgressModel,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$BulkProgressImpl implements _BulkProgress {
+  const _$BulkProgressImpl(this.progress);
+
+  @override
+  final BulkOperationProgressModel progress;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionState.bulkProgress(progress: $progress)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$BulkProgressImpl &&
+            (identical(other.progress, progress) ||
+                other.progress == progress));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, progress);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$BulkProgressImplCopyWith<_$BulkProgressImpl> get copyWith =>
+      __$$BulkProgressImplCopyWithImpl<_$BulkProgressImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function(OperationProgressModel progress) inProgress,
+    required TResult Function(OperationProgressModel progress) failure,
+    required TResult Function() success,
+    required TResult Function(BulkOperationProgressModel progress) bulkProgress,
+    required TResult Function(String errorMessage) bulkFailure,
+  }) {
+    return bulkProgress(progress);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function(OperationProgressModel progress)? inProgress,
+    TResult? Function(OperationProgressModel progress)? failure,
+    TResult? Function()? success,
+    TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult? Function(String errorMessage)? bulkFailure,
+  }) {
+    return bulkProgress?.call(progress);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function(OperationProgressModel progress)? inProgress,
+    TResult Function(OperationProgressModel progress)? failure,
+    TResult Function()? success,
+    TResult Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult Function(String errorMessage)? bulkFailure,
+    required TResult orElse(),
+  }) {
+    if (bulkProgress != null) {
+      return bulkProgress(progress);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_InProgress value) inProgress,
+    required TResult Function(_Failure value) failure,
+    required TResult Function(_Success value) success,
+    required TResult Function(_BulkProgress value) bulkProgress,
+    required TResult Function(_BulkFailure value) bulkFailure,
+  }) {
+    return bulkProgress(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_InProgress value)? inProgress,
+    TResult? Function(_Failure value)? failure,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_BulkProgress value)? bulkProgress,
+    TResult? Function(_BulkFailure value)? bulkFailure,
+  }) {
+    return bulkProgress?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_InProgress value)? inProgress,
+    TResult Function(_Failure value)? failure,
+    TResult Function(_Success value)? success,
+    TResult Function(_BulkProgress value)? bulkProgress,
+    TResult Function(_BulkFailure value)? bulkFailure,
+    required TResult orElse(),
+  }) {
+    if (bulkProgress != null) {
+      return bulkProgress(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _BulkProgress implements AssetSubmissionState {
+  const factory _BulkProgress(final BulkOperationProgressModel progress) =
+      _$BulkProgressImpl;
+
+  BulkOperationProgressModel get progress;
+  @JsonKey(ignore: true)
+  _$$BulkProgressImplCopyWith<_$BulkProgressImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$BulkFailureImplCopyWith<$Res> {
+  factory _$$BulkFailureImplCopyWith(
+          _$BulkFailureImpl value, $Res Function(_$BulkFailureImpl) then) =
+      __$$BulkFailureImplCopyWithImpl<$Res>;
   @useResult
   $Res call({String errorMessage});
 }
 
 /// @nodoc
-class __$$FailureImplCopyWithImpl<$Res>
-    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$FailureImpl>
-    implements _$$FailureImplCopyWith<$Res> {
-  __$$FailureImplCopyWithImpl(
-      _$FailureImpl _value, $Res Function(_$FailureImpl) _then)
+class __$$BulkFailureImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$BulkFailureImpl>
+    implements _$$BulkFailureImplCopyWith<$Res> {
+  __$$BulkFailureImplCopyWithImpl(
+      _$BulkFailureImpl _value, $Res Function(_$BulkFailureImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -846,7 +2268,7 @@ class __$$FailureImplCopyWithImpl<$Res>
   $Res call({
     Object? errorMessage = null,
   }) {
-    return _then(_$FailureImpl(
+    return _then(_$BulkFailureImpl(
       null == errorMessage
           ? _value.errorMessage
           : errorMessage // ignore: cast_nullable_to_non_nullable
@@ -857,22 +2279,22 @@ class __$$FailureImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$FailureImpl implements _Failure {
-  const _$FailureImpl(this.errorMessage);
+class _$BulkFailureImpl implements _BulkFailure {
+  const _$BulkFailureImpl(this.errorMessage);
 
   @override
   final String errorMessage;
 
   @override
   String toString() {
-    return 'AssetSubmissionState.failure(errorMessage: $errorMessage)';
+    return 'AssetSubmissionState.bulkFailure(errorMessage: $errorMessage)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$FailureImpl &&
+            other is _$BulkFailureImpl &&
             (identical(other.errorMessage, errorMessage) ||
                 other.errorMessage == errorMessage));
   }
@@ -883,45 +2305,48 @@ class _$FailureImpl implements _Failure {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
-      __$$FailureImplCopyWithImpl<_$FailureImpl>(this, _$identity);
+  _$$BulkFailureImplCopyWith<_$BulkFailureImpl> get copyWith =>
+      __$$BulkFailureImplCopyWithImpl<_$BulkFailureImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() loading,
+    required TResult Function(OperationProgressModel progress) inProgress,
+    required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
-    required TResult Function(String errorMessage) failure,
-    required TResult Function(int completed, int total) progress,
+    required TResult Function(BulkOperationProgressModel progress) bulkProgress,
+    required TResult Function(String errorMessage) bulkFailure,
   }) {
-    return failure(errorMessage);
+    return bulkFailure(errorMessage);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? loading,
+    TResult? Function(OperationProgressModel progress)? inProgress,
+    TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
-    TResult? Function(String errorMessage)? failure,
-    TResult? Function(int completed, int total)? progress,
+    TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult? Function(String errorMessage)? bulkFailure,
   }) {
-    return failure?.call(errorMessage);
+    return bulkFailure?.call(errorMessage);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? loading,
+    TResult Function(OperationProgressModel progress)? inProgress,
+    TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
-    TResult Function(String errorMessage)? failure,
-    TResult Function(int completed, int total)? progress,
+    TResult Function(BulkOperationProgressModel progress)? bulkProgress,
+    TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
-    if (failure != null) {
-      return failure(errorMessage);
+    if (bulkFailure != null) {
+      return bulkFailure(errorMessage);
     }
     return orElse();
   }
@@ -930,211 +2355,51 @@ class _$FailureImpl implements _Failure {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Success value) success,
+    required TResult Function(_InProgress value) inProgress,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Progress value) progress,
+    required TResult Function(_Success value) success,
+    required TResult Function(_BulkProgress value) bulkProgress,
+    required TResult Function(_BulkFailure value) bulkFailure,
   }) {
-    return failure(this);
+    return bulkFailure(this);
   }
 
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Success value)? success,
+    TResult? Function(_InProgress value)? inProgress,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Progress value)? progress,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_BulkProgress value)? bulkProgress,
+    TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
-    return failure?.call(this);
+    return bulkFailure?.call(this);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Success value)? success,
+    TResult Function(_InProgress value)? inProgress,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Progress value)? progress,
+    TResult Function(_Success value)? success,
+    TResult Function(_BulkProgress value)? bulkProgress,
+    TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
-    if (failure != null) {
-      return failure(this);
+    if (bulkFailure != null) {
+      return bulkFailure(this);
     }
     return orElse();
   }
 }
 
-abstract class _Failure implements AssetSubmissionState {
-  const factory _Failure(final String errorMessage) = _$FailureImpl;
+abstract class _BulkFailure implements AssetSubmissionState {
+  const factory _BulkFailure(final String errorMessage) = _$BulkFailureImpl;
 
   String get errorMessage;
   @JsonKey(ignore: true)
-  _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class _$$ProgressImplCopyWith<$Res> {
-  factory _$$ProgressImplCopyWith(
-          _$ProgressImpl value, $Res Function(_$ProgressImpl) then) =
-      __$$ProgressImplCopyWithImpl<$Res>;
-  @useResult
-  $Res call({int completed, int total});
-}
-
-/// @nodoc
-class __$$ProgressImplCopyWithImpl<$Res>
-    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$ProgressImpl>
-    implements _$$ProgressImplCopyWith<$Res> {
-  __$$ProgressImplCopyWithImpl(
-      _$ProgressImpl _value, $Res Function(_$ProgressImpl) _then)
-      : super(_value, _then);
-
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? completed = null,
-    Object? total = null,
-  }) {
-    return _then(_$ProgressImpl(
-      completed: null == completed
-          ? _value.completed
-          : completed // ignore: cast_nullable_to_non_nullable
-              as int,
-      total: null == total
-          ? _value.total
-          : total // ignore: cast_nullable_to_non_nullable
-              as int,
-    ));
-  }
-}
-
-/// @nodoc
-
-class _$ProgressImpl implements _Progress {
-  const _$ProgressImpl({required this.completed, required this.total});
-
-  @override
-  final int completed;
-  @override
-  final int total;
-
-  @override
-  String toString() {
-    return 'AssetSubmissionState.progress(completed: $completed, total: $total)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$ProgressImpl &&
-            (identical(other.completed, completed) ||
-                other.completed == completed) &&
-            (identical(other.total, total) || other.total == total));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType, completed, total);
-
-  @JsonKey(ignore: true)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$ProgressImplCopyWith<_$ProgressImpl> get copyWith =>
-      __$$ProgressImplCopyWithImpl<_$ProgressImpl>(this, _$identity);
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function() success,
-    required TResult Function(String errorMessage) failure,
-    required TResult Function(int completed, int total) progress,
-  }) {
-    return progress(completed, total);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function()? success,
-    TResult? Function(String errorMessage)? failure,
-    TResult? Function(int completed, int total)? progress,
-  }) {
-    return progress?.call(completed, total);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function()? success,
-    TResult Function(String errorMessage)? failure,
-    TResult Function(int completed, int total)? progress,
-    required TResult orElse(),
-  }) {
-    if (progress != null) {
-      return progress(completed, total);
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Success value) success,
-    required TResult Function(_Failure value) failure,
-    required TResult Function(_Progress value) progress,
-  }) {
-    return progress(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Success value)? success,
-    TResult? Function(_Failure value)? failure,
-    TResult? Function(_Progress value)? progress,
-  }) {
-    return progress?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Success value)? success,
-    TResult Function(_Failure value)? failure,
-    TResult Function(_Progress value)? progress,
-    required TResult orElse(),
-  }) {
-    if (progress != null) {
-      return progress(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _Progress implements AssetSubmissionState {
-  const factory _Progress(
-      {required final int completed,
-      required final int total}) = _$ProgressImpl;
-
-  int get completed;
-  int get total;
-  @JsonKey(ignore: true)
-  _$$ProgressImplCopyWith<_$ProgressImpl> get copyWith =>
+  _$$BulkFailureImplCopyWith<_$BulkFailureImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

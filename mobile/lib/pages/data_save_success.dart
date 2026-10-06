@@ -4,9 +4,14 @@ import 'package:digit_ui_components/widgets/molecules/panel_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/report_type/report_type.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../blocs/user_type/user_type.dart';
+import '../repositories/activity_facility_repo.dart';
 import '../router/app_router.dart';
+import '../utils/utils.dart';
 
 @RoutePage()
 class DataSaveSuccessPage extends StatefulWidget {
@@ -64,11 +69,30 @@ class _DataSaveSuccessPageState extends State<DataSaveSuccessPage> {
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
                     label: rejectedReport ? 'Back to Landing Page' : 'Next',
-                    onPressed: () {
+                    onPressed: () async {
+                      final selected = context
+                          .read<SelectedActivityFacilityBloc>()
+                          .state
+                          .whenOrNull(selected: (s) => s);
+                      final projectId = selected?.activityFacility.id;
+                      final userType =
+                          context.read<UserTypeBloc>().state.maybeWhen(
+                                supervisor: () => USER_TYPES.SUPERVISOR.name,
+                                orElse: () => USER_TYPES.FIELD_STAFF.name,
+                              );
+                      if (projectId != null) {
+                        final isar = context.read<ActivityFacilityBloc>().isar;
+                        await PrefilledActivityFacilityRepository(isar)
+                            .addOrTouch(
+                          activityFacilityId: projectId,
+                          userType: userType,
+                        );
+                      }
                       if (rejectedReport) {
                         context.router.replaceAll([const HomeRoute()]);
                       } else {
-                        context.router.push(const OverallAssetSummaryRoute());
+                        context.router.push(OverallAssetSummaryRoute(
+                            refresh: DateTime.now().millisecondsSinceEpoch));
                       }
                     }),
               ],

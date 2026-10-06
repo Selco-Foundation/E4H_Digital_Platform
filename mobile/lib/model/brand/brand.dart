@@ -14,3 +14,16 @@ class Brand with _$Brand {
 
   factory Brand.fromJson(Map<String, dynamic> json) => _$BrandFromJson(json);
 }
+
+@freezed
+class BrandData with _$BrandData {
+  const factory BrandData({
+    required int id,
+    @JsonKey(name: 'Brand') required List<Brand> brand,
+    required String module,
+    required String tenantId,
+  }) = _BrandData;
+
+  factory BrandData.fromJson(Map<String, dynamic> json) =>
+      _$BrandDataFromJson(json);
+}

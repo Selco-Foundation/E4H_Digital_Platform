@@ -7,7 +7,7 @@ class CacheSpecification {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late String projectId;
+  late String activityFacilityId;
 
   @Index()
   late String assetType;
@@ -20,7 +20,7 @@ class CacheSpecification {
   DateTime? updatedAt;
 
   CacheSpecification({
-    required this.projectId,
+    required this.activityFacilityId,
     required this.assetType,
     required this.system,
     required this.totalCapacity,

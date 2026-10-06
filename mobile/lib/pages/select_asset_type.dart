@@ -8,17 +8,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/cache_specification/cache_specification.dart';
-import '../blocs/selected_project/selected_project.dart';
-import '../blocs/specification/specification.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
-import '../data/nosql/cache_specification.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';
-import '../model/system/system.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -34,83 +33,32 @@ class SelectAssetTypePage extends StatefulWidget {
 }
 
 class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
-  String? _currentProjectId;
+  String? _currentActivityFacilityId;
+  ActivityFacilityWorkflow? project;
   String selectedAssetType = "";
 
   @override
   void initState() {
     super.initState();
-    _currentProjectId = context
-        .read<SelectedProjectBloc>()
+    _currentActivityFacilityId = context
+        .read<SelectedActivityFacilityBloc>()
         .state
-        .whenOrNull(selected: (project) => project.project.id);
-  }
-
-  void _saveCacheSpecification() {
-    final initState = context.read<AppInitialization>().state;
-
-    // 1) pull out system list and mdms asset types
-    final systemList = initState.maybeWhen<List<Mdms<System>>>(
-      initialized: (_, __, ___, system, ____, _____, solutionDesign) => system,
-      orElse: () => [],
-    );
-    final mdmsAssetTypes = initState.maybeWhen<List<Mdms<AssetType>>>(
-      initialized: (_, __, ___, ____, _____, ______, solutionDesign) =>
-          ___, // see positions
-      orElse: () => [],
-    );
-
-    final systemCode = systemList.lastOrNull?.data.code ?? '';
-
-    // 2) find the model for our currently selected assetType
-    final assetTypeModel = mdmsAssetTypes.map((m) => m.data).firstWhereOrNull(
-        (t) => t.code.toLowerCase() == selectedAssetType.toLowerCase());
-
-    // 3) pull out the two formFields
-    final capField = assetTypeModel?.formFields.firstWhereOrNull(
-      (f) => f.key == 'total_capacity' && f.system == systemCode,
-    );
-    final uomField = assetTypeModel?.formFields.firstWhereOrNull(
-      (f) => f.key == 'total_capacity_uom' && f.system == systemCode,
-    );
-
-    // 4) read the first option (or default)
-    final rawCapacity = capField?.options?.firstOrNull ?? '0';
-    final rawCapacityUom = uomField?.options?.firstOrNull ?? '';
-
-    // 5) parse to double
-    final parsedCapacity = double.tryParse(rawCapacity) ?? 0.0;
-
-    // 6) build your cache & fire both blocs
-    final newSpec = CacheSpecification(
-      projectId: _currentProjectId!,
-      assetType: selectedAssetType.toLowerCase(),
-      system: systemCode,
-      totalCapacity: parsedCapacity,
-      totalCapacityUnit: rawCapacityUom,
-    );
-
-    context
-        .read<CacheSpecificationBloc>()
-        .add(CacheSpecificationEvent.add(newSpec));
-
-    context.read<SpecificationBloc>().add(SpecificationEvent.save(
-          systemName: systemList.last.data.name,
-          totalCapacity: parsedCapacity,
-          totalCapacityUom: rawCapacityUom,
-        ));
+        .whenOrNull(selected: (wf) {
+      project = wf;
+      return wf.activityFacility.id;
+    });
   }
 
   CacheAssetCount? currentCacheEntryFor(
     BuildContext context, {
-    required String projectId,
+    required String activityFacilityId,
     required String assetType,
   }) {
     final state = context.read<CacheAssetCountBloc>().state;
     return state.maybeWhen(
       loaded: (entries) => entries.firstWhereOrNull(
         (e) =>
-            e.projectId == projectId &&
+            e.activityFacilityId == activityFacilityId &&
             e.assetType.toLowerCase() == assetType.toLowerCase(),
       ),
       orElse: () => null,
@@ -118,13 +66,19 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   }
 
   void _handleNavigation(BuildContext context) {
-    _saveCacheSpecification();
+    saveCacheSpecification(
+      context,
+      activityFacilityId: _currentActivityFacilityId!,
+      project: project,
+      selectedAssetType: selectedAssetType,
+    );
     final isSupervisor = context.read<UserTypeBloc>().state.maybeWhen(
           supervisor: () => true,
           orElse: () => false,
         );
     CacheAssetCount? cacheEntry = currentCacheEntryFor(context,
-        projectId: _currentProjectId!, assetType: selectedAssetType);
+        activityFacilityId: _currentActivityFacilityId!,
+        assetType: selectedAssetType);
     switch (cacheEntry?.progress) {
       case 3:
         context.router.push(const SpecificationRoute());
@@ -161,7 +115,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
             ),
             footer: FooterButton(
               showSuffixIcon: false,
-              text: i18.common.coreCommonNext,
+              text: context.translate(i18.common.coreCommonNext),
               isDisabled: state is AssetTypeInitial,
               onPress: () {
                 _handleNavigation(context);
@@ -170,11 +124,11 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
             children: [
               BlocBuilder<AppInitialization, InitState>(
                 builder: (initContext, initState) {
-                  final List<Mdms<AssetType>> assetTypeList =
+                  final List<Mdms<AssetTypeData>> assetTypeList =
                       initState.maybeWhen(
                           orElse: () => [],
                           initialized: (appConfig, assetCount, assetType,
-                                  system, warranty, brand, solutionDesign) =>
+                                  system, warranty, brand, solutionDesign, _) =>
                               assetType);
 
                   return Padding(
@@ -191,17 +145,18 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                         const SizedBox(height: spacer4),
                         DigitCard(children: [
                           Text(
-                            'Asset Type',
+                            context.translate(i18.selectAssetType.title),
                             style: textTheme.headingXl.copyWith(
                                 color: theme.colorTheme.primary.primary2),
                           ),
                           Text(
-                            'Choose the asset type',
+                            context.translate(i18.assetCount.chooseAssetType),
                             style: textTheme.bodyL
                                 .copyWith(color: theme.colorTheme.text.primary),
                           ),
                           LabeledField(
-                            label: 'Select Asset Type',
+                            label: context
+                                .translate(i18.selectAssetType.selectAssetType),
                             labelStyle: textTheme.label.copyWith(
                               color: theme.colorTheme.text.primary,
                             ),
@@ -217,10 +172,10 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                                 name: selectedAssetType ?? "",
                                 code: selectedAssetType ?? "",
                               ),
-                              items: assetTypeList
+                              items: assetTypeList.first.data.assetType
                                   .map((type) => DropdownItem(
-                                        name: type.data.name,
-                                        code: type.data.code,
+                                        name: type.name,
+                                        code: type.code,
                                       ))
                                   .toList(),
                             ),

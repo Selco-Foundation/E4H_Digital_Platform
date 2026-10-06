@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
@@ -8,15 +9,16 @@ import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_asset_detail/cache_asset_detail.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
-import '../model/brand/brand.dart';
 import '../model/mdms/mdms.dart';
 import '../model/warranty/warranty.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
@@ -33,15 +35,16 @@ class AssetTypeDetailPage extends StatefulWidget {
 
 class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? _currentProjectId;
+  ActivityFacilityWorkflow? projectWorkflow;
   String assetTypeTitle = "";
   late List<Warranty> assetWarranties = [];
-  late List<Brand> assetBrands = [];
   final List<Mdms<AssetType>> assetTypeList = [];
 
   String? selectedWarranty;
   String? selectedBrandCode;
+  String? selectedBrandName;
 
-  final TextEditingController modelController = TextEditingController();
+  final TextEditingController brandController = TextEditingController();
 
   @override
   void initState() {
@@ -56,35 +59,47 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
     context.read<AppInitialization>().state.maybeWhen(
         orElse: () => [],
         initialized: (appConfig, assetCount, assetType, system, warranty, brand,
-            solutionDesign) {
-          assetWarranties = warranty
-              .map((w) => w.data)
-              .where((w) =>
-                  w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
-              // .map((w) => w.duration)
-              .toList();
-
-          assetBrands = brand
-              .map((b) => b.data)
+            solutionDesign, _) {
+          assetWarranties = warranty.first.data.warrantyDuration
+              .map((w) => w)
               .where((w) =>
                   w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
               .toList();
           return assetType;
         });
 
-    final selState = context.read<SelectedProjectBloc>().state;
+    final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _currentProjectId = project.project.id;
-      _updateProgress(project.project.id, assetTypeTitle);
+      projectWorkflow = project;
+      _currentProjectId = project.activityFacility.id;
+
+      final ad = project.activityFacility.additionalDetails;
+      final typeDetails = assetTypeTitle == 'battery'
+          ? ad?.battery
+          : assetTypeTitle == 'inverter'
+              ? ad?.inverter
+              : assetTypeTitle == 'panel'
+                  ? ad?.panel
+                  : null;
+
+      final bCode = (typeDetails?.brandCode ?? '').trim();
+      final bName = (typeDetails?.brandName ?? '').trim();
+
+      selectedBrandCode = bCode.isEmpty ? null : bCode;
+      selectedBrandName = bName.isEmpty ? null : bName;
+      brandController.text = selectedBrandName ?? '';
+
+      _updateProgress(project.activityFacility.id, assetTypeTitle);
       context.read<CacheAssetDetailBloc>().add(
-            CacheAssetDetailEvent.get(project.project.id, assetTypeTitle),
+            CacheAssetDetailEvent.get(
+                project.activityFacility.id, assetTypeTitle),
           );
     });
   }
 
   @override
   void dispose() {
-    modelController.dispose();
+    brandController.dispose();
     super.dispose();
   }
 
@@ -92,7 +107,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
     context
         .read<CacheAssetCountBloc>()
         .add(CacheAssetCountEvent.update(CacheAssetCount(
-          projectId: projectId,
+          activityFacilityId: projectId,
           assetType: assetType,
           progress: 4,
         )));
@@ -110,9 +125,20 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
             final entry = entries.firstOrNull;
             if (entry != null) {
               setState(() {
-                selectedBrandCode = entry.brand;
+                // Only use cached brand code if ActivityFacility doesn't provide one
+                final cachedBrand = (entry.brand ?? '').trim();
+                if ((selectedBrandCode ?? '').trim().isEmpty &&
+                    cachedBrand.isNotEmpty) {
+                  selectedBrandCode = cachedBrand;
+                }
+
+                // Brand name stays sourced from ActivityFacility; fall back to showing code if needed
+                if ((selectedBrandName ?? '').trim().isEmpty &&
+                    (selectedBrandCode ?? '').trim().isNotEmpty) {
+                  selectedBrandName = selectedBrandCode;
+                }
+                brandController.text = selectedBrandName ?? '';
                 selectedWarranty = entry.warranty;
-                modelController.text = entry.model ?? '';
               });
             }
           },
@@ -123,14 +149,13 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
         builder: (context, state) {
           final detailHeading = state.when(
             initial: () => 'Details',
-            inverter: () => 'Inverter Details',
+            inverter: () => 'Inverter / PCU Details',
             battery: () => 'Battery Details',
             panel: () => 'Panel Details',
           );
 
-          final bool isEnabledSupervisor = selectedWarranty != null &&
-              selectedBrandCode != null &&
-              modelController.text.trim().isNotEmpty;
+          final bool isEnabledSupervisor =
+              selectedWarranty != null && selectedBrandCode != null;
 
           final bool isEnabledFieldUser = selectedBrandCode != null;
 
@@ -153,25 +178,27 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                             ? !isEnabledSupervisor
                             : !isEnabledFieldUser,
                         showSuffixIcon: false,
-                        text: i18.common.coreCommonNext,
+                        text: context.translate(i18.common.coreCommonNext),
                         onPress: () {
                           if (isSupervisor && !isEnabledSupervisor)
                             return;
                           else if (!isEnabledFieldUser) return;
-                          print("selectedWarranty $selectedWarranty");
                           final newDetail = CacheAssetDetail(
-                            projectId: _currentProjectId!,
+                            activityFacilityId: _currentProjectId!,
                             assetType: assetTypeTitle,
-                            warranty: isSupervisor ? selectedWarranty : null,
+                            warranty: selectedWarranty,
                             brand: selectedBrandCode!,
-                            model: isSupervisor
-                                ? modelController.text.trim()
-                                : null,
                           );
 
                           context
                               .read<CacheAssetDetailBloc>()
                               .add(CacheAssetDetailEvent.add(newDetail));
+                          saveCacheSpecification(
+                            context,
+                            activityFacilityId: _currentProjectId!,
+                            project: projectWorkflow,
+                            selectedAssetType: assetTypeTitle,
+                          );
                           context.router.push(const AddNewAssetRoute());
                         },
                       ),
@@ -195,86 +222,63 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                               style: textTheme.headingXl.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),
-                            if (isSupervisor)
-                              LabeledField(
-                                label: 'Warranty Start Date',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: DigitDateFormInput(
-                                  controller: TextEditingController(),
-                                  initialValue: 'Default Today Date',
-                                  isDisabled: true,
-                                  readOnly: true,
-                                ),
-                              ),
-                            if (isSupervisor)
-                              LabeledField(
-                                  label: 'Warranty Duration',
-                                  labelStyle: textTheme.headingS.copyWith(
-                                      color: theme.colorTheme.text.primary),
-                                  capitalizedFirstLetter: false,
-                                  child: DigitDropdown(
-                                    sentenceCaseEnabled: false,
-                                    selectedOption: DropdownItem(
-                                      name: selectedWarranty ?? "",
-                                      code: selectedWarranty ?? "",
-                                    ),
-                                    items: assetWarranties
-                                        .map((type) => DropdownItem(
-                                              name: parseWarrantyYears(
-                                                      type.duration)
-                                                  .toString(),
-                                              code: type.duration,
-                                            ))
-                                        .toList(),
-                                    onSelect: (DropdownItem selected) {
-                                      setState(() {
-                                        selectedWarranty = selected.code;
-                                      });
-                                    },
-                                  )),
                             LabeledField(
-                                label: 'Brand',
+                              label: context
+                                  .translate(i18.assetSummary.warrantyStartDate),
+                              labelStyle: textTheme.headingS.copyWith(
+                                  color: theme.colorTheme.text.primary),
+                              capitalizedFirstLetter: false,
+                              child: DigitDateFormInput(
+                                controller: TextEditingController(),
+                                initialValue: context
+                                    .translate(i18.assetTypeDetail.defaultTodayDate),
+                                isDisabled: true,
+                                readOnly: true,
+                              ),
+                            ),
+                            LabeledField(
+                                label: context.translate(
+                                    i18.assetSummary.warrantyDuration),
                                 labelStyle: textTheme.headingS.copyWith(
                                     color: theme.colorTheme.text.primary),
                                 capitalizedFirstLetter: false,
                                 child: DigitDropdown(
                                   sentenceCaseEnabled: false,
                                   selectedOption: DropdownItem(
-                                    name: selectedBrandCode ?? "",
-                                    code: selectedBrandCode ?? "",
+                                    name: (selectedWarranty == null ||
+                                            selectedWarranty!.isEmpty)
+                                        ? ''
+                                        : (parseWarrantyYears(selectedWarranty!)
+                                                ?.toString() ??
+                                            ''),
+                                    code: selectedWarranty ?? "",
                                   ),
-                                  items: assetBrands
+                                  items: assetWarranties
                                       .map((type) => DropdownItem(
-                                            name: type.name,
-                                            code: type.code,
+                                            name: parseWarrantyYears(
+                                                    type.duration)
+                                                .toString(),
+                                            code: type.duration,
                                           ))
                                       .toList(),
                                   onSelect: (DropdownItem selected) {
                                     setState(() {
-                                      selectedBrandCode = selected.code;
+                                      selectedWarranty = selected.code;
                                     });
                                   },
                                 )),
-                            if (isSupervisor)
-                              LabeledField(
-                                label: 'Model Number',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: DigitTextFormInput(
-                                  controller: modelController,
-                                  innerLabel: 'SR45934295',
-                                  keyboardType: TextInputType.text,
-                                  onChange: (value) {
-                                    setState(() {
-                                      // modelController.text is updated internally;
-                                      // we just need to rebuild for isEnabled.
-                                    });
-                                  },
-                                ),
+                            LabeledField(
+                              label: context.translate(i18.assetSummary.brand),
+                              labelStyle: textTheme.headingS.copyWith(
+                                  color: theme.colorTheme.text.primary),
+                              capitalizedFirstLetter: false,
+                              child: DigitTextFormInput(
+                                controller: brandController,
+                                isDisabled: true,
+                                readOnly: true,
+                                keyboardType: TextInputType.none,
                               ),
+                            ),
                           ])
                         ],
                       ),

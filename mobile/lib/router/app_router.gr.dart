@@ -21,10 +21,141 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AddNewAssetPage(),
       );
     },
+    AmcDraftRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcDraftPage(),
+      );
+    },
+    AmcDynamicFormRoute.name: (routeData) {
+      final args = routeData.argsAs<AmcDynamicFormRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AmcDynamicFormPage(
+          key: args.key,
+          pageName: args.pageName,
+          schemaName: args.schemaName,
+          uniqueIdentifier: args.uniqueIdentifier,
+          scheduledVisit: args.scheduledVisit,
+          origin: args.origin,
+        ),
+      );
+    },
+    AmcHomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcHomePage(),
+      );
+    },
+    AmcInboxRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcInboxPage(),
+      );
+    },
+    AmcMediaUploadRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcMediaUploadPage(),
+      );
+    },
+    AmcOtpRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcOtpPage(),
+      );
+    },
+    AmcRejctionReasonsRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcRejctionReasonsPage(),
+      );
+    },
+    AmcReportHomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcReportHomePage(),
+      );
+    },
+    AmcSelectFacilityRoute.name: (routeData) {
+      final args = routeData.argsAs<AmcSelectFacilityRouteArgs>(
+          orElse: () => const AmcSelectFacilityRouteArgs());
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AmcSelectFacilityPage(
+          key: args.key,
+          bookmarksOnly: args.bookmarksOnly,
+        ),
+      );
+    },
+    AssessmentDraftRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssessmentDraftPage(),
+      );
+    },
+    AssessmentDynamicFormRoute.name: (routeData) {
+      final args = routeData.argsAs<AssessmentDynamicFormRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AssessmentDynamicFormPage(
+          key: args.key,
+          facility: args.facility,
+          assessmentMode: args.assessmentMode,
+          onSubmissionSucceeded: args.onSubmissionSucceeded,
+          draftRequest: args.draftRequest,
+          draftFacilityDefaults: args.draftFacilityDefaults,
+        ),
+      );
+    },
+    AssessmentHomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssessmentHomePage(),
+      );
+    },
+    AssessmentSelectFacilityRoute.name: (routeData) {
+      final args = routeData.argsAs<AssessmentSelectFacilityRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AssessmentSelectFacilityPage(
+          key: args.key,
+          assessmentMode: args.assessmentMode,
+          bookmarksOnly: args.bookmarksOnly,
+        ),
+      );
+    },
+    AssessmentSubmissionSuccessRoute.name: (routeData) {
+      final args = routeData.argsAs<AssessmentSubmissionSuccessRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AssessmentSubmissionSuccessPage(
+          key: args.key,
+          schemaName: args.schemaName,
+        ),
+      );
+    },
+    AssessmentWorkHomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssessmentWorkHomePage(),
+      );
+    },
     AssetCountRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const AssetCountPage(),
+      );
+    },
+    AssetHandoverDocumentRoute.name: (routeData) {
+      final args = routeData.argsAs<AssetHandoverDocumentRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AssetHandoverDocumentPage(
+          key: args.key,
+          origin: args.origin,
+          activityFacilityId: args.activityFacilityId,
+        ),
       );
     },
     AssetSummaryRoute.name: (routeData) {
@@ -51,10 +182,43 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DataSaveSuccessPage(),
       );
     },
+    DigitScannerRoute.name: (routeData) {
+      final args = routeData.argsAs<DigitScannerRouteArgs>(
+          orElse: () => const DigitScannerRouteArgs());
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: DigitScannerPage(
+          key: args.key,
+          appLocalizations: args.appLocalizations,
+          quantity: args.quantity,
+          isGS1code: args.isGS1code,
+          singleValue: args.singleValue,
+          isEditEnabled: args.isEditEnabled,
+          regex: args.regex,
+          validations: args.validations,
+          enableGalleryScan: args.enableGalleryScan,
+        ),
+      );
+    },
     DraftRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const DraftPage(),
+      );
+    },
+    DynamicFormsRoute.name: (routeData) {
+      final args = routeData.argsAs<DynamicFormsRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: DynamicFormsPage(
+          key: args.key,
+          pageName: args.pageName,
+          schemaName: args.schemaName,
+          uniqueIdentifier: args.uniqueIdentifier,
+          activityFacilityId: args.activityFacilityId,
+          origin: args.origin,
+          userType: args.userType,
+        ),
       );
     },
     EnterOtpRoute.name: (routeData) {
@@ -86,15 +250,43 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     InboxAssetSummaryRoute.name: (routeData) {
+      final args = routeData.argsAs<InboxAssetSummaryRouteArgs>(
+          orElse: () => const InboxAssetSummaryRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const InboxAssetSummaryPage(),
+        child: InboxAssetSummaryPage(
+          key: args.key,
+          refresh: args.refresh,
+        ),
       );
     },
     InboxRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const InboxPage(),
+      );
+    },
+    InstallationCompletionCertificateRoute.name: (routeData) {
+      final args =
+          routeData.argsAs<InstallationCompletionCertificateRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: InstallationCompletionCertificatePage(
+          key: args.key,
+          origin: args.origin,
+          activityFacilityId: args.activityFacilityId,
+        ),
+      );
+    },
+    InstallationImagesRoute.name: (routeData) {
+      final args = routeData.argsAs<InstallationImagesRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: InstallationImagesPage(
+          key: args.key,
+          origin: args.origin,
+          activityFacilityId: args.activityFacilityId,
+        ),
       );
     },
     InstallationReportRoute.name: (routeData) {
@@ -116,9 +308,14 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     OverallAssetSummaryRoute.name: (routeData) {
+      final args = routeData.argsAs<OverallAssetSummaryRouteArgs>(
+          orElse: () => const OverallAssetSummaryRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const OverallAssetSummaryPage(),
+        child: OverallAssetSummaryPage(
+          key: args.key,
+          refresh: args.refresh,
+        ),
       );
     },
     PdfViewerRoute.name: (routeData) {
@@ -133,6 +330,12 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    RoleSelectionRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const RoleSelectionPage(),
+      );
+    },
     SelectAssetTypeRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -140,9 +343,14 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     SelectHealthFacilityRoute.name: (routeData) {
+      final args = routeData.argsAs<SelectHealthFacilityRouteArgs>(
+          orElse: () => const SelectHealthFacilityRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const SelectHealthFacilityPage(),
+        child: SelectHealthFacilityPage(
+          key: args.key,
+          bookmarksOnly: args.bookmarksOnly,
+        ),
       );
     },
     SetupNewPasswordRoute.name: (routeData) {
@@ -158,9 +366,14 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     SubmitForApprovalRoute.name: (routeData) {
+      final args = routeData.argsAs<SubmitForApprovalRouteArgs>(
+          orElse: () => const SubmitForApprovalRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const SubmitForApprovalPage(),
+        child: SubmitForApprovalPage(
+          key: args.key,
+          refresh: args.refresh,
+        ),
       );
     },
     SubmittedSaveSuccessRoute.name: (routeData) {
@@ -170,14 +383,9 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     SyncLoadingRoute.name: (routeData) {
-      final args = routeData.argsAs<SyncLoadingRouteArgs>();
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: SyncLoadingPage(
-          key: args.key,
-          completed: args.completed,
-          total: args.total,
-        ),
+        child: const SyncLoadingPage(),
       );
     },
     UnauthenticatedRouteWrapper.name: (routeData) {
@@ -220,6 +428,385 @@ class AddNewAssetRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [AmcDraftPage]
+class AmcDraftRoute extends PageRouteInfo<void> {
+  const AmcDraftRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcDraftRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcDraftRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcDynamicFormPage]
+class AmcDynamicFormRoute extends PageRouteInfo<AmcDynamicFormRouteArgs> {
+  AmcDynamicFormRoute({
+    Key? key,
+    required String pageName,
+    String? schemaName,
+    String? uniqueIdentifier,
+    required ScheduledVisit scheduledVisit,
+    required FormOrigin origin,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AmcDynamicFormRoute.name,
+          args: AmcDynamicFormRouteArgs(
+            key: key,
+            pageName: pageName,
+            schemaName: schemaName,
+            uniqueIdentifier: uniqueIdentifier,
+            scheduledVisit: scheduledVisit,
+            origin: origin,
+          ),
+          rawPathParams: {'pageName': pageName},
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcDynamicFormRoute';
+
+  static const PageInfo<AmcDynamicFormRouteArgs> page =
+      PageInfo<AmcDynamicFormRouteArgs>(name);
+}
+
+class AmcDynamicFormRouteArgs {
+  const AmcDynamicFormRouteArgs({
+    this.key,
+    required this.pageName,
+    this.schemaName,
+    this.uniqueIdentifier,
+    required this.scheduledVisit,
+    required this.origin,
+  });
+
+  final Key? key;
+
+  final String pageName;
+
+  final String? schemaName;
+
+  final String? uniqueIdentifier;
+
+  final ScheduledVisit scheduledVisit;
+
+  final FormOrigin origin;
+
+  @override
+  String toString() {
+    return 'AmcDynamicFormRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, scheduledVisit: $scheduledVisit, origin: $origin}';
+  }
+}
+
+/// generated route for
+/// [AmcHomePage]
+class AmcHomeRoute extends PageRouteInfo<void> {
+  const AmcHomeRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcHomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcHomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcInboxPage]
+class AmcInboxRoute extends PageRouteInfo<void> {
+  const AmcInboxRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcInboxRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcInboxRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcMediaUploadPage]
+class AmcMediaUploadRoute extends PageRouteInfo<void> {
+  const AmcMediaUploadRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcMediaUploadRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcMediaUploadRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcOtpPage]
+class AmcOtpRoute extends PageRouteInfo<void> {
+  const AmcOtpRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcOtpRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcOtpRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcRejctionReasonsPage]
+class AmcRejctionReasonsRoute extends PageRouteInfo<void> {
+  const AmcRejctionReasonsRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcRejctionReasonsRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcRejctionReasonsRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcReportHomePage]
+class AmcReportHomeRoute extends PageRouteInfo<void> {
+  const AmcReportHomeRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcReportHomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcReportHomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcSelectFacilityPage]
+class AmcSelectFacilityRoute extends PageRouteInfo<AmcSelectFacilityRouteArgs> {
+  AmcSelectFacilityRoute({
+    Key? key,
+    bool bookmarksOnly = false,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AmcSelectFacilityRoute.name,
+          args: AmcSelectFacilityRouteArgs(
+            key: key,
+            bookmarksOnly: bookmarksOnly,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcSelectFacilityRoute';
+
+  static const PageInfo<AmcSelectFacilityRouteArgs> page =
+      PageInfo<AmcSelectFacilityRouteArgs>(name);
+}
+
+class AmcSelectFacilityRouteArgs {
+  const AmcSelectFacilityRouteArgs({
+    this.key,
+    this.bookmarksOnly = false,
+  });
+
+  final Key? key;
+
+  final bool bookmarksOnly;
+
+  @override
+  String toString() {
+    return 'AmcSelectFacilityRouteArgs{key: $key, bookmarksOnly: $bookmarksOnly}';
+  }
+}
+
+/// generated route for
+/// [AssessmentDraftPage]
+class AssessmentDraftRoute extends PageRouteInfo<void> {
+  const AssessmentDraftRoute({List<PageRouteInfo>? children})
+      : super(
+          AssessmentDraftRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentDraftRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssessmentDynamicFormPage]
+class AssessmentDynamicFormRoute
+    extends PageRouteInfo<AssessmentDynamicFormRouteArgs> {
+  AssessmentDynamicFormRoute({
+    Key? key,
+    required AssessmentQueueFacility facility,
+    required AssessmentMode assessmentMode,
+    required void Function() onSubmissionSucceeded,
+    AssessmentSubmissionRequest? draftRequest,
+    Map<String, dynamic>? draftFacilityDefaults,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AssessmentDynamicFormRoute.name,
+          args: AssessmentDynamicFormRouteArgs(
+            key: key,
+            facility: facility,
+            assessmentMode: assessmentMode,
+            onSubmissionSucceeded: onSubmissionSucceeded,
+            draftRequest: draftRequest,
+            draftFacilityDefaults: draftFacilityDefaults,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentDynamicFormRoute';
+
+  static const PageInfo<AssessmentDynamicFormRouteArgs> page =
+      PageInfo<AssessmentDynamicFormRouteArgs>(name);
+}
+
+class AssessmentDynamicFormRouteArgs {
+  const AssessmentDynamicFormRouteArgs({
+    this.key,
+    required this.facility,
+    required this.assessmentMode,
+    required this.onSubmissionSucceeded,
+    this.draftRequest,
+    this.draftFacilityDefaults,
+  });
+
+  final Key? key;
+
+  final AssessmentQueueFacility facility;
+
+  final AssessmentMode assessmentMode;
+
+  final void Function() onSubmissionSucceeded;
+
+  final AssessmentSubmissionRequest? draftRequest;
+
+  final Map<String, dynamic>? draftFacilityDefaults;
+
+  @override
+  String toString() {
+    return 'AssessmentDynamicFormRouteArgs{key: $key, facility: $facility, assessmentMode: $assessmentMode, onSubmissionSucceeded: $onSubmissionSucceeded, draftRequest: $draftRequest, draftFacilityDefaults: $draftFacilityDefaults}';
+  }
+}
+
+/// generated route for
+/// [AssessmentHomePage]
+class AssessmentHomeRoute extends PageRouteInfo<void> {
+  const AssessmentHomeRoute({List<PageRouteInfo>? children})
+      : super(
+          AssessmentHomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentHomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssessmentSelectFacilityPage]
+class AssessmentSelectFacilityRoute
+    extends PageRouteInfo<AssessmentSelectFacilityRouteArgs> {
+  AssessmentSelectFacilityRoute({
+    Key? key,
+    required AssessmentMode assessmentMode,
+    bool bookmarksOnly = false,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AssessmentSelectFacilityRoute.name,
+          args: AssessmentSelectFacilityRouteArgs(
+            key: key,
+            assessmentMode: assessmentMode,
+            bookmarksOnly: bookmarksOnly,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentSelectFacilityRoute';
+
+  static const PageInfo<AssessmentSelectFacilityRouteArgs> page =
+      PageInfo<AssessmentSelectFacilityRouteArgs>(name);
+}
+
+class AssessmentSelectFacilityRouteArgs {
+  const AssessmentSelectFacilityRouteArgs({
+    this.key,
+    required this.assessmentMode,
+    this.bookmarksOnly = false,
+  });
+
+  final Key? key;
+
+  final AssessmentMode assessmentMode;
+
+  final bool bookmarksOnly;
+
+  @override
+  String toString() {
+    return 'AssessmentSelectFacilityRouteArgs{key: $key, assessmentMode: $assessmentMode, bookmarksOnly: $bookmarksOnly}';
+  }
+}
+
+/// generated route for
+/// [AssessmentSubmissionSuccessPage]
+class AssessmentSubmissionSuccessRoute
+    extends PageRouteInfo<AssessmentSubmissionSuccessRouteArgs> {
+  AssessmentSubmissionSuccessRoute({
+    Key? key,
+    required String schemaName,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AssessmentSubmissionSuccessRoute.name,
+          args: AssessmentSubmissionSuccessRouteArgs(
+            key: key,
+            schemaName: schemaName,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentSubmissionSuccessRoute';
+
+  static const PageInfo<AssessmentSubmissionSuccessRouteArgs> page =
+      PageInfo<AssessmentSubmissionSuccessRouteArgs>(name);
+}
+
+class AssessmentSubmissionSuccessRouteArgs {
+  const AssessmentSubmissionSuccessRouteArgs({
+    this.key,
+    required this.schemaName,
+  });
+
+  final Key? key;
+
+  final String schemaName;
+
+  @override
+  String toString() {
+    return 'AssessmentSubmissionSuccessRouteArgs{key: $key, schemaName: $schemaName}';
+  }
+}
+
+/// generated route for
+/// [AssessmentWorkHomePage]
+class AssessmentWorkHomeRoute extends PageRouteInfo<void> {
+  const AssessmentWorkHomeRoute({List<PageRouteInfo>? children})
+      : super(
+          AssessmentWorkHomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssessmentWorkHomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [AssetCountPage]
 class AssetCountRoute extends PageRouteInfo<void> {
   const AssetCountRoute({List<PageRouteInfo>? children})
@@ -231,6 +818,50 @@ class AssetCountRoute extends PageRouteInfo<void> {
   static const String name = 'AssetCountRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssetHandoverDocumentPage]
+class AssetHandoverDocumentRoute
+    extends PageRouteInfo<AssetHandoverDocumentRouteArgs> {
+  AssetHandoverDocumentRoute({
+    Key? key,
+    required FormOrigin origin,
+    required String activityFacilityId,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AssetHandoverDocumentRoute.name,
+          args: AssetHandoverDocumentRouteArgs(
+            key: key,
+            origin: origin,
+            activityFacilityId: activityFacilityId,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'AssetHandoverDocumentRoute';
+
+  static const PageInfo<AssetHandoverDocumentRouteArgs> page =
+      PageInfo<AssetHandoverDocumentRouteArgs>(name);
+}
+
+class AssetHandoverDocumentRouteArgs {
+  const AssetHandoverDocumentRouteArgs({
+    this.key,
+    required this.origin,
+    required this.activityFacilityId,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  final String activityFacilityId;
+
+  @override
+  String toString() {
+    return 'AssetHandoverDocumentRouteArgs{key: $key, origin: $origin, activityFacilityId: $activityFacilityId}';
+  }
 }
 
 /// generated route for
@@ -290,6 +921,79 @@ class DataSaveSuccessRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [DigitScannerPage]
+class DigitScannerRoute extends PageRouteInfo<DigitScannerRouteArgs> {
+  DigitScannerRoute({
+    Key? key,
+    ScannerLocalization? appLocalizations,
+    int? quantity = 1,
+    bool? isGS1code = false,
+    bool? singleValue = true,
+    bool isEditEnabled = false,
+    String? regex,
+    List<dynamic>? validations,
+    bool enableGalleryScan = true,
+    List<PageRouteInfo>? children,
+  }) : super(
+          DigitScannerRoute.name,
+          args: DigitScannerRouteArgs(
+            key: key,
+            appLocalizations: appLocalizations,
+            quantity: quantity,
+            isGS1code: isGS1code,
+            singleValue: singleValue,
+            isEditEnabled: isEditEnabled,
+            regex: regex,
+            validations: validations,
+            enableGalleryScan: enableGalleryScan,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'DigitScannerRoute';
+
+  static const PageInfo<DigitScannerRouteArgs> page =
+      PageInfo<DigitScannerRouteArgs>(name);
+}
+
+class DigitScannerRouteArgs {
+  const DigitScannerRouteArgs({
+    this.key,
+    this.appLocalizations,
+    this.quantity = 1,
+    this.isGS1code = false,
+    this.singleValue = true,
+    this.isEditEnabled = false,
+    this.regex,
+    this.validations,
+    this.enableGalleryScan = true,
+  });
+
+  final Key? key;
+
+  final ScannerLocalization? appLocalizations;
+
+  final int? quantity;
+
+  final bool? isGS1code;
+
+  final bool? singleValue;
+
+  final bool isEditEnabled;
+
+  final String? regex;
+
+  final List<dynamic>? validations;
+
+  final bool enableGalleryScan;
+
+  @override
+  String toString() {
+    return 'DigitScannerRouteArgs{key: $key, appLocalizations: $appLocalizations, quantity: $quantity, isGS1code: $isGS1code, singleValue: $singleValue, isEditEnabled: $isEditEnabled, regex: $regex, validations: $validations, enableGalleryScan: $enableGalleryScan}';
+  }
+}
+
+/// generated route for
 /// [DraftPage]
 class DraftRoute extends PageRouteInfo<void> {
   const DraftRoute({List<PageRouteInfo>? children})
@@ -301,6 +1005,70 @@ class DraftRoute extends PageRouteInfo<void> {
   static const String name = 'DraftRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [DynamicFormsPage]
+class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
+  DynamicFormsRoute({
+    Key? key,
+    required String pageName,
+    String? schemaName,
+    String? uniqueIdentifier,
+    required String activityFacilityId,
+    required FormOrigin origin,
+    required String userType,
+    List<PageRouteInfo>? children,
+  }) : super(
+          DynamicFormsRoute.name,
+          args: DynamicFormsRouteArgs(
+            key: key,
+            pageName: pageName,
+            schemaName: schemaName,
+            uniqueIdentifier: uniqueIdentifier,
+            activityFacilityId: activityFacilityId,
+            origin: origin,
+            userType: userType,
+          ),
+          rawPathParams: {'pageName': pageName},
+          initialChildren: children,
+        );
+
+  static const String name = 'DynamicFormsRoute';
+
+  static const PageInfo<DynamicFormsRouteArgs> page =
+      PageInfo<DynamicFormsRouteArgs>(name);
+}
+
+class DynamicFormsRouteArgs {
+  const DynamicFormsRouteArgs({
+    this.key,
+    required this.pageName,
+    this.schemaName,
+    this.uniqueIdentifier,
+    required this.activityFacilityId,
+    required this.origin,
+    required this.userType,
+  });
+
+  final Key? key;
+
+  final String pageName;
+
+  final String? schemaName;
+
+  final String? uniqueIdentifier;
+
+  final String activityFacilityId;
+
+  final FormOrigin origin;
+
+  final String userType;
+
+  @override
+  String toString() {
+    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, activityFacilityId: $activityFacilityId, origin: $origin, userType: $userType}';
+  }
 }
 
 /// generated route for
@@ -385,16 +1153,40 @@ class ImageViewerRouteArgs {
 
 /// generated route for
 /// [InboxAssetSummaryPage]
-class InboxAssetSummaryRoute extends PageRouteInfo<void> {
-  const InboxAssetSummaryRoute({List<PageRouteInfo>? children})
-      : super(
+class InboxAssetSummaryRoute extends PageRouteInfo<InboxAssetSummaryRouteArgs> {
+  InboxAssetSummaryRoute({
+    Key? key,
+    int? refresh,
+    List<PageRouteInfo>? children,
+  }) : super(
           InboxAssetSummaryRoute.name,
+          args: InboxAssetSummaryRouteArgs(
+            key: key,
+            refresh: refresh,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'InboxAssetSummaryRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<InboxAssetSummaryRouteArgs> page =
+      PageInfo<InboxAssetSummaryRouteArgs>(name);
+}
+
+class InboxAssetSummaryRouteArgs {
+  const InboxAssetSummaryRouteArgs({
+    this.key,
+    this.refresh,
+  });
+
+  final Key? key;
+
+  final int? refresh;
+
+  @override
+  String toString() {
+    return 'InboxAssetSummaryRouteArgs{key: $key, refresh: $refresh}';
+  }
 }
 
 /// generated route for
@@ -409,6 +1201,94 @@ class InboxRoute extends PageRouteInfo<void> {
   static const String name = 'InboxRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [InstallationCompletionCertificatePage]
+class InstallationCompletionCertificateRoute
+    extends PageRouteInfo<InstallationCompletionCertificateRouteArgs> {
+  InstallationCompletionCertificateRoute({
+    Key? key,
+    required FormOrigin origin,
+    required String activityFacilityId,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InstallationCompletionCertificateRoute.name,
+          args: InstallationCompletionCertificateRouteArgs(
+            key: key,
+            origin: origin,
+            activityFacilityId: activityFacilityId,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InstallationCompletionCertificateRoute';
+
+  static const PageInfo<InstallationCompletionCertificateRouteArgs> page =
+      PageInfo<InstallationCompletionCertificateRouteArgs>(name);
+}
+
+class InstallationCompletionCertificateRouteArgs {
+  const InstallationCompletionCertificateRouteArgs({
+    this.key,
+    required this.origin,
+    required this.activityFacilityId,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  final String activityFacilityId;
+
+  @override
+  String toString() {
+    return 'InstallationCompletionCertificateRouteArgs{key: $key, origin: $origin, activityFacilityId: $activityFacilityId}';
+  }
+}
+
+/// generated route for
+/// [InstallationImagesPage]
+class InstallationImagesRoute
+    extends PageRouteInfo<InstallationImagesRouteArgs> {
+  InstallationImagesRoute({
+    Key? key,
+    required FormOrigin origin,
+    required String activityFacilityId,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InstallationImagesRoute.name,
+          args: InstallationImagesRouteArgs(
+            key: key,
+            origin: origin,
+            activityFacilityId: activityFacilityId,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InstallationImagesRoute';
+
+  static const PageInfo<InstallationImagesRouteArgs> page =
+      PageInfo<InstallationImagesRouteArgs>(name);
+}
+
+class InstallationImagesRouteArgs {
+  const InstallationImagesRouteArgs({
+    this.key,
+    required this.origin,
+    required this.activityFacilityId,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  final String activityFacilityId;
+
+  @override
+  String toString() {
+    return 'InstallationImagesRouteArgs{key: $key, origin: $origin, activityFacilityId: $activityFacilityId}';
+  }
 }
 
 /// generated route for
@@ -455,16 +1335,41 @@ class MediaUploadRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [OverallAssetSummaryPage]
-class OverallAssetSummaryRoute extends PageRouteInfo<void> {
-  const OverallAssetSummaryRoute({List<PageRouteInfo>? children})
-      : super(
+class OverallAssetSummaryRoute
+    extends PageRouteInfo<OverallAssetSummaryRouteArgs> {
+  OverallAssetSummaryRoute({
+    Key? key,
+    int? refresh,
+    List<PageRouteInfo>? children,
+  }) : super(
           OverallAssetSummaryRoute.name,
+          args: OverallAssetSummaryRouteArgs(
+            key: key,
+            refresh: refresh,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'OverallAssetSummaryRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<OverallAssetSummaryRouteArgs> page =
+      PageInfo<OverallAssetSummaryRouteArgs>(name);
+}
+
+class OverallAssetSummaryRouteArgs {
+  const OverallAssetSummaryRouteArgs({
+    this.key,
+    this.refresh,
+  });
+
+  final Key? key;
+
+  final int? refresh;
+
+  @override
+  String toString() {
+    return 'OverallAssetSummaryRouteArgs{key: $key, refresh: $refresh}';
+  }
 }
 
 /// generated route for
@@ -507,6 +1412,20 @@ class PdfViewerRouteArgs {
 }
 
 /// generated route for
+/// [RoleSelectionPage]
+class RoleSelectionRoute extends PageRouteInfo<void> {
+  const RoleSelectionRoute({List<PageRouteInfo>? children})
+      : super(
+          RoleSelectionRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'RoleSelectionRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [SelectAssetTypePage]
 class SelectAssetTypeRoute extends PageRouteInfo<void> {
   const SelectAssetTypeRoute({List<PageRouteInfo>? children})
@@ -522,16 +1441,41 @@ class SelectAssetTypeRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [SelectHealthFacilityPage]
-class SelectHealthFacilityRoute extends PageRouteInfo<void> {
-  const SelectHealthFacilityRoute({List<PageRouteInfo>? children})
-      : super(
+class SelectHealthFacilityRoute
+    extends PageRouteInfo<SelectHealthFacilityRouteArgs> {
+  SelectHealthFacilityRoute({
+    Key? key,
+    bool bookmarksOnly = false,
+    List<PageRouteInfo>? children,
+  }) : super(
           SelectHealthFacilityRoute.name,
+          args: SelectHealthFacilityRouteArgs(
+            key: key,
+            bookmarksOnly: bookmarksOnly,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'SelectHealthFacilityRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<SelectHealthFacilityRouteArgs> page =
+      PageInfo<SelectHealthFacilityRouteArgs>(name);
+}
+
+class SelectHealthFacilityRouteArgs {
+  const SelectHealthFacilityRouteArgs({
+    this.key,
+    this.bookmarksOnly = false,
+  });
+
+  final Key? key;
+
+  final bool bookmarksOnly;
+
+  @override
+  String toString() {
+    return 'SelectHealthFacilityRouteArgs{key: $key, bookmarksOnly: $bookmarksOnly}';
+  }
 }
 
 /// generated route for
@@ -564,16 +1508,40 @@ class SpecificationRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [SubmitForApprovalPage]
-class SubmitForApprovalRoute extends PageRouteInfo<void> {
-  const SubmitForApprovalRoute({List<PageRouteInfo>? children})
-      : super(
+class SubmitForApprovalRoute extends PageRouteInfo<SubmitForApprovalRouteArgs> {
+  SubmitForApprovalRoute({
+    Key? key,
+    int? refresh,
+    List<PageRouteInfo>? children,
+  }) : super(
           SubmitForApprovalRoute.name,
+          args: SubmitForApprovalRouteArgs(
+            key: key,
+            refresh: refresh,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'SubmitForApprovalRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<SubmitForApprovalRouteArgs> page =
+      PageInfo<SubmitForApprovalRouteArgs>(name);
+}
+
+class SubmitForApprovalRouteArgs {
+  const SubmitForApprovalRouteArgs({
+    this.key,
+    this.refresh,
+  });
+
+  final Key? key;
+
+  final int? refresh;
+
+  @override
+  String toString() {
+    return 'SubmitForApprovalRouteArgs{key: $key, refresh: $refresh}';
+  }
 }
 
 /// generated route for
@@ -592,45 +1560,16 @@ class SubmittedSaveSuccessRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [SyncLoadingPage]
-class SyncLoadingRoute extends PageRouteInfo<SyncLoadingRouteArgs> {
-  SyncLoadingRoute({
-    Key? key,
-    required int completed,
-    required int total,
-    List<PageRouteInfo>? children,
-  }) : super(
+class SyncLoadingRoute extends PageRouteInfo<void> {
+  const SyncLoadingRoute({List<PageRouteInfo>? children})
+      : super(
           SyncLoadingRoute.name,
-          args: SyncLoadingRouteArgs(
-            key: key,
-            completed: completed,
-            total: total,
-          ),
           initialChildren: children,
         );
 
   static const String name = 'SyncLoadingRoute';
 
-  static const PageInfo<SyncLoadingRouteArgs> page =
-      PageInfo<SyncLoadingRouteArgs>(name);
-}
-
-class SyncLoadingRouteArgs {
-  const SyncLoadingRouteArgs({
-    this.key,
-    required this.completed,
-    required this.total,
-  });
-
-  final Key? key;
-
-  final int completed;
-
-  final int total;
-
-  @override
-  String toString() {
-    return 'SyncLoadingRouteArgs{key: $key, completed: $completed, total: $total}';
-  }
+  static const PageInfo<void> page = PageInfo<void>(name);
 }
 
 /// generated route for

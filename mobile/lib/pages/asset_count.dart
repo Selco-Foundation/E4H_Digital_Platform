@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/input_wrapper.dart';
@@ -10,15 +9,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/app_init/app_init.dart';
+import '../blocs/asset_type/asset_type.dart';
+import '../blocs/cache_activity_facility_asset/cache_activity_facility_asset.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/cache_project_asset/cache_project_asset.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../data/nosql/cache_activity_facility_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
-import '../data/nosql/cache_project_asset.dart';
 import '../model/asset_count/asset_count.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -31,7 +32,11 @@ class AssetCountPage extends StatefulWidget {
 }
 
 class _AssetCountPageState extends State<AssetCountPage> {
-  String? _currentProjectId;
+  static const String _inverterType = 'inverter';
+  static const String _batteryType = 'battery';
+  static const String _panelType = 'panel';
+
+  String? _currentActivityFacilityId;
   AssetCount? inverterData, batteryData, panelData;
 
   int _inverterCount = 0;
@@ -47,36 +52,29 @@ class _AssetCountPageState extends State<AssetCountPage> {
   }
 
   void _setupInitial() {
-    // Grab selected project and dispatch initial load
-    final sel = context.read<SelectedProjectBloc>().state;
+    final sel = context.read<SelectedActivityFacilityBloc>().state;
     sel.whenOrNull(selected: (proj) {
-      _currentProjectId = proj.project.id;
-      _dispatchInitialLoad(proj.project.id);
+      _currentActivityFacilityId = proj.activityFacility.id;
     });
 
-    // Listen for loaded counts to seed local values
     _countSub = context.read<CacheAssetCountBloc>().stream.listen((state) {
       state.maybeWhen(
         loaded: (entries) {
           if (!mounted) return;
-          setState(() {
-            _inverterCount = entries
-                    .firstWhereOrNull((e) => e.assetType == 'inverter')
-                    ?.count ??
-                0;
-            _batteryCount = entries
-                    .firstWhereOrNull((e) => e.assetType == 'battery')
-                    ?.count ??
-                0;
-            _panelCount = entries
-                    .firstWhereOrNull((e) => e.assetType == 'panel')
-                    ?.count ??
-                0;
-          });
+          _applyEntries(entries);
         },
         orElse: () {},
       );
     });
+
+    context.read<CacheAssetCountBloc>().state.maybeWhen(
+          loaded: (entries) => _applyEntries(entries),
+          orElse: () {},
+        );
+
+    if (_currentActivityFacilityId != null) {
+      _dispatchInitialLoad(_currentActivityFacilityId!);
+    }
   }
 
   @override
@@ -86,9 +84,10 @@ class _AssetCountPageState extends State<AssetCountPage> {
   }
 
   void _dispatchInitialLoad(String projectId) {
-    context.read<CacheProjectAssetBloc>().add(
-          CacheProjectAssetEvent.update(
-            CacheProjectAsset(projectId: projectId, progress: 1),
+    context.read<CacheActivityFacilityAssetBloc>().add(
+          CacheActivityFacilityAssetEvent.update(
+            CacheActivityFacilityAsset(
+                activityFacilityId: projectId, progress: 1),
           ),
         );
     context.read<CacheAssetCountBloc>().add(
@@ -96,8 +95,53 @@ class _AssetCountPageState extends State<AssetCountPage> {
         );
   }
 
+  String _normalizeAssetType(String value) => value.trim().toLowerCase();
+
+  int _compareEntries(CacheAssetCount a, CacheAssetCount b) {
+    final aTime = a.updatedAt ?? a.createdAt;
+    final bTime = b.updatedAt ?? b.createdAt;
+    final byTime = aTime.compareTo(bTime);
+    if (byTime != 0) return byTime;
+    return a.id.compareTo(b.id);
+  }
+
+  void _applyEntries(List<CacheAssetCount> entries) {
+    final projectId = _currentActivityFacilityId;
+    final scopedEntries = projectId == null
+        ? entries
+        : entries.where((e) => e.activityFacilityId == projectId);
+
+    final latestByType = <String, CacheAssetCount>{};
+    for (final entry in scopedEntries) {
+      final type = _normalizeAssetType(entry.assetType);
+      if (type != _inverterType && type != _batteryType && type != _panelType) {
+        continue;
+      }
+      final existing = latestByType[type];
+      if (existing == null || _compareEntries(existing, entry) < 0) {
+        latestByType[type] = entry;
+      }
+    }
+
+    final nextInverter = latestByType[_inverterType]?.count ?? 0;
+    final nextBattery = latestByType[_batteryType]?.count ?? 0;
+    final nextPanel = latestByType[_panelType]?.count ?? 0;
+
+    if (_inverterCount == nextInverter &&
+        _batteryCount == nextBattery &&
+        _panelCount == nextPanel) {
+      return;
+    }
+
+    setState(() {
+      _inverterCount = nextInverter;
+      _batteryCount = nextBattery;
+      _panelCount = nextPanel;
+    });
+  }
+
   bool get _disableFooter =>
-      _inverterCount == 0 || _batteryCount == 0 || _panelCount == 0;
+      _inverterCount == 0 && _batteryCount == 0 && _panelCount == 0;
 
   @override
   Widget build(BuildContext context) {
@@ -108,17 +152,17 @@ class _AssetCountPageState extends State<AssetCountPage> {
       body: BlocBuilder<AppInitialization, InitState>(
         builder: (_, init) {
           init.maybeWhen(
-            initialized: (_, list, __, ___, ____, _____, solutionDesign) {
-              // set min/max for each from list
-              final inv = list.firstWhere(
-                  (e) => e.data.assetTypeCode.toUpperCase() == 'INVERTER');
-              inverterData = inv.data;
-              final bat = list.firstWhere(
-                  (e) => e.data.assetTypeCode.toUpperCase() == 'BATTERY');
-              batteryData = bat.data;
-              final pnl = list.firstWhere(
-                  (e) => e.data.assetTypeCode.toUpperCase() == 'PANEL');
-              panelData = pnl.data;
+            initialized:
+                (_, list, __, ___, ____, _____, solutionDesign, ______) {
+              final inv = list.first.data.assetCount.firstWhere((e) =>
+                  e.assetTypeCode.toUpperCase() == ASSET_TYPES.INVERTER.name);
+              inverterData = inv;
+              final bat = list.first.data.assetCount.firstWhere((e) =>
+                  e.assetTypeCode.toUpperCase() == ASSET_TYPES.BATTERY.name);
+              batteryData = bat;
+              final pnl = list.first.data.assetCount.firstWhere((e) =>
+                  e.assetTypeCode.toUpperCase() == ASSET_TYPES.PANEL.name);
+              panelData = pnl;
             },
             orElse: () {},
           );
@@ -136,12 +180,14 @@ class _AssetCountPageState extends State<AssetCountPage> {
               isDisabled: _disableFooter,
               onPress: () async {
                 if (!_disableFooter) {
+                  context
+                      .read<AssetTypeBloc>()
+                      .add(const AssetTypeEvent.typeSelected(""));
                   await context.router
                       .push(const SelectAssetTypeRoute())
                       .then((_) {
-                    // this callback runs when SelectAssetTypeRoute is popped off to refresh the page for the counts
                     if (!mounted) return;
-                    _dispatchInitialLoad(_currentProjectId!);
+                    _dispatchInitialLoad(_currentActivityFacilityId!);
                   });
                 }
               },
@@ -156,17 +202,15 @@ class _AssetCountPageState extends State<AssetCountPage> {
                     Center(child: AppStepper(context: context)),
                     const SizedBox(height: spacer4),
                     DigitCard(children: [
-                      Text('Asset Count',
+                      Text(context.translate(i18.assetCount.title),
                           style: txt.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2)),
-                      Text('Choose the asset type',
+                      Text(context.translate(i18.assetCount.chooseAssetType),
                           style: txt.bodyL
                               .copyWith(color: theme.colorTheme.text.primary)),
                       const SizedBox(height: spacer2),
-
-                      // ─ Inverter ───────────────────────────────
                       LabeledField(
-                        label: 'Inverters',
+                        label: context.translate(i18.assetCount.inverters),
                         labelStyle: txt.headingS
                             .copyWith(color: theme.colorTheme.text.primary),
                         child: InputField(
@@ -181,22 +225,22 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           onChange: (val) {
                             final c = int.tryParse(val) ?? 0;
                             setState(() => _inverterCount = c);
-                            if (_currentProjectId != null) {
+                            if (_currentActivityFacilityId != null) {
                               context
                                   .read<CacheAssetCountBloc>()
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
-                                    projectId: _currentProjectId!,
-                                    assetType: 'inverter',
+                                    activityFacilityId:
+                                        _currentActivityFacilityId!,
+                                    assetType: _normalizeAssetType(
+                                        ASSET_TYPES.INVERTER.name),
                                     count: c,
                                   )));
                             }
                           },
                         ),
                       ),
-
-                      // ─ Battery ────────────────────────────────
                       LabeledField(
-                        label: 'Batteries',
+                        label: context.translate(i18.assetCount.batteries),
                         labelStyle: txt.headingS
                             .copyWith(color: theme.colorTheme.text.primary),
                         child: InputField(
@@ -211,22 +255,22 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           onChange: (val) {
                             final c = int.tryParse(val) ?? 0;
                             setState(() => _batteryCount = c);
-                            if (_currentProjectId != null) {
+                            if (_currentActivityFacilityId != null) {
                               context
                                   .read<CacheAssetCountBloc>()
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
-                                    projectId: _currentProjectId!,
-                                    assetType: 'battery',
+                                    activityFacilityId:
+                                        _currentActivityFacilityId!,
+                                    assetType: _normalizeAssetType(
+                                        ASSET_TYPES.BATTERY.name),
                                     count: c,
                                   )));
                             }
                           },
                         ),
                       ),
-
-                      // ─ Panel ─────────────────────────────────
                       LabeledField(
-                        label: 'Panels',
+                        label: context.translate(i18.assetCount.panels),
                         labelStyle: txt.headingS
                             .copyWith(color: theme.colorTheme.text.primary),
                         child: InputField(
@@ -241,12 +285,14 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           onChange: (val) {
                             final c = int.tryParse(val) ?? 0;
                             setState(() => _panelCount = c);
-                            if (_currentProjectId != null) {
+                            if (_currentActivityFacilityId != null) {
                               context
                                   .read<CacheAssetCountBloc>()
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
-                                    projectId: _currentProjectId!,
-                                    assetType: 'panel',
+                                    activityFacilityId:
+                                        _currentActivityFacilityId!,
+                                    assetType: _normalizeAssetType(
+                                        ASSET_TYPES.PANEL.name),
                                     count: c,
                                   )));
                             }

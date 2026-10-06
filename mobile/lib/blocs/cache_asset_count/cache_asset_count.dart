@@ -6,44 +6,70 @@ import '../../data/nosql/cache_asset_count.dart';
 
 part 'cache_asset_count.freezed.dart';
 
-/// BLoC responsible for CRUD and fetching all asset counts for a project
 class CacheAssetCountBloc
     extends Bloc<CacheAssetCountEvent, CacheAssetCountState> {
   final Isar isar;
 
   CacheAssetCountBloc(this.isar) : super(const CacheAssetCountState.initial()) {
     on<CacheAssetCountEventGet>(_getCacheAssetCount);
-    on<CacheAssetCountEventGetAll>(_getAllCacheAssetCounts); // new
+    on<CacheAssetCountEventGetAll>(_getAllCacheAssetCounts);
     on<CacheAssetCountEventAdd>(_addCacheAssetCount);
     on<CacheAssetCountEventUpdate>(_updateCacheAssetCount);
     on<CacheAssetCountEventDelete>(_deleteCacheAssetCount);
   }
 
-  /// Fetch a single assetType’s entry for [projectId]
+  String _normalizeAssetType(String value) => value.trim().toLowerCase();
+
+  int _compareEntries(CacheAssetCount a, CacheAssetCount b) {
+    final aTime = a.updatedAt ?? a.createdAt;
+    final bTime = b.updatedAt ?? b.createdAt;
+    final byTime = aTime.compareTo(bTime);
+    if (byTime != 0) return byTime;
+    return a.id.compareTo(b.id);
+  }
+
+  CacheAssetCount? _latestEntryForType(
+    List<CacheAssetCount> entries,
+    String normalizedAssetType,
+  ) {
+    CacheAssetCount? latest;
+    for (final entry in entries) {
+      if (_normalizeAssetType(entry.assetType) != normalizedAssetType) {
+        continue;
+      }
+      if (latest == null || _compareEntries(latest, entry) < 0) {
+        latest = entry;
+      }
+    }
+    return latest;
+  }
+
   Future<void> _getCacheAssetCount(
     CacheAssetCountEventGet event,
     Emitter<CacheAssetCountState> emit,
   ) async {
     emit(const CacheAssetCountState.loading());
     try {
+      final normalizedAssetType = _normalizeAssetType(event.assetType);
       final entries = await isar.cacheAssetCounts
           .where()
-          .projectIdEqualTo(event.projectId)
-          .filter()
-          .assetTypeEqualTo(event.assetType)
+          .activityFacilityIdEqualTo(event.projectId)
           .findAll();
+      final filtered = entries
+          .where((entry) =>
+              _normalizeAssetType(entry.assetType) == normalizedAssetType)
+          .toList();
 
-      if (entries.isEmpty) {
+      if (filtered.isEmpty) {
         emit(const CacheAssetCountState.notFound());
       } else {
-        emit(CacheAssetCountState.loaded(entries));
+        emit(CacheAssetCountState.loaded(filtered));
       }
     } catch (e) {
       emit(CacheAssetCountState.error(e.toString()));
     }
   }
 
-  /// NEW: Fetch *all* asset‐type entries for [projectId] in one shot
   Future<void> _getAllCacheAssetCounts(
     CacheAssetCountEventGetAll event,
     Emitter<CacheAssetCountState> emit,
@@ -52,8 +78,8 @@ class CacheAssetCountBloc
     try {
       final entries = await isar.cacheAssetCounts
           .where()
-          .projectIdEqualTo(event.projectId)
-          .findAll(); // no assetType filter
+          .activityFacilityIdEqualTo(event.projectId)
+          .findAll();
 
       if (entries.isEmpty) {
         emit(const CacheAssetCountState.notFound());
@@ -70,23 +96,45 @@ class CacheAssetCountBloc
     Emitter<CacheAssetCountState> emit,
   ) async {
     try {
+      final normalizedAssetType = _normalizeAssetType(event.entry.assetType);
+      final normalizedProgress = event.entry.progress;
+
       await isar.writeTxn(() async {
-        final existing = await isar.cacheAssetCounts
+        final entries = await isar.cacheAssetCounts
             .where()
-            .projectIdEqualTo(event.entry.projectId)
-            .filter()
-            .assetTypeEqualTo(event.entry.assetType)
-            .findFirst();
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
+            .findAll();
+        final existing = _latestEntryForType(entries, normalizedAssetType);
 
         if (existing != null) {
-          existing.count = event.entry.count ?? existing.count;
+          existing.assetType = normalizedAssetType;
+          existing.count = event.entry.count;
+          if (normalizedProgress != null) {
+            existing.progress = normalizedProgress;
+          }
           existing.updatedAt = DateTime.now();
           await isar.cacheAssetCounts.put(existing);
         } else {
-          await isar.cacheAssetCounts.put(event.entry);
+          await isar.cacheAssetCounts.put(
+            CacheAssetCount(
+              activityFacilityId: event.entry.activityFacilityId,
+              assetType: normalizedAssetType,
+              count: event.entry.count,
+              progress: normalizedProgress ?? 0,
+            ),
+          );
         }
       });
-      emit(CacheAssetCountState.added(event.entry));
+
+      final updatedEntries = await isar.cacheAssetCounts
+          .where()
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
+          .findAll();
+      final addedEntry =
+          _latestEntryForType(updatedEntries, normalizedAssetType);
+      if (addedEntry != null) {
+        emit(CacheAssetCountState.added(addedEntry));
+      }
     } catch (e) {
       emit(CacheAssetCountState.error(e.toString()));
     }
@@ -97,35 +145,37 @@ class CacheAssetCountBloc
     Emitter<CacheAssetCountState> emit,
   ) async {
     try {
+      final normalizedAssetType = _normalizeAssetType(event.entry.assetType);
+
       await isar.writeTxn(() async {
-        final existing = await isar.cacheAssetCounts
+        final entries = await isar.cacheAssetCounts
             .where()
-            .projectIdEqualTo(event.entry.projectId)
-            .filter()
-            .assetTypeEqualTo(event.entry.assetType)
-            .findFirst();
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
+            .findAll();
+        final existing = _latestEntryForType(entries, normalizedAssetType);
 
         if (existing != null) {
+          existing.assetType = normalizedAssetType;
           existing.progress = event.entry.progress;
           existing.updatedAt = DateTime.now();
           await isar.cacheAssetCounts.put(existing);
         } else {
           final newEntry = CacheAssetCount(
-            projectId: event.entry.projectId,
-            assetType: event.entry.assetType,
+            activityFacilityId: event.entry.activityFacilityId,
+            assetType: normalizedAssetType,
             progress: event.entry.progress,
-            count: 0,
+            count: event.entry.count,
           );
           await isar.cacheAssetCounts.put(newEntry);
         }
       });
 
-      final updatedEntry = await isar.cacheAssetCounts
+      final updatedEntries = await isar.cacheAssetCounts
           .where()
-          .projectIdEqualTo(event.entry.projectId)
-          .filter()
-          .assetTypeEqualTo(event.entry.assetType)
-          .findFirst();
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
+          .findAll();
+      final updatedEntry =
+          _latestEntryForType(updatedEntries, normalizedAssetType);
 
       if (updatedEntry != null) {
         emit(CacheAssetCountState.updated(updatedEntry));
@@ -152,25 +202,20 @@ class CacheAssetCountBloc
 
 @freezed
 class CacheAssetCountEvent with _$CacheAssetCountEvent {
-  /// Load one asset‐type’s count for [projectId]
   const factory CacheAssetCountEvent.get(
     String projectId,
     String assetType,
   ) = CacheAssetCountEventGet;
 
-  /// NEW: Load *all* counts for [projectId] at once
   const factory CacheAssetCountEvent.getAll(String projectId) =
       CacheAssetCountEventGetAll;
 
-  /// Insert or overwrite a single asset count record
   const factory CacheAssetCountEvent.add(CacheAssetCount entry) =
       CacheAssetCountEventAdd;
 
-  /// Update progress (or other fields) for an existing asset count entry
   const factory CacheAssetCountEvent.update(CacheAssetCount entry) =
       CacheAssetCountEventUpdate;
 
-  /// Delete by Isar id
   const factory CacheAssetCountEvent.delete(int id) =
       CacheAssetCountEventDelete;
 }

@@ -13,14 +13,25 @@ const WorkflowSchema = Schema(
   name: r'Workflow',
   id: 1996891966521180322,
   properties: {
-    r'documents': PropertySchema(
+    r'auditDetails': PropertySchema(
       id: 0,
+      name: r'auditDetails',
+      type: IsarType.object,
+      target: r'WorkflowAuditDetails',
+    ),
+    r'comment': PropertySchema(
+      id: 1,
+      name: r'comment',
+      type: IsarType.string,
+    ),
+    r'documents': PropertySchema(
+      id: 2,
       name: r'documents',
       type: IsarType.objectList,
       target: r'Document',
     ),
     r'rawJson': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'rawJson',
       type: IsarType.string,
     )
@@ -37,6 +48,20 @@ int _workflowEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.auditDetails;
+    if (value != null) {
+      bytesCount += 3 +
+          WorkflowAuditDetailsSchema.estimateSize(
+              value, allOffsets[WorkflowAuditDetails]!, allOffsets);
+    }
+  }
+  {
+    final value = object.comment;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   {
     final list = object.documents;
     if (list != null) {
@@ -65,13 +90,20 @@ void _workflowSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeObjectList<Document>(
+  writer.writeObject<WorkflowAuditDetails>(
     offsets[0],
+    allOffsets,
+    WorkflowAuditDetailsSchema.serialize,
+    object.auditDetails,
+  );
+  writer.writeString(offsets[1], object.comment);
+  writer.writeObjectList<Document>(
+    offsets[2],
     allOffsets,
     DocumentSchema.serialize,
     object.documents,
   );
-  writer.writeString(offsets[1], object.rawJson);
+  writer.writeString(offsets[3], object.rawJson);
 }
 
 Workflow _workflowDeserialize(
@@ -81,13 +113,19 @@ Workflow _workflowDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Workflow(
-    documents: reader.readObjectList<Document>(
+    auditDetails: reader.readObjectOrNull<WorkflowAuditDetails>(
       offsets[0],
+      WorkflowAuditDetailsSchema.deserialize,
+      allOffsets,
+    ),
+    comment: reader.readStringOrNull(offsets[1]),
+    documents: reader.readObjectList<Document>(
+      offsets[2],
       DocumentSchema.deserialize,
       allOffsets,
       Document(),
     ),
-    rawJson: reader.readStringOrNull(offsets[1]),
+    rawJson: reader.readStringOrNull(offsets[3]),
   );
   return object;
 }
@@ -100,13 +138,21 @@ P _workflowDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
+      return (reader.readObjectOrNull<WorkflowAuditDetails>(
+        offset,
+        WorkflowAuditDetailsSchema.deserialize,
+        allOffsets,
+      )) as P;
+    case 1:
+      return (reader.readStringOrNull(offset)) as P;
+    case 2:
       return (reader.readObjectList<Document>(
         offset,
         DocumentSchema.deserialize,
         allOffsets,
         Document(),
       )) as P;
-    case 1:
+    case 3:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -115,6 +161,169 @@ P _workflowDeserializeProp<P>(
 
 extension WorkflowQueryFilter
     on QueryBuilder<Workflow, Workflow, QFilterCondition> {
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> auditDetailsIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'auditDetails',
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition>
+      auditDetailsIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'auditDetails',
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'comment',
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'comment',
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'comment',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'comment',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'comment',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'comment',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'comment',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'comment',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'comment',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'comment',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'comment',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> commentIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'comment',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Workflow, Workflow, QAfterFilterCondition> documentsIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -368,6 +577,13 @@ extension WorkflowQueryFilter
 
 extension WorkflowQueryObject
     on QueryBuilder<Workflow, Workflow, QFilterCondition> {
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> auditDetails(
+      FilterQuery<WorkflowAuditDetails> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'auditDetails');
+    });
+  }
+
   QueryBuilder<Workflow, Workflow, QAfterFilterCondition> documentsElement(
       FilterQuery<Document> q) {
     return QueryBuilder.apply(this, (query) {

@@ -181,3 +181,215 @@ abstract class _System implements System {
   _$$SystemImplCopyWith<_$SystemImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
+
+SystemData _$SystemDataFromJson(Map<String, dynamic> json) {
+  return _SystemData.fromJson(json);
+}
+
+/// @nodoc
+mixin _$SystemData {
+  int get id => throw _privateConstructorUsedError;
+  @JsonKey(name: 'System')
+  List<System> get system => throw _privateConstructorUsedError;
+  String get module => throw _privateConstructorUsedError;
+  String get tenantId => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $SystemDataCopyWith<SystemData> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $SystemDataCopyWith<$Res> {
+  factory $SystemDataCopyWith(
+          SystemData value, $Res Function(SystemData) then) =
+      _$SystemDataCopyWithImpl<$Res, SystemData>;
+  @useResult
+  $Res call(
+      {int id,
+      @JsonKey(name: 'System') List<System> system,
+      String module,
+      String tenantId});
+}
+
+/// @nodoc
+class _$SystemDataCopyWithImpl<$Res, $Val extends SystemData>
+    implements $SystemDataCopyWith<$Res> {
+  _$SystemDataCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? system = null,
+    Object? module = null,
+    Object? tenantId = null,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      system: null == system
+          ? _value.system
+          : system // ignore: cast_nullable_to_non_nullable
+              as List<System>,
+      module: null == module
+          ? _value.module
+          : module // ignore: cast_nullable_to_non_nullable
+              as String,
+      tenantId: null == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$SystemDataImplCopyWith<$Res>
+    implements $SystemDataCopyWith<$Res> {
+  factory _$$SystemDataImplCopyWith(
+          _$SystemDataImpl value, $Res Function(_$SystemDataImpl) then) =
+      __$$SystemDataImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {int id,
+      @JsonKey(name: 'System') List<System> system,
+      String module,
+      String tenantId});
+}
+
+/// @nodoc
+class __$$SystemDataImplCopyWithImpl<$Res>
+    extends _$SystemDataCopyWithImpl<$Res, _$SystemDataImpl>
+    implements _$$SystemDataImplCopyWith<$Res> {
+  __$$SystemDataImplCopyWithImpl(
+      _$SystemDataImpl _value, $Res Function(_$SystemDataImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? system = null,
+    Object? module = null,
+    Object? tenantId = null,
+  }) {
+    return _then(_$SystemDataImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      system: null == system
+          ? _value._system
+          : system // ignore: cast_nullable_to_non_nullable
+              as List<System>,
+      module: null == module
+          ? _value.module
+          : module // ignore: cast_nullable_to_non_nullable
+              as String,
+      tenantId: null == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$SystemDataImpl implements _SystemData {
+  const _$SystemDataImpl(
+      {required this.id,
+      @JsonKey(name: 'System') required final List<System> system,
+      required this.module,
+      required this.tenantId})
+      : _system = system;
+
+  factory _$SystemDataImpl.fromJson(Map<String, dynamic> json) =>
+      _$$SystemDataImplFromJson(json);
+
+  @override
+  final int id;
+  final List<System> _system;
+  @override
+  @JsonKey(name: 'System')
+  List<System> get system {
+    if (_system is EqualUnmodifiableListView) return _system;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_system);
+  }
+
+  @override
+  final String module;
+  @override
+  final String tenantId;
+
+  @override
+  String toString() {
+    return 'SystemData(id: $id, system: $system, module: $module, tenantId: $tenantId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SystemDataImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            const DeepCollectionEquality().equals(other._system, _system) &&
+            (identical(other.module, module) || other.module == module) &&
+            (identical(other.tenantId, tenantId) ||
+                other.tenantId == tenantId));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, id,
+      const DeepCollectionEquality().hash(_system), module, tenantId);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SystemDataImplCopyWith<_$SystemDataImpl> get copyWith =>
+      __$$SystemDataImplCopyWithImpl<_$SystemDataImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$SystemDataImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _SystemData implements SystemData {
+  const factory _SystemData(
+      {required final int id,
+      @JsonKey(name: 'System') required final List<System> system,
+      required final String module,
+      required final String tenantId}) = _$SystemDataImpl;
+
+  factory _SystemData.fromJson(Map<String, dynamic> json) =
+      _$SystemDataImpl.fromJson;
+
+  @override
+  int get id;
+  @override
+  @JsonKey(name: 'System')
+  List<System> get system;
+  @override
+  String get module;
+  @override
+  String get tenantId;
+  @override
+  @JsonKey(ignore: true)
+  _$$SystemDataImplCopyWith<_$SystemDataImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}

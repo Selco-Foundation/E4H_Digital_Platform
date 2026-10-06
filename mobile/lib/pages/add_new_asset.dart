@@ -3,45 +3,45 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:digit_scanner/blocs/scanner.dart';
-import 'package:digit_scanner/pages/qr_scanner.dart';
 import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/models/DropdownModels.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
-import 'package:digit_ui_components/theme/colors.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_dropdown_input.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_text_form_input.dart';
 import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
-import 'package:digit_ui_components/widgets/atoms/upload_image.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:recase/recase.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_add_new_asset/cache_add_new_asset.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
 import '../router/app_router.dart';
+import '../utils/app_logger.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
+import '../widgets/customized_digit_widget/image_uploader.dart';
+import '../widgets/customized_digit_widget/qr_scanner.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 class AssetModel {
+  String? assetId;
+  String? documentId;
   String serialNumber;
   String capacity;
   String? capacityUnit;
@@ -58,6 +58,8 @@ class AssetModel {
   String? latitude;
   String? longitude;
   AssetModel({
+    this.assetId,
+    this.documentId,
     required this.serialNumber,
     this.capacity = '1',
     this.capacityUnit,
@@ -84,7 +86,10 @@ class AddNewAssetPage extends StatefulWidget {
 }
 
 class _AddNewAssetPageState extends State<AddNewAssetPage> {
-  String? _currentProjectId;
+  bool _isSaving = false;
+
+  String? _currentActivityFacilityId;
+  ActivityFacilityWorkflow? activityFacilityWorkflow;
   final List<AssetModel> _assets = [AssetModel(serialNumber: '')];
   String currentAssetType = "";
   late List<String> assetCapacity = [];
@@ -94,17 +99,64 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   late List<AssetType> assetTypeList = [];
   late List<String> typesField = [];
   late AssetType? selectedAssetType;
-  int? _scanningIndex;
 
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
-
-  // Cache for downloaded files
-  final Map<String, File> _fileCache = {};
-
-  // map from asset‐index to Future<File?> so we only fetch once
   final Map<int, Future<File?>> _cachedImageFutures = {};
+  final Map<int, String> _lastProcessedPickerPaths = {};
+  final Map<int, bool> _isProcessingImageSelection = {};
+  int _visibleAssetCount = 0;
+
+  List<AssetModel> get _visibleAssets {
+    final count = _visibleAssetCount.clamp(0, _assets.length);
+    return _assets.take(count).toList(growable: false);
+  }
+
+  int _requiredAssetCountFromState(CacheAssetCountState state) {
+    return state.maybeWhen(
+      loaded: (entries) =>
+          entries
+              .firstWhereOrNull((e) => e.assetType == currentAssetType)
+              ?.count ??
+          0,
+      added: (entry) => entry.assetType == currentAssetType ? entry.count : 0,
+      updated: (entry) => entry.assetType == currentAssetType ? entry.count : 0,
+      orElse: () => _visibleAssetCount,
+    );
+  }
+
+  int _requiredAssetCount() {
+    return _requiredAssetCountFromState(
+        context.read<CacheAssetCountBloc>().state);
+  }
+
+  AssetModel _buildBlankAsset() {
+    final asset = AssetModel(serialNumber: '');
+
+    if (_assets.isNotEmpty &&
+        (currentAssetType == 'battery' || currentAssetType == 'panel')) {
+      asset.batteryType = _assets.first.batteryType;
+      asset.batteryVoltage = _assets.first.batteryVoltage;
+      asset.batteryCapacity = _assets.first.batteryCapacity;
+      asset.panelCapacity = _assets.first.panelCapacity;
+    }
+
+    _applyPrefilledCapacityToAsset(asset);
+    return asset;
+  }
+
+  void _syncVisibleAssets(int requiredCount) {
+    if (requiredCount < 0) {
+      return;
+    }
+
+    while (_assets.length < requiredCount) {
+      _assets.add(_buildBlankAsset());
+    }
+
+    _visibleAssetCount = requiredCount;
+  }
 
   @override
   void initState() {
@@ -119,27 +171,53 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             panel: () => 'panel',
           );
 
-      context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
-        _currentProjectId = proj.project.id;
-        context
-            .read<CacheAssetCountBloc>()
-            .add(CacheAssetCountEvent.get(proj.project.id, currentAssetType));
+      context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
+          selected: (proj) {
+        setState(() {
+          _currentActivityFacilityId = proj.activityFacility.id;
+          activityFacilityWorkflow = proj;
+          _applyPrefilledCapacityToAllAssets();
+        });
+
+        context.read<CacheAssetCountBloc>().add(CacheAssetCountEvent.get(
+            proj.activityFacility.id, currentAssetType));
         context.read<CacheAddNewAssetBloc>().add(
-              CacheAddNewAssetEvent.get(proj.project.id, currentAssetType),
+              CacheAddNewAssetEvent.get(
+                  proj.activityFacility.id, currentAssetType),
             );
       });
 
       context.read<AppInitialization>().state.maybeWhen(
             orElse: () => [],
             initialized: (appConfig, assetCount, assetType, system, warranty,
-                brand, solutionDesign) {
-              assetTypeList = assetType
-                  .map((at) => at.data)
+                brand, solutionDesign, _) {
+              assetTypeList = assetType.first.data.assetType
+                  .map((at) => at)
                   .where((at) =>
                       at.code.toUpperCase() == currentAssetType.toUpperCase())
                   .toList();
 
-              final systemCode = system.lastOrNull?.data.code;
+              final selectedSolutionDesignCode = activityFacilityWorkflow
+                  ?.activityFacility
+                  .facility
+                  ?.facilityDetails
+                  ?.solar_solution_design_type;
+              final selectedSystemType = activityFacilityWorkflow
+                  ?.activityFacility.facility?.facilityDetails?.systemType
+                  ?.trim();
+
+              final matchedSystemCode = solutionDesign
+                  .map((m) => m.data)
+                  .firstWhereOrNull(
+                      (sd) => sd.code == selectedSolutionDesignCode)
+                  ?.systemCode;
+
+              final systemCode =
+                  (selectedSystemType != null && selectedSystemType.isNotEmpty)
+                      ? selectedSystemType
+                      : matchedSystemCode ??
+                          system.first.data.system.firstOrNull?.code;
+
               selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
                   asset.code.toUpperCase() == currentAssetType.toUpperCase());
 
@@ -166,8 +244,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   : [];
               voltageUom = voltageUomField?.options?.firstOrNull ?? '';
 
-              print("voltageUom $voltageUom");
-
               return assetType;
             },
           );
@@ -175,6 +251,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
     _locSub = locBloc.stream.listen((locationState) {
       if (locationState.latitude != null && locationState.longitude != null) {
+        if (!mounted) return;
         setState(() {
           _latitude = locationState.latitude;
           _longitude = locationState.longitude;
@@ -199,6 +276,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       final state = await locBloc.stream
           .firstWhere((s) => s.latitude != null && s.longitude != null)
           .timeout(timeout);
+      if (!mounted) return false;
       setState(() {
         _latitude = state.latitude;
         _longitude = state.longitude;
@@ -210,86 +288,127 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   }
 
   Future<void> _requestPermissions() async {
-    // Request camera and location permissions together
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
       Permission.locationWhenInUse,
     ].request();
 
+    if (!mounted) return;
+
     if (statuses[Permission.camera] != PermissionStatus.granted) {
       context.showSnackBar(
-        const SnackBar(
-            content: Text('Camera permission is required to scan QR codes')),
+        SnackBar(
+            content: Text(
+                context.translate(i18.addNewAsset.cameraPermissionRequired))),
       );
     }
 
     if (statuses[Permission.locationWhenInUse] != PermissionStatus.granted) {
       context.showSnackBar(
-        const SnackBar(
-            content: Text('Location permission is required to geotag photos')),
+        SnackBar(
+            content: Text(
+                context.translate(i18.addNewAsset.locationPermissionRequired))),
       );
     }
 
-    // Request location service after permissions
     final locBloc = context.read<LocationBloc>();
     locBloc.add(const LocationEvent.requestPermission());
     locBloc.add(const LocationEvent.requestService());
-  }
-
-  void _addNewAsset(int maxAssets) {
-    if (_assets.length < maxAssets) {
-      setState(() => _assets.add(AssetModel(serialNumber: '')));
-    } else {
-      context.showSnackBar(
-        SnackBar(
-          content: Text('Maximum of $maxAssets assets reached'),
-          backgroundColor: const Light().alertError,
-        ),
-      );
-    }
   }
 
   void _updateAsset(int index, String serial) {
     setState(() => _assets[index].serialNumber = serial);
   }
 
-  Future<File?> _getCachedFile(String path) async {
-    if (_fileCache.containsKey(path)) {
-      return _fileCache[path];
-    }
+  Future<void> _openScannerForAsset(int index) async {
+    final scannerBloc = context.read<DigitScannerBloc>();
+    scannerBloc.add(const DigitScannerEvent.handleScanner(qrCode: []));
 
-    if (isValidUuid(path)) {
-      try {
-        final uri = Uri.parse("$fileStoreFileUrl$path");
-        final response = await http.get(uri);
-        if (response.statusCode == 200) {
-          final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/${uri.pathSegments.last}');
-          await file.writeAsBytes(response.bodyBytes);
-          _fileCache[path] = file;
-          return file;
-        }
-      } catch (e) {
-        print('Error downloading image: $e');
-      }
-    } else {
-      final file = File(path);
-      if (await file.exists()) {
-        _fileCache[path] = file;
-        return file;
-      }
+    final selectedCode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => BlocProvider.value(
+          value: scannerBloc,
+          child: const DigitScannerPage(
+            quantity: 10,
+            isGS1code: false,
+            singleValue: true,
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    scannerBloc.add(const DigitScannerEvent.handleScanner(qrCode: []));
+
+    if (selectedCode != null && selectedCode.trim().isNotEmpty) {
+      _updateAsset(index, selectedCode.trim());
     }
-    return null;
+  }
+
+  String _prefilledCapacityFor(String assetType) {
+    final wf = activityFacilityWorkflow ??
+        context.read<SelectedActivityFacilityBloc>().state.maybeWhen(
+              selected: (proj) => proj,
+              orElse: () => null,
+            );
+
+    final ad = wf?.activityFacility.additionalDetails;
+    if (ad == null) return '';
+
+    switch (assetType.toLowerCase()) {
+      case 'battery':
+        return (ad.battery?.capacity ?? '').toString();
+      case 'inverter':
+        return (ad.inverter?.capacity ?? '').toString();
+      case 'panel':
+        return (ad.panel?.capacity ?? '').toString();
+      default:
+        return '';
+    }
+  }
+
+  void _applyPrefilledCapacityToAsset(AssetModel asset) {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    asset.capacity = cap;
+
+    switch (currentAssetType.toLowerCase()) {
+      case 'battery':
+        asset.batteryCapacity = cap;
+        break;
+      case 'panel':
+        asset.panelCapacity = cap;
+        break;
+      case 'inverter':
+        asset.inverterCapacity = cap;
+        break;
+    }
+  }
+
+  void _applyPrefilledCapacityToAllAssets() {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    for (final a in _assets) {
+      _applyPrefilledCapacityToAsset(a);
+    }
   }
 
   bool _isAssetComplete(AssetModel a, String assetType) {
-    // must always have serial + photo
-    if (a.serialNumber.isEmpty || a.photoPath == null) return false;
+    if (a.serialNumber.isEmpty ||
+        a.photoPath == null ||
+        a.latitude?.isNotEmpty != true ||
+        a.longitude?.isNotEmpty != true) {
+      return false;
+    }
 
     switch (assetType.toLowerCase()) {
       case 'battery':
         return a.batteryType?.isNotEmpty == true &&
-            a.batteryVoltage?.isNotEmpty == true &&
+            // Voltage input is hidden (see _batteryCapacity) — no longer required.
             a.batteryCapacity?.isNotEmpty == true;
       case 'panel':
         return a.panelCapacity?.isNotEmpty == true;
@@ -307,17 +426,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
     return MultiBlocListener(
       listeners: [
-        BlocListener<DigitScannerBloc, DigitScannerState>(
-          listener: (ctx, scanState) {
-            if (scanState.qrCodes.isNotEmpty && _scanningIndex != null) {
-              _updateAsset(_scanningIndex!, scanState.qrCodes.last);
-              ctx
-                  .read<DigitScannerBloc>()
-                  .add(const DigitScannerEvent.handleScanner(qrCode: []));
-              _scanningIndex = null;
-            }
-          },
-        ),
         BlocListener<CacheAddNewAssetBloc, CacheAddNewAssetState>(
           listener: (context, state) {
             state.maybeWhen(
@@ -325,7 +433,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 setState(() {
                   _assets.clear();
                   for (final entry in entries) {
-                    _assets.add(AssetModel(
+                    final assetModel = AssetModel(
+                      assetId: entry.assetId,
+                      documentId: entry.documentId,
                       serialNumber: entry.serialNumber,
                       capacity: entry.itemNumber,
                       unit: assetCapacityUom,
@@ -342,18 +452,49 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       inverterCapacityUnit:
                           entry.inverterCapacityUnit ?? assetCapacityUom,
                       currentUnit: entry.currentUnit,
-                    ));
+                    );
+                    _applyPrefilledCapacityToAsset(assetModel);
+                    _assets.add(assetModel);
                   }
+
+                  _syncVisibleAssets(_requiredAssetCount());
                 });
 
-                // 2) prefill the futures map so each card has its future ready
                 _cachedImageFutures.clear();
                 for (var i = 0; i < _assets.length; i++) {
                   final path = _assets[i].photoPath;
                   if (path != null) {
-                    _cachedImageFutures[i] = _getCachedFile(path);
+                    _cachedImageFutures[i] = getCachedFile(path);
                   }
                 }
+              },
+              orElse: () {},
+            );
+          },
+        ),
+        BlocListener<CacheAssetCountBloc, CacheAssetCountState>(
+          listener: (context, state) {
+            state.maybeWhen(
+              loaded: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
+              },
+              added: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
+              },
+              updated: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
               },
               orElse: () {},
             );
@@ -362,150 +503,156 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       ],
       child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
         builder: (ctx, assetTypeState) {
-          if (_currentProjectId != null && currentAssetType.isNotEmpty) {
-            context.read<CacheAssetCountBloc>().add(
-                CacheAssetCountEvent.get(_currentProjectId!, currentAssetType));
-          }
+          final maxAssets = _visibleAssetCount;
+          final visibleAssets = _visibleAssets;
+          final isDisabled = maxAssets == 0 ||
+              (visibleAssets.length != maxAssets ||
+                  visibleAssets
+                      .any((a) => !_isAssetComplete(a, currentAssetType))) ||
+              _isSaving;
 
-          return BlocSelector<CacheAssetCountBloc, CacheAssetCountState, int>(
-            selector: (st) => st.maybeWhen(
-              loaded: (entries) =>
-                  entries
-                      .firstWhereOrNull((e) => e.assetType == currentAssetType)
-                      ?.count ??
-                  0,
-              orElse: () => 0,
-            ),
-            builder: (ctx, maxAssets) {
-              final isDisabled = _assets.length != maxAssets ||
-                  _assets.any((a) => !_isAssetComplete(a, currentAssetType));
+          return Scaffold(
+            body: ScrollableContent(
+              header: const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              enableFixedDigitButton: true,
+              backgroundColor: theme.colorTheme.generic.background,
+              footer: FooterButton(
+                showSuffixIcon: false,
+                text: context.translate(i18.common.coreCommonNext),
+                isDisabled: isDisabled,
+                onPress: () async {
+                  if (isDisabled) return;
+                  if (_isSaving) return;
+                  final activityFacilityId = _currentActivityFacilityId;
+                  if (activityFacilityId == null) return;
 
-              return Scaffold(
-                body: ScrollableContent(
-                  header: const BackNavigationHelpHeaderWidget(
-                    showBackNavigation: true,
-                    showHelp: false,
-                  ),
-                  enableFixedDigitButton: true,
-                  backgroundColor: theme.colorTheme.generic.background,
-                  footer: FooterButton(
-                    showSuffixIcon: false,
-                    text: context.translate(i18.common.coreCommonNext),
-                    isDisabled: isDisabled,
-                    onPress: () async {
-                      if (isDisabled) return;
-                      context.read<CacheAddNewAssetBloc>().add(
-                          CacheAddNewAssetEvent.deleteAll(
-                              _currentProjectId!, currentAssetType));
+                  final addNewAssetBloc = context.read<CacheAddNewAssetBloc>();
+                  final assetCountBloc = context.read<CacheAssetCountBloc>();
+                  final router = context.router;
 
-                      // 2) await completion (either deleted or error)
-                      await context
-                          .read<CacheAddNewAssetBloc>()
-                          .stream
-                          .firstWhere((state) => state.maybeWhen(
-                                deleted: () => true,
-                                error: (_) => true,
-                                orElse: () => false,
-                              ));
+                  setState(() {
+                    _isSaving = true;
+                  });
 
-                      for (final asset in _assets) {
-                        final newAsset = CacheAddNewAsset(
-                          projectId: _currentProjectId!,
-                          assetType: currentAssetType,
-                          itemNumber: asset.capacity,
-                          serialNumber: asset.serialNumber,
-                          documentType: "ASSET",
-                          photoPath: asset.photoPath!,
-                          longitude: asset.longitude!,
-                          latitude: asset.latitude!,
-                          capacityUnit: asset.capacityUnit ?? assetCapacityUom,
-                          panelCapacity: asset.panelCapacity,
-                          batteryCapacity: asset.batteryCapacity,
-                          batteryVoltage: asset.batteryVoltage,
-                          batteryType: asset.batteryType,
-                          voltageUnit: voltageUom ?? asset.voltageUnit,
-                          inverterCapacity: asset.inverterCapacity,
-                          inverterCapacityUnit:
-                              asset.inverterCapacityUnit ?? assetCapacityUom,
-                          currentUnit: asset.currentUnit,
-                        );
-                        context
-                            .read<CacheAddNewAssetBloc>()
-                            .add(CacheAddNewAssetEvent.add(newAsset));
-                      }
-                      if (_currentProjectId != null) {
-                        context.read<CacheAssetCountBloc>().add(
-                              CacheAssetCountEvent.update(
-                                CacheAssetCount(
-                                  projectId: _currentProjectId!,
-                                  assetType: currentAssetType,
-                                  progress: 5,
-                                ),
-                              ),
-                            );
-                      }
-                      context.router.push(const MediaUploadRoute());
-                    },
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: spacer2, vertical: spacer4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AppStepper(context: context, activeIndex: 4),
-                            ],
-                          ),
-                          const SizedBox(height: spacer4),
-                          assetTypeState.maybeWhen(
-                              battery: () => _batteryCapacity(theme, textTheme,
-                                  _assets.first, currentAssetType.titleCase),
-                              panel: () => _panelCapacity(
-                                    theme,
-                                    textTheme,
-                                    _assets.first,
-                                    currentAssetType.titleCase,
-                                  ),
-                              orElse: () => const SizedBox()),
-                          ..._assets.asMap().entries.map((e) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: spacer4),
-                              child: _buildAssetCard(
-                                context: context,
-                                theme: theme,
-                                textTheme: textTheme,
-                                heading: currentAssetType.titleCase,
-                                index: e.key,
-                                asset: e.value,
-                                maxAsset: maxAssets,
-                                assetType: currentAssetType,
-                              ),
-                            );
-                          }),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              GestureDetector(
-                                onTap: () => _addNewAsset(maxAssets),
-                                child: Text(
-                                  'Add New Asset',
-                                  style: textTheme.headingM.copyWith(
-                                      color: theme.colorTheme.primary.primary1),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                  try {
+                    final entries = visibleAssets.map((asset) {
+                      return CacheAddNewAsset(
+                        assetId: asset.assetId,
+                        documentId: asset.documentId,
+                        activityFacilityId: activityFacilityId,
+                        assetType: currentAssetType,
+                        itemNumber: asset.capacity,
+                        serialNumber: asset.serialNumber,
+                        documentType: "ASSET",
+                        photoPath: asset.photoPath!,
+                        longitude: asset.longitude!,
+                        latitude: asset.latitude!,
+                        capacityUnit: asset.capacityUnit ?? assetCapacityUom,
+                        panelCapacity: asset.panelCapacity,
+                        batteryCapacity: asset.batteryCapacity,
+                        batteryVoltage: asset.batteryVoltage,
+                        batteryType: asset.batteryType,
+                        voltageUnit: asset.voltageUnit ?? voltageUom,
+                        inverterCapacity: asset.inverterCapacity,
+                        inverterCapacityUnit:
+                            asset.inverterCapacityUnit ?? assetCapacityUom,
+                        currentUnit: asset.currentUnit,
+                      );
+                    }).toList();
+
+                    addNewAssetBloc.add(
+                      CacheAddNewAssetEvent.replaceAll(
+                        activityFacilityId,
+                        currentAssetType,
+                        entries,
+                      ),
+                    );
+
+                    final result = await addNewAssetBloc.stream
+                        .firstWhere((state) => state.maybeWhen(
+                              loaded: (_) => true,
+                              error: (_) => true,
+                              orElse: () => false,
+                            ));
+
+                    final errMsg = result.maybeWhen(
+                      error: (m) => m,
+                      orElse: () => null,
+                    );
+
+                    if (errMsg != null) {
+                      throw Exception(errMsg);
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isSaving = false;
+                      });
+                    }
+                  }
+                  if (!mounted) return;
+                  assetCountBloc.add(
+                    CacheAssetCountEvent.update(
+                      CacheAssetCount(
+                        activityFacilityId: activityFacilityId,
+                        assetType: currentAssetType,
+                        progress: 5,
                       ),
                     ),
-                  ],
+                  );
+                  router.push(const MediaUploadRoute());
+                },
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: spacer2, vertical: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AppStepper(context: context, activeIndex: 4),
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      assetTypeState.maybeWhen(
+                          battery: () => _batteryCapacity(
+                              theme,
+                              textTheme,
+                              _assets,
+                              assetTypeDisplayName(currentAssetType)),
+                          panel: () => _panelCapacity(
+                                theme,
+                                textTheme,
+                                _assets,
+                                assetTypeDisplayName(currentAssetType),
+                              ),
+                          orElse: () => const SizedBox()),
+                      ...visibleAssets.asMap().entries.map((e) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: spacer4),
+                          child: _buildAssetCard(
+                            context: context,
+                            theme: theme,
+                            textTheme: textTheme,
+                            heading: assetTypeDisplayName(currentAssetType),
+                            index: e.key,
+                            asset: e.value,
+                            maxAsset: maxAssets,
+                            assetType: currentAssetType,
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
           );
         },
       ),
@@ -523,7 +670,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     required String assetType,
   }) {
     return DigitCard(
-      key: ValueKey(asset.serialNumber.isEmpty ? index : asset.serialNumber),
+      key: ObjectKey(asset),
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -540,7 +687,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           ],
         ),
         LabeledField(
-          label: 'Serial Number',
+          label: context.translate(i18.common.serialNumber),
           capitalizedFirstLetter: false,
           child: Row(
             children: [
@@ -548,28 +695,13 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 flex: 6,
                 child: GestureDetector(
                   onTap: () {
-                    setState(() => _scanningIndex = index);
-                    context
-                        .read<DigitScannerBloc>()
-                        .add(const DigitScannerEvent.handleScanner(qrCode: []));
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => BlocProvider.value(
-                          value: context.read<DigitScannerBloc>(),
-                          child: const DigitScannerPage(
-                            quantity: 1,
-                            isGS1code: false,
-                          ),
-                        ),
-                      ),
-                    );
+                    _openScannerForAsset(index);
                   },
                   child: DigitTextFormInput(
                     initialValue: asset.serialNumber,
                     isDisabled: true,
                     innerLabel: asset.serialNumber.isEmpty
-                        ? 'Scan serial number'
+                        ? context.translate(i18.addNewAsset.scanSerialNumber)
                         : asset.serialNumber,
                     keyboardType: TextInputType.none,
                   ),
@@ -579,25 +711,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               Expanded(
                 flex: 3,
                 child: DigitButton(
-                  label: 'Scan',
+                  label: context.translate(i18.common.scan),
                   type: DigitButtonType.secondary,
                   onPressed: () {
-                    setState(() => _scanningIndex = index);
-                    context
-                        .read<DigitScannerBloc>()
-                        .add(const DigitScannerEvent.handleScanner(qrCode: []));
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => BlocProvider.value(
-                          value: context.read<DigitScannerBloc>(),
-                          child: const DigitScannerPage(
-                            quantity: 1,
-                            isGS1code: false,
-                          ),
-                        ),
-                      ),
-                    );
+                    _openScannerForAsset(index);
                   },
                   size: DigitButtonSize.large,
                   mainAxisSize: MainAxisSize.max,
@@ -609,13 +726,13 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         BlocBuilder<LocationBloc, LocationState>(
           builder: (context, locationState) {
             return LabeledField(
-              label: 'Supporting Photo',
+              label: context.translate(i18.addNewAsset.supportingPhoto),
               capitalizedFirstLetter: false,
               child: FutureBuilder<File?>(
                 future: _cachedImageFutures.putIfAbsent(
                   index,
                   () => asset.photoPath != null
-                      ? _getCachedFile(asset.photoPath!)
+                      ? getCachedFile(asset.photoPath!)
                       : Future.value(null),
                 ),
                 builder: (context, snapshot) {
@@ -625,26 +742,70 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
                   final file = snapshot.data;
                   return ImageUploader(
+                    // Stability caps for OEM camera intents (Samsung devices in particular).
+                    imageQuality: 60, // 0..100 (lower => smaller)
+                    maxWidth: 1280,
+                    maxHeight: 1280,
+                    requestFullMetadata: false,
                     initialImages: file != null ? [file] : [],
                     onImagesSelected: (List<File> imageFile) async {
-                      if (imageFile.isEmpty) return;
-                      final ok = await _ensureLocationLoaded();
-                      if (!ok) {
-                        context.showSnackBar(
-                          const SnackBar(
-                              content: Text('Could not fetch location')),
+                      if (imageFile.isEmpty) {
+                        _lastProcessedPickerPaths.remove(index);
+                        _isProcessingImageSelection.remove(index);
+                        return;
+                      }
+                      final selectedPath = imageFile.first.path;
+                      if (_lastProcessedPickerPaths[index] == selectedPath) {
+                        return;
+                      }
+                      if (_isProcessingImageSelection[index] == true) {
+                        AppLogger.instance.info(
+                          'AddNewAsset ignored duplicate image processing index=$index path=$selectedPath',
                         );
                         return;
                       }
-                      final copiedPath =
-                          await copyFileToLocalDir(imageFile.first);
-                      setState(() {
-                        asset.photoPath = copiedPath;
-                        asset.latitude = _latitude.toString();
-                        asset.longitude = _longitude.toString();
-                        // invalidate this card’s future so it reloads the new local file
-                        _cachedImageFutures.remove(index);
-                      });
+                      _isProcessingImageSelection[index] = true;
+                      _lastProcessedPickerPaths[index] = selectedPath;
+                      try {
+                        final copiedPath =
+                            await copyFileToLocalDir(imageFile.first);
+                        if (!mounted) return;
+
+                        setState(() {
+                          asset.photoPath = copiedPath;
+                          _cachedImageFutures.remove(index);
+                        });
+
+                        final hasLocation = await _ensureLocationLoaded();
+                        if (!mounted) return;
+
+                        if (hasLocation) {
+                          setState(() {
+                            asset.latitude = _latitude.toString();
+                            asset.longitude = _longitude.toString();
+                            _cachedImageFutures.remove(index);
+                          });
+                        } else {
+                          context.showSnackBar(
+                            SnackBar(
+                                content: Text(context.translate(
+                                    i18.common.couldNotFetchLocation))),
+                          );
+                        }
+                      } catch (e) {
+                        _lastProcessedPickerPaths.remove(index);
+                        AppLogger.instance.info(
+                          'AddNewAsset image processing failed index=$index path=$selectedPath error=$e',
+                        );
+                        if (!mounted) return;
+                        context.showSnackBar(
+                          SnackBar(
+                              content: Text(context.translate(
+                                  i18.addNewAsset.couldNotProcessImage))),
+                        );
+                      } finally {
+                        _isProcessingImageSelection.remove(index);
+                      }
                     },
                   );
                 },
@@ -654,213 +815,196 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         ),
         if (assetType == 'inverter') ...[
           const SizedBox(height: spacer4),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: LabeledField(
-                  label: 'Capacity',
-                  capitalizedFirstLetter: false,
-                  child: DigitDropdown(
-                    sentenceCaseEnabled: false,
-                    items: assetCapacity
-                        .map((type) => DropdownItem(name: type, code: type))
-                        .toList(),
-                    selectedOption: DropdownItem(
-                      name: asset.capacity ?? '',
-                      code: asset.capacity ?? '',
-                    ),
-                    onSelect: (DropdownItem selected) {
-                      setState(() {
-                        asset.capacity = selected.code;
-                        asset.inverterCapacity = selected.code;
-                      });
-                    },
-                  ),
-                ),
+          LabeledField(
+            label: context.translate(i18.common.capacity),
+            capitalizedFirstLetter: false,
+            child: DigitTextFormInput(
+              key: ValueKey(
+                  'inverter-cap-${_prefilledCapacityFor('inverter')}'),
+              controller: TextEditingController(
+                text: _prefilledCapacityFor('inverter'),
               ),
-              const SizedBox(width: spacer6),
-              Expanded(
-                flex: 1,
-                child: LabeledField(
-                  label: 'Unit',
-                  capitalizedFirstLetter: false,
-                  child: DigitTextFormInput(
-                    controller: TextEditingController(text: assetCapacityUom),
-                    isDisabled: true,
-                    readOnly: true,
-                    keyboardType: TextInputType.text,
-                  ),
-                ),
-              ),
-            ],
+              isDisabled: true,
+              readOnly: true,
+              keyboardType: TextInputType.text,
+            ),
           ),
+          // Inverter capacity unit — commented out, not deleted. The
+          // capacity field above now spans the full row width in its place.
+          // Expanded(
+          //   flex: 1,
+          //   child: LabeledField(
+          //     label: context.translate(i18.common.unit),
+          //     capitalizedFirstLetter: false,
+          //     child: DigitTextFormInput(
+          //       controller: TextEditingController(text: assetCapacityUom),
+          //       isDisabled: true,
+          //       readOnly: true,
+          //       keyboardType: TextInputType.text,
+          //     ),
+          //   ),
+          // ),
         ],
       ],
     );
   }
 
   Widget _batteryCapacity(ThemeData theme, DigitTextTheme textTheme,
-          AssetModel asset, String heading) =>
-      Column(
-        children: [
-          DigitCard(
-            children: [
-              Text(
-                '$heading Capacity',
-                style: textTheme.headingXl
-                    .copyWith(color: theme.colorTheme.primary.primary2),
-              ),
-              LabeledField(
-                label: '$heading Type',
-                capitalizedFirstLetter: false,
-                child: DigitDropdown(
-                    sentenceCaseEnabled: false,
-                    items: typesField
-                        .map((type) => DropdownItem(name: type, code: type))
-                        .toList(),
-                    selectedOption: DropdownItem(
-                      name: asset.batteryType ?? '',
-                      code: asset.batteryType ?? '',
-                    ),
-                    onSelect: (DropdownItem sel) {
-                      setState(() => asset.batteryType = sel.code);
-                    }),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: LabeledField(
-                      label: 'Voltage',
-                      capitalizedFirstLetter: false,
-                      child: DigitDropdown(
-                        sentenceCaseEnabled: false,
-                        items: voltages
-                            .map((type) => DropdownItem(name: type, code: type))
-                            .toList(),
-                        selectedOption: DropdownItem(
-                          name: asset.batteryVoltage ?? '',
-                          code: asset.batteryVoltage ?? '',
-                        ),
-                        onSelect: (DropdownItem sel) {
-                          setState(() => asset.batteryVoltage = sel.code);
-                        },
-                      ),
-                    ),
+      List<AssetModel> assets, String heading) {
+    final firstAsset =
+        assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
+
+    return Column(
+      children: [
+        DigitCard(
+          children: [
+            Text(
+              '$heading ${context.translate(i18.common.capacity)}',
+              style: textTheme.headingXl
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            LabeledField(
+              label: '$heading ${context.translate(i18.addNewAsset.type)}',
+              capitalizedFirstLetter: false,
+              child: DigitDropdown(
+                  sentenceCaseEnabled: false,
+                  items: typesField
+                      .map((type) => DropdownItem(name: type, code: type))
+                      .toList(),
+                  selectedOption: DropdownItem(
+                    name: firstAsset.batteryType ?? '',
+                    code: firstAsset.batteryType ?? '',
                   ),
-                  const SizedBox(width: spacer6),
-                  Expanded(
-                    flex: 1,
-                    child: LabeledField(
-                      label: 'Unit',
-                      capitalizedFirstLetter: false,
-                      child: DigitTextFormInput(
-                        controller: TextEditingController(),
-                        isDisabled: true,
-                        initialValue: '$voltageUom',
-                        keyboardType: TextInputType.text,
-                      ),
-                    ),
-                  ),
-                ],
+                  onSelect: (DropdownItem sel) {
+                    setState(() {
+                      for (var asset in assets) {
+                        asset.batteryType = sel.code;
+                      }
+                    });
+                  }),
+            ),
+            // Battery voltage dropdown + its unit field — commented out, not deleted.
+            // Row(
+            //   children: [
+            //     Expanded(
+            //       flex: 3,
+            //       child: LabeledField(
+            //         label: context.translate(i18.common.voltage),
+            //         capitalizedFirstLetter: false,
+            //         child: DigitDropdown(
+            //           sentenceCaseEnabled: false,
+            //           items: voltages
+            //               .map((type) => DropdownItem(name: type, code: type))
+            //               .toList(),
+            //           selectedOption: DropdownItem(
+            //             name: firstAsset.batteryVoltage ?? '',
+            //             code: firstAsset.batteryVoltage ?? '',
+            //           ),
+            //           onSelect: (DropdownItem sel) {
+            //             setState(() {
+            //               for (var asset in assets) {
+            //                 asset.batteryVoltage = sel.code;
+            //               }
+            //             });
+            //           },
+            //         ),
+            //       ),
+            //     ),
+            //     const SizedBox(width: spacer6),
+            //     Expanded(
+            //       flex: 1,
+            //       child: LabeledField(
+            //         label: context.translate(i18.common.unit),
+            //         capitalizedFirstLetter: false,
+            //         child: DigitTextFormInput(
+            //           controller: TextEditingController(),
+            //           isDisabled: true,
+            //           initialValue: voltageUom,
+            //           keyboardType: TextInputType.text,
+            //         ),
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            LabeledField(
+              label: context.translate(i18.common.capacity),
+              capitalizedFirstLetter: false,
+              child: DigitTextFormInput(
+                key: ValueKey(
+                    'battery-cap-${_prefilledCapacityFor('battery')}'),
+                controller: TextEditingController(
+                  text: _prefilledCapacityFor('battery'),
+                ),
+                isDisabled: true,
+                readOnly: true,
+                keyboardType: TextInputType.text,
               ),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: LabeledField(
-                      label: 'Current',
-                      capitalizedFirstLetter: false,
-                      child: DigitDropdown(
-                        sentenceCaseEnabled: false,
-                        items: assetCapacity
-                            .map((type) => DropdownItem(name: type, code: type))
-                            .toList(),
-                        selectedOption: DropdownItem(
-                          name: asset.batteryCapacity ?? '',
-                          code: asset.batteryCapacity ?? '',
-                        ),
-                        onSelect: (DropdownItem sel) {
-                          setState(() => asset.batteryCapacity = sel.code);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: spacer6),
-                  Expanded(
-                    flex: 1,
-                    child: LabeledField(
-                      label: 'Unit',
-                      capitalizedFirstLetter: false,
-                      child: DigitTextFormInput(
-                        controller: TextEditingController(),
-                        isDisabled: true,
-                        initialValue: assetCapacityUom,
-                        keyboardType: TextInputType.text,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: spacer8),
-        ],
-      );
+            ),
+            // Current-field unit — commented out, not deleted. The Current
+            // field above now spans the full row width in its place.
+            // Expanded(
+            //   flex: 1,
+            //   child: LabeledField(
+            //     label: context.translate(i18.common.unit),
+            //     capitalizedFirstLetter: false,
+            //     child: DigitTextFormInput(
+            //       controller: TextEditingController(),
+            //       isDisabled: true,
+            //       initialValue: assetCapacityUom,
+            //       keyboardType: TextInputType.text,
+            //     ),
+            //   ),
+            // ),
+          ],
+        ),
+        const SizedBox(height: spacer8),
+      ],
+    );
+  }
 
   Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
-          AssetModel asset, String heading) =>
-      Column(
-        children: [
-          DigitCard(
-            children: [
-              Text(
-                '$heading Capacity',
-                style: textTheme.headingXl
-                    .copyWith(color: theme.colorTheme.primary.primary2),
+      List<AssetModel> assets, String heading) {
+    return Column(
+      children: [
+        DigitCard(
+          children: [
+            Text(
+              '$heading ${context.translate(i18.common.capacity)}',
+              style: textTheme.headingXl
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            LabeledField(
+              label: context.translate(i18.common.capacity),
+              capitalizedFirstLetter: false,
+              child: DigitTextFormInput(
+                key: ValueKey('panel-cap-${_prefilledCapacityFor('panel')}'),
+                controller: TextEditingController(
+                  text: _prefilledCapacityFor('panel'),
+                ),
+                isDisabled: true,
+                readOnly: true,
+                keyboardType: TextInputType.text,
               ),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: LabeledField(
-                      label: 'Voltage',
-                      capitalizedFirstLetter: false,
-                      child: DigitDropdown(
-                          sentenceCaseEnabled: false,
-                          items: assetCapacity
-                              .map((type) =>
-                                  DropdownItem(name: type, code: type))
-                              .toList(),
-                          selectedOption: DropdownItem(
-                            name: asset.panelCapacity ?? '',
-                            code: asset.panelCapacity ?? '',
-                          ),
-                          onSelect: (DropdownItem sel) {
-                            setState(() => asset.panelCapacity = sel.code);
-                          }),
-                    ),
-                  ),
-                  const SizedBox(width: spacer6),
-                  Expanded(
-                    flex: 1,
-                    child: LabeledField(
-                      label: 'Unit',
-                      capitalizedFirstLetter: false,
-                      child: DigitTextFormInput(
-                        controller: TextEditingController(),
-                        isDisabled: true,
-                        initialValue: assetCapacityUom,
-                        keyboardType: TextInputType.text,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: spacer8),
-        ],
-      );
+            ),
+            // Panel capacity unit — commented out, not deleted. The
+            // capacity field above now spans the full row width in its place.
+            // Expanded(
+            //   flex: 1,
+            //   child: LabeledField(
+            //     label: context.translate(i18.common.unit),
+            //     capitalizedFirstLetter: false,
+            //     child: DigitTextFormInput(
+            //       controller: TextEditingController(),
+            //       isDisabled: true,
+            //       initialValue: assetCapacityUom,
+            //       keyboardType: TextInputType.text,
+            //     ),
+            //   ),
+            // ),
+          ],
+        ),
+        const SizedBox(height: spacer8),
+      ],
+    );
+  }
 }

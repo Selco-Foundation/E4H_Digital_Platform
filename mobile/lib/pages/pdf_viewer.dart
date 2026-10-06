@@ -8,11 +8,13 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../utils/app_logger.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
 class PdfViewerPage extends StatefulWidget {
-  /// May be a local file path or a remote URL.
   final String path;
   const PdfViewerPage({@PathParam() required this.path, super.key});
 
@@ -35,7 +37,6 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   Future<void> _preparePdf() async {
     String filePath = widget.path;
 
-    // If it's a URL, download it
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       final uri = Uri.parse(filePath);
       final response = await http.get(uri);
@@ -45,7 +46,6 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
         await tmp.writeAsBytes(response.bodyBytes);
         filePath = tmp.path;
       } else {
-        // download failed
         setState(() {
           _isLoading = false;
           _localPath = null;
@@ -74,40 +74,39 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
           if (_isLoading) ...[
             const Expanded(child: Center(child: CircularProgressIndicator()))
           ] else if (_localPath == null) ...[
-            const Expanded(
-                child: Center(child: Text('Failed to load document')))
+            Expanded(
+                child: Center(
+                    child: Text(
+                        context.translate(i18.pdfViewer.failedToLoadDocument))))
           ] else ...[
-            // Page indicator
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text('Page ${_currentPage + 1} of $_pages'),
+              child: Text(
+                  '${context.translate(i18.pdfViewer.pageOf)} ${_currentPage + 1} ${context.translate(i18.pdfViewer.of)} $_pages'),
             ),
-
-            // The PDF itself fills the remaining space and handles swipes
             Expanded(
               child: PDFView(
                 filePath: _localPath,
                 enableSwipe: true,
-                swipeHorizontal: false, // vertical scroll
+                swipeHorizontal: false,
                 autoSpacing: true,
                 pageFling: true,
-                fitPolicy: FitPolicy.WIDTH, // fill width, stack pages
+                fitPolicy: FitPolicy.WIDTH,
                 onRender: (pages) {
                   setState(() => _pages = pages ?? 0);
                 },
-                onViewCreated: (controller) {
-                  // if you need it later
-                },
+                onViewCreated: (controller) {},
                 onPageChanged: (page, _) {
                   setState(() => _currentPage = page ?? 0);
                 },
                 onError: (err) {
-                  // handle generic PDF errors
-                  debugPrint('PDF error: $err');
+                  AppLogger.instance
+                      .error(title: "PDF error: ", message: err.toString());
                 },
                 onPageError: (page, err) {
-                  // handle page‐specific errors
-                  debugPrint('PDF page $page error: $err');
+                  AppLogger.instance.error(
+                      title: "PDF Page error: ",
+                      message: 'PDF page $page error: $err');
                 },
               ),
             ),

@@ -16,20 +16,20 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$OverallAssetSummaryEvent {
-  String get projectId => throw _privateConstructorUsedError;
+  String get activityFacilityId => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) loadCounts,
+    required TResult Function(String activityFacilityId) loadCounts,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? loadCounts,
+    TResult? Function(String activityFacilityId)? loadCounts,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? loadCounts,
+    TResult Function(String activityFacilityId)? loadCounts,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -62,7 +62,7 @@ abstract class $OverallAssetSummaryEventCopyWith<$Res> {
           $Res Function(OverallAssetSummaryEvent) then) =
       _$OverallAssetSummaryEventCopyWithImpl<$Res, OverallAssetSummaryEvent>;
   @useResult
-  $Res call({String projectId});
+  $Res call({String activityFacilityId});
 }
 
 /// @nodoc
@@ -79,12 +79,12 @@ class _$OverallAssetSummaryEventCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
   }) {
     return _then(_value.copyWith(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
     ) as $Val);
   }
@@ -99,7 +99,7 @@ abstract class _$$OverallAssetSummaryEventLoadCountsImplCopyWith<$Res>
       __$$OverallAssetSummaryEventLoadCountsImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId});
+  $Res call({String activityFacilityId});
 }
 
 /// @nodoc
@@ -115,12 +115,12 @@ class __$$OverallAssetSummaryEventLoadCountsImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
   }) {
     return _then(_$OverallAssetSummaryEventLoadCountsImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -130,14 +130,15 @@ class __$$OverallAssetSummaryEventLoadCountsImplCopyWithImpl<$Res>
 
 class _$OverallAssetSummaryEventLoadCountsImpl
     implements OverallAssetSummaryEventLoadCounts {
-  const _$OverallAssetSummaryEventLoadCountsImpl({required this.projectId});
+  const _$OverallAssetSummaryEventLoadCountsImpl(
+      {required this.activityFacilityId});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
 
   @override
   String toString() {
-    return 'OverallAssetSummaryEvent.loadCounts(projectId: $projectId)';
+    return 'OverallAssetSummaryEvent.loadCounts(activityFacilityId: $activityFacilityId)';
   }
 
   @override
@@ -145,12 +146,12 @@ class _$OverallAssetSummaryEventLoadCountsImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$OverallAssetSummaryEventLoadCountsImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId));
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId);
 
   @JsonKey(ignore: true)
   @override
@@ -163,27 +164,27 @@ class _$OverallAssetSummaryEventLoadCountsImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) loadCounts,
+    required TResult Function(String activityFacilityId) loadCounts,
   }) {
-    return loadCounts(projectId);
+    return loadCounts(activityFacilityId);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? loadCounts,
+    TResult? Function(String activityFacilityId)? loadCounts,
   }) {
-    return loadCounts?.call(projectId);
+    return loadCounts?.call(activityFacilityId);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? loadCounts,
+    TResult Function(String activityFacilityId)? loadCounts,
     required TResult orElse(),
   }) {
     if (loadCounts != null) {
-      return loadCounts(projectId);
+      return loadCounts(activityFacilityId);
     }
     return orElse();
   }
@@ -221,11 +222,11 @@ class _$OverallAssetSummaryEventLoadCountsImpl
 abstract class OverallAssetSummaryEventLoadCounts
     implements OverallAssetSummaryEvent {
   const factory OverallAssetSummaryEventLoadCounts(
-          {required final String projectId}) =
+          {required final String activityFacilityId}) =
       _$OverallAssetSummaryEventLoadCountsImpl;
 
   @override
-  String get projectId;
+  String get activityFacilityId;
   @override
   @JsonKey(ignore: true)
   _$$OverallAssetSummaryEventLoadCountsImplCopyWith<

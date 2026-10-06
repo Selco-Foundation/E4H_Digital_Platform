@@ -3,21 +3,20 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'user_type.freezed.dart';
 
-// states
 @freezed
 class UserTypeState with _$UserTypeState {
   const factory UserTypeState.initial() = UserTypeInitial;
   const factory UserTypeState.staff() = UserTypeStaff;
   const factory UserTypeState.supervisor() = UserTypeSupervisor;
+  const factory UserTypeState.amc() = UserTypeAMC;
+  const factory UserTypeState.assessor() = UserTypeAssessor;
 }
 
-// events
 @freezed
 class UserTypeEvent with _$UserTypeEvent {
   const factory UserTypeEvent.typeSelected(String userType) = UserTypeSelected;
 }
 
-// bloc
 class UserTypeBloc extends Bloc<UserTypeEvent, UserTypeState> {
   UserTypeBloc() : super(const UserTypeState.initial()) {
     on<UserTypeSelected>(_onTypeSelected);
@@ -36,6 +35,12 @@ class UserTypeBloc extends Bloc<UserTypeEvent, UserTypeState> {
         break;
       case 'supervisor':
         emit(const UserTypeState.supervisor());
+        break;
+      case 'amc':
+        emit(const UserTypeState.amc());
+        break;
+      case 'assessor':
+        emit(const UserTypeState.assessor());
         break;
       default:
         emit(const UserTypeState.staff());

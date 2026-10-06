@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+4
 
 environment:
   sdk: '>=3.0.0 <=4.0.0'
@@ -20,7 +20,7 @@ dependencies:
   dart_mappable: ^4.2.2
   digit_data_model: ^1.0.6
   digit_dss: ^1.0.4
-  digit_ui_components: ^0.2.1+1
+  digit_ui_components: ^0.2.3+1
   dio: ^5.4.3+1
   disable_battery_optimization: ^1.1.1
   drift: ^2.18.0
@@ -43,16 +43,26 @@ dependencies:
   pretty_dio_logger: ^1.3.1
   package_info_plus: ^8.0.0
   reactive_forms: ^17.0.0
+  synchronized: ^3.1.0+1
   shared_preferences: ^2.2.3
-  digit_scanner: ^1.0.5
   qr_flutter: ^4.1.0
   shimmer: ^3.0.0
   cached_network_image: ^3.4.0
   open_file: ^3.5.4
   permission_handler: ^11.3.1
   video_player: ^2.9.5
+  webview_flutter: 4.8.0
   flutter_pdfview: ^1.4.1+1
   internet_connection_checker_plus: ^2.7.2
+  image_picker: ^1.1.2
+  image_picker_android: 0.8.12+12
+  image_picker_platform_interface: 2.10.1
+  digit_scanner: ^1.0.6+4
+  digit_forms_engine: 0.0.9-dev
+  flutter_local_notifications: ^19.5.0
+  firebase_core: ^2.32.0
+  firebase_crashlytics: 3.5.7
+  file_picker: ^8.0.7
 
 dependency_overrides:
   camera_android_camerax: ^0.5.0
@@ -83,7 +93,6 @@ flutter:
     - assets/icons/svg/
     - assets/animated_json/
     - assets/images/
-    - assets/mocks/
 
   fonts:
     - family: Roboto

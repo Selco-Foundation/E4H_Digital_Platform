@@ -12,12 +12,12 @@ _$AssetDetailsImpl _$$AssetDetailsImplFromJson(Map<String, dynamic> json) =>
       totalCapacityUnit: _anyToString(json['totalCapacityUnit']),
       totalCapacityUOM: _anyToString(json['totalCapacityUOM']),
       capacityUnit: _anyToString(json['capacityUnit']),
-      panelCapacity: _stringOrNumToDouble(json['panelCapacity']),
+      panelCapacity: _anyToString(json['panelCapacity']),
       batteryType: _anyToString(json['batteryType']),
       batteryVoltage: _stringOrNumToDouble(json['batteryVoltage']),
-      batteryCapacity: _stringOrNumToDouble(json['batteryCapacity']),
+      batteryCapacity: _anyToString(json['batteryCapacity']),
       voltageUnit: _anyToString(json['voltageUnit']),
-      inverterCapacity: _stringOrNumToDouble(json['inverterCapacity']),
+      inverterCapacity: _anyToString(json['inverterCapacity']),
       inverterCapacityUnit: _anyToString(json['invertorCapacityUnit']),
       currentUnit: _anyToString(json['currentUnit']),
     );
@@ -41,6 +41,7 @@ Map<String, dynamic> _$$AssetDetailsImplToJson(_$AssetDetailsImpl instance) =>
 _$AssetImpl _$$AssetImplFromJson(Map<String, dynamic> json) => _$AssetImpl(
       assetId: _anyToString(json['assetId']),
       tenantId: _anyToString(json['tenantId']),
+      activityFacilityID: _anyToString(json['activityFacilityID']),
       facilityID: _anyToString(json['facilityID']),
       system: _anyToString(json['system']),
       serialNumber: _anyToString(json['serialNumber']),
@@ -67,6 +68,7 @@ Map<String, dynamic> _$$AssetImplToJson(_$AssetImpl instance) =>
     <String, dynamic>{
       'assetId': instance.assetId,
       'tenantId': instance.tenantId,
+      'activityFacilityID': instance.activityFacilityID,
       'facilityID': instance.facilityID,
       'system': instance.system,
       'serialNumber': instance.serialNumber,

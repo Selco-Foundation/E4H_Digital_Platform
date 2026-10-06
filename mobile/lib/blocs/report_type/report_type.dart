@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'report_type.freezed.dart';
 
-// bloc
 class ReportTypeBloc extends Bloc<ReportTypeEvent, ReportTypeState> {
   ReportTypeBloc() : super(const ReportTypeState.initial()) {
     on<ReportTypeSelected>(_onTypeSelected);
@@ -32,7 +31,6 @@ class ReportTypeBloc extends Bloc<ReportTypeEvent, ReportTypeState> {
   }
 }
 
-// states
 @freezed
 class ReportTypeState with _$ReportTypeState {
   const factory ReportTypeState.initial() = ReportTypeInitial;
@@ -42,7 +40,6 @@ class ReportTypeState with _$ReportTypeState {
   const factory ReportTypeState.sendBack() = ReportTypeSendBack;
 }
 
-// events
 @freezed
 class ReportTypeEvent with _$ReportTypeEvent {
   const factory ReportTypeEvent.typeSelected(String reportType) =

@@ -29,3 +29,16 @@ class FormField with _$FormField {
   factory FormField.fromJson(Map<String, dynamic> json) =>
       _$FormFieldFromJson(json);
 }
+
+@freezed
+class AssetTypeData with _$AssetTypeData {
+  const factory AssetTypeData({
+    required int id,
+    required String module,
+    required String tenantId,
+    @JsonKey(name: 'AssetType') required List<AssetType> assetType,
+  }) = _AssetTypeData;
+
+  factory AssetTypeData.fromJson(Map<String, dynamic> json) =>
+      _$AssetTypeDataFromJson(json);
+}

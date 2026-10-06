@@ -10,14 +10,17 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/inbox_type/inbox_type.dart';
-import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
-import '../model/project_workflow/project_workflow.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
+import '../widgets/bookmarks/report_bookmarks.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/cards/inbox_report_rejected_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -30,107 +33,128 @@ class InboxPage extends StatefulWidget {
   State<InboxPage> createState() => _InboxPageState();
 }
 
-class _InboxPageState extends State<InboxPage> {
+class _InboxPageState extends State<InboxPage>
+    with ReportBookmarksState<InboxPage, ActivityFacilityWorkflow> {
+  static const _scrollThreshold = 200.0;
+
   int _selectedTabIndex = 0;
   String _searchQuery = '';
   String? _sortDirection;
+  bool get _bookmarksOnly => _sortDirection == 'BOOKMARKED';
 
   @override
   void initState() {
     super.initState();
-    // Trigger initial fetch after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      bookmarks =
+          reportBookmarksFor<ActivityFacilityWorkflow>(context, amc: false);
+      bookmarkSaveFailedKey = i18.installationBookmarks.saveFailed;
+      _reloadBookmarks();
       final userState = context.read<UserTypeBloc>().state;
-      // Initialize InboxTypeBloc for the first tab
       if (userState.maybeWhen(supervisor: () => true, orElse: () => false)) {
-        // Supervisor first tab index 0
         context.read<InboxTypeBloc>().add(const InboxTypeEvent.typeSelected(0));
       } else {
-        // User first tab maps to typeSelected(1)
         context.read<InboxTypeBloc>().add(const InboxTypeEvent.typeSelected(1));
       }
       _fetchProjects(userState, _selectedTabIndex);
     });
   }
 
+  Future<void> _reloadBookmarks() =>
+      loadBookmarks(only: _bookmarksOnly, query: _searchQuery);
+
   void _fetchProjects(UserTypeState userState, int tabIndex) {
-    // Compute workflowStatuses based on role & tabIndex
     context
         .read<ReportTypeBloc>()
         .add(const ReportTypeEvent.typeSelected("inbox"));
-    List<String> workflowStatuses = [];
-    userState.maybeWhen(
-      supervisor: () {
-        if (tabIndex == 0) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_FIELD_STAFF.name,
-          ];
-          context
-              .read<ReportTypeBloc>()
-              .add(const ReportTypeEvent.typeSelected("send-back"));
-        } else if (tabIndex == 1) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.REJECTED_BY_QC_SPOC.name
-          ];
-        } else if (tabIndex == 2) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.APPROVED_BY_QC_SPOC.name
-          ];
-        }
-      },
-      orElse: () {
-        // User role
-        if (tabIndex == 0) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
-            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name
-          ];
-        } else if (tabIndex == 1) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_SUPERVISOR.name,
-            WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name,
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
-          ];
-        }
-      },
-    );
+    final workflowStatuses = _workflowStatusesForTab(userState, tabIndex);
+    final isSupervisor =
+        userState.maybeWhen(supervisor: () => true, orElse: () => false);
+    if (isSupervisor && tabIndex == 0) {
+      context
+          .read<ReportTypeBloc>()
+          .add(const ReportTypeEvent.typeSelected("send-back"));
+    }
 
-    // Choose search vs sort vs basic fetch && Dispatch fetch + loading state
+    if (_bookmarksOnly) {
+      _reloadBookmarks();
+      return;
+    }
     if (_searchQuery.isNotEmpty) {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsBySearch(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilityBySearch(
               query: _searchQuery,
               workflowStatuses: workflowStatuses,
             ),
           );
     } else if (_sortDirection != null) {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsSorted(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilitySorted(
               workflowStatuses: workflowStatuses,
               sortDirection: _sortDirection!,
             ),
           );
     } else {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsByWorkflow(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilityByWorkflow(
                 workflowStatuses: workflowStatuses),
           );
     }
   }
 
+  List<String> _workflowStatusesForTab(UserTypeState userState, int tabIndex) {
+    return userState.maybeWhen(
+      supervisor: () {
+        if (tabIndex == 0) {
+          return [
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_FIELD_STAFF.name,
+          ];
+        } else if (tabIndex == 1) {
+          return [WORKFLOW_STATUS_FIELD_SUPERVISOR.REJECTED_BY_QC_SPOC.name];
+        }
+        return [WORKFLOW_STATUS_FIELD_SUPERVISOR.APPROVED_BY_QC_SPOC.name];
+      },
+      orElse: () {
+        if (tabIndex == 0) {
+          return [
+            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
+            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name,
+          ];
+        }
+        return [
+          WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_SUPERVISOR.name,
+          WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name,
+          WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
+          WORKFLOW_STATUS_FIELD_STAFF.PENDING_APPROVAL_FLAGGED_FOR_QC.name,
+        ];
+      },
+    );
+  }
+
+  void _tryLoadMore(UserTypeState userState) {
+    if (_bookmarksOnly) return;
+    context.read<ActivityFacilityBloc>().add(
+          ActivityFacilityEvent.loadMoreActivityFacility(
+            workflowStatuses:
+                _workflowStatusesForTab(userState, _selectedTabIndex),
+            query: _searchQuery.isNotEmpty ? _searchQuery : null,
+            sortDirection: _sortDirection,
+          ),
+        );
+  }
+
   void _onTabChanged(int index, UserTypeState userState) {
     setState(() {
       _selectedTabIndex = index;
-      // reset search & sort when tab changes
       _searchQuery = '';
-      _sortDirection = null;
+      if (!_bookmarksOnly) _sortDirection = null;
     });
 
     context.read<InboxTypeBloc>().add(
           userState.maybeWhen(
             supervisor: () => InboxTypeEvent.typeSelected(index),
-            orElse: () => InboxTypeEvent.typeSelected(
-                index + 1), // user tabs are shifted by +1 as it's just 2
+            orElse: () => InboxTypeEvent.typeSelected(index + 1),
           ),
         );
 
@@ -144,127 +168,172 @@ class _InboxPageState extends State<InboxPage> {
 
     return BlocBuilder<UserTypeBloc, UserTypeState>(
       builder: (context, userState) {
-        // Determine tab labels based on user type
         final tabs = userState.maybeWhen(
-          supervisor: () => ['For Review', 'Rejected', 'Approved'],
-          orElse: () => ['Rejected', 'Approved'],
+          supervisor: () => [
+            context.translate(i18.inbox.forReview),
+            context.translate(i18.inbox.rejected),
+            context.translate(i18.inbox.approved),
+          ],
+          orElse: () => [
+            context.translate(i18.inbox.rejected),
+            context.translate(i18.inbox.approved),
+          ],
         );
 
-        return Scaffold(
-          body: ScrollableContent(
-            backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: spacer2, horizontal: spacer4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header Row: Title and toggle User/Supervisor
-                    Row(
-                      children: [
-                        Text(
-                          'Inbox',
-                          style: textTheme.headingXl.copyWith(
-                              color: theme.colorTheme.primary.primary2),
+        return NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              final max = notification.metrics.maxScrollExtent;
+              final current = notification.metrics.pixels;
+              if (current > max - _scrollThreshold) {
+                _tryLoadMore(userState);
+              }
+            }
+            return false;
+          },
+          child: Scaffold(
+            body: ScrollableContent(
+              backgroundColor: theme.colorTheme.generic.background,
+              header: const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: spacer2, horizontal: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            context.translate(i18.inbox.title),
+                            style: textTheme.headingXl.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      SizedBox(
+                        height: spacer12 + spacer1,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return DigitTabBar(
+                              tabs: tabs,
+                              initialIndex: _selectedTabIndex,
+                              onTabSelected: (index) =>
+                                  _onTabChanged(index, userState),
+                              tabBarThemeData:
+                                  DigitTabBarThemeData.defaultTheme(context)
+                                      .copyWith(
+                                          tabWidth: constraints.maxWidth /
+                                              tabs.length,
+                                          padding: EdgeInsets.zero),
+                            );
+                          },
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: spacer4),
-                    SizedBox(
-                      height: spacer12 + spacer1,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return DigitTabBar(
-                            tabs: tabs,
-                            initialIndex: _selectedTabIndex,
-                            onTabSelected: (index) =>
-                                _onTabChanged(index, userState),
-                            tabBarThemeData:
-                                DigitTabBarThemeData.defaultTheme(context)
-                                    .copyWith(
-                                        tabWidth:
-                                            constraints.maxWidth / tabs.length,
-                                        padding: EdgeInsets.zero),
+                      ),
+                      const SizedBox(height: spacer4),
+                      DigitCard(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DigitSearchFormInput(
+                                  innerLabel: context.translate(
+                                      i18.inbox.searchHealthFacility),
+                                  suffixIcon: Icons.search,
+                                  onChange: (text) {
+                                    setState(() {
+                                      _searchQuery = text;
+                                      if (!_bookmarksOnly) {
+                                        _sortDirection = null;
+                                      }
+                                    });
+                                    _fetchProjects(
+                                        userState, _selectedTabIndex);
+                                  },
+                                  iconColor: const Light().primary2,
+                                  enableBorder: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(spacer1),
+                                    borderSide: BorderSide(
+                                        color: theme.colorTheme.text.secondary),
+                                  ),
+                                  focusBorder: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(spacer1),
+                                    borderSide: BorderSide(
+                                        color: theme.colorTheme.text.secondary),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () =>
+                                    _showSortPopup(textTheme, theme, userState),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.import_export,
+                                      color: theme.colorTheme.primary.primary1,
+                                      size: spacer8,
+                                    ),
+                                    Text(context.translate(i18.common.sort),
+                                        style: textTheme.headingS.copyWith(
+                                            color: theme
+                                                .colorTheme.primary.primary1))
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      if (!_bookmarksOnly && bookmarksFailed)
+                        bookmarkLoadError(_reloadBookmarks),
+                      BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
+                        builder: (context, projectState) {
+                          if (_bookmarksOnly) {
+                            if (bookmarksLoading) return _loadingIndicator();
+                            if (bookmarksFailed) {
+                              return bookmarkLoadError(_reloadBookmarks);
+                            }
+                            final statuses = _workflowStatusesForTab(
+                                userState, _selectedTabIndex);
+                            return _buildList(
+                                bookmarkedItems
+                                    .where((project) =>
+                                        statuses.contains(project.status))
+                                    .toList(),
+                                userState);
+                          }
+                          return projectState.maybeWhen(
+                            initial: () => _loadingIndicator(),
+                            loading: () => _loadingIndicator(),
+                            paginatedLoaded: (items,
+                                    hasMore,
+                                    totalCount,
+                                    fromCache,
+                                    isLoadingMore,
+                                    rawFetchedCount) =>
+                                _buildList(
+                              items,
+                              userState,
+                              isLoadingMore: isLoadingMore,
+                            ),
+                            searchLoading: () => _loadingIndicator(),
+                            orElse: () => const SizedBox.shrink(),
                           );
                         },
                       ),
-                    ),
-                    const SizedBox(height: spacer4),
-                    DigitCard(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DigitSearchFormInput(
-                                innerLabel: "Search Health Facility",
-                                suffixIcon: Icons.search,
-                                onChange: (text) {
-                                  setState(() {
-                                    _searchQuery = text;
-                                    _sortDirection = null; // clear sort
-                                  });
-                                  _fetchProjects(userState, _selectedTabIndex);
-                                },
-                                iconColor: const Light().primary2,
-                                enableBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(spacer1),
-                                  borderSide: BorderSide(
-                                      color: theme.colorTheme.text.secondary),
-                                ),
-                                focusBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(spacer1),
-                                  borderSide: BorderSide(
-                                      color: theme.colorTheme.text.secondary),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () =>
-                                  _showSortPopup(textTheme, theme, userState),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.import_export,
-                                    color: theme.colorTheme.primary.primary1,
-                                    size: spacer8,
-                                  ),
-                                  Text("Sort",
-                                      style: textTheme.headingS.copyWith(
-                                          color: theme
-                                              .colorTheme.primary.primary1))
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: spacer4),
-
-                    // ── PROJECT LIST ─────────────────────────────────────────────────
-                    BlocBuilder<ProjectBloc, ProjectState>(
-                      builder: (context, projectState) {
-                        return projectState.maybeWhen(
-                          initial: () => _loadingIndicator(),
-                          loading: () => _loadingIndicator(),
-                          fetched: (projectsList) =>
-                              _buildList(projectsList, userState),
-                          searchResults: (list) => _buildList(list, userState),
-                          orElse: () => const SizedBox.shrink(),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: spacer5),
-                  ],
+                      const SizedBox(height: spacer5),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -281,10 +350,13 @@ class _InboxPageState extends State<InboxPage> {
       );
 
   Widget _buildList(
-      List<ProjectWorkflow> projectsList, UserTypeState userState) {
+    List<ActivityFacilityWorkflow> projectsList,
+    UserTypeState userState, {
+    bool isLoadingMore = false,
+  }) {
     if (projectsList.isEmpty) {
-      return const Center(
-        child: Text('No Projects to display'),
+      return Center(
+        child: Text(context.translate(i18.inbox.noProjectsToDisplay)),
       );
     }
     return Column(
@@ -292,52 +364,114 @@ class _InboxPageState extends State<InboxPage> {
         for (final project in projectsList)
           Column(
             children: [
-              // Display each project according to inboxState
               BlocBuilder<InboxTypeBloc, InboxTypeState>(
                 builder: (context, inboxState) {
+                  final locality = parseBoundaryCodeLocality(
+                    project.activityFacility.facility?.boundaryCode,
+                  );
                   return inboxState.when(
                     submitted: () => InboxReportCard(
-                        onPress: () {
-                          print(project.project.id);
-                          context.read<SelectedProjectBloc>().add(
-                                SelectedProjectEvent.select(project),
+                        isBookmarked: bookmarkIds
+                            .contains(project.activityFacility.id.trim()),
+                        isSavingBookmark: !bookmarksLoaded ||
+                            savingBookmarks
+                                .contains(project.activityFacility.id.trim()),
+                        onToggleBookmark: project.activityFacility.id
+                                .trim()
+                                .isEmpty
+                            ? null
+                            : () => toggleBookmark(project,
+                                reload: _reloadBookmarks),
+                        onPress: () async {
+                          context.read<SelectedActivityFacilityBloc>().add(
+                                SelectedActivityFacilityEvent.select(project),
                               );
-                          context.router.push(const InboxAssetSummaryRoute());
+                          await context.router.push(InboxAssetSummaryRoute(
+                              refresh: DateTime.now().millisecondsSinceEpoch));
+                          if (mounted) await _reloadBookmarks();
                         },
-                        title: project.project.name ?? '---',
+                        title:
+                            project.activityFacility.facility?.facilityName ??
+                                '---',
                         dateAssigned:
-                            project.project.startDateTime ?? DateTime.now(),
-                        status: project.status ?? '---'),
+                            project.workflow?.auditDetails?.lastModifiedTime ??
+                                DateTime.now(),
+                        status: project.status ?? '---',
+                        state: locality.state,
+                        district: locality.district,
+                        block: locality.block),
                     rejected: () => InboxReportRejectedCard(
-                      title: project.project.name ?? '---',
+                      isBookmarked: bookmarkIds
+                          .contains(project.activityFacility.id.trim()),
+                      isSavingBookmark: !bookmarksLoaded ||
+                          savingBookmarks
+                              .contains(project.activityFacility.id.trim()),
+                      onToggleBookmark: project.activityFacility.id
+                              .trim()
+                              .isEmpty
+                          ? null
+                          : () =>
+                              toggleBookmark(project, reload: _reloadBookmarks),
+                      title: project.activityFacility.facility?.facilityName ??
+                          '---',
                       status: project.status ?? '---',
+                      state: locality.state,
+                      district: locality.district,
+                      block: locality.block,
                       dateAssigned:
-                          project.project.startDateTime ?? DateTime.now(),
-                      onPress: () {
-                        print(project.project.id);
-                        context.read<SelectedProjectBloc>().add(
-                              SelectedProjectEvent.select(project),
+                          project.workflow?.auditDetails?.lastModifiedTime ??
+                              DateTime.now(),
+                      onPress: () async {
+                        context.read<SelectedActivityFacilityBloc>().add(
+                              SelectedActivityFacilityEvent.select(project),
                             );
-                        context.router.push(const SubmitForApprovalRoute());
+                        await context.router.push(SubmitForApprovalRoute(
+                            refresh: DateTime.now().millisecondsSinceEpoch));
+                        if (mounted) await _reloadBookmarks();
                       },
                     ),
                     approved: () => InboxReportCard(
-                        onPress: () {
-                          print(project.project.id);
-                          context.read<SelectedProjectBloc>().add(
-                                SelectedProjectEvent.select(project),
+                        isBookmarked: bookmarkIds
+                            .contains(project.activityFacility.id.trim()),
+                        isSavingBookmark: !bookmarksLoaded ||
+                            savingBookmarks
+                                .contains(project.activityFacility.id.trim()),
+                        onToggleBookmark: project.activityFacility.id
+                                .trim()
+                                .isEmpty
+                            ? null
+                            : () => toggleBookmark(project,
+                                reload: _reloadBookmarks),
+                        onPress: () async {
+                          context.read<SelectedActivityFacilityBloc>().add(
+                                SelectedActivityFacilityEvent.select(project),
                               );
-                          context.router.push(const InboxAssetSummaryRoute());
+                          await context.router.push(InboxAssetSummaryRoute(
+                              refresh: DateTime.now().millisecondsSinceEpoch));
+                          if (mounted) await _reloadBookmarks();
                         },
-                        title: project.project.name ?? '---',
+                        title:
+                            project.activityFacility.facility?.facilityName ??
+                                '---',
                         dateAssigned:
-                            project.project.startDateTime ?? DateTime.now(),
-                        status: project.status ?? '---'),
+                            project.workflow?.auditDetails?.lastModifiedTime ??
+                                DateTime.now(),
+                        status: project.status ?? '---',
+                        state: locality.state,
+                        district: locality.district,
+                        block: locality.block),
                   );
                 },
               ),
               const SizedBox(height: spacer5),
             ],
+          ),
+        if (isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.only(bottom: spacer4),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
           ),
       ],
     );
@@ -345,29 +479,37 @@ class _InboxPageState extends State<InboxPage> {
 
   void _showSortPopup(
       DigitTextTheme textTheme, ThemeData theme, UserTypeState userState) {
+    var selectedFilter = _sortDirection;
     showCustomPopup(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, popupSetState) => Popup(
           onCrossTap: () => Navigator.of(ctx).pop(),
-          title: 'Sort by',
+          title: context.translate(i18.common.sortBy),
           type: PopUpType.simple,
           additionalWidgets: [
             RadioList(
-              groupValue: _sortDirection ?? '',
+              groupValue: selectedFilter ?? '',
               containerPadding: const EdgeInsets.symmetric(vertical: spacer2),
               radioDigitButtons: [
-                RadioButtonModel(code: 'DESC', name: 'Newest first'),
-                RadioButtonModel(code: 'ASC', name: 'Oldest first'),
+                RadioButtonModel(
+                    code: 'DESC',
+                    name: context.translate(i18.common.newestFirst)),
+                RadioButtonModel(
+                    code: 'ASC',
+                    name: context.translate(i18.common.oldestFirst)),
+                RadioButtonModel(
+                    code: 'BOOKMARKED',
+                    name: context.translate(i18.installationBookmarks.filter)),
               ],
               onChanged: (val) =>
-                  popupSetState(() => _sortDirection = val.code),
+                  popupSetState(() => selectedFilter = val.code),
             ),
             Row(
               children: [
                 Expanded(
                   child: DigitButton(
-                    label: 'Clear',
+                    label: context.translate(i18.common.clear),
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
                     onPressed: () {
@@ -385,9 +527,10 @@ class _InboxPageState extends State<InboxPage> {
                   child: DigitButton(
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
-                    label: 'Sort',
-                    isDisabled: _sortDirection == null,
+                    label: context.translate(i18.common.sort),
+                    isDisabled: selectedFilter == null,
                     onPressed: () {
+                      setState(() => _sortDirection = selectedFilter);
                       Navigator.of(ctx).pop();
                       _fetchProjects(userState, _selectedTabIndex);
                     },

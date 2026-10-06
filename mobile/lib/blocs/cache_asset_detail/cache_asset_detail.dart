@@ -26,7 +26,7 @@ class CacheAssetDetailBloc
     try {
       final entries = await isar.cacheAssetDetails
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -49,7 +49,7 @@ class CacheAssetDetailBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheAssetDetails
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .findFirst();
@@ -79,7 +79,7 @@ class CacheAssetDetailBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheAssetDetails
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .findFirst();
@@ -91,21 +91,13 @@ class CacheAssetDetailBloc
           existing.updatedAt = DateTime.now();
           await isar.cacheAssetDetails.put(existing);
         } else {
-          // final newEntry = CacheAssetDetail(
-          //   projectId: event.entry.projectId,
-          //   assetType: event.entry.assetType,
-          //   warranty: event.entry.warranty,
-          //   brand: event.entry.brand,
-          //   model: event.entry.model,
-          // );
           await isar.cacheAssetDetails.put(event.entry);
         }
       });
 
-      // Emit the newly updated/added entry
       final updatedEntry = await isar.cacheAssetDetails
           .where()
-          .projectIdEqualTo(event.entry.projectId)
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.entry.assetType)
           .findFirst();
@@ -133,7 +125,6 @@ class CacheAssetDetailBloc
   }
 }
 
-/// Events for CacheAssetDetailBloc
 @freezed
 class CacheAssetDetailEvent with _$CacheAssetDetailEvent {
   const factory CacheAssetDetailEvent.get(
@@ -151,7 +142,6 @@ class CacheAssetDetailEvent with _$CacheAssetDetailEvent {
       CacheAssetDetailEventDelete;
 }
 
-/// States for CacheAssetDetailBloc
 @freezed
 class CacheAssetDetailState with _$CacheAssetDetailState {
   const factory CacheAssetDetailState.initial() = _Initial;

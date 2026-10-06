@@ -4,49 +4,48 @@ import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
-import '../../data/nosql/cache_add_new_asset.dart';
-import '../../data/nosql/cache_asset_detail.dart';
-import '../../data/nosql/cache_completion_report.dart';
-import '../../data/nosql/cache_media_upload.dart';
-import '../../data/nosql/cache_specification.dart';
+import '../../data/nosql/cache_submission_job.dart';
 import '../../data/nosql/cache_sync_record.dart';
-import '../../data/nosql/cache_unsubmitted_project.dart';
-import '../../data/secure_storage/secureStore.dart';
-import '../../model/asset/asset.dart';
-import '../../model/audit_details/audit_details.dart';
-import '../../model/document/document.dart';
-import '../../model/entities/project_facility.dart';
-import '../../model/project_workflow/project_workflow.dart';
-import '../../repositories/app_init_Repo.dart';
-import '../../repositories/assetRepo.dart';
-import '../../repositories/project_facility_repo.dart';
-import '../../repositories/project_repo.dart';
-import '../../utils/utils.dart';
+import '../../data/nosql/cache_unsubmitted_activity_facility.dart';
+import '../../repositories/operation_progress_repo.dart';
+import '../../utils/background_service.dart';
+import '../../utils/i18_key_constants.dart' as i18;
+import '../../utils/operation_progress.dart';
 
 part 'asset_submission.freezed.dart';
 
 class AssetSubmissionBloc
     extends Bloc<AssetSubmissionEvent, AssetSubmissionState> {
   final Isar _isar;
-  final UnsubmittedProjectRepository _draftRepo;
+  late final OperationProgressRepository _progressRepo;
+
+  StreamSubscription<CacheSubmissionJob?>? _jobSub;
+  StreamSubscription? _bulkJobsSub;
+
+  String? _activeWatchId;
+  Set<String> _activeBulkSyncIds = const {};
+  int _bulkWatchToken = 0;
+  int? _bulkFirstSnapshotToken;
 
   AssetSubmissionBloc(this._isar)
-      : _draftRepo = UnsubmittedProjectRepository(_isar),
-        super(const AssetSubmissionState.initial()) {
+      : super(const AssetSubmissionState.initial()) {
+    _progressRepo = OperationProgressRepository(_isar);
+
     on<_SubmitAll>(_onSubmitAll);
+    on<_Retry>(_onRetry);
+    on<_Watch>(_onWatch);
+    on<_JobChanged>(_onJobChanged);
     on<_SubmitAllDrafts>(_onSubmitAllDrafts);
+    on<_BulkJobsChanged>(_onBulkJobsChanged);
+    on<_Dismiss>(_onDismiss);
   }
 
-  Future<void> _onSubmitAll(
-    _SubmitAll event,
-    Emitter<AssetSubmissionState> emit,
-  ) =>
-      _handleSubmit(
-        projectId: event.projectId,
-        userType: event.userType,
-        emit: emit,
-        fromDraft: false,
-      );
+  @override
+  Future<void> close() async {
+    await _jobSub?.cancel();
+    await _bulkJobsSub?.cancel();
+    return super.close();
+  }
 
   Future<void> upsertSyncRecord(String userType) async {
     final now = DateTime.now().toUtc();
@@ -67,334 +66,311 @@ class AssetSubmissionBloc
     });
   }
 
+  Future<void> _onWatch(
+    _Watch event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    _activeWatchId = event.activityFacilityId;
+    await _jobSub?.cancel();
+    _jobSub = _progressRepo.watchJob(event.activityFacilityId).listen((job) {
+      add(AssetSubmissionEvent.jobChanged(job));
+    });
+  }
+
+  Future<void> _onSubmitAll(
+    _SubmitAll event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    add(AssetSubmissionEvent.watch(event.activityFacilityId));
+    if (!event.isRetry) {
+      await _progressRepo.clearOperationCheckpoints(
+        activityFacilityId: event.activityFacilityId,
+        operationType: OperationTypes.submit,
+      );
+    }
+    await _progressRepo.upsertJob(
+      activityFacilityId: event.activityFacilityId,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.queued,
+      stageKey: 'preparing_submission',
+      completedSteps: 1,
+      totalSteps: submitStages.length,
+      incrementRetry: event.isRetry,
+    );
+
+    await BackgroundServiceController.I.enqueueSubmission(
+      activityFacilityId: event.activityFacilityId,
+      facilityId: event.facilityId,
+      userType: event.userType,
+      fromDraft: false,
+    );
+  }
+
+  Future<void> _onRetry(
+    _Retry event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    add(AssetSubmissionEvent.submitAll(
+      activityFacilityId: event.activityFacilityId,
+      facilityId: event.facilityId,
+      userType: event.userType,
+      isRetry: true,
+    ));
+  }
+
+  Future<void> _onDismiss(
+    _Dismiss event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    emit(const AssetSubmissionState.initial());
+  }
+
+  Future<void> _onJobChanged(
+    _JobChanged event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    final job = event.job;
+    if (job == null ||
+        job.activityFacilityId != _activeWatchId ||
+        job.operationType != OperationTypes.submit) {
+      return;
+    }
+
+    final model = _toProgressModel(job);
+    switch (job.status) {
+      case OperationStatuses.queued:
+      case OperationStatuses.running:
+      case OperationStatuses.partial:
+        emit(AssetSubmissionState.inProgress(model));
+        break;
+      case OperationStatuses.failed:
+        emit(AssetSubmissionState.failure(model));
+        break;
+      case OperationStatuses.success:
+        if (state.maybeWhen(
+          inProgress: (_) => true,
+          failure: (_) => true,
+          orElse: () => false,
+        )) {
+          emit(const AssetSubmissionState.success());
+        }
+        break;
+      default:
+        emit(const AssetSubmissionState.initial());
+        break;
+    }
+  }
+
   Future<void> _onSubmitAllDrafts(
     _SubmitAllDrafts event,
     Emitter<AssetSubmissionState> emit,
   ) async {
-    emit(const AssetSubmissionState.loading());
-    // save last sync date as now
     await upsertSyncRecord(event.userType);
-    final localEntries = await _isar.cacheUnsubmittedProjects
+
+    final localEntries = await _isar.cacheUnsubmittedActivityFacilitys
         .where()
-        .filter()
         .userTypeEqualTo(event.userType)
         .findAll();
 
-    final localWorkflows = localEntries
-        .map((e) => ProjectWorkflow(project: e.project, status: e.status))
-        .toList();
+    final activityFacilityIds =
+        localEntries.map((e) => e.activityFacility.id).toList(growable: false);
+    _activeBulkSyncIds = activityFacilityIds.toSet();
 
-    if (localWorkflows.isEmpty) {
-      emit(const AssetSubmissionState.failure("No drafts to sync."));
+    if (activityFacilityIds.isEmpty) {
+      emit(const AssetSubmissionState.bulkFailure('No drafts to sync.'));
       return;
     }
 
-    final total = localWorkflows.length;
-    int completed = 0;
+    for (final entry in localEntries) {
+      final pid = entry.activityFacility.id;
+      final facilityId = entry.activityFacility.facility?.facilityId ?? '';
 
-    for (final draft in localWorkflows) {
-      emit(AssetSubmissionState.progress(
-        completed: completed * 2 + 1,
-        total: total * 2,
-      ));
-
-      final success = await _handleSubmit(
-        projectId: draft.project.id,
+      await _progressRepo.clearOperationCheckpoints(
+        activityFacilityId: pid,
+        operationType: OperationTypes.submit,
+      );
+      await _progressRepo.upsertJob(
+        activityFacilityId: pid,
+        operationType: OperationTypes.submit,
+        status: OperationStatuses.queued,
+        stageKey: 'preparing_submission',
+        completedSteps: 1,
+        totalSteps: submitStages.length,
+      );
+      await BackgroundServiceController.I.enqueueSubmission(
+        activityFacilityId: pid,
+        facilityId: facilityId,
         userType: event.userType,
-        emit: emit,
         fromDraft: true,
       );
+    }
 
-      if (!success) return;
-
-      completed++;
-      emit(AssetSubmissionState.progress(
-        completed: completed * 2,
-        total: total * 2,
+    await _bulkJobsSub?.cancel();
+    final watchToken = ++_bulkWatchToken;
+    _bulkFirstSnapshotToken = watchToken;
+    _bulkJobsSub = _isar.cacheSubmissionJobs.watchLazy().listen((_) async {
+      final jobs = await _isar.cacheSubmissionJobs
+          .where()
+          .anyOf(activityFacilityIds,
+              (q, pid) => q.activityFacilityIdEqualTo(pid.toString()))
+          .findAll();
+      if (isClosed || watchToken != _bulkWatchToken) return;
+      add(AssetSubmissionEvent.bulkJobsChanged(
+        jobs: jobs,
+        watchToken: watchToken,
       ));
+    });
+
+    emit(
+      AssetSubmissionState.bulkProgress(
+        BulkOperationProgressModel(
+          completed: 0,
+          total: activityFacilityIds.length,
+          progressPercent: 0,
+          activeCount: activityFacilityIds.length,
+          label: i18.syncLoading.preparingSync,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onBulkJobsChanged(
+    _BulkJobsChanged event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    if (event.watchToken != _bulkWatchToken || _activeBulkSyncIds.isEmpty) {
+      return;
+    }
+
+    final isFirstSnapshotForWatch = _bulkFirstSnapshotToken == event.watchToken;
+    if (isFirstSnapshotForWatch) {
+      _bulkFirstSnapshotToken = null;
+    }
+
+    final total = _activeBulkSyncIds.length;
+    final jobsById = <String, CacheSubmissionJob>{};
+    for (final job in event.jobs) {
+      if (job.operationType != OperationTypes.submit) continue;
+      if (!_activeBulkSyncIds.contains(job.activityFacilityId)) continue;
+      jobsById[job.activityFacilityId] = job;
+    }
+
+    var completed = 0;
+    var activeCount = 0;
+    var progressSum = 0;
+    CacheSubmissionJob? failedJob;
+
+    for (final activityFacilityId in _activeBulkSyncIds) {
+      final job = jobsById[activityFacilityId];
+      if (job == null) continue;
+
+      progressSum += job.progressPercent;
+      if (job.status == OperationStatuses.success) {
+        completed += 1;
+      }
+      if (job.status == OperationStatuses.queued ||
+          job.status == OperationStatuses.running ||
+          job.status == OperationStatuses.partial) {
+        activeCount += 1;
+      }
+      if (failedJob == null && job.status == OperationStatuses.failed) {
+        failedJob = job;
+      }
+    }
+
+    final syncingCount = (completed + activeCount).clamp(0, total);
+    final progress = BulkOperationProgressModel(
+      completed: completed,
+      total: total,
+      progressPercent: total == 0 ? 0 : (progressSum / total).round(),
+      activeCount: activeCount,
+      label: completed >= total
+          ? 'Sync completed'
+          : 'Syncing $syncingCount of $total reports',
+    );
+
+    emit(AssetSubmissionState.bulkProgress(progress));
+
+    if (isFirstSnapshotForWatch && event.jobs.isEmpty) {
+      return;
+    }
+
+    if (activeCount > 0) return;
+
+    _activeBulkSyncIds = const {};
+    await _bulkJobsSub?.cancel();
+    _bulkJobsSub = null;
+
+    if (failedJob != null) {
+      emit(AssetSubmissionState.bulkFailure(
+        failedJob.lastError ?? 'Some submissions failed.',
+      ));
+      return;
     }
 
     emit(const AssetSubmissionState.success());
   }
 
-  Future<bool> _handleSubmit({
-    required String projectId,
-    required String userType,
-    required Emitter<AssetSubmissionState> emit,
-    required bool fromDraft,
-  }) async {
-    emit(const AssetSubmissionState.loading());
-    try {
-      final facilityId = (await ProjectFacilityRepository().search(
-        ProjectFacilitySearchModel(projectId: [projectId]),
-        _isar,
-      ))
-          .facilityId;
-
-      final repo = AssetRepository();
-      const types = ['inverter', 'battery', 'panel'];
-
-      for (final type in types) {
-        final assets = await _isar.cacheAddNewAssets
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findAll();
-
-        if (assets.isEmpty) {
-          emit(AssetSubmissionState.failure(
-              "No cached assets found for type $type."));
-          return false;
-        }
-
-        print("[$type] found ${assets.length} cached assets");
-        for (var a in assets) {
-          print("    serial=${a.serialNumber} photoPath='${a.photoPath}'");
-        }
-
-        final spec = await _isar.cacheSpecifications
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findFirst();
-        final detail = await _isar.cacheAssetDetails
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findFirst();
-        if (spec == null || detail == null) {
-          emit(AssetSubmissionState.failure(
-              "Missing specification or detail for type $type."));
-          return false;
-        }
-
-        final documents = <Document>[];
-        for (final saved in assets) {
-          if (saved.photoPath.isNotEmpty) {
-            String photoId = await getFilestoreUrl(saved.photoPath);
-            print("photoId $photoId");
-            documents.add(Document(
-              documentType: saved.documentType,
-              fileStore: photoId,
-              documentUid: "DOC-ASSET-${saved.serialNumber}",
-              additionalDetailsJson: null,
-              geoLocation: GeoLocation(
-                latitude: saved.latitude,
-                longitude: saved.longitude,
-                //additionalDetails: null,
-              ),
-            ));
-          }
-
-          final now = DateTime.now().toUtc();
-          final startIso = now.toIso8601String();
-          final years = userType == USER_TYPES.FIELD_STAFF.name
-              ? 0
-              : parseWarrantyYears(detail.warranty!);
-          final endIso = userType == USER_TYPES.FIELD_STAFF.name
-              ? ""
-              : now.add(Duration(days: 365 * years)).toIso8601String();
-
-          // 1) Build AssetDetails with every field explicitly
-
-          print("projectId $projectId");
-          print("type $type");
-          print("spec ${spec.totalCapacity}");
-          print("spec ${spec.totalCapacityUnit}");
-          print("spec $spec");
-
-          print(
-              "ASSET_TYPES.INVERTER.name.toLowerCase() ${ASSET_TYPES.INVERTER.name.toLowerCase()}");
-          print("capacityUnit ${saved.capacityUnit}");
-          if (type == ASSET_TYPES.BATTERY.name.toLowerCase()) {
-            print("saved.batteryCapacity! ${saved.batteryCapacity!}");
-            print("saved.batteryVoltage! ${saved.batteryVoltage!}");
-            print("saved.batteryType ${saved.batteryType}");
-          }
-          if (type == ASSET_TYPES.INVERTER.name.toLowerCase()) {
-            print("saved.inverterCapacity! ${saved.inverterCapacity}");
-            print("saved.inverterCapacityUnit ${saved.inverterCapacityUnit}");
-          }
-
-          final assetDetails = AssetDetails(
-            totalCapacity: spec.totalCapacity,
-            totalCapacityUnit: spec.totalCapacityUnit,
-            totalCapacityUOM: spec.totalCapacityUnit,
-            currentUnit:
-                type == ASSET_TYPES.INVERTER.name.toLowerCase() ? '1' : null,
-            capacityUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
-                    type == ASSET_TYPES.PANEL.name.toLowerCase())
-                ? saved.capacityUnit
-                : null,
-            panelCapacity: type == ASSET_TYPES.PANEL.name.toLowerCase()
-                ? double.parse(saved.panelCapacity!)
-                : null,
-            batteryCapacity: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? double.parse(saved.batteryCapacity!)
-                : null,
-            batteryVoltage: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? double.parse(saved.batteryVoltage!)
-                : null,
-            batteryType: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? saved.batteryType
-                : null,
-            voltageUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
-                    type == ASSET_TYPES.INVERTER.name.toLowerCase())
-                ? saved.voltageUnit
-                : null,
-            inverterCapacity: type == ASSET_TYPES.INVERTER.name.toLowerCase()
-                ? double.parse(saved.inverterCapacity!)
-                : null,
-            inverterCapacityUnit:
-                type == ASSET_TYPES.INVERTER.name.toLowerCase()
-                    ? saved.inverterCapacityUnit
-                    : null,
-          );
-
-          print("assetDetails $assetDetails");
-
-          final userId = await SecureStore().getSelectedIndividual();
-          final audit = AuditDetails(lastModifiedBy: userId, lastModified: now);
-
-          // 2) Build the Asset itself
-          final assetModel = Asset(
-            assetId: saved.assetId,
-            tenantId: envConfig.variables.tenantId,
-            facilityID: facilityId,
-            assetTypeID: type.toUpperCase(),
-            system: spec.system,
-            serialNumber: saved.serialNumber,
-            brandID: detail.brand,
-            assetDetails: assetDetails,
-            warrantyStartDate: userType == USER_TYPES.SUPERVISOR.name
-                ? startIso
-                : "", // : null,
-            warrantyDuration: userType == USER_TYPES.SUPERVISOR.name
-                ? parseWarrantyYears(detail.warranty)
-                : 1, //null,
-            warrantyEndDate:
-                userType == USER_TYPES.SUPERVISOR.name ? endIso : "",
-            modelNumber: detail.model,
-            wfStatus: "CREATED",
-            isActive: true,
-            documents: documents,
-            auditDetails: (saved.assetId?.isNotEmpty ?? false) ? audit : null,
-          );
-          print(
-              "assetModel audit ${assetModel.auditDetails?.toJson() ?? '— none —'}");
-          print("assetModel $assetModel");
-          await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
-        }
-      }
-
-      print("about starting completion reports");
-
-      final remoteRepo = ProjectRemoteRepository();
-      final workflowDocuments = <Document>[];
-
-      for (final type in types) {
-        final mediaEntries = await _isar.cacheMediaUploads
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findAll();
-
-        print("[$type] found ${mediaEntries.length} cached media uploads");
-        for (var m in mediaEntries) {
-          print(
-              "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} projectId='${m.projectId}'");
-        }
-
-        for (final m in mediaEntries) {
-          if (m.filePath.isEmpty) continue;
-          String mediaId = await getFilestoreUrl(m.filePath);
-          print("mediaId $mediaId");
-          workflowDocuments.add(Document(
-            documentType: "${m.assetType}-${m.itemType}",
-            fileStore: mediaId,
-            documentUid:
-                "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
-            geoLocation: GeoLocation(
-              latitude: m.latitude,
-              longitude: m.longitude,
-            ),
-          ));
-        }
-        print("documents $workflowDocuments");
-      }
-
-      final completionReport = await _isar.cacheCompletionReports
-          .where()
-          .projectIdEqualTo(projectId)
-          .findFirst();
-      print("completionReport $completionReport");
-      if (completionReport != null && completionReport.filePath.isNotEmpty) {
-        String photoId = await getFilestoreUrl(completionReport.filePath);
-        print("photoId $photoId");
-        workflowDocuments.add(Document(
-          documentType: "INSTALLATION_REPORT",
-          fileStore: photoId,
-          documentUid: "INSTALLATION-REPORT-$photoId",
-          geoLocation: GeoLocation(
-            latitude: completionReport.latitude,
-            longitude: completionReport.longitude,
-          ),
-        ));
-      }
-
-      print("documents $workflowDocuments");
-      print("documents ${workflowDocuments.toString()}");
-
-      await remoteRepo.updateProjectWorkflow(
-        projectId: projectId,
-        action: userType == USER_TYPES.FIELD_STAFF.name
-            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
-            : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-        documents: workflowDocuments,
-      );
-
-      await _draftRepo.delete(projectId, userType);
-
-      if (!fromDraft) emit(const AssetSubmissionState.success());
-      return true;
-    } catch (e) {
-      String? errorMessage = "We are facing an issues please try again";
-      if ((e.toString() == "Exception: No network connection") ||
-          (e.toString() == "Exception: No internet access")) {
-        errorMessage =
-            "For some Reason you have bad internet connectivity, we have saved your data, please try to sync the data later";
-      }
-      emit(AssetSubmissionState.failure("$errorMessage"));
-      return false;
-    }
+  OperationProgressModel _toProgressModel(CacheSubmissionJob job) {
+    return OperationProgressModel(
+      activityFacilityId: job.activityFacilityId,
+      operationType: job.operationType,
+      status: job.status,
+      stageKey: job.stageKey,
+      stageLabel: job.stageLabel,
+      completedSteps: job.completedSteps,
+      totalSteps: job.totalSteps,
+      progressPercent: job.progressPercent,
+      retryCount: job.retryCount,
+      isBlocking: job.isBlocking,
+      errorMessage: job.lastError,
+    );
   }
 }
 
 @freezed
 class AssetSubmissionEvent with _$AssetSubmissionEvent {
   const factory AssetSubmissionEvent.submitAll({
-    required String projectId,
+    required String activityFacilityId,
+    required String facilityId,
     required String userType,
+    @Default(false) bool isRetry,
   }) = _SubmitAll;
+
+  const factory AssetSubmissionEvent.retry({
+    required String activityFacilityId,
+    required String facilityId,
+    required String userType,
+  }) = _Retry;
+
+  const factory AssetSubmissionEvent.watch(String activityFacilityId) = _Watch;
+
+  const factory AssetSubmissionEvent.jobChanged(CacheSubmissionJob? job) =
+      _JobChanged;
 
   const factory AssetSubmissionEvent.submitAllDrafts({
     required String userType,
   }) = _SubmitAllDrafts;
+
+  const factory AssetSubmissionEvent.bulkJobsChanged({
+    required List<CacheSubmissionJob> jobs,
+    required int watchToken,
+  }) = _BulkJobsChanged;
+
+  const factory AssetSubmissionEvent.dismiss() = _Dismiss;
 }
 
 @freezed
 class AssetSubmissionState with _$AssetSubmissionState {
   const factory AssetSubmissionState.initial() = _Initial;
-  const factory AssetSubmissionState.loading() = _Loading;
+  const factory AssetSubmissionState.inProgress(
+      OperationProgressModel progress) = _InProgress;
+  const factory AssetSubmissionState.failure(OperationProgressModel progress) =
+      _Failure;
   const factory AssetSubmissionState.success() = _Success;
-  const factory AssetSubmissionState.failure(String errorMessage) = _Failure;
-
-  const factory AssetSubmissionState.progress({
-    required int completed,
-    required int total,
-  }) = _Progress;
+  const factory AssetSubmissionState.bulkProgress(
+    BulkOperationProgressModel progress,
+  ) = _BulkProgress;
+  const factory AssetSubmissionState.bulkFailure(String errorMessage) =
+      _BulkFailure;
 }

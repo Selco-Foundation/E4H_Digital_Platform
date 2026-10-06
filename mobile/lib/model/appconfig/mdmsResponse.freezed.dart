@@ -20,7 +20,7 @@ MdmsResponseModel _$MdmsResponseModelFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$MdmsResponseModel {
-  @JsonKey(name: 'HCM-FIELD-APP-CONFIG')
+  @JsonKey(name: 'E4H-FIELD-APP-CONFIG')
   AppConfig? get appConfig => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -35,7 +35,7 @@ abstract class $MdmsResponseModelCopyWith<$Res> {
           MdmsResponseModel value, $Res Function(MdmsResponseModel) then) =
       _$MdmsResponseModelCopyWithImpl<$Res, MdmsResponseModel>;
   @useResult
-  $Res call({@JsonKey(name: 'HCM-FIELD-APP-CONFIG') AppConfig? appConfig});
+  $Res call({@JsonKey(name: 'E4H-FIELD-APP-CONFIG') AppConfig? appConfig});
 
   $AppConfigCopyWith<$Res>? get appConfig;
 }
@@ -84,7 +84,7 @@ abstract class _$$MdmsResponseModelImplCopyWith<$Res>
       __$$MdmsResponseModelImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({@JsonKey(name: 'HCM-FIELD-APP-CONFIG') AppConfig? appConfig});
+  $Res call({@JsonKey(name: 'E4H-FIELD-APP-CONFIG') AppConfig? appConfig});
 
   @override
   $AppConfigCopyWith<$Res>? get appConfig;
@@ -116,13 +116,13 @@ class __$$MdmsResponseModelImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$MdmsResponseModelImpl implements _MdmsResponseModel {
   const _$MdmsResponseModelImpl(
-      {@JsonKey(name: 'HCM-FIELD-APP-CONFIG') required this.appConfig});
+      {@JsonKey(name: 'E4H-FIELD-APP-CONFIG') required this.appConfig});
 
   factory _$MdmsResponseModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$MdmsResponseModelImplFromJson(json);
 
   @override
-  @JsonKey(name: 'HCM-FIELD-APP-CONFIG')
+  @JsonKey(name: 'E4H-FIELD-APP-CONFIG')
   final AppConfig? appConfig;
 
   @override
@@ -160,14 +160,14 @@ class _$MdmsResponseModelImpl implements _MdmsResponseModel {
 
 abstract class _MdmsResponseModel implements MdmsResponseModel {
   const factory _MdmsResponseModel(
-      {@JsonKey(name: 'HCM-FIELD-APP-CONFIG')
+      {@JsonKey(name: 'E4H-FIELD-APP-CONFIG')
       required final AppConfig? appConfig}) = _$MdmsResponseModelImpl;
 
   factory _MdmsResponseModel.fromJson(Map<String, dynamic> json) =
       _$MdmsResponseModelImpl.fromJson;
 
   @override
-  @JsonKey(name: 'HCM-FIELD-APP-CONFIG')
+  @JsonKey(name: 'E4H-FIELD-APP-CONFIG')
   AppConfig? get appConfig;
   @override
   @JsonKey(ignore: true)

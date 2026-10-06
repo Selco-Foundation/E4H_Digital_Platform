@@ -20,3 +20,21 @@ Map<String, dynamic> _$$BrandImplToJson(_$BrandImpl instance) =>
       'name': instance.name,
       'asset_type_code': instance.assetTypeCode,
     };
+
+_$BrandDataImpl _$$BrandDataImplFromJson(Map<String, dynamic> json) =>
+    _$BrandDataImpl(
+      id: (json['id'] as num).toInt(),
+      brand: (json['Brand'] as List<dynamic>)
+          .map((e) => Brand.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      module: json['module'] as String,
+      tenantId: json['tenantId'] as String,
+    );
+
+Map<String, dynamic> _$$BrandDataImplToJson(_$BrandDataImpl instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'Brand': instance.brand,
+      'module': instance.module,
+      'tenantId': instance.tenantId,
+    };

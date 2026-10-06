@@ -7,12 +7,13 @@ class CacheAssetDetail {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late String projectId;
+  late String activityFacilityId;
 
   @Index()
   late String assetType;
 
   late String? warranty;
+  late String? warrantyStartDate;
   late String brand;
   late String? model;
 
@@ -20,9 +21,10 @@ class CacheAssetDetail {
   DateTime? updatedAt;
 
   CacheAssetDetail({
-    required this.projectId,
+    required this.activityFacilityId,
     required this.assetType,
     this.warranty,
+    this.warrantyStartDate,
     required this.brand,
     this.model,
   });

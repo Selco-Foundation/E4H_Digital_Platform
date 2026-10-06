@@ -16,21 +16,21 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$AssetSummaryEvent {
-  String get projectId => throw _privateConstructorUsedError;
+  String get activityFacilityId => throw _privateConstructorUsedError;
   String get assetType => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String assetType) load,
+    required TResult Function(String activityFacilityId, String assetType) load,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String assetType)? load,
+    TResult? Function(String activityFacilityId, String assetType)? load,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String assetType)? load,
+    TResult Function(String activityFacilityId, String assetType)? load,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -62,7 +62,7 @@ abstract class $AssetSummaryEventCopyWith<$Res> {
           AssetSummaryEvent value, $Res Function(AssetSummaryEvent) then) =
       _$AssetSummaryEventCopyWithImpl<$Res, AssetSummaryEvent>;
   @useResult
-  $Res call({String projectId, String assetType});
+  $Res call({String activityFacilityId, String assetType});
 }
 
 /// @nodoc
@@ -78,13 +78,13 @@ class _$AssetSummaryEventCopyWithImpl<$Res, $Val extends AssetSummaryEvent>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? assetType = null,
   }) {
     return _then(_value.copyWith(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       assetType: null == assetType
           ? _value.assetType
@@ -103,7 +103,7 @@ abstract class _$$AssetSummaryEventLoadImplCopyWith<$Res>
       __$$AssetSummaryEventLoadImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String assetType});
+  $Res call({String activityFacilityId, String assetType});
 }
 
 /// @nodoc
@@ -117,13 +117,13 @@ class __$$AssetSummaryEventLoadImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? assetType = null,
   }) {
     return _then(_$AssetSummaryEventLoadImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       assetType: null == assetType
           ? _value.assetType
@@ -137,16 +137,16 @@ class __$$AssetSummaryEventLoadImplCopyWithImpl<$Res>
 
 class _$AssetSummaryEventLoadImpl implements AssetSummaryEventLoad {
   const _$AssetSummaryEventLoadImpl(
-      {required this.projectId, required this.assetType});
+      {required this.activityFacilityId, required this.assetType});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
   @override
   final String assetType;
 
   @override
   String toString() {
-    return 'AssetSummaryEvent.load(projectId: $projectId, assetType: $assetType)';
+    return 'AssetSummaryEvent.load(activityFacilityId: $activityFacilityId, assetType: $assetType)';
   }
 
   @override
@@ -154,14 +154,14 @@ class _$AssetSummaryEventLoadImpl implements AssetSummaryEventLoad {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$AssetSummaryEventLoadImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
             (identical(other.assetType, assetType) ||
                 other.assetType == assetType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, assetType);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, assetType);
 
   @JsonKey(ignore: true)
   @override
@@ -173,27 +173,27 @@ class _$AssetSummaryEventLoadImpl implements AssetSummaryEventLoad {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String assetType) load,
+    required TResult Function(String activityFacilityId, String assetType) load,
   }) {
-    return load(projectId, assetType);
+    return load(activityFacilityId, assetType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String assetType)? load,
+    TResult? Function(String activityFacilityId, String assetType)? load,
   }) {
-    return load?.call(projectId, assetType);
+    return load?.call(activityFacilityId, assetType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String assetType)? load,
+    TResult Function(String activityFacilityId, String assetType)? load,
     required TResult orElse(),
   }) {
     if (load != null) {
-      return load(projectId, assetType);
+      return load(activityFacilityId, assetType);
     }
     return orElse();
   }
@@ -229,11 +229,11 @@ class _$AssetSummaryEventLoadImpl implements AssetSummaryEventLoad {
 
 abstract class AssetSummaryEventLoad implements AssetSummaryEvent {
   const factory AssetSummaryEventLoad(
-      {required final String projectId,
+      {required final String activityFacilityId,
       required final String assetType}) = _$AssetSummaryEventLoadImpl;
 
   @override
-  String get projectId;
+  String get activityFacilityId;
   @override
   String get assetType;
   @override

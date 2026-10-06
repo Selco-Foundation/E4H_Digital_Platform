@@ -3,7 +3,8 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/utils/extensions.dart';
+
+import '../../utils/extensions.dart';
 
 class RejectedEditAssetSummary extends StatelessWidget {
   final String text;
@@ -103,9 +104,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
                     flex: 1,
                     child: DigitButton(
                       label: "Edit",
-                      onPressed: () {
-                        // Navigator.of(ctx).pop();
-                      },
+                      onPressed: () {},
                       type: DigitButtonType.secondary,
                       size: DigitButtonSize.medium,
                       prefixIcon: Icons.edit,

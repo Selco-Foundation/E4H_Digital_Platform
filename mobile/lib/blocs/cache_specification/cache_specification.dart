@@ -6,7 +6,6 @@ import '../../data/nosql/cache_specification.dart';
 
 part 'cache_specification.freezed.dart';
 
-/// Bloc responsible for CRUD on CacheSpecification
 class CacheSpecificationBloc
     extends Bloc<CacheSpecificationEvent, CacheSpecificationState> {
   final Isar isar;
@@ -27,7 +26,7 @@ class CacheSpecificationBloc
     try {
       final entries = await isar.cacheSpecifications
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -48,10 +47,9 @@ class CacheSpecificationBloc
   ) async {
     try {
       await isar.writeTxn(() async {
-        // Check if an entry already exists for this projectId + assetType + system
         final existing = await isar.cacheSpecifications
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .and()
@@ -59,7 +57,6 @@ class CacheSpecificationBloc
             .findFirst();
 
         if (existing != null) {
-          // Overwrite totalCapacity / totalCapacityUnit if desired:
           existing.totalCapacity = event.entry.totalCapacity;
           existing.totalCapacityUnit = event.entry.totalCapacityUnit;
           existing.updatedAt = DateTime.now();
@@ -83,7 +80,7 @@ class CacheSpecificationBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheSpecifications
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .and()
@@ -96,21 +93,13 @@ class CacheSpecificationBloc
           existing.updatedAt = DateTime.now();
           await isar.cacheSpecifications.put(existing);
         } else {
-          // final newEntry = CacheSpecification(
-          //   projectId: event.entry.projectId,
-          //   assetType: event.entry.assetType,
-          //   system: event.entry.system,
-          //   totalCapacity: event.entry.totalCapacity,
-          //   totalCapacityUnit: event.entry.totalCapacityUnit,
-          // );
           await isar.cacheSpecifications.put(event.entry);
         }
       });
 
-      // Emit the newly updated/added entry
       final updatedEntry = await isar.cacheSpecifications
           .where()
-          .projectIdEqualTo(event.entry.projectId)
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.entry.assetType)
           .and()
@@ -140,29 +129,23 @@ class CacheSpecificationBloc
   }
 }
 
-/// Events for CacheSpecificationBloc
 @freezed
 class CacheSpecificationEvent with _$CacheSpecificationEvent {
-  /// Load all specs for a given projectId + assetType
   const factory CacheSpecificationEvent.get(
     String projectId,
     String assetType,
   ) = CacheSpecificationEventGet;
 
-  /// Add a new specification (or overwrite existing totalCapacity)
   const factory CacheSpecificationEvent.add(CacheSpecification entry) =
       CacheSpecificationEventAdd;
 
-  /// Update an existing specification (or insert if missing)
   const factory CacheSpecificationEvent.update(CacheSpecification entry) =
       CacheSpecificationEventUpdate;
 
-  /// Delete by Isar Id
   const factory CacheSpecificationEvent.delete(int id) =
       CacheSpecificationEventDelete;
 }
 
-/// States for CacheSpecificationBloc
 @freezed
 class CacheSpecificationState with _$CacheSpecificationState {
   const factory CacheSpecificationState.initial() = _Initial;

@@ -466,3 +466,216 @@ abstract class _FormField implements FormField {
   _$$FormFieldImplCopyWith<_$FormFieldImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
+
+AssetTypeData _$AssetTypeDataFromJson(Map<String, dynamic> json) {
+  return _AssetTypeData.fromJson(json);
+}
+
+/// @nodoc
+mixin _$AssetTypeData {
+  int get id => throw _privateConstructorUsedError;
+  String get module => throw _privateConstructorUsedError;
+  String get tenantId => throw _privateConstructorUsedError;
+  @JsonKey(name: 'AssetType')
+  List<AssetType> get assetType => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $AssetTypeDataCopyWith<AssetTypeData> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $AssetTypeDataCopyWith<$Res> {
+  factory $AssetTypeDataCopyWith(
+          AssetTypeData value, $Res Function(AssetTypeData) then) =
+      _$AssetTypeDataCopyWithImpl<$Res, AssetTypeData>;
+  @useResult
+  $Res call(
+      {int id,
+      String module,
+      String tenantId,
+      @JsonKey(name: 'AssetType') List<AssetType> assetType});
+}
+
+/// @nodoc
+class _$AssetTypeDataCopyWithImpl<$Res, $Val extends AssetTypeData>
+    implements $AssetTypeDataCopyWith<$Res> {
+  _$AssetTypeDataCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? module = null,
+    Object? tenantId = null,
+    Object? assetType = null,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      module: null == module
+          ? _value.module
+          : module // ignore: cast_nullable_to_non_nullable
+              as String,
+      tenantId: null == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String,
+      assetType: null == assetType
+          ? _value.assetType
+          : assetType // ignore: cast_nullable_to_non_nullable
+              as List<AssetType>,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$AssetTypeDataImplCopyWith<$Res>
+    implements $AssetTypeDataCopyWith<$Res> {
+  factory _$$AssetTypeDataImplCopyWith(
+          _$AssetTypeDataImpl value, $Res Function(_$AssetTypeDataImpl) then) =
+      __$$AssetTypeDataImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {int id,
+      String module,
+      String tenantId,
+      @JsonKey(name: 'AssetType') List<AssetType> assetType});
+}
+
+/// @nodoc
+class __$$AssetTypeDataImplCopyWithImpl<$Res>
+    extends _$AssetTypeDataCopyWithImpl<$Res, _$AssetTypeDataImpl>
+    implements _$$AssetTypeDataImplCopyWith<$Res> {
+  __$$AssetTypeDataImplCopyWithImpl(
+      _$AssetTypeDataImpl _value, $Res Function(_$AssetTypeDataImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? module = null,
+    Object? tenantId = null,
+    Object? assetType = null,
+  }) {
+    return _then(_$AssetTypeDataImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      module: null == module
+          ? _value.module
+          : module // ignore: cast_nullable_to_non_nullable
+              as String,
+      tenantId: null == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String,
+      assetType: null == assetType
+          ? _value._assetType
+          : assetType // ignore: cast_nullable_to_non_nullable
+              as List<AssetType>,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$AssetTypeDataImpl implements _AssetTypeData {
+  const _$AssetTypeDataImpl(
+      {required this.id,
+      required this.module,
+      required this.tenantId,
+      @JsonKey(name: 'AssetType') required final List<AssetType> assetType})
+      : _assetType = assetType;
+
+  factory _$AssetTypeDataImpl.fromJson(Map<String, dynamic> json) =>
+      _$$AssetTypeDataImplFromJson(json);
+
+  @override
+  final int id;
+  @override
+  final String module;
+  @override
+  final String tenantId;
+  final List<AssetType> _assetType;
+  @override
+  @JsonKey(name: 'AssetType')
+  List<AssetType> get assetType {
+    if (_assetType is EqualUnmodifiableListView) return _assetType;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_assetType);
+  }
+
+  @override
+  String toString() {
+    return 'AssetTypeData(id: $id, module: $module, tenantId: $tenantId, assetType: $assetType)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$AssetTypeDataImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.module, module) || other.module == module) &&
+            (identical(other.tenantId, tenantId) ||
+                other.tenantId == tenantId) &&
+            const DeepCollectionEquality()
+                .equals(other._assetType, _assetType));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, id, module, tenantId,
+      const DeepCollectionEquality().hash(_assetType));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$AssetTypeDataImplCopyWith<_$AssetTypeDataImpl> get copyWith =>
+      __$$AssetTypeDataImplCopyWithImpl<_$AssetTypeDataImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$AssetTypeDataImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _AssetTypeData implements AssetTypeData {
+  const factory _AssetTypeData(
+      {required final int id,
+      required final String module,
+      required final String tenantId,
+      @JsonKey(name: 'AssetType')
+      required final List<AssetType> assetType}) = _$AssetTypeDataImpl;
+
+  factory _AssetTypeData.fromJson(Map<String, dynamic> json) =
+      _$AssetTypeDataImpl.fromJson;
+
+  @override
+  int get id;
+  @override
+  String get module;
+  @override
+  String get tenantId;
+  @override
+  @JsonKey(name: 'AssetType')
+  List<AssetType> get assetType;
+  @override
+  @JsonKey(ignore: true)
+  _$$AssetTypeDataImplCopyWith<_$AssetTypeDataImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}

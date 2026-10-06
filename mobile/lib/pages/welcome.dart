@@ -106,7 +106,6 @@ class WelcomeContent extends StatelessWidget {
                 context.translate(i18.welcome.welcomeDescription),
                 style: textTheme.bodyL,
               ),
-              // ...menuItems.map((item) => Column(
               ...menuItems.asMap().entries.map((entry) {
                 final index = entry.key;
                 final item = entry.value;

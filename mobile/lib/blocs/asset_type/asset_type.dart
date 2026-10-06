@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'asset_type.freezed.dart';
 
-// states
 @freezed
 class AssetTypeState with _$AssetTypeState {
   const factory AssetTypeState.initial() = AssetTypeInitial;
@@ -12,14 +11,12 @@ class AssetTypeState with _$AssetTypeState {
   const factory AssetTypeState.panel() = AssetTypePanel;
 }
 
-// events
 @freezed
 class AssetTypeEvent with _$AssetTypeEvent {
   const factory AssetTypeEvent.typeSelected(String assetType) =
       AssetTypeSelected;
 }
 
-// bloc
 class AssetTypeBloc extends Bloc<AssetTypeEvent, AssetTypeState> {
   AssetTypeBloc() : super(const AssetTypeState.initial()) {
     on<AssetTypeSelected>(_onTypeSelected);

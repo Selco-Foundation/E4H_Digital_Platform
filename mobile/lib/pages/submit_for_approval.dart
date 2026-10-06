@@ -1,38 +1,54 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
+import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
-import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
+import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:isar/isar.dart';
-import 'package:path/path.dart' show basename;
+import 'package:path/path.dart' as p;
 import 'package:recase/recase.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
+import '../blocs/activity_facility_bom/activity_facility_bom.dart';
+import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
-import '../data/nosql/cache_completion_report.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/comment/comment.dart';
-import '../model/project_workflow/project_workflow.dart';
+import '../model/mdms/mdms.dart';
+import '../model/solution_design_type/solution_design_type.dart';
+import '../repositories/activity_facility_workflow_repo.dart';
+import '../repositories/asset_handover_document_repo.dart';
+import '../repositories/installation_completion_certificate_repo.dart';
+import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
+import '../utils/document_upload_validation.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../utils/required_bom_form_key_validation.dart';
 import '../utils/utils.dart';
+import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
+import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/progress_indicator/operation_progress_overlay.dart';
+import '../widgets/summary/existing_or_loader.dart';
+import '../widgets/summary/summary.dart';
 
 @RoutePage()
 class SubmitForApprovalPage extends StatefulWidget {
-  const SubmitForApprovalPage({super.key});
+  const SubmitForApprovalPage({super.key, this.refresh});
+  final int? refresh;
 
   @override
   State<SubmitForApprovalPage> createState() => _SubmitForApprovalPageState();
@@ -40,114 +56,168 @@ class SubmitForApprovalPage extends StatefulWidget {
 
 class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   late String userType = "";
-  late String projectId = "";
-  late ProjectWorkflow project;
-  String? filePath = "";
+  late String activityFacilityId = "";
+  ActivityFacilityWorkflow? project;
   double? _latitude;
   double? _longitude;
-  bool rejection1 = false;
-  bool rejection2 = false;
-  bool rejection3 = false;
+  String? _system;
 
-  // for completion report upload
-  List<PlatformFile> _initialCompletion = [];
+  bool _initialized = false;
+  late List<dynamic> _entries;
+  List<PlatformFile> _pickedFiles = [];
+  List<ExistingReport> _existingReports = [];
+  bool _isInitialCompletionLoading = false;
+
+  List<String> _rejectionReasons = const <String>[];
+  final Set<String> _selectedRejectionReasons = <String>{};
 
   StreamSubscription<LocationState>? _locSub;
+
+  late Future<List<({String label, String schemaName, String pageName})>>
+      _bomButtonsFuture;
+  late Future<
+      List<
+          ({
+            String action,
+            String label,
+            String schemaName,
+            String pageName
+          })>> _buttonsWithActionsFuture;
 
   @override
   void initState() {
     super.initState();
+    _reload();
+  }
+
+  @override
+  void didUpdateWidget(covariant SubmitForApprovalPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refresh != oldWidget.refresh) {
+      _reload();
+    }
+  }
+
+  void _reload() {
+    _locSub?.cancel();
+    final locBloc = context.read<LocationBloc>();
+    locBloc.add(const LocationEvent.requestPermission());
+    locBloc.add(const LocationEvent.requestService());
+    _locSub = locBloc.stream.listen((locationState) {
+      if (locationState.latitude != null && locationState.longitude != null) {
+        setState(() {
+          _latitude = locationState.latitude;
+          _longitude = locationState.longitude;
+        });
+      }
+    });
     userType = context.read<UserTypeBloc>().state.maybeWhen(
           supervisor: () => USER_TYPES.SUPERVISOR.name,
           orElse: () => USER_TYPES.FIELD_STAFF.name,
         );
-    // Kick off the cache sync
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final selState = context.read<SelectedProjectBloc>().state;
-      selState.whenOrNull(selected: (selProject) {
-        projectId = selProject.project.id;
-        project = selProject;
-      });
-
+    final selState = context.read<SelectedActivityFacilityBloc>().state;
+    selState.whenOrNull(selected: (selProject) {
+      activityFacilityId = selProject.activityFacility.id;
+      project = selProject;
+      context
+          .read<AssetSubmissionBloc>()
+          .add(AssetSubmissionEvent.watch(activityFacilityId));
+      _loadRejectionReasonsFromWorkflow(project);
       context
           .read<CacheAssetBloc>()
-          .add(CacheAssetEvent.start(projectId, userType, project));
-
+          .add(CacheAssetEvent.start(activityFacilityId, userType, project!));
+      context.read<ActivityFacilityBomBloc>().add(
+            ActivityFacilityBomEvent.syncIfNeeded(
+              activityFacilityId: activityFacilityId,
+              facilityId:
+                  selProject.activityFacility.facility?.facilityId ?? "",
+              userType: userType,
+            ),
+          );
+      _loadProjectSystem();
       _loadInitialCompletion();
-      // });
     });
   }
 
   Future<void> _loadInitialCompletion() async {
+    if (mounted) {
+      setState(() => _isInitialCompletionLoading = true);
+    }
+
     final isar = context.read<CacheAssetBloc>().isar;
+    try {
+      final combined = await loadInitialCompletion(
+        isar: isar,
+        projectId: activityFacilityId,
+        activityFacilityWorkflow: project!,
+      );
 
-    print("projectId $projectId");
-    // 1) Try the local cache first
-    final cached = await isar.cacheCompletionReports
-        .where()
-        .projectIdEqualTo(projectId)
-        .findFirst();
-
-    if (cached?.filePath.isNotEmpty == true) {
-      // whether it's a uuid or a path, _getCachedFile will handle it
-      final file = await getCachedFile(cached!.filePath);
-      if (file != null) {
-        final persistentPath = await copyFileToLocalDir(file);
-        if (!mounted) return;
-        setState(() async {
-          _initialCompletion = [
-            PlatformFile(
-              name: basename(persistentPath),
-              path: persistentPath,
-              size: await File(persistentPath).length(),
-            )
-          ];
-          filePath = persistentPath;
-        });
-        return;
-      }
-    }
-
-    // 2) Fallback to workflow.documents
-    final wf = context.read<SelectedProjectBloc>().state.whenOrNull(
-          selected: (wf) => wf,
-        );
-    final docs = wf?.workflow?.documents ?? [];
-
-    final files = <PlatformFile>[];
-    for (final doc in docs) {
-      final key = doc.fileStore;
-      if (key != null) {
-        final file = await getCachedFile(key);
-        if (file != null) {
-          final persistentPath = await copyFileToLocalDir(file);
-          files.add(PlatformFile(
-            // name: basename(file.path),
-            // path: file.path,
-            // size: await file.length(),
-            name: basename(persistentPath),
-            path: persistentPath,
-            size: await File(persistentPath).length(),
-          ));
-          filePath = persistentPath;
-        }
-      }
-    }
-
-    if (files.isNotEmpty & mounted) {
+      if (!mounted) return;
       setState(() {
-        _initialCompletion = files;
+        final docs = project?.workflow?.documents ?? [];
+        _existingReports = combined.map((report) {
+          if (report.fileType != 'pdf' || report.isRemote) {
+            return report;
+          }
+
+          var name = report.fileName.trim().isNotEmpty
+              ? report.fileName.trim()
+              : p.basename(report.source);
+
+          final normalized =
+              normalizedInstallPdfNameFromPath(report.source, docs);
+          if (normalized != null && normalized.isNotEmpty) {
+            name = normalized;
+          }
+
+          return ExistingReport(
+            isarId: report.isarId,
+            source: report.source,
+            fileName: name,
+            fileType: report.fileType,
+            isRemote: report.isRemote,
+          );
+        }).toList();
+        _pickedFiles = [];
       });
+    } finally {
+      if (mounted) {
+        setState(() => _isInitialCompletionLoading = false);
+      }
     }
   }
 
-  void _handleUpload(PlatformFile platformFile) async {
-    final file = File(platformFile.path!);
-    final copiedPath = await copyFileToLocalDir(file);
+  Future<void> _handleUploads(List<PlatformFile> picked) async {
+    final copied = await copyPickedFilesLocally(picked);
+    if (!mounted) return;
     setState(() {
-      filePath = copiedPath;
+      _pickedFiles = copied;
     });
-    debugPrint("filePath: $filePath");
+  }
+
+  List<String> _extractRejectionReasonsFromWorkflow(
+      ActivityFacilityWorkflow? wf) {
+    final tx = latestTransactionWithComments(wf);
+    if (tx == null) return const <String>[];
+
+    final out = <String>[];
+    final seen = <String>{};
+
+    for (final c in tx.comments ?? const <Comment>[]) {
+      final r = c.reason?.trim();
+      if (r == null || r.isEmpty) continue;
+      if (seen.add(r)) out.add(r);
+    }
+
+    return out;
+  }
+
+  void _loadRejectionReasonsFromWorkflow(ActivityFacilityWorkflow? wf) {
+    final reasons = _extractRejectionReasonsFromWorkflow(wf);
+    setState(() {
+      _rejectionReasons = reasons;
+      _selectedRejectionReasons.clear();
+    });
   }
 
   @override
@@ -159,7 +229,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   Future<bool> _ensureLocationLoaded(
       {Duration timeout = const Duration(seconds: 10)}) async {
     final locBloc = context.read<LocationBloc>();
-    // If already have coords, return immediately
     if (locBloc.state.latitude != null && locBloc.state.longitude != null) {
       return true;
     }
@@ -167,7 +236,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
       final state = await locBloc.stream
           .firstWhere((s) => s.latitude != null && s.longitude != null)
           .timeout(timeout);
-      // local vars already updated in listener above, but set again to be safe
       setState(() {
         _latitude = state.latitude;
         _longitude = state.longitude;
@@ -178,221 +246,578 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     }
   }
 
+  Future<void> _loadProjectSystem() async {
+    if (activityFacilityId.isEmpty) return;
+
+    final isar = context.read<ActivityFacilityBloc>().isar;
+
+    final initState = context.read<AppInitialization>().state;
+    final solutionDesignList =
+        initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+          solutionDesign,
+      orElse: () => const [],
+    );
+
+    final facilityCode = project?.activityFacility.facility?.facilityDetails
+        ?.solar_solution_design_type;
+    final facilitySystemType =
+        project?.activityFacility.facility?.facilityDetails?.systemType;
+
+    final sys = await ActivityFacilityWorkflowRepository()
+        .getActivityFacilitySystem(
+            isar: isar,
+            activityFacilityId: activityFacilityId,
+            solutionDesignList: solutionDesignList,
+            facilitySystemType: facilitySystemType,
+            facilitySolutionDesignCode: facilityCode);
+
+    if (!mounted) return;
+    setState(() => _system = sys);
+  }
+
+  Future<bool> _hasInstallationImages() async {
+    if (activityFacilityId.isEmpty) return false;
+
+    final repo =
+        InstallationImagesRepository(context.read<CacheAssetBloc>().isar);
+    return repo.hasCachedImages(
+      activityFacilityId: activityFacilityId,
+    );
+  }
+
+  Future<bool> _hasInstallationCompletionCertificate() async {
+    if (activityFacilityId.isEmpty) return false;
+
+    final repo = InstallationCompletionCertificateRepository(
+      context.read<CacheAssetBloc>().isar,
+    );
+    return repo.hasCachedFiles(
+      activityFacilityId: activityFacilityId,
+    );
+  }
+
+  Future<bool> _hasAssetHandoverDocument() async {
+    if (activityFacilityId.isEmpty) return false;
+
+    final repo = AssetHandoverDocumentRepository(
+      context.read<CacheAssetBloc>().isar,
+    );
+    return repo.hasCachedFiles(
+      activityFacilityId: activityFacilityId,
+    );
+  }
+
+  void _showInstallationImagesRequiredPopup() {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title:
+            context.translate(i18.submitForApproval.requiredInstallationImages),
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            context.translate(
+                i18.submitForApproval.enterRequiredInstallationImages),
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<MissingRequiredDocumentMessage?>
+      _missingRequiredDocumentMessage() async {
+    return missingRequiredDocumentMessage(
+      hasInstallationCompletionCertificate:
+          await _hasInstallationCompletionCertificate(),
+      hasAssetHandoverDocument: await _hasAssetHandoverDocument(),
+      localizationKeys: RequiredDocumentLocalizationKeys(
+        requiredInstallationCompletionCertificateTitle:
+            i18.submitForApproval.requiredInstallationCompletionCertificate,
+        uploadRequiredInstallationCompletionCertificateMessage: i18
+            .submitForApproval.uploadRequiredInstallationCompletionCertificate,
+        requiredAssetHandoverDocumentTitle:
+            i18.submitForApproval.requiredAssetHandoverDocument,
+        uploadRequiredAssetHandoverDocumentMessage:
+            i18.submitForApproval.uploadRequiredAssetHandoverDocument,
+        requiredBothDocumentsTitle:
+            i18.submitForApproval.requiredInstallationDocuments,
+        uploadRequiredBothDocumentsMessage: i18.submitForApproval
+            .uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument,
+      ),
+    );
+  }
+
+  void _showRequiredDocumentPopup(MissingRequiredDocumentMessage message) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: context.translate(message.titleKey),
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            context.translate(message.messageKey),
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRequiredBomFormKeysPopup(
+    MissingRequiredBomFormKeysMessage message,
+  ) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: message.title,
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            message.message,
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: spacer4),
+          ...message.missingMessages.map(
+            (missingMessage) => Padding(
+              padding: const EdgeInsets.only(bottom: spacer2),
+              child: Text(
+                missingMessage,
+                textAlign: TextAlign.center,
+                style: textTheme.bodyL.copyWith(
+                  color: theme.colorTheme.text.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-
-    final allChecked = rejection1 && rejection2 && rejection3;
+    final isSupervisor = userType == USER_TYPES.SUPERVISOR.name;
 
     return Scaffold(
       body: MultiBlocListener(
         listeners: [
+          BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
+              listener: (context, state) {
+            state.maybeWhen(
+              loading: () {},
+              success: (_) async {
+                await _loadInitialCompletion();
+              },
+              failure: (msg) {
+                context.showSnackBar(SnackBar(
+                    content: Text(
+                        '${context.translate(i18.submitForApproval.bomSyncFailed)}: $msg')));
+              },
+              orElse: () {},
+            );
+          }),
           BlocListener<CacheAssetBloc, CacheAssetState>(
             listener: (context, cacheState) {
               cacheState.whenOrNull(
                 success: () {
                   context.read<OverallAssetSummaryBloc>().add(
                         OverallAssetSummaryEvent.loadCounts(
-                            projectId: projectId),
+                            activityFacilityId: activityFacilityId),
                       );
                 },
                 failure: (error) {
                   context.read<OverallAssetSummaryBloc>().add(
                         OverallAssetSummaryEvent.loadCounts(
-                            projectId: projectId),
+                            activityFacilityId: activityFacilityId),
                       );
                   context.showSnackBar(
-                    SnackBar(content: Text("Sync failed: $error")),
+                    SnackBar(
+                        content: Text(
+                            '${context.translate(i18.common.syncFailed)}: $error')),
                   );
                 },
-                // loading: (_) // we show loading in the summary widget itself
               );
             },
           ),
           BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
             listener: (context, submissionState) {
               submissionState.maybeWhen(
-                loading: () {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                },
                 success: () {
-                  Navigator.of(context, rootNavigator: true).pop();
                   context.router.replace(const InboxRoute());
                 },
-                failure: (message) {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  context.showSnackBar(SnackBar(content: Text(message)));
+                failure: (progress) {
+                  final message = progress.errorMessage ?? 'Failed.';
+                  if (isSessionExpiredMessage(message)) {
+                    handleSessionExpired(context);
+                  }
                 },
                 orElse: () {},
               );
             },
           ),
+          BlocListener<SelectedActivityFacilityBloc,
+                  SelectedActivityFacilityState>(
+              listenWhen: (prev, curr) =>
+                  curr.maybeWhen(selected: (_) => true, orElse: () => false),
+              listener: (context, state) {
+                state.whenOrNull(
+                  selected: (_) {
+                    if (mounted) _reload();
+                  },
+                );
+              }),
         ],
-        child: ScrollableContent(
-          enableFixedDigitButton: true,
-          backgroundColor: theme.colorTheme.generic.background,
-          header: const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
-          ),
-          footer: BlocBuilder<SelectedProjectBloc, SelectedProjectState>(
-            builder: (context, selProjectState) {
-              return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
-                builder: (context, submissionState) {
-                  final submitting = submissionState.maybeWhen(
-                      loading: () => true, orElse: () => false);
-
-                  final selProject =
-                      selProjectState.whenOrNull(selected: (wf) => wf);
-                  if (selProject == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final isRejectedByQc = selProject.status ==
-                      WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
-                  bool isFieldStaff = userType == USER_TYPES.FIELD_STAFF.name;
-
-                  if (isFieldStaff && isRejectedByQc) {
-                    return const SizedBox.shrink();
-                  }
-
-                  bool disableWithoutSupervisorReport =
-                      userType == USER_TYPES.SUPERVISOR.name &&
-                          filePath!.isEmpty;
-
-                  return FooterButton(
-                      showSuffixIcon: false,
-                      isDisabled: !allChecked ||
-                          submitting ||
-                          disableWithoutSupervisorReport,
-                      text: submitting ? "loading" : "Re-Submit for Approval",
-                      onPress: () {
-                        print("allChecked $allChecked");
-                        print("submitting $submitting");
-                        print("submitting ${!allChecked || submitting}");
-                        if (!allChecked || submitting) return;
-                        if (userType == USER_TYPES.SUPERVISOR.name &&
-                            filePath!.isNotEmpty) {
-                          context.read<CacheCompletionReportBloc>().add(
-                                CacheCompletionReportEvent.addOrUpdate(
-                                  CacheCompletionReport(
-                                    projectId: projectId,
-                                    filePath: filePath!,
-                                    latitude: _latitude.toString(),
-                                    longitude: _longitude.toString(),
-                                  ),
-                                ),
-                              );
-                        }
-                        context.read<AssetSubmissionBloc>().add(
-                              AssetSubmissionEvent.submitAll(
-                                  projectId: projectId, userType: userType),
-                            );
-                      });
-                },
-              );
-            },
-          ),
+        child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  vertical: spacer2, horizontal: spacer4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Summary',
-                    style: textTheme.headingXl
-                        .copyWith(color: theme.colorTheme.primary.primary2),
-                  ),
-                  const SizedBox(height: spacer4),
-                  const RejectedEditAssetSummary(),
-                  if (userType == USER_TYPES.SUPERVISOR.name) ...[
-                    const SizedBox(height: spacer4),
-                    DigitCard(
-                      children: [
-                        Text(
-                          'Installation Completion Report',
-                          style: textTheme.headingM.copyWith(
-                              color: theme.colorTheme.primary.primary2),
-                        ),
-                        Text(
-                          'Please scan and upload the installation completion report',
-                          style: textTheme.bodyS
-                              .copyWith(color: theme.colorTheme.text.secondary),
-                        ),
-                        FileUploadWidget(
-                          openFile: true,
-                          initialFiles: _initialCompletion,
-                          allowedExtensions: const ['pdf'],
-                          showPreview: true,
-                          allowMultiples: false,
-                          label: 'Upload',
-                          onFilesSelected: (files) {
-                            if (files.isEmpty || files.first.path == null)
-                              return <PlatformFile, String?>{};
-                            _ensureLocationLoaded();
-                            _handleUpload(files.first);
-                            return <PlatformFile, String?>{};
-                          },
-                        ),
-                        RejectionReasonsList(
-                          comments: context
-                                  .read<SelectedProjectBloc>()
-                                  .state
-                                  .whenOrNull(
-                                    selected: (wf) => wf.transactions
-                                        ?.expand(
-                                            (tx) => tx.comments ?? <Comment>[])
-                                        .toList(),
-                                  ) ??
-                              <Comment>[],
-                          excludeStandardTypes: true,
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: spacer4),
-                  Text(
-                    "Rejection List",
-                    style: textTheme.headingXl
-                        .copyWith(color: theme.colorTheme.primary.primary2),
-                  ),
-                  const SizedBox(height: spacer1),
-                  DigitCard(children: [
-                    DigitCheckbox(
-                        label: 'Inverter Rejection reason 1',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection1 = value;
+            ScrollableContent(
+              enableFixedDigitButton: true,
+              backgroundColor: theme.colorTheme.generic.background,
+              header: const BackNavigationHelpHeaderWidget(
+                  showBackNavigation: true, showHelp: false),
+              footer: BlocBuilder<SelectedActivityFacilityBloc,
+                  SelectedActivityFacilityState>(
+                builder: (context, selProjectState) {
+                  return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
+                    builder: (context, submissionState) {
+                      final progress = submissionState.maybeWhen(
+                        inProgress: (progress) => progress,
+                        failure: (progress) => progress,
+                        orElse: () => null,
+                      );
+                      final submitting = progress?.isActive ?? false;
+
+                      final selProject =
+                          selProjectState.whenOrNull(selected: (wf) => wf);
+                      if (selProject == null) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final isRejectedByQc = selProject.status ==
+                          WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
+                      bool isFieldStaff =
+                          userType == USER_TYPES.FIELD_STAFF.name;
+
+                      if (isFieldStaff && isRejectedByQc) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final notAllRejectionsChecked =
+                          (_rejectionReasons.isNotEmpty &&
+                              _selectedRejectionReasons.length !=
+                                  _rejectionReasons.length);
+
+                      final isDisabled = notAllRejectionsChecked || submitting;
+
+                      return FooterButton(
+                          showSuffixIcon: false,
+                          isDisabled: isDisabled,
+                          text: submitting
+                              ? "Submitting..."
+                              : "Re-Submit for Approval",
+                          onPress: () async {
+                            if (isDisabled) return;
+                            final isar =
+                                context.read<ActivityFacilityBloc>().isar;
+                            if (isSupervisor &&
+                                !await _hasInstallationImages()) {
+                              _showInstallationImagesRequiredPopup();
+                              return;
+                            }
+                            if (isSupervisor) {
+                              final missingDocumentMessage =
+                                  await _missingRequiredDocumentMessage();
+                              if (!mounted) return;
+                              if (missingDocumentMessage != null) {
+                                _showRequiredDocumentPopup(
+                                  missingDocumentMessage,
+                                );
+                                return;
+                              }
+                              final missingBomFormKeysMessage =
+                                  await missingRequiredBomFormKeysMessage(
+                                isar: isar,
+                                activityFacilityId: activityFacilityId,
+                                userType: userType,
+                                systemCode: _system,
+                              );
+                              if (!mounted) return;
+                              if (missingBomFormKeysMessage != null) {
+                                _showRequiredBomFormKeysPopup(
+                                  missingBomFormKeysMessage,
+                                );
+                                return;
+                              }
+                            }
+                            await _ensureLocationLoaded();
+                            if (!mounted) return;
+
+                            final lat = _latitude?.toString() ?? '';
+                            final lng = _longitude?.toString() ?? '';
+
+                            final inputs = <CompletionFileInput>[];
+                            for (final e in _existingReports) {
+                              inputs.add(CompletionFileInput(
+                                projectId: activityFacilityId,
+                                filePath: e.filePath,
+                                fileType: e.fileType,
+                                fileName: e.fileName,
+                                latitude: lat,
+                                longitude: lng,
+                                index: null,
+                              ));
+                            }
+                            for (final pf in _pickedFiles) {
+                              if (pf.path == null) continue;
+                              inputs.add(CompletionFileInput(
+                                projectId: activityFacilityId,
+                                filePath: pf.path!,
+                                fileType: inferFileType(pf.path!),
+                                fileName: pf.name,
+                                latitude: lat,
+                                longitude: lng,
+                                index: null,
+                              ));
+                            }
+
+                            final selState = this
+                                .context
+                                .read<SelectedActivityFacilityBloc>()
+                                .state;
+
+                            selState.whenOrNull(selected: (project) {
+                              this.context.read<ActivityFacilityBloc>().add(
+                                    ActivityFacilityEvent.addUnSubmitted(
+                                        project, userType),
+                                  );
+
+                              context.read<CacheCompletionReportBloc>().add(
+                                    CacheCompletionReportEvent
+                                        .replaceAllForProject(
+                                      projectId: activityFacilityId!,
+                                      files: inputs,
+                                    ),
+                                  );
+                              context.read<AssetSubmissionBloc>().add(
+                                    AssetSubmissionEvent.submitAll(
+                                        activityFacilityId: activityFacilityId,
+                                        facilityId: project.activityFacility
+                                                .facility?.facilityId ??
+                                            "",
+                                        userType: userType),
+                                  );
+                            });
                           });
-                        }),
-                    const SizedBox(height: spacer1),
-                    DigitCheckbox(
-                        label: 'Inverter Rejection reason 2',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection2 = value;
-                          });
-                        }),
-                    const SizedBox(height: spacer1),
-                    DigitCheckbox(
-                        label: 'Panel  Rejection reason 1',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection3 = value;
-                          });
-                        }),
-                  ])
-                ],
+                    },
+                  );
+                },
               ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: spacer2, horizontal: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.translate(i18.submitForApproval.summary),
+                        style: textTheme.headingXl
+                            .copyWith(color: theme.colorTheme.primary.primary2),
+                      ),
+                      const SizedBox(height: spacer4),
+                      const RejectedEditAssetSummary(),
+                      const SizedBox(height: spacer4),
+                      DigitCard(
+                        children: [
+                          Text(
+                            context.translate(i18.submitForApproval
+                                .installationCompletionReport),
+                            style: textTheme.headingM.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                          ...[
+                            BlocBuilder<AppInitialization, InitState>(
+                              builder: (context, state) {
+                                return state.maybeWhen(
+                                  orElse: () => const SizedBox.shrink(),
+                                  initialized: (
+                                    appConfig,
+                                    assetCount,
+                                    assetType,
+                                    system,
+                                    warranty,
+                                    brand,
+                                    solutionDesign,
+                                    solutionDesignBom,
+                                  ) {
+                                    return Column(
+                                      children: [
+                                        if (_system != null)
+                                          BomButtonsSection(
+                                            key: PageStorageKey(
+                                                'bom-buttons-$activityFacilityId'),
+                                            solutionDesignBom:
+                                                solutionDesignBom,
+                                            systemCode: _system!,
+                                            projectId: activityFacilityId,
+                                            origin:
+                                                FormOrigin.submitForApproval,
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            )
+                          ],
+                          Text(
+                            context.translate(i18
+                                .submitForApproval.scanUploadCompletionReport),
+                            style: textTheme.bodyS.copyWith(
+                                color: theme.colorTheme.text.secondary),
+                          ),
+                          FileUploadWidget(
+                            allowedExtensions: const [
+                              "pdf",
+                              "jpg",
+                              "jpeg",
+                              "png"
+                            ],
+                            showPreview: true,
+                            allowMultiples: true,
+                            label:
+                                context.translate(i18.submitForApproval.upload),
+                            onFilesSelected: (files) {
+                              if (files.isEmpty) {
+                                return <PlatformFile, String?>{};
+                              }
+                              _ensureLocationLoaded();
+                              _handleUploads(files);
+                              return <PlatformFile, String?>{};
+                            },
+                          ),
+                          ExistingFilesOrLoader(
+                            existingReports: _existingReports,
+                            workflowDocuments:
+                                project?.workflow?.documents ?? [],
+                            isLoading: _isInitialCompletionLoading,
+                            readOnly: false,
+                            onRemove: (r) {
+                              setState(() {
+                                _existingReports.remove(r);
+                              });
+                            },
+                          ),
+                          RejectionReasonsList(
+                            comments: context
+                                    .read<SelectedActivityFacilityBloc>()
+                                    .state
+                                    .whenOrNull(
+                                      selected: (wf) =>
+                                          latestTransactionWithComments(wf)
+                                              ?.comments,
+                                    ) ??
+                                <Comment>[],
+                            excludeStandardTypes: true,
+                            showSectionLabel: true,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      Text(
+                        context.translate(i18.submitForApproval.rejectionList),
+                        style: textTheme.headingXl
+                            .copyWith(color: theme.colorTheme.primary.primary2),
+                      ),
+                      const SizedBox(height: spacer1),
+                      DigitCard(
+                        children: [
+                          SizedBox(width: context.width),
+                          if (_rejectionReasons.isEmpty)
+                            Text(
+                              context.translate(i18
+                                  .submitForApproval.noRejectionReasonsFound),
+                              style: textTheme.bodyS,
+                            )
+                          else
+                            for (final reason in _rejectionReasons) ...[
+                              DigitCheckbox(
+                                key: ValueKey(
+                                    'rej-${activityFacilityId.isEmpty ? "none" : activityFacilityId}-$reason'),
+                                label: reason,
+                                value:
+                                    _selectedRejectionReasons.contains(reason),
+                                onChanged: (value) {
+                                  final checked = value ?? false;
+                                  setState(() {
+                                    if (checked)
+                                      _selectedRejectionReasons.add(reason);
+                                    else
+                                      _selectedRejectionReasons.remove(reason);
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: spacer1),
+                            ],
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
+              builder: (context, state) {
+                final progress = state.maybeWhen(
+                  inProgress: (progress) => progress,
+                  failure: (progress) => progress,
+                  orElse: () => null,
+                );
+                return OperationProgressOverlay(
+                  progress: progress,
+                  onClose: progress?.isFailure == true
+                      ? () => context
+                          .read<AssetSubmissionBloc>()
+                          .add(const AssetSubmissionEvent.dismiss())
+                      : null,
+                );
+              },
             ),
           ],
         ),
@@ -409,21 +834,18 @@ class RejectedEditAssetSummary extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    // 1) Grab the ProjectWorkflow to extract comments
     final workflow = context
-        .watch<SelectedProjectBloc>()
+        .watch<SelectedActivityFacilityBloc>()
         .state
         .whenOrNull(selected: (wf) => wf);
 
-    // 2) Build a map: AssetType (title case) → List<Comment>
     final commentsByType = <String, List<Comment>>{};
-    if (workflow?.transactions != null) {
-      for (final tx in workflow!.transactions!) {
-        for (final c in tx.comments ?? []) {
-          final t =
-              c.assetType != null ? ReCase(c.assetType!).titleCase : 'Unknown';
-          commentsByType.putIfAbsent(t, () => []).add(c);
-        }
+    final latestTransaction = latestTransactionWithComments(workflow);
+    if (latestTransaction != null) {
+      for (final c in latestTransaction.comments ?? []) {
+        final t =
+            c.assetType != null ? ReCase(c.assetType!).titleCase : 'Unknown';
+        commentsByType.putIfAbsent(t, () => []).add(c);
       }
     }
 
@@ -453,7 +875,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
             children: [
               Center(
                 child: Text(
-                  'Error loading counts:\n$error',
+                  '${context.translate(i18.submitForApproval.errorLoadingCounts)}:\n$error',
                   style: textTheme.bodyL
                       .copyWith(color: theme.colorTheme.alert.error),
                   textAlign: TextAlign.center,
@@ -464,7 +886,8 @@ class RejectedEditAssetSummary extends StatelessWidget {
           );
         }
         return DigitCard(children: [
-          _oneCard(context, 'Inverter', inverter, commentsByType['Inverter']),
+          _oneCard(context, 'Inverter', inverter, commentsByType['Inverter'],
+              displayLabel: 'Inverter / PCU'),
           _oneCard(context, 'Battery', battery, commentsByType['Battery']),
           _oneCard(context, 'Panel', panel, commentsByType['Panel'],
               isLast: true),
@@ -475,25 +898,50 @@ class RejectedEditAssetSummary extends StatelessWidget {
 
   Widget _oneCard(
       BuildContext ctx, String assetType, int count, List<Comment>? comments,
-      {bool isLast = false}) {
+      {bool isLast = false, String? displayLabel}) {
     final theme = Theme.of(ctx);
     final textTheme = theme.digitTextTheme(ctx);
-    final has = comments != null && comments.isNotEmpty;
+    final hasComments = comments != null && comments.isNotEmpty;
+
+    String buttonText = ctx.translate(i18.common.coreCommonEdit);
+
+    final userState = ctx.read<UserTypeBloc>().state;
+    bool isRejectedByQc = false;
+    bool isFieldStaff =
+        userState.maybeWhen(staff: () => true, orElse: () => false);
+
+    final selState = ctx.read<SelectedActivityFacilityBloc>().state;
+
+    selState.whenOrNull(selected: (project) {
+      isRejectedByQc = project.status ==
+          WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
+
+      if (isFieldStaff && isRejectedByQc) {
+        buttonText = ctx.translate(i18.submitForApproval.view);
+      }
+    });
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Stack(alignment: Alignment.center, children: [
         Align(
             alignment: Alignment.centerLeft,
-            child: Text('${assetType}s', style: textTheme.headingS)),
+            child: Text(
+                assetType.toLowerCase() == ASSET_TYPES.BATTERY.name.toLowerCase()
+                    ? ctx.translate(i18.assetCount.batteries)
+                    : assetType.toLowerCase() ==
+                            ASSET_TYPES.INVERTER.name.toLowerCase()
+                        ? 'Inverter/PCUs'
+                        : '${displayLabel ?? assetType}s',
+                style: textTheme.headingS)),
         Center(child: Text('$count', style: textTheme.bodyL)),
       ]),
-      if (has) RejectionReasonsList(comments: comments),
+      if (hasComments) RejectionReasonsList(comments: comments),
       if (count > 0) ...[
         const SizedBox(height: spacer5),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Expanded(
             child: DigitButton(
-              label: 'Edit',
+              label: buttonText,
               onPressed: () {
                 ctx
                     .read<AssetTypeBloc>()
@@ -502,7 +950,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
               },
               type: DigitButtonType.secondary,
               size: DigitButtonSize.medium,
-              prefixIcon: Icons.edit,
+              prefixIcon: (isFieldStaff && isRejectedByQc) ? null : Icons.edit,
               mainAxisSize: MainAxisSize.min,
             ),
           ),
@@ -514,15 +962,16 @@ class RejectedEditAssetSummary extends StatelessWidget {
   }
 }
 
-/// Extracted widget to render a card of rejection reasons.
 class RejectionReasonsList extends StatelessWidget {
   final List<Comment>? comments;
   final bool excludeStandardTypes;
+  final bool showSectionLabel;
 
   const RejectionReasonsList({
     Key? key,
     required this.comments,
     this.excludeStandardTypes = false,
+    this.showSectionLabel = false,
   }) : super(key: key);
 
   @override
@@ -536,7 +985,7 @@ class RejectionReasonsList extends StatelessWidget {
 
     final filtered = excludeStandardTypes
         ? comments!.where((c) {
-            final t = c.assetType?.toLowerCase();
+            final t = c.assetType?.toLowerCase().trim();
             return t != 'inverter' && t != 'battery' && t != 'panel';
           }).toList()
         : comments!;
@@ -560,7 +1009,7 @@ class RejectionReasonsList extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Rejection Reason(s)',
+                  context.translate(i18.submitForApproval.rejectionReasons),
                   style: textTheme.headingS
                       .copyWith(color: theme.colorTheme.text.primary),
                 ),
@@ -588,12 +1037,21 @@ class RejectionReasonsList extends StatelessWidget {
         .label
         .copyWith(color: theme.colorTheme.text.primary);
 
-    final reason = comment.reason; // may be null
+    final reason = comment.reason;
     final details = comment.displayComment;
+    final sectionLabel = comment.sectionLabel?.trim();
+    final reasonText =
+        reason ?? '${context.translate(i18.submitForApproval.reason)} $index';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (showSectionLabel &&
+            sectionLabel != null &&
+            sectionLabel.isNotEmpty) ...[
+          Text(sectionLabel, style: valueStyle),
+          const SizedBox(height: spacer2),
+        ],
         Container(
           decoration: BoxDecoration(
             border: Border.all(color: theme.colorTheme.primary.primary2),
@@ -603,10 +1061,7 @@ class RejectionReasonsList extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
                 vertical: spacer1, horizontal: spacer3),
-            child: Text(
-              reason == null ? 'Reason $index' : '$reason',
-              style: labelStyle,
-            ),
+            child: Text(reasonText, style: labelStyle),
           ),
         ),
         const SizedBox(height: spacer2),

@@ -18,7 +18,6 @@ class AppLocalizations {
 
   static LocalizationModel? localizationModel;
 
-  //creating a list for storing the localization strings
   static final List<Localization> _localizedStrings = <Localization>[];
 
   static LocalizationsDelegate<AppLocalizations> getDelegate(
@@ -26,7 +25,6 @@ class AppLocalizations {
       AppLocalizationsDelegate(config, isar);
 
   Future<bool> load() async {
-    //loading localizations from ISAR
     _localizedStrings.clear();
     final List<LocalizationWrapper> localizationList = await isar
         .localizationWrappers
@@ -42,8 +40,6 @@ class AppLocalizations {
     return false;
   }
 
-  //This translate method is what we will evoke according to our need. The localizations are already fetched from the load method.
-  //In order use this method in any page, use "localizations.translate(code)" with the appropriate code fetched from the module list
   String translate(String localizedValues) {
     if (_localizedStrings.isEmpty) {
       return localizedValues;
