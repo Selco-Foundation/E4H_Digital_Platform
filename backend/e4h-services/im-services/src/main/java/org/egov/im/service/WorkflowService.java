@@ -27,6 +27,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
@@ -370,21 +371,10 @@ public class WorkflowService {
         log.debug("Creating process instance for incident: {} with action: {}", incident.getIncidentId(), action);
         if (action.equalsIgnoreCase("RESOLVE") || action.equalsIgnoreCase("REJECT")) {
             reassignWorkflow(workflow, request, "COMPLAINANT");
-        } else if (action.equalsIgnoreCase("OUT_OF_WARRANTY")) {
-            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
-        } else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
-                request.getIncident().getApplicationStatus().trim().equals("PENDING_REVISION") && action.equalsIgnoreCase("SUBMIT")) {
-            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
-        } else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
-                request.getIncident().getApplicationStatus().trim().equals("PENDINGRESOLUTION") && action.equalsIgnoreCase("MARK_OUT_OF_SCOPE")) {
-            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
         }
-        else if (request.getIncident() != null && request.getIncident().getApplicationStatus() != null
-                && OUT_OF_WARRANTY_PENDING_TECH_POC.equals(request.getIncident().getApplicationStatus().trim())
-                && action.equalsIgnoreCase(APPROVE_ACTION)) {
-            String stateBoundaryCode = extractStateBoundaryCode(request.getIncident().getBoundaryCode());
-            reassignWorkflow(workflow, request, ROLE_COMPLAINT_FACILITATOR_1, stateBoundaryCode);
-        }
+        // State SPOC and Tech POC are pooled roles: the states they own are deliberately left
+        // unassigned by clearAssigneesForPooledState below, so nothing is reassigned to a named
+        // facilitator here any more.
         // An ASSIGN out of OUT_OF_SCOPE must land in PENDING_RESOLUTION_OUT_OF_SCOPE when the ticket goes
         // back to the vendor that already worked it, and in PENDINGRESOLUTION when it goes to another
         // vendor. egov-workflow-v2 cannot pick a next state at runtime (TransitionService resolves it
@@ -413,6 +403,8 @@ public class WorkflowService {
             processInstance.setRating(workflow.getRating());
         }
 
+        clearAssigneesForPooledState(request, action, this.states);
+
         if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
             List<User> users = new ArrayList<>();
 
@@ -426,6 +418,51 @@ public class WorkflowService {
         }
 
         return processInstance;
+    }
+
+    /**
+     * Drops the assignees when the transition lands the ticket in a state owned by a pooled role, so
+     * that it belongs to the role rather than to a person.
+     * <p>
+     * This is how a freshly raised ticket already works: nothing assigns it, so every CRM with
+     * jurisdiction over its boundary sees it and any of them can act. The same now holds for the State
+     * SPOC and Tech POC states - egov-workflow-v2 authorises a state-changing action purely on the
+     * acting user's roles ({@code WorkflowValidator.validateAction}) and never requires them to be the
+     * assignee, so leaving the assignee empty is what opens the ticket up to the whole role.
+     * <p>
+     * The decision is read off the workflow config rather than a hardcoded list of transitions: the
+     * roles on the resultant state's actions are exactly the roles that state waits on, and if all of
+     * the human ones are in {@link IMConstants#POOLED_ROLES} the ticket is pooled. Whatever the caller
+     * sent as {@code assignes} is discarded for those states - a client pinning the ticket to one
+     * facilitator is precisely what this removes.
+     * <p>
+     * Best-effort: any failure to resolve the resultant state leaves the assignees untouched, which is
+     * the behaviour that predates this rule. An assignment must never fail because a lookup failed.
+     */
+    void clearAssigneesForPooledState(IncidentRequest request, String action, List<State> states) {
+        Workflow workflow = request.getWorkflow();
+        String incidentId = request.getIncident().getIncidentId();
+        try {
+            State resultantState = findResultantState(request.getIncident().getApplicationStatus(), action, states);
+            if (resultantState == null) {
+                log.debug("Pooling: resultant state of action {} on incident {} could not be resolved, "
+                        + "leaving assignees untouched", action, incidentId);
+                return;
+            }
+            if (!isPooledState(resultantState)) {
+                return;
+            }
+            if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
+                log.info("Pooling: discarding assignees {} sent for incident {}, state {} is owned by a pooled role",
+                        workflow.getAssignes(), incidentId, resultantState.getState());
+            }
+            workflow.setAssignes(null);
+            log.info("Pooling: incident {} left unassigned in state {} so that every holder of the role can act",
+                    incidentId, resultantState.getState());
+        } catch (Exception e) {
+            log.error("Pooling: failed to decide on assignees for incident {}, leaving them untouched",
+                    incidentId, e);
+        }
     }
 
     /**
@@ -488,6 +525,65 @@ public class WorkflowService {
     }
 
     /**
+     * The state the ticket is about to land in, resolved from the business service definition the same
+     * way egov-workflow-v2's TransitionService resolves it: the action on the current state names its
+     * next state by uuid.
+     *
+     * @return null when the current state, the action or the next state is not in the definition
+     */
+    private State findResultantState(String currentApplicationStatus, String action, List<State> states) {
+        if (CollectionUtils.isEmpty(states) || StringUtils.isBlank(currentApplicationStatus)
+                || StringUtils.isBlank(action)) {
+            return null;
+        }
+        String status = currentApplicationStatus.trim();
+        State currentState = states.stream()
+                // The config may expose the status either as the state name or as applicationStatus.
+                .filter(state -> status.equalsIgnoreCase(state.getState())
+                        || status.equalsIgnoreCase(state.getApplicationStatus()))
+                .findFirst()
+                .orElse(null);
+        if (currentState == null || CollectionUtils.isEmpty(currentState.getActions())) {
+            return null;
+        }
+        String nextStateUuid = currentState.getActions().stream()
+                .filter(a -> a != null && action.equalsIgnoreCase(a.getAction()))
+                .map(Action::getNextState)
+                .findFirst()
+                .orElse(null);
+        if (StringUtils.isBlank(nextStateUuid)) {
+            return null;
+        }
+        return states.stream()
+                .filter(state -> nextStateUuid.equals(state.getUuid()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * True when every human role that can move the ticket on from this state is a pooled one. A state
+     * that also waits on a vendor or a health staff member is not pooled - those are real individuals
+     * and the ticket has to reach the right one.
+     * <p>
+     * Terminal states are excluded: the ticket has finished its lifecycle, so it waits on nobody and
+     * the actions it still carries (RATE on CLOSEDAFTERRESOLUTION) are after-the-fact ones.
+     */
+    private boolean isPooledState(State state) {
+        if (Boolean.TRUE.equals(state.getIsTerminateState()) || CollectionUtils.isEmpty(state.getActions())) {
+            return false;
+        }
+        List<String> humanRoles = state.getActions().stream()
+                .filter(a -> a != null && !CollectionUtils.isEmpty(a.getRoles()))
+                .flatMap(a -> a.getRoles().stream())
+                .filter(Objects::nonNull)
+                .distinct()
+                .filter(role -> MACHINE_ROLES.stream().noneMatch(role::equalsIgnoreCase))
+                .collect(Collectors.toList());
+        return !humanRoles.isEmpty()
+                && humanRoles.stream().allMatch(role -> POOLED_ROLES.stream().anyMatch(role::equalsIgnoreCase));
+    }
+
+    /**
      * The user of the vendor that was working the ticket before it went out of scope.
      * <p>
      * The incident carries no vendor: the assignment lives only in the workflow history, so it is read
@@ -545,21 +641,6 @@ public class WorkflowService {
         List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
         workflow.setAssignes(assignee);
         log.debug("Workflow reassigned to employee with UUID: {}", reassigneeDetails.get("employeeUUID"));
-    }
-
-    /**
-     * Extracts state-level boundary code from a facility boundary code.
-     * e.g. India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329 -> India_Karnataka
-     */
-    private String extractStateBoundaryCode(String boundaryCode) {
-        if (StringUtils.isBlank(boundaryCode)) {
-            return boundaryCode;
-        }
-        String[] parts = boundaryCode.replace('.', '_').split("_");
-        if (parts.length < 2) {
-            return boundaryCode;
-        }
-        return parts[0] + "_" + parts[1];
     }
 
     /**
