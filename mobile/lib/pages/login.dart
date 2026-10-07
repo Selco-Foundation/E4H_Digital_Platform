@@ -31,6 +31,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   var passwordVisible = false;
+  bool _navigating = false;
   bool isPrivacyEnabled = false;
   bool _isConsentStatusLoading = true;
   bool _hasAcceptedConsent = false;
@@ -42,6 +43,69 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     unawaited(_loadConsentStatus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(_navigateAuthenticated(context.read<AuthBloc>().state));
+      }
+    });
+  }
+
+  Future<void> _navigateAuthenticated(AuthState state) async {
+    await state.whenOrNull(
+      authenticated: (accesstoken, refreshtoken, userRequest) async {
+        if (_navigating) return;
+        _navigating = true;
+        await _persistConsentAfterAuthentication();
+        if (!mounted) return;
+        if (context.read<AuthBloc>().state != state) {
+          _navigating = false;
+          return;
+        }
+
+        final resolution = RoleLoginResolver.resolveRoles(
+          userRequest?.roles ?? const [],
+        );
+
+        if (resolution.requiresSelection) {
+          context.router.replace(
+            const AuthenticatedRouteWrapper(
+              children: [RoleSelectionRoute()],
+            ),
+          );
+          return;
+        }
+
+        final directUserType =
+            resolution.directUserType ?? USER_TYPES.FIELD_STAFF;
+        context.read<UserTypeBloc>().add(
+              UserTypeEvent.typeSelected(
+                directUserType.name.toLowerCase(),
+              ),
+            );
+
+        if (directUserType == USER_TYPES.AMC) {
+          context.router.replace(
+            const AuthenticatedRouteWrapper(
+              children: [AmcHomeRoute()],
+            ),
+          );
+          return;
+        }
+
+        if (directUserType == USER_TYPES.ASSESSOR) {
+          context.router.replace(
+            const AuthenticatedRouteWrapper(
+              children: [AssessmentHomeRoute()],
+            ),
+          );
+          return;
+        }
+
+        context.router.replace(
+          const AuthenticatedRouteWrapper(),
+        );
+      },
+    );
   }
 
   Future<void> _loadConsentStatus() async {
@@ -180,54 +244,8 @@ class _LoginPageState extends State<LoginPage> {
                               backgroundColor: const Light().alertError,
                             ));
                           },
-                          authenticated:
-                              (accesstoken, refreshtoken, userRequest) async {
-                            await _persistConsentAfterAuthentication();
-                            if (!context.mounted) return;
-
-                            final resolution = RoleLoginResolver.resolveRoles(
-                              userRequest?.roles ?? const [],
-                            );
-
-                            if (resolution.requiresSelection) {
-                              context.router.replace(
-                                const AuthenticatedRouteWrapper(
-                                  children: [RoleSelectionRoute()],
-                                ),
-                              );
-                              return;
-                            }
-
-                            final directUserType = resolution.directUserType ??
-                                USER_TYPES.FIELD_STAFF;
-                            context.read<UserTypeBloc>().add(
-                                  UserTypeEvent.typeSelected(
-                                    directUserType.name.toLowerCase(),
-                                  ),
-                                );
-
-                            if (directUserType == USER_TYPES.AMC) {
-                              context.router.replace(
-                                const AuthenticatedRouteWrapper(
-                                  children: [AmcHomeRoute()],
-                                ),
-                              );
-                              return;
-                            }
-
-                            if (directUserType == USER_TYPES.ASSESSOR) {
-                              context.router.replace(
-                                const AuthenticatedRouteWrapper(
-                                  children: [AssessmentHomeRoute()],
-                                ),
-                              );
-                              return;
-                            }
-
-                            context.router.replace(
-                              const AuthenticatedRouteWrapper(),
-                            );
-                          },
+                          authenticated: (_, __, ___) =>
+                              unawaited(_navigateAuthenticated(state)),
                         );
                       },
                       builder: (context, state) {
