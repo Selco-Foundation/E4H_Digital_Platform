@@ -1076,29 +1076,52 @@ void handleSessionExpired(BuildContext context) {
 }
 
 class DioErrorParser {
-  static Exception parse(DioError dioErr) {
-    AppLogger.instance.info("Dio error: ${dioErr}");
-    final serverData = dioErr.response?.data;
-    if (serverData is Map<String, dynamic> &&
-        serverData.containsKey('Errors')) {
-      final errors = serverData['Errors'] as List<dynamic>;
-      if (errors.isNotEmpty) {
-        final firstErr = errors.first as Map<String, dynamic>;
-        final msg = firstErr['message'] as String? ?? dioErr.message;
-        return Exception(
-          normalizeFriendlyNetworkErrorMessage(
-            msg,
-            fallback: dioErr.message ?? 'Failed.',
-          ),
-        );
+  static Exception parse(DioException error) {
+    AppLogger.instance.info("Dio error: $error");
+    if (isSessionExpiredMessage(error.message) ||
+        error.response?.statusCode == 401) {
+      return Exception('SESSION_EXPIRED');
+    }
+
+    dynamic body = error.response?.data;
+    try {
+      if (body is List<int>) body = utf8.decode(body);
+      if (body is String) body = jsonDecode(body);
+    } on FormatException {
+      body = null;
+    }
+
+    if (body is Map) {
+      final errors = body['Errors'];
+      final nestedError = body['error'];
+      final messages = [
+        if (errors is List)
+          for (final item in errors)
+            if (item is Map) item['message'],
+        if (nestedError is Map) nestedError['message'],
+        body['error_description'],
+        body['message'],
+      ];
+      for (final message in messages) {
+        if (message is String && message.trim().isNotEmpty) {
+          return Exception(message.trim());
+        }
       }
     }
 
-    return Exception(
-      normalizeFriendlyNetworkErrorMessage(
-        dioErr.message,
-        fallback: 'Failed.',
-      ),
-    );
+    final original = error.error?.toString() ?? error.message;
+    final friendly = normalizeFriendlyNetworkErrorMessage(original);
+    if (friendly != original?.trim() && friendly != 'Failed.') {
+      return Exception(friendly);
+    }
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.receiveTimeout) {
+      return Exception('The request timed out. Please try again.');
+    }
+    if (error.type == DioExceptionType.connectionError) {
+      return Exception('Could not connect to the server. Please try again.');
+    }
+    return Exception('Request failed. Please try again.');
   }
 }
