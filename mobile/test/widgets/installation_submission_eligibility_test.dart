@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/blocs/activity_facility/activity_facility.dart';
-import 'package:selco/blocs/app_init/app_init.dart';
-import 'package:selco/pages/select_health_facility.dart';
-import 'package:selco/utils/i18_key_constants.dart' as i18;
+import '../../lib/blocs/activity_facility/activity_facility.dart';
+import '../../lib/blocs/app_init/app_init.dart';
+import '../../lib/pages/select_health_facility.dart';
+import '../../lib/utils/i18_key_constants.dart' as i18;
 import '../support/asset_store.dart';
 
 class LocalActivityBloc

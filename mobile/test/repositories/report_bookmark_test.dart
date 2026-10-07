@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:selco/data/secure_storage/secureStore.dart';
-import 'package:selco/model/activity_facility/activity_facility.dart';
-import 'package:selco/model/activity_facility_workflow/activity_facility_workflow.dart';
-import 'package:selco/model/response/responsemodel.dart';
-import 'package:selco/model/scheduled_visit/scheduled_visit.dart';
-import 'package:selco/repositories/activity_facility_repo.dart';
-import 'package:selco/repositories/report_bookmark_repo.dart';
-import 'package:selco/repositories/scheduled_visit_repo.dart';
+import '../../lib/data/secure_storage/secureStore.dart';
+import '../../lib/model/activity_facility/activity_facility.dart';
+import '../../lib/model/activity_facility_workflow/activity_facility_workflow.dart';
+import '../../lib/model/response/responsemodel.dart';
+import '../../lib/model/scheduled_visit/scheduled_visit.dart';
+import '../../lib/repositories/activity_facility_repo.dart';
+import '../../lib/repositories/report_bookmark_repo.dart';
+import '../../lib/repositories/scheduled_visit_repo.dart';
 
 class ReportStore extends SecureStore {
   final values = <String, String>{};

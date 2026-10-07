@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:selco/repositories/activity_facility_repo.dart';
-import 'package:selco/utils/utils.dart';
+import '../../lib/repositories/activity_facility_repo.dart';
+import '../../lib/utils/utils.dart';
 
 const message =
     'Failed to transition workflow for facility: 8f267afc-f270-4c77-97d1-2999dbffdd97';

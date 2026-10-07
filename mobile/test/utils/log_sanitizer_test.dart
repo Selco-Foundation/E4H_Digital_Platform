@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:selco/utils/log_sanitizer.dart';
+import '../../lib/utils/log_sanitizer.dart';
 
 void main() {
   group('sanitizeRemoteLog', () {
