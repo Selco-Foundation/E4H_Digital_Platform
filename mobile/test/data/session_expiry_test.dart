@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:selco/data/api_interceptors.dart';
-import 'package:selco/data/secure_storage/secureStore.dart';
-import 'package:selco/repositories/auth_repo.dart';
-import 'package:selco/utils/envConfig.dart';
+import '../../lib/data/api_interceptors.dart';
+import '../../lib/data/secure_storage/secureStore.dart';
+import '../../lib/repositories/auth_repo.dart';
+import '../../lib/utils/envConfig.dart';
 
 class FakeAuthRepository extends AuthRepository {
   int refreshes = 0;

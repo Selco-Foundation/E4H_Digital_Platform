@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:selco/repositories/asset_submission_eligibility_repo.dart';
+import '../../lib/repositories/asset_submission_eligibility_repo.dart';
 import '../support/asset_store.dart';
 
 void main() {

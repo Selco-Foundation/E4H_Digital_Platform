@@ -2,8 +2,8 @@ import 'package:digit_ui_components/theme/digit_theme.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:selco/widgets/cards/assessment_facility_card.dart';
-import 'package:selco/pages/assessment_work_home.dart';
+import '../../lib/widgets/cards/assessment_facility_card.dart';
+import '../../lib/pages/assessment_work_home.dart';
 
 void main() {
   testWidgets(

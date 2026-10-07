@@ -2,19 +2,19 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/blocs/assessment_queue/assessment_queue.dart';
-import 'package:selco/model/assessment/assessment_mode.dart';
-import 'package:selco/repositories/assessment_queue_repo.dart';
-import 'package:selco/repositories/assessment_draft_repo.dart';
+import '../../lib/blocs/assessment_queue/assessment_queue.dart';
+import '../../lib/model/assessment/assessment_mode.dart';
+import '../../lib/repositories/assessment_queue_repo.dart';
+import '../../lib/repositories/assessment_draft_repo.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:selco/data/secure_storage/secureStore.dart';
-import 'package:selco/model/assessment/assessment_form.dart';
-import 'package:selco/model/assessment/assessment_form_type.dart';
-import 'package:selco/model/assessment/assessment_queue.dart';
-import 'package:selco/model/response/responsemodel.dart';
-import 'package:selco/repositories/assessment_bookmark_repo.dart';
-import 'package:selco/repositories/assessment_form_repo.dart';
+import '../../lib/data/secure_storage/secureStore.dart';
+import '../../lib/model/assessment/assessment_form.dart';
+import '../../lib/model/assessment/assessment_form_type.dart';
+import '../../lib/model/assessment/assessment_queue.dart';
+import '../../lib/model/response/responsemodel.dart';
+import '../../lib/repositories/assessment_bookmark_repo.dart';
+import '../../lib/repositories/assessment_form_repo.dart';
 
 class BookmarkStore extends SecureStore {
   final values = <String, String>{};

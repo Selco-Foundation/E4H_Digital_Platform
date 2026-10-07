@@ -1,6 +1,6 @@
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_add_new_asset.dart';
-import 'package:selco/data/nosql/cache_asset_count.dart';
+import '../../lib/data/nosql/cache_add_new_asset.dart';
+import '../../lib/data/nosql/cache_asset_count.dart';
 
 class AssetStore implements Isar {
   final counts = <CacheAssetCount>[];
