@@ -36,6 +36,7 @@ class AssessmentBookmarkRepository {
     });
     final search = query.trim().toLowerCase();
     return values
+        .where((entry) => entry['facility'] is Map)
         .map((entry) => AssessmentQueueFacility.fromJson(
             Map<String, dynamic>.from(entry['facility'] as Map)))
         .where((facility) =>
@@ -43,7 +44,13 @@ class AssessmentBookmarkRepository {
         .toList();
   }
 
-  Future<Set<String>> ids() async => (await _read()).keys.toSet();
+  Future<Set<String>> ids() async {
+    final entries = (await _read()).entries.toList();
+    entries.sort((a, b) => ((b.value as Map)['bookmarkedAt'] as int)
+        .compareTo((a.value as Map)['bookmarkedAt'] as int));
+    return entries.map((entry) => entry.key).toSet();
+  }
+
   Future<int> count() async => (await _read()).length;
 
   Future<void> save(AssessmentQueueFacility facility) =>
@@ -61,6 +68,32 @@ class AssessmentBookmarkRepository {
         };
         await storage.setAssessmentBookmarks(
             tenantId, assessorId, phase.name, entries);
+      });
+
+  Future<void> invalidate(String id) => _lock.synchronized(() async {
+        final entries = await _read();
+        final entry = entries[id.trim()] as Map?;
+        if (entry == null) return;
+        entries[id.trim()] = {...entry, 'facility': null};
+        await storage.setAssessmentBookmarks(
+            tenantId, assessorId, phase.name, entries);
+      });
+
+  Future<void> refreshSnapshots(List<AssessmentQueueFacility> facilities) =>
+      _lock.synchronized(() async {
+        final entries = await _read();
+        var changed = false;
+        for (final facility in facilities) {
+          final id = facility.planFacilityId?.trim();
+          final entry = entries[id] as Map?;
+          if (entry == null) continue;
+          entries[id!] = {...entry, 'facility': facility.toJson()};
+          changed = true;
+        }
+        if (changed) {
+          await storage.setAssessmentBookmarks(
+              tenantId, assessorId, phase.name, entries);
+        }
       });
 
   Future<void> remove(String planFacilityId) => _lock.synchronized(() async {

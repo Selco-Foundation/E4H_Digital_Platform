@@ -102,7 +102,7 @@ class ScheduledVisitRemoteRepository {
       };
 
       await dio.post(path, data: body);
-      await removeSubmittedReportBookmark(
+      await invalidateSubmittedReportBookmark(
           id: visitId,
           action: status ?? 'SUBMIT_VISIT_REPORT',
           storage: bookmarkStorage,
@@ -266,6 +266,10 @@ class ScheduledVisitRepository {
         await col.put(CacheScheduledVisit.fromModel(v));
       }
     });
+    await refreshReportBookmarkSnapshots(visits,
+        amc: true,
+        storage: _remote.bookmarkStorage,
+        tenantId: _remote.bookmarkTenantId);
   }
 
   Future<List<ScheduledVisit>> _readCache({

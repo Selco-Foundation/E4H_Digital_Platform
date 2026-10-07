@@ -33,7 +33,13 @@ abstract class ReportBookmarkRepository<T> {
     return storage.getReportBookmarks(kind, tenantId, userId, userType);
   }
 
-  Future<Set<String>> ids() async => (await _read()).keys.toSet();
+  Future<Set<String>> ids() async {
+    final entries = (await _read()).entries.toList();
+    entries.sort((a, b) => ((b.value as Map)['bookmarkedAt'] as int)
+        .compareTo((a.value as Map)['bookmarkedAt'] as int));
+    return entries.map((entry) => entry.key).toSet();
+  }
+
   Future<int> count() async => (await _read()).length;
   Future<List<T>> list({String query = '', String sortOrder = 'DESC'}) async {
     final entries = (await _read())
@@ -47,6 +53,7 @@ abstract class ReportBookmarkRepository<T> {
     });
     final search = query.trim().toLowerCase();
     return entries
+        .where((e) => e['record'] is Map)
         .map((e) => decode(Map<String, dynamic>.from(e['record'] as Map)))
         .where((item) => facilityName(item).toLowerCase().contains(search))
         .toList();
@@ -65,6 +72,31 @@ abstract class ReportBookmarkRepository<T> {
         };
         await storage.setReportBookmarks(
             kind, tenantId, userId, userType, entries);
+      });
+
+  Future<void> invalidate(String id) => _lock.synchronized(() async {
+        final entries = await _read();
+        final entry = entries[id.trim()] as Map?;
+        if (entry == null) return;
+        entries[id.trim()] = {...entry, 'record': null};
+        await storage.setReportBookmarks(
+            kind, tenantId, userId, userType, entries);
+      });
+
+  Future<void> refreshSnapshots(List<T> items) => _lock.synchronized(() async {
+        final entries = await _read();
+        var changed = false;
+        for (final item in items) {
+          final id = identity(item).trim();
+          final entry = entries[id] as Map?;
+          if (entry == null) continue;
+          entries[id] = {...entry, 'record': encode(item)};
+          changed = true;
+        }
+        if (changed) {
+          await storage.setReportBookmarks(
+              kind, tenantId, userId, userType, entries);
+        }
       });
 
   Future<void> remove(String id) => _lock.synchronized(() async {
@@ -119,7 +151,7 @@ class AmcBookmarkRepository extends ReportBookmarkRepository<ScheduledVisit> {
 }
 
 /// Called only after the server has accepted the final report workflow action.
-Future<void> removeSubmittedReportBookmark(
+Future<void> invalidateSubmittedReportBookmark(
     {required String id,
     required String action,
     SecureStore? storage,
@@ -143,12 +175,43 @@ Future<void> removeSubmittedReportBookmark(
         : AmcBookmarkRepository(
             storage: store, tenantId: tenant, userId: userId, userType: type);
     if (repo is InstallationBookmarkRepository) {
-      await repo.remove(id);
+      await repo.invalidate(id);
     } else if (repo is AmcBookmarkRepository) {
-      await repo.remove(id);
+      await repo.invalidate(id);
     }
   } catch (error) {
     AppLogger.instance
-        .info('Unable to remove submitted report bookmark: $error');
+        .info('Unable to invalidate submitted report bookmark: $error');
+  }
+}
+
+/// Refresh only existing bookmarks in the current user's module scopes.
+Future<void> refreshReportBookmarkSnapshots<T>(List<T> items,
+    {required bool amc, SecureStore? storage, String? tenantId}) async {
+  try {
+    final store = storage ?? SecureStore();
+    final user = (await store.getAccessInfo())?.userRequest;
+    final userId = user?.uuid ?? user?.userName ?? '';
+    if (userId.isEmpty) return;
+    final tenant = tenantId ?? envConfig.variables.tenantId;
+    if (amc) {
+      await AmcBookmarkRepository(
+              storage: store,
+              tenantId: tenant,
+              userId: userId,
+              userType: USER_TYPES.AMC.name)
+          .refreshSnapshots(items.cast<ScheduledVisit>());
+    } else {
+      for (final type in [USER_TYPES.FIELD_STAFF, USER_TYPES.SUPERVISOR]) {
+        await InstallationBookmarkRepository(
+                storage: store,
+                tenantId: tenant,
+                userId: userId,
+                userType: type.name)
+            .refreshSnapshots(items.cast<ActivityFacilityWorkflow>());
+      }
+    }
+  } catch (error) {
+    AppLogger.instance.info('Unable to refresh bookmark snapshots: $error');
   }
 }

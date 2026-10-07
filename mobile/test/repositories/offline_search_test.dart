@@ -23,6 +23,10 @@ import '../../lib/repositories/assessment_queue_repo.dart';
 import '../../lib/repositories/scheduled_visit_repo.dart';
 import '../../lib/utils/envConfig.dart';
 import '../support/offline_isar.dart';
+import 'report_bookmark_test.dart' as bookmarks_support;
+import '../../lib/repositories/report_bookmark_repo.dart';
+import '../../lib/repositories/assessment_bookmark_repo.dart';
+import '../../lib/model/assessment/assessment_form_type.dart';
 
 DioException failure([int? status]) => DioException(
     requestOptions: RequestOptions(),
@@ -104,6 +108,69 @@ void main() {
   tearDown(() async {
     if (isar.isOpen) await isar.close();
     await directory.delete(recursive: true);
+  });
+
+  test('downloaded pages restore invalidated snapshots without new bookmarks',
+      () async {
+    final store = SecureStore();
+    await store.setAccessInfo(
+        (await bookmarks_support.ReportStore().getAccessInfo())!);
+    final tenant = envConfig.variables.tenantId;
+    final installationBookmarks = InstallationBookmarkRepository(
+        tenantId: tenant, userId: 'user', userType: 'FIELD_STAFF');
+    final amcBookmarks = AmcBookmarkRepository(
+        tenantId: tenant, userId: 'user', userType: 'AMC');
+    final assessmentBookmarks = AssessmentBookmarkRepository(
+        tenantId: 'tenant', assessorId: 'user', phase: AssessmentPhase.PHONE);
+    await installationBookmarks.save(activity('one', 'Old', 1));
+    await amcBookmarks.save(visit('one', 'Old', 1));
+    await assessmentBookmarks.save(const AssessmentQueueFacility(
+        planFacilityId: 'one', facilityName: 'Old'));
+    await installationBookmarks.invalidate('one');
+    await amcBookmarks.invalidate('one');
+    await assessmentBookmarks.invalidate('one');
+    final installations = ActivityFacilityRepository(isar,
+        remote: ActivityRemote()
+          ..items = [
+            activity('one', 'Updated', 2),
+            activity('other', 'Other', 2)
+          ]);
+    await installations.fetchByWorkflowPaginated(
+        body: ActivityFacilitySearchModel(),
+        workflowStatuses: ['ASSIGNED_TO_FIELD_STAFF']);
+    final visits = ScheduledVisitRepository(isar,
+        remote: VisitRemote()
+          ..items = [visit('one', 'Updated', 2), visit('other', 'Other', 2)]);
+    await visits.fetchByWorkflowStatus(statuses: ['SCHEDULED']);
+    final dio = Dio();
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      handler.resolve(Response(requestOptions: options, statusCode: 200, data: {
+        'queue': [
+          {'planFacilityId': 'one', 'facilityName': 'Updated'},
+          {'planFacilityId': 'other', 'facilityName': 'Other'}
+        ]
+      }));
+    }));
+    await AssessmentQueueRepository(
+            dio: dio,
+            tenantId: 'tenant',
+            assessorId: 'user',
+            cache: IsarAssessmentQueueCache(isar))
+        .search(assessmentMode: AssessmentMode.remote);
+    expect(
+        (await installationBookmarks.list())
+            .single
+            .activityFacility
+            .facility!
+            .facilityName,
+        'Updated');
+    expect(
+        (await amcBookmarks.list()).single.facility!.facilityName, 'Updated');
+    expect((await assessmentBookmarks.list()).single.facilityName, 'Updated');
+    expect(await installationBookmarks.ids(), {'one'});
+    expect(await amcBookmarks.ids(), {'one'});
+    expect(await assessmentBookmarks.ids(), {'one'});
+    dio.close();
   });
 
   test(

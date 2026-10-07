@@ -298,7 +298,10 @@ void main() {
         userId: 'user',
         userType: 'FIELD_STAFF');
     expect(await bookmarks.ids(), {'11'});
+    await bookmarks.invalidate('11');
+    expect(await bookmarks.list(), isEmpty);
     await filter(tester, 'BOOKMARKED');
+    expect(find.text('Kanur 7'), findsOneWidget);
     await tester.tap(find.byTooltip(i18.installationBookmarks.remove));
     await settle(tester);
     expect(find.text(i18.common.noMatchingFacilitiesFound), findsOneWidget);
@@ -408,6 +411,7 @@ void main() {
 
       await fieldBookmarks.save(const AssessmentQueueFacility(
           planFacilityId: 'field', facilityName: 'Kanur Field'));
+      await fieldBookmarks.invalidate('field');
     });
     final drafts = MemoryDraftRepository(
         isar,

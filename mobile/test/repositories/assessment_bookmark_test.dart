@@ -60,10 +60,11 @@ class UnusedIsar implements Isar {
 
 class EmptyDrafts extends AssessmentDraftRepository {
   EmptyDrafts() : super(UnusedIsar());
+  final excludedIds = <String>{};
   @override
   Future<Set<String>> draftedPlanFacilityIds(
           {required String assessorId, required AssessmentPhase phase}) async =>
-      {};
+      excludedIds;
 }
 
 const facility = AssessmentQueueFacility(
@@ -100,9 +101,7 @@ void main() {
     });
     expect((await repo().list()).single.toJson(), facility.toJson());
   });
-  test(
-      'bookmark-only queue loads locally and keeps bookmarked draft facilities visible',
-      () async {
+  test('bookmark-only queue loads locally with draft eligibility', () async {
     final store = BookmarkStore();
     final bookmarks = AssessmentBookmarkRepository(
         storage: store,
@@ -113,10 +112,11 @@ void main() {
     final dio = Dio();
     dio.interceptors.add(InterceptorsWrapper(
         onRequest: (_, __) => fail('Bookmarks must not call remote search')));
+    final drafts = EmptyDrafts();
     final bloc = AssessmentQueueBloc(
       repository: AssessmentQueueRepository(
           dio: dio, storage: store, tenantId: 'tenant', assessorId: 'user'),
-      draftRepository: AssessmentDraftRepository(UnusedIsar()),
+      draftRepository: drafts,
       assessmentMode: AssessmentMode.remote,
       assessorId: 'user',
       bookmarkRepository: bookmarks,
@@ -128,6 +128,13 @@ void main() {
     final state = await loaded as AssessmentQueueLoaded;
     expect(state.facilities.single.planFacilityId, facility.planFacilityId);
     expect(state.hasMore, isFalse);
+    drafts.excludedIds.add('plan-facility');
+    final hidden =
+        bloc.stream.firstWhere((state) => state is AssessmentQueueLoaded);
+    bloc.add(
+        const AssessmentQueueRefresh(query: 'clinic', sortOrder: 'BOOKMARKED'));
+    expect((await hidden as AssessmentQueueLoaded).facilities, isEmpty);
+    expect(await bookmarks.ids(), {'plan-facility'});
     final empty =
         bloc.stream.firstWhere((state) => state is AssessmentQueueLoaded);
     bloc.add(const AssessmentQueueRefresh(
@@ -272,12 +279,23 @@ void main() {
     expect((await repo().list(sortOrder: 'ASC')).first.planFacilityId, '0');
   });
   for (final phase in AssessmentPhase.values) {
-    test('${phase.name} removes bookmark only after confirmed submission',
+    test('${phase.name} invalidates snapshot only after confirmed submission',
         () async {
       final store = BookmarkStore();
       final bookmarks = AssessmentBookmarkRepository(
           storage: store, tenantId: 'tenant', assessorId: 'user', phase: phase);
       await bookmarks.save(facility);
+      final savedAt = (await store.getAssessmentBookmarks(
+          'tenant', 'user', phase.name))['plan-facility']['bookmarkedAt'];
+      final otherPhase = phase == AssessmentPhase.PHONE
+          ? AssessmentPhase.FIELD
+          : AssessmentPhase.PHONE;
+      final otherBookmarks = AssessmentBookmarkRepository(
+          storage: store,
+          tenantId: 'tenant',
+          assessorId: 'user',
+          phase: otherPhase);
+      await otherBookmarks.save(facility);
       final dio = Dio();
       var resolveFails = true;
       var submissionFails = false;
@@ -320,7 +338,18 @@ void main() {
       expect(await bookmarks.count(), 1);
       submissionFails = false;
       expect((await forms.submitAssessment(request)).submissionId, 'report');
-      expect(await bookmarks.count(), 0);
+      expect(await bookmarks.count(), 1);
+      expect(await bookmarks.ids(), {'plan-facility'});
+      expect(await bookmarks.list(), isEmpty);
+      await bookmarks.refreshSnapshots([facility]);
+      expect((await bookmarks.list()).single.planFacilityId, 'plan-facility');
+      expect(
+          (await store.getAssessmentBookmarks(
+              'tenant', 'user', phase.name))['plan-facility']['bookmarkedAt'],
+          savedAt);
+      expect(
+          (await otherBookmarks.list()).single.planFacilityId, 'plan-facility');
+
       await bookmarks.save(facility);
       store.failWrites = true;
       expect((await forms.submitAssessment(request)).submissionId, 'report');

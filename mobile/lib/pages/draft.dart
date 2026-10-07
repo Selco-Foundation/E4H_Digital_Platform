@@ -45,7 +45,7 @@ class _DraftPageState extends State<DraftPage>
           name: (record) => record.activityFacility.facility?.facilityName,
           date: (record) =>
               record.activityFacility.scheduledAt ?? DateTime(1970),
-          bookmarkedIds: bookmarkedItems.map(bookmarks.identity).toList());
+          bookmarkedIds: bookmarkIds.toList());
 
   Future<void> _reloadBookmarks() async {
     await loadBookmarks(only: true);

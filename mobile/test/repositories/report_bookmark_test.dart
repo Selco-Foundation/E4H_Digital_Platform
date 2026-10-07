@@ -141,6 +141,30 @@ void main() {
       expect(await repo(store).ids(), contains('1'));
       expect(await repo(store).ids(), isNot(contains('failed')));
     });
+    test('$label retains IDs and save order across invalidation and refetch',
+        () async {
+      final store = ReportStore();
+      final bookmarks = repo(store);
+      await bookmarks.save(item('one'));
+      await bookmarks.save(item('two'));
+      await bookmarks.invalidate('one');
+      expect(await repo(store).ids(), {'one', 'two'});
+      expect((await repo(store).list()).map(bookmarks.identity), ['two']);
+      await repo(store).refreshSnapshots(label == 'installation'
+          ? <ActivityFacilityWorkflow>[
+              installation('one'),
+              installation('unbookmarked')
+            ]
+          : <ScheduledVisit>[visit('one'), visit('unbookmarked')]);
+      expect(
+          (await repo(store).list()).map(bookmarks.identity), ['two', 'one']);
+      expect(await repo(store).count(), 2);
+      await repo(store).remove('one');
+      await repo(store).refreshSnapshots(label == 'installation'
+          ? <ActivityFacilityWorkflow>[installation('one')]
+          : <ScheduledVisit>[visit('one')]);
+      expect(await repo(store).ids(), {'two'});
+    });
     test('$label rejects missing identities', () async {
       final store = ReportStore();
       await expectLater(repo(store).save(item('')), throwsFormatException);
@@ -153,7 +177,7 @@ void main() {
     'SUBMIT_REPORT_B',
     'SUBMIT_VISIT_REPORT'
   ]) {
-    test('$action removes only matching bookmark after successful workflow',
+    test('$action invalidates only matching snapshot after successful workflow',
         () async {
       final store = ReportStore();
       final staff = InstallationBookmarkRepository(
@@ -206,9 +230,14 @@ void main() {
       expect(await amc.count(), 1);
       expect(await staff.count(), 1);
       await submit();
-      expect(await staff.count(), action == 'SUBMIT_REPORT_A' ? 0 : 1);
-      expect(await supervisor.count(), action == 'SUBMIT_REPORT_B' ? 0 : 1);
-      expect(await amc.count(), action == 'SUBMIT_VISIT_REPORT' ? 0 : 1);
+      expect(await staff.count(), 1);
+      expect((await staff.list()).length, action == 'SUBMIT_REPORT_A' ? 0 : 1);
+      expect(await supervisor.count(), 1);
+      expect((await supervisor.list()).length,
+          action == 'SUBMIT_REPORT_B' ? 0 : 1);
+      expect(await amc.count(), 1);
+      expect(
+          (await amc.list()).length, action == 'SUBMIT_VISIT_REPORT' ? 0 : 1);
       await staff.save(installation('one'));
       await supervisor.save(installation('one'));
       await amc.save(visit('one'));
