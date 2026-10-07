@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:isar/isar.dart';
@@ -468,7 +469,8 @@ class BackgroundServiceController {
 }
 
 String _pretty(Object? e) {
-  final s = e?.toString() ?? 'Failed.';
+  final s = (e is DioException ? DioErrorParser.parse(e) : e)?.toString() ??
+      'Failed.';
   final lower = s.toLowerCase();
 
   if (lower.contains('session_expired') ||
