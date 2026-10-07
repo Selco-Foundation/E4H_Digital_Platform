@@ -19,6 +19,7 @@ import '../utils/utils.dart';
 import 'dynamic_form_repo.dart';
 
 import 'report_bookmark_repo.dart';
+import 'cache_fallback.dart';
 
 class PaginatedActivityFacilities {
   final List<ActivityFacilityWorkflow> items;
@@ -201,8 +202,9 @@ class ActivityFacilityRepository {
   final Isar _isar;
   final ActivityFacilityRemoteRepository _remote;
 
-  ActivityFacilityRepository(this._isar)
-      : _remote = ActivityFacilityRemoteRepository();
+  ActivityFacilityRepository(this._isar,
+      {ActivityFacilityRemoteRepository? remote})
+      : _remote = remote ?? ActivityFacilityRemoteRepository();
 
   Set<String> _resolveUserTypes(List<String> statuses) {
     final up = statuses.map((s) => s.toUpperCase()).toSet();
@@ -247,14 +249,19 @@ class ActivityFacilityRepository {
         sortDirection: sortDirection,
       );
 
-      await _replaceCache(workflowStatuses, remoteList);
+      await _upsertCache(remoteList);
       final excludedIds = await _excludedIdsFor(userTypes);
       final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
       return filteredRemoteList;
     } catch (e) {
+      if (isAuthenticationFailure(e)) rethrow;
       AppLogger.instance.info("error in fetching remote project $e");
     }
-    final cachedList = await readCache(workflowStatuses);
+    final cachedList = (await _readCacheSorted(
+            statuses: workflowStatuses, sortDirection: sortDirection))
+        .where((wf) => matchesFacilityName(
+            wf.activityFacility.facility?.facilityName, body.facilityName))
+        .toList();
     final excludedIds = await _excludedIdsFor(userTypes);
     return _applyExclusion(cachedList, excludedIds);
   }
@@ -276,11 +283,7 @@ class ActivityFacilityRepository {
         sortDirection: sortDirection,
       );
 
-      if (offset == 0) {
-        await _replaceCache(workflowStatuses, remoteList);
-      } else {
-        await _appendCache(remoteList);
-      }
+      await _upsertCache(remoteList);
 
       final excludedIds = await _excludedIdsFor(userTypes);
       final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
@@ -294,7 +297,8 @@ class ActivityFacilityRepository {
             workflowStatuses: workflowStatuses,
           );
           totalCount = (remoteCount - excludedIds.length).clamp(0, remoteCount);
-        } catch (_) {
+        } catch (error) {
+          if (isAuthenticationFailure(error)) rethrow;
           totalCount = offset +
               filteredRemoteList.length +
               (remoteList.length == pageSize ? 1 : 0);
@@ -311,6 +315,7 @@ class ActivityFacilityRepository {
         fromCache: false,
       );
     } catch (e) {
+      if (isAuthenticationFailure(e)) rethrow;
       AppLogger.instance.info("error in paginated fetch $e");
     }
 
@@ -319,7 +324,10 @@ class ActivityFacilityRepository {
       statuses: workflowStatuses,
       sortDirection: sortDirection,
     );
-    final filteredCache = _applyExclusion(cachedSorted, excludedIds);
+    final filteredCache = _applyExclusion(cachedSorted, excludedIds)
+        .where((wf) => matchesFacilityName(
+            wf.activityFacility.facility?.facilityName, body.facilityName))
+        .toList();
     final paged = filteredCache.skip(offset).take(limit).toList();
 
     return PaginatedActivityFacilities(
@@ -329,37 +337,21 @@ class ActivityFacilityRepository {
     );
   }
 
-  Future<void> _replaceCache(
-    List<String> statuses,
-    List<ActivityFacilityWorkflow> newList,
-  ) async {
-    final col = _isar.cacheActivityFacilityWorkflows;
-    await _isar.writeTxn(() async {
-      for (final status in statuses) {
-        final toDelete = await col.where().statusEqualTo(status).findAll();
-        for (final entry in toDelete) {
-          await col.delete(entry.id);
-        }
-      }
-      for (final wf in newList) {
-        await col.put(CacheActivityFacilityWorkflow(
-          activityFacilityId: wf.activityFacility.id,
-          status: wf.status ?? '',
-          activityFacility: wf.activityFacility,
-          transactions: wf.transactions,
-          workflow: wf.workflow,
-        ));
-      }
-    });
-  }
-
-  Future<void> _appendCache(
+  Future<void> _upsertCache(
     List<ActivityFacilityWorkflow> items,
   ) async {
     if (items.isEmpty) return;
     final col = _isar.cacheActivityFacilityWorkflows;
     await _isar.writeTxn(() async {
       for (final wf in items) {
+        if (wf.activityFacility.id.isEmpty) continue;
+        final existing = await col
+            .where()
+            .activityFacilityIdEqualTo(wf.activityFacility.id)
+            .findAll();
+        for (final row in existing) {
+          await col.delete(row.id);
+        }
         await col.put(CacheActivityFacilityWorkflow(
           activityFacilityId: wf.activityFacility.id,
           status: wf.status ?? '',
@@ -374,13 +366,16 @@ class ActivityFacilityRepository {
   Future<List<ActivityFacilityWorkflow>> readCache(
     List<String> statuses,
   ) async {
-    final col = _isar.cacheActivityFacilityWorkflows;
-    final List<CacheActivityFacilityWorkflow> all = [];
-    for (final status in statuses) {
-      final matches = await col.where().statusEqualTo(status).findAll();
-      all.addAll(matches);
+    final all = await _isar.cacheActivityFacilityWorkflows.where().findAll();
+    final byId = <String, CacheActivityFacilityWorkflow>{};
+    for (final row in all) {
+      final previous = byId[row.activityFacilityId];
+      if (previous == null || row.id > previous.id) {
+        byId[row.activityFacilityId] = row;
+      }
     }
-    return all
+    return byId.values
+        .where((row) => statuses.contains(row.status))
         .map((c) => ActivityFacilityWorkflow(
               activityFacility: c.activityFacility,
               status: c.status,

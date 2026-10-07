@@ -52,6 +52,32 @@ class SecureStore {
   );
   SecureStore();
 
+  Future<List<Map<String, dynamic>>> getAssessmentQueueResponses(
+      String tenantId, String assessorId, String phase) async {
+    final entries = await storage.readAll();
+    final responses = <Map<String, dynamic>>[];
+    const prefix = 'assessmentResponse:';
+    for (final entry in entries.entries) {
+      if (!entry.key.startsWith(prefix)) continue;
+      try {
+        final key = jsonDecode(entry.key.substring(prefix.length));
+        if (key is! List ||
+            key.length != 8 ||
+            key[0] != 'queue' ||
+            key[1] != tenantId ||
+            key[2] != assessorId ||
+            key[3] != phase) {
+          continue;
+        }
+        final response = jsonDecode(entry.value);
+        if (response is Map) responses.add(Map<String, dynamic>.from(response));
+      } on FormatException {
+        // Ignore malformed legacy entries; keep the original data intact.
+      }
+    }
+    return responses;
+  }
+
   Future<Map<String, dynamic>?> getAssessmentResponse(List<Object> key) async {
     final raw =
         await storage.read(key: 'assessmentResponse:${jsonEncode(key)}');

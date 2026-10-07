@@ -343,9 +343,11 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: spacer4),
         child: Center(
-            child: Text(context.translate(_bookmarksOnly
-                ? i18.installationBookmarks.empty
-                : i18.selectHealthFacility.noProjectsFound))),
+            child: Text(context.translate(_searchQuery.trim().isNotEmpty
+                ? i18.common.noMatchingFacilitiesFound
+                : _bookmarksOnly
+                    ? i18.installationBookmarks.empty
+                    : i18.selectHealthFacility.noProjectsFound))),
       );
     }
     return Padding(

@@ -182,9 +182,11 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
                           return Padding(
                             padding: const EdgeInsets.all(spacer4),
                             child: Text(
-                              context.translate(_bookmarksOnly
-                                  ? i18.amcBookmarks.empty
-                                  : i18.amcSelectFacility.noVisitsFound),
+                              context.translate(_searchQuery.trim().isNotEmpty
+                                  ? i18.common.noMatchingFacilitiesFound
+                                  : _bookmarksOnly
+                                      ? i18.amcBookmarks.empty
+                                      : i18.amcSelectFacility.noVisitsFound),
                               style: textTheme.bodyS.copyWith(
                                 color: theme.colorTheme.text.secondary,
                               ),

@@ -318,7 +318,7 @@ void main() {
     await tester.ensureVisible(find.byIcon(Icons.bookmark));
     await tester.tap(find.byIcon(Icons.bookmark));
     await tester.pumpAndSettle();
-    expect(find.text(i18.installationBookmarks.empty), findsOneWidget);
+    expect(find.text(i18.common.noMatchingFacilitiesFound), findsOneWidget);
     expect(await installations().ids(), {'two'});
     expect(tester.takeException(), isNull);
   });
@@ -330,6 +330,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(i18.amcBookmarks.empty), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'x');
+    await tester.pumpAndSettle();
+    expect(find.text(i18.common.noMatchingFacilitiesFound), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pumpAndSettle();
+    expect(find.text(i18.amcBookmarks.empty), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '');
     await tester.pumpAndSettle();
     expect(find.text(i18.amcBookmarks.empty), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -514,7 +520,7 @@ void main() {
       await tester.ensureVisible(find.byIcon(Icons.bookmark));
       await tester.tap(find.byIcon(Icons.bookmark));
       await tester.pumpAndSettle();
-      expect(find.text(i18.assessmentBookmarks.empty), findsOneWidget);
+      expect(find.text(i18.common.noMatchingFacilitiesFound), findsOneWidget);
       expect(requests, initialRequests);
       await filter(tester, 'ASC');
       expect(requests, greaterThan(initialRequests));
@@ -596,10 +602,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Approved Clinic'), findsOneWidget);
     expect(find.byTooltip(i18.amcBookmarks.remove), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Clinic');
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.byIcon(Icons.bookmark));
     await tester.tap(find.byIcon(Icons.bookmark));
     await tester.pumpAndSettle();
-    expect(find.text(i18.amcBookmarks.empty), findsOneWidget);
+    expect(find.text(i18.common.noMatchingFacilitiesFound), findsOneWidget);
     expect(bloc.events.length, requests);
     await filter(tester, 'DESC');
     expect(bloc.events.length, greaterThan(requests));
@@ -674,6 +682,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.bookmark));
     await tester.pumpAndSettle();
     expect(find.text('Approved Clinic'), findsNothing);
+    expect(find.text(i18.common.noMatchingFacilitiesFound), findsOneWidget);
     expect(activity.events.length, initialRequests);
     await filter(tester, 'ASC');
     expect(activity.events.length, greaterThan(initialRequests));

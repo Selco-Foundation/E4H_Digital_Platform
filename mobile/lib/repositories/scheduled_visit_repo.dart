@@ -14,6 +14,7 @@ import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 
 import 'report_bookmark_repo.dart';
+import 'cache_fallback.dart';
 
 class PaginatedScheduledVisits {
   final List<ScheduledVisit> items;
@@ -152,8 +153,8 @@ class ScheduledVisitRepository {
   final Isar _isar;
   final ScheduledVisitRemoteRepository _remote;
 
-  ScheduledVisitRepository(this._isar)
-      : _remote = ScheduledVisitRemoteRepository();
+  ScheduledVisitRepository(this._isar, {ScheduledVisitRemoteRepository? remote})
+      : _remote = remote ?? ScheduledVisitRemoteRepository();
 
   Future<PaginatedScheduledVisits> fetchByWorkflowStatus({
     required List<String> statuses,
@@ -198,60 +199,47 @@ class ScheduledVisitRepository {
         cachedPrefilledVisits: cachedPrefilled,
       );
 
-      if (offset == 0) {
-        await _replaceCache(statuses, items);
-      } else {
-        await _appendCache(items);
-      }
+      await _upsertCache(items);
 
       return PaginatedScheduledVisits(
         items: items,
         totalCount: remoteResp.totalCount,
         fromCache: false,
       );
-    } catch (e, st) {
+    } catch (e) {
+      if (isAuthenticationFailure(e)) rethrow;
       AppLogger.instance.info(
         'Failed to fetch scheduled visits remotely, falling back to cache: $e',
       );
 
-      final cachedItems = await _readCache(
-        statuses: statuses,
-        limit: limit,
-        offset: offset,
-      );
-      final total = await _countCache(statuses);
-
+      final prefilledRepo = PrefilledScheduledVisitRepository(_isar);
+      final prefilledIds = await prefilledRepo.getPrefilledVisitIds();
+      final cached = await _readCache(statuses: statuses);
+      final eligible = prefilledRepo
+          .filterByPrefilledRules(
+            remoteVisits: cached,
+            statuses: statuses,
+            prefilledVisitIds: prefilledIds,
+            cachedPrefilledVisits:
+                await prefilledRepo.getPrefilledVisitsFromCache(prefilledIds),
+          )
+          .where((visit) =>
+              matchesFacilityName(visit.facility?.facilityName, facilityName))
+          .toList();
+      eligible.sort((a, b) {
+        final order = (a.scheduledDate ?? DateTime(1970))
+            .compareTo(b.scheduledDate ?? DateTime(1970));
+        return sortDirection == 'ASC' ? order : -order;
+      });
       return PaginatedScheduledVisits(
-        items: cachedItems,
-        totalCount: total,
+        items: eligible.skip(offset).take(limit).toList(),
+        totalCount: eligible.length,
         fromCache: true,
       );
     }
   }
 
-  Future<void> _replaceCache(
-    List<String> statuses,
-    List<ScheduledVisit> visits,
-  ) async {
-    final col = _isar.cacheScheduledVisits;
-    await _isar.writeTxn(() async {
-      // 1. Delete EVERYTHING in cache for these statuses
-      for (final status in statuses) {
-        final toDelete = await col.where().statusEqualTo(status).findAll();
-        for (final row in toDelete) {
-          await col.delete(row.id);
-        }
-      }
-
-      // 2. Insert new list (even if visits is empty, the delete above already wiped)
-      for (final v in visits) {
-        if ((v.id ?? '').isEmpty) continue;
-        await col.put(CacheScheduledVisit.fromModel(v));
-      }
-    });
-  }
-
-  Future<void> _appendCache(
+  Future<void> _upsertCache(
     List<ScheduledVisit> visits,
   ) async {
     if (visits.isEmpty) return;
@@ -259,6 +247,11 @@ class ScheduledVisitRepository {
     await _isar.writeTxn(() async {
       for (final v in visits) {
         if ((v.id ?? '').isEmpty) continue;
+        final existing =
+            await col.where().scheduledVisitIdEqualTo(v.id!).findAll();
+        for (final row in existing) {
+          await col.delete(row.id);
+        }
         await col.put(CacheScheduledVisit.fromModel(v));
       }
     });
@@ -266,30 +259,19 @@ class ScheduledVisitRepository {
 
   Future<List<ScheduledVisit>> _readCache({
     required List<String> statuses,
-    required int limit,
-    required int offset,
   }) async {
-    final col = _isar.cacheScheduledVisits;
-    final all = <CacheScheduledVisit>[];
-
-    for (final status in statuses) {
-      final matches = await col.where().statusEqualTo(status).findAll();
-      all.addAll(matches);
+    final all = await _isar.cacheScheduledVisits.where().findAll();
+    final byId = <String, CacheScheduledVisit>{};
+    for (final row in all) {
+      final previous = byId[row.scheduledVisitId];
+      if (previous == null || row.id > previous.id) {
+        byId[row.scheduledVisitId] = row;
+      }
     }
-
-    all.sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
-
-    final slice = all.skip(offset).take(limit);
-    return slice.map((c) => c.toModel()).toList();
-  }
-
-  Future<int> _countCache(List<String> statuses) async {
-    final col = _isar.cacheScheduledVisits;
-    var total = 0;
-    for (final status in statuses) {
-      total += await col.where().statusEqualTo(status).count();
-    }
-    return total;
+    return byId.values
+        .where((row) => statuses.contains(row.status))
+        .map((row) => row.toModel())
+        .toList();
   }
 
   Future<void> deleteAmcMediaUploads({required String scheduledVisitId}) async {
@@ -432,9 +414,10 @@ class PrefilledScheduledVisitRepository {
     final result = <ScheduledVisit>[];
 
     for (final id in prefilledIds) {
-      final row = await col.where().scheduledVisitIdEqualTo(id).findFirst();
-      if (row != null) {
-        result.add(row.toModel());
+      final rows = await col.where().scheduledVisitIdEqualTo(id).findAll();
+      if (rows.isNotEmpty) {
+        rows.sort((a, b) => a.id.compareTo(b.id));
+        result.add(rows.last.toModel());
       }
     }
     return result;

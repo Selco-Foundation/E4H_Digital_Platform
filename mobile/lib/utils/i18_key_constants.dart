@@ -49,6 +49,7 @@ const installationBookmarks = InstallationBookmarks();
 const amcBookmarks = AmcBookmarks();
 
 class Common {
+  String get noMatchingFacilitiesFound => 'COMMON_NO_MATCHING_FACILITIES_FOUND';
   const Common();
   String get sessionExpired => 'COMMON_SESSION_EXPIRED';
   String get coreCommonProceed => 'CORE_COMMON_PROCEED';

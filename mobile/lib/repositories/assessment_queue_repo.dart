@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../data/remote_client.dart';
@@ -5,6 +7,9 @@ import '../data/secure_storage/secureStore.dart';
 import '../model/assessment/assessment_mode.dart';
 import '../model/assessment/assessment_queue.dart';
 import '../utils/envConfig.dart';
+import '../utils/constants.dart';
+import 'assessment_queue_cache_repo.dart';
+import 'cache_fallback.dart';
 import 'assessment_api_paths.dart';
 
 class AssessmentQueueRepository {
@@ -15,13 +20,20 @@ class AssessmentQueueRepository {
   final String? _tenantId;
   final String? _assessorId;
   final SecureStore _storage;
+  final AssessmentQueueCache _cache;
+  final Set<String> _importedScopes = {};
 
   AssessmentQueueRepository(
-      {Dio? dio, String? tenantId, String? assessorId, SecureStore? storage})
+      {Dio? dio,
+      String? tenantId,
+      String? assessorId,
+      SecureStore? storage,
+      AssessmentQueueCache? cache})
       : _dio = dio ?? DioClient().dio,
         _tenantId = tenantId,
         _assessorId = assessorId,
-        _storage = storage ?? SecureStore();
+        _storage = storage ?? SecureStore(),
+        _cache = cache ?? IsarAssessmentQueueCache.lazy(() => Constants().isar);
 
   Future<AssessmentQueueResponse> search({
     required AssessmentMode assessmentMode,
@@ -48,6 +60,40 @@ class AssessmentQueueRepository {
       offset,
       limit,
     ];
+    final phase = assessmentMode.assessmentPhase;
+    if (assessorId != null && assessorId.isNotEmpty) {
+      final scope = jsonEncode(cacheKey.take(4).toList());
+      if (!_importedScopes.contains(scope)) {
+        final legacy = await _storage.getAssessmentQueueResponses(
+            tenantId, assessorId, phase);
+        final facilities = <String, AssessmentQueueFacility>{};
+        for (final response in legacy) {
+          try {
+            final page = AssessmentQueueResponse.fromJson(response,
+                requestedOffset: 0, requestedLimit: defaultPageSize);
+            for (final facility in page.facilities) {
+              final id = facility.planFacilityId;
+              if (id == null || id.isEmpty) continue;
+              final previous = facilities[id];
+              if (previous == null ||
+                  (facility.lastActionTime ?? 0) >
+                      (previous.lastActionTime ?? 0)) {
+                facilities[id] = facility;
+              }
+            }
+          } on FormatException {
+            // A malformed old response must not prevent other imports.
+          }
+        }
+        await _cache.save(
+            tenantId: tenantId,
+            assessorId: assessorId,
+            phase: phase,
+            facilities: facilities.values.toList(),
+            overwrite: false);
+        _importedScopes.add(scope);
+      }
+    }
     Map<String, dynamic> data;
     try {
       final response = await _dio.post(
@@ -68,22 +114,27 @@ class AssessmentQueueRepository {
         throw const FormatException('Invalid assessment queue response');
       }
       data = Map<String, dynamic>.from(response.data as Map);
-      AssessmentQueueResponse.fromJson(data,
+      final page = AssessmentQueueResponse.fromJson(data,
           requestedOffset: offset, requestedLimit: limit);
       if (assessorId != null && assessorId.isNotEmpty) {
+        await _cache.save(
+            tenantId: tenantId,
+            assessorId: assessorId,
+            phase: phase,
+            facilities: page.facilities);
         await _storage.setAssessmentResponse(cacheKey, data);
       }
     } catch (error) {
-      if (error is DioException &&
-          (error.response?.statusCode == 401 ||
-              error.response?.statusCode == 403 ||
-              error.message == 'SESSION_EXPIRED')) {
-        rethrow;
-      }
+      if (isAuthenticationFailure(error)) rethrow;
       if (assessorId == null || assessorId.isEmpty) rethrow;
-      final cached = await _storage.getAssessmentResponse(cacheKey);
-      if (cached == null) rethrow;
-      data = cached;
+      return _cache.search(
+          tenantId: tenantId,
+          assessorId: assessorId,
+          phase: phase,
+          query: normalizedSearch ?? '',
+          sortOrder: sortOrder,
+          offset: offset,
+          limit: limit);
     }
 
     return AssessmentQueueResponse.fromJson(

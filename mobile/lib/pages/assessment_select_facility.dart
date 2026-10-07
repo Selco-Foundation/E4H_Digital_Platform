@@ -24,6 +24,7 @@ import '../repositories/assessment_draft_repo.dart';
 import '../repositories/assessment_bookmark_repo.dart';
 import '../repositories/assessment_form_repo.dart';
 import '../repositories/assessment_queue_repo.dart';
+import '../repositories/assessment_queue_cache_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/envConfig.dart';
@@ -53,7 +54,8 @@ class AssessmentSelectFacilityPage extends StatelessWidget {
     final isar = context.read<ActivityFacilityBloc>().isar;
     return BlocProvider(
       create: (_) => AssessmentQueueBloc(
-        repository: AssessmentQueueRepository(assessorId: assessorId),
+        repository: AssessmentQueueRepository(
+            assessorId: assessorId, cache: IsarAssessmentQueueCache(isar)),
         draftRepository: AssessmentDraftRepository(isar),
         assessmentMode: assessmentMode,
         assessorId: assessorId,
@@ -362,10 +364,12 @@ class _AssessmentSelectFacilityViewState
             padding: const EdgeInsets.symmetric(vertical: spacer4),
             child: Center(
               child: Text(
-                _bookmarksOnly
-                    ? context.translate(i18.assessmentBookmarks.empty)
-                    : context.translate(
-                        i18.assessmentSelectFacility.noFacilitiesFound),
+                _searchQuery.trim().isNotEmpty
+                    ? context.translate(i18.common.noMatchingFacilitiesFound)
+                    : _bookmarksOnly
+                        ? context.translate(i18.assessmentBookmarks.empty)
+                        : context.translate(
+                            i18.assessmentSelectFacility.noFacilitiesFound),
                 style: textTheme.bodyS.copyWith(
                   color: theme.colorTheme.text.secondary,
                 ),
