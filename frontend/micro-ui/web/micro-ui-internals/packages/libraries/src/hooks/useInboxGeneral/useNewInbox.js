@@ -38,17 +38,26 @@ const useNewInboxGeneral = ({ tenantId, ModuleCode, filters, middleware = [], co
   const client = useQueryClient();
   const { t } = useTranslation();
   const { fetchFilters, searchResponseKey, businessIdAliasForSearch, businessIdsParamForSearch } = inboxConfig()[ModuleCode];
-  let { workflowFilters, searchFilters, limit, offset, sortBy, sortOrder, applicationNumber} = fetchFilters(filters);
+  const { userName, roles } = Digit.UserService.getUser()?.info || {};
+  const usesAssignedToMe = ModuleCode === "Incident" && roles?.some((role) =>
+    ["COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2"].includes(role.code)
+  );
+  // The home card passes an array; the inbox passes the selected username.
+  const assignee = Array.isArray(filters?.assignee) ? filters.assignee[0]?.code : filters?.assignee;
+  const assignedToMe = !!(usesAssignedToMe && assignee && assignee === userName);
+  const requestFilters = usesAssignedToMe ? { ...filters, assignee: undefined } : filters;
+  const { workflowFilters, searchFilters, limit, offset, sortBy, sortOrder, applicationNumber } = fetchFilters(requestFilters);
   const jurisdictionCurrentBoundaries = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
     country: ["-"],
   };
 
   const query = useQuery(
-    ["INBOX", workflowFilters, searchFilters, ModuleCode, limit, offset, sortBy, sortOrder, applicationNumber],
+    ["INBOX", workflowFilters, searchFilters, ModuleCode, limit, offset, sortBy, sortOrder, applicationNumber, assignedToMe],
     () =>
       InboxGeneral.Search({
         inbox: {
           tenantId,
+          ...(assignedToMe ? { assignedToMe } : {}),
           processSearchCriteria: workflowFilters,
           jurisdictionSearchCriteria: jurisdictionCurrentBoundaries,
           moduleSearchCriteria: {
