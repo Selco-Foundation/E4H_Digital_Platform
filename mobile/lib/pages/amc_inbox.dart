@@ -309,9 +309,11 @@ class _AmcInboxPageState extends State<AmcInboxPage>
   }) {
     if (items.isEmpty) {
       return Center(
-        child: Text(context.translate(_bookmarksOnly
-            ? i18.amcBookmarks.empty
-            : i18.amcInbox.noVisitsToDisplay)),
+        child: Text(context.translate(_searchQuery.trim().isNotEmpty
+            ? i18.common.noMatchingFacilitiesFound
+            : _bookmarksOnly
+                ? i18.amcBookmarks.empty
+                : i18.amcInbox.noVisitsToDisplay)),
       );
     }
 

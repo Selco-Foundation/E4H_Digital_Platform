@@ -52,7 +52,6 @@ class AssessmentWorkHomePage extends StatefulWidget {
 }
 
 class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
-  final AssessmentQueueRepository _repository = AssessmentQueueRepository();
   int _remoteCount = 0;
   int _onSiteCount = 0;
   int _draftCount = 0;
@@ -80,7 +79,7 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
     };
 
     final queueCountsFuture = loadAssessmentWorkCounts(
-      repository: _repository,
+      repository: AssessmentQueueRepository(assessorId: assessorId),
       hasRemoteAssessment: hasRemoteAssessment,
       hasOnSiteAssessment: hasOnSiteAssessment,
     );

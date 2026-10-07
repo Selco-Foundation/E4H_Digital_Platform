@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,9 +11,25 @@ import '../../lib/model/assessment/assessment_form_type.dart';
 import '../../lib/model/assessment/assessment_mode.dart';
 import '../../lib/repositories/assessment_form_repo.dart';
 import '../../lib/repositories/assessment_queue_repo.dart';
+import '../../lib/repositories/assessment_queue_cache_repo.dart';
+import '../support/offline_isar.dart';
 
 class MemoryStore extends SecureStore {
   final responses = <String, Map<String, dynamic>>{};
+  @override
+  Future<List<Map<String, dynamic>>> getAssessmentQueueResponses(
+          String tenantId, String assessorId, String phase) async =>
+      responses.entries
+          .where((entry) {
+            final key = jsonDecode(entry.key) as List;
+            return key.length == 8 &&
+                key[0] == 'queue' &&
+                key[1] == tenantId &&
+                key[2] == assessorId &&
+                key[3] == phase;
+          })
+          .map((entry) => entry.value)
+          .toList();
   @override
   Future<ResponseModel?> getAccessInfo() async => null;
   @override
@@ -26,10 +43,18 @@ class MemoryStore extends SecureStore {
 }
 
 void main() {
-  test(
-      'queue cache persists between repositories and isolates request dimensions',
+  setUpAll(initializeOfflineIsar);
+  test('queue cache filters locally and isolates tenant, assessor and phase',
       () async {
     final store = MemoryStore();
+    final directory =
+        await Directory.systemTemp.createTemp('assessment-offline-');
+    final isar = await openOfflineIsar(directory.path, 'assessment-offline');
+    addTearDown(() async {
+      await isar.close();
+      await directory.delete(recursive: true);
+    });
+    final cache = IsarAssessmentQueueCache(isar);
     final dio = Dio();
     var offline = false;
     var status = 0;
@@ -54,7 +79,13 @@ void main() {
       } else {
         handler
             .resolve(Response(requestOptions: options, statusCode: 200, data: {
-          'queue': [],
+          'queue': [
+            {
+              'planFacilityId': 'one',
+              'facilityName': 'Clinic 7',
+              'lastActionTime': 1
+            }
+          ],
           'count': 12,
           'pagination': {'offset': 0, 'limit': 10, 'total': 12}
         }));
@@ -63,50 +94,63 @@ void main() {
     AssessmentQueueRepository repo(
             {String tenant = 'tenant', String user = 'user'}) =>
         AssessmentQueueRepository(
-            dio: dio, storage: store, tenantId: tenant, assessorId: user);
+            dio: dio,
+            storage: store,
+            tenantId: tenant,
+            assessorId: user,
+            cache: cache);
     await repo()
         .search(assessmentMode: AssessmentMode.remote, searchText: ' clinic ');
     offline = true;
     final cached = await repo()
         .search(assessmentMode: AssessmentMode.remote, searchText: 'clinic');
-    expect(cached.facilities, isEmpty);
-    expect(cached.count, 12);
-    for (final mode in [AssessmentMode.onSite]) {
-      await expectLater(
-          repo().search(assessmentMode: mode, searchText: 'clinic'),
-          throwsA(isA<DioException>()));
-    }
-    await expectLater(
-        repo(user: 'other').search(
-            assessmentMode: AssessmentMode.remote, searchText: 'clinic'),
-        throwsA(isA<DioException>()));
-    await expectLater(
-        repo(tenant: 'other').search(
-            assessmentMode: AssessmentMode.remote, searchText: 'clinic'),
-        throwsA(isA<DioException>()));
-    await expectLater(
-        repo().search(
-            assessmentMode: AssessmentMode.remote,
-            searchText: 'clinic',
-            offset: 10),
-        throwsA(isA<DioException>()));
+    expect(cached.facilities.single.facilityName, 'Clinic 7');
+    expect(cached.count, 1);
+    expect(
+        (await repo().search(
+                assessmentMode: AssessmentMode.onSite, searchText: 'clinic'))
+            .facilities,
+        isEmpty);
+    expect(
+        (await repo(user: 'other').search(
+                assessmentMode: AssessmentMode.remote, searchText: 'clinic'))
+            .facilities,
+        isEmpty);
+    expect(
+        (await repo(tenant: 'other').search(
+                assessmentMode: AssessmentMode.remote, searchText: 'clinic'))
+            .facilities,
+        isEmpty);
+    expect(
+        (await repo().search(
+                assessmentMode: AssessmentMode.remote,
+                searchText: 'clinic',
+                offset: 10))
+            .facilities,
+        isEmpty);
+    expect(
+        (await repo()
+                .search(assessmentMode: AssessmentMode.remote, searchText: '7'))
+            .facilities,
+        hasLength(1));
     status = 503;
     expect(
         (await repo().search(
                 assessmentMode: AssessmentMode.remote, searchText: 'clinic'))
             .count,
-        12);
+        1);
     status = 0;
     offlinePrecheck = true;
     expect(
         (await repo().search(
                 assessmentMode: AssessmentMode.remote, searchText: 'clinic'))
             .count,
-        12);
-    await expectLater(
-        repo().search(
-            assessmentMode: AssessmentMode.remote, searchText: 'uncached'),
-        throwsA(isA<DioException>()));
+        1);
+    expect(
+        (await repo().search(
+                assessmentMode: AssessmentMode.remote, searchText: 'uncached'))
+            .facilities,
+        isEmpty);
     offlinePrecheck = false;
     for (final deniedStatus in [401, 403]) {
       status = deniedStatus;

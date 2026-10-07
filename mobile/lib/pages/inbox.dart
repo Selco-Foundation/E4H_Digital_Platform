@@ -356,7 +356,9 @@ class _InboxPageState extends State<InboxPage>
   }) {
     if (projectsList.isEmpty) {
       return Center(
-        child: Text(context.translate(i18.inbox.noProjectsToDisplay)),
+        child: Text(context.translate(_searchQuery.trim().isNotEmpty
+            ? i18.common.noMatchingFacilitiesFound
+            : i18.inbox.noProjectsToDisplay)),
       );
     }
     return Column(
