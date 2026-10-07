@@ -24,10 +24,8 @@ class AuthRepository {
   Future<ResponseModel> validateLogin(LoginModel body) async {
     final formData = body.toJson();
 
-    final authClient = Dio();
-    authClient.options.baseUrl = envConfig.variables.baseUrl;
+    final authClient = Dio(configuredApiOptions());
     authClient.interceptors.addAll([
-      NetworkPrecheckInterceptor(),
       NetworkErrorNormalizerInterceptor(),
     ]);
 
@@ -113,7 +111,7 @@ class AuthRepository {
       throw const MissingRefreshCredentials();
     }
 
-    final dio = Dio()..options.baseUrl = envConfig.variables.baseUrl;
+    final dio = Dio(configuredApiOptions());
     final form = {
       'grant_type': 'refresh_token',
       'refresh_token': accessInfo.refresh_token,

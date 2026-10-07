@@ -62,8 +62,8 @@ void main() {
     AuthTokenInterceptor.onSessionExpired = () async => notifications++;
     auth = FakeAuthRepository();
     dio = Dio(BaseOptions(baseUrl: 'https://example.test'));
-    dio.interceptors.add(AuthTokenInterceptor(
-        authRepository: auth, retryClient: dio, ensureOnline: () async {}));
+    dio.interceptors
+        .add(AuthTokenInterceptor(authRepository: auth, retryClient: dio));
   });
   tearDown(() {
     dio.close();

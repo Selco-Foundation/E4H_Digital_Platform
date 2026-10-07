@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import '../data/remote_client.dart';
+import 'cache_fallback.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../model/appconfig/mdmsResponse.dart';
@@ -29,8 +30,20 @@ typedef MdmsRawDocsValidator = void Function(
 );
 
 class AppInitRepo {
+  final Dio? _dio;
+  AppInitRepo({Dio? dio}) : _dio = dio;
+
+  bool _isTransportFailure(Object error) =>
+      error is DioException &&
+      [
+        DioExceptionType.connectionError,
+        DioExceptionType.connectionTimeout,
+        DioExceptionType.sendTimeout,
+        DioExceptionType.receiveTimeout
+      ].contains(error.type);
+
   Future<MdmsResponseModel> searchAppConfiguration() async {
-    final client = Dio();
+    final client = Dio(configuredApiOptions());
     final SecureStore storage = SecureStore();
 
     try {
@@ -43,6 +56,7 @@ class AppInitRepo {
 
       return responseBody;
     } catch (remoteError) {
+      if (isAuthenticationFailure(remoteError)) rethrow;
       final localAppConfig = await storage.getAppConfig();
       if (localAppConfig == null) {
         rethrow;
@@ -255,7 +269,7 @@ class AppInitRepo {
   }
 
   Future<List<dynamic>> _fetchMdmsRawList(MdmsRequestModel request) async {
-    final client = DioClient().dio;
+    final client = _dio ?? DioClient().dio;
     final response = await client.post(
       mdmsV2Url,
       data: request.toJson(),
@@ -275,7 +289,7 @@ class AppInitRepo {
   List<dynamic>? _readCachedMdmsList(String? raw) {
     if (raw == null) return null;
     final decoded = json.decode(raw);
-    if (decoded is! List) return null;
+    if (decoded is! List) throw const FormatException('Invalid MDMS cache');
     return decoded;
   }
 
@@ -291,7 +305,7 @@ class AppInitRepo {
       final cachedRaw = await readCache();
       try {
         final cachedList = _readCachedMdmsList(cachedRaw);
-        if (cachedList != null && cachedList.isNotEmpty) {
+        if (cachedList != null) {
           return cachedList
               .map((item) => Mdms<T>.fromJson(
                     item as Map<String, dynamic>,
@@ -310,7 +324,21 @@ class AppInitRepo {
       }
     }
 
-    final payloadList = await _fetchMdmsRawList(request);
+    List<dynamic> payloadList;
+    try {
+      payloadList = await _fetchMdmsRawList(request);
+    } catch (error) {
+      if (!_isTransportFailure(error) || isAuthenticationFailure(error))
+        rethrow;
+      return _searchCachedMdms<T>(
+          request: request,
+          readCache: readCache,
+          writeCache: writeCache,
+          dataFromJson: dataFromJson,
+          useCacheRead: true,
+          cacheOnly: true);
+    }
+
     final result = payloadList
         .map((item) => Mdms<T>.fromJson(
               item as Map<String, dynamic>,
@@ -334,7 +362,7 @@ class AppInitRepo {
       final cachedRaw = await readCache();
       try {
         final cachedList = _readCachedMdmsList(cachedRaw);
-        if (cachedList != null && cachedList.isNotEmpty) {
+        if (cachedList != null) {
           final result = cachedList
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
@@ -353,7 +381,21 @@ class AppInitRepo {
       }
     }
 
-    final payloadList = await _fetchMdmsRawList(request);
+    List<dynamic> payloadList;
+    try {
+      payloadList = await _fetchMdmsRawList(request);
+    } catch (error) {
+      if (!_isTransportFailure(error) || isAuthenticationFailure(error))
+        rethrow;
+      return _searchCachedRawDocs(
+          request: request,
+          readCache: readCache,
+          writeCache: writeCache,
+          useCacheRead: true,
+          cacheOnly: true,
+          validator: validator);
+    }
+
     final result = payloadList
         .whereType<Map>()
         .map((e) => Map<String, dynamic>.from(e))
