@@ -14,6 +14,7 @@ import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 import '../../repositories/app_init_repo.dart';
+import '../../repositories/cache_fallback.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/envConfig.dart' as env;
 import '../../utils/utils.dart';
@@ -75,7 +76,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     } catch (e) {
       AppLogger.instance.info(e.toString());
 
-      if (isSessionExpiredMessage(e.toString())) {
+      if (isAuthenticationFailure(e) || isSessionExpiredMessage(e.toString())) {
         emit(const InitState.error(_sessionExpiredMdmsError));
         return;
       }
@@ -223,7 +224,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         cacheOnly: cacheOnly,
       );
     } catch (e) {
-      if (isSessionExpiredMessage(e.toString())) {
+      if (isAuthenticationFailure(e) || isSessionExpiredMessage(e.toString())) {
         rethrow;
       }
 
@@ -249,7 +250,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         cacheOnly: cacheOnly,
       );
     } catch (e) {
-      if (isSessionExpiredMessage(e.toString())) {
+      if (isAuthenticationFailure(e) || isSessionExpiredMessage(e.toString())) {
         rethrow;
       }
 

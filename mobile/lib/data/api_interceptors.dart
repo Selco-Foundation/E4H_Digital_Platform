@@ -75,17 +75,12 @@ class DebugHttpBodyLoggingInterceptor extends Interceptor {
 }
 
 class AuthTokenInterceptor extends Interceptor {
-  AuthTokenInterceptor(
-      {AuthRepository? authRepository,
-      Dio? retryClient,
-      Future<void> Function()? ensureOnline})
+  AuthTokenInterceptor({AuthRepository? authRepository, Dio? retryClient})
       : _authRepository = authRepository ?? AuthRepository(),
-        _retryClient = retryClient,
-        _ensureOnline = ensureOnline ?? NetworkService().ensureOnlineOrThrow;
+        _retryClient = retryClient;
 
   final AuthRepository _authRepository;
   final Dio? _retryClient;
-  final Future<void> Function() _ensureOnline;
   final _lock = Lock();
   static const _maxRetries = 5;
 
@@ -146,19 +141,6 @@ class AuthTokenInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    try {
-      await _ensureOnline();
-    } on NetworkException catch (e) {
-      return handler.reject(
-        DioError(
-          requestOptions: options,
-          type: DioErrorType.unknown,
-          error: e,
-          message: e.message,
-        ),
-      );
-    }
-
     final secureStore = SecureStore();
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
@@ -225,32 +207,6 @@ class AuthTokenInterceptor extends Interceptor {
       return handler.resolve(newResponse);
     } on DioError catch (e) {
       return handler.next(e);
-    }
-  }
-}
-
-class NetworkPrecheckInterceptor extends Interceptor {
-  @override
-  Future<void> onRequest(
-    RequestOptions options,
-    RequestInterceptorHandler handler,
-  ) async {
-    try {
-      await NetworkService().ensureOnlineOrThrow();
-      handler.next(options);
-    } on NetworkException catch (e) {
-      final lower = e.message.toLowerCase();
-      final code = lower.contains('internet')
-          ? LoginErrorCode.noInternet
-          : LoginErrorCode.noNetwork;
-      handler.reject(
-        DioException(
-          requestOptions: options,
-          type: DioExceptionType.unknown,
-          error: AppNetworkException(code, rawMessage: e.message),
-          message: code.name,
-        ),
-      );
     }
   }
 }
