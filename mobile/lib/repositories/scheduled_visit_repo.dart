@@ -239,6 +239,17 @@ class ScheduledVisitRepository {
     }
   }
 
+  Future<List<ScheduledVisit>> readEligibleCache(List<String> statuses) async {
+    final prefilled = PrefilledScheduledVisitRepository(_isar);
+    final ids = await prefilled.getPrefilledVisitIds();
+    return prefilled.filterByPrefilledRules(
+        remoteVisits: await _readCache(statuses: statuses),
+        statuses: statuses,
+        prefilledVisitIds: ids,
+        cachedPrefilledVisits:
+            await prefilled.getPrefilledVisitsFromCache(ids));
+  }
+
   Future<void> _upsertCache(
     List<ScheduledVisit> visits,
   ) async {

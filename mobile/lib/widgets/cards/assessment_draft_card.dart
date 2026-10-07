@@ -9,8 +9,12 @@ import '../../repositories/assessment_draft_repo.dart';
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
+import '../bookmarks/report_bookmarks.dart';
 
 class AssessmentDraftCard extends StatelessWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
   final String? facilityName;
   final String? facilityType;
   final String status;
@@ -22,6 +26,9 @@ class AssessmentDraftCard extends StatelessWidget {
 
   const AssessmentDraftCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
     required this.facilityName,
     required this.facilityType,
     required this.status,
@@ -65,12 +72,19 @@ class AssessmentDraftCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(width: double.infinity),
-            Text(
-              _displayValue(facilityName),
-              style: textTheme.headingL.copyWith(
-                color: theme.colorTheme.text.primary,
-              ),
-            ),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                  child: Text(_displayValue(facilityName),
+                      style: textTheme.headingL
+                          .copyWith(color: theme.colorTheme.text.primary))),
+              if (onToggleBookmark != null)
+                ReportBookmarkButton(
+                    selected: isBookmarked,
+                    saving: isSavingBookmark,
+                    onPressed: onToggleBookmark,
+                    addLabelKey: i18.assessmentBookmarks.add,
+                    removeLabelKey: i18.assessmentBookmarks.remove),
+            ]),
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
             ReportDetailRow(
