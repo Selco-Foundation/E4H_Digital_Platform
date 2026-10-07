@@ -2,14 +2,14 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:selco/data/secure_storage/secureStore.dart';
-import 'package:selco/data/network_manager.dart';
-import 'package:selco/model/response/responsemodel.dart';
-import 'package:selco/model/assessment/assessment_form.dart';
-import 'package:selco/model/assessment/assessment_form_type.dart';
-import 'package:selco/model/assessment/assessment_mode.dart';
-import 'package:selco/repositories/assessment_form_repo.dart';
-import 'package:selco/repositories/assessment_queue_repo.dart';
+import '../../lib/data/secure_storage/secureStore.dart';
+import '../../lib/data/network_manager.dart';
+import '../../lib/model/response/responsemodel.dart';
+import '../../lib/model/assessment/assessment_form.dart';
+import '../../lib/model/assessment/assessment_form_type.dart';
+import '../../lib/model/assessment/assessment_mode.dart';
+import '../../lib/repositories/assessment_form_repo.dart';
+import '../../lib/repositories/assessment_queue_repo.dart';
 
 class MemoryStore extends SecureStore {
   final responses = <String, Map<String, dynamic>>{};

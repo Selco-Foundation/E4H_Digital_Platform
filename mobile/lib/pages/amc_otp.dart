@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import 'package:selco/utils/utils.dart';
+import '../utils/utils.dart';
 
 import '../blocs/amc_otp/amc_otp.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
