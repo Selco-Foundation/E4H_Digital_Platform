@@ -66,8 +66,11 @@ class AssessmentQueueBloc
     emit(const AssessmentQueueLoading());
     try {
       if (sortOrder == 'BOOKMARKED') {
-        final facilities =
-            await bookmarkRepository!.list(query: query, sortOrder: 'DESC');
+        final excludedIds = await _draftedPlanFacilityIds();
+        final facilities = (await bookmarkRepository!
+                .list(query: query, sortOrder: 'DESC'))
+            .where((facility) => !excludedIds.contains(facility.planFacilityId))
+            .toList();
         if (generation != _requestGeneration) return;
         emit(AssessmentQueueLoaded(
             facilities: facilities,

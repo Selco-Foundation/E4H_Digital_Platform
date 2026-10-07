@@ -57,9 +57,7 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
     try {
       final orders = <AssessmentPhase, List<String>>{};
       for (final phase in AssessmentPhase.values) {
-        orders[phase] = (await _bookmarks(phase).list())
-            .map((record) => record.planFacilityId ?? '')
-            .toList();
+        orders[phase] = (await _bookmarks(phase).ids()).toList();
       }
       if (mounted && generation == _bookmarkGeneration) {
         setState(() {

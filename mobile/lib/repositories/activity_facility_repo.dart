@@ -154,7 +154,7 @@ class ActivityFacilityRemoteRepository {
           resp.statusCode != 204) {
         throw Exception('Workflow update failed (${resp.statusCode})');
       }
-      await removeSubmittedReportBookmark(
+      await invalidateSubmittedReportBookmark(
           id: activityFacilityId,
           action: action,
           storage: bookmarkStorage,
@@ -361,6 +361,10 @@ class ActivityFacilityRepository {
         ));
       }
     });
+    await refreshReportBookmarkSnapshots(items,
+        amc: false,
+        storage: _remote.bookmarkStorage,
+        tenantId: _remote.bookmarkTenantId);
   }
 
   Future<List<ActivityFacilityWorkflow>> readCache(

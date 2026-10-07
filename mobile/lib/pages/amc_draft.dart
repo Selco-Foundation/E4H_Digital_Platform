@@ -45,7 +45,7 @@ class _AmcDraftPageState extends State<AmcDraftPage>
           id: (record) => record.id ?? '',
           name: (record) => record.facility?.facilityName,
           date: (record) => record.scheduledDate ?? DateTime(1970),
-          bookmarkedIds: bookmarkedItems.map(bookmarks.identity).toList());
+          bookmarkedIds: bookmarkIds.toList());
 
   Future<void> _reloadBookmarks() async {
     final generation = ++_bookmarkCriteriaGeneration;

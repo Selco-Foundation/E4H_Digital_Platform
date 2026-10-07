@@ -389,11 +389,12 @@ class AssessmentFormRepository {
                   tenantId: request.tenantId,
                   assessorId: assessorId,
                   phase: request.assessmentPhase)
-              .remove(request.planFacilityId);
+              .invalidate(request.planFacilityId);
         }
       } catch (error) {
         AppLogger.instance.error(
-            title: 'Assessment bookmark cleanup', message: error.toString());
+            title: 'Assessment bookmark snapshot invalidation',
+            message: error.toString());
       }
       return result;
     } on DioException catch (error) {

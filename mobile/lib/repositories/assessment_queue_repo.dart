@@ -9,6 +9,9 @@ import '../model/assessment/assessment_queue.dart';
 import '../utils/envConfig.dart';
 import '../utils/constants.dart';
 import 'assessment_queue_cache_repo.dart';
+import 'assessment_bookmark_repo.dart';
+import '../model/assessment/assessment_form_type.dart';
+import '../utils/app_logger.dart';
 import 'cache_fallback.dart';
 import 'assessment_api_paths.dart';
 
@@ -123,6 +126,17 @@ class AssessmentQueueRepository {
             phase: phase,
             facilities: page.facilities);
         await _storage.setAssessmentResponse(cacheKey, data);
+        try {
+          await AssessmentBookmarkRepository(
+                  storage: _storage,
+                  tenantId: tenantId,
+                  assessorId: assessorId,
+                  phase: AssessmentPhase.fromCode(phase)!)
+              .refreshSnapshots(page.facilities);
+        } catch (error) {
+          AppLogger.instance
+              .info('Unable to refresh assessment bookmarks: $error');
+        }
       }
     } catch (error) {
       if (isAuthenticationFailure(error)) rethrow;
