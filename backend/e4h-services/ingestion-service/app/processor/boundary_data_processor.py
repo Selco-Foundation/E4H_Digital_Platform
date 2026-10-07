@@ -11,6 +11,7 @@ from app.ingest.service.data_writer import DataWriter
 from app.ingest.service.validator import Validator
 from app.schemas.request_info import RequestInfo
 from app.utils.boundary_service_client import BoundaryServiceClient
+from app.utils.convertor import build_localization_reverse_map
 from app.utils.localization_service_client import LocalizationServiceClient
 
 from dotenv import load_dotenv
@@ -48,6 +49,11 @@ class BoundaryDataProcessor:
         self.existing_boundaries: Set[str] = set()
         # casefold(code) -> canonical code from boundary service
         self.existing_boundaries_casefold: Dict[str, str] = {}
+
+        # normalized localization message -> list of "Boundary_<code>" localization codes
+        self.localization_reverse_map: Dict[str, List[str]] = {}
+        # row index -> {level: full_code} resolved for that row
+        self.row_level_codes: Dict[object, Dict[str, str]] = {}
 
         # Track failed operations
         self.failed_boundaries: Dict[str, str] = {}  # {full_code: error_message}
@@ -99,9 +105,76 @@ class BoundaryDataProcessor:
                 'errors': [row.get('error', '')]
             })
 
+    def _load_boundary_localizations(self):
+        """Fetch boundary localizations once and build the message -> codes reverse map."""
+        if not localization_service_url:
+            logger.warning("LOCALIZATION_SERVICE_URL not set; boundary existence will be checked by code only")
+            return
+
+        try:
+            loc_response = self.localization_client.search_messages(
+                tenant_id="in",
+                locale="en_IN",
+                module="rainmaker-in",
+            )
+            messages = loc_response.get("messages", []) if loc_response else []
+            self.localization_reverse_map = build_localization_reverse_map(messages)
+            logger.info(f"Built boundary localization reverse map with {len(self.localization_reverse_map)} entries "
+                        f"from {len(messages)} messages")
+        except Exception as e:
+            logger.error(f"Error fetching boundary localizations: {e}", exc_info=True)
+
+    @staticmethod
+    def _localization_lookup_key(label: str) -> str:
+        return label.strip().lower().replace(" ", "") if label else ""
+
+    def _resolve_code_by_localization(self, label: str, parent_full_code: Optional[str]) -> Optional[str]:
+        """Resolve an already existing boundary code from its localized label.
+
+        Mirrors the facility bulk ingestion resolver: the label is matched
+        against the localization reverse map and narrowed to the codes that sit
+        directly under `parent_full_code` (one extra segment, no deeper). Only a
+        single unambiguous match counts as an existing boundary.
+        """
+        key = self._localization_lookup_key(label)
+        if not key or key == "nan" or not self.localization_reverse_map:
+            return None
+
+        candidates = self.localization_reverse_map.get(key, [])
+        if not candidates:
+            return None
+
+        prefix = f"Boundary_{parent_full_code}_" if parent_full_code else "Boundary_"
+        matches = [c for c in candidates if c.startswith(prefix) and "_" not in c[len(prefix):]]
+        if not matches:
+            return None
+        if len(matches) > 1:
+            logger.warning(f"Ambiguous boundary localization for '{label}' under '{parent_full_code}': {matches}; "
+                           f"falling back to the generated code")
+            return None
+
+        return matches[0].replace("Boundary_", "", 1)
+
+    def _effective_full_code(self, generated_code: str, label: str,
+                             parent_full_code: Optional[str]) -> str:
+        """Full code to use for one hierarchy level of a row.
+
+        When the localized label already maps to a boundary under the parent
+        code resolved for this row, that existing code is reused so children are
+        attached to the boundary that already exists instead of to a new one
+        generated from the sheet's spelling.
+        """
+        existing_code = self._resolve_code_by_localization(label, parent_full_code)
+        if existing_code:
+            logger.debug(f"Resolved existing boundary '{label}' under '{parent_full_code}' to '{existing_code}'")
+            return existing_code
+        return f"{parent_full_code}_{generated_code}" if parent_full_code else generated_code
+
     def _organize_boundary_data(self, boundary_df):
         """Organize boundary data into hierarchical structure with full codes"""
-        for _, row in boundary_df.iterrows():
+        self._load_boundary_localizations()
+
+        for index, row in boundary_df.iterrows():
             country = self.to_camel_case(str(row.get('Country', '')).strip())
             state = self.to_camel_case(str(row.get('State', '')).strip())
             district = self.to_camel_case(str(row.get('District', '')).strip())
@@ -112,53 +185,62 @@ class BoundaryDataProcessor:
             district_label = self.boundary_localization_label(row.get("District"))
             block_label = self.boundary_localization_label(row.get("Block"))
 
+            level_codes: Dict[str, str] = {}
+            country_code = state_code = district_code = None
+
             # Country level
             if country:
-                full_code = country
-                self.all_boundary_full_codes.add(full_code)
-                if country not in self.boundary_data["Country"]:
-                    self.boundary_data["Country"][country] = {
+                country_code = self._effective_full_code(country, country_label or country, None)
+                level_codes["Country"] = country_code
+                self.all_boundary_full_codes.add(country_code)
+                if country_code not in self.boundary_data["Country"]:
+                    self.boundary_data["Country"][country_code] = {
                         "name": country,
                         "localization_label": country_label or country,
                         "parent": None,
-                        "full_code": full_code
+                        "full_code": country_code
                     }
 
             # State level
-            if state and country:
-                full_code = f"{country}_{state}"
-                self.all_boundary_full_codes.add(full_code)
-                if state not in self.boundary_data["State"]:
-                    self.boundary_data["State"][state] = {
+            if state and country_code:
+                state_code = self._effective_full_code(state, state_label or state, country_code)
+                level_codes["State"] = state_code
+                self.all_boundary_full_codes.add(state_code)
+                if state_code not in self.boundary_data["State"]:
+                    self.boundary_data["State"][state_code] = {
                         "name": state,
                         "localization_label": state_label or state,
-                        "parent": country,
-                        "full_code": full_code
+                        "parent": country_code,
+                        "full_code": state_code
                     }
 
             # District level
-            if district and state and country:
-                full_code = f"{country}_{state}_{district}"
-                self.all_boundary_full_codes.add(full_code)
-                if district not in self.boundary_data["District"]:
-                    self.boundary_data["District"][district] = {
+            if district and state_code:
+                district_code = self._effective_full_code(district, district_label or district, state_code)
+                level_codes["District"] = district_code
+                self.all_boundary_full_codes.add(district_code)
+                if district_code not in self.boundary_data["District"]:
+                    self.boundary_data["District"][district_code] = {
                         "name": district,
                         "localization_label": district_label or district,
-                        "parent": f"{country}_{state}",
-                        "full_code": full_code
+                        "parent": state_code,
+                        "full_code": district_code
                     }
 
             # Block level
-            if block and district and state and country:
-                full_code = f"{country}_{state}_{district}_{block}"
-                self.all_boundary_full_codes.add(full_code)
-                if block not in self.boundary_data["Block"]:
-                    self.boundary_data["Block"][block] = {
+            if block and district_code:
+                block_code = self._effective_full_code(block, block_label or block, district_code)
+                level_codes["Block"] = block_code
+                self.all_boundary_full_codes.add(block_code)
+                if block_code not in self.boundary_data["Block"]:
+                    self.boundary_data["Block"][block_code] = {
                         "name": block,
                         "localization_label": block_label or block,
-                        "parent": f"{country}_{state}_{district}",
-                        "full_code": full_code
+                        "parent": district_code,
+                        "full_code": block_code
                     }
+
+            self.row_level_codes[index] = level_codes
 
         # Log summary
         for level in self.hierarchy_levels:
@@ -261,20 +343,11 @@ class BoundaryDataProcessor:
         logger.info(f"Attempted to create {len(boundaries_to_create)} boundaries. "
                     f"Failed: {len(self.failed_boundaries)}")
 
-    def _deepest_full_code_for_row(self, row) -> Optional[str]:
-        country = self.to_camel_case(str(row.get('Country', '')).strip())
-        state = self.to_camel_case(str(row.get('State', '')).strip())
-        district = self.to_camel_case(str(row.get('District', '')).strip())
-        block = self.to_camel_case(str(row.get('Block', '')).strip())
-
-        if block and district and state and country:
-            return f"{country}_{state}_{district}_{block}"
-        if district and state and country:
-            return f"{country}_{state}_{district}"
-        if state and country:
-            return f"{country}_{state}"
-        if country:
-            return country
+    def _deepest_full_code_for_row(self, index) -> Optional[str]:
+        level_codes = self.row_level_codes.get(index) or {}
+        for level in reversed(self.hierarchy_levels):
+            if level_codes.get(level):
+                return level_codes[level]
         return None
 
     def _create_boundary_relationships(self):
@@ -377,54 +450,29 @@ class BoundaryDataProcessor:
             row_failed = False
             row_errors = []
 
-            deepest_code = self._deepest_full_code_for_row(row)
+            level_codes = self.row_level_codes.get(index) or {}
+
+            deepest_code = self._deepest_full_code_for_row(index)
             if deepest_code and self._boundary_exists(deepest_code) and deepest_code not in self.failed_boundaries:
                 existing_code = self.existing_boundaries_casefold[deepest_code.casefold()]
                 row_failed = True
                 row_errors.append(f"Boundary already exists: {existing_code}")
 
-            country = self.to_camel_case(str(row.get('Country', '')).strip())
-            state = self.to_camel_case(str(row.get('State', '')).strip())
-            district = self.to_camel_case(str(row.get('District', '')).strip())
-            block = self.to_camel_case(str(row.get('Block', '')).strip())
-
             # Check each level that exists in this row
-            if country:
-                full_code = country
-                if full_code in self.failed_boundaries:
-                    row_failed = True
-                    row_errors.append(f"Failed to create Country '{country}': {self.failed_boundaries[full_code]}")
+            for level in self.hierarchy_levels:
+                full_code = level_codes.get(level)
+                if not full_code:
+                    continue
 
-            if state and country:
-                full_code = f"{country}_{state}"
-                if full_code in self.failed_boundaries:
-                    row_failed = True
-                    row_errors.append(f"Failed to create State '{state}': {self.failed_boundaries[full_code]}")
-                elif (full_code, "State") in self.failed_relationships:
-                    row_failed = True
-                    row_errors.append(
-                        f"Failed relationship for State '{state}': {self.failed_relationships[(full_code, 'State')]}")
-
-            if district and state and country:
-                full_code = f"{country}_{state}_{district}"
+                name = self.boundary_localization_label(row.get(level)) or full_code
                 if full_code in self.failed_boundaries:
                     row_failed = True
                     row_errors.append(
-                        f"Failed to create District '{district}': {self.failed_boundaries[full_code]}")
-                elif (full_code, "District") in self.failed_relationships:
+                        f"Failed to create {level} '{name}': {self.failed_boundaries[full_code]}")
+                elif (full_code, level) in self.failed_relationships:
                     row_failed = True
                     row_errors.append(
-                        f"Failed relationship for District '{district}': {self.failed_relationships[(full_code, 'District')]}")
-
-            if block and district and state and country:
-                full_code = f"{country}_{state}_{district}_{block}"
-                if full_code in self.failed_boundaries:
-                    row_failed = True
-                    row_errors.append(f"Failed to create Block '{block}': {self.failed_boundaries[full_code]}")
-                elif (full_code, "Block") in self.failed_relationships:
-                    row_failed = True
-                    row_errors.append(
-                        f"Failed relationship for Block '{block}': {self.failed_relationships[(full_code, 'Block')]}")
+                        f"Failed relationship for {level} '{name}': {self.failed_relationships[(full_code, level)]}")
 
             if row_failed:
                 boundary_df.loc[index, "status"] = "fail"
