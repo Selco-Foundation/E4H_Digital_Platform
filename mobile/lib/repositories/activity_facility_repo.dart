@@ -422,22 +422,34 @@ class UnsubmittedActivityFacilityRepository {
   final Isar _isar;
   final ActivityFacilityRemoteRepository _remote;
 
-  UnsubmittedActivityFacilityRepository(this._isar)
-      : _remote = ActivityFacilityRemoteRepository();
+  UnsubmittedActivityFacilityRepository(this._isar,
+      {ActivityFacilityRemoteRepository? remote})
+      : _remote = remote ?? ActivityFacilityRemoteRepository();
 
   Future<List<ActivityFacilityWorkflow>> fetchByWorkflowIncludeCache({
     required String userType,
     required List<String> workflowStatuses,
     required ActivityFacilitySearchModel body,
   }) async {
-    List<ActivityFacilityWorkflow> remoteList;
+    final serverCache = ActivityFacilityRepository(_isar, remote: _remote);
+    final remoteList = <ActivityFacilityWorkflow>[];
     try {
-      remoteList = await _remote.searchByWorkflow(
-        body: body,
-        workflowStatuses: workflowStatuses,
-      );
-    } catch (_) {
-      remoteList = <ActivityFacilityWorkflow>[];
+      var offset = 0;
+      const pageSize = 100;
+      while (true) {
+        final page = await _remote.searchByWorkflow(
+            body: body,
+            workflowStatuses: workflowStatuses,
+            limit: pageSize,
+            offset: offset);
+        await serverCache._upsertCache(page);
+        remoteList.addAll(page);
+        if (page.length < pageSize) break;
+        offset += page.length;
+      }
+    } catch (error) {
+      if (isAuthenticationFailure(error)) rethrow;
+      remoteList.addAll(await serverCache.readCache(workflowStatuses));
     }
     final col = _isar.cacheUnsubmittedActivityFacilitys;
     final localEntries = await col.where().userTypeEqualTo(userType).findAll();
@@ -445,13 +457,25 @@ class UnsubmittedActivityFacilityRepository {
         .map((e) => ActivityFacilityWorkflow(
             activityFacility: e.activityFacility, status: e.status))
         .toList();
-    final cachedIds = localEntries.map((e) => e.activityFacility.id).toSet();
-    final remoteOnly =
-        remoteList.where((r) => !cachedIds.contains(r.activityFacility.id));
+    final byId = <String, ActivityFacilityWorkflow>{};
+    for (final record in remoteList) {
+      byId[record.activityFacility.id] = record;
+    }
+    for (final record in localWorkflows) {
+      byId[record.activityFacility.id] = record;
+    }
+    // Keep the existing local-first ordering and let unsynced data take precedence.
+    final localIds =
+        localWorkflows.map((record) => record.activityFacility.id).toSet();
     return [
-      ...localWorkflows,
-      ...remoteOnly,
-    ];
+      ...localIds.map((id) => byId[id]!),
+      ...byId.entries
+          .where((entry) => !localIds.contains(entry.key))
+          .map((entry) => entry.value),
+    ]
+        .where((record) => matchesFacilityName(
+            record.activityFacility.facility?.facilityName, body.facilityName))
+        .toList();
   }
 
   Future<CacheUnsubmittedActivityFacility> addOrGet(

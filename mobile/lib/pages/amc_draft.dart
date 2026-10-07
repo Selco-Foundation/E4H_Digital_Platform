@@ -11,6 +11,9 @@ import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
+import '../widgets/bookmarks/report_bookmarks.dart';
+import '../widgets/facility_list_controls.dart';
+import '../utils/facility_list_filter.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
@@ -26,7 +29,95 @@ class AmcDraftPage extends StatefulWidget {
   State<AmcDraftPage> createState() => _AmcDraftPageState();
 }
 
-class _AmcDraftPageState extends State<AmcDraftPage> {
+class _AmcDraftPageState extends State<AmcDraftPage>
+    with ReportBookmarksState<AmcDraftPage, ScheduledVisit> {
+  String _searchQuery = '';
+  String? _filter;
+  int _visibleCount = 10;
+  int _bookmarkCriteriaGeneration = 0;
+  bool _loadingEligibleBookmarks = false;
+  List<ScheduledVisit> _eligibleBookmarks = [];
+
+  List<ScheduledVisit> _matchingBookmarks() =>
+      filterFacilityList(_eligibleBookmarks,
+          query: _searchQuery,
+          filter: 'BOOKMARKED',
+          id: (record) => record.id ?? '',
+          name: (record) => record.facility?.facilityName,
+          date: (record) => record.scheduledDate ?? DateTime(1970),
+          bookmarkedIds: bookmarkedItems.map(bookmarks.identity).toList());
+
+  Future<void> _reloadBookmarks() async {
+    final generation = ++_bookmarkCriteriaGeneration;
+    final statuses = _statusesForTab(_selectedTabIndex);
+    await loadBookmarks(only: true);
+    if (!mounted || generation != _bookmarkCriteriaGeneration) return;
+    if (_filter != 'BOOKMARKED') return;
+    setState(() => _loadingEligibleBookmarks = true);
+    try {
+      final records = await context
+          .read<ScheduledVisitBloc>()
+          .repository
+          .readEligibleCache(statuses);
+      if (mounted && generation == _bookmarkCriteriaGeneration) {
+        setState(() {
+          _eligibleBookmarks = records;
+          _loadingEligibleBookmarks = false;
+          _visibleCount = 10;
+        });
+      }
+    } catch (_) {
+      if (mounted && generation == _bookmarkCriteriaGeneration) {
+        setState(() {
+          bookmarksFailed = true;
+          _loadingEligibleBookmarks = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _refreshVisits() async {
+    if (_filter == 'BOOKMARKED') {
+      await _reloadBookmarks();
+      return;
+    }
+    final bloc = context.read<ScheduledVisitBloc>();
+    final loaded = bloc.stream.firstWhere((state) => state.maybeWhen(
+        loaded: (_, __, ___, ____, _____) => true,
+        failure: (_) => true,
+        orElse: () => false));
+    _fetchVisits(_selectedTabIndex);
+    await loaded;
+    if (mounted) await _reloadBookmarks();
+  }
+
+  Future<void> _openVisit(ScheduledVisit visit) async {
+    context
+        .read<SelectedScheduledVisitBloc>()
+        .add(SelectedScheduledVisitEvent.select(visit));
+    if (_selectedTabIndex == 0 &&
+        visit.status != WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name) {
+      await context.router.push(const AmcOtpRoute());
+    } else {
+      final origin = _selectedTabIndex == 0
+          ? FormOrigin.overallSummary
+          : FormOrigin.submitted;
+      context
+          .read<SelectedAmcOriginBloc>()
+          .add(SelectedAmcOriginEvent.select(origin));
+      await context.router.push(AmcDynamicFormRoute(
+          pageName: 'AMC_Report',
+          uniqueIdentifier: 'AssetForm.AMC_SCHEDULED_MAINTENANCE',
+          schemaName: 'AssetForm.AMC_SCHEDULED_MAINTENANCE',
+          scheduledVisit: visit,
+          origin: origin));
+    }
+    if (mounted) {
+      await _reloadBookmarks();
+      if (mounted) _fetchVisits(_selectedTabIndex);
+    }
+  }
+
   int _selectedTabIndex = 0;
   String otpText = "otp";
 
@@ -39,9 +130,17 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
   }
 
   void _fetchVisits(int tabIndex) {
+    _visibleCount = 10;
+    if (_filter == 'BOOKMARKED') {
+      _reloadBookmarks();
+      return;
+    }
     final statuses = _statusesForTab(tabIndex);
     context.read<ScheduledVisitBloc>().add(
-          ScheduledVisitEvent.loadInitial(statuses: statuses),
+          ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              query: _searchQuery.trim(),
+              sortDirection: _filter),
         );
   }
 
@@ -55,6 +154,9 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
   @override
   void initState() {
     super.initState();
+    bookmarks = reportBookmarksFor<ScheduledVisit>(context, amc: true);
+    bookmarkSaveFailedKey = i18.amcBookmarks.saveFailed;
+    _reloadBookmarks();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchVisits(_selectedTabIndex);
     });
@@ -71,17 +173,28 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (notification is ScrollUpdateNotification) {
+        if (notification is ScrollUpdateNotification &&
+            notification.depth == 0) {
           final max = notification.metrics.maxScrollExtent;
           final current = notification.metrics.pixels;
 
           if (current > max - 200) {
+            if (_filter == 'BOOKMARKED') {
+              final total = _matchingBookmarks().length;
+              if (_visibleCount < total) {
+                setState(
+                    () => _visibleCount = (_visibleCount + 10).clamp(0, total));
+              }
+              return false;
+            }
             final bloc = context.read<ScheduledVisitBloc>();
             bloc.state.maybeWhen(
               loaded: (items, hasMore, totalCount, fromCache, isLoadingMore) {
                 if (hasMore && !isLoadingMore) {
                   bloc.add(ScheduledVisitEvent.loadMore(
-                      statuses: _statusesForTab(_selectedTabIndex)));
+                      statuses: _statusesForTab(_selectedTabIndex),
+                      query: _searchQuery.trim(),
+                      sortDirection: _filter));
                 }
               },
               orElse: () {},
@@ -91,76 +204,99 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
         return false;
       },
       child: Scaffold(
-        body: ScrollableContent(
-          enableFixedDigitButton: true,
-          backgroundColor: theme.colorTheme.generic.background,
-          header: const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
-          ),
-          footer: const SizedBox.shrink(),
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: spacer4,
-                horizontal: spacer4,
+        body: RefreshableFacilityList(
+            onRefresh: _refreshVisits,
+            child: ScrollableContent(
+              enableFixedDigitButton: true,
+              backgroundColor: theme.colorTheme.generic.background,
+              header: const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.translate(i18.amcDraft.pendingApproval),
-                    style: textTheme.headingXl.copyWith(
-                      color: theme.colorTheme.primary.primary2,
-                    ),
+              footer: const SizedBox.shrink(),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: spacer4,
+                    horizontal: spacer4,
                   ),
-                  const SizedBox(height: spacer4),
-                  SizedBox(
-                    height: spacer12 + spacer1,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return DigitTabBar(
-                          tabs: tabs,
-                          initialIndex: _selectedTabIndex,
-                          onTabSelected: (index) => _onTabChanged(index),
-                          tabBarThemeData:
-                              DigitTabBarThemeData.defaultTheme(context)
-                                  .copyWith(
-                                      tabWidth:
-                                          constraints.maxWidth / tabs.length,
-                                      padding: EdgeInsets.zero),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: spacer4),
-                  BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
-                    builder: (context, visitState) {
-                      return visitState.maybeWhen(
-                        initial: () => loadingIndicator(),
-                        loading: () => loadingIndicator(),
-                        failure: (message) => Center(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: spacer4),
-                            child: Text(message),
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.translate(i18.amcDraft.pendingApproval),
+                        style: textTheme.headingXl.copyWith(
+                          color: theme.colorTheme.primary.primary2,
                         ),
-                        loaded: (items, hasMore, totalCount, fromCache,
-                            isLoadingMore) {
-                          return _buildVisitList(
-                            items,
-                            isLoadingMore: isLoadingMore,
-                          );
-                        },
-                        orElse: () => const SizedBox.shrink(),
-                      );
-                    },
+                      ),
+                      const SizedBox(height: spacer4),
+                      SizedBox(
+                        height: spacer12 + spacer1,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return DigitTabBar(
+                              tabs: tabs,
+                              initialIndex: _selectedTabIndex,
+                              onTabSelected: (index) => _onTabChanged(index),
+                              tabBarThemeData:
+                                  DigitTabBarThemeData.defaultTheme(context)
+                                      .copyWith(
+                                          tabWidth: constraints.maxWidth /
+                                              tabs.length,
+                                          padding: EdgeInsets.zero),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: spacer4),
+                      FacilityListControls(
+                          titleKey: i18.amcSelectFacility.title,
+                          filter: _filter,
+                          bookmarkLabelKey: i18.amcBookmarks.filter,
+                          onSearch: (query) {
+                            setState(() => _searchQuery = query);
+                            _fetchVisits(_selectedTabIndex);
+                          },
+                          onFilter: (filter) {
+                            setState(() => _filter = filter);
+                            _fetchVisits(_selectedTabIndex);
+                          }),
+                      const SizedBox(height: spacer4),
+                      if (bookmarksFailed) bookmarkLoadError(_reloadBookmarks),
+                      if (_filter == 'BOOKMARKED')
+                        (bookmarksLoading || _loadingEligibleBookmarks)
+                            ? loadingIndicator()
+                            : _buildVisitList(_matchingBookmarks()
+                                .take(_visibleCount)
+                                .toList())
+                      else
+                        BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
+                          builder: (context, visitState) {
+                            return visitState.maybeWhen(
+                              initial: () => loadingIndicator(),
+                              loading: () => loadingIndicator(),
+                              failure: (message) => Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: spacer4),
+                                  child: Text(message),
+                                ),
+                              ),
+                              loaded: (items, hasMore, totalCount, fromCache,
+                                  isLoadingMore) {
+                                return _buildVisitList(
+                                  items,
+                                  isLoadingMore: isLoadingMore,
+                                );
+                              },
+                              orElse: () => const SizedBox.shrink(),
+                            );
+                          },
+                        ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
+                ),
+              ],
+            )),
       ),
     );
   }
@@ -171,7 +307,9 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
   }) {
     if (items.isEmpty) {
       return Center(
-        child: Text(context.translate(i18.amcDraft.noDraftsToDisplay)),
+        child: Text(context.translate(_searchQuery.trim().isNotEmpty
+            ? i18.common.noMatchingFacilitiesFound
+            : i18.amcDraft.noDraftsToDisplay)),
       );
     }
 
@@ -185,24 +323,14 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                     parseBoundaryCodeLocality(visit.facility?.boundaryCode);
                 if (_selectedTabIndex == 0) {
                   return InboxReportCard(
-                      onPress: () {
-                        context
-                            .read<SelectedScheduledVisitBloc>()
-                            .add(SelectedScheduledVisitEvent.select(visit));
-                        visit.status !=
-                                WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
-                            ? context.router.push(const AmcOtpRoute())
-                            : context.router.push(
-                                AmcDynamicFormRoute(
-                                    pageName: "AMC_Report",
-                                    uniqueIdentifier:
-                                        "AssetForm.AMC_SCHEDULED_MAINTENANCE",
-                                    schemaName:
-                                        "AssetForm.AMC_SCHEDULED_MAINTENANCE",
-                                    scheduledVisit: visit,
-                                    origin: FormOrigin.overallSummary),
-                              );
-                      },
+                      isBookmarked: bookmarkIds.contains(visit.id),
+                      isSavingBookmark: !bookmarksLoaded ||
+                          savingBookmarks.contains(visit.id),
+                      onToggleBookmark: (visit.id ?? '').isEmpty
+                          ? null
+                          : () =>
+                              toggleBookmark(visit, reload: _reloadBookmarks),
+                      onPress: () => _openVisit(visit),
                       title: visit.facility?.facilityName ?? '',
                       visitNumber: visit.visitNumber,
                       durationMonths: visit.amcConfiguration?.durationMonths,
@@ -223,23 +351,13 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                 }
 
                 return InboxReportCard(
-                  onPress: () {
-                    context
-                        .read<SelectedScheduledVisitBloc>()
-                        .add(SelectedScheduledVisitEvent.select(visit));
-                    context.read<SelectedAmcOriginBloc>().add(
-                        const SelectedAmcOriginEvent.select(
-                            FormOrigin.submitted));
-                    context.router.push(
-                      AmcDynamicFormRoute(
-                          pageName: "AMC_Report",
-                          uniqueIdentifier:
-                              "AssetForm.AMC_SCHEDULED_MAINTENANCE",
-                          schemaName: "AssetForm.AMC_SCHEDULED_MAINTENANCE",
-                          scheduledVisit: visit,
-                          origin: FormOrigin.submitted),
-                    );
-                  },
+                  isBookmarked: bookmarkIds.contains(visit.id),
+                  isSavingBookmark:
+                      !bookmarksLoaded || savingBookmarks.contains(visit.id),
+                  onToggleBookmark: (visit.id ?? '').isEmpty
+                      ? null
+                      : () => toggleBookmark(visit, reload: _reloadBookmarks),
+                  onPress: () => _openVisit(visit),
                   title: visit.facility?.facilityName ?? '',
                   visitNumber: visit.visitNumber,
                   durationMonths: visit.amcConfiguration?.durationMonths,

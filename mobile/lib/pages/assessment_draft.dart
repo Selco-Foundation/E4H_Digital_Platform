@@ -14,6 +14,10 @@ import '../model/assessment/assessment_mode.dart';
 import '../model/assessment/assessment_queue.dart';
 import '../repositories/assessment_draft_repo.dart';
 import '../repositories/assessment_form_repo.dart';
+import '../repositories/assessment_bookmark_repo.dart';
+import '../widgets/facility_list_controls.dart';
+import '../utils/facility_list_filter.dart';
+import '../utils/envConfig.dart';
 import '../router/app_router.dart';
 import '../utils/constants.dart';
 import '../utils/extensions.dart';
@@ -25,13 +29,86 @@ import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
 class AssessmentDraftPage extends StatefulWidget {
-  const AssessmentDraftPage({super.key});
+  final AssessmentDraftRepository? repository;
+  final AssessmentFormRepository? forms;
+  const AssessmentDraftPage({super.key, this.repository, this.forms});
 
   @override
   State<AssessmentDraftPage> createState() => _AssessmentDraftPageState();
 }
 
 class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
+  String _searchQuery = '';
+  String? _filter;
+  bool _bookmarksLoaded = false;
+  bool _bookmarkError = false;
+  int _bookmarkGeneration = 0;
+  final Map<AssessmentPhase, List<String>> _bookmarkOrder = {};
+  final Set<String> _savingBookmarks = {};
+
+  AssessmentBookmarkRepository _bookmarks(AssessmentPhase phase) =>
+      AssessmentBookmarkRepository(
+          tenantId: envConfig.variables.tenantId,
+          assessorId: _assessorId,
+          phase: phase);
+
+  Future<void> _loadBookmarks() async {
+    final generation = ++_bookmarkGeneration;
+    try {
+      final orders = <AssessmentPhase, List<String>>{};
+      for (final phase in AssessmentPhase.values) {
+        orders[phase] = (await _bookmarks(phase).list())
+            .map((record) => record.planFacilityId ?? '')
+            .toList();
+      }
+      if (mounted && generation == _bookmarkGeneration) {
+        setState(() {
+          _bookmarkOrder.clear();
+          _bookmarkOrder.addAll(orders);
+          _bookmarksLoaded = true;
+          _bookmarkError = false;
+        });
+      }
+    } catch (_) {
+      if (mounted && generation == _bookmarkGeneration) {
+        setState(() => _bookmarkError = true);
+      }
+    }
+  }
+
+  Future<void> _toggleBookmark(CacheAssessmentDraft draft) async {
+    if (!_bookmarksLoaded || _savingBookmarks.contains(draft.draftKey)) return;
+    final phase = AssessmentPhase.fromCode(draft.phase);
+    if (phase == null) return;
+    setState(() => _savingBookmarks.add(draft.draftKey));
+    try {
+      final bookmarks = _bookmarks(phase);
+      if ((_bookmarkOrder[phase] ?? []).contains(draft.planFacilityId)) {
+        await bookmarks.remove(draft.planFacilityId);
+      } else {
+        final repository = await _draftRepository();
+        final request = repository.requestOf(draft);
+        await bookmarks.save(AssessmentQueueFacility(
+            planFacilityId: draft.planFacilityId,
+            facilityName: draft.facilityName,
+            facilityCategory: request.facilityCategory,
+            facilityType: draft.facilityType,
+            state: draft.state,
+            district: draft.district,
+            block: draft.block));
+      }
+      if (mounted) await _loadBookmarks();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text(context.translate(i18.assessmentBookmarks.saveFailed))));
+      }
+    } finally {
+      if (mounted) setState(() => _savingBookmarks.remove(draft.draftKey));
+    }
+  }
+
   int _selectedTabIndex = 0;
   bool _loading = true;
   bool _syncing = false;
@@ -50,7 +127,7 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
   }
 
   Future<AssessmentDraftRepository> _draftRepository() async =>
-      AssessmentDraftRepository(await Constants().isar);
+      widget.repository ?? AssessmentDraftRepository(await Constants().isar);
 
   Future<void> _load() async {
     setState(() {
@@ -60,6 +137,7 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
     try {
       final repository = await _draftRepository();
       final drafts = await repository.listDrafts(_assessorId);
+      await _loadBookmarks();
       if (mounted) {
         setState(() {
           _drafts = drafts;
@@ -87,7 +165,7 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
       _error = null;
     });
     final drafts = await _draftRepository();
-    final forms = AssessmentFormRepository();
+    final forms = widget.forms ?? AssessmentFormRepository();
     var failed = 0;
     for (final draft in pending) {
       try {
@@ -175,112 +253,143 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
     final selectedPhase = selectedMode == AssessmentMode.remote
         ? AssessmentPhase.PHONE
         : AssessmentPhase.FIELD;
-    final visibleDrafts = _drafts
-        .where(
-            (draft) => AssessmentPhase.fromCode(draft.phase) == selectedPhase)
-        .toList(growable: false);
-    final hasPending = visibleDrafts.any(
-      (draft) => draft.status == AssessmentDraftStatus.pending,
-    );
+    final phaseDrafts = _drafts
+        .where((draft) =>
+            draft.tenantId == envConfig.variables.tenantId &&
+            AssessmentPhase.fromCode(draft.phase) == selectedPhase)
+        .toList();
+    final visibleDrafts = filterFacilityList(phaseDrafts,
+        query: _searchQuery,
+        filter: _filter,
+        id: (record) => record.planFacilityId,
+        name: (record) => record.facilityName,
+        date: (record) => record.updatedAt,
+        bookmarkedIds: _bookmarkOrder[selectedPhase] ?? []);
+    final hasPending = phaseDrafts
+        .any((draft) => draft.status == AssessmentDraftStatus.pending);
 
     return Scaffold(
-      body: ScrollableContent(
-        enableFixedDigitButton: true,
-        backgroundColor: theme.colorTheme.generic.background,
-        header: const BackNavigationHelpHeaderWidget(
-          showBackNavigation: true,
-          showHelp: false,
-        ),
-        footer: FooterButton(
-          text: _syncing
-              ? context.translate(i18.assessmentDraft.syncing)
-              : context.translate(i18.assessmentDraft.sync),
-          showSuffixIcon: false,
-          isDisabled: _syncing || !hasPending,
-          onPress: _syncAll,
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: spacer4,
-              horizontal: spacer4,
+      body: RefreshableFacilityList(
+          onRefresh: _load,
+          child: ScrollableContent(
+            enableFixedDigitButton: true,
+            backgroundColor: theme.colorTheme.generic.background,
+            header: const BackNavigationHelpHeaderWidget(
+              showBackNavigation: true,
+              showHelp: false,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(width: double.infinity),
-                Text(
-                  context.translate(i18.assessmentDraft.title),
-                  style: textTheme.headingXl.copyWith(
-                    color: theme.colorTheme.primary.primary2,
-                  ),
+            footer: FooterButton(
+              text: _syncing
+                  ? context.translate(i18.assessmentDraft.syncing)
+                  : context.translate(i18.assessmentDraft.sync),
+              showSuffixIcon: false,
+              isDisabled: _syncing || !hasPending,
+              onPress: _syncAll,
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: spacer4,
+                  horizontal: spacer4,
                 ),
-                const SizedBox(height: spacer4),
-                if (showTabs) ...[
-                  SizedBox(
-                    height: spacer12 + spacer1,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => DigitTabBar(
-                        tabs: [
-                          context.translate(i18.assessmentDraft.remote),
-                          context.translate(i18.assessmentDraft.onSite),
-                        ],
-                        initialIndex: _selectedTabIndex,
-                        onTabSelected: (index) =>
-                            setState(() => _selectedTabIndex = index),
-                        tabBarThemeData:
-                            DigitTabBarThemeData.defaultTheme(context).copyWith(
-                          tabWidth: constraints.maxWidth / 2,
-                          padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(width: double.infinity),
+                    Text(
+                      context.translate(i18.assessmentDraft.title),
+                      style: textTheme.headingXl.copyWith(
+                        color: theme.colorTheme.primary.primary2,
+                      ),
+                    ),
+                    const SizedBox(height: spacer4),
+                    if (showTabs) ...[
+                      SizedBox(
+                        height: spacer12 + spacer1,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) => DigitTabBar(
+                            tabs: [
+                              context.translate(i18.assessmentDraft.remote),
+                              context.translate(i18.assessmentDraft.onSite),
+                            ],
+                            initialIndex: _selectedTabIndex,
+                            onTabSelected: (index) =>
+                                setState(() => _selectedTabIndex = index),
+                            tabBarThemeData:
+                                DigitTabBarThemeData.defaultTheme(context)
+                                    .copyWith(
+                              tabWidth: constraints.maxWidth / 2,
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: spacer4),
-                ],
-                if (_loading)
-                  const Center(child: CircularProgressIndicator())
-                else if (visibleDrafts.isEmpty)
-                  Center(
-                    child: Text(
-                      context.translate(i18.assessmentDraft.empty),
-                      style: textTheme.bodyL.copyWith(
-                        color: theme.colorTheme.text.primary,
+                      const SizedBox(height: spacer4),
+                    ],
+                    FacilityListControls(
+                        titleKey: i18.assessmentSelectFacility.title,
+                        filter: _filter,
+                        bookmarkLabelKey: i18.assessmentBookmarks.filter,
+                        onSearch: (query) =>
+                            setState(() => _searchQuery = query),
+                        onFilter: (filter) => setState(() => _filter = filter)),
+                    const SizedBox(height: spacer4),
+                    if (_bookmarkError)
+                      TextButton(
+                          onPressed: _loadBookmarks,
+                          child: Text(context.translate(i18.common.retry))),
+                    if (_loading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (visibleDrafts.isEmpty)
+                      Center(
+                        child: Text(
+                          context.translate(_searchQuery.trim().isNotEmpty
+                              ? i18.common.noMatchingFacilitiesFound
+                              : i18.assessmentDraft.empty),
+                          style: textTheme.bodyL.copyWith(
+                            color: theme.colorTheme.text.primary,
+                          ),
+                        ),
+                      )
+                    else
+                      ...visibleDrafts.map(
+                        (draft) => Padding(
+                          padding: const EdgeInsets.only(bottom: spacer3),
+                          child: AssessmentDraftCard(
+                            isBookmarked: (_bookmarkOrder[selectedPhase] ?? [])
+                                .contains(draft.planFacilityId),
+                            isSavingBookmark: !_bookmarksLoaded ||
+                                _savingBookmarks.contains(draft.draftKey),
+                            onToggleBookmark: draft.planFacilityId.isEmpty
+                                ? null
+                                : () => _toggleBookmark(draft),
+                            onPressed: () => _openDraft(draft),
+                            facilityName: draft.facilityName,
+                            facilityType: draft.facilityType,
+                            status: draft.status,
+                            state: draft.state,
+                            district: draft.district,
+                            block: draft.block,
+                            failureReason: draft.lastError,
+                          ),
+                        ),
                       ),
-                    ),
-                  )
-                else
-                  ...visibleDrafts.map(
-                    (draft) => Padding(
-                      padding: const EdgeInsets.only(bottom: spacer3),
-                      child: AssessmentDraftCard(
-                        onPressed: () => _openDraft(draft),
-                        facilityName: draft.facilityName,
-                        facilityType: draft.facilityType,
-                        status: draft.status,
-                        state: draft.state,
-                        district: draft.district,
-                        block: draft.block,
-                        failureReason: draft.lastError,
+                    if (_error != null) ...[
+                      const SizedBox(height: spacer2),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          context.translate(_error!),
+                          textAlign: TextAlign.center,
+                          style: textTheme.bodyS,
+                        ),
                       ),
-                    ),
-                  ),
-                if (_error != null) ...[
-                  const SizedBox(height: spacer2),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Text(
-                      context.translate(_error!),
-                      textAlign: TextAlign.center,
-                      style: textTheme.bodyS,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          )),
     );
   }
 }

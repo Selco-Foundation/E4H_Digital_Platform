@@ -10,6 +10,10 @@ import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
+import '../widgets/bookmarks/report_bookmarks.dart';
+import '../widgets/facility_list_controls.dart';
+import '../utils/facility_list_filter.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
@@ -26,7 +30,55 @@ class DraftPage extends StatefulWidget {
   State<DraftPage> createState() => _DraftPageState();
 }
 
-class _DraftPageState extends State<DraftPage> {
+class _DraftPageState extends State<DraftPage>
+    with ReportBookmarksState<DraftPage, ActivityFacilityWorkflow> {
+  String _searchQuery = '';
+  String? _filter;
+  int _criteriaGeneration = 0;
+
+  List<ActivityFacilityWorkflow> _matchingDrafts(
+          List<ActivityFacilityWorkflow> drafts) =>
+      filterFacilityList(drafts,
+          query: _searchQuery,
+          filter: _filter,
+          id: (record) => record.activityFacility.id,
+          name: (record) => record.activityFacility.facility?.facilityName,
+          date: (record) =>
+              record.activityFacility.scheduledAt ?? DateTime(1970),
+          bookmarkedIds: bookmarkedItems.map(bookmarks.identity).toList());
+
+  Future<void> _reloadBookmarks() async {
+    await loadBookmarks(only: true);
+    if (mounted) {
+      setState(() {
+        _visibleCount = _pageSize;
+        _isLoadingMore = false;
+        ++_criteriaGeneration;
+      });
+    }
+  }
+
+  Future<void> _refreshDrafts() async {
+    final bloc = context.read<ActivityFacilityBloc>();
+    final loaded = bloc.stream.firstWhere((state) =>
+        state.maybeWhen(unSubmittedLoaded: (_) => true, orElse: () => false));
+    bloc.add(ActivityFacilityEvent.loadUnSubmitted(
+        _draftStatusesForUserType(), userType));
+    await loaded;
+    if (mounted) await _reloadBookmarks();
+  }
+
+  void _changeCriteria(
+      {String? query, String? filter, bool changeFilter = false}) {
+    setState(() {
+      if (query != null) _searchQuery = query;
+      if (changeFilter) _filter = filter;
+      _visibleCount = _pageSize;
+      _isLoadingMore = false;
+      ++_criteriaGeneration;
+    });
+  }
+
   static const _pageSize = 10;
   static const _scrollThreshold = 200.0;
 
@@ -40,13 +92,18 @@ class _DraftPageState extends State<DraftPage> {
         ? [WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name]
         : [
             WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.PENDING_APPROVAL_FLAGGED_FOR_QC.name,
+            WORKFLOW_STATUS_FIELD_SUPERVISOR
+                .PENDING_APPROVAL_FLAGGED_FOR_QC.name,
           ];
   }
 
   @override
   void initState() {
     super.initState();
+    bookmarks =
+        reportBookmarksFor<ActivityFacilityWorkflow>(context, amc: false);
+    bookmarkSaveFailedKey = i18.installationBookmarks.saveFailed;
+    _reloadBookmarks();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       userType = context.read<UserTypeBloc>().state.maybeWhen(
             supervisor: () => USER_TYPES.SUPERVISOR.name,
@@ -119,6 +176,7 @@ class _DraftPageState extends State<DraftPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.translate(i18.draft.allDraftsSynced))),
         );
+        _reloadBookmarks();
         context.read<ActivityFacilityBloc>().add(
               ActivityFacilityEvent.loadUnSubmitted(
                 _draftStatusesForUserType(),
@@ -133,7 +191,8 @@ class _DraftPageState extends State<DraftPage> {
     state.maybeWhen(
       unSubmittedLoaded: (drafts) {
         setState(() {
-          _visibleCount = drafts.length < _pageSize ? drafts.length : _pageSize;
+          _visibleCount = _pageSize;
+          ++_criteriaGeneration;
           _isLoadingMore = false;
         });
       },
@@ -147,13 +206,15 @@ class _DraftPageState extends State<DraftPage> {
     final state = context.read<ActivityFacilityBloc>().state;
     state.maybeWhen(
       unSubmittedLoaded: (drafts) {
-        if (_visibleCount >= drafts.length) return;
+        final matches = _matchingDrafts(drafts);
+        if (_visibleCount >= matches.length) return;
+        final generation = _criteriaGeneration;
         setState(() => _isLoadingMore = true);
         Future<void>.delayed(const Duration(milliseconds: 300), () {
-          if (!mounted) return;
+          if (!mounted || generation != _criteriaGeneration) return;
           setState(() {
             _visibleCount =
-                (_visibleCount + _pageSize).clamp(0, drafts.length).toInt();
+                (_visibleCount + _pageSize).clamp(0, matches.length).toInt();
             _isLoadingMore = false;
           });
         });
@@ -178,7 +239,8 @@ class _DraftPageState extends State<DraftPage> {
       ],
       child: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
-          if (notification is ScrollUpdateNotification) {
+          if (notification is ScrollUpdateNotification &&
+              notification.depth == 0) {
             final max = notification.metrics.maxScrollExtent;
             final current = notification.metrics.pixels;
             if (current > max - _scrollThreshold) {
@@ -188,121 +250,168 @@ class _DraftPageState extends State<DraftPage> {
           return false;
         },
         child: Scaffold(
-          body: ScrollableContent(
-            enableFixedDigitButton: true,
-            backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
-            footer: FooterButton(
-              showSuffixIcon: false,
-              text: context.translate(i18.draft.sync),
-              onPress: () {
-                context.read<AssetSubmissionBloc>().add(
-                      AssetSubmissionEvent.submitAllDrafts(userType: userType),
-                    );
-              },
-            ),
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: spacer4,
-                  horizontal: spacer4,
+          body: RefreshableFacilityList(
+              onRefresh: _refreshDrafts,
+              child: ScrollableContent(
+                enableFixedDigitButton: true,
+                backgroundColor: theme.colorTheme.generic.background,
+                header: const BackNavigationHelpHeaderWidget(
+                  showBackNavigation: true,
+                  showHelp: false,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.translate(i18.draft.submittedReports),
-                      style: textTheme.headingXl.copyWith(
-                        color: theme.colorTheme.primary.primary2,
-                      ),
+                footer: FooterButton(
+                  showSuffixIcon: false,
+                  text: context.translate(i18.draft.sync),
+                  onPress: () {
+                    context.read<AssetSubmissionBloc>().add(
+                          AssetSubmissionEvent.submitAllDrafts(
+                              userType: userType),
+                        );
+                  },
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: spacer4,
+                      horizontal: spacer4,
                     ),
-                    const SizedBox(height: spacer4),
-                    BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                      builder: (context, state) {
-                        return state.maybeWhen(
-                          unSubmittedLoaded: (drafts) {
-                            if (drafts.isEmpty) {
-                              return Center(
-                                child: Text(
-                                  context
-                                      .translate(i18.draft.noUnsyncedReportsFound),
-                                  style: textTheme.bodyL.copyWith(
-                                    color: theme.colorTheme.text.primary,
-                                  ),
-                                ),
-                              );
-                            }
-
-                            final visibleDrafts = drafts.take(_visibleCount);
-                            return Column(
-                              children: [
-                                ...visibleDrafts.map((project) {
-                                  final locality = parseBoundaryCodeLocality(
-                                    project.activityFacility.facility
-                                        ?.boundaryCode,
-                                  );
-                                  return Column(
-                                    children: [
-                                      InboxReportCard(
-                                        onPress: () {
-                                          context
-                                              .read<
-                                                  SelectedActivityFacilityBloc>()
-                                              .add(SelectedActivityFacilityEvent
-                                                  .select(project));
-                                          context.router.push(
-                                              OverallAssetSummaryRoute(
-                                                  refresh: DateTime.now()
-                                                      .millisecondsSinceEpoch));
-                                        },
-                                        title: project.activityFacility.facility
-                                                ?.facilityName ??
-                                            "",
-                                        dateAssigned: project
-                                                .workflow
-                                                ?.auditDetails
-                                                ?.lastModifiedTime ??
-                                            DateTime.now(),
-                                        status: project.status ?? '---',
-                                        state: locality.state,
-                                        district: locality.district,
-                                        block: locality.block,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.translate(i18.draft.submittedReports),
+                          style: textTheme.headingXl.copyWith(
+                            color: theme.colorTheme.primary.primary2,
+                          ),
+                        ),
+                        const SizedBox(height: spacer4),
+                        FacilityListControls(
+                            titleKey: i18.selectHealthFacility.title,
+                            filter: _filter,
+                            bookmarkLabelKey: i18.installationBookmarks.filter,
+                            onSearch: (query) => _changeCriteria(query: query),
+                            onFilter: (filter) => _changeCriteria(
+                                filter: filter, changeFilter: true)),
+                        const SizedBox(height: spacer4),
+                        if (bookmarksFailed)
+                          bookmarkLoadError(_reloadBookmarks),
+                        BlocBuilder<ActivityFacilityBloc,
+                            ActivityFacilityState>(
+                          builder: (context, state) {
+                            return state.maybeWhen(
+                              unSubmittedLoaded: (drafts) {
+                                final matches = _matchingDrafts(drafts);
+                                if (matches.isEmpty) {
+                                  return Center(
+                                    child: Text(
+                                      context.translate(_searchQuery
+                                              .trim()
+                                              .isNotEmpty
+                                          ? i18.common.noMatchingFacilitiesFound
+                                          : i18.draft.noUnsyncedReportsFound),
+                                      style: textTheme.bodyL.copyWith(
+                                        color: theme.colorTheme.text.primary,
                                       ),
-                                      const SizedBox(height: spacer6),
-                                    ],
+                                    ),
                                   );
-                                }),
-                                if (_isLoadingMore)
-                                  const Padding(
-                                    padding: EdgeInsets.only(bottom: spacer4),
-                                    child: CircularProgressIndicator(),
-                                  ),
-                              ],
+                                }
+
+                                final visibleDrafts =
+                                    matches.take(_visibleCount);
+                                return Column(
+                                  children: [
+                                    ...visibleDrafts.map((project) {
+                                      final locality =
+                                          parseBoundaryCodeLocality(
+                                        project.activityFacility.facility
+                                            ?.boundaryCode,
+                                      );
+                                      return Column(
+                                        children: [
+                                          InboxReportCard(
+                                            isBookmarked: bookmarkIds.contains(
+                                                project.activityFacility.id),
+                                            isSavingBookmark:
+                                                !bookmarksLoaded ||
+                                                    savingBookmarks.contains(
+                                                        project.activityFacility
+                                                            .id),
+                                            onToggleBookmark: project
+                                                    .activityFacility.id.isEmpty
+                                                ? null
+                                                : () => toggleBookmark(project,
+                                                    reload: _reloadBookmarks),
+                                            onPress: () async {
+                                              context
+                                                  .read<
+                                                      SelectedActivityFacilityBloc>()
+                                                  .add(
+                                                      SelectedActivityFacilityEvent
+                                                          .select(project));
+                                              await context.router.push(
+                                                  OverallAssetSummaryRoute(
+                                                      refresh: DateTime.now()
+                                                          .millisecondsSinceEpoch));
+                                              if (mounted) {
+                                                await _reloadBookmarks();
+                                                if (!context.mounted) return;
+                                                context
+                                                    .read<
+                                                        ActivityFacilityBloc>()
+                                                    .add(ActivityFacilityEvent
+                                                        .loadUnSubmitted(
+                                                            _draftStatusesForUserType(),
+                                                            userType));
+                                              }
+                                            },
+                                            title: project.activityFacility
+                                                    .facility?.facilityName ??
+                                                "",
+                                            dateAssigned: project
+                                                    .workflow
+                                                    ?.auditDetails
+                                                    ?.lastModifiedTime ??
+                                                DateTime.now(),
+                                            status: project.status ?? '---',
+                                            state: locality.state,
+                                            district: locality.district,
+                                            block: locality.block,
+                                          ),
+                                          const SizedBox(height: spacer6),
+                                        ],
+                                      );
+                                    }),
+                                    if (_isLoadingMore)
+                                      const Padding(
+                                        padding:
+                                            EdgeInsets.only(bottom: spacer4),
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                  ],
+                                );
+                              },
+                              loading: () => const Center(
+                                  child: CircularProgressIndicator()),
+                              initial: () => const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: spacer4),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              orElse: () => const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: spacer4),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
                             );
                           },
-                          initial: () => const Center(
-                            child: Padding(
-                              padding: EdgeInsets.only(top: spacer4),
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          orElse: () => const Center(
-                            child: Padding(
-                              padding: EdgeInsets.only(top: spacer4),
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+                  ),
+                ],
+              )),
         ),
       ),
     );

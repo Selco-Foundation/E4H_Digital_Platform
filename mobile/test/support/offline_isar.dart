@@ -6,6 +6,7 @@ import 'package:isar/isar.dart';
 
 import '../../lib/data/nosql/cache_activity_facility_workflow.dart';
 import '../../lib/data/nosql/cache_assessment_queue.dart';
+import '../../lib/data/nosql/cache_assessment_draft.dart';
 import '../../lib/data/nosql/cache_prefilled_scheduled_visit.dart';
 import '../../lib/data/nosql/cache_scheduled_visit.dart';
 import '../../lib/data/nosql/cache_unsubmitted_activity_facility.dart';
@@ -33,6 +34,7 @@ Future<Isar> openOfflineIsar(String directory, String name,
     Isar.open(
       [
         CacheActivityFacilityWorkflowSchema,
+        CacheAssessmentDraftSchema,
         CacheUnsubmittedActivityFacilitySchema,
         CacheScheduledVisitSchema,
         CachePrefilledScheduledVisitSchema,

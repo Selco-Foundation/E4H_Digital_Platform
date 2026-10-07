@@ -11,10 +11,11 @@ class ScheduledVisitBloc
     extends Bloc<ScheduledVisitEvent, ScheduledVisitState> {
   final ScheduledVisitRepository repository;
   final Isar isar;
+  int _requestGeneration = 0;
   static const _pageSize = ScheduledVisitRepository.defaultPageSize;
 
-  ScheduledVisitBloc(this.isar)
-      : repository = ScheduledVisitRepository(isar),
+  ScheduledVisitBloc(this.isar, {ScheduledVisitRepository? repository})
+      : repository = repository ?? ScheduledVisitRepository(isar),
         super(const ScheduledVisitState.initial()) {
     on<_LoadInitial>(_onLoadInitial);
     on<_LoadMore>(_onLoadMore);
@@ -25,6 +26,7 @@ class ScheduledVisitBloc
     _LoadInitial event,
     Emitter<ScheduledVisitState> emit,
   ) async {
+    final generation = ++_requestGeneration;
     emit(const ScheduledVisitState.loading());
     try {
       final result = await repository.fetchByWorkflowStatus(
@@ -35,6 +37,7 @@ class ScheduledVisitBloc
         offset: 0,
       );
 
+      if (generation != _requestGeneration) return;
       emit(
         ScheduledVisitState.loaded(
           items: result.items,
@@ -44,6 +47,7 @@ class ScheduledVisitBloc
         ),
       );
     } catch (e) {
+      if (generation != _requestGeneration) return;
       emit(ScheduledVisitState.failure(e.toString()));
     }
   }
@@ -56,6 +60,7 @@ class ScheduledVisitBloc
     if (current is! _Loaded) return;
     if (!current.hasMore || current.isLoadingMore) return;
 
+    final generation = _requestGeneration;
     final offset = current.items.length;
     emit(current.copyWith(isLoadingMore: true));
 
@@ -68,8 +73,10 @@ class ScheduledVisitBloc
         offset: offset,
       );
 
+      if (generation != _requestGeneration) return;
       final newItems = [...current.items, ...result.items];
-      final hasMore = newItems.length < result.totalCount;
+      final hasMore =
+          result.items.isNotEmpty && newItems.length < result.totalCount;
 
       emit(
         current.copyWith(
@@ -81,6 +88,7 @@ class ScheduledVisitBloc
         ),
       );
     } catch (_) {
+      if (generation != _requestGeneration) return;
       emit(current.copyWith(isLoadingMore: false));
     }
   }

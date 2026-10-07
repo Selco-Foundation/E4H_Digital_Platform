@@ -179,6 +179,50 @@ void main() {
   });
 
   test(
+      'pending installation merges downloaded server reports with local drafts offline',
+      () async {
+    final remote = ActivityRemote()
+      ..items = [
+        activity('server', 'Kanur Server', 1,
+            status: 'SUBMITTED_BY_FIELD_STAFF'),
+        activity('local', 'Older Server Copy', 2,
+            status: 'SUBMITTED_BY_FIELD_STAFF')
+      ];
+    final repo = UnsubmittedActivityFacilityRepository(isar, remote: remote);
+    Future<List<ActivityFacilityWorkflow>> search(String query) =>
+        repo.fetchByWorkflowIncludeCache(
+            userType: 'FIELD_STAFF',
+            workflowStatuses: ['SUBMITTED_BY_FIELD_STAFF'],
+            body: ActivityFacilitySearchModel(facilityName: query));
+    await search('');
+    await isar.writeTxn(() async {
+      await isar.cacheUnsubmittedActivityFacilitys.put(
+          CacheUnsubmittedActivityFacility(
+              activityFacilityId: 'local',
+              status: 'SUBMITTED_BY_FIELD_STAFF',
+              activityFacility:
+                  activity('local', 'Kanur Unsynced', 2).activityFacility,
+              userType: 'FIELD_STAFF'));
+      await isar.cacheUnsubmittedActivityFacilitys.put(
+          CacheUnsubmittedActivityFacility(
+              activityFacilityId: 'other',
+              status: 'SUBMITTED_BY_SUPERVISOR',
+              activityFacility:
+                  activity('other', 'Other User', 3).activityFacility,
+              userType: 'SUPERVISOR'));
+    });
+    remote.error = failure();
+    final results = await search(' kAnUr ');
+    expect(results.map((record) => record.activityFacility.id),
+        ['local', 'server']);
+    expect(results.first.activityFacility.facility?.facilityName,
+        'Kanur Unsynced');
+    expect((await search('missing')), isEmpty);
+    remote.error = failure(401);
+    await expectLater(search('k'), throwsA(isA<DioException>()));
+  });
+
+  test(
       'AMC fallback filters before pagination and honors prefilled status rules',
       () async {
     final remote = VisitRemote()
