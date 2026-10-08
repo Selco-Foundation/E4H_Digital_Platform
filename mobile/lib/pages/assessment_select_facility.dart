@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
+import '../data/network_manager.dart';
 import '../blocs/auth/authbloc.dart';
 import '../blocs/assessment_queue/assessment_queue.dart';
 import '../model/assessment/assessment_form.dart';
@@ -77,11 +78,13 @@ class AssessmentSelectFacilityPage extends StatelessWidget {
 class AssessmentSelectFacilityView extends StatefulWidget {
   final AssessmentMode assessmentMode;
   final bool bookmarksOnly;
+  final Future<void> Function()? ensureOnline;
 
   const AssessmentSelectFacilityView({
     super.key,
     required this.assessmentMode,
     this.bookmarksOnly = false,
+    this.ensureOnline,
   });
 
   @override
@@ -153,11 +156,20 @@ class _AssessmentSelectFacilityViewState
       if (_bookmarkIds.contains(id)) {
         await repository.remove(id);
       } else {
+        await (widget.ensureOnline ?? NetworkService().ensureOnlineOrThrow)();
+        if (!mounted) return;
         await repository.save(facility);
       }
       if (!mounted) return;
       await _loadBookmarkState();
       if (mounted && _bookmarksOnly) _loadInitial();
+    } on NetworkException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:
+              Text(context.translate(i18.assessmentBookmarks.onlineRequired)),
+        ));
+      }
     } catch (_) {
       if (mounted) _showBookmarkError();
     } finally {

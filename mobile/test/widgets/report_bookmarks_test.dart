@@ -42,6 +42,7 @@ import '../../lib/utils/envConfig.dart';
 import '../../lib/router/app_router.dart';
 import '../../lib/utils/i18_key_constants.dart' as i18;
 import '../../lib/widgets/bookmarks/report_bookmarks.dart';
+import '../../lib/data/network_manager.dart';
 import '../../lib/widgets/cards/report_card.dart';
 
 const user = UserRequest(
@@ -469,6 +470,65 @@ void main() {
       Navigator.of(tester.element(find.byType(RadioList))).pop();
     }
     await tester.pumpAndSettle();
+  }
+
+  for (final mode in AssessmentMode.values) {
+    testWidgets('$mode only checks internet when adding a bookmark',
+        (tester) async {
+      final bookmarks = AssessmentBookmarkRepository(
+          tenantId: envConfig.variables.tenantId,
+          assessorId: 'user',
+          phase: mode == AssessmentMode.remote
+              ? AssessmentPhase.PHONE
+              : AssessmentPhase.FIELD);
+      const item = AssessmentQueueFacility(
+          planFacilityId: 'online-check', facilityName: 'Online Clinic');
+      await bookmarks.save(item);
+      final dio = Dio();
+      dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+        handler
+            .resolve(Response(requestOptions: options, statusCode: 200, data: {
+          'queue': [item.toJson()],
+          'count': 1
+        }));
+      }));
+      final bloc = AssessmentQueueBloc(
+          repository: AssessmentQueueRepository(dio: dio),
+          draftRepository: EmptyAssessmentDrafts(),
+          assessmentMode: mode,
+          assessorId: 'user',
+          bookmarkRepository: bookmarks)
+        ..add(const AssessmentQueueLoadInitial(sortOrder: 'BOOKMARKED'));
+      addTearDown(bloc.close);
+      var checks = 0;
+      var offline = true;
+      await tester.pumpWidget(app(BlocProvider.value(
+          value: bloc,
+          child: AssessmentSelectFacilityView(
+              assessmentMode: mode,
+              bookmarksOnly: true,
+              ensureOnline: () async {
+                checks++;
+                if (offline) throw const NetworkException('No internet access');
+              }))));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byIcon(Icons.bookmark));
+      await tester.tap(find.byIcon(Icons.bookmark));
+      await tester.pumpAndSettle();
+      expect(await bookmarks.ids(), isEmpty);
+      expect(checks, 0);
+      await filter(tester, 'ASC');
+      await tester.ensureVisible(find.byIcon(Icons.bookmark_border));
+      await tester.tap(find.byIcon(Icons.bookmark_border));
+      await tester.pumpAndSettle();
+      expect(await bookmarks.ids(), isEmpty);
+      expect(find.text(i18.assessmentBookmarks.onlineRequired), findsOneWidget);
+      offline = false;
+      await tester.tap(find.byIcon(Icons.bookmark_border));
+      await tester.pumpAndSettle();
+      expect(await bookmarks.ids(), {'online-check'});
+      expect(checks, 2);
+    });
   }
 
   for (final mode in AssessmentMode.values) {
