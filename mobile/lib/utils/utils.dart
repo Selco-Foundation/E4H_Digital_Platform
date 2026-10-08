@@ -438,27 +438,44 @@ String? normalizedInstallPdfNameFromPath(
 final Map<String, File> _fileCache = {};
 
 Future<File?> getCachedFile(String idOrPath) async {
-  if (_fileCache.containsKey(idOrPath)) return _fileCache[idOrPath];
+  final isRemote = isValidUuid(idOrPath);
+  final cacheKey = isRemote ? '$fileStoreFileUrl$idOrPath' : idOrPath;
+  final cached = _fileCache[cacheKey];
+  if (cached != null && await cached.exists()) return cached;
+  _fileCache.remove(cacheKey);
 
-  if (isValidUuid(idOrPath)) {
+  if (isRemote) {
+    File? temporary;
     try {
+      final dir = await getApplicationSupportDirectory();
+      final scope = base64Url.encode(utf8.encode(fileStoreFileUrl));
+      final file = File(p.join(dir.path, 'filestore', scope, idOrPath));
+      if (await file.exists()) {
+        _fileCache[cacheKey] = file;
+        return file;
+      }
       final uri = Uri.parse('$fileStoreFileUrl$idOrPath');
       final resp = await http.get(uri);
       if (resp.statusCode == 200) {
-        final dir = await getTemporaryDirectory();
-        final safeName = idOrPath.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-        final file = File(
-            '${dir.path}/${DateTime.now().millisecondsSinceEpoch}_$safeName');
-        await file.writeAsBytes(resp.bodyBytes);
-        _fileCache[idOrPath] = file;
+        await file.parent.create(recursive: true);
+        temporary = File('${file.path}.${const Uuid().v4()}.tmp');
+        await temporary.writeAsBytes(resp.bodyBytes, flush: true);
+        await temporary.rename(file.path);
+        _fileCache[cacheKey] = file;
         return file;
       }
-    } catch (_) {}
+    } catch (_) {
+      // Missing downloads remain unavailable; other media can still load.
+    } finally {
+      if (temporary != null && await temporary.exists()) {
+        await temporary.delete();
+      }
+    }
   }
 
   final file = File(idOrPath);
   if (await file.exists()) {
-    _fileCache[idOrPath] = file;
+    _fileCache[cacheKey] = file;
     return file;
   }
 
