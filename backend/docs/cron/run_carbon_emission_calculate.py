@@ -12,7 +12,9 @@ data = {}
 
 try:
     print(f"Calling CO2 carbon emission trigger endpoint: {url}")
-    response = requests.post(url, headers=headers, json=data, timeout=600)
+    # Connect timeout 30s; read timeout 4h — the trigger endpoint runs the full
+    # CO2 batch synchronously and can take ~2h for all facilities.
+    response = requests.post(url, headers=headers, json=data, timeout=(30, 14400))
     print(f"Status: {response.status_code}")
     print(f"Response: {response.text}")
 
