@@ -632,6 +632,7 @@ class SyncLoading {
 }
 
 class AssessmentBookmarks {
+  String get onlineRequired => 'ASSESSMENT_BOOKMARKS_ONLINE_REQUIRED';
   String get filter => 'ASSESSMENT_BOOKMARKS_FILTER';
   const AssessmentBookmarks();
   String get remote => 'ASSESSMENT_BOOKMARKS_REMOTE';
@@ -646,6 +647,7 @@ class AssessmentBookmarks {
 }
 
 class InstallationBookmarks {
+  String get onlineRequired => 'INSTALLATION_BOOKMARKS_ONLINE_REQUIRED';
   const InstallationBookmarks();
   String get filter => 'INSTALLATION_BOOKMARKS_FILTER';
   String get title => 'INSTALLATION_BOOKMARKS_TITLE';
@@ -658,6 +660,7 @@ class InstallationBookmarks {
 }
 
 class AmcBookmarks {
+  String get onlineRequired => 'AMC_BOOKMARKS_ONLINE_REQUIRED';
   String get filter => 'AMC_BOOKMARKS_FILTER';
   const AmcBookmarks();
   String get title => 'AMC_BOOKMARKS_TITLE';

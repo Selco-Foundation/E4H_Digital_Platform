@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/auth/authbloc.dart';
+import '../../data/network_manager.dart';
 import '../../blocs/user_type/user_type.dart';
 import '../../repositories/report_bookmark_repo.dart';
 import '../../utils/envConfig.dart';
@@ -76,7 +77,8 @@ mixin ReportBookmarksState<W extends StatefulWidget, T> on State<W> {
   }
 
   Future<void> toggleBookmark(T item,
-      {required Future<void> Function() reload}) async {
+      {required Future<void> Function() reload,
+      Future<void> Function()? ensureOnline}) async {
     final id = bookmarks.identity(item).trim();
     if (id.isEmpty || !bookmarksLoaded || savingBookmarks.contains(id)) return;
     setState(() => savingBookmarks.add(id));
@@ -85,9 +87,20 @@ mixin ReportBookmarksState<W extends StatefulWidget, T> on State<W> {
       if (bookmarkIds.contains(id)) {
         await bookmarks.remove(id);
       } else {
+        await (ensureOnline ?? NetworkService().ensureOnlineOrThrow)();
+        if (!mounted) return;
         await bookmarks.save(item);
       }
       await reload();
+    } on NetworkException {
+      if (mounted) {
+        final key = bookmarks is AmcBookmarkRepository
+            ? i18.amcBookmarks.onlineRequired
+            : i18.installationBookmarks.onlineRequired;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.translate(key))),
+        );
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
