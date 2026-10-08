@@ -46,11 +46,26 @@ class Workflow {
       documents: docs,
       auditDetails: details,
       rawJson: rawJson,
-      comment: json['comment']?.toString(),
+      comment: json['comment'] is String
+          ? json['comment'] as String
+          : json['comment'] == null
+              ? null
+              : jsonEncode(json['comment']),
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'documents': documents?.map((d) => d.toJson()).toList(),
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{...?raw};
+    json['documents'] = documents?.map((d) => d.toJson()).toList();
+    if (!json.containsKey('comment') && comment != null) {
+      json['comment'] = comment;
+    }
+    if (auditDetails != null) {
+      json['auditDetails'] = {
+        ...?json['auditDetails'] as Map<String, dynamic>?,
+        ...auditDetails!.toJson(),
       };
+    }
+    return json;
+  }
 }
