@@ -1,3 +1,7 @@
+# docker build . \
+#  -f ./run_carbon_emission_calculate.Dockerfile \
+#  -t selcohub/cronjob-carbon-emission-calculate:<tag>
+
 FROM python:3.10-slim
 
 WORKDIR /app
