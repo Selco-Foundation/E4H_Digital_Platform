@@ -11,6 +11,8 @@ import '../../lib/model/scheduled_visit/scheduled_visit.dart';
 import '../../lib/repositories/activity_facility_repo.dart';
 import '../../lib/repositories/report_bookmark_repo.dart';
 import '../../lib/repositories/scheduled_visit_repo.dart';
+import '../../lib/model/workflow/workflow.dart';
+import '../../lib/data/nosql/workflow_audit_details.dart';
 
 class ReportStore extends SecureStore {
   final values = <String, String>{};
@@ -71,6 +73,85 @@ ScheduledVisit visit(String id, [String name = 'Clinic']) => ScheduledVisit(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+      'AMC snapshot refresh preserves full workflow and report details offline',
+      () async {
+    final store = ReportStore();
+    AmcBookmarkRepository repo() => AmcBookmarkRepository(
+        storage: store, tenantId: 'tenant', userId: 'user', userType: 'AMC');
+    await repo().save(visit('one'));
+    final timestamp =
+        jsonDecode(store.values.values.single)['one']['bookmarkedAt'];
+    final workflow = Workflow.fromJson({
+      'id': 'process-one',
+      'action': 'REJECT',
+      'state': {'state': 'REJECTED'},
+      'comment': [
+        {'reason': 'IMAGE_UNCLEAR', 'comment': 'Retake selfie'}
+      ],
+      'auditDetails': {
+        'createdBy': 'reviewer',
+        'createdTime': 1234,
+        'lastModifiedTime': 2345,
+        'custom': 'metadata'
+      },
+      'documents': [
+        {'fileStoreId': 'photo-one', 'documentType': 'selfie'}
+      ],
+      'assignes': ['reviewer'],
+    });
+    final updated = visit('one').copyWith(
+        status: 'REJECTED',
+        workflow: workflow,
+        processInstances: [workflow],
+        visitReport: const ScheduledVisitReport(
+            responses: {'faults_observed': 'YES'},
+            additionalDetails: {'remark': 'Saved report'}));
+    await repo().refreshSnapshots([updated, visit('not-bookmarked')]);
+    final restored = (await repo().list()).single;
+    final process = restored.processInstances.single.raw!;
+    expect(restored.status, 'REJECTED');
+    expect(process['comment'], [
+      {'reason': 'IMAGE_UNCLEAR', 'comment': 'Retake selfie'}
+    ]);
+    expect(jsonDecode(restored.processInstances.single.comment!),
+        process['comment']);
+    expect(process['id'], 'process-one');
+    expect(process['state'], {'state': 'REJECTED'});
+    expect(process['auditDetails']['createdBy'], 'reviewer');
+    expect(process['auditDetails']['custom'], 'metadata');
+    expect(restored.workflow!.documents!.single.fileStore, 'photo-one');
+    expect(restored.visitReport!.responses, {'faults_observed': 'YES'});
+    expect(restored.visitReport!.additionalDetails, {'remark': 'Saved report'});
+    expect(await repo().ids(), {'one'});
+    expect(jsonDecode(store.values.values.single)['one']['bookmarkedAt'],
+        timestamp);
+  });
+  test(
+      'installation workflow round trip preserves string comments and metadata',
+      () async {
+    final store = ReportStore();
+    final repo = InstallationBookmarkRepository(
+        storage: store,
+        tenantId: 'tenant',
+        userId: 'user',
+        userType: 'FIELD_STAFF');
+    final workflow = Workflow.fromJson({
+      'comment': '[{"reason":"IMAGE_UNCLEAR"}]',
+      'action': 'REJECT',
+      'businessId': 'one'
+    });
+    await repo.save(installation('one').copyWith(workflow: workflow));
+    final restored = (await repo.list()).single.workflow!;
+    expect(restored.raw!['comment'], workflow.raw!['comment']);
+    expect(restored.raw!['businessId'], 'one');
+    expect(restored.comment, workflow.comment);
+    final created = Workflow(
+        comment: 'Typed comment',
+        auditDetails: WorkflowAuditDetails(createdBy: 'user'));
+    expect(Workflow.fromJson(created.toJson()).comment, 'Typed comment');
+    expect(Workflow.fromJson(created.toJson()).auditDetails!.createdBy, 'user');
+  });
   for (final amc in [false, true]) {
     ReportBookmarkRepository<dynamic> repo(SecureStore store,
         {String tenant = 'tenant',
