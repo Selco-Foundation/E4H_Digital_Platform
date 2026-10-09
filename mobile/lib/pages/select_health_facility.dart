@@ -404,12 +404,6 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text(
-                context.translate(_bookmarksOnly
-                    ? i18.installationBookmarks.savedAt
-                    : i18.common.submissionDate),
-                style: textTheme.headingS
-                    .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
               groupValue: selectedFilter ?? '',
               containerPadding:
