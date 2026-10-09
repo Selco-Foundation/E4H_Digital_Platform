@@ -2,6 +2,9 @@ import 'package:auto_route/auto_route.dart';
 import 'package:digit_scanner/blocs/app_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../model/assessment/assessment_mode.dart';
+import '../model/assessment/assessment_form.dart';
+import '../model/assessment/assessment_queue.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../pages/add_new_asset.dart';
 import '../pages/amc_draft.dart';
@@ -14,8 +17,15 @@ import '../pages/amc_rejection_reasons.dart';
 import '../pages/amc_report_home.dart';
 import '../pages/amc_select_facility.dart';
 import '../pages/asset_count.dart';
+import '../pages/asset_handover_document.dart';
 import '../pages/asset_summary.dart';
 import '../pages/asset_type_detail.dart';
+import '../pages/assessment_draft.dart';
+import '../pages/assessment_dynamic_form.dart';
+import '../pages/assessment_home.dart';
+import '../pages/assessment_select_facility.dart';
+import '../pages/assessment_submission_success.dart';
+import '../pages/assessment_work_home.dart';
 import '../pages/authenticated.dart';
 import '../pages/data_save_success.dart';
 import '../pages/draft.dart';
@@ -26,6 +36,7 @@ import '../pages/home.dart';
 import '../pages/image_viewer.dart';
 import '../pages/inbox.dart';
 import '../pages/inbox_asset_summary.dart';
+import '../pages/installation_completion_certificate.dart';
 import '../pages/installation_images.dart';
 import '../pages/installation_report_home.dart';
 import '../pages/login.dart';
@@ -112,6 +123,22 @@ class AppRouter extends _$AppRouter {
           AutoRoute(page: PdfViewerRoute.page, path: Routes.pdfViewer),
           AutoRoute(page: DynamicFormsRoute.page, path: Routes.dynamicForm),
           AutoRoute(page: AmcHomeRoute.page, path: Routes.amcHome),
+          AutoRoute(
+              page: AssessmentHomeRoute.page, path: Routes.assessmentHome),
+          AutoRoute(
+              page: AssessmentWorkHomeRoute.page,
+              path: Routes.assessmentWorkHome),
+          AutoRoute(
+              page: AssessmentSelectFacilityRoute.page,
+              path: Routes.assessmentSelectFacility),
+          AutoRoute(
+              page: AssessmentDraftRoute.page, path: Routes.assessmentDraft),
+          AutoRoute(
+              page: AssessmentDynamicFormRoute.page,
+              path: Routes.assessmentDynamicForm),
+          AutoRoute(
+              page: AssessmentSubmissionSuccessRoute.page,
+              path: Routes.assessmentSubmissionSuccess),
           AutoRoute(page: AmcReportHomeRoute.page, path: Routes.amcReportHome),
           AutoRoute(
               page: AmcSelectFacilityRoute.page,
@@ -130,6 +157,12 @@ class AppRouter extends _$AppRouter {
               page: InstallationImagesRoute.page,
               path: Routes.installationCompletionImages),
           AutoRoute(page: RoleSelectionRoute.page, path: Routes.roleSelection),
+          AutoRoute(
+              page: InstallationCompletionCertificateRoute.page,
+              path: Routes.installationCompletionCertificate),
+          AutoRoute(
+              page: AssetHandoverDocumentRoute.page,
+              path: Routes.assetHandoverDocument)
         ])
       ];
 }

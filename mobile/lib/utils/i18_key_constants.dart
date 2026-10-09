@@ -24,8 +24,16 @@ const amcHome = AmcHome();
 const amcReportHome = AmcReportHome();
 const amcMediaUpload = AmcMediaUpload();
 const amcSelectFacility = AmcSelectFacility();
+const assessmentSelectFacility = AssessmentSelectFacility();
+const assessmentForm = AssessmentForm();
+const assessmentDraft = AssessmentDraft();
+const assessmentHome = AssessmentHome();
+const assessmentWorkHome = AssessmentWorkHome();
 const home = Home();
+const bomButtons = BomButtons();
 const installationImages = InstallationImages();
+const installationCompletionCertificate = InstallationCompletionCertificate();
+const assetHandoverDocument = AssetHandoverDocument();
 const overallAssetSummary = OverallAssetSummary();
 const submitForApproval = SubmitForApproval();
 const pdfViewer = PdfViewer();
@@ -36,9 +44,14 @@ const selectAssetType = SelectAssetType();
 const specification = Specification();
 const submittedSaveSuccess = SubmittedSaveSuccess();
 const syncLoading = SyncLoading();
+const assessmentBookmarks = AssessmentBookmarks();
+const installationBookmarks = InstallationBookmarks();
+const amcBookmarks = AmcBookmarks();
 
 class Common {
   const Common();
+  String get noMatchingFacilitiesFound => 'COMMON_NO_MATCHING_FACILITIES_FOUND';
+  String get sessionExpired => 'COMMON_SESSION_EXPIRED';
   String get coreCommonProceed => 'CORE_COMMON_PROCEED';
   String get coreCommonSubmit => 'CORE_COMMON_SUBMIT';
   String get coreCommonSave => 'CORE_COMMON_SAVE';
@@ -85,6 +98,8 @@ class Common {
   String get state => 'CORE_COMMON_STATE';
   String get district => 'CORE_COMMON_DISTRICT';
   String get block => 'CORE_COMMON_BLOCK';
+  String get back => 'CORE_COMMON_BACK';
+  String get help => 'CORE_COMMON_HELP';
   String get backToHome => 'CORE_COMMON_BACK_TO_HOME';
   String get isRequired => 'CORE_COMMON_IS_REQUIRED';
   String get hasInvalidFormat => 'CORE_COMMON_HAS_INVALID_FORMAT';
@@ -92,6 +107,8 @@ class Common {
   String get belowMinimum => 'CORE_COMMON_BELOW_MINIMUM';
   String get aboveMaximum => 'CORE_COMMON_ABOVE_MAXIMUM';
   String get pleaseCorrect => 'CORE_COMMON_PLEASE_CORRECT';
+  String get iccAndHandoverUploadInstructions =>
+      'ICC_AND_HANDOVER_UPLOAD_INSTRUCTIONS';
 }
 
 class Welcome {
@@ -125,6 +142,11 @@ class Login {
   String get errorInvalidCredentials => 'LOGIN_ERROR_INVALID_CREDENTIALS';
   String get errorServer => 'LOGIN_ERROR_SERVER';
   String get errorUnknown => 'LOGIN_ERROR_UNKNOWN';
+  String get consentPrefix => 'LOGIN_CONSENT_PREFIX';
+  String get privacyPolicy => 'LOGIN_PRIVACY_POLICY';
+  String get consentConnector => 'LOGIN_CONSENT_CONNECTOR';
+  String get termsAndConditions => 'LOGIN_TERMS_AND_CONDITIONS';
+  String get policyUrlNotConfigured => 'LOGIN_POLICY_URL_NOT_CONFIGURED';
 }
 
 class Scanner {
@@ -221,8 +243,7 @@ class SelectHealthFacility {
       'SELECT_HEALTH_FACILITY_RESUME_INSTALLATION_REPORT';
   String get startInstallationReport =>
       'SELECT_HEALTH_FACILITY_START_INSTALLATION_REPORT';
-  String get submitForApproval =>
-      'SELECT_HEALTH_FACILITY_SUBMIT_FOR_APPROVAL';
+  String get submitForApproval => 'SELECT_HEALTH_FACILITY_SUBMIT_FOR_APPROVAL';
 }
 
 class AssetCount {
@@ -266,8 +287,7 @@ class AssetSummary {
       'ASSET_SUMMARY_DETAILS_FOR_SELECTED_REASON';
   String get addReason => 'ASSET_SUMMARY_ADD_REASON';
   String get back => 'ASSET_SUMMARY_BACK';
-  String get healthFacilityDetails =>
-      'ASSET_SUMMARY_HEALTH_FACILITY_DETAILS';
+  String get healthFacilityDetails => 'ASSET_SUMMARY_HEALTH_FACILITY_DETAILS';
   String get name => 'ASSET_SUMMARY_NAME';
   String get count => 'ASSET_SUMMARY_COUNT';
   String get specifications => 'ASSET_SUMMARY_SPECIFICATIONS';
@@ -296,6 +316,10 @@ class AmcOtp {
   String get instruction => 'AMC_OTP_INSTRUCTION';
   String get enterCode => 'AMC_OTP_ENTER_CODE';
   String get resendCode => 'AMC_OTP_RESEND_CODE';
+  String get amcOtpReceiverInstruction1 => "AMC_OTP_RECEIVER_INSTRUCTION_1";
+  String get amcOtpReceiverInstruction2 => "AMC_OTP_RECEIVER_INSTRUCTION_2";
+  String get amcOtpMaskedPhone => "AMC_OTP_MASKED_PHONE";
+  String get amcOtpNetworkWarning => "AMC_OTP_NETWORK_WARNING";
 }
 
 class AmcDraft {
@@ -303,6 +327,8 @@ class AmcDraft {
   String get pendingOtpApproval => 'AMC_DRAFT_PENDING_OTP_APPROVAL';
   String get pendingApproval => 'AMC_DRAFT_PENDING_APPROVAL';
   String get noDraftsToDisplay => 'AMC_DRAFT_NO_DRAFTS_TO_DISPLAY';
+  String get amcDraftPendingCompletionApproval =>
+      'AMC_DRAFT_PENDING_COMPLETION_CODE_APPROVAL';
 }
 
 class AmcInbox {
@@ -342,9 +368,89 @@ class AmcSelectFacility {
   String get noVisitsFound => 'AMC_SELECT_FACILITY_NO_VISITS_FOUND';
   String get failedToLoadVisits => 'AMC_SELECT_FACILITY_FAILED_TO_LOAD_VISITS';
   String get amcDate => 'AMC_SELECT_FACILITY_AMC_DATE';
+  String get amcNumber => 'AMC_NUMBER';
   String get report => 'AMC_SELECT_FACILITY_REPORT';
-  String get submitForApproval =>
-      'AMC_SELECT_FACILITY_SUBMIT_FOR_APPROVAL';
+  String get submitForApproval => 'AMC_SELECT_FACILITY_SUBMIT_FOR_APPROVAL';
+}
+
+class AssessmentSelectFacility {
+  const AssessmentSelectFacility();
+
+  String get title => 'ASSESSMENT_SELECT_FACILITY_TITLE';
+  String get failedToLoad => 'ASSESSMENT_SELECT_FACILITY_FAILED_TO_LOAD';
+  String get noFacilitiesFound =>
+      'ASSESSMENT_SELECT_FACILITY_NO_FACILITIES_FOUND';
+  String get loadMoreFailedRetry =>
+      'ASSESSMENT_SELECT_FACILITY_LOAD_MORE_FAILED_RETRY';
+  String get lastActionTime => 'ASSESSMENT_SELECT_FACILITY_LAST_ACTION_TIME';
+  String get couldNotReach => 'ASSESSMENT_SELECT_FACILITY_COULD_NOT_REACH';
+  String get selectReason => 'ASSESSMENT_SELECT_FACILITY_SELECT_REASON';
+  String get noAnswerReason => 'ASSESSMENT_SELECT_FACILITY_NO_ANSWER_REASON';
+  String get wrongNumberReason =>
+      'ASSESSMENT_SELECT_FACILITY_WRONG_NUMBER_REASON';
+  String get updateStatus => 'ASSESSMENT_SELECT_FACILITY_UPDATE_STATUS';
+  String get updatingStatus => 'ASSESSMENT_SELECT_FACILITY_UPDATING_STATUS';
+  String get statusUpdateSuccess =>
+      'ASSESSMENT_SELECT_FACILITY_STATUS_UPDATE_SUCCESS';
+  String get statusUpdateFailed =>
+      'ASSESSMENT_SELECT_FACILITY_STATUS_UPDATE_FAILED';
+  String get startAssessment => 'ASSESSMENT_SELECT_FACILITY_START_ASSESSMENT';
+  String get statusScheduled => 'ASSESSMENT_SELECT_FACILITY_STATUS_SCHEDULED';
+  String get statusNoAnswer => 'ASSESSMENT_SELECT_FACILITY_STATUS_NO_ANSWER';
+  String get statusWrongNumber =>
+      'ASSESSMENT_SELECT_FACILITY_STATUS_WRONG_NUMBER';
+  String get statusQualified => 'ASSESSMENT_SELECT_FACILITY_STATUS_QUALIFIED';
+  String get statusNotQualified =>
+      'ASSESSMENT_SELECT_FACILITY_STATUS_NOT_QUALIFIED';
+}
+
+class AssessmentForm {
+  const AssessmentForm();
+
+  String get unableToLoad => 'ASSESSMENT_FORM_UNABLE_TO_LOAD';
+  String get unavailable => 'ASSESSMENT_FORM_UNAVAILABLE';
+  String get missingFacilityData => 'ASSESSMENT_FORM_MISSING_FACILITY_DATA';
+  String get submitting => 'ASSESSMENT_FORM_SUBMITTING';
+  String get savedToDrafts => 'ASSESSMENT_FORM_SAVED_TO_DRAFTS';
+  String get conflictSaved => 'ASSESSMENT_FORM_CONFLICT_SAVED';
+  String get submittedTitle => 'ASSESSMENT_FORM_SUBMITTED_TITLE';
+  String get submittedDescription => 'ASSESSMENT_FORM_SUBMITTED_DESCRIPTION';
+}
+
+class AssessmentDraft {
+  const AssessmentDraft();
+
+  String get title => 'ASSESSMENT_DRAFT_TITLE';
+  String get sync => 'ASSESSMENT_DRAFT_SYNC';
+  String get remote => 'ASSESSMENT_DRAFT_REMOTE';
+  String get onSite => 'ASSESSMENT_DRAFT_ON_SITE';
+  String get empty => 'ASSESSMENT_DRAFT_EMPTY';
+  String get pending => 'ASSESSMENT_DRAFT_PENDING';
+  String get blocked => 'ASSESSMENT_DRAFT_BLOCKED';
+  String get syncing => 'ASSESSMENT_DRAFT_SYNCING';
+  String get syncComplete => 'ASSESSMENT_DRAFT_SYNC_COMPLETE';
+  String get syncPartial => 'ASSESSMENT_DRAFT_SYNC_PARTIAL';
+  String get loadFailed => 'ASSESSMENT_DRAFT_LOAD_FAILED';
+  String get facilityType => 'ASSESSMENT_DRAFT_FACILITY_TYPE';
+  String get failureReason => 'ASSESSMENT_DRAFT_FAILURE_REASON';
+}
+
+class AssessmentHome {
+  const AssessmentHome();
+
+  String get assessment => 'ASSESSMENT_HOME_ASSESSMENT';
+}
+
+class AssessmentWorkHome {
+  const AssessmentWorkHome();
+
+  String get newRemote => 'ASSESSMENT_WORK_HOME_NEW_REMOTE';
+  String get newRemoteDescription =>
+      'ASSESSMENT_WORK_HOME_NEW_REMOTE_DESCRIPTION';
+  String get newOnSite => 'ASSESSMENT_WORK_HOME_NEW_ON_SITE';
+  String get newOnSiteDescription =>
+      'ASSESSMENT_WORK_HOME_NEW_ON_SITE_DESCRIPTION';
+  String get draftsDescription => 'ASSESSMENT_WORK_HOME_DRAFTS_DESCRIPTION';
 }
 
 class Home {
@@ -361,6 +467,13 @@ class Home {
   String get dataSync => 'HOME_DATA_SYNC';
 }
 
+class BomButtons {
+  const BomButtons();
+  String get installationCompletionCertificate =>
+      'BOM_BUTTON_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get assetHandoverDocument => 'BOM_BUTTON_ASSET_HANDOVER_DOCUMENT';
+}
+
 class InstallationImages {
   const InstallationImages();
   String get couldNotFetchLocation =>
@@ -371,14 +484,61 @@ class InstallationImages {
   String get back => 'INSTALLATION_IMAGES_BACK';
 }
 
+class InstallationCompletionCertificate {
+  const InstallationCompletionCertificate();
+  String get title => 'INSTALLATION_COMPLETION_CERTIFICATE_TITLE';
+  String get uploadPrompt =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_UPLOAD_PROMPT';
+  String get uploadPdf => 'INSTALLATION_COMPLETION_CERTIFICATE_UPLOAD_PDF';
+  String get uploadRequired =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_UPLOAD_REQUIRED';
+  String get maxFilesAllowed =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_MAX_FILES_ALLOWED';
+  String get filePathUnavailable =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_FILE_PATH_UNAVAILABLE';
+  String get onlyPdfAllowed =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_ONLY_PDF_ALLOWED';
+  String get acceptedFormats =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_ACCEPTED_FORMATS';
+  String get maxFileSize => 'INSTALLATION_COMPLETION_CERTIFICATE_MAX_FILE_SIZE';
+  String get uploadSuccess =>
+      'INSTALLATION_COMPLETION_CERTIFICATE_UPLOAD_SUCCESS';
+}
+
+class AssetHandoverDocument {
+  const AssetHandoverDocument();
+  String get title => 'ASSET_HANDOVER_DOCUMENT_TITLE';
+  String get uploadPrompt => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_PROMPT';
+  String get uploadPdf => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_PDF';
+  String get uploadRequired => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_REQUIRED';
+  String get maxFilesAllowed => 'ASSET_HANDOVER_DOCUMENT_MAX_FILES_ALLOWED';
+  String get filePathUnavailable =>
+      'ASSET_HANDOVER_DOCUMENT_FILE_PATH_UNAVAILABLE';
+  String get onlyPdfAllowed => 'ASSET_HANDOVER_DOCUMENT_ONLY_PDF_ALLOWED';
+  String get acceptedFormats => 'ASSET_HANDOVER_DOCUMENT_ACCEPTED_FORMATS';
+  String get maxFileSize => 'ASSET_HANDOVER_DOCUMENT_MAX_FILE_SIZE';
+  String get uploadSuccess => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_SUCCESS';
+}
+
 class OverallAssetSummary {
   const OverallAssetSummary();
   String get allAssetsSubmittedSuccessfully =>
       'OVERALL_ASSET_SUMMARY_ALL_ASSETS_SUBMITTED_SUCCESSFULLY';
   String get addMoreAssets => 'OVERALL_ASSET_SUMMARY_ADD_MORE_ASSETS';
-  String get errorLoadingCounts =>
-      'OVERALL_ASSET_SUMMARY_ERROR_LOADING_COUNTS';
+  String get errorLoadingCounts => 'OVERALL_ASSET_SUMMARY_ERROR_LOADING_COUNTS';
   String get upload => 'OVERALL_ASSET_SUMMARY_UPLOAD';
+  String get requiredInstallationCompletionCertificate =>
+      'OVERALL_ASSET_SUMMARY_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get uploadRequiredInstallationCompletionCertificate =>
+      'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get requiredAssetHandoverDocument =>
+      'OVERALL_ASSET_SUMMARY_REQUIRED_ASSET_HANDOVER_DOCUMENT';
+  String get uploadRequiredAssetHandoverDocument =>
+      'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_ASSET_HANDOVER_DOCUMENT';
+  String get requiredInstallationDocuments =>
+      'OVERALL_ASSET_SUMMARY_REQUIRED_INSTALLATION_DOCUMENTS';
+  String get uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument =>
+      'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE_AND_ASSET_HANDOVER_DOCUMENT';
 }
 
 class SubmitForApproval {
@@ -388,6 +548,18 @@ class SubmitForApproval {
       'SUBMIT_FOR_APPROVAL_REQUIRED_INSTALLATION_IMAGES';
   String get enterRequiredInstallationImages =>
       'SUBMIT_FOR_APPROVAL_ENTER_REQUIRED_INSTALLATION_IMAGES';
+  String get requiredInstallationCompletionCertificate =>
+      'SUBMIT_FOR_APPROVAL_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get uploadRequiredInstallationCompletionCertificate =>
+      'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE';
+  String get requiredAssetHandoverDocument =>
+      'SUBMIT_FOR_APPROVAL_REQUIRED_ASSET_HANDOVER_DOCUMENT';
+  String get uploadRequiredAssetHandoverDocument =>
+      'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_ASSET_HANDOVER_DOCUMENT';
+  String get requiredInstallationDocuments =>
+      'SUBMIT_FOR_APPROVAL_REQUIRED_INSTALLATION_DOCUMENTS';
+  String get uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument =>
+      'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE_AND_ASSET_HANDOVER_DOCUMENT';
   String get summary => 'SUBMIT_FOR_APPROVAL_SUMMARY';
   String get installationCompletionReport =>
       'SUBMIT_FOR_APPROVAL_INSTALLATION_COMPLETION_REPORT';
@@ -457,4 +629,45 @@ class SyncLoading {
   String get syncingReports => 'SYNC_LOADING_SYNCING_REPORTS';
   String get completedSuffix => 'SYNC_LOADING_COMPLETED_SUFFIX';
   String get of => 'SYNC_LOADING_OF';
+}
+
+class AssessmentBookmarks {
+  String get onlineRequired => 'ASSESSMENT_BOOKMARKS_ONLINE_REQUIRED';
+  String get filter => 'ASSESSMENT_BOOKMARKS_FILTER';
+  const AssessmentBookmarks();
+  String get remote => 'ASSESSMENT_BOOKMARKS_REMOTE';
+  String get onSite => 'ASSESSMENT_BOOKMARKS_ON_SITE';
+  String get description => 'ASSESSMENT_BOOKMARKS_DESCRIPTION';
+  String get add => 'ASSESSMENT_BOOKMARKS_ADD';
+  String get remove => 'ASSESSMENT_BOOKMARKS_REMOVE';
+  String get empty => 'ASSESSMENT_BOOKMARKS_EMPTY';
+  String get saveFailed => 'ASSESSMENT_BOOKMARKS_SAVE_FAILED';
+  String get savedAt => 'ASSESSMENT_BOOKMARKS_SAVED_AT';
+  String get openDraft => 'ASSESSMENT_BOOKMARKS_OPEN_DRAFT';
+}
+
+class InstallationBookmarks {
+  String get onlineRequired => 'INSTALLATION_BOOKMARKS_ONLINE_REQUIRED';
+  const InstallationBookmarks();
+  String get filter => 'INSTALLATION_BOOKMARKS_FILTER';
+  String get title => 'INSTALLATION_BOOKMARKS_TITLE';
+  String get description => 'INSTALLATION_BOOKMARKS_DESCRIPTION';
+  String get add => 'INSTALLATION_BOOKMARKS_ADD';
+  String get remove => 'INSTALLATION_BOOKMARKS_REMOVE';
+  String get empty => 'INSTALLATION_BOOKMARKS_EMPTY';
+  String get saveFailed => 'INSTALLATION_BOOKMARKS_SAVE_FAILED';
+  String get savedAt => 'INSTALLATION_BOOKMARKS_SAVED_AT';
+}
+
+class AmcBookmarks {
+  String get onlineRequired => 'AMC_BOOKMARKS_ONLINE_REQUIRED';
+  String get filter => 'AMC_BOOKMARKS_FILTER';
+  const AmcBookmarks();
+  String get title => 'AMC_BOOKMARKS_TITLE';
+  String get description => 'AMC_BOOKMARKS_DESCRIPTION';
+  String get add => 'AMC_BOOKMARKS_ADD';
+  String get remove => 'AMC_BOOKMARKS_REMOVE';
+  String get empty => 'AMC_BOOKMARKS_EMPTY';
+  String get saveFailed => 'AMC_BOOKMARKS_SAVE_FAILED';
+  String get savedAt => 'AMC_BOOKMARKS_SAVED_AT';
 }

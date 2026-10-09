@@ -9,13 +9,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
+import '../blocs/app_init/app_init.dart';
 import '../blocs/cache_installation_image/cache_installation_image.dart';
 import '../blocs/installation_images/installation_images.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_installation_image.dart';
+import '../model/comment/comment.dart';
 import '../model/installation_images/installation_images.dart';
+import '../model/mdms/mdms.dart';
+import '../model/solution_design_type/solution_design_type.dart';
 import '../repositories/activity_facility_repo.dart';
+import '../repositories/activity_facility_workflow_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -28,9 +33,11 @@ class InstallationImagesPage extends StatefulWidget {
   const InstallationImagesPage({
     super.key,
     required this.origin,
+    required this.activityFacilityId,
   });
 
   final FormOrigin origin;
+  final String activityFacilityId;
 
   @override
   State<InstallationImagesPage> createState() => _InstallationImagesPageState();
@@ -39,8 +46,9 @@ class InstallationImagesPage extends StatefulWidget {
 class _InstallationImagesPageState extends State<InstallationImagesPage> {
   final Map<String, List<File>> _selectedImagesByRequirement = {};
   final Map<String, String> _sectionMessages = {};
-  String? _currentActivityFacilityId;
+  late final String _currentActivityFacilityId;
   String? _userType;
+  String? _systemType;
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
@@ -71,19 +79,54 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           orElse: () => USER_TYPES.FIELD_STAFF.name,
         );
 
-    context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
-      selected: (proj) {
-        _currentActivityFacilityId = proj.activityFacility.id;
-      },
-    );
+    _currentActivityFacilityId = widget.activityFacilityId;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context
-          .read<InstallationImagesBloc>()
-          .add(const InstallationImagesEvent.fetch());
+      await _resolveSystemTypeAndFetch();
       _loadCachedImages();
     });
+  }
+
+  Future<String> _resolveSystemType() async {
+    final isar = context.read<ActivityFacilityBloc>().isar;
+
+    final initState = context.read<AppInitialization>().state;
+    final solutionDesignList =
+        initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+          solutionDesign,
+      orElse: () => const [],
+    );
+
+    final workflow = context
+        .read<SelectedActivityFacilityBloc>()
+        .state
+        .whenOrNull(selected: (wf) => wf);
+
+    final facilityCode = workflow
+        ?.activityFacility.facility?.facilityDetails?.solar_solution_design_type;
+    final facilitySystemType =
+        workflow?.activityFacility.facility?.facilityDetails?.systemType;
+
+    return ActivityFacilityWorkflowRepository().getActivityFacilitySystem(
+      isar: isar,
+      activityFacilityId: _currentActivityFacilityId,
+      solutionDesignList: solutionDesignList,
+      facilitySystemType: facilitySystemType,
+      facilitySolutionDesignCode: facilityCode,
+    );
+  }
+
+  Future<void> _resolveSystemTypeAndFetch() async {
+    final systemType = await _resolveSystemType();
+    if (!mounted) return;
+    setState(() {
+      _systemType = systemType;
+    });
+    context
+        .read<InstallationImagesBloc>()
+        .add(InstallationImagesEvent.fetch(systemType: systemType));
   }
 
   @override
@@ -114,10 +157,10 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   }
 
   void _loadCachedImages() {
-    if (_currentActivityFacilityId == null || _userType == null) return;
+    if (_userType == null) return;
     context.read<CacheInstallationImageBloc>().add(
           CacheInstallationImageEvent.get(
-            _currentActivityFacilityId!,
+            _currentActivityFacilityId,
             _userType!,
           ),
         );
@@ -265,18 +308,19 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
       return;
     }
 
-    _submitSelections();
+    _submitSelections(requirements);
   }
 
-  Future<void> _submitSelections() async {
-    if (_currentActivityFacilityId == null || _userType == null) return;
+  Future<void> _submitSelections(
+    List<InstallationImageItem> requirements,
+  ) async {
+    if (_userType == null) return;
     final ok = await _ensureLocationLoaded();
     if (!mounted) return;
     if (!ok) {
       context.showSnackBar(
         SnackBar(
-            content:
-                Text(context.translate(i18.common.couldNotFetchLocation))),
+            content: Text(context.translate(i18.common.couldNotFetchLocation))),
       );
       return;
     }
@@ -285,15 +329,21 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
       _isSaving = true;
     });
 
+    final orderByCode = <String, String>{
+      for (final requirement in requirements)
+        requirement.code: requirement.orderLabel(_systemType ?? '') ?? '',
+    };
+
     context.read<CacheInstallationImageBloc>().add(
           CacheInstallationImageEvent.saveAll(
-            activityFacilityId: _currentActivityFacilityId!,
+            activityFacilityId: _currentActivityFacilityId,
             userType: _userType!,
             selectedImages: Map<String, List<File>>.from(
               _selectedImagesByRequirement.map(
                 (key, value) => MapEntry(key, List<File>.from(value)),
               ),
             ),
+            orderByCode: orderByCode,
             latitude: _latitude.toString(),
             longitude: _longitude.toString(),
           ),
@@ -303,9 +353,33 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   bool _isSubmitDisabled(List<InstallationImageItem> requirements) {
     if (_isViewOnly) return false;
     if (_isSaving) return true;
-    if (_currentActivityFacilityId == null || _userType == null) return true;
+    if (_userType == null) return true;
     if (requirements.isEmpty) return true;
     return _hasAnyInvalidRequirement(requirements);
+  }
+
+  Map<String, List<Comment>> _installationImageCommentsByCode(
+    BuildContext context,
+  ) {
+    final workflow = context
+        .watch<SelectedActivityFacilityBloc>()
+        .state
+        .whenOrNull(selected: (wf) => wf);
+    final commentsByCode = <String, List<Comment>>{};
+    final latestTransaction = latestTransactionWithComments(workflow);
+
+    for (final comment in latestTransaction?.comments ?? const <Comment>[]) {
+      final assetType = comment.assetType?.trim().toUpperCase();
+      if (assetType == null || !assetType.startsWith('INSTALLATION_IMAGE_')) {
+        continue;
+      }
+
+      final code = assetType.substring('INSTALLATION_IMAGE_'.length);
+      if (code.isEmpty) continue;
+      commentsByCode.putIfAbsent(code, () => <Comment>[]).add(comment);
+    }
+
+    return commentsByCode;
   }
 
   Widget _buildBody(
@@ -344,22 +418,24 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
             type: DigitButtonType.primary,
             size: DigitButtonSize.large,
             onPressed: () {
+              if (_systemType == null) return;
               context
                   .read<InstallationImagesBloc>()
-                  .add(const InstallationImagesEvent.fetch());
+                  .add(InstallationImagesEvent.fetch(
+                    systemType: _systemType!,
+                  ));
             },
           ),
         ],
       ),
       loaded: (items) {
-        final requirements = items.where((item) => item.active).toList();
+        final requirements = items;
 
         if (requirements.isEmpty) {
           return DigitCard(
             children: [
               Text(
-                context
-                    .translate(i18.installationImages.noConfigurationFound),
+                context.translate(i18.installationImages.noConfigurationFound),
                 style: textTheme.bodyL.copyWith(
                   color: theme.colorTheme.alert.error,
                 ),
@@ -368,19 +444,31 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           );
         }
 
+        final commentsByCode = _installationImageCommentsByCode(context);
+        final showRejectionCards =
+            context.watch<SelectedActivityFacilityBloc>().state.whenOrNull(
+                      selected: (workflow) =>
+                          workflow.status ==
+                          WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name,
+                    ) ??
+                false;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ...requirements.map((requirement) {
               final feedbackMessage = _feedbackMessageFor(requirement);
               final isError = _isErrorMessage(requirement, feedbackMessage);
+              final rejectionComments =
+                  commentsByCode[requirement.code.trim().toUpperCase()];
               return Padding(
                 padding: const EdgeInsets.only(bottom: spacer4),
                 child: DigitCard(
                   children: [
                     const SizedBox(width: double.infinity),
                     Text(
-                      '${requirement.code}. ${requirement.description}',
+                      '${requirement.orderLabel(_systemType ?? '') ?? requirement.code}. '
+                      '${requirement.description}',
                       style: textTheme.bodyL.copyWith(
                         color: theme.colorTheme.primary.primary2,
                       ),
@@ -403,6 +491,12 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                       onImagesSelected: (files) =>
                           _handleImagesSelected(requirement, files),
                     ),
+                    if (showRejectionCards &&
+                        rejectionComments != null &&
+                        rejectionComments.isNotEmpty)
+                      _InstallationImageRejectionReasonsCard(
+                        comments: rejectionComments,
+                      ),
                     if (feedbackMessage != null) ...[
                       Text(
                         feedbackMessage,
@@ -434,10 +528,10 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           loaded: (entries) => _populateFromCache(entries),
           saved: () async {
             if (!mounted) return;
-            if (_currentActivityFacilityId != null && _userType != null) {
+            if (_userType != null) {
               final isar = context.read<ActivityFacilityBloc>().isar;
               await PrefilledActivityFacilityRepository(isar).addOrTouch(
-                activityFacilityId: _currentActivityFacilityId!,
+                activityFacilityId: _currentActivityFacilityId,
                 userType: _userType!,
               );
             }
@@ -522,6 +616,110 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           },
         );
       },
+    );
+  }
+}
+
+class _InstallationImageRejectionReasonsCard extends StatelessWidget {
+  const _InstallationImageRejectionReasonsCard({
+    required this.comments,
+  });
+
+  final List<Comment> comments;
+
+  @override
+  Widget build(BuildContext context) {
+    if (comments.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    return Column(
+      children: [
+        const SizedBox(height: spacer2),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.colorTheme.paper.secondary,
+            border: Border.all(color: theme.colorTheme.generic.divider),
+            borderRadius: BorderRadius.circular(spacer1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: spacer3,
+              vertical: spacer4,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.translate(i18.submitForApproval.rejectionReasons),
+                  style: textTheme.headingS.copyWith(
+                    color: theme.colorTheme.text.primary,
+                  ),
+                ),
+                const SizedBox(height: spacer5),
+                for (var i = 0; i < comments.length; i++) ...[
+                  _InstallationImageRejectionReason(
+                    comment: comments[i],
+                    index: i + 1,
+                  ),
+                  if (i < comments.length - 1) const SizedBox(height: spacer4),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InstallationImageRejectionReason extends StatelessWidget {
+  const _InstallationImageRejectionReason({
+    required this.comment,
+    required this.index,
+  });
+
+  final Comment comment;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final labelStyle = theme.digitTextTheme(context).label.copyWith(
+          color: theme.colorTheme.primary.primary2,
+        );
+    final valueStyle = theme.digitTextTheme(context).label.copyWith(
+          color: theme.colorTheme.text.primary,
+        );
+    final reason = comment.reason;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: theme.colorTheme.primary.primary2),
+            borderRadius: BorderRadius.circular(spacer2),
+            color: theme.colorTheme.paper.primary,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: spacer1,
+              horizontal: spacer3,
+            ),
+            child: Text(
+              reason == null || reason.isEmpty
+                  ? '${context.translate(i18.submitForApproval.reason)} $index'
+                  : reason,
+              style: labelStyle,
+            ),
+          ),
+        ),
+        const SizedBox(height: spacer2),
+        Text(comment.displayComment, style: valueStyle),
+      ],
     );
   }
 }

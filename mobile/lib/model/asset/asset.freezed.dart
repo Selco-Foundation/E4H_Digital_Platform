@@ -28,18 +28,18 @@ mixin _$AssetDetails {
   String? get totalCapacityUOM => throw _privateConstructorUsedError;
   @JsonKey(name: 'capacityUnit', fromJson: _anyToString)
   String? get capacityUnit => throw _privateConstructorUsedError;
-  @JsonKey(name: 'panelCapacity', fromJson: _stringOrNumToDouble)
-  double? get panelCapacity => throw _privateConstructorUsedError;
+  @JsonKey(name: 'panelCapacity', fromJson: _anyToString)
+  String? get panelCapacity => throw _privateConstructorUsedError;
   @JsonKey(name: 'batteryType', fromJson: _anyToString)
   String? get batteryType => throw _privateConstructorUsedError;
   @JsonKey(name: 'batteryVoltage', fromJson: _stringOrNumToDouble)
   double? get batteryVoltage => throw _privateConstructorUsedError;
-  @JsonKey(name: 'batteryCapacity', fromJson: _stringOrNumToDouble)
-  double? get batteryCapacity => throw _privateConstructorUsedError;
+  @JsonKey(name: 'batteryCapacity', fromJson: _anyToString)
+  String? get batteryCapacity => throw _privateConstructorUsedError;
   @JsonKey(name: 'voltageUnit', fromJson: _anyToString)
   String? get voltageUnit => throw _privateConstructorUsedError;
-  @JsonKey(name: 'inverterCapacity', fromJson: _stringOrNumToDouble)
-  double? get inverterCapacity => throw _privateConstructorUsedError;
+  @JsonKey(name: 'inverterCapacity', fromJson: _anyToString)
+  String? get inverterCapacity => throw _privateConstructorUsedError;
   @JsonKey(name: 'invertorCapacityUnit', fromJson: _anyToString)
   String? get inverterCapacityUnit => throw _privateConstructorUsedError;
   @JsonKey(name: 'currentUnit', fromJson: _anyToString)
@@ -66,16 +66,16 @@ abstract class $AssetDetailsCopyWith<$Res> {
       String? totalCapacityUOM,
       @JsonKey(name: 'capacityUnit', fromJson: _anyToString)
       String? capacityUnit,
-      @JsonKey(name: 'panelCapacity', fromJson: _stringOrNumToDouble)
-      double? panelCapacity,
+      @JsonKey(name: 'panelCapacity', fromJson: _anyToString)
+      String? panelCapacity,
       @JsonKey(name: 'batteryType', fromJson: _anyToString) String? batteryType,
       @JsonKey(name: 'batteryVoltage', fromJson: _stringOrNumToDouble)
       double? batteryVoltage,
-      @JsonKey(name: 'batteryCapacity', fromJson: _stringOrNumToDouble)
-      double? batteryCapacity,
+      @JsonKey(name: 'batteryCapacity', fromJson: _anyToString)
+      String? batteryCapacity,
       @JsonKey(name: 'voltageUnit', fromJson: _anyToString) String? voltageUnit,
-      @JsonKey(name: 'inverterCapacity', fromJson: _stringOrNumToDouble)
-      double? inverterCapacity,
+      @JsonKey(name: 'inverterCapacity', fromJson: _anyToString)
+      String? inverterCapacity,
       @JsonKey(name: 'invertorCapacityUnit', fromJson: _anyToString)
       String? inverterCapacityUnit,
       @JsonKey(name: 'currentUnit', fromJson: _anyToString)
@@ -128,7 +128,7 @@ class _$AssetDetailsCopyWithImpl<$Res, $Val extends AssetDetails>
       panelCapacity: freezed == panelCapacity
           ? _value.panelCapacity
           : panelCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
+              as String?,
       batteryType: freezed == batteryType
           ? _value.batteryType
           : batteryType // ignore: cast_nullable_to_non_nullable
@@ -140,7 +140,7 @@ class _$AssetDetailsCopyWithImpl<$Res, $Val extends AssetDetails>
       batteryCapacity: freezed == batteryCapacity
           ? _value.batteryCapacity
           : batteryCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
+              as String?,
       voltageUnit: freezed == voltageUnit
           ? _value.voltageUnit
           : voltageUnit // ignore: cast_nullable_to_non_nullable
@@ -148,7 +148,7 @@ class _$AssetDetailsCopyWithImpl<$Res, $Val extends AssetDetails>
       inverterCapacity: freezed == inverterCapacity
           ? _value.inverterCapacity
           : inverterCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
+              as String?,
       inverterCapacityUnit: freezed == inverterCapacityUnit
           ? _value.inverterCapacityUnit
           : inverterCapacityUnit // ignore: cast_nullable_to_non_nullable
@@ -178,16 +178,16 @@ abstract class _$$AssetDetailsImplCopyWith<$Res>
       String? totalCapacityUOM,
       @JsonKey(name: 'capacityUnit', fromJson: _anyToString)
       String? capacityUnit,
-      @JsonKey(name: 'panelCapacity', fromJson: _stringOrNumToDouble)
-      double? panelCapacity,
+      @JsonKey(name: 'panelCapacity', fromJson: _anyToString)
+      String? panelCapacity,
       @JsonKey(name: 'batteryType', fromJson: _anyToString) String? batteryType,
       @JsonKey(name: 'batteryVoltage', fromJson: _stringOrNumToDouble)
       double? batteryVoltage,
-      @JsonKey(name: 'batteryCapacity', fromJson: _stringOrNumToDouble)
-      double? batteryCapacity,
+      @JsonKey(name: 'batteryCapacity', fromJson: _anyToString)
+      String? batteryCapacity,
       @JsonKey(name: 'voltageUnit', fromJson: _anyToString) String? voltageUnit,
-      @JsonKey(name: 'inverterCapacity', fromJson: _stringOrNumToDouble)
-      double? inverterCapacity,
+      @JsonKey(name: 'inverterCapacity', fromJson: _anyToString)
+      String? inverterCapacity,
       @JsonKey(name: 'invertorCapacityUnit', fromJson: _anyToString)
       String? inverterCapacityUnit,
       @JsonKey(name: 'currentUnit', fromJson: _anyToString)
@@ -238,7 +238,7 @@ class __$$AssetDetailsImplCopyWithImpl<$Res>
       panelCapacity: freezed == panelCapacity
           ? _value.panelCapacity
           : panelCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
+              as String?,
       batteryType: freezed == batteryType
           ? _value.batteryType
           : batteryType // ignore: cast_nullable_to_non_nullable
@@ -250,7 +250,7 @@ class __$$AssetDetailsImplCopyWithImpl<$Res>
       batteryCapacity: freezed == batteryCapacity
           ? _value.batteryCapacity
           : batteryCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
+              as String?,
       voltageUnit: freezed == voltageUnit
           ? _value.voltageUnit
           : voltageUnit // ignore: cast_nullable_to_non_nullable
@@ -258,7 +258,7 @@ class __$$AssetDetailsImplCopyWithImpl<$Res>
       inverterCapacity: freezed == inverterCapacity
           ? _value.inverterCapacity
           : inverterCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
+              as String?,
       inverterCapacityUnit: freezed == inverterCapacityUnit
           ? _value.inverterCapacityUnit
           : inverterCapacityUnit // ignore: cast_nullable_to_non_nullable
@@ -282,15 +282,15 @@ class _$AssetDetailsImpl implements _AssetDetails {
       @JsonKey(name: 'totalCapacityUOM', fromJson: _anyToString)
       this.totalCapacityUOM,
       @JsonKey(name: 'capacityUnit', fromJson: _anyToString) this.capacityUnit,
-      @JsonKey(name: 'panelCapacity', fromJson: _stringOrNumToDouble)
+      @JsonKey(name: 'panelCapacity', fromJson: _anyToString)
       this.panelCapacity,
       @JsonKey(name: 'batteryType', fromJson: _anyToString) this.batteryType,
       @JsonKey(name: 'batteryVoltage', fromJson: _stringOrNumToDouble)
       this.batteryVoltage,
-      @JsonKey(name: 'batteryCapacity', fromJson: _stringOrNumToDouble)
+      @JsonKey(name: 'batteryCapacity', fromJson: _anyToString)
       this.batteryCapacity,
       @JsonKey(name: 'voltageUnit', fromJson: _anyToString) this.voltageUnit,
-      @JsonKey(name: 'inverterCapacity', fromJson: _stringOrNumToDouble)
+      @JsonKey(name: 'inverterCapacity', fromJson: _anyToString)
       this.inverterCapacity,
       @JsonKey(name: 'invertorCapacityUnit', fromJson: _anyToString)
       this.inverterCapacityUnit,
@@ -312,8 +312,8 @@ class _$AssetDetailsImpl implements _AssetDetails {
   @JsonKey(name: 'capacityUnit', fromJson: _anyToString)
   final String? capacityUnit;
   @override
-  @JsonKey(name: 'panelCapacity', fromJson: _stringOrNumToDouble)
-  final double? panelCapacity;
+  @JsonKey(name: 'panelCapacity', fromJson: _anyToString)
+  final String? panelCapacity;
   @override
   @JsonKey(name: 'batteryType', fromJson: _anyToString)
   final String? batteryType;
@@ -321,14 +321,14 @@ class _$AssetDetailsImpl implements _AssetDetails {
   @JsonKey(name: 'batteryVoltage', fromJson: _stringOrNumToDouble)
   final double? batteryVoltage;
   @override
-  @JsonKey(name: 'batteryCapacity', fromJson: _stringOrNumToDouble)
-  final double? batteryCapacity;
+  @JsonKey(name: 'batteryCapacity', fromJson: _anyToString)
+  final String? batteryCapacity;
   @override
   @JsonKey(name: 'voltageUnit', fromJson: _anyToString)
   final String? voltageUnit;
   @override
-  @JsonKey(name: 'inverterCapacity', fromJson: _stringOrNumToDouble)
-  final double? inverterCapacity;
+  @JsonKey(name: 'inverterCapacity', fromJson: _anyToString)
+  final String? inverterCapacity;
   @override
   @JsonKey(name: 'invertorCapacityUnit', fromJson: _anyToString)
   final String? inverterCapacityUnit;
@@ -413,18 +413,18 @@ abstract class _AssetDetails implements AssetDetails {
       final String? totalCapacityUOM,
       @JsonKey(name: 'capacityUnit', fromJson: _anyToString)
       final String? capacityUnit,
-      @JsonKey(name: 'panelCapacity', fromJson: _stringOrNumToDouble)
-      final double? panelCapacity,
+      @JsonKey(name: 'panelCapacity', fromJson: _anyToString)
+      final String? panelCapacity,
       @JsonKey(name: 'batteryType', fromJson: _anyToString)
       final String? batteryType,
       @JsonKey(name: 'batteryVoltage', fromJson: _stringOrNumToDouble)
       final double? batteryVoltage,
-      @JsonKey(name: 'batteryCapacity', fromJson: _stringOrNumToDouble)
-      final double? batteryCapacity,
+      @JsonKey(name: 'batteryCapacity', fromJson: _anyToString)
+      final String? batteryCapacity,
       @JsonKey(name: 'voltageUnit', fromJson: _anyToString)
       final String? voltageUnit,
-      @JsonKey(name: 'inverterCapacity', fromJson: _stringOrNumToDouble)
-      final double? inverterCapacity,
+      @JsonKey(name: 'inverterCapacity', fromJson: _anyToString)
+      final String? inverterCapacity,
       @JsonKey(name: 'invertorCapacityUnit', fromJson: _anyToString)
       final String? inverterCapacityUnit,
       @JsonKey(name: 'currentUnit', fromJson: _anyToString)
@@ -446,8 +446,8 @@ abstract class _AssetDetails implements AssetDetails {
   @JsonKey(name: 'capacityUnit', fromJson: _anyToString)
   String? get capacityUnit;
   @override
-  @JsonKey(name: 'panelCapacity', fromJson: _stringOrNumToDouble)
-  double? get panelCapacity;
+  @JsonKey(name: 'panelCapacity', fromJson: _anyToString)
+  String? get panelCapacity;
   @override
   @JsonKey(name: 'batteryType', fromJson: _anyToString)
   String? get batteryType;
@@ -455,14 +455,14 @@ abstract class _AssetDetails implements AssetDetails {
   @JsonKey(name: 'batteryVoltage', fromJson: _stringOrNumToDouble)
   double? get batteryVoltage;
   @override
-  @JsonKey(name: 'batteryCapacity', fromJson: _stringOrNumToDouble)
-  double? get batteryCapacity;
+  @JsonKey(name: 'batteryCapacity', fromJson: _anyToString)
+  String? get batteryCapacity;
   @override
   @JsonKey(name: 'voltageUnit', fromJson: _anyToString)
   String? get voltageUnit;
   @override
-  @JsonKey(name: 'inverterCapacity', fromJson: _stringOrNumToDouble)
-  double? get inverterCapacity;
+  @JsonKey(name: 'inverterCapacity', fromJson: _anyToString)
+  String? get inverterCapacity;
   @override
   @JsonKey(name: 'invertorCapacityUnit', fromJson: _anyToString)
   String? get inverterCapacityUnit;

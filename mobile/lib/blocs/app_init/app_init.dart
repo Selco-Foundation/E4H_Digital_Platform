@@ -14,6 +14,7 @@ import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 import '../../repositories/app_init_repo.dart';
+import '../../repositories/cache_fallback.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/envConfig.dart' as env;
 import '../../utils/utils.dart';
@@ -75,7 +76,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     } catch (e) {
       AppLogger.instance.info(e.toString());
 
-      if (isSessionExpiredMessage(e.toString())) {
+      if (isAuthenticationFailure(e) || isSessionExpiredMessage(e.toString())) {
         emit(const InitState.error(_sessionExpiredMdmsError));
         return;
       }
@@ -198,6 +199,11 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         tenantId: tenantId,
         cacheOnly: cacheOnly,
       ),
+      _fetchRequiredBomFormKeysForCache(
+        appInitRepo,
+        tenantId: tenantId,
+        cacheOnly: cacheOnly,
+      ),
     ]);
   }
 
@@ -218,11 +224,37 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         cacheOnly: cacheOnly,
       );
     } catch (e) {
-      if (isSessionExpiredMessage(e.toString())) {
+      if (isAuthenticationFailure(e) || isSessionExpiredMessage(e.toString())) {
         rethrow;
       }
 
       AppLogger.instance.info('Failed to load rejection reasons: $e');
+      return <dynamic>[];
+    }
+  }
+
+  Future<List<dynamic>> _fetchRequiredBomFormKeysForCache(
+    AppInitRepo appInitRepo, {
+    required String tenantId,
+    required bool cacheOnly,
+  }) async {
+    try {
+      return await appInitRepo.searchRequiredBomFormKeys(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "common-masters.RequiredBomFormKeys",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      );
+    } catch (e) {
+      if (isAuthenticationFailure(e) || isSessionExpiredMessage(e.toString())) {
+        rethrow;
+      }
+
+      AppLogger.instance.info('Failed to load required BOM form keys: $e');
       return <dynamic>[];
     }
   }

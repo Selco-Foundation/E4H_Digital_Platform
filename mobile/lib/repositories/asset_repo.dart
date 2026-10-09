@@ -8,6 +8,8 @@ import 'package:mime/mime.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../data/nosql/cache_asset_handover_document.dart';
+import '../data/nosql/cache_installation_completion_certificate.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
@@ -84,8 +86,11 @@ class AssetRepository {
     }
   }
 
-  Future<Asset> createOrUpdateAsset(
-      {required Asset asset, required Isar isar}) async {
+  Future<Asset> createOrUpdateAsset({
+    required Asset asset,
+    required Isar isar,
+    required int cacheEntryId,
+  }) async {
     final isCreate = asset.assetId == null || asset.assetId!.isEmpty;
     final endpoint = isCreate ? '_create' : '_update?assetID=${asset.assetId}';
 
@@ -118,7 +123,11 @@ class AssetRepository {
       AppLogger.instance.info("updated AssetId ${updatedAsset.assetId}");
 
       if ((updatedAsset.assetId ?? '').isNotEmpty) {
-        await _writeBackAssetIdToCache(isar: isar, asset: updatedAsset);
+        await _writeBackAssetIdToCacheEntry(
+          isar: isar,
+          cacheEntryId: cacheEntryId,
+          assetId: updatedAsset.assetId!,
+        );
       }
 
       return updatedAsset;
@@ -129,18 +138,20 @@ class AssetRepository {
         AppLogger.instance.info(
             "Fetching Duplicate isCreate: $isCreate isDuplicate: $isDuplicate");
 
-        final remote = await _fetchAssetBySerial(
+        final remote = await _fetchAssetBySerialAndBrand(
           activityFacilityId: asset.activityFacilityID ?? '',
           serialNumber: asset.serialNumber ?? '',
+          brandId: asset.brandID ?? '',
         );
 
         final remoteAssetId =
             (remote?['assetId'] ?? remote?['assetID'] ?? '').toString();
 
         if (remoteAssetId.isNotEmpty) {
-          await _writeBackAssetIdToCache(
+          await _writeBackAssetIdToCacheEntry(
             isar: isar,
-            asset: asset.copyWith(assetId: remoteAssetId),
+            cacheEntryId: cacheEntryId,
+            assetId: remoteAssetId,
           );
 
           final retryAssetMap = Map<String, dynamic>.from(asset.toJson());
@@ -160,6 +171,13 @@ class AssetRepository {
             final aj = m['asset'] ?? m['Asset'];
             final updated =
                 Asset.fromJson(Map<String, dynamic>.from(aj as Map));
+            if ((updated.assetId ?? '').isNotEmpty) {
+              await _writeBackAssetIdToCacheEntry(
+                isar: isar,
+                cacheEntryId: cacheEntryId,
+                assetId: updated.assetId!,
+              );
+            }
             return updated;
           }
         }
@@ -208,6 +226,11 @@ class AssetRepository {
       }
 
       await isar.writeTxn(() async {
+        await isar.cacheAddNewAssets
+            .where()
+            .activityFacilityIdEqualTo(activityFacilityId)
+            .deleteAll();
+
         for (var entry in byType.entries) {
           final type = entry.key;
           final list = entry.value;
@@ -288,18 +311,6 @@ class AssetRepository {
 
           for (var asset in list) {
             final serial = asset.serialNumber ?? '';
-            final oldList = await isar.cacheAddNewAssets
-                .where()
-                .activityFacilityIdEqualTo(activityFacilityId)
-                .filter()
-                .assetTypeEqualTo(type)
-                .and()
-                .serialNumberEqualTo(serial)
-                .findAll();
-            for (var old in oldList) {
-              await isar.cacheAddNewAssets.delete(old.id);
-            }
-
             for (var doc in asset.documents ?? []) {
               if (doc.documentType == 'ASSET') {
                 await isar.cacheAddNewAssets.put(
@@ -308,23 +319,21 @@ class AssetRepository {
                     documentId: doc?.id.toString() ?? '',
                     activityFacilityId: activityFacilityId,
                     assetType: type,
-                    itemNumber:
-                        asset.assetDetails?.inverterCapacity?.toString() ?? '',
-                    serialNumber: serial ?? '',
+                    itemNumber: asset.assetDetails?.inverterCapacity ?? '',
+                    serialNumber: serial,
                     photoPath: doc.fileStore ?? '',
                     latitude: doc.geoLocation?.latitude?.toString() ?? '',
                     longitude: doc.geoLocation?.longitude?.toString() ?? '',
                     capacityUnit: asset.assetDetails?.capacityUnit ?? '',
-                    panelCapacity:
-                        asset.assetDetails?.panelCapacity?.toString() ?? '',
+                    panelCapacity: asset.assetDetails?.panelCapacity ?? '',
                     batteryCapacity:
-                        asset.assetDetails?.batteryCapacity?.toString() ?? '',
+                        asset.assetDetails?.batteryCapacity ?? '',
                     batteryVoltage:
                         asset.assetDetails?.batteryVoltage?.toString() ?? '',
                     batteryType: asset.assetDetails?.batteryType ?? '',
                     voltageUnit: asset.assetDetails?.voltageUnit ?? '',
                     inverterCapacity:
-                        asset.assetDetails?.inverterCapacity.toString() ?? '',
+                        asset.assetDetails?.inverterCapacity ?? '',
                     inverterCapacityUnit:
                         asset.assetDetails?.inverterCapacityUnit ?? '',
                   ),
@@ -347,13 +356,29 @@ class AssetRepository {
         final oldInstallationImages = await isar.cacheInstallationImages
             .where()
             .activityFacilityIdEqualTo(activityFacilityId)
-            .filter()
-            .userTypeEqualTo(userType)
             .findAll();
         for (var document in oldInstallationImages) {
           await isar.cacheInstallationImages.delete(document.id);
         }
+        final oldInstallationCompletionCertificates = await isar
+            .cacheInstallationCompletionCertificates
+            .where()
+            .activityFacilityIdEqualTo(activityFacilityId)
+            .findAll();
+        for (var document in oldInstallationCompletionCertificates) {
+          await isar.cacheInstallationCompletionCertificates
+              .delete(document.id);
+        }
+        final oldAssetHandoverDocuments = await isar.cacheAssetHandoverDocuments
+            .where()
+            .activityFacilityIdEqualTo(activityFacilityId)
+            .findAll();
+        for (var document in oldAssetHandoverDocuments) {
+          await isar.cacheAssetHandoverDocuments.delete(document.id);
+        }
 
+        var installationCompletionCertificateIndex = 0;
+        var assetHandoverDocumentIndex = 0;
         for (var doc in activityFacility.workflow?.documents ?? []) {
           final docType = doc.documentType ?? '';
           if (docType.contains('INSTALLATION_IMAGE')) {
@@ -361,14 +386,52 @@ class AssetRepository {
             if (parts.length != 2) continue;
 
             final codeFromDoc = parts[1];
+            final uidParts = (doc.documentUid ?? '').split('-');
+            final orderFromDoc =
+                uidParts.length == 5 ? uidParts[3] : '';
             await isar.cacheInstallationImages.put(CacheInstallationImage(
               activityFacilityId: activityFacilityId,
               userType: userType,
               code: codeFromDoc,
+              order: orderFromDoc,
               photoPath: doc.fileStore ?? '',
               latitude: doc.geoLocation?.latitude?.toString() ?? '',
               longitude: doc.geoLocation?.longitude?.toString() ?? '',
             ));
+          } else if (docType == 'INSTALLATION_COMPLETION_CERTIFICATE') {
+            final fileStore = doc.fileStore ?? '';
+            if (fileStore.isEmpty) continue;
+            final fileType = certificateFileTypeFromDocument(doc);
+            await isar.cacheInstallationCompletionCertificates.put(
+              CacheInstallationCompletionCertificate(
+                activityFacilityId: activityFacilityId,
+                userType: userType,
+                entryId: '$activityFacilityId::$fileStore',
+                filePath: fileStore,
+                fileName: fileStore,
+                fileType: fileType,
+                latitude: doc.geoLocation?.latitude?.toString() ?? '',
+                longitude: doc.geoLocation?.longitude?.toString() ?? '',
+                index: installationCompletionCertificateIndex++,
+              ),
+            );
+          } else if (docType == 'ASSET_HANDOVER_DOCUMENT') {
+            final fileStore = doc.fileStore ?? '';
+            if (fileStore.isEmpty) continue;
+            final fileType = assetHandoverDocumentFileTypeFromDocument(doc);
+            await isar.cacheAssetHandoverDocuments.put(
+              CacheAssetHandoverDocument(
+                activityFacilityId: activityFacilityId,
+                userType: userType,
+                entryId: '$activityFacilityId::$fileStore',
+                filePath: fileStore,
+                fileName: fileStore,
+                fileType: fileType,
+                latitude: doc.geoLocation?.latitude?.toString() ?? '',
+                longitude: doc.geoLocation?.longitude?.toString() ?? '',
+                index: assetHandoverDocumentIndex++,
+              ),
+            );
           } else if (docType != 'ASSET' &&
               !docType.contains('INSTALLATION_REPORT')) {
             final parts = docType.split('-');
@@ -416,36 +479,40 @@ class AssetRepository {
     };
 
     try {
-      final resp = await _dio.post('/activity/v1/activities/workflow/update',
-          data: payload,
-          options: Options(contentType: Headers.jsonContentType));
+      final resp = await _dio.post(
+        '/activity/v1/activities/workflow/update',
+        data: payload,
+        options: Options(
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.bytes,
+        ),
+      );
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
           resp.statusCode != 204) {
         throw Exception('Rejection Failed with ${resp.statusCode}');
       }
     } on DioError catch (dioErr) {
-      final msg = dioErr.response?.data?.toString() ?? dioErr.message;
       throw DioErrorParser.parse(dioErr);
     }
   }
 
-  Future<Map<String, dynamic>?> _fetchAssetBySerial({
+  Future<Map<String, dynamic>?> _fetchAssetBySerialAndBrand({
     required String activityFacilityId,
-    String? serialNumber,
+    required String serialNumber,
+    required String brandId,
   }) async {
-    final sn = (serialNumber ?? '').trim();
+    final sn = serialNumber.trim();
+    final brand = brandId.trim();
 
-    if (sn.isEmpty) return null;
+    if (sn.isEmpty || brand.isEmpty) return null;
 
     final criteria = <String, dynamic>{
       'tenantId': envConfig.variables.tenantId,
       'activityFacilityID': activityFacilityId,
+      'serialNumber': [sn],
+      'brandID': [brand],
     };
-
-    if (sn.isNotEmpty) {
-      criteria['serialNumber'] = [sn];
-    }
 
     final resp = await _dio.post(
       '/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}',
@@ -456,13 +523,12 @@ class AssetRepository {
       final data = resp.data;
 
       if (data is List) {
-        if (sn.isNotEmpty) {
-          return data.cast<Map<String, dynamic>?>().firstWhere(
-                (m) => (m?['serialNumber'] ?? '').toString() == sn,
-                orElse: () => null,
-              );
-        }
-        return null;
+        return data.cast<Map<String, dynamic>?>().firstWhere(
+              (m) =>
+                  (m?['serialNumber'] ?? '').toString().trim() == sn &&
+                  (m?['brandID'] ?? '').toString().trim() == brand,
+              orElse: () => null,
+            );
       }
     }
 
@@ -489,24 +555,18 @@ class AssetRepository {
     return null;
   }
 
-  Future<void> _writeBackAssetIdToCache({
+  Future<void> _writeBackAssetIdToCacheEntry({
     required Isar isar,
-    required Asset asset,
+    required int cacheEntryId,
+    required String assetId,
   }) async {
-    final typeKey = (asset.assetTypeID ?? '').toLowerCase();
-    final serial = asset.serialNumber ?? '';
-    if (typeKey.isEmpty || serial.isEmpty || (asset.assetId ?? '').isEmpty)
-      return;
+    if (assetId.isEmpty) return;
 
     await isar.writeTxn(() async {
-      final existing = await isar.cacheAddNewAssets
-          .where()
-          .assetTypeEqualTo(typeKey)
-          .filter()
-          .serialNumberEqualTo(serial)
-          .findFirst();
+      final existing = await isar.cacheAddNewAssets.get(cacheEntryId);
       if (existing != null) {
-        existing.assetId = asset.assetId;
+        existing.assetId = assetId;
+        existing.updatedAt = DateTime.now();
         await isar.cacheAddNewAssets.put(existing);
       }
     });

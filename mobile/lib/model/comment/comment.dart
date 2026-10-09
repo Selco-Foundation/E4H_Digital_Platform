@@ -27,13 +27,16 @@ class Comment {
         final map = decoded.cast<String, dynamic>();
         final hasReason = map.containsKey('reason');
         final hasComment = map.containsKey('comment');
-        if (hasReason || hasComment) return map;
+        final hasSectionLabel = map.containsKey('sectionLabel');
+        if (hasReason || hasComment || hasSectionLabel) return map;
       }
     } catch (_) {}
     return null;
   }
 
   String? get reason => _maybeParsedJson?['reason']?.toString();
+
+  String? get sectionLabel => _maybeParsedJson?['sectionLabel']?.toString();
 
   String get displayComment {
     final parsed = _maybeParsedJson;

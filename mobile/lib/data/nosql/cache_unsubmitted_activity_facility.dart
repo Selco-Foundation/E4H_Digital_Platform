@@ -18,6 +18,7 @@ class CacheUnsubmittedActivityFacility {
   @Embedded()
   late ActivityFacility activityFacility;
 
+  @Index()
   late String userType;
 
   DateTime createdAt = DateTime.now();

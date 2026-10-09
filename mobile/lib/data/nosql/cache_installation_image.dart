@@ -15,6 +15,8 @@ class CacheInstallationImage {
   @Index()
   late String code;
 
+  String order = '';
+
   late String photoPath;
   late String latitude;
   late String longitude;
@@ -25,6 +27,7 @@ class CacheInstallationImage {
     required this.activityFacilityId,
     required this.userType,
     required this.code,
+    this.order = '',
     required this.photoPath,
     required this.latitude,
     required this.longitude,

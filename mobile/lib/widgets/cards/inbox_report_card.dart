@@ -9,9 +9,14 @@ import 'package:intl/intl.dart';
 
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as i18;
+import '../../utils/utils.dart';
 import 'report_detail_row.dart';
+import '../bookmarks/report_bookmarks.dart';
 
 class InboxReportCard extends StatelessWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
   final String? title;
   final String? status;
   final String? state;
@@ -21,9 +26,15 @@ class InboxReportCard extends StatelessWidget {
   final Function() onPress;
   final bool? isAmc;
   final bool? isOtp;
+  final int? visitNumber;
+  final int? durationMonths;
+  final int? visitFrequencyMonths;
 
   const InboxReportCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
     this.title,
     this.status,
     this.state,
@@ -33,6 +44,9 @@ class InboxReportCard extends StatelessWidget {
     required this.onPress,
     this.isAmc = false,
     this.isOtp = false,
+    this.visitNumber,
+    this.durationMonths,
+    this.visitFrequencyMonths,
   });
 
   @override
@@ -45,11 +59,25 @@ class InboxReportCard extends StatelessWidget {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "${title}",
-            style: textTheme.headingM
-                .copyWith(color: theme.colorTheme.primary.primary2),
-          ),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+                child: Text(
+              "$title",
+              style: textTheme.headingM
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            )),
+            if (onToggleBookmark != null)
+              ReportBookmarkButton(
+                  selected: isBookmarked,
+                  saving: isSavingBookmark,
+                  onPressed: onToggleBookmark,
+                  addLabelKey: isAmc == true
+                      ? i18.amcBookmarks.add
+                      : i18.installationBookmarks.add,
+                  removeLabelKey: isAmc == true
+                      ? i18.amcBookmarks.remove
+                      : i18.installationBookmarks.remove),
+          ]),
           const SizedBox(height: spacer4),
           const DigitDivider(dividerType: DividerType.small),
           ReportDetailRow(
@@ -76,6 +104,19 @@ class InboxReportCard extends StatelessWidget {
             label: context.translate(i18.common.block),
             value: _detailText(_displayValue(block), textTheme, theme),
           ),
+          if (isAmc == true)
+            ReportDetailRow(
+              label: context.translate(i18.amcSelectFacility.amcNumber),
+              value: _detailText(
+                formatAmcNumber(
+                  visitNumber,
+                  durationMonths,
+                  visitFrequencyMonths,
+                ),
+                textTheme,
+                theme,
+              ),
+            ),
           const SizedBox(height: spacer4),
           DigitButton(
               mainAxisSize: MainAxisSize.max,

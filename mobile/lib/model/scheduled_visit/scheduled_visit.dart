@@ -36,6 +36,7 @@ class AmcConfiguration with _$AmcConfiguration {
     @Default(<AmcAssignment>[]) List<AmcAssignment> assignments,
     int? durationMonths,
     int? visitFrequencyMonths,
+    int? totalVisits,
     @EpochDateTimeConverter() DateTime? configurationStartDate,
     @EpochDateTimeConverter() DateTime? configurationEndDate,
     String? status,

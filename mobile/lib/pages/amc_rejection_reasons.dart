@@ -30,7 +30,9 @@ class _AmcRejctionReasonsPageState extends State<AmcRejctionReasonsPage> {
   ScheduledVisit? scheduledVisit;
 
   List<Comment> _extractRejectionComments(ScheduledVisit? visit) {
-    if (visit == null) return const <Comment>[];
+    if (visit == null || visit.processInstances.isEmpty) {
+      return const <Comment>[];
+    }
 
     final candidates = <String>[];
 

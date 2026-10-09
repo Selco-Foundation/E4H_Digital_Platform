@@ -18,6 +18,7 @@ import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:recase/recase.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
@@ -44,6 +45,24 @@ import '../widgets/summary/summary.dart';
 import 'app_logger.dart';
 import 'extensions.dart';
 import 'i18_key_constants.dart' as i18;
+
+String formatAmcNumber(
+  int? visitNumber,
+  int? durationMonths,
+  int? visitFrequencyMonths,
+) {
+  final visit = visitNumber?.toString() ?? '---';
+  var total = '---';
+
+  if (durationMonths != null &&
+      visitFrequencyMonths != null &&
+      visitFrequencyMonths > 0 &&
+      durationMonths % visitFrequencyMonths == 0) {
+    total = (durationMonths ~/ visitFrequencyMonths).toString();
+  }
+
+  return '$visit / $total';
+}
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -107,6 +126,8 @@ void saveCacheSpecification(
 
   final selectedSolutionDesignCode = project
       ?.activityFacility.facility?.facilityDetails?.solar_solution_design_type;
+  final selectedSystemType =
+      project?.activityFacility.facility?.facilityDetails?.systemType?.trim();
 
   final matchedSystemCode = solutionDesignList
       .map((m) => m.data)
@@ -114,7 +135,9 @@ void saveCacheSpecification(
       ?.systemCode;
 
   final systemCode =
-      matchedSystemCode ?? systemList.first.data.system.lastOrNull?.code;
+      (selectedSystemType != null && selectedSystemType.isNotEmpty)
+          ? selectedSystemType
+          : matchedSystemCode ?? systemList.first.data.system.lastOrNull?.code;
   if (systemCode == null) return;
 
   final systemName = systemList.first.data.system
@@ -235,6 +258,11 @@ String truncateTextFromStart(String text, {int maxLength = 16}) {
   return '...${text.substring(text.length - keep)}';
 }
 
+String lastPhoneDigits(String phone, {int count = 4}) {
+  if (phone.length <= count) return phone;
+  return phone.substring(phone.length - count);
+}
+
 String removeFlutterKeywordAndtruncateTextFromStart(String text,
     {int maxLength = 16}) {
   final cleaned = text
@@ -330,16 +358,41 @@ enum REPORT_TYPES {
   ADD_MORE
 }
 
-enum USER_TYPES { SUPERVISOR, FIELD_STAFF, AMC }
+enum USER_TYPES { SUPERVISOR, FIELD_STAFF, AMC, ASSESSOR }
 
 enum ASSET_TYPES { BATTERY, INVERTER, PANEL }
+
+enum ASSESSMENT_STATUS {
+  PENDING,
+  PENDING_NO_ANSWER,
+  PENDING_WRONG_NUMBER,
+  QUALIFIED,
+  NOT_QUALIFIED;
+
+  static ASSESSMENT_STATUS? fromCode(String? code) {
+    final normalized = code?.trim().toUpperCase();
+    if (normalized == null || normalized.isEmpty) return null;
+
+    for (final status in values) {
+      if (status.name == normalized) return status;
+    }
+    return null;
+  }
+}
+
+String assetTypeDisplayName(String typeCode) {
+  if (typeCode.toLowerCase() == ASSET_TYPES.INVERTER.name.toLowerCase()) {
+    return 'Inverter / PCU';
+  }
+  return typeCode.titleCase;
+}
 
 enum FormOrigin { overallSummary, inboxSummary, submitForApproval, submitted }
 
 enum SYSTEM_TYPE { DC }
 
 const String DEFAULT_SORT_DIRECTION = "DESC";
-const int minFacilitySearchQueryLength = 3;
+const int minFacilitySearchQueryLength = 1;
 
 bool isValidUuid(String value) {
   try {
@@ -385,27 +438,44 @@ String? normalizedInstallPdfNameFromPath(
 final Map<String, File> _fileCache = {};
 
 Future<File?> getCachedFile(String idOrPath) async {
-  if (_fileCache.containsKey(idOrPath)) return _fileCache[idOrPath];
+  final isRemote = isValidUuid(idOrPath);
+  final cacheKey = isRemote ? '$fileStoreFileUrl$idOrPath' : idOrPath;
+  final cached = _fileCache[cacheKey];
+  if (cached != null && await cached.exists()) return cached;
+  _fileCache.remove(cacheKey);
 
-  if (isValidUuid(idOrPath)) {
+  if (isRemote) {
+    File? temporary;
     try {
+      final dir = await getApplicationSupportDirectory();
+      final scope = base64Url.encode(utf8.encode(fileStoreFileUrl));
+      final file = File(p.join(dir.path, 'filestore', scope, idOrPath));
+      if (await file.exists()) {
+        _fileCache[cacheKey] = file;
+        return file;
+      }
       final uri = Uri.parse('$fileStoreFileUrl$idOrPath');
       final resp = await http.get(uri);
       if (resp.statusCode == 200) {
-        final dir = await getTemporaryDirectory();
-        final safeName = idOrPath.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-        final file = File(
-            '${dir.path}/${DateTime.now().millisecondsSinceEpoch}_$safeName');
-        await file.writeAsBytes(resp.bodyBytes);
-        _fileCache[idOrPath] = file;
+        await file.parent.create(recursive: true);
+        temporary = File('${file.path}.${const Uuid().v4()}.tmp');
+        await temporary.writeAsBytes(resp.bodyBytes, flush: true);
+        await temporary.rename(file.path);
+        _fileCache[cacheKey] = file;
         return file;
       }
-    } catch (_) {}
+    } catch (_) {
+      // Missing downloads remain unavailable; other media can still load.
+    } finally {
+      if (temporary != null && await temporary.exists()) {
+        await temporary.delete();
+      }
+    }
   }
 
   final file = File(idOrPath);
   if (await file.exists()) {
-    _fileCache[idOrPath] = file;
+    _fileCache[cacheKey] = file;
     return file;
   }
 
@@ -459,6 +529,7 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
 
       propsMap[key] = {
         'type': prop['type'],
+        'schemaCode': prop['schemaCode'],
         'label': prop['label'],
         'order': prop['order'],
         'value': prop['value'],
@@ -467,19 +538,34 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
         'sectionDescription': prop['sectionDescription'],
         'hidden': prop['hidden'],
         'readOnly': prop['readOnly'],
+        'displayOnly': prop['displayOnly'],
         'deleteFlag': prop['deleteFlag'],
         'isMultiSelect': prop['isMultiSelect'],
         'includeInForm': prop['includeInForm'],
         'includeInSummary': prop['includeInSummary'],
         'systemDate': prop['systemDate'],
+        'charCount': prop['charCount'],
+        'startDate': prop['startDate'],
+        'endDate': prop['endDate'],
+        'minValue': prop['minValue'],
+        'maxValue': prop['maxValue'],
+        'minLength': prop['minLength'],
+        'maxLength': prop['maxLength'],
         'tooltip': prop['tooltip'],
         'helpText': prop['helpText'],
+        'prefixText': prop['prefixText'],
         'infoText': prop['infoText'],
         'innerLabel': prop['innerLabel'],
         'suffixText': prop['suffixText'],
         'errorMessage': prop['errorMessage'],
         'enums': prop['enums'],
         'validations': prop['validations'],
+        'displayBehavior': prop['displayBehavior'],
+        'conditions': prop['conditions'],
+        'navigateTo': prop['navigateTo'],
+        'visibilityCondition': prop['visibilityCondition'],
+        'conditionalNavigateTo': prop['conditionalNavigateTo'],
+        'autoFillCondition': prop['autoFillCondition'],
         'fieldName': key,
       };
     }
@@ -491,6 +577,9 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
       'order': page['order'],
       'actionLabel': page['actionLabel'],
       'description': page['description'],
+      'navigateTo': page['navigateTo'],
+      'visibilityCondition': page['visibilityCondition'],
+      'conditionalNavigateTo': page['conditionalNavigateTo'],
       'properties': propsMap,
     };
   }
@@ -643,6 +732,10 @@ String labelForKey(DigitPropertySchema.PropertySchema pageSchema, String key) {
 dynamic coerceForControl(AbstractControl<Object?> control, dynamic v) {
   if (v == null) return null;
 
+  if (control is FormControl<String?>) {
+    return v.toString();
+  }
+
   if (control is FormControl<DateTime?>) {
     if (v is DateTime) return v;
     if (v is String) return DateTime.tryParse(v);
@@ -712,6 +805,65 @@ String inferFileTypeFromName(String name) {
   final lower = name.toLowerCase();
   if (lower.endsWith('.pdf')) return 'pdf';
   return 'image';
+}
+
+const String installationCompletionCertificateDocumentUidPrefix =
+    'INSTALLATION-COMPLETION-CERTIFICATE-';
+const String assetHandoverDocumentUidPrefix = 'ASSET-HANDOVER-DOCUMENT-';
+
+String extensionOfFileName(String value) {
+  final idx = value.lastIndexOf('.');
+  if (idx == -1 || idx == value.length - 1) return '';
+  return value.substring(idx + 1).toLowerCase();
+}
+
+String normalizeCertificateFileType(String value) {
+  final normalized = value.toLowerCase().trim();
+  if (normalized == 'pdf' || normalized == 'image') return normalized;
+  if (normalized == 'jpg' || normalized == 'jpeg' || normalized == 'png') {
+    return 'image';
+  }
+  return 'unknown';
+}
+
+String normalizeHandoverDocumentFileType(String value) =>
+    normalizeCertificateFileType(value);
+
+String fileTypeFromDocumentUid(
+  Document doc, {
+  required String documentUidPrefix,
+}) {
+  final uid = doc.documentUid ?? '';
+  if (uid.startsWith(documentUidPrefix)) {
+    final suffix = uid.substring(documentUidPrefix.length);
+    final type = suffix.split('-').first;
+    final normalized = normalizeCertificateFileType(type);
+    if (normalized != 'unknown') return normalized;
+  }
+
+  final fromStore = normalizeCertificateFileType(
+    extensionOfFileName(doc.fileStore ?? ''),
+  );
+  if (fromStore != 'unknown') return fromStore;
+
+  final fromUid = normalizeCertificateFileType(extensionOfFileName(uid));
+  if (fromUid != 'unknown') return fromUid;
+
+  return 'unknown';
+}
+
+String certificateFileTypeFromDocument(Document doc) {
+  return fileTypeFromDocumentUid(
+    doc,
+    documentUidPrefix: installationCompletionCertificateDocumentUidPrefix,
+  );
+}
+
+String assetHandoverDocumentFileTypeFromDocument(Document doc) {
+  return fileTypeFromDocumentUid(
+    doc,
+    documentUidPrefix: assetHandoverDocumentUidPrefix,
+  );
 }
 
 String getExtensionFromMime(String mimeType) {
@@ -941,29 +1093,52 @@ void handleSessionExpired(BuildContext context) {
 }
 
 class DioErrorParser {
-  static Exception parse(DioError dioErr) {
-    AppLogger.instance.info("Dio error: ${dioErr}");
-    final serverData = dioErr.response?.data;
-    if (serverData is Map<String, dynamic> &&
-        serverData.containsKey('Errors')) {
-      final errors = serverData['Errors'] as List<dynamic>;
-      if (errors.isNotEmpty) {
-        final firstErr = errors.first as Map<String, dynamic>;
-        final msg = firstErr['message'] as String? ?? dioErr.message;
-        return Exception(
-          normalizeFriendlyNetworkErrorMessage(
-            msg,
-            fallback: dioErr.message ?? 'Failed.',
-          ),
-        );
+  static Exception parse(DioException error) {
+    AppLogger.instance.info("Dio error: $error");
+    if (isSessionExpiredMessage(error.message) ||
+        error.response?.statusCode == 401) {
+      return Exception('SESSION_EXPIRED');
+    }
+
+    dynamic body = error.response?.data;
+    try {
+      if (body is List<int>) body = utf8.decode(body);
+      if (body is String) body = jsonDecode(body);
+    } on FormatException {
+      body = null;
+    }
+
+    if (body is Map) {
+      final errors = body['Errors'];
+      final nestedError = body['error'];
+      final messages = [
+        if (errors is List)
+          for (final item in errors)
+            if (item is Map) item['message'],
+        if (nestedError is Map) nestedError['message'],
+        body['error_description'],
+        body['message'],
+      ];
+      for (final message in messages) {
+        if (message is String && message.trim().isNotEmpty) {
+          return Exception(message.trim());
+        }
       }
     }
 
-    return Exception(
-      normalizeFriendlyNetworkErrorMessage(
-        dioErr.message,
-        fallback: 'Failed.',
-      ),
-    );
+    final original = error.error?.toString() ?? error.message;
+    final friendly = normalizeFriendlyNetworkErrorMessage(original);
+    if (friendly != original?.trim() && friendly != 'Failed.') {
+      return Exception(friendly);
+    }
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.receiveTimeout) {
+      return Exception('The request timed out. Please try again.');
+    }
+    if (error.type == DioExceptionType.connectionError) {
+      return Exception('Could not connect to the server. Please try again.');
+    }
+    return Exception('Request failed. Please try again.');
   }
 }

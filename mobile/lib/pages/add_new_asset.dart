@@ -18,7 +18,6 @@ import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:recase/recase.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -203,6 +202,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   .facility
                   ?.facilityDetails
                   ?.solar_solution_design_type;
+              final selectedSystemType = activityFacilityWorkflow
+                  ?.activityFacility.facility?.facilityDetails?.systemType
+                  ?.trim();
 
               final matchedSystemCode = solutionDesign
                   .map((m) => m.data)
@@ -210,8 +212,11 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       (sd) => sd.code == selectedSolutionDesignCode)
                   ?.systemCode;
 
-              final systemCode = matchedSystemCode ??
-                  system.first.data.system.firstOrNull?.code;
+              final systemCode =
+                  (selectedSystemType != null && selectedSystemType.isNotEmpty)
+                      ? selectedSystemType
+                      : matchedSystemCode ??
+                          system.first.data.system.firstOrNull?.code;
 
               selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
                   asset.code.toUpperCase() == currentAssetType.toUpperCase());
@@ -293,8 +298,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     if (statuses[Permission.camera] != PermissionStatus.granted) {
       context.showSnackBar(
         SnackBar(
-            content:
-                Text(context.translate(i18.addNewAsset.cameraPermissionRequired))),
+            content: Text(
+                context.translate(i18.addNewAsset.cameraPermissionRequired))),
       );
     }
 
@@ -403,7 +408,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     switch (assetType.toLowerCase()) {
       case 'battery':
         return a.batteryType?.isNotEmpty == true &&
-            a.batteryVoltage?.isNotEmpty == true &&
+            // Voltage input is hidden (see _batteryCapacity) — no longer required.
             a.batteryCapacity?.isNotEmpty == true;
       case 'panel':
         return a.panelCapacity?.isNotEmpty == true;
@@ -616,13 +621,16 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       ),
                       const SizedBox(height: spacer4),
                       assetTypeState.maybeWhen(
-                          battery: () => _batteryCapacity(theme, textTheme,
-                              _assets, currentAssetType.titleCase),
+                          battery: () => _batteryCapacity(
+                              theme,
+                              textTheme,
+                              _assets,
+                              assetTypeDisplayName(currentAssetType)),
                           panel: () => _panelCapacity(
                                 theme,
                                 textTheme,
                                 _assets,
-                                currentAssetType.titleCase,
+                                assetTypeDisplayName(currentAssetType),
                               ),
                           orElse: () => const SizedBox()),
                       ...visibleAssets.asMap().entries.map((e) {
@@ -632,7 +640,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                             context: context,
                             theme: theme,
                             textTheme: textTheme,
-                            heading: currentAssetType.titleCase,
+                            heading: assetTypeDisplayName(currentAssetType),
                             index: e.key,
                             asset: e.value,
                             maxAsset: maxAssets,
@@ -662,7 +670,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     required String assetType,
   }) {
     return DigitCard(
-      key: ValueKey(asset.serialNumber.isEmpty ? index : asset.serialNumber),
+      key: ObjectKey(asset),
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -807,41 +815,35 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         ),
         if (assetType == 'inverter') ...[
           const SizedBox(height: spacer4),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: LabeledField(
-                  label: context.translate(i18.common.capacity),
-                  capitalizedFirstLetter: false,
-                  child: DigitTextFormInput(
-                    key: ValueKey(
-                        'inverter-cap-${_prefilledCapacityFor('inverter')}'),
-                    controller: TextEditingController(
-                      text: _prefilledCapacityFor('inverter'),
-                    ),
-                    isDisabled: true,
-                    readOnly: true,
-                    keyboardType: TextInputType.text,
-                  ),
-                ),
+          LabeledField(
+            label: context.translate(i18.common.capacity),
+            capitalizedFirstLetter: false,
+            child: DigitTextFormInput(
+              key: ValueKey(
+                  'inverter-cap-${_prefilledCapacityFor('inverter')}'),
+              controller: TextEditingController(
+                text: _prefilledCapacityFor('inverter'),
               ),
-              const SizedBox(width: spacer6),
-              Expanded(
-                flex: 1,
-                child: LabeledField(
-                  label: context.translate(i18.common.unit),
-                  capitalizedFirstLetter: false,
-                  child: DigitTextFormInput(
-                    controller: TextEditingController(text: assetCapacityUom),
-                    isDisabled: true,
-                    readOnly: true,
-                    keyboardType: TextInputType.text,
-                  ),
-                ),
-              ),
-            ],
+              isDisabled: true,
+              readOnly: true,
+              keyboardType: TextInputType.text,
+            ),
           ),
+          // Inverter capacity unit — commented out, not deleted. The
+          // capacity field above now spans the full row width in its place.
+          // Expanded(
+          //   flex: 1,
+          //   child: LabeledField(
+          //     label: context.translate(i18.common.unit),
+          //     capitalizedFirstLetter: false,
+          //     child: DigitTextFormInput(
+          //       controller: TextEditingController(text: assetCapacityUom),
+          //       isDisabled: true,
+          //       readOnly: true,
+          //       keyboardType: TextInputType.text,
+          //     ),
+          //   ),
+          // ),
         ],
       ],
     );
@@ -881,83 +883,78 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     });
                   }),
             ),
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: LabeledField(
-                    label: context.translate(i18.common.voltage),
-                    capitalizedFirstLetter: false,
-                    child: DigitDropdown(
-                      sentenceCaseEnabled: false,
-                      items: voltages
-                          .map((type) => DropdownItem(name: type, code: type))
-                          .toList(),
-                      selectedOption: DropdownItem(
-                        name: firstAsset.batteryVoltage ?? '',
-                        code: firstAsset.batteryVoltage ?? '',
-                      ),
-                      onSelect: (DropdownItem sel) {
-                        setState(() {
-                          for (var asset in assets) {
-                            asset.batteryVoltage = sel.code;
-                          }
-                        });
-                      },
-                    ),
-                  ),
+            // Battery voltage dropdown + its unit field — commented out, not deleted.
+            // Row(
+            //   children: [
+            //     Expanded(
+            //       flex: 3,
+            //       child: LabeledField(
+            //         label: context.translate(i18.common.voltage),
+            //         capitalizedFirstLetter: false,
+            //         child: DigitDropdown(
+            //           sentenceCaseEnabled: false,
+            //           items: voltages
+            //               .map((type) => DropdownItem(name: type, code: type))
+            //               .toList(),
+            //           selectedOption: DropdownItem(
+            //             name: firstAsset.batteryVoltage ?? '',
+            //             code: firstAsset.batteryVoltage ?? '',
+            //           ),
+            //           onSelect: (DropdownItem sel) {
+            //             setState(() {
+            //               for (var asset in assets) {
+            //                 asset.batteryVoltage = sel.code;
+            //               }
+            //             });
+            //           },
+            //         ),
+            //       ),
+            //     ),
+            //     const SizedBox(width: spacer6),
+            //     Expanded(
+            //       flex: 1,
+            //       child: LabeledField(
+            //         label: context.translate(i18.common.unit),
+            //         capitalizedFirstLetter: false,
+            //         child: DigitTextFormInput(
+            //           controller: TextEditingController(),
+            //           isDisabled: true,
+            //           initialValue: voltageUom,
+            //           keyboardType: TextInputType.text,
+            //         ),
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            LabeledField(
+              label: context.translate(i18.common.capacity),
+              capitalizedFirstLetter: false,
+              child: DigitTextFormInput(
+                key: ValueKey(
+                    'battery-cap-${_prefilledCapacityFor('battery')}'),
+                controller: TextEditingController(
+                  text: _prefilledCapacityFor('battery'),
                 ),
-                const SizedBox(width: spacer6),
-                Expanded(
-                  flex: 1,
-                  child: LabeledField(
-                    label: context.translate(i18.common.unit),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      controller: TextEditingController(),
-                      isDisabled: true,
-                      initialValue: voltageUom,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
-                ),
-              ],
+                isDisabled: true,
+                readOnly: true,
+                keyboardType: TextInputType.text,
+              ),
             ),
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: LabeledField(
-                    label: context.translate(i18.common.current),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      key: ValueKey(
-                          'battery-cap-${_prefilledCapacityFor('battery')}'),
-                      controller: TextEditingController(
-                        text: _prefilledCapacityFor('battery'),
-                      ),
-                      isDisabled: true,
-                      readOnly: true,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: spacer6),
-                Expanded(
-                  flex: 1,
-                  child: LabeledField(
-                    label: context.translate(i18.common.unit),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      controller: TextEditingController(),
-                      isDisabled: true,
-                      initialValue: assetCapacityUom,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // Current-field unit — commented out, not deleted. The Current
+            // field above now spans the full row width in its place.
+            // Expanded(
+            //   flex: 1,
+            //   child: LabeledField(
+            //     label: context.translate(i18.common.unit),
+            //     capitalizedFirstLetter: false,
+            //     child: DigitTextFormInput(
+            //       controller: TextEditingController(),
+            //       isDisabled: true,
+            //       initialValue: assetCapacityUom,
+            //       keyboardType: TextInputType.text,
+            //     ),
+            //   ),
+            // ),
           ],
         ),
         const SizedBox(height: spacer8),
@@ -976,41 +973,34 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               style: textTheme.headingXl
                   .copyWith(color: theme.colorTheme.primary.primary2),
             ),
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: LabeledField(
-                    label: context.translate(i18.common.voltage),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      key: ValueKey(
-                          'panel-cap-${_prefilledCapacityFor('panel')}'),
-                      controller: TextEditingController(
-                        text: _prefilledCapacityFor('panel'),
-                      ),
-                      isDisabled: true,
-                      readOnly: true,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
+            LabeledField(
+              label: context.translate(i18.common.capacity),
+              capitalizedFirstLetter: false,
+              child: DigitTextFormInput(
+                key: ValueKey('panel-cap-${_prefilledCapacityFor('panel')}'),
+                controller: TextEditingController(
+                  text: _prefilledCapacityFor('panel'),
                 ),
-                const SizedBox(width: spacer6),
-                Expanded(
-                  flex: 1,
-                  child: LabeledField(
-                    label: context.translate(i18.common.unit),
-                    capitalizedFirstLetter: false,
-                    child: DigitTextFormInput(
-                      controller: TextEditingController(),
-                      isDisabled: true,
-                      initialValue: assetCapacityUom,
-                      keyboardType: TextInputType.text,
-                    ),
-                  ),
-                ),
-              ],
+                isDisabled: true,
+                readOnly: true,
+                keyboardType: TextInputType.text,
+              ),
             ),
+            // Panel capacity unit — commented out, not deleted. The
+            // capacity field above now spans the full row width in its place.
+            // Expanded(
+            //   flex: 1,
+            //   child: LabeledField(
+            //     label: context.translate(i18.common.unit),
+            //     capitalizedFirstLetter: false,
+            //     child: DigitTextFormInput(
+            //       controller: TextEditingController(),
+            //       isDisabled: true,
+            //       initialValue: assetCapacityUom,
+            //       keyboardType: TextInputType.text,
+            //     ),
+            //   ),
+            // ),
           ],
         ),
         const SizedBox(height: spacer8),

@@ -26,17 +26,22 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/cards/report_detail_row.dart';
+import '../widgets/bookmarks/report_bookmarks.dart';
+import '../model/scheduled_visit/scheduled_visit.dart';
 
 @RoutePage()
 class AmcSelectFacilityPage extends StatefulWidget {
-  const AmcSelectFacilityPage({super.key});
+  final bool bookmarksOnly;
+  const AmcSelectFacilityPage({super.key, this.bookmarksOnly = false});
 
   @override
   State<AmcSelectFacilityPage> createState() => _AmcSelectFacilityPageState();
 }
 
-class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
+class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
+    with ReportBookmarksState<AmcSelectFacilityPage, ScheduledVisit> {
   String? _sortDirection;
+  bool get _bookmarksOnly => _sortDirection == 'BOOKMARKED';
   String _searchQuery = '';
 
   List<String> _statuses() {
@@ -46,10 +51,21 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
   @override
   void initState() {
     super.initState();
-    _fetchVisits();
+    if (widget.bookmarksOnly) _sortDirection = 'BOOKMARKED';
+    bookmarks = reportBookmarksFor<ScheduledVisit>(context, amc: true);
+    bookmarkSaveFailedKey = i18.amcBookmarks.saveFailed;
+    _reloadBookmarks();
+    if (!_bookmarksOnly) _fetchVisits();
   }
 
+  Future<void> _reloadBookmarks() => loadBookmarks(
+      only: _bookmarksOnly, query: _searchQuery, sortOrder: 'DESC');
+
   void _fetchVisits() {
+    if (_bookmarksOnly) {
+      _reloadBookmarks();
+      return;
+    }
     final statuses = _statuses();
     if (_searchQuery.isNotEmpty) {
       context.read<ScheduledVisitBloc>().add(
@@ -82,9 +98,22 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
 
     return BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
       builder: (context, state) {
+        if (_bookmarksOnly) {
+          state = bookmarksLoading
+              ? const ScheduledVisitState.loading()
+              : bookmarksFailed
+                  ? const ScheduledVisitState.failure('bookmark')
+                  : ScheduledVisitState.loaded(
+                      items: bookmarkedItems
+                          .where((visit) => _statuses().contains(visit.status))
+                          .toList(),
+                      hasMore: false,
+                      totalCount: bookmarkedItems.length,
+                      fromCache: true);
+        }
         return NotificationListener<ScrollNotification>(
           onNotification: (notification) {
-            if (notification is ScrollUpdateNotification) {
+            if (!_bookmarksOnly && notification is ScrollUpdateNotification) {
               final max = notification.metrics.maxScrollExtent;
               final current = notification.metrics.pixels;
 
@@ -127,6 +156,8 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                       child: _buildSearchAndSortControls(textTheme, theme),
                     ),
                     const SizedBox(height: spacer2),
+                    if (!_bookmarksOnly && bookmarksFailed)
+                      bookmarkLoadError(_reloadBookmarks),
                     state.maybeWhen(
                       loading: () => const Center(
                         child: Padding(
@@ -134,23 +165,28 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                           child: CircularProgressIndicator(),
                         ),
                       ),
-                      failure: (msg) => Padding(
-                        padding: const EdgeInsets.all(spacer2),
-                        child: Text(
-                          context.translate(
-                              i18.amcSelectFacility.failedToLoadVisits),
-                          style: textTheme.bodyS
-                              .copyWith(color: theme.colorTheme.alert.error),
-                        ),
-                      ),
+                      failure: (msg) => _bookmarksOnly
+                          ? bookmarkLoadError(_reloadBookmarks)
+                          : Padding(
+                              padding: const EdgeInsets.all(spacer2),
+                              child: Text(
+                                context.translate(
+                                    i18.amcSelectFacility.failedToLoadVisits),
+                                style: textTheme.bodyS.copyWith(
+                                    color: theme.colorTheme.alert.error),
+                              ),
+                            ),
                       loaded: (items, hasMore, totalCount, fromCache,
                           isLoadingMore) {
                         if (items.isEmpty) {
                           return Padding(
                             padding: const EdgeInsets.all(spacer4),
                             child: Text(
-                              context
-                                  .translate(i18.amcSelectFacility.noVisitsFound),
+                              context.translate(_searchQuery.trim().isNotEmpty
+                                  ? i18.common.noMatchingFacilitiesFound
+                                  : _bookmarksOnly
+                                      ? i18.amcBookmarks.empty
+                                      : i18.amcSelectFacility.noVisitsFound),
                               style: textTheme.bodyS.copyWith(
                                 color: theme.colorTheme.text.secondary,
                               ),
@@ -183,7 +219,28 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                         items[index].facility?.boundaryCode,
                                       );
                                       return AMCInstallationReportCard(
+                                          isBookmarked: bookmarkIds.contains(
+                                              items[index].id?.trim()),
+                                          isSavingBookmark: !bookmarksLoaded ||
+                                              savingBookmarks.contains(
+                                                  items[index].id?.trim()),
+                                          onToggleBookmark: items[index]
+                                                      .id
+                                                      ?.trim()
+                                                      .isNotEmpty !=
+                                                  true
+                                              ? null
+                                              : () => toggleBookmark(
+                                                  items[index],
+                                                  reload: _reloadBookmarks),
                                           scheduledVisitId: items[index].id,
+                                          visitNumber: items[index].visitNumber,
+                                          durationMonths: items[index]
+                                              .amcConfiguration
+                                              ?.durationMonths,
+                                          visitFrequencyMonths: items[index]
+                                              .amcConfiguration
+                                              ?.visitFrequencyMonths,
                                           label: label,
                                           title: items[index]
                                                   .facility
@@ -196,6 +253,24 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                           dateAssigned:
                                               items[index].scheduledDate ??
                                                   DateTime.now(),
+                                          onSubmit: () async {
+                                            context
+                                                .read<
+                                                    SelectedScheduledVisitBloc>()
+                                                .add(SelectedScheduledVisitEvent
+                                                    .select(items[index]));
+                                            context
+                                                .read<SelectedAmcOriginBloc>()
+                                                .add(
+                                                    const SelectedAmcOriginEvent
+                                                        .select(FormOrigin
+                                                            .overallSummary));
+                                            await context.router
+                                                .push(const AmcOtpRoute());
+                                            if (mounted) {
+                                              await _reloadBookmarks();
+                                            }
+                                          },
                                           onPress: () async {
                                             final scheduledVisit = items[index];
 
@@ -212,7 +287,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                                         .select(FormOrigin
                                                             .overallSummary));
 
-                                            context.router.push(
+                                            await context.router.push(
                                               AmcDynamicFormRoute(
                                                 pageName: 'AMC_Report',
                                                 uniqueIdentifier:
@@ -223,6 +298,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                                     FormOrigin.overallSummary,
                                               ),
                                             );
+                                            if (mounted) {
+                                              await _reloadBookmarks();
+                                            }
                                           });
                                     }),
                                 const SizedBox(height: spacer2),
@@ -276,9 +354,10 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                     onChange: (text) {
                       setState(() {
                         _searchQuery = text;
-                        _sortDirection = null;
+                        if (!_bookmarksOnly) _sortDirection = null;
                       });
-                      if (text.isEmpty ||
+                      if (_bookmarksOnly ||
+                          text.isEmpty ||
                           text.length >= minFacilitySearchQueryLength) {
                         _fetchVisits();
                       }
@@ -303,6 +382,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
   }
 
   void _showSortPopup(DigitTextTheme textTheme, ThemeData theme) {
+    var selectedFilter = _sortDirection;
     showCustomPopup(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -312,15 +392,12 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text(context.translate(i18.common.submissionDate),
-                style: textTheme.headingS
-                    .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
-              groupValue: _sortDirection ?? '',
+              groupValue: selectedFilter ?? '',
               containerPadding:
                   const EdgeInsets.symmetric(horizontal: 0, vertical: spacer2),
               onChanged: (value) =>
-                  popupSetState(() => _sortDirection = value.code),
+                  popupSetState(() => selectedFilter = value.code),
               radioDigitButtons: [
                 RadioButtonModel(
                     code: 'DESC',
@@ -328,6 +405,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                 RadioButtonModel(
                     code: 'ASC',
                     name: context.translate(i18.common.oldestFirst)),
+                RadioButtonModel(
+                    code: 'BOOKMARKED',
+                    name: context.translate(i18.amcBookmarks.filter)),
               ],
             ),
             Row(
@@ -351,8 +431,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                 Expanded(
                   child: DigitButton(
                     label: context.translate(i18.common.sort),
-                    isDisabled: _sortDirection == null,
+                    isDisabled: selectedFilter == null,
                     onPressed: () {
+                      setState(() => _sortDirection = selectedFilter);
                       Navigator.of(ctx).pop();
                       _fetchVisits();
                     },
@@ -371,6 +452,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
 }
 
 class AMCInstallationReportCard extends StatefulWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
   final String? scheduledVisitId;
   final String? title;
   final String? status;
@@ -380,10 +464,17 @@ class AMCInstallationReportCard extends StatefulWidget {
   final String? block;
   final DateTime dateAssigned;
   final String? systemDesignCode;
+  final int? visitNumber;
+  final int? durationMonths;
+  final int? visitFrequencyMonths;
   final Function() onPress;
+  final VoidCallback? onSubmit;
 
   const AMCInstallationReportCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
     this.scheduledVisitId,
     this.title,
     this.status,
@@ -393,7 +484,11 @@ class AMCInstallationReportCard extends StatefulWidget {
     this.block,
     required this.dateAssigned,
     this.systemDesignCode,
+    this.visitNumber,
+    this.durationMonths,
+    this.visitFrequencyMonths,
     required this.onPress,
+    this.onSubmit,
   });
 
   @override
@@ -438,12 +533,19 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.title ?? '',
-              style: textTheme.headingL.copyWith(
-                color: theme.colorTheme.text.primary,
-              ),
-            ),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                  child: Text(widget.title ?? '',
+                      style: textTheme.headingL
+                          .copyWith(color: theme.colorTheme.text.primary))),
+              if (widget.onToggleBookmark != null)
+                ReportBookmarkButton(
+                    selected: widget.isBookmarked,
+                    saving: widget.isSavingBookmark,
+                    onPressed: widget.onToggleBookmark,
+                    addLabelKey: i18.amcBookmarks.add,
+                    removeLabelKey: i18.amcBookmarks.remove),
+            ]),
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
             ReportDetailRow(
@@ -471,13 +573,24 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
               label: context.translate(i18.common.block),
               value: _detailText(_displayValue(widget.block), textTheme, theme),
             ),
+            ReportDetailRow(
+              label: context.translate(i18.amcSelectFacility.amcNumber),
+              value: _detailText(
+                formatAmcNumber(
+                  widget.visitNumber,
+                  widget.durationMonths,
+                  widget.visitFrequencyMonths,
+                ),
+                textTheme,
+                theme,
+              ),
+            ),
             const SizedBox(height: spacer4),
             DigitButton(
               mainAxisSize: MainAxisSize.max,
-              label:
-                  effectiveLabel.isEmpty
-                      ? context.translate(i18.amcSelectFacility.report)
-                      : '$effectiveLabel ${context.translate(i18.amcSelectFacility.report)}',
+              label: effectiveLabel.isEmpty
+                  ? context.translate(i18.amcSelectFacility.report)
+                  : '$effectiveLabel ${context.translate(i18.amcSelectFacility.report)}',
               onPressed: widget.onPress,
               type: DigitButtonType.primary,
               size: DigitButtonSize.large,
@@ -493,9 +606,10 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
                   mainAxisSize: MainAxisSize.max,
                   label: context
                       .translate(i18.amcSelectFacility.submitForApproval),
-                  onPressed: () {
-                    context.router.push(const AmcOtpRoute());
-                  },
+                  onPressed: widget.onSubmit ??
+                      () {
+                        context.router.push(const AmcOtpRoute());
+                      },
                   isDisabled: existsInFailedCache || !canResume,
                   type: DigitButtonType.secondary,
                   size: DigitButtonSize.large,

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:digit_forms_engine/blocs/app_localization.dart'
     as forms_localization;
@@ -8,10 +10,13 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:image_picker_android/image_picker_android.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
 
@@ -34,7 +39,9 @@ import 'blocs/cache_add_new_asset/cache_add_new_asset.dart';
 import 'blocs/cache_asset/cache_asset.dart';
 import 'blocs/cache_asset_count/cache_asset_count.dart';
 import 'blocs/cache_asset_detail/cache_asset_detail.dart';
+import 'blocs/cache_asset_handover_document/cache_asset_handover_document.dart';
 import 'blocs/cache_completion_report/cache_completion_report.dart';
+import 'blocs/cache_installation_completion_certificate/cache_installation_completion_certificate.dart';
 import 'blocs/cache_media_upload/cache_media_upload.dart';
 import 'blocs/cache_specification/cache_specification.dart';
 import 'blocs/cache_sync_record/cache_sync_record.dart';
@@ -46,6 +53,9 @@ import 'blocs/user_type/user_type.dart';
 import 'data/app_shared_preferences.dart';
 import 'data/nosql/localization.dart';
 import 'data/remote_client.dart';
+import 'data/api_interceptors.dart';
+import 'utils/extensions.dart';
+import 'utils/i18_key_constants.dart' as i18;
 import 'model/appconfig/mdmsResponse.dart';
 import 'model/data_model.init.dart';
 import 'repositories/app_init_repo.dart';
@@ -53,12 +63,19 @@ import 'router/app_router.dart';
 import 'utils/background_service.dart';
 import 'utils/constants.dart';
 import 'utils/app_logger.dart';
+import 'utils/intl_locale.dart';
 
 late Isar _isar;
 late Dio _dio;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final imagePickerImplementation = ImagePickerPlatform.instance;
+  if (imagePickerImplementation is ImagePickerAndroid) {
+    imagePickerImplementation.useAndroidPhotoPicker = true;
+  }
+
   initializeMappers();
 
   await envConfig.initialize();
@@ -72,7 +89,18 @@ void main() async {
 
   if (!kIsWeb && Platform.isAndroid) {
     await Firebase.initializeApp();
-    await AppLogger.initAnalytics();
+    await AppLogger.initCrashlytics();
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stackTrace) {
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          error,
+          stackTrace,
+          fatal: true,
+        ),
+      );
+      return true;
+    };
   }
 
   if (AppSharedPreferences().isFirstLaunch) {
@@ -94,6 +122,41 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   final _approuter = AppRouter();
+  late final AuthBloc _authBloc;
+  late final SessionExpiredCallback _sessionExpiredCallback;
+
+  @override
+  void initState() {
+    super.initState();
+    _authBloc = AuthBloc()..add(const AuthEvent.attemptLoad());
+    _sessionExpiredCallback = () async {
+      if (!mounted) return;
+      _authBloc.add(const AuthEvent.logout());
+      await _approuter.replaceAll(const [
+        UnauthenticatedRouteWrapper(children: [WelcomeRoute()])
+      ]);
+      if (!mounted) return;
+      final messenger = scaffoldMessengerKey.currentState;
+      if (messenger != null) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(SnackBar(
+          content: Text(messenger.context.translate(i18.common.sessionExpired)),
+        ));
+      }
+    };
+    AuthTokenInterceptor.onSessionExpired = _sessionExpiredCallback;
+  }
+
+  @override
+  void dispose() {
+    if (AuthTokenInterceptor.onSessionExpired == _sessionExpiredCallback) {
+      AuthTokenInterceptor.onSessionExpired = null;
+    }
+    _authBloc.close();
+    _approuter.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -104,9 +167,7 @@ class _MainAppState extends State<MainApp> {
               create: (context) =>
                   AppInitialization()..add(const InitEvent.onLaunch()),
             ),
-            BlocProvider(
-                create: (context) =>
-                    AuthBloc()..add(const AuthEvent.attemptLoad())),
+            BlocProvider<AuthBloc>.value(value: _authBloc),
             BlocProvider(create: (context) => UserOtpBloc()),
             BlocProvider<ActivityFacilityBloc>(
                 create: (context) => ActivityFacilityBloc(widget.isar)),
@@ -147,6 +208,12 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) => CacheInstallationImageBloc(widget.isar)),
             BlocProvider(
+                create: (context) =>
+                    CacheInstallationCompletionCertificateBloc(widget.isar)),
+            BlocProvider(
+                create: (context) =>
+                    CacheAssetHandoverDocumentBloc(widget.isar)),
+            BlocProvider(
                 create: (context) => InstallationImagesBloc(widget.isar)),
             BlocProvider(create: (context) => AmcOtpBloc(widget.isar)),
           ],
@@ -169,6 +236,7 @@ class _MainAppState extends State<MainApp> {
                       final selectedLocale =
                           AppSharedPreferences().getSelectedLocale ??
                               firstLanguage;
+                      syncIntlDefaultLocale(selectedLocale);
 
                       return MaterialApp.router(
                         scaffoldMessengerKey: scaffoldMessengerKey,

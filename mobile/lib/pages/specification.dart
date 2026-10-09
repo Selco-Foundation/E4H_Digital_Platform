@@ -68,7 +68,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
       builder: (context, state) {
         final specHeading = state.when(
           initial: () => 'Specification',
-          inverter: () => 'Inverter Specifications',
+          inverter: () => 'Inverter / PCU Specifications',
           battery: () => 'Battery Specifications',
           panel: () => 'Panel Specifications',
         );

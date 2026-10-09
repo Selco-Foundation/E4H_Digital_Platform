@@ -10,8 +10,12 @@ import 'package:intl/intl.dart';
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
+import '../bookmarks/report_bookmarks.dart';
 
 class InboxReportRejectedCard extends StatelessWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
   final String? title;
   final String? status;
   final String? state;
@@ -22,6 +26,9 @@ class InboxReportRejectedCard extends StatelessWidget {
 
   const InboxReportRejectedCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
     this.title,
     this.status,
     this.state,
@@ -42,11 +49,21 @@ class InboxReportRejectedCard extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title!,
-              style: textTheme.headingM
-                  .copyWith(color: theme.colorTheme.primary.primary2),
-            ),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                  child: Text(
+                title!,
+                style: textTheme.headingM
+                    .copyWith(color: theme.colorTheme.primary.primary2),
+              )),
+              if (onToggleBookmark != null)
+                ReportBookmarkButton(
+                    selected: isBookmarked,
+                    saving: isSavingBookmark,
+                    onPressed: onToggleBookmark,
+                    addLabelKey: i18.installationBookmarks.add,
+                    removeLabelKey: i18.installationBookmarks.remove),
+            ]),
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
             ReportDetailRow(
@@ -94,8 +111,7 @@ class InboxReportRejectedCard extends StatelessWidget {
             DigitButton(
                 isDisabled: true,
                 mainAxisSize: MainAxisSize.max,
-                label:
-                    context.translate(i18.sharedCards.resubmitForApproval),
+                label: context.translate(i18.sharedCards.resubmitForApproval),
                 onPressed: onPress,
                 type: DigitButtonType.secondary,
                 size: DigitButtonSize.large),

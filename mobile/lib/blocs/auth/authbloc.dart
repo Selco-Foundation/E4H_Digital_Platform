@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../data/network_manager.dart';
+import '../../data/api_interceptors.dart';
 import '../../data/secure_storage/secureStore.dart';
 import '../../model/dataModel.dart';
 import '../../model/login/loginModel.dart';
@@ -51,14 +52,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       _userRequest = response.userRequest!;
 
-      secureStore.setAccessToken(_accesstoken);
+      await Future.wait([
+        secureStore.setAccessToken(_accesstoken),
+        secureStore.setAccessInfo(ResponseModel(
+            access_token: _accesstoken,
+            token_type: response.token_type,
+            refresh_token: _refreshtoken,
+            scope: response.scope,
+            userRequest: _userRequest)),
+      ]);
 
-      secureStore.setAccessInfo(ResponseModel(
-          access_token: _accesstoken,
-          token_type: response.token_type,
-          refresh_token: _refreshtoken,
-          scope: response.scope,
-          userRequest: _userRequest));
+      AuthTokenInterceptor.resetLogoutGuard();
+      await authRepository.reportLogin(_userRequest);
 
       emit(AuthState.authenticated(
           accesstoken: _accesstoken,
