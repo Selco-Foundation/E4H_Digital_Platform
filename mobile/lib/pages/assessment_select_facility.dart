@@ -530,15 +530,6 @@ class _AssessmentSelectFacilityViewState
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text(
-              _bookmarksOnly
-                  ? context.translate(i18.assessmentBookmarks.savedAt)
-                  : context
-                      .translate(i18.assessmentSelectFacility.lastActionTime),
-              style: textTheme.headingS.copyWith(
-                color: theme.colorTheme.text.primary,
-              ),
-            ),
             RadioList(
               groupValue: pendingSortOrder,
               containerPadding: const EdgeInsets.symmetric(

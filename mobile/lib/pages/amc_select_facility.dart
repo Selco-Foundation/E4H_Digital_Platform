@@ -392,12 +392,6 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text(
-                context.translate(_bookmarksOnly
-                    ? i18.amcBookmarks.savedAt
-                    : i18.common.submissionDate),
-                style: textTheme.headingS
-                    .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
               groupValue: selectedFilter ?? '',
               containerPadding:
