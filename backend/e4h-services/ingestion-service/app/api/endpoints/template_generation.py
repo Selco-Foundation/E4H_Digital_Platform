@@ -1424,6 +1424,72 @@ async def get_assessment_plan_include_template(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+ASSESSMENT_EXPORT_BASE_COLUMNS = (
+    "Plan Facility Id",
+    "Facility Id",
+    "Facility Name",
+    "Category",
+    "Type",
+    "District",
+    "Block",
+    "Remote Status",
+    "On-site Status",
+    "Assessment Result",
+    "Completion Status",
+)
+
+PHONE_ANSWER_PREFIX = "Phone - "
+FIELD_ANSWER_PREFIX = "Field - "
+
+# Excel caps a sheet at 16384 columns; stay well under it even for very wide forms.
+MAX_QUESTION_COLUMNS_PER_PHASE = 400
+
+
+class _OrderedLabels:
+    """Union of question labels across facilities, keeping first-seen (MDMS schema) order."""
+
+    def __init__(self):
+        self._labels = []
+        self._seen = set()
+
+    def add(self, label: str) -> bool:
+        if label in self._seen:
+            return True
+        if len(self._labels) >= MAX_QUESTION_COLUMNS_PER_PHASE:
+            return False
+        self._seen.add(label)
+        self._labels.append(label)
+        return True
+
+    def __iter__(self):
+        return iter(self._labels)
+
+
+def _response_summary_columns(summary, prefix: str, questions: "_OrderedLabels") -> dict:
+    """Turn ["<label>: <answer>", ...] into {"<prefix><label>": "<answer>"}.
+
+    Labels themselves contain no ": ", so splitting on the first occurrence is safe;
+    answers keep any separators they contain (e.g. "Medical Officer, Pharmacist").
+    """
+    columns = {}
+    for entry in summary or []:
+        if not isinstance(entry, str):
+            continue
+        label, separator, answer = entry.partition(": ")
+        if not separator:
+            # No label/answer split (e.g. a bare remark) - keep it in a catch-all column.
+            label, answer = "Other", entry
+        label = label.strip()
+        if not label or not questions.add(label):
+            continue
+        column = prefix + label
+        if column in columns:
+            columns[column] = f"{columns[column]}; {answer}"
+        else:
+            columns[column] = answer
+    return columns
+
+
 @router.post(
     '/assessmentPlanFacilityExport',
     summary='Export assessment plan facility grid to Excel',
@@ -1454,8 +1520,10 @@ async def export_assessment_plan_facilities(
         facilities = search_result.get("facilities", []) or []
 
         rows = []
+        phone_questions = _OrderedLabels()
+        field_questions = _OrderedLabels()
         for facility in facilities:
-            rows.append({
+            row = {
                 "Plan Facility Id": facility.get("planFacilityId", ""),
                 "Facility Id": facility.get("facilityId", ""),
                 "Facility Name": facility.get("facilityName", ""),
@@ -1467,15 +1535,24 @@ async def export_assessment_plan_facilities(
                 "On-site Status": facility.get("fieldStatus", ""),
                 "Assessment Result": facility.get("overallStatus", ""),
                 "Completion Status": facility.get("assessmentCompletionStatus", ""),
-                "Phone Response Summary": "; ".join(facility.get("phoneResponseSummary") or []),
-                "Field Response Summary": "; ".join(facility.get("fieldResponseSummary") or []),
-            })
+            }
+            # Each response-summary entry is one question rendered as "<label>: <answer>".
+            # Spread them into one column per question so answers stay comparable across facilities.
+            row.update(_response_summary_columns(
+                facility.get("phoneResponseSummary"), PHONE_ANSWER_PREFIX, phone_questions))
+            row.update(_response_summary_columns(
+                facility.get("fieldResponseSummary"), FIELD_ANSWER_PREFIX, field_questions))
+            rows.append(row)
+
+        column_order = list(ASSESSMENT_EXPORT_BASE_COLUMNS)
+        column_order += [PHONE_ANSWER_PREFIX + label for label in phone_questions]
+        column_order += [FIELD_ANSWER_PREFIX + label for label in field_questions]
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
 
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows, columns=column_order).fillna("")
         df.to_excel(output_file_path, index=False, sheet_name="PlanFacilities")
         autofit_columns(file_path=output_file_path, sheet_name="PlanFacilities")
 
