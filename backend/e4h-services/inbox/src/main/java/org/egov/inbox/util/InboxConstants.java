@@ -2,6 +2,10 @@ package org.egov.inbox.util;
 
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 @Component
 public class InboxConstants {
 
@@ -74,4 +78,16 @@ public class InboxConstants {
     public static final String STATE_SLA = "stateSLA";
 
     public static final String TOTAL_SLA_REMAINING = "totalSlaRemaining";
+
+    /**
+     * Roles whose tickets are pooled rather than assigned to a person: im-services leaves the states
+     * they own without an assignee, so the inbox has to reach them by role and jurisdiction instead.
+     * <p>
+     * Both are registered at the state-level tenant, so a role scoped at or above the tenant the inbox
+     * is queried at still owns the ticket - see
+     * {@link org.egov.inbox.service.WorkflowService#getActionableStatusesForRole}.
+     */
+    public static final List<String> POOLED_ROLES = Collections.unmodifiableList(Arrays.asList(
+            "COMPLAINT_FACILITATOR_1",   // State SPOC
+            "COMPLAINT_FACILITATOR_2")); // Tech POC
 }

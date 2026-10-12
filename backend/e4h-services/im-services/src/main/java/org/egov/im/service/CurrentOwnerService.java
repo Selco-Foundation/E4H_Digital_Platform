@@ -174,7 +174,7 @@ public class CurrentOwnerService {
      * keeps RATE for the complainant — and treating those as ownership would leave closed tickets
      * sitting in someone's bucket.
      */
-    private Set<String> resolveOwningSystemRoles(State currentState) {
+    public Set<String> resolveOwningSystemRoles(State currentState) {
         if (Boolean.TRUE.equals(currentState.getIsTerminateState())
                 || CollectionUtils.isEmpty(currentState.getActions())) {
             return Collections.emptySet();

@@ -10,14 +10,23 @@ import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.util.BusinessHoursUtil;
+import org.egov.im.util.IMConstants;
+import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
+import org.egov.im.util.VendorOrganisationUtil;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
@@ -37,6 +46,10 @@ public class WorkflowService {
 
     private SLAService slaService;
 
+    private IMUtils imUtils;
+
+    private VendorOrganisationUtil vendorOrganisationUtil;
+
     private CurrentOwnerService currentOwnerService;
 
     private static final Map<Priority, String> PRIORITY_BUSINESS_SERVICE_MAP = Map.of(
@@ -52,7 +65,7 @@ public class WorkflowService {
     public WorkflowService(IMConfiguration imConfiguration,
                            ServiceRequestRepository repository,
                            ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils, SLAService slaService,
-                           CurrentOwnerService currentOwnerService) {
+                           CurrentOwnerService currentOwnerService, IMUtils imUtils, VendorOrganisationUtil vendorOrganisationUtil) {
         this.imConfiguration = imConfiguration;
         this.repository = repository;
         this.mapper = mapper;
@@ -60,6 +73,8 @@ public class WorkflowService {
         this.mdmsUtils = mdmsUtils;
         this.slaService = slaService;
         this.currentOwnerService = currentOwnerService;
+        this.imUtils = imUtils;
+        this.vendorOrganisationUtil = vendorOrganisationUtil;
     }
 
     /*
@@ -122,8 +137,27 @@ public class WorkflowService {
                 incidentRequest.getIncident().getIncidentId(), incidentRequest.getIncident().getTenantId());
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         log.debug("Calling workflow transition for incident: {} with action: {}",
-                incidentRequest.getIncident().getIncidentId(), incidentRequest.getWorkflow().getAction());
-        ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
+                incidentRequest.getIncident().getIncidentId(), processInstance.getAction());
+        // ASSIGN_NEW_VENDOR is configured with the SYSTEM role so that it never shows up among the
+        // actions offered to the SPOC. The caller therefore needs that role for the length of the
+        // transition call, and only for it: the same RequestInfo is serialised onto Kafka and into the
+        // indexing payloads afterwards. The caller itself is never swapped for the internal
+        // microservice user - eg_wf_processinstance_v2.assigner must stay the real SPOC, it is the
+        // audit trail this very feature reads back.
+        boolean systemRoleInjected = false;
+        ProcessInstance updatedProcessInstance;
+        try {
+            if (ASSIGN_NEW_VENDOR.equals(processInstance.getAction())) {
+                systemRoleInjected = imUtils.addTransientRole(incidentRequest.getRequestInfo(), ROLE_SYSTEM,
+                        incidentRequest.getIncident().getTenantId());
+            }
+            updatedProcessInstance = callWorkFlow(workflowRequest);
+        } finally {
+            if (systemRoleInjected) {
+                imUtils.removeTransientRole(incidentRequest.getRequestInfo(), ROLE_SYSTEM,
+                        incidentRequest.getIncident().getTenantId());
+            }
+        }
         String newStatus = updatedProcessInstance.getState().getApplicationStatus();
         incidentRequest.getIncident().setApplicationStatus(newStatus);
         log.info("Workflow status updated for incident: {}. New status: {}", incidentRequest.getIncident().getIncidentId(), newStatus);
@@ -359,18 +393,25 @@ public class WorkflowService {
 //                request.getIncident().getApplicationStatus().trim().equals("PENDING_REVISION") && action.equalsIgnoreCase("SUBMIT")) {
 //            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
 //        }
-        else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
-                request.getIncident().getApplicationStatus().trim().equals("PENDINGRESOLUTION") && action.equalsIgnoreCase("MARK_OUT_OF_SCOPE")) {
-            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
+        // State SPOC and Tech POC are pooled roles: the states they own are deliberately left
+        // unassigned by clearAssigneesForPooledState below, so nothing is reassigned to a named
+        // facilitator here any more.
+        // An ASSIGN out of OUT_OF_SCOPE must land in PENDING_RESOLUTION_OUT_OF_SCOPE when the ticket goes
+        // back to the vendor that already worked it, and in PENDINGRESOLUTION when it goes to another
+        // vendor. egov-workflow-v2 cannot pick a next state at runtime (TransitionService resolves it
+        // from a static action.nextState), so the two outcomes are two actions and the choice is made
+        // here. request.getWorkflow().getAction() is deliberately left as ASSIGN: every consumer keyed
+        // on action + applicationStatus keeps working unchanged.
+        String effectiveAction = action;
+        if (incident.getApplicationStatus() != null
+                && OUT_OF_SCOPE.equals(incident.getApplicationStatus().trim())
+                && ASSIGN.equalsIgnoreCase(action)) {
+            effectiveAction = resolveOutOfScopeAssignAction(request);
         }
-        else if (request.getIncident() != null && request.getIncident().getApplicationStatus() != null
-                && OUT_OF_WARRANTY_PENDING_TECH_POC.equals(request.getIncident().getApplicationStatus().trim())
-                && action.equalsIgnoreCase(APPROVE_ACTION)) {
-            reassignWorkflow(workflow, request, ROLE_COMPLAINT_FACILITATOR_1);
-        }
+
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(incident.getIncidentId());
-        processInstance.setAction(request.getWorkflow().getAction());
+        processInstance.setAction(effectiveAction);
         processInstance.setModuleName(IM_MODULENAME);
         processInstance.setTenantId(incident.getTenantId());
         BusinessService businessService = getBusinessService(request, priority);
@@ -382,6 +423,8 @@ public class WorkflowService {
         if(request.getWorkflow().getAction().equalsIgnoreCase("RATE")) {
             processInstance.setRating(workflow.getRating());
         }
+
+        clearAssigneesForPooledState(request, effectiveAction, this.states);
 
         if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
             List<User> users = new ArrayList<>();
@@ -396,6 +439,205 @@ public class WorkflowService {
         }
 
         return processInstance;
+    }
+
+    /**
+     * Drops the assignees when the transition lands the ticket in a state owned by a pooled role, so
+     * that it belongs to the role rather than to a person.
+     * <p>
+     * This is how a freshly raised ticket already works: nothing assigns it, so every CRM with
+     * jurisdiction over its boundary sees it and any of them can act. The same now holds for the State
+     * SPOC and Tech POC states - egov-workflow-v2 authorises a state-changing action purely on the
+     * acting user's roles ({@code WorkflowValidator.validateAction}) and never requires them to be the
+     * assignee, so leaving the assignee empty is what opens the ticket up to the whole role.
+     * <p>
+     * The decision is read off the workflow config rather than a hardcoded list of transitions: the
+     * roles on the resultant state's state-changing actions are exactly the roles that state waits on,
+     * and if all of the human ones are in {@link IMConstants#POOLED_ROLES} the ticket is pooled.
+     * Whatever the caller sent as {@code assignes} is discarded for those states - a client pinning the
+     * ticket to one facilitator is precisely what this removes.
+     * <p>
+     * Best-effort: any failure to resolve the resultant state leaves the assignees untouched, which is
+     * the behaviour that predates this rule. An assignment must never fail because a lookup failed.
+     *
+     * @param effectiveAction the action actually sent to the workflow engine, which for an out-of-scope
+     *                        reassignment is not the action on the request
+     */
+    void clearAssigneesForPooledState(IncidentRequest request, String effectiveAction, List<State> states) {
+        Workflow workflow = request.getWorkflow();
+        String incidentId = request.getIncident().getIncidentId();
+        try {
+            State resultantState = findResultantState(request.getIncident().getApplicationStatus(), effectiveAction, states);
+            if (resultantState == null) {
+                log.debug("Pooling: resultant state of action {} on incident {} could not be resolved, "
+                        + "leaving assignees untouched", effectiveAction, incidentId);
+                return;
+            }
+            if (!isPooledState(resultantState)) {
+                return;
+            }
+            if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
+                log.info("Pooling: discarding assignees {} sent for incident {}, state {} is owned by a pooled role",
+                        workflow.getAssignes(), incidentId, resultantState.getState());
+            }
+            workflow.setAssignes(null);
+            log.info("Pooling: incident {} left unassigned in state {} so that every holder of the role can act",
+                    incidentId, resultantState.getState());
+        } catch (Exception e) {
+            log.error("Pooling: failed to decide on assignees for incident {}, leaving them untouched",
+                    incidentId, e);
+        }
+    }
+
+    /**
+     * The state the ticket is about to land in, resolved from the business service definition the same
+     * way egov-workflow-v2's TransitionService resolves it: the action on the current state names its
+     * next state by uuid.
+     *
+     * @return null when the current state, the action or the next state is not in the definition
+     */
+    private State findResultantState(String currentApplicationStatus, String effectiveAction, List<State> states) {
+        if (CollectionUtils.isEmpty(states) || StringUtils.isBlank(currentApplicationStatus)
+                || StringUtils.isBlank(effectiveAction)) {
+            return null;
+        }
+        String status = currentApplicationStatus.trim();
+        State currentState = states.stream()
+                // The config may expose the status either as the state name or as applicationStatus.
+                .filter(state -> status.equalsIgnoreCase(state.getState())
+                        || status.equalsIgnoreCase(state.getApplicationStatus()))
+                .findFirst()
+                .orElse(null);
+        if (currentState == null || CollectionUtils.isEmpty(currentState.getActions())) {
+            return null;
+        }
+        String nextStateUuid = currentState.getActions().stream()
+                .filter(a -> a != null && effectiveAction.equalsIgnoreCase(a.getAction()))
+                .map(Action::getNextState)
+                .findFirst()
+                .orElse(null);
+        if (StringUtils.isBlank(nextStateUuid)) {
+            return null;
+        }
+        return currentOwnerService.findState(nextStateUuid, null, states);
+    }
+
+    /**
+     * True when every human role that can move the ticket on from this state is a pooled one. A state
+     * that also waits on a vendor or a health staff member is not pooled - those are real individuals
+     * and the ticket has to reach the right one.
+     */
+    private boolean isPooledState(State state) {
+        List<String> humanRoles = currentOwnerService.resolveOwningSystemRoles(state).stream()
+                .filter(role -> MACHINE_ROLES.stream().noneMatch(role::equalsIgnoreCase))
+                .collect(Collectors.toList());
+        return !humanRoles.isEmpty()
+                && humanRoles.stream().allMatch(role -> POOLED_ROLES.stream().anyMatch(role::equalsIgnoreCase));
+    }
+
+    /**
+     * {@link IMConstants#ASSIGN} when the out-of-scope ticket goes back to the vendor that already
+     * worked it, {@link IMConstants#ASSIGN_NEW_VENDOR} when it goes to a different vendor.
+     * <p>
+     * "Same vendor" means the same organisation, not the same person: a vendor can have several
+     * COMPLAINT_RESOLVER logins, and the clients only ever send a user uuid.
+     * <p>
+     * Anything that cannot be determined - no previous vendor in the history, no assignee on the
+     * request, an organisation vendor-registry cannot resolve - falls back to ASSIGN, which is the
+     * behaviour that predates this rule. An assignment must never fail because a lookup failed.
+     * <p>
+     * Package-private so the decision can be unit tested without driving a whole workflow transition.
+     */
+    String resolveOutOfScopeAssignAction(IncidentRequest request) {
+        log.trace("WorkflowService::resolveOutOfScopeAssignAction method invoked");
+        String incidentId = request.getIncident().getIncidentId();
+        try {
+            List<String> assignes = request.getWorkflow().getAssignes();
+            if (CollectionUtils.isEmpty(assignes) || StringUtils.isBlank(assignes.get(0))) {
+                log.debug("No assignee on the out-of-scope assign of incident: {}, keeping ASSIGN", incidentId);
+                return ASSIGN;
+            }
+            String newVendorUserUuid = assignes.get(0);
+
+            String previousVendorUserUuid = findPreviousVendorUserUuid(request);
+            if (previousVendorUserUuid == null) {
+                log.info("No previous vendor found in the history of incident: {}, keeping ASSIGN", incidentId);
+                return ASSIGN;
+            }
+            if (newVendorUserUuid.equalsIgnoreCase(previousVendorUserUuid)) {
+                log.info("Out-of-scope incident: {} reassigned to the same user, keeping ASSIGN", incidentId);
+                return ASSIGN;
+            }
+
+            String tenantId = request.getIncident().getTenantId();
+            Map<String, String> organisationIdsByUserUuid = vendorOrganisationUtil.getOrganisationIdsByUserUuids(
+                    Arrays.asList(newVendorUserUuid, previousVendorUserUuid), tenantId, request.getRequestInfo());
+            String newOrganisationId = organisationIdsByUserUuid.get(newVendorUserUuid);
+            String previousOrganisationId = organisationIdsByUserUuid.get(previousVendorUserUuid);
+            if (StringUtils.isBlank(newOrganisationId) || StringUtils.isBlank(previousOrganisationId)) {
+                log.warn("Cannot resolve both vendor organisations for incident: {} (new={}, previous={}), keeping ASSIGN",
+                        incidentId, newOrganisationId, previousOrganisationId);
+                return ASSIGN;
+            }
+
+            if (newOrganisationId.equals(previousOrganisationId)) {
+                log.info("Out-of-scope incident: {} reassigned within vendor organisation: {}, keeping ASSIGN",
+                        incidentId, newOrganisationId);
+                return ASSIGN;
+            }
+            log.info("Out-of-scope incident: {} reassigned from vendor organisation: {} to: {}, using {}",
+                    incidentId, previousOrganisationId, newOrganisationId, ASSIGN_NEW_VENDOR);
+            return ASSIGN_NEW_VENDOR;
+        } catch (Exception e) {
+            log.error("Out-of-scope vendor comparison failed for incident: {}, keeping ASSIGN", incidentId, e);
+            return ASSIGN;
+        }
+    }
+
+    /**
+     * The user of the vendor that was working the ticket before it went out of scope.
+     * <p>
+     * The incident carries no vendor: the assignment lives only in the workflow history, so it is read
+     * back from there. The most recent transition that parked the ticket with a vendor is, by
+     * definition, the previous vendor - which covers both ways into OUT_OF_SCOPE (from
+     * PENDINGRESOLUTION and from RMS_DEVICE_PENDINGRESOLUTION) as well as a ticket that already went
+     * through PENDING_RESOLUTION_OUT_OF_SCOPE once. When no such transition carries an assignee, the
+     * resolver who performed MARK_OUT_OF_SCOPE is used instead.
+     *
+     * @return the user uuid, or null when the ticket never sat with a vendor
+     */
+    private String findPreviousVendorUserUuid(IncidentRequest request) {
+        log.trace("WorkflowService::findPreviousVendorUserUuid method invoked");
+        List<ProcessInstance> history = getAllProcessInstances(request.getIncident().getTenantId(),
+                request.getIncident().getIncidentId(), request.getRequestInfo());
+        if (CollectionUtils.isEmpty(history)) {
+            return null;
+        }
+
+        // Sorted explicitly rather than trusting the workflow search order, which is an implementation
+        // detail - enrichTotalSla has to reverse it before use.
+        List<ProcessInstance> newestFirst = history.stream()
+                .sorted(Comparator.comparing(
+                        (ProcessInstance pi) -> pi.getAuditDetails() != null && pi.getAuditDetails().getLastModifiedTime() != null
+                                ? pi.getAuditDetails().getLastModifiedTime() : 0L,
+                        Comparator.reverseOrder()))
+                .collect(Collectors.toList());
+
+        for (ProcessInstance processInstance : newestFirst) {
+            String status = processInstance.getState() != null ? processInstance.getState().getApplicationStatus() : null;
+            if (status != null && VENDOR_HOLDING_STATUSES.contains(status.trim())
+                    && !CollectionUtils.isEmpty(processInstance.getAssignes())
+                    && processInstance.getAssignes().get(0) != null) {
+                return processInstance.getAssignes().get(0).getUuid();
+            }
+        }
+        for (ProcessInstance processInstance : newestFirst) {
+            if (MARK_OUT_OF_SCOPE_ACTION.equalsIgnoreCase(processInstance.getAction())
+                    && processInstance.getAssigner() != null) {
+                return processInstance.getAssigner().getUuid();
+            }
+        }
+        return null;
     }
 
     private void reassignWorkflow(Workflow workflow, IncidentRequest request, String role) {
