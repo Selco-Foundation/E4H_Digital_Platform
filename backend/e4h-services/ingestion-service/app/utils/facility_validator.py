@@ -117,7 +117,7 @@ def project_facility_validation(
     validate_unique_ids(df, schema, add_err)
     validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_anganwadi_poc_username(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
-    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client)
+    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client, request_info)
 
     return errors
 
@@ -178,7 +178,7 @@ def facility_validation(
     validate_unique_ids(df, schema, add_err)
     validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_anganwadi_poc_username(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
-    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client)
+    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client, request_info)
 
     return errors
 
@@ -418,8 +418,70 @@ def validate_row_constraints(df, schema, add_err):
                     add_err(idx, rc.message)
 
 
-def validate_hfr_nin(df, add_err, facility_client):
-    checked_in_db: Dict[str, bool] = {}
+class HfrNinDuplicateCache(dict):
+    """cache["<hfr_id|nin_id>|<value>"] -> already exists in facility-service.
+
+    lookup_errors holds the message for identifiers whose bulk lookup failed, so rows fail with a
+    clear error instead of silently passing or falling back to one request per row.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.lookup_errors: Dict[str, str] = {}
+
+
+HFR_NIN_LOOKUP_CHUNK_SIZE = 500
+HFR_NIN_LOOKUP_TENANT_ID = "in"
+_HFR_NIN_COLUMNS = (("HFR ID", "hfr_id"), ("NIN ID", "nin_id"))
+
+
+def _hfr_nin_cache_key(key: str, value: str) -> str:
+    return f"{key}|{value}"
+
+
+def prefetch_existing_hfr_nin(
+    df: pd.DataFrame,
+    facility_client: Any,
+    request_info: Any,
+    cache: HfrNinDuplicateCache,
+) -> None:
+    """Look up every HFR/NIN of df in facility-service with one bulk call per chunk of identifiers.
+
+    Replaces one GET per row (1900 rows = 1900 sequential requests, enough to outlive the gateway
+    timeout). HFR and NIN are searched separately because the bulk endpoint ANDs its filters.
+    """
+    for col_name, key in _HFR_NIN_COLUMNS:
+        if col_name not in df.columns:
+            continue
+        values = sorted({str(v).strip() for v in df[col_name] if pd.notna(v) and str(v).strip()})
+        search_arg = "hfr_ids" if key == "hfr_id" else "nin_ids"
+
+        for start in range(0, len(values), HFR_NIN_LOOKUP_CHUNK_SIZE):
+            chunk = values[start:start + HFR_NIN_LOOKUP_CHUNK_SIZE]
+            try:
+                result = facility_client.bulk_search_facility(
+                    request_info=request_info,
+                    tenant_ids=[HFR_NIN_LOOKUP_TENANT_ID],
+                    **{search_arg: chunk},
+                )
+            except Exception as e:
+                for value in chunk:
+                    cache.lookup_errors[_hfr_nin_cache_key(key, value)] = str(e)
+                continue
+
+            existing = {
+                str(f.get(key)).strip()
+                for f in result.get("facilities", []) or []
+                if f.get(key) is not None
+            }
+            for value in chunk:
+                cache[_hfr_nin_cache_key(key, value)] = value in existing
+
+
+def validate_hfr_nin(df, add_err, facility_client, request_info=None):
+    checked_in_db = HfrNinDuplicateCache()
+    if request_info is not None:
+        prefetch_existing_hfr_nin(df, facility_client, request_info, checked_in_db)
 
     for idx, row in df.iterrows():
         validate_hfr_nin_for_row(
@@ -523,7 +585,12 @@ def check_db_duplicates(cache, facility_client, add_err, df, row_idx, hfr=None, 
             if not value:  # Skip if None or empty string
                 continue
 
-            cache_key = f"{boundary_code}|{key}|{value}"
+            cache_key = _hfr_nin_cache_key(key, value)
+
+            lookup_error = getattr(cache, "lookup_errors", {}).get(cache_key)
+            if lookup_error:
+                add_err(row_idx, f"Could not validate {col_name}='{value}' in DB: {lookup_error}")
+                return
 
             if cache_key not in cache:
                 try:

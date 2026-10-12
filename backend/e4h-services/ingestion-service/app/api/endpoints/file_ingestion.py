@@ -28,6 +28,8 @@ from app.utils.facility_validator import (
     assessment_plan_include_validation,
     collect_hfr_nin_errors_for_row,
     collect_anganwadi_poc_username_errors_for_row,
+    HfrNinDuplicateCache,
+    prefetch_existing_hfr_nin,
 )
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
@@ -185,12 +187,15 @@ def _bulk_create_facilities_for_ingestion(
         facility_schema: List[Dict],
         are_facilities_onm_ready: bool,
         vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]],
-        hfr_nin_db_cache: Dict[str, bool],
+        hfr_nin_db_cache: HfrNinDuplicateCache,
 ) -> None:
     """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service)."""
     pending_creates: List[tuple] = []
 
-    for index, row in df[df['status'] != 'success'].iterrows():
+    rows_to_process = df[df['status'] != 'success']
+    prefetch_existing_hfr_nin(rows_to_process, facility_client, request_info, hfr_nin_db_cache)
+
+    for index, row in rows_to_process.iterrows():
         hfr_nin_errs = collect_hfr_nin_errors_for_row(
             row, index, df, facility_client, hfr_nin_db_cache,
         )
@@ -683,7 +688,7 @@ async def upload_facilities_excel_sheet(
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
             org_client = OrganizationServiceClient(org_service_url) if org_service_url else None
             vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]] = {}
-            hfr_nin_db_cache: Dict[str, bool] = {}
+            hfr_nin_db_cache = HfrNinDuplicateCache()
 
             _bulk_create_facilities_for_ingestion(
                 df=df,
