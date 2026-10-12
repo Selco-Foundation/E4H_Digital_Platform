@@ -82,6 +82,8 @@ public class InboxServiceV2 {
 
         applyVendorTenantScope(inboxRequest);
 
+        applyActionableStatusScope(inboxRequest);
+
         // Récupération de la configuration
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
@@ -347,6 +349,48 @@ public class InboxServiceV2 {
         return inboxItemsList;
     }
 
+
+    /**
+     * Narrows the inbox to the statuses the caller's roles can actually act on, when the client asked
+     * for the tickets waiting on them.
+     * <p>
+     * A State SPOC or Tech POC ticket carries no assignee - im-services pools those states so that any
+     * holder of the role can pick the ticket up - so "assigned to me" cannot mean "assigned to my
+     * uuid". It means the ticket sits in a state one of my roles can act on. The roles on each state's
+     * actions are, by definition, the roles that state is waiting on, which is what
+     * {@link #enrichActionableStatusesFromRole} reads off the business service. The client therefore
+     * sends {@code assignedToMe} and the backend works out what that means for whoever is asking,
+     * rather than the client guessing a uuid that is not on the ticket.
+     * <p>
+     * Without the flag the inbox is the "all tickets" view: jurisdiction alone decides what comes back,
+     * in whatever states the client asked for.
+     * <p>
+     * Jurisdiction applies either way - it is the {@code jurisdictionSearchCriteria} the client already
+     * sends, which this never touches.
+     * <p>
+     * Every count on the response (total, status map, nearing SLA) rebuilds its query from the same
+     * request, so narrowing it here covers them as well as the items.
+     * <p>
+     * Best-effort: a failure to reach the workflow engine leaves the request untouched, which is the
+     * behaviour that predates this scoping. An inbox must not fail to load because a lookup failed.
+     */
+    private void applyActionableStatusScope(InboxRequest inboxRequest) {
+        if (!Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe())) {
+            log.debug("🗂️ assignedToMe not set, leaving the inbox scoped by jurisdiction alone");
+            return;
+        }
+        try {
+            List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
+            if (CollectionUtils.isEmpty(businessServices)) {
+                log.warn("⚠️ No business services returned, leaving the requested statuses untouched");
+                return;
+            }
+            enrichActionableStatusesFromRole(inboxRequest, businessServices);
+        } catch (Exception e) {
+            log.error("❌ Failed to scope the inbox to the caller's actionable statuses, "
+                    + "leaving the requested statuses untouched", e);
+        }
+    }
 
     private void enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
         ProcessInstanceSearchCriteria processCriteria = inboxRequest.getInbox().getProcessSearchCriteria();

@@ -259,6 +259,15 @@ public class FacilityService {
             // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
             upsertFacilityBoundaryLocalizations(tenantFacilities, request.getRequestInfo());
 
+            // Resolve the mapped vendor from each facility's vendor code before anything is pushed,
+            // so it is persisted with the row rather than only reaching the index. Skipped under the
+            // same flag as the jurisdiction assignment below: when the caller owns the vendor
+            // mapping, a vendor stamped from here would name one this service never actually mapped.
+            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
+                vendorOrganisationService.applyMappedVendorFromVendorCode(
+                        tenantFacilities, tenantId, request.getRequestInfo());
+            }
+
             log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
             for (Facility facility : tenantFacilities) {
                 // Keep original (unencrypted) POC mobile number for HRMS user creation — the push
@@ -269,11 +278,22 @@ public class FacilityService {
                 facility.setAuditDetails(AuditDetails.builder().createdBy(request.getRequestInfo().getUserInfo().getUuid()).lastModifiedBy(request.getRequestInfo().getUserInfo().getUuid()).createdTime(time).lastModifiedTime(time).build());
 
                 log.trace("Processing facility: {}", facility.getFacilityId());
+
+                // The mapped vendor has no column of its own - it is persisted inside
+                // additional_details - so it has to be folded in before the push below, which
+                // serializes the facility as it stands. Anything set afterwards still reaches the
+                // Kibana document built further down, but never the row.
+                FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+                if (FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+                    // Only when there is one to write: syncing unconditionally would stamp a null
+                    // mappedVendorName/mappedVendorUserName pair onto every facility created without
+                    // a vendor, and an update payload echoing those keys back reads as a deliberate
+                    // clear rather than as "not supplied" (see mergeMappedVendorFromUpdate).
+                    FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+                }
+
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
-                
-                FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
-                FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
 
                 // If facility is ONM ready, create POC user and push to Kibana for indexing
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
