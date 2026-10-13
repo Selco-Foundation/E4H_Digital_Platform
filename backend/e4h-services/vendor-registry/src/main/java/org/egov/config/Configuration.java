@@ -94,11 +94,8 @@ public class Configuration {
     @Value("${egov.facility.host}")
     private String facilityHost;
 
-    @Value("${egov.facility.search.path}")
-    private String facilitySearchPath;
-
-    @Value("${egov.facility.update.path}")
-    private String facilityUpdatePath;
+    @Value("${egov.facility.mapped-vendor.update.path:/facility-service/v2/facility/_update-mapped-vendor}")
+    private String facilityMappedVendorUpdatePath;
 
     @Value("${egov.fieldplan.activity.host}")
     private String fieldPlanActivityServiceHost;

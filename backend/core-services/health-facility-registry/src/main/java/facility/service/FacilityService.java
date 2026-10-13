@@ -11,6 +11,7 @@ import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -2127,6 +2128,124 @@ public class FacilityService {
         if (!isFacilityAdmin && !isSystemUser) {
             throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
         }
+    }
+
+    /**
+     * Writes one facility's mapped vendor - the row and the Kibana document - and nothing else.
+     *
+     * <p>The narrow counterpart to {@link #updateFacility}, for callers that hold only the vendor
+     * mapping. Routing a mapping through the full update meant searching the facility, echoing
+     * every one of its fields back, and running the ONM-ready branching with its POC user creation
+     * and password resets; a jurisdiction being added to a vendor has no business doing any of
+     * that. Cheaper too: the caller passes the boundary code it already holds, so the search that
+     * used to precede every update disappears.
+     *
+     * <p>A blank name and username together are a deliberate unmapping, which is why they are not
+     * rejected as missing.
+     */
+    public FacilityMappedVendorUpdateResponse updateMappedVendor(FacilityMappedVendorUpdateRequest request) {
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+        boolean hasFacilityId = request.getFacilityId() != null && !request.getFacilityId().isBlank();
+        boolean hasBoundaryCode = request.getBoundaryCode() != null && !request.getBoundaryCode().isBlank();
+        if (!hasFacilityId && !hasBoundaryCode) {
+            throw new IllegalArgumentException("One of facilityId or boundaryCode must be provided");
+        }
+        validateFacilityEditAuthorization(request.getRequestInfo());
+
+        if (request.getTenantId() == null || request.getTenantId().isBlank()) {
+            throw new IllegalArgumentException("tenantId is required");
+        }
+        String tenantId = request.getTenantId().trim();
+
+        Facility facility = hasFacilityId
+                ? getFacilityFromDb(request.getFacilityId().trim(), tenantId)
+                : getFacilityByBoundaryCode(request.getBoundaryCode().trim(), tenantId);
+        if (facility == null) {
+            log.warn("No facility found for mapped-vendor update (facilityId={}, boundaryCode={}, tenantId={})",
+                    sanitizeForLog(request.getFacilityId()), sanitizeForLog(request.getBoundaryCode()),
+                    sanitizeForLog(tenantId));
+            throw new IllegalArgumentException("No facility found for the given facilityId or boundaryCode");
+        }
+
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+        String vendorName = trimToNull(request.getMappedVendorName());
+        String vendorUserName = trimToNull(request.getMappedVendorUserName());
+
+        FacilityMappedVendorUpdateResponse response = FacilityMappedVendorUpdateResponse.builder()
+                .facilityId(facility.getFacilityId())
+                .boundaryCode(facility.getBoundaryCode())
+                .mappedVendorName(vendorName)
+                .mappedVendorUserName(vendorUserName)
+                .build();
+
+        // Nothing to do when the facility already carries exactly this vendor. Worth the check: the
+        // index document is replaced wholesale on every push, so a redundant write is not free - it
+        // races the other writer of that document, and a vendor holding many facilities would
+        // otherwise re-push every one of them on each edit.
+        if (Objects.equals(vendorName, facility.getMappedVendorName())
+                && Objects.equals(vendorUserName, facility.getMappedVendorUserName())) {
+            response.setUnchanged(true);
+            log.info("Mapped vendor already up to date on facility {} (userName={}); nothing written",
+                    sanitizeForLog(facility.getFacilityId()), sanitizeForLog(vendorUserName));
+            return response;
+        }
+
+        facility.setMappedVendorName(vendorName);
+        facility.setMappedVendorUserName(vendorUserName);
+        FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+        persistMappedVendorOnRow(facility);
+
+        // Only a facility that is actually indexed has a document to keep in step; pushing for one
+        // that is not would create the document its own update path deletes.
+        if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+            FacilityKibanaIndex kibanaIndex =
+                    facilityKibanaMapper.toKibanaIndexForFacilityUpdate(facility, request.getRequestInfo(), true);
+            if (kibanaIndex != null) {
+                facilityRepository.pushToKibana(kibanaIndex);
+            } else {
+                response.setIndexSkipped(true);
+            }
+        } else {
+            response.setIndexSkipped(true);
+        }
+
+        response.setUpdated(true);
+        log.info("Mapped vendor written on facility {} (name={}, userName={}, indexSkipped={})",
+                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(vendorName),
+                sanitizeForLog(vendorUserName), response.isIndexSkipped());
+        return response;
+    }
+
+    /** The facility on a boundary code, or null. Mirrors {@link #getFacilityFromDb}. */
+    private Facility getFacilityByBoundaryCode(String boundaryCode, String tenantId) {
+        String sql = "SELECT fac.*, "
+                + " (SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                + "   WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                + " FROM facility fac WHERE fac.boundary_code = ? AND fac.tenant_id = ?";
+        try {
+            return jdbcTemplate.queryForObject(
+                    sql, new Object[]{boundaryCode, tenantId}, facilityRowMapper.rowMapper);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        } catch (IncorrectResultSizeDataAccessException e) {
+            // More than one facility on a boundary code is a data problem, not something to resolve
+            // by silently picking one and writing a vendor onto it.
+            log.error("Boundary code {} maps to {} facilities in tenant {}; refusing to guess",
+                    sanitizeForLog(boundaryCode), e.getActualSize(), sanitizeForLog(tenantId));
+            throw new IllegalArgumentException(
+                    "Boundary code " + boundaryCode + " maps to more than one facility");
+        }
+    }
+
+    /** Trimmed, or null when null/blank - a blank vendor is an unmapping, not an empty string. */
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Facility getFacilityFromDb(String facilityId, String tenantId) {
