@@ -328,6 +328,28 @@ public class FacilityV2ApiController {
     }
 
     /**
+     * Settles mappedVendorName / mappedVendorUserName from HRMS on facilities that carry none,
+     * writing both the facility row and its index document. Operator endpoint, disabled unless
+     * {@code facility.mapped-vendor.backfill.enabled=true}. Send {@code dryRun: true} first to
+     * size the affected set.
+     */
+    @PostMapping("/_backfill-mapped-vendor")
+    public ResponseEntity<FacilityMappedVendorBackfillResponse> backfillFacilityMappedVendors(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Backfill request (optional tenantId/facilityIds filters; "
+                            + "onmReadyOnly defaults to true, dryRun to false)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityMappedVendorBackfillRequest request) {
+        log.info("Received facility mappedVendor backfill request");
+        FacilityMappedVendorBackfillResponse result = facilityService.backfillFacilityMappedVendors(request);
+        log.info("mappedVendor backfill finished: scanned={}, updated={}, skipped={}, failed={}, dryRun={}",
+                result.getScanned(), result.getUpdated(), result.getSkipped(),
+                result.getFailed(), result.isDryRun());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Writes a facility's AMC snapshot onto the health facility index only - the facility table is
      * not touched. Called by amc-scheduler-service, which owns AMC data; see
      * {@code FacilityAmcIndexUpdateRequest}. Requires FACILITY_ADMIN or SYSTEM_USER.

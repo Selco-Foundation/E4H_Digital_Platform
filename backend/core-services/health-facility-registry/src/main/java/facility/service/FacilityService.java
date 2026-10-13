@@ -3,6 +3,8 @@ package facility.service;
 import facility.config.Configuration;
 import facility.repository.FacilityRepository;
 import facility.util.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
@@ -24,6 +26,9 @@ import static facility.config.ServiceConstants.SYSTEM_USER;
 @Service
 @Slf4j
 public class FacilityService {
+    /** Serialises additional_details for the mapped-vendor backfill's JSONB write. */
+    private static final ObjectMapper ADDITIONAL_DETAILS_MAPPER = new ObjectMapper();
+
     private static final String CATEGORY_HEALTH = "HEALTH";
     public static final String CATEGORY_ANGANWADI = "ANGANWADI";
     /** When category is HEALTH, MDMS-style rule: at least one of HFR ID or NIN ID must be present. */
@@ -259,11 +264,20 @@ public class FacilityService {
             // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
             upsertFacilityBoundaryLocalizations(tenantFacilities, request.getRequestInfo());
 
-            // Resolve the mapped vendor from each facility's vendor code before anything is pushed,
-            // so it is persisted with the row rather than only reaching the index. Skipped under the
-            // same flag as the jurisdiction assignment below: when the caller owns the vendor
-            // mapping, a vendor stamped from here would name one this service never actually mapped.
+            // Hand the facility boundaries to the vendor's HRMS user BEFORE the mapped vendor is
+            // resolved and before anything is pushed. The resolution below, and the Kibana mapper's
+            // HRMS-first lookup further down, both read that jurisdiction back - running the
+            // assignment afterwards left them reading an HRMS that did not hold the mapping yet, so
+            // a facility created without a vendor code kept a null mapped vendor on both the row and
+            // the index, with nothing to ever re-resolve it.
             if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
+                vendorOrganisationService.assignFacilityJurisdictionsBulk(
+                        tenantFacilities, tenantId, request.getRequestInfo());
+
+                // Resolve the mapped vendor before anything is pushed, so it is persisted with the
+                // row rather than only reaching the index. Skipped under the same flag as the
+                // assignment above: when the caller owns the vendor mapping, a vendor stamped from
+                // here would name one this service never actually mapped.
                 vendorOrganisationService.applyMappedVendorFromVendorCode(
                         tenantFacilities, tenantId, request.getRequestInfo());
             }
@@ -316,10 +330,6 @@ public class FacilityService {
                 validatedFacilities.add(facility);
             }
 
-            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
-                vendorOrganisationService.assignFacilityJurisdictionsBulk(
-                        tenantFacilities, tenantId, request.getRequestInfo());
-            }
         }
 
         log.info("Successfully created {} facilities", validatedFacilities.size());
@@ -1587,6 +1597,141 @@ public class FacilityService {
         log.info("projectName backfill complete: scanned={}, updated={}, skipped={}, failed={}",
                 response.getScanned(), response.getUpdated(), response.getSkipped(), response.getFailed());
         return response;
+    }
+
+    /**
+     * Settles {@code mappedVendorName} / {@code mappedVendorUserName} on facilities that carry
+     * none, reading the mapping back out of HRMS by boundary code.
+     *
+     * <p>Repairs the rows left behind by the two paths that used to drop the vendor: a facility
+     * created before its vendor jurisdiction was assigned, and a vendor jurisdiction added through
+     * vendor-registry whose sync never reached the facility. Both now settle the vendor themselves,
+     * so this exists for the rows already written, not as part of any live flow.
+     *
+     * <p>Writes the row and, for indexed facilities, the Kibana document - the script in
+     * {@code docs/mapVendorFromHrms.py} only ever touched the index, which left the row null and
+     * the next full re-index free to drop the vendor again.
+     */
+    public FacilityMappedVendorBackfillResponse backfillFacilityMappedVendors(
+            FacilityMappedVendorBackfillRequest request) {
+        if (!configs.isFacilityMappedVendorBackfillEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility mappedVendor backfill is disabled. "
+                            + "Set facility.mapped-vendor.backfill.enabled=true to run.");
+        }
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+
+        boolean onmReadyOnly = request.getOnmReadyOnly() == null || Boolean.TRUE.equals(request.getOnmReadyOnly());
+        boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+
+        List<Facility> candidates = loadFacilitiesForKibanaReindex(
+                request.getTenantId(), request.getFacilityIds(), onmReadyOnly);
+
+        // Only the rows actually missing a vendor: one already mapped is left alone, so a re-run
+        // costs nothing and an operator can repeat it safely.
+        List<Facility> pending = new ArrayList<>();
+        for (Facility facility : candidates) {
+            FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+            if (!FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+                pending.add(facility);
+            }
+        }
+
+        FacilityMappedVendorBackfillResponse response = FacilityMappedVendorBackfillResponse.builder()
+                .scanned(pending.size())
+                .dryRun(dryRun)
+                .errors(new ArrayList<>())
+                .build();
+
+        log.info("mappedVendor backfill: tenantId={}, onmReadyOnly={}, dryRun={}, loaded={}, missing={}",
+                request.getTenantId(), onmReadyOnly, dryRun, candidates.size(), pending.size());
+
+        for (Facility facility : pending) {
+            String boundaryCode = facility.getBoundaryCode();
+            if (boundaryCode == null || boundaryCode.isBlank()) {
+                response.setSkipped(response.getSkipped() + 1);
+                continue;
+            }
+            try {
+                Employee mappedVendor =
+                        hrmsUtils.getMappedVendorByBoundaryCode(request.getRequestInfo(), boundaryCode);
+                if (mappedVendor == null) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+                User vendorUser = mappedVendor.getUser();
+                String vendorUserName = firstNonBlank(
+                        vendorUser != null ? vendorUser.getUserName() : null, mappedVendor.getCode());
+                if (vendorUserName == null || vendorUserName.isBlank()) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+
+                if (dryRun) {
+                    response.setUpdated(response.getUpdated() + 1);
+                    log.info("mappedVendor backfill (dry run): would map {} onto facility {}",
+                            sanitizeForLog(vendorUserName), sanitizeForLog(facility.getFacilityId()));
+                    continue;
+                }
+
+                FacilityMappedVendorHelper.applyMappedVendor(
+                        facility, vendorUser != null ? vendorUser.getName() : null, vendorUserName);
+                persistMappedVendorOnRow(facility);
+
+                // Only indexed facilities have a document to keep in step; a non ONM-ready one has
+                // none, and pushing would create the document its own update path just deletes.
+                if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+                    FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
+                            facility, request.getRequestInfo());
+                    if (kibanaIndex != null) {
+                        facilityRepository.pushToKibana(kibanaIndex);
+                    }
+                }
+
+                response.setUpdated(response.getUpdated() + 1);
+                log.info("mappedVendor backfill: mapped {} onto facility {}",
+                        sanitizeForLog(vendorUserName), sanitizeForLog(facility.getFacilityId()));
+            } catch (Exception e) {
+                response.setFailed(response.getFailed() + 1);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("mappedVendor backfill failed for facilityId {} boundaryCode {}: {}",
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(boundaryCode), message, e);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(facility.getFacilityId())
+                        .tenantId(facility.getTenantId())
+                        .boundaryCode(boundaryCode)
+                        .message(message)
+                        .build());
+            }
+        }
+
+        log.info("mappedVendor backfill complete: scanned={}, updated={}, skipped={}, failed={}, dryRun={}",
+                response.getScanned(), response.getUpdated(), response.getSkipped(),
+                response.getFailed(), dryRun);
+        return response;
+    }
+
+    /**
+     * Writes the facility's {@code additional_details} straight to the row.
+     *
+     * <p>Direct rather than through the persister topic: the mapped vendor has no column of its
+     * own, so the update topic would carry a whole facility payload rebuilt from this read, and
+     * every field it failed to echo back would be overwritten. This touches the one column that
+     * changed.
+     */
+    private void persistMappedVendorOnRow(Facility facility) {
+        String additionalDetailsJson;
+        try {
+            additionalDetailsJson = ADDITIONAL_DETAILS_MAPPER.writeValueAsString(facility.getAdditionalDetails());
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(
+                    "Could not serialise additional_details for facility " + facility.getFacilityId(), e);
+        }
+        jdbcTemplate.update(
+                "UPDATE facility SET additional_details = ?::jsonb WHERE id = ? AND tenant_id = ?",
+                additionalDetailsJson, facility.getFacilityId(), facility.getTenantId());
     }
 
     private List<Facility> loadFacilitiesForKibanaReindex(
