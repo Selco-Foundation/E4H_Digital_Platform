@@ -178,7 +178,7 @@ public class Configuration {
      * in milliseconds. The jurisdictions are written moments earlier in the same request, and a
      * search issued immediately can miss them. Set to 0 to look up without waiting.
      */
-    @Value("${facility.mapped-vendor.hrms-lookup.delay-ms:3000}")
+    @Value("${facility.mapped-vendor.hrms-lookup.delay-ms:10000}")
     private long mappedVendorHrmsLookupDelayMs;
 
     @Value("${egov.vendor.host:}")
