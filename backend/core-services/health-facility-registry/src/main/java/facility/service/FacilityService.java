@@ -984,7 +984,7 @@ public class FacilityService {
                     .build();
 
             FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
-                    facilityForKibanaUpdate, request.getRequestInfo());
+                    facilityForKibanaUpdate, request.getRequestInfo(), mappedVendorUpdated);
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
         } else if (Boolean.FALSE.equals(update.getIsOnmReady())) {
@@ -1008,7 +1008,7 @@ public class FacilityService {
                     .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
                     .build();
             FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
-                    facilityForKibanaUpdate, request.getRequestInfo());
+                    facilityForKibanaUpdate, request.getRequestInfo(), true);
             if (kibanaIndex != null) {
                 facilityRepository.pushToKibana(kibanaIndex);
                 log.info("Facility {} mapped-vendor fields pushed to Kibana", sanitizeForLog(update.getFacilityId()));
@@ -1682,7 +1682,7 @@ public class FacilityService {
                 // none, and pushing would create the document its own update path just deletes.
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
                     FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
-                            facility, request.getRequestInfo());
+                            facility, request.getRequestInfo(), true);
                     if (kibanaIndex != null) {
                         facilityRepository.pushToKibana(kibanaIndex);
                     }
