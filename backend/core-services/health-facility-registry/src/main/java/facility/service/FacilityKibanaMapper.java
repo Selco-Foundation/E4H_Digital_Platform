@@ -534,8 +534,11 @@ public class FacilityKibanaMapper {
      * the two halves always describe one vendor.
      */
     private MappedVendor resolveMappedVendorFromHrms(Facility facility, RequestInfo requestInfo) {
+        // The bare RequestInfo, not a {RequestInfo: ...} wrapper: getMappedVendorByBoundaryCode
+        // wraps it itself. Passing a wrapper built one double-wrapped body, which HRMS answered
+        // with nothing, so this lookup never once resolved a vendor.
         Employee mappedVendor = hrmsUtils.getMappedVendorByBoundaryCode(
-                Map.of(REQUEST_INFO_KEY, requestInfo != null ? requestInfo : new RequestInfo()),
+                requestInfo != null ? requestInfo : new RequestInfo(),
                 facility.getBoundaryCode());
         if (mappedVendor == null) {
             return null;

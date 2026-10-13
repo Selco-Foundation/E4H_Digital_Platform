@@ -372,6 +372,11 @@ public class OrganisationUserServiceValidator {
         if (existingOrgUser ==null)
             throw new CustomException("Organization", "This org user id do not exist");
 
+        // Snapshot taken before the HRMS write: the clear at the end needs the jurisdictions this
+        // vendor held when the request arrived, to work out which facility boundaries were dropped.
+        List<Jurisdiction> previousFacilityJurisdictions = copyJurisdictions(
+                existingOrgUser.getUser() != null ? existingOrgUser.getUser().getJurisdictions() : null);
+
         // If new organizationId is used for update
         if(!Objects.equals(existingOrgUser.getOrganizationId(), request.getOrganizationId())){
             // Check if new organisationId already exist
@@ -440,12 +445,10 @@ public class OrganisationUserServiceValidator {
                     throw new CustomException("Organization", "This user with this username already exist: "+orgUser.getUserName());
                 }
                 employee.getUser().setUserName(orgUser.getUserName());
-                facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
             }
 
             if (changes.isNameChanged()) {
                 employee.getUser().setName(orgUser.getName());
-                facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
             }
 
             if (changes.isEmailChanged()) {
@@ -481,12 +484,6 @@ public class OrganisationUserServiceValidator {
                 employee.setJurisdictions(
                         hrmsUtils.buildJurisdictions(orgUser.getJurisdictions())
                 );
-                facilityUtil.clearMappedVendorForRemovedFacilityJurisdictions(
-                        request,
-                        existingOrgUser.getUser().getJurisdictions(),
-                        facilitySyncJurisdictions
-                );
-                facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
             }
 
             EmployeeRequest employeeRequest = EmployeeRequest.builder()
@@ -511,7 +508,32 @@ public class OrganisationUserServiceValidator {
             request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
-//        facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
+        // Sync the facilities only now, after HRMS has accepted the write. Dispatching it from
+        // inside the branches above raced the update that had not been sent yet, and could stamp a
+        // vendor onto facilities when the HRMS write then failed and threw.
+        //
+        // Run unconditionally rather than under isJurisdictionChanged(): that flag is computed
+        // against this service's own org_user copy of the user, so a copy that had already drifted
+        // into agreement reported "unchanged" and skipped the sync while the facilities were still
+        // holding a stale vendor - or none at all. The sync is idempotent and returns early when
+        // there are no facility jurisdictions, so running it on every update costs a no-op.
+        User settledUser = request.getUser();
+        List<Jurisdiction> syncJurisdictions = !facilitySyncJurisdictions.isEmpty()
+                ? facilitySyncJurisdictions
+                : copyJurisdictions(settledUser != null ? settledUser.getJurisdictions() : null);
+        // Fall back to the names HRMS settled on: an update that carries only jurisdictions leaves
+        // these blank on the request, and a blank name makes the whole sync skip itself.
+        String syncVendorName = StringUtils.isNotBlank(facilitySyncVendorName)
+                ? facilitySyncVendorName
+                : (settledUser != null ? settledUser.getName() : null);
+        String syncVendorUserName = StringUtils.isNotBlank(facilitySyncVendorUserName)
+                ? facilitySyncVendorUserName
+                : (settledUser != null ? settledUser.getUserName() : null);
+
+        facilityUtil.clearMappedVendorForRemovedFacilityJurisdictions(
+                request, previousFacilityJurisdictions, syncJurisdictions);
+        facilityUtil.syncMappedVendorToFacilities(
+                request, syncJurisdictions, syncVendorName, syncVendorUserName);
 
         if (!errorMap.isEmpty()) {
             log.error("Validation failed with {} errors", errorMap.size());
