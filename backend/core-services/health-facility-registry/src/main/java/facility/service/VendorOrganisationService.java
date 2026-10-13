@@ -266,16 +266,25 @@ public class VendorOrganisationService {
     private void stampMappedVendor(String vendorCode, List<Facility> pending, String tenantId,
                                    RequestInfo requestInfo) {
         try {
-            User orgUser = findFirstOrgUser(vendorCode, tenantId, requestInfo);
-            if (orgUser == null || orgUser.getUserName() == null || orgUser.getUserName().isBlank()) {
+            Employee orgEmployee = findFirstOrgEmployee(vendorCode, tenantId, requestInfo);
+            User orgUser = orgEmployee != null ? orgEmployee.getUser() : null;
+            // The employee code stands in when the user record carries no username, the same
+            // pairing the HRMS lookup uses. Bailing on a blank username was the one way a vendor
+            // could be handed the facility's jurisdiction and still leave the facility unmapped,
+            // since the jurisdiction assignment needs only the uuid.
+            String vendorUserName = firstNonBlank(
+                    orgUser != null ? orgUser.getUserName() : null,
+                    orgEmployee != null ? orgEmployee.getCode() : null);
+            if (vendorUserName == null) {
                 log.warn("No resolvable org user for vendor code {}; leaving {} facilities without a "
                         + "mapped vendor", vendorCode, pending.size());
                 return;
             }
+            String vendorName = orgUser != null ? orgUser.getName() : null;
             pending.forEach(facility -> FacilityMappedVendorHelper.applyMappedVendor(
-                    facility, orgUser.getName(), orgUser.getUserName()));
+                    facility, vendorName, vendorUserName));
             log.info("Stamped mapped vendor {} from vendor code {} onto {} facilities being created",
-                    orgUser.getUserName(), vendorCode, pending.size());
+                    vendorUserName, vendorCode, pending.size());
         } catch (Exception e) {
             log.error("Failed to resolve mapped vendor for vendor code {} (non-blocking): {}",
                     vendorCode, e.getMessage(), e);
@@ -283,11 +292,14 @@ public class VendorOrganisationService {
     }
 
     /**
-     * The HRMS user behind a vendor code - the same org user {@link
+     * The HRMS employee behind a vendor code - the same org user {@link
      * #assignFacilityJurisdictionsToFirstOrgUser} hands the facility boundary to, so the name
      * stamped on the facility and the jurisdiction holding the mapping always describe one person.
+     *
+     * <p>The whole employee rather than its user record: the username may be blank there, and the
+     * employee code is what stands in for it.
      */
-    private User findFirstOrgUser(String vendorCode, String tenantId, RequestInfo requestInfo) {
+    private Employee findFirstOrgEmployee(String vendorCode, String tenantId, RequestInfo requestInfo) {
         String organisationId = findOrganisationIdByCode(vendorCode, tenantId, requestInfo);
         if (organisationId == null) {
             log.warn("No organisation found for vendor code {}", vendorCode);
@@ -298,8 +310,7 @@ public class VendorOrganisationService {
             log.warn("No users found for organisation {} (vendor code {})", organisationId, vendorCode);
             return null;
         }
-        Employee employee = hrmsUtils.getUserById(Map.of(REQUEST_INFO_KEY, requestInfo), orgUserHrmsUuid);
-        return employee != null ? employee.getUser() : null;
+        return hrmsUtils.getUserById(Map.of(REQUEST_INFO_KEY, requestInfo), orgUserHrmsUuid);
     }
 
     private String findOrganisationIdByCode(String vendorCode, String tenantId, RequestInfo requestInfo) {
