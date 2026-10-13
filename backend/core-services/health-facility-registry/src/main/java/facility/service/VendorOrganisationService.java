@@ -184,6 +184,7 @@ public class VendorOrganisationService {
      * cannot be resolved is simply left without a mapped vendor, as before.
      */
     private void applyMappedVendorFromHrms(List<Facility> facilities, RequestInfo requestInfo) {
+        List<Facility> pending = new ArrayList<>();
         for (Facility facility : facilities) {
             if (facility == null) {
                 continue;
@@ -196,6 +197,22 @@ public class VendorOrganisationService {
             if (boundaryCode == null || boundaryCode.isBlank()) {
                 continue;
             }
+            pending.add(facility);
+        }
+        if (pending.isEmpty()) {
+            return;
+        }
+
+        // Only now, and only once for the whole batch: the jurisdictions these facilities are about
+        // to be looked up by were written to HRMS moments ago by the caller, and reading them
+        // straight back came up empty. Waiting per facility would multiply the delay by the size of
+        // a bulk create, and a batch that resolved everything from its vendor code never gets here.
+        if (!awaitHrmsJurisdictionPropagation(pending.size())) {
+            return;
+        }
+
+        for (Facility facility : pending) {
+            String boundaryCode = facility.getBoundaryCode();
             try {
                 Employee mappedVendor = hrmsUtils.getMappedVendorByBoundaryCode(requestInfo, boundaryCode);
                 if (mappedVendor == null) {
@@ -216,6 +233,32 @@ public class VendorOrganisationService {
                 log.error("Failed to resolve mapped vendor from HRMS for boundaryCode {} (non-blocking): {}",
                         boundaryCode, e.getMessage(), e);
             }
+        }
+    }
+
+    /**
+     * Pauses before reading the vendor jurisdictions back out of HRMS, giving the write that just
+     * created them time to become visible to a search.
+     *
+     * @return {@code false} when the wait was interrupted, in which case the caller abandons the
+     *         lookup rather than issuing it on an interrupted thread. The facilities simply keep
+     *         no mapped vendor, which the backfill endpoint can settle later.
+     */
+    private boolean awaitHrmsJurisdictionPropagation(int pendingCount) {
+        long delayMs = configs.getMappedVendorHrmsLookupDelayMs();
+        if (delayMs <= 0) {
+            return true;
+        }
+        log.info("Waiting {}ms before resolving the mapped vendor from HRMS for {} facilities",
+                delayMs, pendingCount);
+        try {
+            Thread.sleep(delayMs);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Interrupted while waiting for HRMS jurisdictions to propagate; "
+                    + "leaving {} facilities without a mapped vendor", pendingCount);
+            return false;
         }
     }
 

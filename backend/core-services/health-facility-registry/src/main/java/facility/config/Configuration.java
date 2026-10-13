@@ -173,6 +173,14 @@ public class Configuration {
     @Value("${facility.mapped-vendor.backfill.enabled:false}")
     private boolean facilityMappedVendorBackfillEnabled;
 
+    /**
+     * How long to wait before reading vendor jurisdictions back out of HRMS during facility create,
+     * in milliseconds. The jurisdictions are written moments earlier in the same request, and a
+     * search issued immediately can miss them. Set to 0 to look up without waiting.
+     */
+    @Value("${facility.mapped-vendor.hrms-lookup.delay-ms:3000}")
+    private long mappedVendorHrmsLookupDelayMs;
+
     @Value("${egov.vendor.host:}")
     private String vendorHost;
 
