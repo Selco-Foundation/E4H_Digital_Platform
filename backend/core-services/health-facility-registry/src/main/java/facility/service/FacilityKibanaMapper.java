@@ -220,6 +220,20 @@ public class FacilityKibanaMapper {
      * Falls back to full mapping when no existing document can be found.
      */
     public FacilityKibanaIndex toKibanaIndexForFacilityUpdate(Facility facility, RequestInfo requestInfo) {
+        return toKibanaIndexForFacilityUpdate(facility, requestInfo, false);
+    }
+
+    /**
+     * @param mappedVendorInPayload whether the update that triggered this actually named a mapped
+     *                              vendor. Only then may a null blank the indexed one - that is a
+     *                              deliberate unmapping. An update that never mentioned the vendor
+     *                              carries null simply because the facility row holds none, and
+     *                              writing that through erased vendors the row never had: the
+     *                              document is replaced wholesale, not merged, so a single
+     *                              unrelated facility edit wiped the mapping off the dashboard.
+     */
+    public FacilityKibanaIndex toKibanaIndexForFacilityUpdate(Facility facility, RequestInfo requestInfo,
+                                                              boolean mappedVendorInPayload) {
         if (facility == null) {
             log.info("Skipping Kibana index update mapping: facility is null");
             return null;
@@ -251,10 +265,17 @@ public class FacilityKibanaMapper {
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
         }
-        existingDoc.setMappedVendorName(facility.getMappedVendorName());
-        existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
-        log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
-                facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
+        if (mappedVendorInPayload || FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+            existingDoc.setMappedVendorName(facility.getMappedVendorName());
+            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+            log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
+                    facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
+        } else {
+            log.info("Keeping indexed mapped vendor for facilityId={} (name={}, userName={}): this update "
+                            + "named none and the facility row holds none",
+                    facility.getFacilityId(), existingDoc.getMappedVendorName(),
+                    existingDoc.getMappedVendorUserName());
+        }
         if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {
             existingDoc.setSolutionDesignType(facility.getFacilityDetails().getSolarSolutionDesignType().name());
         }
