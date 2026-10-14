@@ -81,6 +81,8 @@ class Common {
   String get newestFirst => 'CORE_COMMON_NEWEST_FIRST';
   String get oldestFirst => 'CORE_COMMON_OLDEST_FIRST';
   String get submissionDate => 'CORE_COMMON_SUBMISSION_DATE';
+  String get approvedDate => 'CORE_COMMON_APPROVED_DATE';
+  String get rejectedDate => 'CORE_COMMON_REJECTED_DATE';
   String get optional => 'CORE_COMMON_OPTIONAL';
   String get uploadImages => 'CORE_COMMON_UPLOAD_IMAGES';
   String get uploadVideos => 'CORE_COMMON_UPLOAD_VIDEOS';

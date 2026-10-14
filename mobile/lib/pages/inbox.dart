@@ -403,6 +403,7 @@ class _InboxPageState extends State<InboxPage>
                         district: locality.district,
                         block: locality.block),
                     rejected: () => InboxReportRejectedCard(
+                      dateLabelKey: i18.common.rejectedDate,
                       isBookmarked: bookmarkIds
                           .contains(project.activityFacility.id.trim()),
                       isSavingBookmark: !bookmarksLoaded ||
@@ -433,6 +434,7 @@ class _InboxPageState extends State<InboxPage>
                       },
                     ),
                     approved: () => InboxReportCard(
+                        dateLabelKey: i18.common.approvedDate,
                         isBookmarked: bookmarkIds
                             .contains(project.activityFacility.id.trim()),
                         isSavingBookmark: !bookmarksLoaded ||

@@ -22,6 +22,7 @@ import '../repositories/dynamic_form_repo.dart';
 import '../repositories/scheduled_visit_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/report_date_label.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -251,8 +252,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
                                           district: locality.district,
                                           block: locality.block,
                                           dateAssigned:
-                                              items[index].scheduledDate ??
-                                                  DateTime.now(),
+                                              items[index].displayDate,
                                           onSubmit: () async {
                                             context
                                                 .read<
@@ -462,7 +462,8 @@ class AMCInstallationReportCard extends StatefulWidget {
   final String? state;
   final String? district;
   final String? block;
-  final DateTime dateAssigned;
+  final DateTime? dateAssigned;
+  final String? dateLabelKey;
   final String? systemDesignCode;
   final int? visitNumber;
   final int? durationMonths;
@@ -483,6 +484,7 @@ class AMCInstallationReportCard extends StatefulWidget {
     this.district,
     this.block,
     required this.dateAssigned,
+    this.dateLabelKey,
     this.systemDesignCode,
     this.visitNumber,
     this.durationMonths,
@@ -526,7 +528,9 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
     final effectiveLabel = widget.label ?? '';
-    String formattedDate = DateFormat('dd/MM/yy').format(widget.dateAssigned);
+    final date = widget.dateAssigned;
+    final formattedDate =
+        date == null ? '—' : DateFormat('dd/MM/yy').format(date);
 
     return DigitCard(
       children: [
@@ -557,7 +561,9 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
               ),
             ),
             ReportDetailRow(
-              label: context.translate(i18.amcSelectFacility.amcDate),
+              label: reportDateLabel(
+                  widget.dateLabelKey ?? i18.amcSelectFacility.amcDate,
+                  context.translate),
               value: _detailText(formattedDate, textTheme, theme),
             ),
             ReportDetailRow(

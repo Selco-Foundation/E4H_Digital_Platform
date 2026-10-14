@@ -336,7 +336,7 @@ class _AmcDraftPageState extends State<AmcDraftPage>
                       durationMonths: visit.amcConfiguration?.durationMonths,
                       visitFrequencyMonths:
                           visit.amcConfiguration?.visitFrequencyMonths,
-                      dateAssigned: visit.scheduledDate ?? DateTime.now(),
+                      dateAssigned: visit.displayDate,
                       status: visit.status!.isNotEmpty
                           ? (visit.status!.toLowerCase().contains(otpText)
                               ? context.translate(i18
@@ -363,7 +363,7 @@ class _AmcDraftPageState extends State<AmcDraftPage>
                   durationMonths: visit.amcConfiguration?.durationMonths,
                   visitFrequencyMonths:
                       visit.amcConfiguration?.visitFrequencyMonths,
-                  dateAssigned: visit.scheduledDate ?? DateTime.now(),
+                  dateAssigned: visit.displayDate,
                   status: visit.status ?? '---',
                   state: locality.state,
                   district: locality.district,
