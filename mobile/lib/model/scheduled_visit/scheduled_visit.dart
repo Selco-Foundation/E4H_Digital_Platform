@@ -260,3 +260,10 @@ class FacilityConverter
   @override
   Map<String, dynamic> toJson(Facility value) => value.toMap();
 }
+
+/// Date of the latest workflow event, matching the web AMC audit trail.
+extension ScheduledVisitDisplayDate on ScheduledVisit {
+  DateTime? get displayDate => processInstances.isEmpty
+      ? null
+      : processInstances.first.auditDetails?.lastModifiedTime;
+}

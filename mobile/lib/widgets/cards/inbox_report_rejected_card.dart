@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../utils/extensions.dart';
+import '../../utils/report_date_label.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
 import '../bookmarks/report_bookmarks.dart';
@@ -21,7 +22,8 @@ class InboxReportRejectedCard extends StatelessWidget {
   final String? state;
   final String? district;
   final String? block;
-  final DateTime dateAssigned;
+  final DateTime? dateAssigned;
+  final String? dateLabelKey;
   final Function() onPress;
 
   const InboxReportRejectedCard({
@@ -35,6 +37,7 @@ class InboxReportRejectedCard extends StatelessWidget {
     this.district,
     this.block,
     required this.dateAssigned,
+    this.dateLabelKey,
     required this.onPress,
   });
 
@@ -42,7 +45,9 @@ class InboxReportRejectedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-    String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
+    final date = dateAssigned;
+    final formattedDate =
+        date == null ? '—' : DateFormat('dd/MM/yy').format(date);
 
     return DigitCard(
       children: [
@@ -77,7 +82,8 @@ class InboxReportRejectedCard extends StatelessWidget {
               ),
             ),
             ReportDetailRow(
-              label: context.translate(i18.common.submissionDate),
+              label: reportDateLabel(
+                  dateLabelKey ?? i18.common.submissionDate, context.translate),
               labelFlex: 1,
               valueFlex: 2,
               value: _detailText(formattedDate, textTheme, theme),

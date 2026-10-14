@@ -327,6 +327,7 @@ class _AmcInboxPageState extends State<AmcInboxPage>
                     parseBoundaryCodeLocality(visit.facility?.boundaryCode);
                 if (_selectedTabIndex == 0) {
                   return AMCInstallationReportCard(
+                    dateLabelKey: i18.common.rejectedDate,
                     isBookmarked: bookmarkIds.contains(visit.id?.trim()),
                     isSavingBookmark: !bookmarksLoaded ||
                         savingBookmarks.contains(visit.id?.trim()),
@@ -340,7 +341,7 @@ class _AmcInboxPageState extends State<AmcInboxPage>
                         visit.amcConfiguration?.visitFrequencyMonths,
                     title: visit.facility?.facilityName ?? '',
                     status: visit.status ?? '---',
-                    dateAssigned: visit.scheduledDate ?? DateTime.now(),
+                    dateAssigned: visit.displayDate,
                     state: locality.state,
                     district: locality.district,
                     block: locality.block,
@@ -356,6 +357,7 @@ class _AmcInboxPageState extends State<AmcInboxPage>
                 }
 
                 return InboxReportCard(
+                  dateLabelKey: i18.common.approvedDate,
                   isBookmarked: bookmarkIds.contains(visit.id?.trim()),
                   isSavingBookmark: !bookmarksLoaded ||
                       savingBookmarks.contains(visit.id?.trim()),
@@ -385,7 +387,7 @@ class _AmcInboxPageState extends State<AmcInboxPage>
                   durationMonths: visit.amcConfiguration?.durationMonths,
                   visitFrequencyMonths:
                       visit.amcConfiguration?.visitFrequencyMonths,
-                  dateAssigned: visit.scheduledDate ?? DateTime.now(),
+                  dateAssigned: visit.displayDate,
                   status: visit.status ?? '---',
                   state: locality.state,
                   district: locality.district,
