@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
+import facility.util.FacilityMappedVendorHelper;
 import facility.util.HRMSUtils;
 import facility.web.models.Employee;
 import facility.web.models.EmployeeRequest;
 import facility.web.models.Facility;
 import facility.web.models.Jurisdiction;
+import facility.web.models.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
@@ -31,6 +33,9 @@ import java.util.Set;
 @Slf4j
 @RequiredArgsConstructor
 public class VendorOrganisationService {
+
+    /** Key wrapping the RequestInfo in every egov service-call body. */
+    private static final String REQUEST_INFO_KEY = "RequestInfo";
 
     private final ServiceRequestRepository serviceRequestRepository;
     private final Configuration configs;
@@ -134,6 +139,180 @@ public class VendorOrganisationService {
         }
     }
 
+    /**
+     * Stamps the mapped vendor onto facilities that are about to be created, resolved from the
+     * {@code vendorCode} on their facility details.
+     *
+     * <p>Callers must invoke this <em>before</em> the create is pushed: the mapped vendor has no
+     * column of its own and rides along inside {@code additional_details}, so a value set after the
+     * push never reaches the row.
+     *
+     * <p>Without this a facility created with a vendor code carries no mapped vendor at all.
+     * {@link #assignFacilityJurisdictionsBulk} makes the mapping itself, but it runs after the
+     * create and writes in one direction only - onto the vendor's HRMS jurisdictions - and
+     * vendor-registry pushes the names back down onto the facility only when that vendor's org user
+     * is next edited.
+     *
+     * <p>Resolved once per distinct vendor code however many facilities share it, and a facility
+     * whose create payload already carried a vendor is left as the payload had it. Best-effort
+     * throughout: a vendor that cannot be resolved leaves its facilities untouched rather than
+     * failing a create that has already been validated.
+     */
+    public void applyMappedVendorFromVendorCode(List<Facility> facilities, String tenantId, RequestInfo requestInfo) {
+        if (facilities == null || facilities.isEmpty()) {
+            return;
+        }
+        if (configs.getVendorHost() == null || configs.getVendorHost().isBlank()) {
+            log.warn("egov.vendor.host is not configured; resolving mapped vendors from HRMS alone");
+        } else {
+            groupByVendorCodeNeedingMappedVendor(facilities)
+                    .forEach((vendorCode, pending) -> stampMappedVendor(vendorCode, pending, tenantId, requestInfo));
+        }
+        applyMappedVendorFromHrms(facilities, requestInfo);
+    }
+
+    /**
+     * Settles the mapped vendor for facilities the vendor code could not: it was absent from the
+     * create payload, named no organisation, or that organisation had no resolvable user.
+     *
+     * <p>Reads the mapping back out of HRMS by boundary code, which is only meaningful because the
+     * caller assigns the jurisdictions first - this is the same lookup the Kibana mapper performs,
+     * so the row and the index settle on one vendor instead of the row being left null and the
+     * index resolving one of its own.
+     *
+     * <p>Never throws: a facility create must not fail because HRMS is unreachable. A facility that
+     * cannot be resolved is simply left without a mapped vendor, as before.
+     */
+    private void applyMappedVendorFromHrms(List<Facility> facilities, RequestInfo requestInfo) {
+        for (Facility facility : facilities) {
+            if (facility == null) {
+                continue;
+            }
+            FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+            if (FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+                continue;
+            }
+            String boundaryCode = facility.getBoundaryCode();
+            if (boundaryCode == null || boundaryCode.isBlank()) {
+                continue;
+            }
+            try {
+                Employee mappedVendor = hrmsUtils.getMappedVendorByBoundaryCode(requestInfo, boundaryCode);
+                if (mappedVendor == null) {
+                    continue;
+                }
+                User vendorUser = mappedVendor.getUser();
+                String userName = firstNonBlank(
+                        vendorUser != null ? vendorUser.getUserName() : null,
+                        mappedVendor.getCode());
+                if (userName == null) {
+                    continue;
+                }
+                FacilityMappedVendorHelper.applyMappedVendor(
+                        facility, vendorUser != null ? vendorUser.getName() : null, userName);
+                log.info("Resolved mapped vendor {} from HRMS for facility {} (boundaryCode {})",
+                        userName, facility.getFacilityId(), boundaryCode);
+            } catch (Exception e) {
+                log.error("Failed to resolve mapped vendor from HRMS for boundaryCode {} (non-blocking): {}",
+                        boundaryCode, e.getMessage(), e);
+            }
+        }
+    }
+
+    /** The first value that is neither null nor blank, trimmed; null when there is none. */
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    /** The facilities still awaiting a mapped vendor, keyed by the vendor code to resolve it from. */
+    private Map<String, List<Facility>> groupByVendorCodeNeedingMappedVendor(List<Facility> facilities) {
+        Map<String, List<Facility>> facilitiesByVendorCode = new LinkedHashMap<>();
+        for (Facility facility : facilities) {
+            String vendorCode = vendorCodeNeedingMappedVendor(facility);
+            if (vendorCode != null) {
+                facilitiesByVendorCode
+                        .computeIfAbsent(vendorCode, ignored -> new ArrayList<>())
+                        .add(facility);
+            }
+        }
+        return facilitiesByVendorCode;
+    }
+
+    /**
+     * The vendor code to resolve a mapped vendor from, or {@code null} when this facility needs no
+     * resolution - it has no vendor code, or its create payload already carried a vendor.
+     */
+    private String vendorCodeNeedingMappedVendor(Facility facility) {
+        if (facility == null) {
+            return null;
+        }
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+        if (FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+            return null;
+        }
+        String vendorCode = extractVendorCode(facility);
+        return vendorCode == null || vendorCode.isBlank() ? null : vendorCode;
+    }
+
+    /** Resolves one vendor code and stamps the result onto every facility waiting on it. */
+    private void stampMappedVendor(String vendorCode, List<Facility> pending, String tenantId,
+                                   RequestInfo requestInfo) {
+        try {
+            Employee orgEmployee = findFirstOrgEmployee(vendorCode, tenantId, requestInfo);
+            User orgUser = orgEmployee != null ? orgEmployee.getUser() : null;
+            // The employee code stands in when the user record carries no username, the same
+            // pairing the HRMS lookup uses. Bailing on a blank username was the one way a vendor
+            // could be handed the facility's jurisdiction and still leave the facility unmapped,
+            // since the jurisdiction assignment needs only the uuid.
+            String vendorUserName = firstNonBlank(
+                    orgUser != null ? orgUser.getUserName() : null,
+                    orgEmployee != null ? orgEmployee.getCode() : null);
+            if (vendorUserName == null) {
+                log.warn("No resolvable org user for vendor code {}; leaving {} facilities without a "
+                        + "mapped vendor", vendorCode, pending.size());
+                return;
+            }
+            String vendorName = orgUser != null ? orgUser.getName() : null;
+            pending.forEach(facility -> FacilityMappedVendorHelper.applyMappedVendor(
+                    facility, vendorName, vendorUserName));
+            log.info("Stamped mapped vendor {} from vendor code {} onto {} facilities being created",
+                    vendorUserName, vendorCode, pending.size());
+        } catch (Exception e) {
+            log.error("Failed to resolve mapped vendor for vendor code {} (non-blocking): {}",
+                    vendorCode, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * The HRMS employee behind a vendor code - the same org user {@link
+     * #assignFacilityJurisdictionsToFirstOrgUser} hands the facility boundary to, so the name
+     * stamped on the facility and the jurisdiction holding the mapping always describe one person.
+     *
+     * <p>The whole employee rather than its user record: the username may be blank there, and the
+     * employee code is what stands in for it.
+     */
+    private Employee findFirstOrgEmployee(String vendorCode, String tenantId, RequestInfo requestInfo) {
+        String organisationId = findOrganisationIdByCode(vendorCode, tenantId, requestInfo);
+        if (organisationId == null) {
+            log.warn("No organisation found for vendor code {}", vendorCode);
+            return null;
+        }
+        String orgUserHrmsUuid = findFirstOrgUserHrmsUuid(organisationId, tenantId, requestInfo);
+        if (orgUserHrmsUuid == null) {
+            log.warn("No users found for organisation {} (vendor code {})", organisationId, vendorCode);
+            return null;
+        }
+        return hrmsUtils.getUserById(Map.of(REQUEST_INFO_KEY, requestInfo), orgUserHrmsUuid);
+    }
+
     private String findOrganisationIdByCode(String vendorCode, String tenantId, RequestInfo requestInfo) {
         String uri = configs.getVendorHost() + configs.getVendorOrganisationSearchPath();
 
@@ -146,7 +325,7 @@ public class VendorOrganisationService {
         pagination.put("offset", 0);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("RequestInfo", requestInfo);
+        body.put(REQUEST_INFO_KEY, requestInfo);
         body.put("SearchCriteria", searchCriteria);
         body.put("Pagination", pagination);
 
@@ -172,7 +351,7 @@ public class VendorOrganisationService {
         criteria.put("organizationIds", List.of(organisationId));
 
         Map<String, Object> body = new HashMap<>();
-        body.put("RequestInfo", requestInfo);
+        body.put(REQUEST_INFO_KEY, requestInfo);
         body.put("OrgUser", criteria);
 
         Map<String, Object> response = castToMap(serviceRequestRepository.fetchResult(new StringBuilder(uri), body));
@@ -194,7 +373,7 @@ public class VendorOrganisationService {
 
     private void updateEmployeeJurisdictionsWithFacilityBoundaries(
             String hrmsUserUuid, List<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
-        Map<String, Object> searchWrapper = Map.of("RequestInfo", requestInfo);
+        Map<String, Object> searchWrapper = Map.of(REQUEST_INFO_KEY, requestInfo);
         Employee employee = hrmsUtils.getUserById(searchWrapper, hrmsUserUuid);
         if (employee == null) {
             log.warn("HRMS employee not found for uuid {}", hrmsUserUuid);

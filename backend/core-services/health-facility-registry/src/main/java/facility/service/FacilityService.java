@@ -3,12 +3,15 @@ package facility.service;
 import facility.config.Configuration;
 import facility.repository.FacilityRepository;
 import facility.util.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +27,9 @@ import static facility.config.ServiceConstants.SYSTEM_USER;
 @Service
 @Slf4j
 public class FacilityService {
+    /** Serialises additional_details for the mapped-vendor backfill's JSONB write. */
+    private static final ObjectMapper ADDITIONAL_DETAILS_MAPPER = new ObjectMapper();
+
     private static final String CATEGORY_HEALTH = "HEALTH";
     public static final String CATEGORY_ANGANWADI = "ANGANWADI";
     /** When category is HEALTH, MDMS-style rule: at least one of HFR ID or NIN ID must be present. */
@@ -259,6 +265,24 @@ public class FacilityService {
             // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
             upsertFacilityBoundaryLocalizations(tenantFacilities, request.getRequestInfo());
 
+            // Hand the facility boundaries to the vendor's HRMS user BEFORE the mapped vendor is
+            // resolved and before anything is pushed. The resolution below, and the Kibana mapper's
+            // HRMS-first lookup further down, both read that jurisdiction back - running the
+            // assignment afterwards left them reading an HRMS that did not hold the mapping yet, so
+            // a facility created without a vendor code kept a null mapped vendor on both the row and
+            // the index, with nothing to ever re-resolve it.
+            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
+                vendorOrganisationService.assignFacilityJurisdictionsBulk(
+                        tenantFacilities, tenantId, request.getRequestInfo());
+
+                // Resolve the mapped vendor before anything is pushed, so it is persisted with the
+                // row rather than only reaching the index. Skipped under the same flag as the
+                // assignment above: when the caller owns the vendor mapping, a vendor stamped from
+                // here would name one this service never actually mapped.
+                vendorOrganisationService.applyMappedVendorFromVendorCode(
+                        tenantFacilities, tenantId, request.getRequestInfo());
+            }
+
             log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
             for (Facility facility : tenantFacilities) {
                 // Keep original (unencrypted) POC mobile number for HRMS user creation — the push
@@ -269,11 +293,22 @@ public class FacilityService {
                 facility.setAuditDetails(AuditDetails.builder().createdBy(request.getRequestInfo().getUserInfo().getUuid()).lastModifiedBy(request.getRequestInfo().getUserInfo().getUuid()).createdTime(time).lastModifiedTime(time).build());
 
                 log.trace("Processing facility: {}", facility.getFacilityId());
+
+                // The mapped vendor has no column of its own - it is persisted inside
+                // additional_details - so it has to be folded in before the push below, which
+                // serializes the facility as it stands. Anything set afterwards still reaches the
+                // Kibana document built further down, but never the row.
+                FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+                if (FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+                    // Only when there is one to write: syncing unconditionally would stamp a null
+                    // mappedVendorName/mappedVendorUserName pair onto every facility created without
+                    // a vendor, and an update payload echoing those keys back reads as a deliberate
+                    // clear rather than as "not supplied" (see mergeMappedVendorFromUpdate).
+                    FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+                }
+
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
-                
-                FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
-                FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
 
                 // If facility is ONM ready, create POC user and push to Kibana for indexing
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
@@ -296,10 +331,6 @@ public class FacilityService {
                 validatedFacilities.add(facility);
             }
 
-            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
-                vendorOrganisationService.assignFacilityJurisdictionsBulk(
-                        tenantFacilities, tenantId, request.getRequestInfo());
-            }
         }
 
         log.info("Successfully created {} facilities", validatedFacilities.size());
@@ -954,7 +985,7 @@ public class FacilityService {
                     .build();
 
             FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
-                    facilityForKibanaUpdate, request.getRequestInfo());
+                    facilityForKibanaUpdate, request.getRequestInfo(), mappedVendorUpdated);
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
         } else if (Boolean.FALSE.equals(update.getIsOnmReady())) {
@@ -978,7 +1009,7 @@ public class FacilityService {
                     .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
                     .build();
             FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
-                    facilityForKibanaUpdate, request.getRequestInfo());
+                    facilityForKibanaUpdate, request.getRequestInfo(), true);
             if (kibanaIndex != null) {
                 facilityRepository.pushToKibana(kibanaIndex);
                 log.info("Facility {} mapped-vendor fields pushed to Kibana", sanitizeForLog(update.getFacilityId()));
@@ -1567,6 +1598,141 @@ public class FacilityService {
         return response;
     }
 
+    /**
+     * Settles {@code mappedVendorName} / {@code mappedVendorUserName} on facilities that carry
+     * none, reading the mapping back out of HRMS by boundary code.
+     *
+     * <p>Repairs the rows left behind by the two paths that used to drop the vendor: a facility
+     * created before its vendor jurisdiction was assigned, and a vendor jurisdiction added through
+     * vendor-registry whose sync never reached the facility. Both now settle the vendor themselves,
+     * so this exists for the rows already written, not as part of any live flow.
+     *
+     * <p>Writes the row and, for indexed facilities, the Kibana document - the script in
+     * {@code docs/mapVendorFromHrms.py} only ever touched the index, which left the row null and
+     * the next full re-index free to drop the vendor again.
+     */
+    public FacilityMappedVendorBackfillResponse backfillFacilityMappedVendors(
+            FacilityMappedVendorBackfillRequest request) {
+        if (!configs.isFacilityMappedVendorBackfillEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility mappedVendor backfill is disabled. "
+                            + "Set facility.mapped-vendor.backfill.enabled=true to run.");
+        }
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+
+        boolean onmReadyOnly = request.getOnmReadyOnly() == null || Boolean.TRUE.equals(request.getOnmReadyOnly());
+        boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+
+        List<Facility> candidates = loadFacilitiesForKibanaReindex(
+                request.getTenantId(), request.getFacilityIds(), onmReadyOnly);
+
+        // Only the rows actually missing a vendor: one already mapped is left alone, so a re-run
+        // costs nothing and an operator can repeat it safely.
+        List<Facility> pending = new ArrayList<>();
+        for (Facility facility : candidates) {
+            FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+            if (!FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+                pending.add(facility);
+            }
+        }
+
+        FacilityMappedVendorBackfillResponse response = FacilityMappedVendorBackfillResponse.builder()
+                .scanned(pending.size())
+                .dryRun(dryRun)
+                .errors(new ArrayList<>())
+                .build();
+
+        log.info("mappedVendor backfill: tenantId={}, onmReadyOnly={}, dryRun={}, loaded={}, missing={}",
+                request.getTenantId(), onmReadyOnly, dryRun, candidates.size(), pending.size());
+
+        for (Facility facility : pending) {
+            String boundaryCode = facility.getBoundaryCode();
+            if (boundaryCode == null || boundaryCode.isBlank()) {
+                response.setSkipped(response.getSkipped() + 1);
+                continue;
+            }
+            try {
+                Employee mappedVendor =
+                        hrmsUtils.getMappedVendorByBoundaryCode(request.getRequestInfo(), boundaryCode);
+                if (mappedVendor == null) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+                User vendorUser = mappedVendor.getUser();
+                String vendorUserName = firstNonBlank(
+                        vendorUser != null ? vendorUser.getUserName() : null, mappedVendor.getCode());
+                if (vendorUserName == null || vendorUserName.isBlank()) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+
+                if (dryRun) {
+                    response.setUpdated(response.getUpdated() + 1);
+                    log.info("mappedVendor backfill (dry run): would map {} onto facility {}",
+                            sanitizeForLog(vendorUserName), sanitizeForLog(facility.getFacilityId()));
+                    continue;
+                }
+
+                FacilityMappedVendorHelper.applyMappedVendor(
+                        facility, vendorUser != null ? vendorUser.getName() : null, vendorUserName);
+                persistMappedVendorOnRow(facility);
+
+                // Only indexed facilities have a document to keep in step; a non ONM-ready one has
+                // none, and pushing would create the document its own update path just deletes.
+                if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+                    FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
+                            facility, request.getRequestInfo(), true);
+                    if (kibanaIndex != null) {
+                        facilityRepository.pushToKibana(kibanaIndex);
+                    }
+                }
+
+                response.setUpdated(response.getUpdated() + 1);
+                log.info("mappedVendor backfill: mapped {} onto facility {}",
+                        sanitizeForLog(vendorUserName), sanitizeForLog(facility.getFacilityId()));
+            } catch (Exception e) {
+                response.setFailed(response.getFailed() + 1);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("mappedVendor backfill failed for facilityId {} boundaryCode {}: {}",
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(boundaryCode), message, e);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(facility.getFacilityId())
+                        .tenantId(facility.getTenantId())
+                        .boundaryCode(boundaryCode)
+                        .message(message)
+                        .build());
+            }
+        }
+
+        log.info("mappedVendor backfill complete: scanned={}, updated={}, skipped={}, failed={}, dryRun={}",
+                response.getScanned(), response.getUpdated(), response.getSkipped(),
+                response.getFailed(), dryRun);
+        return response;
+    }
+
+    /**
+     * Writes the facility's {@code additional_details} straight to the row.
+     *
+     * <p>Direct rather than through the persister topic: the mapped vendor has no column of its
+     * own, so the update topic would carry a whole facility payload rebuilt from this read, and
+     * every field it failed to echo back would be overwritten. This touches the one column that
+     * changed.
+     */
+    private void persistMappedVendorOnRow(Facility facility) {
+        String additionalDetailsJson;
+        try {
+            additionalDetailsJson = ADDITIONAL_DETAILS_MAPPER.writeValueAsString(facility.getAdditionalDetails());
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(
+                    "Could not serialise additional_details for facility " + facility.getFacilityId(), e);
+        }
+        jdbcTemplate.update(
+                "UPDATE facility SET additional_details = ?::jsonb WHERE id = ? AND tenant_id = ?",
+                additionalDetailsJson, facility.getFacilityId(), facility.getTenantId());
+    }
+
     private List<Facility> loadFacilitiesForKibanaReindex(
             String tenantId,
             List<String> facilityIds,
@@ -1960,6 +2126,124 @@ public class FacilityService {
         if (!isFacilityAdmin && !isSystemUser) {
             throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
         }
+    }
+
+    /**
+     * Writes one facility's mapped vendor - the row and the Kibana document - and nothing else.
+     *
+     * <p>The narrow counterpart to {@link #updateFacility}, for callers that hold only the vendor
+     * mapping. Routing a mapping through the full update meant searching the facility, echoing
+     * every one of its fields back, and running the ONM-ready branching with its POC user creation
+     * and password resets; a jurisdiction being added to a vendor has no business doing any of
+     * that. Cheaper too: the caller passes the boundary code it already holds, so the search that
+     * used to precede every update disappears.
+     *
+     * <p>A blank name and username together are a deliberate unmapping, which is why they are not
+     * rejected as missing.
+     */
+    public FacilityMappedVendorUpdateResponse updateMappedVendor(FacilityMappedVendorUpdateRequest request) {
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+        boolean hasFacilityId = request.getFacilityId() != null && !request.getFacilityId().isBlank();
+        boolean hasBoundaryCode = request.getBoundaryCode() != null && !request.getBoundaryCode().isBlank();
+        if (!hasFacilityId && !hasBoundaryCode) {
+            throw new IllegalArgumentException("One of facilityId or boundaryCode must be provided");
+        }
+        validateFacilityEditAuthorization(request.getRequestInfo());
+
+        if (request.getTenantId() == null || request.getTenantId().isBlank()) {
+            throw new IllegalArgumentException("tenantId is required");
+        }
+        String tenantId = request.getTenantId().trim();
+
+        Facility facility = hasFacilityId
+                ? getFacilityFromDb(request.getFacilityId().trim(), tenantId)
+                : getFacilityByBoundaryCode(request.getBoundaryCode().trim(), tenantId);
+        if (facility == null) {
+            log.warn("No facility found for mapped-vendor update (facilityId={}, boundaryCode={}, tenantId={})",
+                    sanitizeForLog(request.getFacilityId()), sanitizeForLog(request.getBoundaryCode()),
+                    sanitizeForLog(tenantId));
+            throw new IllegalArgumentException("No facility found for the given facilityId or boundaryCode");
+        }
+
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+        String vendorName = trimToNull(request.getMappedVendorName());
+        String vendorUserName = trimToNull(request.getMappedVendorUserName());
+
+        FacilityMappedVendorUpdateResponse response = FacilityMappedVendorUpdateResponse.builder()
+                .facilityId(facility.getFacilityId())
+                .boundaryCode(facility.getBoundaryCode())
+                .mappedVendorName(vendorName)
+                .mappedVendorUserName(vendorUserName)
+                .build();
+
+        // Nothing to do when the facility already carries exactly this vendor. Worth the check: the
+        // index document is replaced wholesale on every push, so a redundant write is not free - it
+        // races the other writer of that document, and a vendor holding many facilities would
+        // otherwise re-push every one of them on each edit.
+        if (Objects.equals(vendorName, facility.getMappedVendorName())
+                && Objects.equals(vendorUserName, facility.getMappedVendorUserName())) {
+            response.setUnchanged(true);
+            log.info("Mapped vendor already up to date on facility {} (userName={}); nothing written",
+                    sanitizeForLog(facility.getFacilityId()), sanitizeForLog(vendorUserName));
+            return response;
+        }
+
+        facility.setMappedVendorName(vendorName);
+        facility.setMappedVendorUserName(vendorUserName);
+        FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+        persistMappedVendorOnRow(facility);
+
+        // Only a facility that is actually indexed has a document to keep in step; pushing for one
+        // that is not would create the document its own update path deletes.
+        if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+            FacilityKibanaIndex kibanaIndex =
+                    facilityKibanaMapper.toKibanaIndexForFacilityUpdate(facility, request.getRequestInfo(), true);
+            if (kibanaIndex != null) {
+                facilityRepository.pushToKibana(kibanaIndex);
+            } else {
+                response.setIndexSkipped(true);
+            }
+        } else {
+            response.setIndexSkipped(true);
+        }
+
+        response.setUpdated(true);
+        log.info("Mapped vendor written on facility {} (name={}, userName={}, indexSkipped={})",
+                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(vendorName),
+                sanitizeForLog(vendorUserName), response.isIndexSkipped());
+        return response;
+    }
+
+    /** The facility on a boundary code, or null. Mirrors {@link #getFacilityFromDb}. */
+    private Facility getFacilityByBoundaryCode(String boundaryCode, String tenantId) {
+        String sql = "SELECT fac.*, "
+                + " (SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                + "   WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                + " FROM facility fac WHERE fac.boundary_code = ? AND fac.tenant_id = ?";
+        try {
+            return jdbcTemplate.queryForObject(
+                    sql, new Object[]{boundaryCode, tenantId}, facilityRowMapper.rowMapper);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        } catch (IncorrectResultSizeDataAccessException e) {
+            // More than one facility on a boundary code is a data problem, not something to resolve
+            // by silently picking one and writing a vendor onto it.
+            log.error("Boundary code {} maps to {} facilities in tenant {}; refusing to guess",
+                    sanitizeForLog(boundaryCode), e.getActualSize(), sanitizeForLog(tenantId));
+            throw new IllegalArgumentException(
+                    "Boundary code " + boundaryCode + " maps to more than one facility");
+        }
+    }
+
+    /** Trimmed, or null when null/blank - a blank vendor is an unmapping, not an empty string. */
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Facility getFacilityFromDb(String facilityId, String tenantId) {
