@@ -62,6 +62,40 @@ public class FacilityRegistryClient {
         return search(requestInfo, tenantId, criteria);
     }
 
+    /**
+     * Number of facilities registered under a state boundary code (e.g. "India_Karnataka"), read from
+     * the bulk-search {@code totalCount}. Returns null when the lookup fails or the response carries no
+     * totalCount, so callers can tell "unknown" apart from a genuine zero.
+     */
+    public Integer countFacilitiesByState(RequestInfo requestInfo, String stateCode) {
+        Map<String, Object> criteria = new HashMap<>();
+        criteria.put("tenantIds", List.of("in"));
+        criteria.put("state", List.of(stateCode));
+        criteria.put("limit", 1);
+        criteria.put("offset", 0);
+        criteria.put("sendNonPaginatedResponse", false);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("RequestInfo", requestInfo);
+        body.put("Facility", criteria);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        try {
+            String response = restTemplate.postForObject(
+                    properties.getFacilityHost() + properties.getFacilityBulkSearchPath(),
+                    new HttpEntity<>(body, headers), String.class);
+            JsonNode totalCount = objectMapper.readTree(response).path("totalCount");
+            if (!totalCount.isNumber()) {
+                log.warn("Facility bulk search returned no totalCount for state={}", stateCode);
+                return null;
+            }
+            return totalCount.asInt();
+        } catch (Exception e) {
+            log.error("Facility count lookup failed for state={}", stateCode, e);
+            return null;
+        }
+    }
+
     private FacilityPage search(RequestInfo requestInfo, String tenantId, Map<String, Object> criteria) {
         String url = properties.getFacilityHost() + properties.getFacilityBulkSearchPath();
         Map<String, Object> body = new HashMap<>();
