@@ -17,7 +17,6 @@ import org.selco.e4h.web.models.WeeklyEscalationAnalytics;
 import org.selco.e4h.web.models.WeeklyEscalationEffectivenessRow;
 import org.selco.e4h.web.models.WeeklyFacilityRestoredRow;
 import org.selco.e4h.web.models.WeeklyNfAlert;
-import org.selco.e4h.web.models.WeeklyReportData;
 import org.selco.e4h.web.models.WeeklyStateNfTrendRow;
 import org.selco.e4h.web.models.WeeklyTheftCaseRow;
 import org.selco.e4h.web.models.WeeklyTicketOverview;
@@ -62,6 +61,7 @@ public class WeeklyEscalationAnalyticsService {
     private final CommonUtility commonUtility;
     private final EscalationProperties escalationProperties;
     private final WorkflowService workflowService;
+    private final FacilityRegistryClient facilityRegistryClient;
 
     public WeeklyEscalationAnalytics buildAnalytics(Set<String> stateCodes, RequestInfo requestInfo) {
         Date[] reportWeek = getPreviousWeekDates(0);
@@ -106,14 +106,14 @@ public class WeeklyEscalationAnalyticsService {
         WeeklyTrendMetric totalOpenTrend = trendMetric("Total Open Tickets",
                 acc.openAsOfPriorWeekEnd, acc.nationalOverview.getTotalOpen());
 
-        FunctionalMetrics startMetrics = aggregateFunctionalMetrics(stateCodes, requestInfo, true);
-        FunctionalMetrics endMetrics = aggregateFunctionalMetrics(stateCodes, requestInfo, false);
-        ArrowData funcArrow = computeArrow(startMetrics, endMetrics, true);
-        ArrowData nonFuncArrow = computeArrow(startMetrics, endMetrics, false);
-
         List<WeeklyNfAlert> nfAlerts = new ArrayList<>();
         List<WeeklyStateNfTrendRow> stateNfTrend = new ArrayList<>();
-        buildPerStateNfData(stateCodes, acc.bottleneckCountsByState, nfAlerts, stateNfTrend);
+        buildPerStateNfData(stateCodes, acc.bottleneckCountsByState, nfAlerts, stateNfTrend, requestInfo);
+
+        FunctionalMetrics startMetrics = aggregateFunctionalMetrics(stateNfTrend, true);
+        FunctionalMetrics endMetrics = aggregateFunctionalMetrics(stateNfTrend, false);
+        ArrowData funcArrow = computeArrow(startMetrics, endMetrics, true);
+        ArrowData nonFuncArrow = computeArrow(startMetrics, endMetrics, false);
 
         return WeeklyEscalationAnalytics.builder()
                 .weekRangeLabel(weekRangeLabel)
@@ -540,38 +540,50 @@ public class WeeklyEscalationAnalyticsService {
         return rows;
     }
 
+    /**
+     * Non-Functional % = distinct Non-Functional facilities / total facilities registered in the state
+     * (facility-service). Counting tickets here instead would divide by open tickets only, which leaves
+     * out every working facility without a ticket and inflates the rate.
+     */
     private void buildPerStateNfData(Set<String> stateCodes,
                                       Map<String, Map<String, Long>> bottleneckCountsByState,
                                       List<WeeklyNfAlert> nfAlerts,
-                                      List<WeeklyStateNfTrendRow> stateNfTrend) {
+                                      List<WeeklyStateNfTrendRow> stateNfTrend,
+                                      RequestInfo requestInfo) {
         double threshold = escalationProperties.getLeadership().getNfThresholdPct();
+        // Open AND closed: tickets closed during the week still count towards the week-start snapshot.
+        List<Map<String, Object>> allTickets = elasticSearchClient.fetchAllRequiredTickets(true);
 
         for (String stateCode : stateCodes) {
             try {
-                WeeklyReportData report = weeklyReportService.generateWeeklyReportData(stateCode, null);
-                if (report.getWeekStartMetrics() == null || report.getWeekEndMetrics() == null) {
-                    continue;
-                }
-                int startNf = report.getWeekStartMetrics().getNonFunctionalCount();
-                int endFunc = report.getWeekEndMetrics().getFunctionalCount();
-                int endNf = report.getWeekEndMetrics().getNonFunctionalCount();
-                int endTotal = endFunc + endNf;
-                double nfPct = endTotal > 0 ? endNf * 100.0 / endTotal : 0;
+                WeeklyReportService.NfFacilityTrend trend = weeklyReportService.getNfFacilityTrend(allTickets, stateCode);
                 String stateName = commonUtility.getStateDisplayName(stateCode);
 
-                int[] nfChange = weeklyReportService.getNfFacilityChangeCounts(stateCode);
+                Integer registeredFacilities = facilityRegistryClient.countFacilitiesByState(requestInfo, stateCode);
+                Integer totalFacilities = null;
+                Double nfPct = null;
+                if (registeredFacilities == null) {
+                    log.error("Total facility count unavailable for state {} - Non-Functional % not computed", stateCode);
+                } else {
+                    if (registeredFacilities < trend.nfAtWeekEnd()) {
+                        log.warn("State {} has {} Non-Functional facilities but only {} registered in facility-service",
+                                stateCode, trend.nfAtWeekEnd(), registeredFacilities);
+                    }
+                    totalFacilities = Math.max(registeredFacilities, trend.nfAtWeekEnd());
+                    nfPct = totalFacilities > 0 ? Math.round(trend.nfAtWeekEnd() * 1000.0 / totalFacilities) / 10.0 : 0.0;
+                }
 
                 stateNfTrend.add(WeeklyStateNfTrendRow.builder()
                         .stateName(stateName)
-                        .totalNfLastWeek(startNf)
-                        .facilitiesMovedToFunctional(nfChange[1])
-                        .newNonFunctionalThisWeek(nfChange[0])
-                        .totalNfThisWeek(endNf)
-                        .totalFacilitiesThisWeek(endTotal)
-                        .nfPctThisWeek(Math.round(nfPct * 10.0) / 10.0)
+                        .totalNfLastWeek(trend.nfAtWeekStart())
+                        .facilitiesMovedToFunctional(trend.movedToFunctional())
+                        .newNonFunctionalThisWeek(trend.newlyNonFunctional())
+                        .totalNfThisWeek(trend.nfAtWeekEnd())
+                        .totalFacilitiesThisWeek(totalFacilities)
+                        .nfPctThisWeek(nfPct)
                         .build());
 
-                if (nfPct > threshold) {
+                if (nfPct != null && nfPct > threshold) {
                     Map<String, Long> stateBottlenecks = bottleneckCountsByState.getOrDefault(stateCode, Map.of());
                     String bottleneck = stateBottlenecks.entrySet().stream()
                             .max(Map.Entry.comparingByValue())
@@ -579,7 +591,7 @@ public class WeeklyEscalationAnalyticsService {
                             .orElse("Pending Resolution");
                     nfAlerts.add(WeeklyNfAlert.builder()
                             .stateName(stateName)
-                            .nfPct(Math.round(nfPct * 10.0) / 10.0)
+                            .nfPct(nfPct)
                             .primaryBottleneck(bottleneck)
                             .build());
                 }
@@ -597,20 +609,17 @@ public class WeeklyEscalationAnalyticsService {
         return elasticSearchClient.searchAllTickets(Map.of("match_all", Map.of()));
     }
 
-    private FunctionalMetrics aggregateFunctionalMetrics(Set<String> stateCodes, RequestInfo requestInfo, boolean start) {
+    /** Facility-level totals across states with a known facility count; functional = total - Non-Functional. */
+    private FunctionalMetrics aggregateFunctionalMetrics(List<WeeklyStateNfTrendRow> stateNfTrend, boolean start) {
         int func = 0;
         int nonFunc = 0;
-        for (String stateCode : stateCodes) {
-            try {
-                WeeklyReportData report = weeklyReportService.generateWeeklyReportData(stateCode, requestInfo);
-                FunctionalMetrics metrics = start ? report.getWeekStartMetrics() : report.getWeekEndMetrics();
-                if (metrics != null) {
-                    func += metrics.getFunctionalCount();
-                    nonFunc += metrics.getNonFunctionalCount();
-                }
-            } catch (Exception e) {
-                log.warn("Could not load functional metrics for state {}", stateCode, e);
+        for (WeeklyStateNfTrendRow row : stateNfTrend) {
+            if (row.getTotalFacilitiesThisWeek() == null) {
+                continue;
             }
+            int nf = start ? row.getTotalNfLastWeek() : row.getTotalNfThisWeek();
+            nonFunc += nf;
+            func += Math.max(row.getTotalFacilitiesThisWeek() - nf, 0);
         }
         return FunctionalMetrics.builder().functionalCount(func).nonFunctionalCount(nonFunc).build();
     }
