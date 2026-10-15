@@ -21,6 +21,7 @@ from app.utils.convertor import request_info_from_json, apply_field_plan_facilit
 from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_prefilled_rows_in_excel, \
     lock_excel_columns
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.geography_scope import geography_scope_codes, is_within_scope
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.assessment_service_client import AssessmentServiceClient
 from app.utils.assessment_fieldplan_handoff import (
@@ -1289,6 +1290,33 @@ async def get_amc_configuration_template(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
+def _assessment_plan_geography(assessment_client, request_info, plan_id, tenant_id):
+    """The boundary codes an assessment plan covers, read from the plan itself.
+
+    Returns [] -- logged, not raised -- when the plan cannot be read or recorded no geography.
+    That means "cannot check", never "covers nowhere": the include sheet is read-only and the
+    upload re-checks the plan authoritatively, so a sheet with too many rows is the recoverable
+    failure; an empty one over a data-shape quirk is not.
+    """
+    if not assessment_client:
+        return []
+    try:
+        plan = assessment_client.search_assessment_plan(request_info, plan_id, tenant_id) or {}
+    except Exception as e:
+        logger.error(f"Could not read plan {plan_id} geography; not restricting the sheet: {e}",
+                     exc_info=True)
+        return []
+    # `state` is a scalar beside geographyDetails on an assessment plan, and is the only geography
+    # a plan created before districts were captured will carry.
+    geography = dict(plan.get("geographyDetails") or {})
+    if plan.get("state") and not geography.get("state"):
+        geography.setdefault("state", plan.get("state"))
+    codes = geography_scope_codes(geography)
+    if not codes:
+        logger.error(f"Plan {plan_id} has no usable geography; not restricting the sheet")
+    return codes
+
+
 @router.post(
     '/assessmentPlanIncludeTemplate',
     summary='Generate assessment plan facility include Excel template',
@@ -1304,6 +1332,11 @@ async def get_assessment_plan_include_template(
     plan_id = payload.get("planId")
     tenant_id = payload.get("tenantId", "in")
     boundary_data = payload.get("boundary_data", {})
+    # The geography the assessment was scheduled for, in the shape the plan itself stores
+    # (`geographyDetails`: blocks / districts / states). Optional: when it is not sent the plan's
+    # own record is read instead, so the narrowing is a backend rule rather than something each
+    # caller has to remember to ask for.
+    requested_geography = payload.get("geography_details") or payload.get("geographyDetails")
 
     if not project_id or not plan_id:
         raise HTTPException(status_code=400, detail="projectId and planId are required")
@@ -1347,6 +1380,16 @@ async def get_assessment_plan_include_template(
             if f.get("facilityId")
         }
 
+        # Only the geography this assessment was scheduled for. Without it the sheet listed every
+        # facility on the project, so a plan for one district arrived carrying other districts'
+        # centres and the PM had to hunt through the lot to tick theirs.
+        scope_codes = geography_scope_codes(requested_geography)
+        geography_source = "request"
+        if not scope_codes:
+            geography_source = "plan"
+            scope_codes = _assessment_plan_geography(assessment_client, request_info, plan_id, tenant_id)
+        logger.info(f"Assessment include sheet geography taken from the {geography_source}: {scope_codes}")
+
         all_facilities = []
         excluded_facility_rows = []
         if facility_ids and facility_client:
@@ -1356,22 +1399,57 @@ async def get_assessment_plan_include_template(
                 facility_ids=facility_ids,
                 limit=max(len(facility_ids), 50),
                 send_non_paginated_response=True,
+                # Ingestion order. facility-service otherwise sorts by `updated_at DESC`, which
+                # reshuffles the sheet whenever a centre is touched and leaves the PM looking for
+                # the ones they just uploaded.
+                sort_by="created_at",
+                sort_order="asc",
             )
+            ordered_facilities = bulk_result.get("facilities", []) or []
             facilities_by_id = {
                 _normalize_template_facility_id(f.get("facility_id") or f.get("facilityId")): f
-                for f in (bulk_result.get("facilities", []) or [])
+                for f in ordered_facilities
             }
-            for pf in project_facilities:
-                fid = _normalize_template_facility_id(pf.get("facilityId"))
-                if not fid:
+            # Rows follow the order facility-service returned them in (created_at ascending),
+            # not the order project/facility happened to link them. A project facility the bulk
+            # search did not return still gets its row, after the ones that did, so nothing is
+            # lost to a gap in the facility master.
+            ordered_ids = [
+                _normalize_template_facility_id(f.get("facility_id") or f.get("facilityId"))
+                for f in ordered_facilities
+            ]
+            project_facility_ids = [
+                _normalize_template_facility_id(pf.get("facilityId")) for pf in project_facilities
+            ]
+            known_ids = set(ordered_ids)
+            row_ids = ordered_ids + [fid for fid in project_facility_ids if fid not in known_ids]
+
+            project_linked_ids = {fid for fid in project_facility_ids if fid}
+            seen_ids = set()
+            outside_geography = 0
+            for fid in row_ids:
+                if not fid or fid in seen_ids:
+                    continue
+                if fid not in project_linked_ids:
                     continue
                 if fid not in available_ids:
                     continue
                 facility = dict(facilities_by_id.get(fid, {}))
+                # A centre already on the plan is kept wherever it sits: it is in the plan, so the
+                # sheet has to show it for the PM to be able to take it back out.
+                if (scope_codes and fid not in plan_facility_ids
+                        and not is_within_scope(_extract_facility_boundary_code(facility), scope_codes)):
+                    outside_geography += 1
+                    continue
+                seen_ids.add(fid)
                 if not facility.get("facility_id") and not facility.get("facilityId"):
                     facility["facility_id"] = fid
                 facility["include_in_assessment_plan"] = "Yes" if fid in plan_facility_ids else ""
                 all_facilities.append(facility)
+
+            if outside_geography:
+                logger.info(f"{outside_geography} facility(ies) outside the {geography_source} "
+                            f"geography {scope_codes} left out of the include sheet")
 
             for item in excluded_items:
                 fid = _normalize_template_facility_id(item.get("facilityId"))
