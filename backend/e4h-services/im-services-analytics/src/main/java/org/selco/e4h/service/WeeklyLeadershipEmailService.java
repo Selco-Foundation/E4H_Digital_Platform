@@ -121,22 +121,28 @@ public class WeeklyLeadershipEmailService {
         int sumNew = 0;
         int sumThisWeek = 0;
         int sumTotalFacilities = 0;
+        int sumThisWeekWithKnownTotal = 0;
         for (WeeklyStateNfTrendRow row : analytics.getStateNfTrend()) {
             sumLastWeek += row.getTotalNfLastWeek();
             sumMoved += row.getFacilitiesMovedToFunctional();
             sumNew += row.getNewNonFunctionalThisWeek();
             sumThisWeek += row.getTotalNfThisWeek();
-            sumTotalFacilities += row.getTotalFacilitiesThisWeek();
+            if (row.getTotalFacilitiesThisWeek() != null) {
+                sumTotalFacilities += row.getTotalFacilitiesThisWeek();
+                sumThisWeekWithKnownTotal += row.getTotalNfThisWeek();
+            }
+            String nfPct = row.getNfPctThisWeek() != null ? row.getNfPctThisWeek() + "%" : "N/A";
             html.append("<tr><td style=\"").append(CELL).append("\">").append(commonUtility.escapeHtml(row.getStateName())).append("</td>")
                     .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getTotalNfLastWeek()).append("</td>")
                     .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getFacilitiesMovedToFunctional()).append("</td>")
                     .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getNewNonFunctionalThisWeek()).append("</td>")
                     .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getTotalNfThisWeek()).append("</td>")
-                    .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getNfPctThisWeek()).append("%</td></tr>");
+                    .append("<td style=\"").append(CELL_RIGHT).append("\">").append(nfPct).append("</td></tr>");
         }
         // Weighted by facility count, not an average of the per-state percentages, so a large
-        // state doesn't get diluted to the same weight as a small one.
-        double overallPct = sumTotalFacilities > 0 ? (sumThisWeek * 100.0 / sumTotalFacilities) : 0;
+        // state doesn't get diluted to the same weight as a small one. States whose facility count
+        // could not be fetched are left out of both sides of the ratio.
+        double overallPct = sumTotalFacilities > 0 ? (sumThisWeekWithKnownTotal * 100.0 / sumTotalFacilities) : 0;
         html.append("<tr><td style=\"").append(CELL).append("font-weight:700\">TOTAL</td>")
                 .append("<td style=\"").append(CELL_RIGHT).append("font-weight:700\">").append(sumLastWeek).append("</td>")
                 .append("<td style=\"").append(CELL_RIGHT).append("font-weight:700\">").append(sumMoved).append("</td>")

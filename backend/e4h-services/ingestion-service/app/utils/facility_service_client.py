@@ -131,6 +131,8 @@ class FacilityServiceClient:
         limit: int = 10000,
         offset: int = 0,
         send_non_paginated_response: bool = True,
+        sort_by: Optional[str] = None,
+        sort_order: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Bulk search facilities using facility-service bulk search endpoint.
@@ -158,6 +160,8 @@ class FacilityServiceClient:
             limit=limit,
             offset=offset,
             send_non_paginated_response=send_non_paginated_response,
+            sort_by=sort_by,
+            sort_order=sort_order,
         )
 
     def bulk_search_facility_with_boundary(
@@ -171,6 +175,8 @@ class FacilityServiceClient:
         limit: int = 10000,
         offset: int = 0,
         send_non_paginated_response: bool = True,
+        sort_by: Optional[str] = None,
+        sort_order: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Bulk search using facility-service endpoint that returns facility + address
@@ -187,6 +193,8 @@ class FacilityServiceClient:
             limit=limit,
             offset=offset,
             send_non_paginated_response=send_non_paginated_response,
+            sort_by=sort_by,
+            sort_order=sort_order,
         )
 
     def _bulk_search_facility_by_path(
@@ -201,6 +209,8 @@ class FacilityServiceClient:
         limit: int = 10000,
         offset: int = 0,
         send_non_paginated_response: bool = True,
+        sort_by: Optional[str] = None,
+        sort_order: Optional[str] = None,
     ) -> Dict[str, Any]:
         url = f"{self.facility_service_url}{endpoint_path}"
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -234,6 +244,14 @@ class FacilityServiceClient:
                 "isOnmReady": None,
             },
         }
+
+        # Only sent when asked for: facility-service defaults to `updated_at DESC`, and every
+        # other caller here depends on that. `sortBy` is matched against the column name, so it
+        # is "created_at".
+        if sort_by:
+            payload["Facility"]["sortBy"] = sort_by
+        if sort_order:
+            payload["Facility"]["sortOrder"] = sort_order
 
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=60)

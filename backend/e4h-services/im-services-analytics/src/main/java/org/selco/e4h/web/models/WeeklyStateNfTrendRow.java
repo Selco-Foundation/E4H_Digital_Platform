@@ -17,6 +17,8 @@ public class WeeklyStateNfTrendRow {
     private int facilitiesMovedToFunctional;
     private int newNonFunctionalThisWeek;
     private int totalNfThisWeek;
-    private int totalFacilitiesThisWeek;
-    private double nfPctThisWeek;
+    /** Facilities registered in facility-service for the state; null when that lookup failed. */
+    private Integer totalFacilitiesThisWeek;
+    /** totalNfThisWeek / totalFacilitiesThisWeek; null when the facility count is unknown. */
+    private Double nfPctThisWeek;
 }
