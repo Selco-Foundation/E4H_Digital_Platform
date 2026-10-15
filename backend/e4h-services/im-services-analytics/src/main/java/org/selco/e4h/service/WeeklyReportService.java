@@ -59,6 +59,7 @@ public class WeeklyReportService {
 
 //                String ticketTenantId = (String) data.get("tenantId");
                 Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+                if (incident == null) return false;
                 Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
                 if(boundary ==null)
                     return false;
@@ -367,7 +368,10 @@ public class WeeklyReportService {
      */
     private Long getClosedTime(Map<String, Object> data) {
         Map<String, Object> incident = (Map<String, Object>) data.get("incident");
-        String status = incident != null ? (String) incident.get("applicationStatus") : null;
+        if (incident == null) {
+            return null;
+        }
+        String status = (String) incident.get("applicationStatus");
         if (status == null || !CLOSED_STATUSES.contains(status.toUpperCase())) {
             return null;
         }
