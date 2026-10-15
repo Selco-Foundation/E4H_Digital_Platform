@@ -199,6 +199,12 @@ async def get_facility_ingestion_template_with_data(
                         boundary_codes=boundary_codes,
                         limit=max(len(boundary_codes) * 50, 50),
                         send_non_paginated_response=True,
+                        # Newest centres first. facility-service otherwise sorts by `updated_at
+                        # DESC`, which places a row by when it was last touched rather than when
+                        # it was added -- so a newly ingested district landed in the middle of
+                        # the sheet, below older centres that happened to be edited since.
+                        sort_by="created_at",
+                        sort_order="desc",
                     )
                     facilities = bulk_result.get("facilities", []) or []
                     all_facilities.extend(facilities)
@@ -1399,11 +1405,11 @@ async def get_assessment_plan_include_template(
                 facility_ids=facility_ids,
                 limit=max(len(facility_ids), 50),
                 send_non_paginated_response=True,
-                # Ingestion order. facility-service otherwise sorts by `updated_at DESC`, which
-                # reshuffles the sheet whenever a centre is touched and leaves the PM looking for
-                # the ones they just uploaded.
+                # Newest centres first. facility-service otherwise sorts by `updated_at DESC`,
+                # which places a row by when it was last touched rather than when it was added,
+                # leaving a freshly ingested district stranded in the middle of the sheet.
                 sort_by="created_at",
-                sort_order="asc",
+                sort_order="desc",
             )
             ordered_facilities = bulk_result.get("facilities", []) or []
             facilities_by_id = {
