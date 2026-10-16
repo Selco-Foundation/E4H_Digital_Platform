@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {MultiSelectDropdown} from "@egovernments/digit-ui-components";
+import {inSelectionOrder} from "../../utilities/GeographyUtils";
 
 const DistrictSelector = ({
   data = {},
@@ -7,11 +8,13 @@ const DistrictSelector = ({
   props,
 }) => {
 
-  const { t, name, stateIdentifier, boundaryData, selectedOptions = [] } = props;
+  const { t, name, stateIdentifier, boundaryData, selectedOptions = [], keepSelectionOrder = false } = props;
+  // Alphabetical by code unless the caller needs the order the user picked them in.
+  const ordered = (list) => (keepSelectionOrder ? list : list.sort((a, b) => a.code?.localeCompare(b.code)));
   const [selectedState, setSelectedState] = useState(data[stateIdentifier]);
   const [districtMenu, setDistrictMenu] = useState([]);
   const [selectedDistricts, setSelectedDistricts] = useState(
-    data[name]?.sort((a, b) => a.code?.localeCompare(b.code)) || []
+    ordered([...(data[name] || [])])
   );
 
   useEffect(() => {
@@ -39,7 +42,7 @@ const DistrictSelector = ({
       setDistrictMenu(newDistrictMenu);
 
       const newSelectedDistricts = selectedDistricts.filter((district) => district.stateCode === selectedStateCode);
-      setSelectedDistricts(newSelectedDistricts.sort((a, b) => a.code?.localeCompare(b.code)));
+      setSelectedDistricts(ordered(newSelectedDistricts));
     }
   }, [t, boundaryData, selectedOptions, selectedState])
 
@@ -47,7 +50,7 @@ const DistrictSelector = ({
     const selectedDistrictCodes = districts.map((district) => district.code);
     const selectedOptionsExcludedInSelection = selectedOptions.filter((option) => !selectedDistrictCodes.includes(option.code));
     const newSelectedDistricts = [...districts, ...selectedOptionsExcludedInSelection];
-    setSelectedDistricts(newSelectedDistricts.sort((a, b) => a.code?.localeCompare(b.code)));
+    setSelectedDistricts(keepSelectionOrder ? inSelectionOrder(selectedDistricts, newSelectedDistricts) : ordered(newSelectedDistricts));
   }
 
   return (

@@ -21,7 +21,7 @@ from app.utils.convertor import request_info_from_json, apply_field_plan_facilit
 from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_prefilled_rows_in_excel, \
     lock_excel_columns
 from app.utils.facility_service_client import FacilityServiceClient
-from app.utils.geography_scope import geography_scope_codes, is_within_scope
+from app.utils.geography_scope import geography_scope_codes, is_within_scope, scope_position
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.assessment_service_client import AssessmentServiceClient
 from app.utils.assessment_fieldplan_handoff import (
@@ -1416,7 +1416,7 @@ async def get_assessment_plan_include_template(
                 _normalize_template_facility_id(f.get("facility_id") or f.get("facilityId")): f
                 for f in ordered_facilities
             }
-            # Rows follow the order facility-service returned them in (created_at ascending),
+            # Rows follow the order facility-service returned them in (created_at descending),
             # not the order project/facility happened to link them. A project facility the bulk
             # search did not return still gets its row, after the ones that did, so nothing is
             # lost to a gap in the facility master.
@@ -1456,6 +1456,16 @@ async def get_assessment_plan_include_template(
             if outside_geography:
                 logger.info(f"{outside_geography} facility(ies) outside the {geography_source} "
                             f"geography {scope_codes} left out of the include sheet")
+
+            # Latest-selected block/district first, so the centres of the area the PM just added
+            # sit at the top. The sort is stable, so each area stays newest first;
+            # plan centres outside the geography go last.
+            if scope_codes:
+                def _latest_selected_first(facility):
+                    position = scope_position(_extract_facility_boundary_code(facility), scope_codes)
+                    return (1, 0) if position is None else (0, -position)
+
+                all_facilities.sort(key=_latest_selected_first)
 
             for item in excluded_items:
                 fid = _normalize_template_facility_id(item.get("facilityId"))
