@@ -492,6 +492,9 @@ async def validate_facilities_excel_sheet(
             df['status'] = ''
         if 'error' not in df.columns:
             df['error'] = ''
+        # Re-uploaded sheets may carry empty status/error columns that pandas reads as float64
+        df['status'] = df['status'].astype(object)
+        df['error'] = df['error'].astype(object)
 
         # Resolve boundary codes from State/District/Block via localization
         df = resolve_boundary_codes_for_dataframe(
@@ -520,11 +523,12 @@ async def validate_facilities_excel_sheet(
                     )
                     if response_data and "Boundary" in response_data:
                         for b in response_data["Boundary"]:
-                            existing_codes.add(b["code"])
+                            existing_codes.add(str(b["code"]).casefold())
                 except Exception as e:
                     logger.error(f"Error verifying boundary codes: {e}", exc_info=True)
 
-            missing_codes = set(resolved_codes) - existing_codes
+            # Search is case-insensitive, so compare case-insensitively too
+            missing_codes = {c for c in resolved_codes if str(c).casefold() not in existing_codes}
             if missing_codes:
                 logger.warning(f"Boundary codes not found in boundary service: {missing_codes}")
                 for index, row in df.iterrows():
