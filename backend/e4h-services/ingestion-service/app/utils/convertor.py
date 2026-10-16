@@ -18,7 +18,7 @@ from app.schemas.vendor_ingestion_shema_response import (
     MDMS, IngestionSchemaResponse, MDMSAuditDetails, MDMSColumn, MDMSData,
     MDMSDataSource, ResponseInfo)
 
-from app.utils.facility_validator import format_col_name
+from app.utils.facility_validator import format_col_name, parse_coordinate
 from app.utils.facility_solar_config_validator import (
     COLUMN_CODE_FACILITY_TYPE,
     COLUMN_CODE_SOLUTION_DESIGN,
@@ -751,8 +751,8 @@ def create_facility_payload(
         'blockBoundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
         'address': {
             'tenantId': 'in',
-            'latitude': safe_get(row, 'Latitude'),
-            'longitude': safe_get(row, 'Longitude'),
+            'latitude': parse_coordinate(safe_get(row, 'Latitude')),
+            'longitude': parse_coordinate(safe_get(row, 'Longitude')),
             'addressLine1': safe_get(row, 'Address'),
             'state': safe_get(row, 'State (Mandatory)'),
             'district': safe_get(row, 'District (Mandatory)'),

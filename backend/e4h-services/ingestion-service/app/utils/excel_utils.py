@@ -76,6 +76,27 @@ def normalize_excel_integer_columns(
     return df
 
 
+def _clean_text_cell(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    text = value.replace("\xa0", " ").strip()
+    return text if text else None
+
+
+def clean_excel_text_cells(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normalize text cells read from Excel: non-breaking spaces (common when data is pasted from
+    web pages / PDFs) become regular spaces, values are stripped, and whitespace-only cells become
+    empty (None) so they are treated as blank instead of being sent downstream as " ".
+    """
+    for col in df.columns:
+        series = df[col]
+        if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):
+            continue
+        df[col] = series.astype(object).map(_clean_text_cell)
+    return df
+
+
 def to_excel_cell_value(value: Any) -> Any:
     """Convert pandas/numpy scalars to values openpyxl can write (pd.NA -> None)."""
     if value is None:
