@@ -14,6 +14,7 @@ import { PMService } from "../../services/PMService";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import CommonUtils from "../../utilities/CommonUtils";
+import { boundariesInCodeOrder } from "../../utilities/GeographyUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
 const CreateAssessment = () => {
@@ -244,8 +245,9 @@ const CreateAssessment = () => {
             }))
             ?.[0],
 
-          districts: boundaryData.districts.filter((district) => createdAssessmentPlan.geographyDetails?.districts?.includes(district.code)),
-          blocks: boundaryData.blocks.filter((block) => createdAssessmentPlan.geographyDetails?.blocks?.includes(block.code)),
+          // In the plan's own order: it records which district/block the PM picked last.
+          districts: boundariesInCodeOrder(boundaryData.districts, createdAssessmentPlan.geographyDetails?.districts),
+          blocks: boundariesInCodeOrder(boundaryData.blocks, createdAssessmentPlan.geographyDetails?.blocks),
           assessmentDuration: {
             startDate: formatDate(createdAssessmentPlan.startDate),
             endDate: formatDate(createdAssessmentPlan.endDate),
@@ -504,7 +506,8 @@ const CreateAssessment = () => {
             customProps: {
               name: "districts",
               stateIdentifier: "state",
-              selectedOptions: (createdAssessmentPlan?.id && createdAssessmentPlan?.status !== "DRAFT") ? boundaryData?.districts?.filter((district) => createdAssessmentPlan.geographyDetails?.districts?.includes(district?.code)) : [],
+              selectedOptions: (createdAssessmentPlan?.id && createdAssessmentPlan?.status !== "DRAFT") ? boundariesInCodeOrder(boundaryData?.districts, createdAssessmentPlan.geographyDetails?.districts) : [],
+              keepSelectionOrder: true,
               t,
               boundaryData,
             },
@@ -526,7 +529,8 @@ const CreateAssessment = () => {
             customProps: {
               name: "blocks",
               districtsIdentifier: "districts",
-              selectedOptions: (createdAssessmentPlan?.id && createdAssessmentPlan?.status !== "DRAFT") ? boundaryData?.blocks?.filter((block) => createdAssessmentPlan.geographyDetails?.blocks?.includes(block?.code)) : [],
+              selectedOptions: (createdAssessmentPlan?.id && createdAssessmentPlan?.status !== "DRAFT") ? boundariesInCodeOrder(boundaryData?.blocks, createdAssessmentPlan.geographyDetails?.blocks) : [],
+              keepSelectionOrder: true,
               t,
               boundaryData,
             },

@@ -21,7 +21,7 @@ from app.utils.convertor import request_info_from_json, apply_field_plan_facilit
 from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_prefilled_rows_in_excel, \
     lock_excel_columns
 from app.utils.facility_service_client import FacilityServiceClient
-from app.utils.geography_scope import geography_scope_codes, is_within_scope
+from app.utils.geography_scope import geography_scope_codes, is_within_scope, scope_position
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.assessment_service_client import AssessmentServiceClient
 from app.utils.assessment_fieldplan_handoff import (
@@ -1405,13 +1405,18 @@ async def get_assessment_plan_include_template(
                 facility_ids=facility_ids,
                 limit=max(len(facility_ids), 50),
                 send_non_paginated_response=True,
+                # Newest centres first. facility-service otherwise sorts by `updated_at DESC`,
+                # which places a row by when it was last touched rather than when it was added,
+                # leaving a freshly ingested district stranded in the middle of the sheet.
+                sort_by="created_at",
+                sort_order="desc",
             )
             ordered_facilities = bulk_result.get("facilities", []) or []
             facilities_by_id = {
                 _normalize_template_facility_id(f.get("facility_id") or f.get("facilityId")): f
                 for f in ordered_facilities
             }
-            # Rows follow the order facility-service returned them in (created_at ascending),
+            # Rows follow the order facility-service returned them in (created_at descending),
             # not the order project/facility happened to link them. A project facility the bulk
             # search did not return still gets its row, after the ones that did, so nothing is
             # lost to a gap in the facility master.
@@ -1436,35 +1441,31 @@ async def get_assessment_plan_include_template(
                 if fid not in available_ids:
                     continue
                 facility = dict(facilities_by_id.get(fid, {}))
-
                 # A centre already on the plan is kept wherever it sits: it is in the plan, so the
                 # sheet has to show it for the PM to be able to take it back out.
                 if (scope_codes and fid not in plan_facility_ids
                         and not is_within_scope(_extract_facility_boundary_code(facility), scope_codes)):
                     outside_geography += 1
                     continue
-
                 seen_ids.add(fid)
                 if not facility.get("facility_id") and not facility.get("facilityId"):
                     facility["facility_id"] = fid
-
                 facility["include_in_assessment_plan"] = "Yes" if fid in plan_facility_ids else ""
-
-                # Mark facilities belonging to the currently selected geography.
-                # This is used only for ordering the Excel rows.
-                facility["_is_selected_geography"] = bool(
-                    scope_codes
-                    and is_within_scope(
-                        _extract_facility_boundary_code(facility),
-                        scope_codes
-                    )
-                )
-
                 all_facilities.append(facility)
 
             if outside_geography:
                 logger.info(f"{outside_geography} facility(ies) outside the {geography_source} "
                             f"geography {scope_codes} left out of the include sheet")
+
+            # Latest-selected block/district first, so the centres of the area the PM just added
+            # sit at the top. The sort is stable, so each area stays newest first;
+            # plan centres outside the geography go last.
+            if scope_codes:
+                def _latest_selected_first(facility):
+                    position = scope_position(_extract_facility_boundary_code(facility), scope_codes)
+                    return (1, 0) if position is None else (0, -position)
+
+                all_facilities.sort(key=_latest_selected_first)
 
             for item in excluded_items:
                 fid = _normalize_template_facility_id(item.get("facilityId"))
@@ -1482,18 +1483,6 @@ async def get_assessment_plan_include_template(
                     "Facility Name": facility_name,
                     "Exclusion Reason": item.get("message") or item.get("code") or "Excluded",
                 })
-
-        # Facilities belonging to the selected geography are placed first.
-        # The order within each group follows the order returned by facility-servi
-        all_facilities.sort(
-            key=lambda facility: (
-                0 if facility.get("_is_selected_geography") else 1
-            )
-        )
-
-        # Remove temporary sorting field before generating the Excel.
-        for facility in all_facilities:
-            facility.pop("_is_selected_geography", None)
 
         boundary_list = _resolve_template_boundary_list(
             facility_service, request_info, boundary_data, all_facilities
@@ -1526,4 +1515,72 @@ async def get_assessment_plan_include_template(
         raise
     except Exception as e:
         logger.error(f"Error generating assessment plan include template: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    '/assessmentPlanFacilityExport',
+    summary='Export assessment plan facility grid to Excel',
+    response_description='Returns read-only Excel export of plan facilities',
+)
+async def export_assessment_plan_facilities(
+        background_tasks: BackgroundTasks,
+        payload: dict = Body(..., description="Payload object"),
+):
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    plan_id = payload.get("planId")
+    filters = payload.get("filters") or {}
+
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="planId is required")
+
+    logger.info(f"Exporting assessment plan facilities: plan_id={plan_id}")
+    assessment_client = AssessmentServiceClient(fieldPlan_service_url)
+
+    try:
+        search_result = assessment_client.search_plan_facilities(
+            request_info=request_info,
+            plan_id=plan_id,
+            filters=filters,
+            export_all=True,
+            include_response_summary=True,
+        )
+        facilities = search_result.get("facilities", []) or []
+
+        rows = []
+        for facility in facilities:
+            rows.append({
+                "Plan Facility Id": facility.get("planFacilityId", ""),
+                "Facility Id": facility.get("facilityId", ""),
+                "Facility Name": facility.get("facilityName", ""),
+                "Category": facility.get("facilityCategory", ""),
+                "Type": facility.get("facilityType", ""),
+                "District": facility.get("district", ""),
+                "Block": facility.get("block", ""),
+                "Remote Status": facility.get("phoneStatus", ""),
+                "On-site Status": facility.get("fieldStatus", ""),
+                "Assessment Result": facility.get("overallStatus", ""),
+                "Completion Status": facility.get("assessmentCompletionStatus", ""),
+                "Phone Response Summary": "; ".join(facility.get("phoneResponseSummary") or []),
+                "Field Response Summary": "; ".join(facility.get("fieldResponseSummary") or []),
+            })
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
+        output_file_path = create_temp_file(suffix=".xlsx")
+
+        df = pd.DataFrame(rows)
+        df.to_excel(output_file_path, index=False, sheet_name="PlanFacilities")
+        autofit_columns(file_path=output_file_path, sheet_name="PlanFacilities")
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting assessment plan facilities: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
