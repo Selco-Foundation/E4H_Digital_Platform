@@ -75,3 +75,16 @@ def is_within_scope(boundary_code: str, scope_codes: Sequence[str]) -> bool:
         code == ancestor or code.startswith(ancestor + "_")
         for ancestor in ancestors if ancestor
     )
+
+
+def scope_position(boundary_code: str, scope_codes: Sequence[str]) -> Optional[int]:
+    """Index in scope_codes of the boundary this code falls under, or None when it falls under none.
+
+    A plan stores its districts and blocks in the order the PM picked them, so the index is how
+    recently that boundary was selected: the last entry is the latest pick.
+    """
+    matches = [
+        index for index, ancestor in enumerate(scope_codes)
+        if ancestor and is_within_scope(boundary_code, [ancestor])
+    ]
+    return max(matches) if matches else None
