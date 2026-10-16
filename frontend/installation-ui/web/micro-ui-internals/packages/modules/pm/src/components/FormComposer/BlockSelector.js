@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {MultiSelectDropdown} from "@egovernments/digit-ui-components";
+import {inSelectionOrder} from "../../utilities/GeographyUtils";
 
 const BlockSelector = ({
   data = {},
@@ -7,11 +8,13 @@ const BlockSelector = ({
   props,
 }) => {
 
-  const { t, name, districtsIdentifier, boundaryData, selectedOptions = [] } = props;
+  const { t, name, districtsIdentifier, boundaryData, selectedOptions = [], keepSelectionOrder = false } = props;
+  // Alphabetical by code unless the caller needs the order the user picked them in.
+  const ordered = (list) => (keepSelectionOrder ? list : list.sort((a, b) => a.code?.localeCompare(b.code)));
   const [selectedDistricts, setSelectedDistricts] = useState(data[districtsIdentifier] || []);
   const [blockMenu, setBlockMenu] = useState([]);
   const [selectedBlocks, setSelectedBlocks] = useState(
-    data[name]?.sort((a, b) => a.code?.localeCompare(b.code)) || []
+    ordered([...(data[name] || [])])
   );
 
   useEffect(() => {
@@ -39,7 +42,7 @@ const BlockSelector = ({
       setBlockMenu(newBlockMenu);
 
       const newSelectedBlocks = selectedBlocks.filter((block) => selectedDistrictCodes.includes(block.districtCode));
-      setSelectedBlocks(newSelectedBlocks.sort((a, b) => a.code?.localeCompare(b.code)));
+      setSelectedBlocks(ordered(newSelectedBlocks));
     }
   }, [t, boundaryData, selectedDistricts])
 
@@ -47,7 +50,7 @@ const BlockSelector = ({
     const selectedBlockCodes = blocks.map((block) => block.code);
     const selectedOptionsExcludedInSelection = selectedOptions.filter((option) => !selectedBlockCodes.includes(option.code));
     const newSelectedBlocks = [...blocks, ...selectedOptionsExcludedInSelection];
-    setSelectedBlocks(newSelectedBlocks.sort((a, b) => a.code?.localeCompare(b.code)));
+    setSelectedBlocks(keepSelectionOrder ? inSelectionOrder(selectedBlocks, newSelectedBlocks) : ordered(newSelectedBlocks));
   }
 
   return (
