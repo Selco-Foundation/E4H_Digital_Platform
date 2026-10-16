@@ -179,6 +179,9 @@ def facility_validation(
     validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_anganwadi_poc_username(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client, request_info)
+    for i, row in new_rows.iterrows():
+        for msg in collect_coordinate_errors_for_row(row):
+            add_err(new_rows.loc[i, "index"], msg)
 
     return errors
 
@@ -548,6 +551,48 @@ def collect_hfr_nin_errors_for_row(
         checked_in_db=checked_in_db,
     )
     return list(dict.fromkeys(out))
+
+
+# Excel header -> (min, max) for facility coordinates; facility-service maps them to Double.
+FACILITY_COORDINATE_COLUMNS = {
+    "Latitude": (-90.0, 90.0),
+    "Longitude": (-180.0, 180.0),
+}
+
+
+def parse_coordinate(val: Any) -> Optional[float]:
+    """
+    Parse an Excel latitude/longitude cell. Returns None for empty / whitespace-only cells.
+    Raises ValueError for non-numeric values.
+    """
+    if val is None or (not isinstance(val, str) and pd.isna(val)):
+        return None
+    if isinstance(val, bool):
+        raise ValueError(f"'{val}' is not a number")
+    if isinstance(val, (int, float)):
+        return float(val)
+    text = str(val).replace("\xa0", " ").strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        raise ValueError(f"'{text}' is not a number") from None
+
+
+def collect_coordinate_errors_for_row(row: pd.Series) -> List[str]:
+    errors: List[str] = []
+    for col, (low, high) in FACILITY_COORDINATE_COLUMNS.items():
+        if col not in row.index:
+            continue
+        try:
+            value = parse_coordinate(row.get(col))
+        except ValueError as e:
+            errors.append(f"{col} must be a number: {e}")
+            continue
+        if value is not None and not (low <= value <= high):
+            errors.append(f"{col} must be between {low:g} and {high:g}")
+    return errors
 
 
 def collect_anganwadi_poc_username_errors_for_row(
