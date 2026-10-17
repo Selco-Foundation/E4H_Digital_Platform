@@ -183,7 +183,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         builder: (context, assetTypeState) {
           final heading = assetTypeState.when(
             initial: () => '',
-            inverter: () => 'Inverter',
+            inverter: () => 'Inverter / PCU',
             battery: () => 'Battery',
             panel: () => 'Panel',
           );
@@ -600,7 +600,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: spacer3),
                       child: Text(
-                        '$capacity$capacityUnit',
+                        // Unit suffix commented out, not deleted: '$capacity$capacityUnit'
+                        capacity,
                         style: textTheme.bodyS.copyWith(
                           color: Theme.of(context).colorTheme.text.primary,
                         ),
@@ -677,7 +678,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             ),
           ),
           Row(children: [
-            KeyColumn(keys: [heading.titleCase]),
+            KeyColumn(keys: [heading]),
             ValueColumn(values: [countValue]),
           ]),
         ]),

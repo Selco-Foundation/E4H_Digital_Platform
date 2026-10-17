@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../model/appconfig/mdmsRequest.dart';
 import '../../model/document/document.dart';
 import '../../repositories/app_init_repo.dart';
+import '../../utils/bom_form_config_selector.dart';
 
 typedef FileTapCallback = void Function(String path);
 typedef RemoveReportCallback = void Function(ExistingReport report);
@@ -130,7 +131,6 @@ Future<
       bool isSystemParameters,
     })> bomRouteAndLabel(String name) async {
   final r = AppInitRepo();
-  final nameLower = name.toLowerCase();
 
   // 1) Load SELCO.FormConfig docs (raw)
   final rawDocs = await r.searchFormConfigsRaw(
@@ -143,49 +143,23 @@ Future<
     ),
     useCacheRead: true,
   );
-  if (rawDocs == null || rawDocs.isEmpty) {
+  if (rawDocs.isEmpty) {
     throw StateError('No SELCO.FormConfig documents available.');
   }
 
-  // 2) Score candidates by how well they match `name` without assuming any prefix
-  int scoreOf(Map e) {
-    String s(Object? v) => (v ?? '').toString();
-    final schemaCode = s(e['schemaCode']).toLowerCase();
-    final dataName = s(e['data']?['name']).toLowerCase();
-
-    // exact match
-    if (schemaCode == nameLower || dataName == nameLower) return 100;
-
-    // endsWith "<name>" (e.g., "...RMS_Single_Phase_BOM_Solar")
-    if (schemaCode.endsWith(nameLower) || dataName.endsWith(nameLower))
-      return 80;
-
-    // contains "<name>"
-    if (schemaCode.contains(nameLower) || dataName.contains(nameLower))
-      return 60;
-
-    return 0;
-  }
-
-  final candidates = rawDocs.whereType<Map>().toList();
-  candidates.sort((a, b) => scoreOf(b).compareTo(scoreOf(a)));
-  final best = candidates.isNotEmpty && scoreOf(candidates.first) > 0
-      ? Map<String, dynamic>.from(candidates.first)
-      : null;
-
-  if (best == null) {
-    throw StateError('No FormConfig matches for "$name".');
-  }
+  // 2) Match the logical BOM form identifier exactly after removing the
+  // optional "AssetForm." namespace prefix.
+  final best = selectBomFormConfig(rawDocs, name);
 
   // 3) Extract schemaName & pageName strictly from the chosen doc
-  String _str(Object? v) => (v ?? '').toString();
+  String str(Object? v) => (v ?? '').toString();
 
   final data = best['data'];
   if (data is! Map) {
     throw StateError('FormConfig[$name]: missing data block.');
   }
 
-  final schemaName = _str(data['name']).trim();
+  final schemaName = str(data['name']).trim();
   if (schemaName.isEmpty) {
     throw StateError('FormConfig[$name]: data.name is empty.');
   }
@@ -194,13 +168,13 @@ Future<
   if (pages is! List || pages.isEmpty || pages.first is! Map) {
     throw StateError('FormConfig[$name]: pages[0] is missing.');
   }
-  final pageName = _str((pages.first as Map)['page']).trim();
+  final pageName = str((pages.first as Map)['page']).trim();
   if (pageName.isEmpty) {
     throw StateError('FormConfig[$name]: pages[0].page is empty.');
   }
 
-  final schemaCode = _str(best['schemaCode']).trim();
-  final uniqueIdentifier = _str(best['uniqueIdentifier']).trim();
+  final schemaCode = str(best['schemaCode']).trim();
+  final uniqueIdentifier = str(best['uniqueIdentifier']).trim();
 
   String tokenFromName(String n) {
     final lower = n.toLowerCase();

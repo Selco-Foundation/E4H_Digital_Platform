@@ -9,6 +9,7 @@ class UserTypeState with _$UserTypeState {
   const factory UserTypeState.staff() = UserTypeStaff;
   const factory UserTypeState.supervisor() = UserTypeSupervisor;
   const factory UserTypeState.amc() = UserTypeAMC;
+  const factory UserTypeState.assessor() = UserTypeAssessor;
 }
 
 @freezed
@@ -37,6 +38,9 @@ class UserTypeBloc extends Bloc<UserTypeEvent, UserTypeState> {
         break;
       case 'amc':
         emit(const UserTypeState.amc());
+        break;
+      case 'assessor':
+        emit(const UserTypeState.assessor());
         break;
       default:
         emit(const UserTypeState.staff());

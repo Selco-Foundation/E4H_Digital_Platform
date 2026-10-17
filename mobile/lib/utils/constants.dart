@@ -3,17 +3,20 @@ import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../data/nosql/cache_activity_facility_asset.dart';
+import '../data/nosql/cache_assessment_draft.dart';
+import '../data/nosql/cache_assessment_queue.dart';
 import '../data/nosql/cache_activity_facility_bom_values.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_amc_doc.dart';
 import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
-import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../data/nosql/cache_asset_handover_document.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_installation_completion_certificate.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_operation_checkpoint.dart';
 import '../data/nosql/cache_media_upload.dart';
@@ -56,16 +59,20 @@ class Constants {
       return await Isar.open(
         [
           LocalizationWrapperSchema,
+          CacheAssessmentDraftSchema,
+          CacheAssessmentQueueSchema,
           CacheActivityFacilityAssetSchema,
           CacheAssetCountSchema,
           CacheSpecificationSchema,
           CacheAssetDetailSchema,
           CacheAddNewAssetSchema,
           CacheMediaUploadSchema,
+          CacheAssetHandoverDocumentSchema,
           CacheActivityFacilityWorkflowSchema,
           CacheUnsubmittedActivityFacilitySchema,
           CacheSyncRecordSchema,
           CacheCompletionReportSchema,
+          CacheInstallationCompletionCertificateSchema,
           CacheInstallationImageSchema,
           CacheBomDocSchema,
           CachePrefilledActivityFacilitySchema,
@@ -78,7 +85,6 @@ class Constants {
           CacheAmcMediaUploadSchema,
           CacheScheduleVisitFormValuesSchema,
           CachePrefilledScheduledVisitSchema,
-          CacheAmcInstallationFormSchema,
         ],
         name: 'E4H',
         inspector: true,

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../model/request/requestInfo.dart';
@@ -12,7 +13,74 @@ import 'secure_storage/secureStore.dart';
 
 typedef SessionExpiredCallback = Future<void> Function();
 
+const String suppressSessionExpiryExtraKey = 'suppressSessionExpiry';
+const String suppressBodyLoggingExtraKey = 'suppressBodyLogging';
+
+typedef HttpBodyLogWriter = void Function(String message);
+
+class DebugHttpBodyLoggingInterceptor extends Interceptor {
+  DebugHttpBodyLoggingInterceptor({HttpBodyLogWriter? logWriter})
+      : _logWriter = logWriter ?? debugPrint;
+
+  final HttpBodyLogWriter _logWriter;
+
+  @override
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) {
+    if (_shouldLog(options)) {
+      _logWriter(
+        '[HTTP REQUEST] ${options.method} ${options.uri}\n'
+        'Body: ${options.data}',
+      );
+    }
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(
+    Response response,
+    ResponseInterceptorHandler handler,
+  ) {
+    if (_shouldLog(response.requestOptions)) {
+      _logWriter(
+        '[HTTP RESPONSE] ${response.statusCode} '
+        '${response.requestOptions.method} ${response.requestOptions.uri}\n'
+        'Body: ${response.data}',
+      );
+    }
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (_shouldLog(err.requestOptions)) {
+      _logWriter(
+        '[HTTP ERROR RESPONSE] ${err.response?.statusCode} '
+        '${err.requestOptions.method} ${err.requestOptions.uri}\n'
+        'Body: ${err.response?.data}',
+      );
+    }
+    handler.next(err);
+  }
+
+  bool _shouldLog(RequestOptions options) {
+    if (!kDebugMode || options.extra[suppressBodyLoggingExtraKey] == true) {
+      return false;
+    }
+
+    return !options.uri.path.toLowerCase().contains('mdms');
+  }
+}
+
 class AuthTokenInterceptor extends Interceptor {
+  AuthTokenInterceptor({AuthRepository? authRepository, Dio? retryClient})
+      : _authRepository = authRepository ?? AuthRepository(),
+        _retryClient = retryClient;
+
+  final AuthRepository _authRepository;
+  final Dio? _retryClient;
   final _lock = Lock();
   static const _maxRetries = 5;
 
@@ -20,13 +88,17 @@ class AuthTokenInterceptor extends Interceptor {
 
   static bool _logoutTriggered = false;
 
-  static Future<void> _triggerLogoutOnce() async {
+  static void resetLogoutGuard() {
+    _logoutTriggered = false;
+  }
+
+  Future<void> _triggerLogoutOnce() async {
     if (_logoutTriggered) return;
     _logoutTriggered = true;
 
     // 1) clear stored tokens
     try {
-      await AuthRepository().logout();
+      await _authRepository.logout();
     } catch (_) {}
 
     // 2) notify UI layer (navigation + bloc)
@@ -46,6 +118,7 @@ class AuthTokenInterceptor extends Interceptor {
   }
 
   bool _refreshTokenLooksExpired(Object e) {
+    if (e is MissingRefreshCredentials) return true;
     if (e is DioError) {
       final code = e.response?.statusCode;
 
@@ -68,24 +141,10 @@ class AuthTokenInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    try {
-      await NetworkService().ensureOnlineOrThrow();
-    } on NetworkException catch (e) {
-      return handler.reject(
-        DioError(
-          requestOptions: options,
-          type: DioErrorType.unknown,
-          error: e,
-          message: e.message,
-        ),
-      );
-    }
-
     final secureStore = SecureStore();
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
     AppLogger.instance.info(options.path, title: "path");
-    AppLogger.instance.info(options.data, title: "data");
     if (options.data is Map) {
       options.data = {
         ...options.data,
@@ -107,6 +166,10 @@ class AuthTokenInterceptor extends Interceptor {
 
   @override
   void onError(DioError err, ErrorInterceptorHandler handler) async {
+    if (err.requestOptions.extra[suppressSessionExpiryExtraKey] == true) {
+      return handler.next(err);
+    }
+
     AppLogger.instance.error(
         title: "statusCode", message: err.response?.statusCode?.toString());
     if (err.response?.statusCode != 401) {
@@ -121,7 +184,7 @@ class AuthTokenInterceptor extends Interceptor {
 
     try {
       await _lock.synchronized(() async {
-        await AuthRepository().refreshToken();
+        await _authRepository.refreshToken();
       });
     } catch (e) {
       // If refresh token is invalid/expired -> logout immediately
@@ -134,7 +197,7 @@ class AuthTokenInterceptor extends Interceptor {
     }
 
     try {
-      final dio = DioClient().dio;
+      final dio = _retryClient ?? DioClient().dio;
 
       final ro = err.requestOptions;
       ro.extra = Map<String, dynamic>.from(ro.extra)
@@ -144,32 +207,6 @@ class AuthTokenInterceptor extends Interceptor {
       return handler.resolve(newResponse);
     } on DioError catch (e) {
       return handler.next(e);
-    }
-  }
-}
-
-class NetworkPrecheckInterceptor extends Interceptor {
-  @override
-  Future<void> onRequest(
-    RequestOptions options,
-    RequestInterceptorHandler handler,
-  ) async {
-    try {
-      await NetworkService().ensureOnlineOrThrow();
-      handler.next(options);
-    } on NetworkException catch (e) {
-      final lower = e.message.toLowerCase();
-      final code = lower.contains('internet')
-          ? LoginErrorCode.noInternet
-          : LoginErrorCode.noNetwork;
-      handler.reject(
-        DioException(
-          requestOptions: options,
-          type: DioExceptionType.unknown,
-          error: AppNetworkException(code, rawMessage: e.message),
-          message: code.name,
-        ),
-      );
     }
   }
 }

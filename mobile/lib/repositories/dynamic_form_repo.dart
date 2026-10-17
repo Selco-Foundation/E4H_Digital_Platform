@@ -9,7 +9,6 @@ import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_amc_doc.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
-import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart' as env;
@@ -22,98 +21,6 @@ class BomRepository {
   final Dio _dio = DioClient().dio;
 
   BomRepository();
-
-  Future<Map<String, dynamic>> enrichWithActivityFacilityContext({
-    required Isar isar,
-    required String activityFacilityId,
-    required Map<String, dynamic> bomData,
-  }) async {
-    try {
-      final row = await isar.cacheActivityFacilityWorkflows
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .findFirst();
-
-      if (row == null) return bomData;
-
-      final af = row.activityFacility;
-
-      final facilityName = af.facility?.facilityName?.toString();
-      final address = _formatFacilityAddress(af);
-      final projectNumber = af.fieldPlan?.project?.projectNumber?.toString();
-
-      final projectDate = _formatProjectDate(af);
-      final locality =
-          parseBoundaryCodeLocality(af.facility?.boundaryCode?.toString());
-      final projectState = locality.state;
-      final projectBlock = locality.block;
-
-      final enriched = Map<String, dynamic>.from(bomData);
-
-      if (facilityName != null && facilityName.trim().isNotEmpty) {
-        enriched['health_facility_name'] = facilityName.trim();
-      }
-      if (address != null && address.trim().isNotEmpty) {
-        enriched['health_facility_address'] = address.trim();
-      }
-      if (projectNumber != null && projectNumber.trim().isNotEmpty) {
-        enriched['project_number'] = projectNumber.trim();
-      }
-      if (projectDate != null && projectDate.trim().isNotEmpty) {
-        enriched['project_date'] = projectDate.trim();
-      }
-      if (projectState.trim().isNotEmpty) {
-        enriched['project_state'] = projectState.trim();
-      }
-      if (projectBlock.trim().isNotEmpty) {
-        enriched['project_block'] = projectBlock.trim();
-      }
-
-      return enriched;
-    } catch (_) {
-      return bomData;
-    }
-  }
-
-  String? _formatProjectDate(dynamic af) {
-    final fpStart = af.fieldPlan?.startDateTime;
-    final pjStart = af.fieldPlan?.project?.startDateTime;
-    final dt = fpStart ?? pjStart;
-    if (dt == null) return null;
-    final y = dt.year.toString().padLeft(4, '0');
-    final m = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
-
-  String? _formatFacilityAddress(dynamic af) {
-    try {
-      final a = af.facility?.address;
-      if (a == null) return null;
-      final parts = <String>[];
-      void add(String? v) {
-        final s = v?.toString().trim();
-        if (s != null && s.isNotEmpty) parts.add(s);
-      }
-
-      add(a.detail);
-      add(a.landmark);
-      add(a.doorNo);
-      add(a.street);
-      add(a.city);
-      add(a.pincode);
-
-      if (parts.isEmpty) {
-        add(a.addressLine1);
-        add(a.addressLine2);
-      }
-
-      if (parts.isEmpty) return null;
-      return parts.join(', ');
-    } catch (_) {
-      return null;
-    }
-  }
 
   Future<void> saveLocal({
     required Isar isar,
@@ -276,8 +183,6 @@ class BomRepository {
     );
 
     final allDocs = await getAllForProject(isar, activityFacilityId);
-    final dirty = allDocs.where((d) => d.isDirty).toList();
-    if (dirty.isEmpty) return;
 
     var mergedKV = await getProjectBomKV(
       isar: isar,
@@ -293,6 +198,15 @@ class BomRepository {
       }
       mergedKV = fallback;
     }
+
+    if (mergedKV.isEmpty) {
+      mergedKV = await _getModelBomValues(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+      );
+    }
+
+    if (mergedKV.isEmpty) return;
 
     final existingId = allDocs
         .firstWhere(
@@ -446,77 +360,6 @@ class BomRepository {
           message: e.toString(),
           stackTrace: stack);
       throw Exception("Error syncing bom");
-    }
-  }
-
-  Future<String> generateBomPdf({
-    required Isar isar,
-    required String activityFacilityId,
-    required String userType,
-  }) async {
-    try {
-      final cachedBomData = await getProjectBomKV(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        userType: userType,
-      );
-      final fallbackBomData = await _getModelBomValues(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-      );
-      final bomData = cachedBomData != null && cachedBomData.isNotEmpty
-          ? Map<String, dynamic>.from(cachedBomData)
-          : Map<String, dynamic>.from(fallbackBomData);
-
-      if (bomData.isEmpty) {
-        throw Exception("No BOM values found for project");
-      }
-
-      final spec = await isar.cacheSpecifications
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .findFirst();
-
-      final saved = spec?.system.trim();
-      final system =
-          (saved != null && saved.isNotEmpty) ? saved : SYSTEM_TYPE.DC.name;
-      final enriched = await enrichWithActivityFacilityContext(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        bomData: bomData,
-      );
-
-      final tenantId = env.envConfig.variables.tenantId;
-      final body = {
-        "system": system,
-        "bom": enriched,
-      };
-
-      final path = "activity/v1/bom/_save_pdf?tenantId=$tenantId";
-
-      final response = await _dio.post(path, data: body);
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception("Generate BOM PDF failed: ${response.statusCode}");
-      }
-
-      String? filestoreId;
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        filestoreId = data["filestoreId"] as String?;
-      } else if (data is String && data.trim().isNotEmpty) {
-        final parsed = jsonDecode(data) as Map<String, dynamic>;
-        filestoreId = parsed["filestoreId"] as String?;
-      }
-
-      if (filestoreId == null || filestoreId.isEmpty) {
-        throw Exception("filestoreId missing in response");
-      }
-
-      return filestoreId;
-    } catch (e) {
-      AppLogger.instance.info("error $e");
-      throw Exception("Failed to generate BOM PDF filestoreId");
     }
   }
 
@@ -835,8 +678,6 @@ class BomRepository {
 }
 
 class AmcDynamicFormRepository {
-  final Dio _dio = DioClient().dio;
-
   AmcDynamicFormRepository();
 
   Future<void> saveLocal({
@@ -964,82 +805,6 @@ class AmcDynamicFormRepository {
         }
       }
     });
-  }
-
-  Future<String> generateFormPdf({
-    required Isar isar,
-    required String scheduledVisitId,
-    required String userType,
-  }) async {
-    try {
-      final entryKey = '$scheduledVisitId::$userType';
-      final rec = await isar.cacheScheduleVisitFormValues
-          .where()
-          .entryKeyEqualTo(entryKey)
-          .findFirst();
-      if (rec == null) {
-        throw Exception("No Form values found for scheduled visit");
-      }
-      final Map<String, dynamic> bomData =
-          jsonDecode(rec.dataJson) as Map<String, dynamic>;
-
-      final tenantId = env.envConfig.variables.tenantId;
-      final body = {
-        "amc": bomData,
-      };
-
-      final path = "pdf-service/v1/_create?key=amc-report&tenantId=$tenantId";
-
-      final response = await _dio.post(path, data: body);
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception("Generate Form PDF failed: ${response.statusCode}");
-      }
-
-      String? filestoreId = _extractFilestoreId(response.data);
-
-      if (filestoreId == null || filestoreId.isEmpty) {
-        throw Exception("filestoreId missing in response");
-      }
-
-      return filestoreId;
-    } catch (e) {
-      AppLogger.instance
-          .error(title: "Failed to generate BOM PDF", message: "error $e");
-      throw Exception("Failed to generate BOM PDF filestoreId");
-    }
-  }
-
-  String? _extractFilestoreId(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      // New shape: filestoreIds: ["id1", ...]
-      final ids = data["filestoreIds"];
-      if (ids is List && ids.isNotEmpty) {
-        final first = ids.first;
-        if (first is String) return first;
-      }
-
-      // Old shape: filestoreId: "id1"
-      final single = data["filestoreId"];
-      if (single is String && single.isNotEmpty) {
-        return single;
-      }
-
-      return null;
-    }
-
-    if (data is List && data.isNotEmpty) {
-      // If backend now returns an array at top-level, use first element
-      return _extractFilestoreId(data.first);
-    }
-
-    if (data is String && data.trim().isNotEmpty) {
-      // If Dio gives you a raw JSON string
-      final parsed = jsonDecode(data);
-      return _extractFilestoreId(parsed);
-    }
-
-    return null;
   }
 
   Future<void> mergeKvForEntryKey({

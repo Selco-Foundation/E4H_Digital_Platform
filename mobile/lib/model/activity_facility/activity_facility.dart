@@ -216,6 +216,7 @@ class FacilityDetails with FacilityDetailsMappable {
   String? pocDesignation;
   @MappableField(key: 'solar_solution_design_type')
   String? solar_solution_design_type;
+  String? systemType;
 
   FacilityDetails();
 
@@ -226,8 +227,8 @@ class FacilityDetails with FacilityDetailsMappable {
       ..pocName = m['pocName']?.toString()
       ..pocContact = m['pocContact']?.toString()
       ..pocDesignation = m['pocDesignation']?.toString()
-      ..solar_solution_design_type =
-          m['solar_solution_design_type']?.toString();
+      ..solar_solution_design_type = m['solar_solution_design_type']?.toString()
+      ..systemType = m['systemType']?.toString();
   }
 
   Map<String, dynamic> toMap() => {
@@ -237,6 +238,27 @@ class FacilityDetails with FacilityDetailsMappable {
         'pocContact': pocContact,
         'pocDesignation': pocDesignation,
         'solar_solution_design_type': solar_solution_design_type,
+        'systemType': systemType,
+      };
+}
+
+@Embedded()
+@MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
+class FacilityAdditionalDetails with FacilityAdditionalDetailsMappable {
+  String? mappedVendorName;
+  String? mappedVendorUserName;
+
+  FacilityAdditionalDetails();
+
+  factory FacilityAdditionalDetails.fromMap(Map<String, dynamic> m) {
+    return FacilityAdditionalDetails()
+      ..mappedVendorName = m['mappedVendorName']?.toString()
+      ..mappedVendorUserName = m['mappedVendorUserName']?.toString();
+  }
+
+  Map<String, dynamic> toMap() => {
+        'mappedVendorName': mappedVendorName,
+        'mappedVendorUserName': mappedVendorUserName,
       };
 }
 
@@ -262,6 +284,8 @@ class Facility with FacilityMappable {
   @MappableField(key: 'facility_region')
   String? facilityRegion;
 
+  FacilityAdditionalDetails? additionalDetails;
+
   @MappableField(key: 'facility_details')
   FacilityDetails? facilityDetails;
 
@@ -271,6 +295,13 @@ class Facility with FacilityMappable {
   String? facility_category;
   @MappableField(key: 'facility_ownership')
   String? facility_ownership;
+  @MappableField(key: 'facility_poc_name')
+  String? facility_poc_name;
+  @MappableField(key: 'facility_poc_phone')
+  String? facility_poc_phone;
+
+  @ignore
+  String? get vendorName => additionalDetails?.mappedVendorName;
 
   Facility();
 
@@ -287,6 +318,10 @@ class Facility with FacilityMappable {
     f.facilityName = m['facility_name']?.toString();
     f.facilityType = m['facility_type']?.toString();
     f.facilityRegion = m['facility_region']?.toString();
+    if (m['additionalDetails'] != null) {
+      f.additionalDetails = FacilityAdditionalDetails.fromMap(
+          Map<String, dynamic>.from(m['additionalDetails']));
+    }
     if (m['facility_details'] != null) {
       f.facilityDetails = FacilityDetails.fromMap(
           Map<String, dynamic>.from(m['facility_details']));
@@ -294,6 +329,8 @@ class Facility with FacilityMappable {
     f.facility_subtype = m['facility_subtype']?.toString();
     f.facility_category = m['facility_category']?.toString();
     f.facility_ownership = m['facility_ownership']?.toString();
+    f.facility_poc_name = m['facility_poc_name']?.toString();
+    f.facility_poc_phone = m['facility_poc_phone']?.toString();
     return f;
   }
 
@@ -307,10 +344,13 @@ class Facility with FacilityMappable {
         'facility_name': facilityName,
         'facility_type': facilityType,
         'facility_region': facilityRegion,
+        'additionalDetails': additionalDetails?.toMap(),
         'facility_details': facilityDetails?.toMap(),
         'facility_subtype': facility_subtype,
         'facility_category': facility_category,
         'facility_ownership': facility_ownership,
+        'facility_poc_name': facility_poc_name,
+        'facility_poc_phone': facility_poc_phone,
       };
 }
 
@@ -322,6 +362,8 @@ class FieldPlan with FieldPlanMappable {
   String? name;
   String? status;
   int? healthFacilityNumber;
+  @MappableField(key: 'poc_number')
+  String? poWoNumber;
 
   DateTime? startDateTime;
   DateTime? endDateTime;
@@ -342,6 +384,7 @@ class FieldPlan with FieldPlanMappable {
     fp.healthFacilityNumber = m['healthFacilityNumber'] is int
         ? (m['healthFacilityNumber'] as int)
         : int.tryParse(m['healthFacilityNumber']?.toString() ?? '');
+    fp.poWoNumber = m['poc_number']?.toString();
     fp.startDateTime = m['startDate'] is int
         ? DateTime.fromMillisecondsSinceEpoch(m['startDate'] as int)
         : null;
@@ -362,6 +405,7 @@ class FieldPlan with FieldPlanMappable {
         'name': name,
         'status': status,
         'healthFacilityNumber': healthFacilityNumber,
+        'poc_number': poWoNumber,
         'startDate': startDate,
         'endDate': endDate,
         'project': project?.toMap(),

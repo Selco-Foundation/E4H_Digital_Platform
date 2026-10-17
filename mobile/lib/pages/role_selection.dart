@@ -61,7 +61,13 @@ class _RoleSelectionView extends StatelessWidget {
                         final role = state.availableRoles[index];
                         return HomeItemCard(
                           icon: _iconForRole(role),
-                          label: role.isAmc ? role.label : "Installation",
+                          label: role.moduleLabel,
+                          labelPadding: role.isAssessment
+                              ? const EdgeInsets.symmetric(
+                                  horizontal: spacer2,
+                                )
+                              : null,
+                          fitLabelOnOneLine: role.isAssessment,
                           onPressed: () {
                             context.read<RoleSelectionBloc>().add(
                                   RoleSelectionRoleSelected(role),
@@ -73,9 +79,11 @@ class _RoleSelectionView extends StatelessWidget {
                                 );
 
                             context.router.replace(
-                              role.isAmc
-                                  ? const AmcHomeRoute()
-                                  : const HomeRoute(),
+                              role.isAssessment
+                                  ? const AssessmentHomeRoute()
+                                  : role.isAmc
+                                      ? const AmcHomeRoute()
+                                      : const HomeRoute(),
                             );
                           },
                         );
@@ -107,6 +115,8 @@ class _RoleSelectionView extends StatelessWidget {
         return Icons.supervisor_account_outlined;
       case RoleSelectionOption.amc:
         return Icons.home_repair_service_outlined;
+      case RoleSelectionOption.assessment:
+        return Icons.business_center_outlined;
     }
   }
 }
