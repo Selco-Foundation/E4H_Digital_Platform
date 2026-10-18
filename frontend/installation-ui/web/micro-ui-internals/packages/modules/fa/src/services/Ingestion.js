@@ -215,13 +215,19 @@ export const IngestionService = {
     };
   },
 
-  downloadFacilityDataTemplate: async () => {
+  /** `boundaryData` (the geography step's tree) limits the template - its BlockBoundaryCodes sheet
+   *  and its State/District/Block dropdowns - to those blocks; without it, every block. */
+  downloadFacilityDataTemplate: async (boundaryData) => {
     const endpoint = "/ingestion-service/template/facilityIngestion";
+    const data = new FormData();
+    if (boundaryData) {
+      data.append("boundary_data", JSON.stringify(boundaryData));
+    }
 
     await CustomRequest({
       url: endpoint,
       userService: true,
-      data: new FormData(),
+      data,
       method: "POST",
       auth: true,
       attachAuthHeaders: true,

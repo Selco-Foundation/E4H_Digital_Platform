@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import { IngestionService } from "../../services/Ingestion";
 import { FAService } from "../../services/FA";
+import useBoundary from "../../hooks/useBoundary";
+import { buildBoundaryDataTree, EMPTY_GEOGRAPHY } from "../../utilities/GeographySelection";
 
 const BulkAddFacilities = () => {
 
@@ -13,6 +15,10 @@ const BulkAddFacilities = () => {
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [isOnmReady, setIsOnmReady] = useState(false);
+  // The template is generated for this geography only: its boundary sheet and its
+  // State/District/Block dropdowns hold just these blocks, never the whole country.
+  const [geography, setGeography] = useState(EMPTY_GEOGRAPHY);
+  const { data: boundary, isLoading: isBoundaryLoading } = useBoundary();
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -31,8 +37,12 @@ const BulkAddFacilities = () => {
 
   const handleFacilityTemplateDownload = async () => {
     try {
+      if (!geography.blocks.length) {
+        setToast({ key: "error", label: "FA_BULK_ADD_SELECT_GEOGRAPHY" });
+        return;
+      }
       setBlockUI(true);
-      await IngestionService.downloadFacilityDataTemplate();
+      await IngestionService.downloadFacilityDataTemplate(buildBoundaryDataTree(geography, boundary));
       setBlockUI(false);
       setToast({ key: "success", label: "FACILITY_TEMPLATE_DOWNLOAD_SUCCESS" });
 
@@ -94,6 +104,29 @@ const BulkAddFacilities = () => {
   const config = useMemo(
     () => [
       {
+        key: "0",
+        body: [
+          {
+            key: "geographySelector",
+            type: "component",
+            component: "FAGeographySelector",
+            withoutLabelFieldPair: true,
+            withoutLabel: true,
+            customProps: {
+              name: "geographySelector",
+              geography,
+              setGeography,
+              boundary,
+              isLoading: isBoundaryLoading,
+              t,
+            },
+            populators: {
+              name: "geographySelector",
+            },
+          },
+        ],
+      },
+      {
         key: "1",
         body: [
           {
@@ -108,6 +141,7 @@ const BulkAddFacilities = () => {
               heading: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE",
               description: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE_DESC",
               handleDownload: handleFacilityTemplateDownload,
+              disabled: geography.blocks.length === 0,
               t,
             },
             route: "project-duration-2",
@@ -178,7 +212,7 @@ const BulkAddFacilities = () => {
         ],
       },
     ],
-    [t, isOnmReady, file, invalidDataError]
+    [t, isOnmReady, file, invalidDataError, geography, boundary, isBoundaryLoading]
   );
 
   return (

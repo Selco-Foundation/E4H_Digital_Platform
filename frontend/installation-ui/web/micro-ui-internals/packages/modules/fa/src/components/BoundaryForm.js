@@ -2,6 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../hooks/useBoundary";
 
+// LGD codes are numeric, and boundary.lgd_* columns hold at most 16 characters.
+const LGD_CODE_PATTERN = /^\d{0,16}$/;
+export const LGD_BLOCK_TIERS = [
+  { code: "Block", name: "FA_LGD_TIER_BLOCK" },
+  { code: "Sub-district", name: "FA_LGD_TIER_SUB_DISTRICT" },
+  { code: "Both", name: "FA_LGD_TIER_BOTH" },
+];
+
 const BoundaryForm = ({ t, onSubmit, formToast, setFormToast, isStateTextMode, setIsStateTextMode, isDistrictTextMode, setIsDistrictTextMode }) => {
 
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
@@ -13,6 +21,24 @@ const BoundaryForm = ({ t, onSubmit, formToast, setFormToast, isStateTextMode, s
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Optional LGD code field. A code is asked for only where that tier is being created here: a
+  // state or district picked from the list keeps the codes it already stores, and the tiers
+  // created under it inherit them (see BoundaryAdminActions).
+  const lgdCodeField = (key, label) => ({
+    inline: true,
+    label,
+    isMandatory: false,
+    key,
+    type: "text",
+    populators: {
+      name: key,
+      validation: {
+        maxlength: 16,
+        pattern: { value: LGD_CODE_PATTERN, message: t("FA_LGD_CODE_VALIDATION_ERROR") },
+      },
+    },
+  });
 
   const config = useMemo(() => [
       {
@@ -62,6 +88,21 @@ const BoundaryForm = ({ t, onSubmit, formToast, setFormToast, isStateTextMode, s
             key: "block",
             type: "text",
             populators: { name: "block", error: t("CORE_COMMON_REQUIRED") },
+          },
+          ...(isStateTextMode ? [lgdCodeField("lgdStateCode", "FA_LGD_STATE_CODE")] : []),
+          ...(isStateTextMode || isDistrictTextMode ? [lgdCodeField("lgdDistrictCode", "FA_LGD_DISTRICT_CODE")] : []),
+          lgdCodeField("lgdBlockCode", "FA_LGD_BLOCK_CODE"),
+          {
+            inline: true,
+            label: "FA_LGD_BLOCK_TIER",
+            isMandatory: false,
+            key: "lgdBlockTier",
+            type: "dropdown",
+            populators: {
+              name: "lgdBlockTier",
+              optionsKey: "name",
+              options: LGD_BLOCK_TIERS,
+            },
           },
         ],
       },

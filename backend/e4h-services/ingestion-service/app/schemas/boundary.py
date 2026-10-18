@@ -55,3 +55,33 @@ def flatten_boundaries(boundary_json: Dict) -> List[Boundary]:
 
     traverse(boundary_json)
     return boundaries
+
+
+def flatten_boundary_codes(boundary_json: Dict) -> List[Boundary]:
+    """Like `flatten_boundaries`, but every level holds its boundary CODE, not its name.
+
+    This is the shape `get_all_boundaries` returns and `_format_boundary_data` localizes
+    (`Boundary_<code>`), so a geography-filtered template is built exactly like the
+    unfiltered one - whatever the caller put in each node's `name`.
+    """
+    boundaries: List[Boundary] = []
+
+    def traverse(node, country="", state="", district=""):
+        node_type = node.get("type")
+        code = node.get("boundaryCode") or ""
+
+        if node_type == "country":
+            country = code
+        elif node_type == "state":
+            state = code
+        elif node_type == "district":
+            district = code
+        elif node_type == "block":
+            boundaries.append(Boundary(country=country, state=state, district=district,
+                                       block=code, code=code))
+
+        for child in node.get("children", []) or []:
+            traverse(child, country, state, district)
+
+    traverse(boundary_json)
+    return boundaries

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Optional, List, Dict
 import psycopg2
@@ -15,7 +16,7 @@ from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
-from app.schemas.boundary import Boundary, flatten_boundaries
+from app.schemas.boundary import Boundary, flatten_boundaries, flatten_boundary_codes
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
 from app.utils.convertor import request_info_from_json, apply_field_plan_facility_additional_fields
 from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_prefilled_rows_in_excel, \
@@ -653,9 +654,22 @@ async def get_facility_ingestion_template_with_data(
             response_description="Returns Excel template with facility schema and boundary codes")
 async def get_facility_ingestion_template(
         facility_service: FacilityTemplateService = Depends(),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        boundary_data: str = Form(default="")
 ):
+    """`boundary_data` is optional: the JSON country -> state -> district -> block tree the
+    geography step builds (each node's `boundaryCode` is what counts). With it, the template -
+    its BlockBoundaryCodes sheet and its State/District/Block dropdowns - holds only those
+    blocks; without it, every block in the tenant."""
     request_info = request_info_from_json(request_info)
+    selected_boundaries: Optional[List[Boundary]] = None
+    if boundary_data.strip():
+        try:
+            selected_boundaries = flatten_boundary_codes(json.loads(boundary_data))
+        except (ValueError, TypeError, AttributeError) as e:
+            raise HTTPException(status_code=400, detail=f"boundary_data is not a valid boundary tree: {e}")
+        if not selected_boundaries:
+            raise HTTPException(status_code=400, detail="boundary_data has no blocks - select at least one block")
     mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -663,7 +677,8 @@ async def get_facility_ingestion_template(
         output_file_path = create_temp_file(suffix=".xlsx")
         try:
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchemaWithoutBoundaryCode')
-            boundary_data = facility_service.get_all_boundaries(request_info)
+            boundary_data = (selected_boundaries if selected_boundaries is not None
+                             else facility_service.get_all_boundaries(request_info))
             vendor_data = facility_service.get_all_vendor_codes(request_info)
         except Exception as e:
             logger.error(f"Error fetching data from external services: {e}")
