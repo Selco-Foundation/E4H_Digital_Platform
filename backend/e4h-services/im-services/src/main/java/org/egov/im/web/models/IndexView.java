@@ -71,6 +71,32 @@ public class IndexView {
     @JsonProperty("definedTotalSla")
     private Long definedTotalSla;
 
+    /*
+     * SLA anchors written on every state change. Readers (inbox, escalation, Kibana) derive the live
+     * remaining values from these and the current time, so nothing has to refresh the index hourly.
+     * The *DueAt / base fields are only set while the corresponding SLA clock is running.
+     */
+
+    /** When the ticket entered its current workflow state (epoch millis). */
+    @JsonProperty("stateEnteredTime")
+    private Long stateEnteredTime;
+
+    /** Total SLA remaining at {@link #stateEnteredTime}; live value = this - business time elapsed since. */
+    @JsonProperty("totalSlaBase")
+    private Long totalSlaBase;
+
+    /** Business-hours deadline for the current state's SLA. */
+    @JsonProperty("stateSlaDueAt")
+    private Long stateSlaDueAt;
+
+    /** Point after which the ticket counts as nearing its state SLA. */
+    @JsonProperty("stateSlaWarnAt")
+    private Long stateSlaWarnAt;
+
+    /** Business-hours deadline for the ticket's total SLA. */
+    @JsonProperty("totalSlaDueAt")
+    private Long totalSlaDueAt;
+
     @JsonProperty("resolvedTimestamp")
     private Long resolvedTimestamp;
 

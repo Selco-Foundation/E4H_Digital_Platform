@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @NoArgsConstructor
@@ -276,6 +277,12 @@ public class IMConstants {
     public static final String APPROVE_ACTION = "APPROVE";
 
     public static final String ASIA_KOLKATA = "Asia/Kolkata";
+
+    public static final Set<String> SLA_CLOCK_STOPPED_STATUSES =
+            Set.of(REJECTED, CLOSED_AFTER_REJECTION, RESOLVED, CLOSED_AFTER_RESOLUTION);
+
+    // A ticket counts as nearing SLA once this share of its state SLA (or less) is left.
+    public static final double NEARING_SLA_REMAINING_RATIO = 0.3;
 
     public static final String PENDINGFORASSIGNMENT_PREFIX = "PENDINGFORASSIGNMENT_";
 

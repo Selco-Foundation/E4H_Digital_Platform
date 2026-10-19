@@ -172,22 +172,99 @@ public class WorkflowService {
         log.trace("WorkflowService::enrichTotalSla method invoked");
         IncidentRequest request = wrapper.getIncidentRequest();
         log.debug("Enriching SLA for incident: {}", request.getIncident().getIncidentId());
-        String applicationStatus = request.getIncident().getApplicationStatus();
         RequestInfo requestInfo= request.getRequestInfo();
         String tenantId = request.getIncident().getTenantId();
         String IncidentId = request.getIncident().getIncidentId();
 
-        // Step 1: Fetch MDMS BusinessHours data
         log.trace("Fetching BusinessHours from MDMS");
-        Object mdmsData = mdmsUtils.fetchMDMSData(
-                request.getRequestInfo(),
-                request.getIncident().getTenantId(),
-                "common-masters",
-                List.of("BusinessHours"),
-                null
-        );
+        List<Map<String, Object>> businessHourList = fetchBusinessHours(requestInfo, tenantId);
 
-        // Step 2: Parse BusinessHours config
+        //get all process instances
+        log.trace("Fetching all process instances for SLA and lifecycle calculation");
+        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
+
+        // Compute first-round resolved / declined timestamps (before any reordering)
+        enrichResolvedAndDeclinedTimestamps(wrapper, processInstances);
+
+        // SLA calculation requires oldest-first ordering
+        Collections.reverse(processInstances);
+        SlaSnapshot sla = computeSla(processInstances, processInstance, this.getStates(), businessHourList);
+
+        IndexView indexView = wrapper.getIndexView();
+        indexView.setDefinedTotalSla(sla.definedTotalSla());
+        indexView.setStateEnteredTime(sla.stateEnteredTime());
+        indexView.setTotalSlaBase(sla.totalSlaBase());
+        indexView.setStateSlaDueAt(sla.stateSlaDueAt());
+        indexView.setStateSlaWarnAt(sla.stateSlaWarnAt());
+        indexView.setTotalSlaDueAt(sla.totalSlaDueAt());
+        processInstance.getState().setTotalSlaRemaining(sla.totalSlaRemaining());
+    }
+
+    /**
+     * SLA values of a ticket at the current instant, plus the fixed anchors readers derive the live
+     * remaining values from. The deadlines and {@code totalSlaBase} are null while the matching clock is
+     * not running: a closed ticket, or a state without an SLA of its own, keeps its values as written.
+     */
+    public record SlaSnapshot(long definedTotalSla, Long stateSla, long slaRemaining, long totalSlaRemaining,
+                              long stateEnteredTime, Long totalSlaBase,
+                              Long stateSlaDueAt, Long stateSlaWarnAt, Long totalSlaDueAt) {
+    }
+
+    /**
+     * @param processInstances the ticket's workflow history, oldest first. The current instance is
+     *                         appended when the history does not end with it yet.
+     * @param current          the ticket's current process instance
+     */
+    public SlaSnapshot computeSla(List<ProcessInstance> processInstances, ProcessInstance current,
+                                  List<State> states, List<Map<String, Object>> businessHourList) {
+        BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
+        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
+        long definedTotalSla = slaService.computeTotalSla(current.getState().getApplicationStatus(), states, processInstances);
+        long totalSlaBase = slaService.computeTotalSlaBase(states, processInstances, businessHourList, current);
+
+        ProcessInstance latestInstance = processInstances.get(processInstances.size() - 1);
+        long stateEnteredTime = latestInstance.getAuditDetails().getCreatedTime();
+        long elapsedInState = util.calculateBusinessDuration(stateEnteredTime, System.currentTimeMillis());
+        boolean totalClockRunning = slaService.isSlaBearingState(latestInstance.getState().getApplicationStatus());
+        long totalSlaRemaining = totalClockRunning ? totalSlaBase - elapsedInState : totalSlaBase;
+
+        boolean clockStopped = slaService.isSlaClockStopped(current);
+        Long stateSla = current.getState().getSla();
+        boolean stateClockRunning = !clockStopped && stateSla != null && stateSla > 0;
+        long slaRemaining = (stateSla == null ? 0L : stateSla) - (stateClockRunning ? elapsedInState : 0L);
+
+        Long stateSlaDueAt = null;
+        Long stateSlaWarnAt = null;
+        if (stateClockRunning) {
+            stateSlaDueAt = util.addBusinessDuration(stateEnteredTime, stateSla);
+            stateSlaWarnAt = util.addBusinessDuration(stateEnteredTime, Math.round(stateSla * (1 - NEARING_SLA_REMAINING_RATIO)));
+        }
+        boolean totalAnchored = !clockStopped && totalClockRunning;
+
+        SlaSnapshot snapshot = new SlaSnapshot(definedTotalSla, stateSla, slaRemaining, totalSlaRemaining, stateEnteredTime,
+                totalAnchored ? totalSlaBase : null, stateSlaDueAt, stateSlaWarnAt,
+                totalAnchored ? util.addBusinessDuration(stateEnteredTime, totalSlaBase) : null);
+        log.debug("SLA calculation completed: businessHoursElapsed={}, {}", businessHoursElapsed, snapshot);
+        return snapshot;
+    }
+
+    /**
+     * Fetches a ticket's workflow history and computes its SLA snapshot. Used by the SLA backfill, which
+     * walks already indexed tickets without performing a transition.
+     */
+    public SlaSnapshot computeSla(String tenantId, String incidentId, RequestInfo requestInfo,
+                                  List<State> states, List<Map<String, Object>> businessHourList) {
+        List<ProcessInstance> processInstances = new ArrayList<>(getAllProcessInstances(tenantId, incidentId, requestInfo));
+        if (processInstances.isEmpty()) {
+            throw new CustomException("PROCESS_INSTANCE_NOT_FOUND", "No workflow history found for incident " + incidentId);
+        }
+        Collections.reverse(processInstances);
+        return computeSla(processInstances, processInstances.get(processInstances.size() - 1), states, businessHourList);
+    }
+
+    public List<Map<String, Object>> fetchBusinessHours(RequestInfo requestInfo, String tenantId) {
+        Object mdmsData = mdmsUtils.fetchMDMSData(requestInfo, tenantId, "common-masters", List.of("BusinessHours"), null);
+
         List<Map<String, Object>> businessHourList;
         try {
             businessHourList = JsonPath.read(
@@ -203,26 +280,7 @@ public class WorkflowService {
             log.error("BusinessHours config missing from MDMS for tenant: {}", tenantId);
             throw new CustomException("MDMS_MISSING", "BusinessHours config missing from MDMS");
         }
-
-        //get all process instances
-        log.trace("Fetching all process instances for SLA and lifecycle calculation");
-        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
-
-        // Compute first-round resolved / declined timestamps (before any reordering)
-        enrichResolvedAndDeclinedTimestamps(wrapper, processInstances);
-
-        // Step 3: Use BusinessHoursUtil (requires latest cycle ordering)
-        Collections.reverse(processInstances);
-        log.trace("Calculating business hours elapsed and total SLA");
-        BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
-        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
-        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
-        long totalSlaRemaining = slaService.computeTotalSlaRemaining(this.getStates(), processInstances, businessHourList,processInstance);
-        log.debug("SLA calculation completed: definedTotalSla={}, businessHoursElapsed={}, totalSlaRemaining={}",
-                definedTotalSla, businessHoursElapsed, totalSlaRemaining);
-
-        wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
-        processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
+        return businessHourList;
     }
 
     /**

@@ -24,6 +24,7 @@ public class ElasticSearchClient {
 
     private final RestTemplate restTemplate;
     private final UpdateService updateService;
+    private final SlaClock slaClock;
 
     @Value("${egov.indexer.es.host.name}")
     private String esHost;
@@ -422,6 +423,10 @@ public class ElasticSearchClient {
             }
 
             log.debug("Incident object keys: {}", incident.keySet());
+
+            // The stored remaining values are only exact at the last state change; bring them up to now.
+            // Data is also exposed as additionalDetails, so its readers see the live values too.
+            slaClock.applyLiveSlaRemaining(data);
 
             // Extract SLA information from the correct location (directly in Data)
             Object slaRemaining = data.get("slaRemaining");
