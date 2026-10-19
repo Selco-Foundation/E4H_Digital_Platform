@@ -547,11 +547,13 @@ def add_dependent_boundary_dropdowns(
       * columns B:C - BL_DMAP: state -> name of that state's district list;
       * columns D:E - BL_BMAP: "state|district" -> name of that district's block list.
         The key carries the state because district names repeat across states (Bilaspur);
-      * from column F - one column per list, named BL_D_<n> (districts of a state) and
+      * F1 - left empty, named BL_NONE: the list a row gets while its parent is blank;
+      * from column G - one column per list, named BL_D_<n> (districts of a state) and
         BL_B_<n> (blocks of a district). Running numbers, because a display name is not a
         legal Excel name.
-    District and Block validate against INDIRECT(VLOOKUP(...)) of the cells to their left,
-    with relative rows, so each row offers the children of its own selection.
+    District and Block validate against INDIRECT(IFERROR(VLOOKUP(...), "BL_NONE")) of the
+    cells to their left, with relative rows, so each row offers the children of its own
+    selection - and an empty list, rather than Excel's #N/A, until that selection is made.
 
     Headers are matched with or without the " (Mandatory)" suffix; a missing column is
     skipped with a warning rather than failing the template.
@@ -602,7 +604,10 @@ def add_dependent_boundary_dropdowns(
         _write_text(lists, row, 1, state)
     define("BL_STATES", f"$A$1:$A${len(states)}")
 
-    next_col = 6  # F
+    # F1 stays empty: with no State (or District) in the row the lookup fails, and the list
+    # falls back to this blank cell instead of offering Excel's #N/A as the only choice.
+    define("BL_NONE", "$F$1")
+    next_col = 7  # G
     d_map_row = b_map_row = 0
     list_no = 0
     for state in states:
@@ -642,23 +647,25 @@ def add_dependent_boundary_dropdowns(
 
     last_row = max(ws.max_row + max_extra_rows, 2)
 
-    def validate(col: str, formula: str, what: str) -> None:
+    def validate(col: str, formula: str, what: str, prompt: str) -> None:
         dv = DataValidation(type="list", formula1=formula, allow_blank=True,
                             showErrorMessage=True, showInputMessage=True)
         dv.error = f"Please select a {what} from the list"
         dv.errorTitle = "Invalid Entry"
-        dv.prompt = f"Select a {what} from the dropdown"
+        dv.prompt = prompt
         dv.promptTitle = f"Select {what}"
         dv.add(f"{col}2:{col}{last_row}")
         ws.add_data_validation(dv)
 
-    validate(state_col, "BL_STATES", "state")
+    validate(state_col, "BL_STATES", "state", "Select a state from the dropdown")
     if district_col and d_map_row:
-        validate(district_col, f"INDIRECT(VLOOKUP(${state_col}2,BL_DMAP,2,FALSE))", "district")
+        validate(district_col,
+                 f'INDIRECT(IFERROR(VLOOKUP(${state_col}2,BL_DMAP,2,FALSE),"BL_NONE"))',
+                 "district", "Select the State first, then a district from the dropdown")
     if block_col and district_col and b_map_row:
         validate(block_col,
-                 f'INDIRECT(VLOOKUP(${state_col}2&"|"&${district_col}2,BL_BMAP,2,FALSE))',
-                 "block")
+                 f'INDIRECT(IFERROR(VLOOKUP(${state_col}2&"|"&${district_col}2,BL_BMAP,2,FALSE),"BL_NONE"))',
+                 "block", "Select the State and District first, then a block from the dropdown")
 
     wb.save(file_path)
     logger.info(f"Added State/District/Block dropdowns to '{sheet_name}': {len(states)} states, "

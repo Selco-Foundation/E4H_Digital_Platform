@@ -105,25 +105,40 @@ const BulkAddFacilities = () => {
     () => [
       {
         key: "0",
+        // Laid out like the pm Geography step: heading, then inline State / Districts / Blocks
+        // rows whose labels and required marks FormComposer draws.
         body: [
           {
-            key: "geographySelector",
+            key: "geographyHeader",
             type: "component",
-            component: "FAGeographySelector",
+            component: "FAGeographyHeader",
             withoutLabelFieldPair: true,
             withoutLabel: true,
+            customProps: { name: "geographyHeader", t },
+            populators: { name: "geographyHeader" },
+          },
+          ...[
+            ["states", "PM_CREATE_PROJECT_LABEL_STATE"],
+            ["districts", "PM_CREATE_PROJECT_LABEL_DISTRICTS"],
+            ["blocks", "PM_CREATE_PROJECT_LABEL_BLOCKS"],
+          ].map(([level, label]) => ({
+            inline: true,
+            label,
+            isMandatory: true,
+            key: `geography_${level}`,
+            type: "component",
+            component: "FAGeographyLevelSelector",
             customProps: {
-              name: "geographySelector",
+              name: `geography_${level}`,
+              level,
               geography,
               setGeography,
               boundary,
               isLoading: isBoundaryLoading,
               t,
             },
-            populators: {
-              name: "geographySelector",
-            },
-          },
+            populators: { name: `geography_${level}` },
+          })),
         ],
       },
       {

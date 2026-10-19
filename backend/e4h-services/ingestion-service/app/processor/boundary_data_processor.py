@@ -140,9 +140,9 @@ class BoundaryDataProcessor:
     def _organize_boundary_data(self, boundary_df):
         """Organize boundary data into hierarchical structure with full codes.
 
-        Keyed by full code, never by the bare name: block and district names repeat across
-        the country ("Sadar", "Bilaspur"), and keying by name would silently drop every
-        repeat after the first - and attach the first one's LGD codes to it.
+        Keyed by full code, never by the bare leaf name: block and district names repeat
+        across the country ("Sadar", "Bilaspur"), and keying by name would silently drop
+        every repeat after the first - and attach the first one's LGD codes to it.
         """
         for _, row in boundary_df.iterrows():
             country = self.to_camel_case(str(row.get('Country', '')).strip())
@@ -266,7 +266,9 @@ class BoundaryDataProcessor:
                 }
                 # LGD identity goes into the boundary's own lgd_* columns, denormalised
                 # down the hierarchy: a State carries only its state code, a District its
-                # state and district, a Block all three.
+                # state and district, a Block all three. These are what a later import
+                # reconciles on, since a boundary code is derived from the name and so
+                # changes when the name does.
                 lgd = data.get("lgd") or {}
                 if lgd.get("stateCode"):
                     boundary["lgdStateCode"] = lgd["stateCode"]
