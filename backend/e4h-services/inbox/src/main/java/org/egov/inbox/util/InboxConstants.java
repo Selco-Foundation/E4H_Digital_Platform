@@ -87,6 +87,24 @@ public class InboxConstants {
 
     public static final String TOTAL_SLA_REMAINING = "totalSlaRemaining";
 
+    // Field the index stores the state SLA under; STATE_SLA above is the inbox response key
+    public static final String INDEXED_STATE_SLA = "stateSla";
+
+    // SLA anchors im-services writes on every state change, see IndexView there
+    public static final String STATE_ENTERED_TIME = "stateEnteredTime";
+
+    public static final String TOTAL_SLA_BASE = "totalSlaBase";
+
+    public static final String STATE_SLA_DUE_AT = "stateSlaDueAt";
+
+    public static final String STATE_SLA_WARN_AT = "stateSlaWarnAt";
+
+    public static final String COMMON_MASTERS_MODULE = "common-masters";
+
+    public static final String BUSINESS_HOURS_MASTER = "BusinessHours";
+
+    public static final String BUSINESS_HOURS_JSONPATH = "$.MdmsRes['common-masters'].BusinessHours[0].BusinessHours";
+
     public static final String MAPPED_VENDOR_NAME = "mappedVendorName";
 
     public static final String MAPPED_VENDOR_USER_NAME = "mappedVendorUserName";

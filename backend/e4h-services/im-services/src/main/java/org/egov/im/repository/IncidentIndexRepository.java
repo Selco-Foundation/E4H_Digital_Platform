@@ -2,6 +2,7 @@ package org.egov.im.repository;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.config.RequestConfig;
@@ -31,6 +32,8 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.egov.im.util.IMConstants.SLA_CLOCK_STOPPED_STATUSES;
 
 /**
  * Read-side access to the incident Elasticsearch index.
@@ -273,6 +276,93 @@ public class IncidentIndexRepository {
             return countBulkSuccesses(response.getBody(), patches.size());
         } catch (Exception e) {
             log.error("Bulk owner update of {} documents failed entirely", patches.size(), e);
+            return 0;
+        }
+    }
+
+    /**
+     * Reads one page of open tickets for the SLA backfill - the same set the hourly SLA job used to
+     * refresh: not in a terminal state and not resolved / rejected. Paged with search_after on the
+     * incident id, like {@link #fetchOwnerBackfillPage}.
+     */
+    public JsonNode fetchSlaBackfillPage(int size, JsonNode searchAfter) {
+        String url = trimTrailingSlash(config.getEsHost()) + "/" + config.getEsIncidentIndex() + "/_search";
+
+        ObjectNode bool = mapper.createObjectNode();
+        bool.set("filter", mapper.createArrayNode().add(mapper.createObjectNode()
+                .set("exists", mapper.createObjectNode().put("field", INCIDENT_ID_SORT_FIELD))));
+        ArrayNode closedStatuses = mapper.createArrayNode();
+        SLA_CLOCK_STOPPED_STATUSES.forEach(closedStatuses::add);
+        bool.set("must_not", mapper.createArrayNode()
+                .add(mapper.createObjectNode().set("term", mapper.createObjectNode()
+                        .put("Data.currentProcessInstance.state.isTerminateState", true)))
+                .add(mapper.createObjectNode().set("terms", mapper.createObjectNode()
+                        .set("Data.currentProcessInstance.state.applicationStatus.keyword", closedStatuses))));
+
+        ObjectNode body = mapper.createObjectNode();
+        body.put("size", size);
+        body.set("query", mapper.createObjectNode().set("bool", bool));
+        body.set("_source", mapper.createArrayNode()
+                .add("Data.incident.incidentId")
+                .add("Data.tenantId")
+                .add("Data.currentProcessInstance.businessService"));
+        body.set("sort", mapper.createArrayNode().add(mapper.createObjectNode()
+                .set(INCIDENT_ID_SORT_FIELD, mapper.createObjectNode().put("order", "asc"))));
+        if (searchAfter != null && searchAfter.isArray() && !searchAfter.isEmpty()) {
+            body.set("search_after", searchAfter);
+        }
+
+        try {
+            HttpEntity<String> entity = new HttpEntity<>(mapper.writeValueAsString(body), buildHeaders());
+            ResponseEntity<JsonNode> response = bulkRestTemplate.postForEntity(url, entity, JsonNode.class);
+            JsonNode root = response.getBody();
+            return root == null ? mapper.createArrayNode() : root.path("hits").path("hits");
+        } catch (Exception e) {
+            // Deliberately fatal, like the owner backfill: a swallowed error would report a partial run as complete.
+            throw new CustomException("ES_SEARCH_FAILED",
+                    "Failed to read a page of " + config.getEsIncidentIndex() + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Partially updates {@code Data} of the given documents in a single {@code _bulk} request; only the
+     * supplied fields are written.
+     *
+     * @param dataByDocumentId document id -> fields to set under {@code Data}
+     * @return the number of documents Elasticsearch accepted; failures are logged per document
+     */
+    public int bulkUpdateData(Map<String, ObjectNode> dataByDocumentId) {
+        if (CollectionUtils.isEmpty(dataByDocumentId)) {
+            return 0;
+        }
+
+        StringBuilder ndjson = new StringBuilder();
+        try {
+            for (Map.Entry<String, ObjectNode> entry : dataByDocumentId.entrySet()) {
+                ObjectNode action = mapper.createObjectNode();
+                action.set("update", mapper.createObjectNode()
+                        .put("_index", config.getEsIncidentIndex())
+                        .put("_id", entry.getKey()));
+                ndjson.append(mapper.writeValueAsString(action)).append('\n');
+
+                ObjectNode wrapper = mapper.createObjectNode();
+                wrapper.set("doc", mapper.createObjectNode().set("Data", entry.getValue()));
+                ndjson.append(mapper.writeValueAsString(wrapper)).append('\n');
+            }
+        } catch (Exception e) {
+            throw new CustomException("ES_BULK_BUILD_FAILED", "Failed to build the bulk update: " + e.getMessage());
+        }
+
+        HttpHeaders headers = buildHeaders();
+        headers.setContentType(new MediaType("application", "x-ndjson", StandardCharsets.UTF_8));
+
+        try {
+            HttpEntity<String> entity = new HttpEntity<>(ndjson.toString(), headers);
+            ResponseEntity<JsonNode> response = bulkRestTemplate.postForEntity(
+                    trimTrailingSlash(config.getEsHost()) + "/_bulk", entity, JsonNode.class);
+            return countBulkSuccesses(response.getBody(), dataByDocumentId.size());
+        } catch (Exception e) {
+            log.error("Bulk update of {} documents failed entirely", dataByDocumentId.size(), e);
             return 0;
         }
     }

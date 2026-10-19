@@ -10,6 +10,8 @@ import static org.egov.im.util.IMConstants.PENDING_RESOLUTION_PREFIX;
 
 public class BusinessHoursUtil {
 
+    private static final int MAX_DAYS_TO_WALK = 3660;
+
     private final Map<DayOfWeek, Pair<LocalTime, LocalTime>> workingHoursMap;
 
     @SuppressWarnings("unchecked")
@@ -59,6 +61,51 @@ public class BusinessHoursUtil {
         }
 
         return duration;
+    }
+
+    public long calculateBusinessDuration(long startMillis, long endMillis) {
+        ZoneId zone = ZoneId.of(ASIA_KOLKATA);
+        return calculateBusinessDuration(ZonedDateTime.ofInstant(Instant.ofEpochMilli(startMillis), zone),
+                ZonedDateTime.ofInstant(Instant.ofEpochMilli(endMillis), zone));
+    }
+
+    /**
+     * Returns the instant reached after {@code durationMillis} of business time has elapsed from
+     * {@code startMillis} - the inverse of {@link #calculateBusinessDuration(long, long)}. A negative
+     * duration walks backwards, so an SLA that is already overrun yields a deadline in the past.
+     * Falls back to plain wall-clock arithmetic when no business hours are configured.
+     */
+    public long addBusinessDuration(long startMillis, long durationMillis) {
+        if (durationMillis == 0 || workingHoursMap.isEmpty()) {
+            return startMillis + durationMillis;
+        }
+        ZoneId zone = ZoneId.of(ASIA_KOLKATA);
+        ZonedDateTime current = ZonedDateTime.ofInstant(Instant.ofEpochMilli(startMillis), zone);
+        long remaining = Math.abs(durationMillis);
+        boolean forward = durationMillis > 0;
+
+        // Every week holds at least one working window, so this bound only guards against bad config.
+        for (int day = 0; day < MAX_DAYS_TO_WALK; day++) {
+            Pair<LocalTime, LocalTime> hours = workingHoursMap.get(current.getDayOfWeek());
+            if (hours != null) {
+                ZonedDateTime workStart = ZonedDateTime.of(current.toLocalDate(), hours.getFirst(), zone);
+                ZonedDateTime workEnd = ZonedDateTime.of(current.toLocalDate(), hours.getSecond(), zone);
+                ZonedDateTime from = forward ? (current.isBefore(workStart) ? workStart : current) : workStart;
+                ZonedDateTime to = forward ? workEnd : (current.isBefore(workEnd) ? current : workEnd);
+                if (from.isBefore(to)) {
+                    long available = Duration.between(from, to).toMillis();
+                    if (remaining <= available) {
+                        return forward ? from.toInstant().toEpochMilli() + remaining
+                                : to.toInstant().toEpochMilli() - remaining;
+                    }
+                    remaining -= available;
+                }
+            }
+            current = forward
+                    ? current.toLocalDate().plusDays(1).atStartOfDay(zone)
+                    : current.toLocalDate().atStartOfDay(zone).minusNanos(1);
+        }
+        return startMillis + durationMillis;
     }
 
     public long calculateBusinessDurationForAllStates(List<ProcessInstance> processInstances) {

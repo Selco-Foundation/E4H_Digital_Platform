@@ -135,20 +135,8 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             boolClause.put("must_not", mustNotClauseList);
             log.debug("🚫 Added SLA exclusions: terminated tickets + Incident service");
 
-            Map<String, Object> scriptInner = new HashMap<>();
-            scriptInner.put("source",
-                    "doc.containsKey('Data.slaRemaining') && " +
-                            "doc.containsKey('Data.stateSla') && " +
-                            "doc['Data.stateSla'].size() > 0 && " +
-                            "doc['Data.stateSla'].value > 0 && " +
-                            "((double) doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
-            scriptInner.put("lang", "painless");
-
-            Map<String, Object> scriptClause = new HashMap<>();
-            scriptClause.put("script", scriptInner);
-
-            mustClauseList.add(Collections.singletonMap("script", scriptClause));
-            log.debug("⏱️ Added SLA painless script filter");
+            mustClauseList.add(getNearingSlaClause());
+            log.debug("⏱️ Added nearing SLA filter");
         }
 
         log.info("✅ ES query built successfully for tenantId='{}' | module='{}'",
@@ -559,6 +547,38 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         return baseEsQuery;
     }
 
+    /**
+     * A ticket is nearing SLA once 30% or less of its state SLA is left, breached ones included.
+     * im-services stores the instant that happens as stateSlaWarnAt (business hours applied) and only
+     * while the state SLA clock runs, so closed tickets and states without an SLA never match.
+     * Documents indexed before those anchors existed fall back to the stored, cron-refreshed values.
+     */
+    private Map<String, Object> getNearingSlaClause() {
+        Map<String, Object> warnAtRange = new HashMap<>();
+        warnAtRange.put("lte", System.currentTimeMillis());
+        Map<String, Object> anchored = Collections.singletonMap("range",
+                Collections.singletonMap("Data." + STATE_SLA_WARN_AT, warnAtRange));
+
+        Map<String, Object> legacyScript = new HashMap<>();
+        legacyScript.put("source",
+                "doc.containsKey('Data.slaRemaining') && " +
+                        "doc.containsKey('Data.stateSla') && " +
+                        "doc['Data.stateSla'].size() > 0 && " +
+                        "doc['Data.stateSla'].value > 0 && " +
+                        "((double) doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
+        legacyScript.put("lang", "painless");
+        Map<String, Object> legacyBool = new HashMap<>();
+        legacyBool.put("must_not", Collections.singletonList(Collections.singletonMap("exists",
+                Collections.singletonMap("field", "Data." + STATE_ENTERED_TIME))));
+        legacyBool.put("filter", Collections.singletonList(Collections.singletonMap("script",
+                Collections.singletonMap("script", legacyScript))));
+
+        Map<String, Object> should = new HashMap<>();
+        should.put("should", Arrays.asList(anchored, Collections.singletonMap("bool", legacyBool)));
+        should.put("minimum_should_match", 1);
+        return Collections.singletonMap("bool", should);
+    }
+
     @Override
     public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla, String businessService) {
         Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
@@ -588,20 +608,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         termWrapper.put("term", serviceTerm);
         mustClauseList.add(termWrapper);
 
-        // Build the painless script
-        Map<String, Object> innerScript = new HashMap<>();
-        innerScript.put("source",
-                "doc.containsKey('Data.slaRemaining') && " +
-                        "doc.containsKey('Data.stateSla') && " +
-                        "doc['Data.stateSla'].size() > 0 && " +
-                        "doc['Data.stateSla'].value > 0 && " +
-                        "((double) doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
-        innerScript.put("lang", "painless");
-
-        Map<String, Object> script = new HashMap<>();
-        script.put("script", innerScript);
-
-        mustClauseList.add(Collections.singletonMap("script", script));
+        mustClauseList.add(getNearingSlaClause());
 
         bool.put("must", mustClauseList);
 

@@ -15,6 +15,7 @@ import org.egov.inbox.repository.builder.V2.InboxQueryBuilder;
 import org.egov.inbox.service.V2.validator.ValidatorDefaultImplementation;
 import org.egov.inbox.service.WorkflowService;
 import org.egov.inbox.util.BoundaryUtil;
+import org.egov.inbox.util.BusinessHoursCalculator;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.*;
 import org.egov.inbox.web.model.V2.*;
@@ -313,7 +314,8 @@ public class InboxServiceV2 {
             log.debug("📥 Raw ES result for Inbox: {}", result);
         }
 
-        List<Inbox> inboxItemsList = parseInboxItemsFromSearchResponse(result, businessServices);
+        List<Inbox> inboxItemsList = parseInboxItemsFromSearchResponse(result, businessServices,
+                getBusinessHoursCalculator(inboxRequest.getInbox().getTenantId()));
         log.info("✅ Parsed {} Inbox items from ES response", inboxItemsList.size());
 
         return inboxItemsList;
@@ -572,7 +574,48 @@ public class InboxServiceV2 {
         return statusCountMap;
     }
 
-    private List<Inbox> parseInboxItemsFromSearchResponse(Object result, List<BusinessService> businessServices) {
+    /**
+     * Null when the BusinessHours master cannot be read, in which case the SLA values stored on the
+     * index are returned as they are rather than failing the search.
+     */
+    private BusinessHoursCalculator getBusinessHoursCalculator(String tenantId) {
+        try {
+            return new BusinessHoursCalculator(mdmsUtil.getBusinessHours(tenantId));
+        } catch (Exception e) {
+            log.error("⚠️ Could not load BusinessHours, returning stored SLA values", e);
+            return null;
+        }
+    }
+
+    /**
+     * Replaces the stored SLA remaining values with ones computed for this instant from the anchors
+     * im-services writes on every state change: remaining = SLA at state entry - business time since.
+     * The anchors are only present while the respective clock runs, so closed tickets, states without
+     * an SLA and documents indexed before the anchors existed keep their stored values.
+     */
+    private void applyLiveSlaRemaining(Map<String, Object> data, BusinessHoursCalculator calculator, long now) {
+        Long stateEnteredTime = asLong(data.get(STATE_ENTERED_TIME));
+        if (calculator == null || stateEnteredTime == null) {
+            return;
+        }
+        long elapsed = calculator.businessMillisBetween(stateEnteredTime, now);
+
+        Long stateSla = asLong(data.get(INDEXED_STATE_SLA));
+        if (stateSla != null && data.get(STATE_SLA_DUE_AT) != null) {
+            data.put(SLA_REMAINING, stateSla - elapsed);
+        }
+        Long totalSlaBase = asLong(data.get(TOTAL_SLA_BASE));
+        if (totalSlaBase != null) {
+            data.put(TOTAL_SLA_REMAINING, totalSlaBase - elapsed);
+        }
+    }
+
+    private Long asLong(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : null;
+    }
+
+    private List<Inbox> parseInboxItemsFromSearchResponse(Object result, List<BusinessService> businessServices,
+                                                          BusinessHoursCalculator businessHoursCalculator) {
         log.info("➡️ Parsing inbox items from ES search response");
 
         Map<String, Object> hits = (Map<String, Object>) ((Map<String, Object>) result).get(HITS);
@@ -602,6 +645,7 @@ public class InboxServiceV2 {
         });
 
         // Construire les inbox items
+        long now = System.currentTimeMillis();
         List<Inbox> inboxItemList = new ArrayList<>();
         nestedHits.forEach(hit -> {
             Inbox inbox = new Inbox();
@@ -612,8 +656,9 @@ public class InboxServiceV2 {
 
             Long serviceSla = getApplicationServiceSla(businessServiceSlaMap, stateUuidVsSlaMap, inbox.getBusinessObject());
             inbox.getBusinessObject().put(SERVICESLA_KEY, serviceSla);
+            applyLiveSlaRemaining(dataBusinessObject, businessHoursCalculator, now);
             inbox.getBusinessObject().put(SLA_REMAINING, dataBusinessObject.get(SLA_REMAINING));
-            inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(STATE_SLA));
+            inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(INDEXED_STATE_SLA));
             inbox.getBusinessObject().put(TOTAL_SLA_REMAINING, dataBusinessObject.get(TOTAL_SLA_REMAINING));
 
             /*
@@ -628,7 +673,7 @@ public class InboxServiceV2 {
 
             log.debug("📌 Parsed inbox item with serviceSla={} | stateSla={} | slaRemaining={}",
                     serviceSla,
-                    dataBusinessObject.get(STATE_SLA),
+                    dataBusinessObject.get(INDEXED_STATE_SLA),
                     dataBusinessObject.get(SLA_REMAINING));
 
             inboxItemList.add(inbox);
