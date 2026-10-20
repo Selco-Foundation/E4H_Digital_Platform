@@ -130,28 +130,39 @@ public class FieldPlannerFacilityService {
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
     }
 
-    public List<SystemTypeCapacity> searchSystemTypeCapacity(FieldPlanFacilitySearchRequest request,
-                                                             Integer limit,
-                                                             Integer offset,
-                                                             String tenantId,
-                                                             Long lastChangedSince,
-                                                             Boolean includeDeleted) throws Exception {
+    public SystemTypeCapacityResponse searchSystemTypeCapacity(FieldPlanFacilitySearchRequest request,
+                                                               Integer limit,
+                                                               Integer offset,
+                                                               String tenantId,
+                                                               Long lastChangedSince,
+                                                               Boolean includeDeleted) throws Exception {
         log.trace("Entering searchSystemTypeCapacity method for installation plan facility");
         log.info("Received request to search systemType/totalSystemCapacity for installation plan facility, tenant: {}", tenantId);
 
         SearchResponse<FieldPlanFacility> searchResponse = search(request, limit, offset, tenantId, lastChangedSince, includeDeleted);
-        Map<String, SystemTypeCapacity> uniqueCombinations = new LinkedHashMap<>();
+        // Rectification sites get their own ICC pre-population template, so the same
+        // systemType/totalSystemCapacity combination is grouped separately for them.
+        Map<String, SystemTypeCapacity> regularCombinations = new LinkedHashMap<>();
+        Map<String, SystemTypeCapacity> rectificationCombinations = new LinkedHashMap<>();
         for (FieldPlanFacility fieldPlanFacility : searchResponse.getResponse()) {
             SystemTypeCapacity systemTypeCapacity = toSystemTypeCapacity(fieldPlanFacility);
             if (systemTypeCapacity == null) {
                 continue;
             }
             String key = systemTypeCapacity.getSystemType() + "|" + systemTypeCapacity.getTotalSystemCapacity();
-            uniqueCombinations.putIfAbsent(key, systemTypeCapacity);
+            if (Boolean.TRUE.equals(systemTypeCapacity.getRectificationSite())) {
+                rectificationCombinations.putIfAbsent(key, systemTypeCapacity);
+            } else {
+                regularCombinations.putIfAbsent(key, systemTypeCapacity);
+            }
         }
-        List<SystemTypeCapacity> result = new ArrayList<>(uniqueCombinations.values());
+        SystemTypeCapacityResponse result = SystemTypeCapacityResponse.builder()
+                .systemTypeCapacities(new ArrayList<>(regularCombinations.values()))
+                .rectificationSystemTypeCapacities(new ArrayList<>(rectificationCombinations.values()))
+                .build();
 
-        log.info("SystemType/totalSystemCapacity search completed, found {} unique combinations", result.size());
+        log.info("SystemType/totalSystemCapacity search completed, found {} regular and {} rectification unique combinations",
+                result.getSystemTypeCapacities().size(), result.getRectificationSystemTypeCapacities().size());
         log.trace("Exiting searchSystemTypeCapacity method");
         return result;
     }
@@ -164,6 +175,7 @@ public class FieldPlannerFacilityService {
         String systemType = null;
         String totalSystemCapacity = null;
         String customTotalSystemCapacity = null;
+        String rectificationSite = null;
         for (Field field : additionalFields.getFields()) {
             if ("systemType".equals(field.getKey())) {
                 systemType = field.getValue();
@@ -171,6 +183,8 @@ public class FieldPlannerFacilityService {
                 totalSystemCapacity = field.getValue();
             } else if ("customTotalSystemCapacity".equals(field.getKey())) {
                 customTotalSystemCapacity = field.getValue();
+            } else if ("rectificationSite".equals(field.getKey())) {
+                rectificationSite = field.getValue();
             }
         }
         if ("CUSTOM".equalsIgnoreCase(totalSystemCapacity)) {
@@ -182,6 +196,8 @@ public class FieldPlannerFacilityService {
         return SystemTypeCapacity.builder()
                 .systemType(systemType)
                 .totalSystemCapacity(totalSystemCapacity)
+                // "No" or absent -> regular site
+                .rectificationSite(rectificationSite != null && "yes".equalsIgnoreCase(rectificationSite.trim()))
                 .build();
     }
 

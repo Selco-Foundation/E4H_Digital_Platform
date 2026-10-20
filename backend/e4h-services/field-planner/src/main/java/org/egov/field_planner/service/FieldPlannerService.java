@@ -602,7 +602,12 @@ public class FieldPlannerService {
             totalSystemCapacity = (String) additionalDetails.get("customTotalSystemCapacity");
         }
         if (StringUtils.isNotBlank(systemType)) {
-            FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType, totalSystemCapacity);
+            // Rectification sites have their own ICC template for the same systemType/totalSystemCapacity
+            Object rectificationSiteValue = additionalDetails.get("rectificationSite");
+            boolean rectificationSite = rectificationSiteValue != null
+                    && "yes".equalsIgnoreCase(String.valueOf(rectificationSiteValue).trim());
+            FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType,
+                    totalSystemCapacity, rectificationSite);
             if (template != null && template.getTemplateData() != null) {
                 Map<String, Object> templateData = template.getTemplateData();
                 additionalDetails.put("bom", templateData);
@@ -720,12 +725,14 @@ public class FieldPlannerService {
         return result;
     }
 
-    private FieldPlanTemplate findFieldPlanTemplate(FieldPlanRequest request, String fieldPlanId, String systemType, String totalSystemCapacity) {
+    private FieldPlanTemplate findFieldPlanTemplate(FieldPlanRequest request, String fieldPlanId, String systemType,
+                                                    String totalSystemCapacity, boolean rectificationSite) {
         try {
             FieldPlanTemplateSearchCriteria criteria = FieldPlanTemplateSearchCriteria.builder()
                     .fieldPlanId(List.of(fieldPlanId))
                     .systemType(List.of(systemType))
                     .totalCapacity(List.of(totalSystemCapacity))
+                    .rectificationSite(rectificationSite)
                     .build();
             FieldPlanTemplateSearchRequest searchRequest = FieldPlanTemplateSearchRequest.builder()
                     .requestInfo(request.getRequestInfo())

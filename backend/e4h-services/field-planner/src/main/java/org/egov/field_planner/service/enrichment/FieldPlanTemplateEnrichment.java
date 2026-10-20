@@ -19,6 +19,9 @@ public class FieldPlanTemplateEnrichment {
 
     public void enrichOnCreate(FieldPlanTemplate template, RequestInfo requestInfo) {
         template.setId(UUID.randomUUID().toString());
+        if (template.getRectificationSite() == null) {
+            template.setRectificationSite(false);
+        }
         AuditDetails auditDetails = fieldPlannerServiceUtil.getAuditDetails(
                 requestInfo.getUserInfo().getUuid(), null, true);
         template.setAuditDetails(auditDetails);
