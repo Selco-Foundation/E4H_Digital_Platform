@@ -17,15 +17,16 @@ const AuditTrail = ({t, auditTrail}) => {
                 borderRadius: 4,
                 padding: 10,
                 marginTop: 10,
-                width: "100%",
+                width: "fit-content",
+                minWidth: 200,
                 maxWidth: "100%",
                 boxSizing: "border-box"
               }}>
                 <div style={{color: "#0B4B66", fontWeight: "bold", marginBottom: 6, overflowWrap: "anywhere"}}>{section.sectionLabel || t(`QC_INSTALLATION_${section.name}`)}</div>
                 {section.reasons.map((reason, j) => (
                   <div style={{display: "flex", gap: "16px", alignItems: "flex-start", padding: "4px 0"}} key={j}>
-                    <div style={{fontWeight: "bold", flex: "0 0 35%", minWidth: 0, overflowWrap: "anywhere"}}>{reason.reason}</div>
-                    <div style={{color: "#555", flex: "1 1 auto", minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-word"}}>{reason.comment}</div>
+                    <div style={{fontWeight: "bold", flex: "0 1 auto", minWidth: 200, maxWidth: "100%", overflowWrap: "anywhere"}}>{reason.reason}</div>
+                    <div style={{color: "#555", flex: "1 1 auto", minWidth: 160, maxWidth: "100%", overflowWrap: "anywhere", wordBreak: "break-word"}}>{reason.comment}</div>
                   </div>
                 ))}
               </div>

@@ -1,7 +1,5 @@
 package org.egov.amc.repository.querybuilder;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -10,7 +8,6 @@ import org.egov.amc.web.models.ScheduledVisitSearchCriteria;
 import org.egov.amc.web.models.ScheduledVisitSearchRequest;
 import org.egov.common.models.core.URLParams;
 import org.egov.tracer.model.CustomException;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -71,8 +68,6 @@ public class ScheduledVisitQueryBuilder {
             "WHERE offset_ > ? AND offset_ <= ?";
 
     private final AMCServiceConfiguration config;
-    @Qualifier("objectMapper")
-    private final ObjectMapper objectMapper;
 
     /* Add WHERE clause before first condition, ADD and for subsequent conditions. Do not add AND before any condition and after "(" */
     private static void addClauseIfRequired(List<Object> values, StringBuilder queryString) {
@@ -259,21 +254,20 @@ public class ScheduledVisitQueryBuilder {
             preparedStmtList.addAll(criteria.getVendorIds());
         }
 
+        // state/district/block filter on facility.boundary_code rather than
+        // amc_configuration.geography_details: geography_details is NULL on every amc_configuration
+        // created before that column existed, which silently excluded all those legacy rows from any
+        // geography search. facility.boundary_code ("India_<State>_<District>_<Block>_<facilityId>")
+        // is always populated, and a state/district/block-level boundary code is always an exact
+        // prefix of it, so the same prefix-match helper covers all three levels.
         if (!CollectionUtils.isEmpty(criteria.getStates())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ac.geography_details ->> 'state' IN (").append(createQuery(criteria.getStates())).append(")");
-            preparedStmtList.addAll(criteria.getStates());
+            appendBoundaryCodeStartsWithAny(queryBuilder, preparedStmtList, criteria.getStates());
         }
-
-        // districts / blocks -> JSONB array containment (@>), OR'd per selected value.
-        // NOTE: do NOT use the '?|'/'?&' JSONB operators here - they collide with JDBC's '?'
-        // placeholder syntax in hand-concatenated SQL and would need '??|' escaping to avoid
-        // breaking prepared-statement parsing. '@>' has no bare '?' and is JDBC-safe.
         if (!CollectionUtils.isEmpty(criteria.getDistricts())) {
-            appendJsonbArrayContainsAny(queryBuilder, preparedStmtList, "districts", criteria.getDistricts());
+            appendBoundaryCodeStartsWithAny(queryBuilder, preparedStmtList, criteria.getDistricts());
         }
         if (!CollectionUtils.isEmpty(criteria.getBlocks())) {
-            appendJsonbArrayContainsAny(queryBuilder, preparedStmtList, "blocks", criteria.getBlocks());
+            appendBoundaryCodeStartsWithAny(queryBuilder, preparedStmtList, criteria.getBlocks());
         }
 
         // Delayed/Rejected are mutually-OR'd status filters (a visit is either overdue-but-still-
@@ -322,20 +316,20 @@ public class ScheduledVisitQueryBuilder {
         }
     }
 
-    // Builds "(ac.geography_details -> jsonKey @> ?::jsonb OR ...)" - one @> containment check per
-    // selected value, OR'd together, so a multi-select district/block filter matches ANY of them.
-    private void appendJsonbArrayContainsAny(StringBuilder queryBuilder, List<Object> preparedStmtList,
-                                              String jsonKey, List<String> values) {
+    // Builds "(starts_with(f.boundary_code, ?) OR ...)" - one literal-prefix check per selected
+    // boundary code, OR'd together, so a multi-select state/district/block filter matches ANY of
+    // them. starts_with() is used instead of LIKE because boundary codes are made up of literal
+    // underscores as level separators, and LIKE treats a bare '_' as its own single-character
+    // wildcard - a naive 'LIKE code || '_%'' would match unrelated strings that merely have some
+    // other character where the delimiter should be.
+    private void appendBoundaryCodeStartsWithAny(StringBuilder queryBuilder, List<Object> preparedStmtList,
+                                                  List<String> boundaryCodes) {
         addClauseIfRequired(preparedStmtList, queryBuilder);
         queryBuilder.append(" (");
-        for (int i = 0; i < values.size(); i++) {
+        for (int i = 0; i < boundaryCodes.size(); i++) {
             if (i > 0) queryBuilder.append(" OR ");
-            queryBuilder.append(" ac.geography_details -> '").append(jsonKey).append("' @> ?::jsonb ");
-            try {
-                preparedStmtList.add(objectMapper.writeValueAsString(List.of(values.get(i))));
-            } catch (JsonProcessingException e) {
-                throw new CustomException("SEARCH_ERROR", "Failed to serialize " + jsonKey + " filter value");
-            }
+            queryBuilder.append(" starts_with(f.boundary_code, ?) ");
+            preparedStmtList.add(boundaryCodes.get(i) + "_");
         }
         queryBuilder.append(") ");
     }

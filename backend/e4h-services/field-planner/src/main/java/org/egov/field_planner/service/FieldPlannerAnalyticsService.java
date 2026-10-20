@@ -56,7 +56,7 @@ import static org.egov.field_planner.util.FieldPlannerConstants.USER_ANALYTICS_M
  * by boundary-service, the AMC events emitted by amc-scheduler-service, the project events emitted
  * by project and the installation-report events emitted by field-planner-activity. All events from
  * this producer carry {@code module = FIELD_PLANNER} and {@code application = MANAGEMENT_HUB} —
- * field plans are authored there, unlike the Field Assist report submissions that
+ * installation plans are authored there, unlike the Field Assist report submissions that
  * {@code ActivityAnalyticsService} covers.
  *
  * <p>Three entry points, one per instrumented endpoint:
@@ -86,7 +86,7 @@ import static org.egov.field_planner.util.FieldPlannerConstants.USER_ANALYTICS_M
  * events carry no state.
  *
  * <p>Every entry point is best-effort — any failure is logged and swallowed so analytics can never
- * break a field plan create, update or upload.
+ * break an installation plan create, update or upload.
  */
 @Service
 @Slf4j
@@ -108,7 +108,7 @@ public class FieldPlannerAnalyticsService {
     }
 
     /**
-     * Publishes one FIELD_PLAN_CREATE event per created field plan. The create endpoint takes a list,
+     * Publishes one FIELD_PLAN_CREATE event per created installation plan. The create endpoint takes a list,
      * so MDMS is hit once per tenant and each state is localized once, not once per plan.
      */
     public void publishCreateEvents(FieldPlanRequest fieldPlanRequest) {
@@ -163,7 +163,7 @@ public class FieldPlannerAnalyticsService {
         String fieldPlanId = (fieldPlan != null) ? fieldPlan.getId() : null;
         try {
             if (fieldPlan == null || fieldPlanId == null) {
-                log.info("Field planner analytics: no field plan id on update, skipping event");
+                log.info("Field planner analytics: no installation plan id on update, skipping event");
                 return;
             }
             if (!SCHEDULED_STATUS.equalsIgnoreCase(fieldPlan.getStatus())
@@ -236,7 +236,7 @@ public class FieldPlannerAnalyticsService {
         producer.push(configs.getUserAnalyticsTopic(), event);
     }
 
-    /** The state boundary code out of a field plan's geographyDetails, or null when absent. */
+    /** The state boundary code out of an installation plan's geographyDetails, or null when absent. */
     private String geographyStateCode(FieldPlan fieldPlan) {
         Map<String, Object> geographyDetails = (fieldPlan != null) ? fieldPlan.getGeographyDetails() : null;
         return (geographyDetails != null) ? asString(geographyDetails.get(GEOGRAPHY_DETAILS_STATE)) : null;
@@ -361,7 +361,7 @@ public class FieldPlannerAnalyticsService {
     }
 
     /**
-     * Derives the State-level boundary code from a field plan's geography state code, no
+     * Derives the State-level boundary code from an installation plan's geography state code, no
      * boundary-service call needed. Boundary codes are hierarchy paths such as
      * {@code India_ArunachalPradesh_PapumPare_Doimukh}, so the State code is the
      * {@code India_<State>} prefix — the same derivation {@code AmcAnalyticsService},

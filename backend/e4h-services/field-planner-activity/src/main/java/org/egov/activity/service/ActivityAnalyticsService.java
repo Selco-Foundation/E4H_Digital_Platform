@@ -82,7 +82,7 @@ import static org.egov.activity.util.ActivityConstants.TENANTID;
  * <p>
  * Not every action on the business service is a tracked business event: {@code SCHEDULED} and
  * {@code ASSIGN_FIELD_STAFF} are driven automatically by {@code ActivityAssignmentConsumer} for
- * every facility of a new field plan, and are deliberately left out of the master so they emit
+ * every facility of a new installation plan, and are deliberately left out of the master so they emit
  * nothing.
  * <p>
  * {@code application} is read off the matched record rather than fixed as a constant, because this
@@ -169,7 +169,7 @@ public class ActivityAnalyticsService {
             if (match == null) {
                 // Logged once per (action, priorStatus) per request, not once per activity facility:
                 // ActivityAssignmentConsumer drives SCHEDULED and ASSIGN_FIELD_STAFF through the bulk
-                // path for every facility of a new field plan, and none of those system transitions
+                // path for every facility of a new installation plan, and none of those system transitions
                 // is a tracked business event, so a per-facility log would bury the real events.
                 if (ctx.firstSkip(action, priorStatus)) {
                     log.info("Activity analytics: no matching {} record for action={} priorStatus={} "
@@ -216,7 +216,7 @@ public class ActivityAnalyticsService {
     /**
      * Publishes one ACTIVITY_ASSIGNED event per staffing row created by
      * {@code /activity/v1/activities/_assign-activity} — that endpoint is how a Management Hub user
-     * puts a field staff member, field supervisor or QC reviewer on a field plan, and one call
+     * puts a field staff member, field supervisor or QC reviewer on an installation plan, and one call
      * carries the whole roster, so staffing a plan with three people yields three events, each with
      * its own assignment id as {@code entity_id}.
      * <p>
@@ -233,7 +233,7 @@ public class ActivityAnalyticsService {
         if (assignments == null || assignments.isEmpty()) {
             return;
         }
-        // One memo for the whole roster: the MDMS masters, the field plan and its localized state
+        // One memo for the whole roster: the MDMS masters, the installation plan and its localized state
         // are each resolved once even though a staffing call creates several assignments.
         AnalyticsContext ctx = new AnalyticsContext();
         User user = (requestInfo != null) ? requestInfo.getUserInfo() : null;
@@ -276,7 +276,7 @@ public class ActivityAnalyticsService {
     }
 
     /**
-     * Localized state for an assignment, taken from its field plan's
+     * Localized state for an assignment, taken from its installation plan's
      * {@code geographyDetails.state} — a boundary code such as {@code India_Karnataka}. The
      * assign-activity payload carries only a fieldPlanId, so the plan is fetched from field-planner
      * unless the caller already inlined it; both the fetch and the localization are memoized, and a
@@ -312,7 +312,7 @@ public class ActivityAnalyticsService {
         }
     }
 
-    /** The state boundary code out of a field plan's geographyDetails, or null when absent. */
+    /** The state boundary code out of an installation plan's geographyDetails, or null when absent. */
     private String geographyStateCode(FieldPlan fieldPlan) {
         Map<String, Object> geographyDetails = (fieldPlan != null) ? fieldPlan.getGeographyDetails() : null;
         return (geographyDetails != null) ? asString(geographyDetails.get(GEOGRAPHY_DETAILS_STATE)) : null;
@@ -614,7 +614,7 @@ public class ActivityAnalyticsService {
     public static class AnalyticsContext {
         private final Map<String, Map<String, List<Map<String, Object>>>> mastersByTenant = new HashMap<>();
         private final Map<String, String> stateNameByCode = new HashMap<>();
-        /** State boundary code per field plan id, so one staffing roster fetches its plan once. */
+        /** State boundary code per installation plan id, so one staffing roster fetches its plan once. */
         private final Map<String, String> planStateCodeById = new HashMap<>();
         private final Set<String> loggedSkips = new LinkedHashSet<>();
 

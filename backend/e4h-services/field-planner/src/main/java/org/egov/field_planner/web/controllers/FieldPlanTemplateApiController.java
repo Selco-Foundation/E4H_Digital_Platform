@@ -44,7 +44,7 @@ public class FieldPlanTemplateApiController {
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FieldPlanTemplateResponse> createFieldPlanTemplates(
-            @ApiParam(value = "Field plan template payload.", required = true)
+            @ApiParam(value = "Installation plan template payload.", required = true)
             @Valid @RequestPart("request") FieldPlanTemplateBulkRequest request,
             @ApiParam(value = "ICC report template Excel files (.xls/.xlsx), one per template, matched positionally to request.FieldPlanTemplates.", required = true)
             @RequestPart("excelFiles") List<MultipartFile> excelFiles) {
@@ -65,7 +65,7 @@ public class FieldPlanTemplateApiController {
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FieldPlanTemplateResponse> updateFieldPlanTemplates(
-            @ApiParam(value = "Field plan template payload.", required = true)
+            @ApiParam(value = "Installation plan template payload.", required = true)
             @Valid @RequestPart("request") FieldPlanTemplateBulkRequest request,
             @ApiParam(value = "ICC report template Excel files (.xls/.xlsx), one per template. Omit entirely to leave every template's file unchanged.")
             @RequestPart(value = "excelFiles", required = false) List<MultipartFile> excelFiles) {
@@ -88,7 +88,7 @@ public class FieldPlanTemplateApiController {
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<FieldPlanTemplateResponse> searchFieldPlanTemplates(
-            @ApiParam(value = "Search field plan templates.", required = true)
+            @ApiParam(value = "Search installation plan templates.", required = true)
             @Valid @RequestBody FieldPlanTemplateSearchRequest request,
             @Valid @ModelAttribute URLParams urlParams) {
 

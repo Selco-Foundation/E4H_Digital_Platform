@@ -36,6 +36,8 @@ public class WeeklyReportService {
     private static final String FIELD_FILED_DATE = "filedDate";
     private static final String FIELD_CREATED_TIME = "createdTime";
     private static final String SYSTEM_STATUS_NON_FUNCTIONAL = "NON_FUNCTIONAL";
+    private static final Set<String> CLOSED_STATUSES = Set.of(
+            "RESOLVED", "CLOSED_AFTER_RESOLUTION", "CLOSED_AFTER_REJECTION", "REJECTED");
 
     static {
         // Set timezone to IST for date formatting
@@ -57,6 +59,7 @@ public class WeeklyReportService {
 
 //                String ticketTenantId = (String) data.get("tenantId");
                 Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+                if (incident == null) return false;
                 Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
                 if(boundary ==null)
                     return false;
@@ -246,7 +249,7 @@ public class WeeklyReportService {
         log.trace("Getting functional metrics for stateCode: {}, date: {}", stateCode, date);
         try {
             // Query Elasticsearch for tickets as of the specified date
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchAllRequiredTickets(false);
             log.info("Fetched {} total tickets from ES for tenant: {}", tickets.size(), stateCode);
             log.debug("Querying functional metrics for date: {}", date);
 
@@ -305,6 +308,97 @@ public class WeeklyReportService {
     
     
     /**
+     * Distinct Non-Functional facilities for one state at the start and end of the previous week.
+     * Both snapshots are built the same way, so nfAtWeekStart - movedToFunctional + newlyNonFunctional
+     * always equals nfAtWeekEnd.
+     */
+    public record NfFacilityTrend(int nfAtWeekStart, int nfAtWeekEnd, int newlyNonFunctional, int movedToFunctional) {
+    }
+
+    /**
+     * @param allTickets every indexed ticket, open AND closed ({@code fetchAllRequiredTickets(true)}) -
+     *                   closed tickets are needed to know which facilities were down at week start.
+     */
+    public NfFacilityTrend getNfFacilityTrend(List<Map<String, Object>> allTickets, String stateCode) {
+        Date[] weekDates = getPreviousWeekDates();
+        List<TicketData> stateTickets = new ArrayList<>();
+        for (Map<String, Object> ticket : allTickets) {
+            TicketData ticketData = extractTicketData(ticket);
+            if (ticketData != null && isInState(ticketData, stateCode)) {
+                stateTickets.add(ticketData);
+            }
+        }
+
+        Set<String> startNf = getNonFunctionalFacilityKeys(stateTickets, stateCode, weekDates[0].getTime());
+        Set<String> endNf = getNonFunctionalFacilityKeys(stateTickets, stateCode, weekDates[1].getTime());
+
+        int newlyNonFunctional = (int) endNf.stream().filter(f -> !startNf.contains(f)).count();
+        int movedToFunctional = (int) startNf.stream().filter(f -> !endNf.contains(f)).count();
+        log.info("NF facilities for {}: weekStart={}, weekEnd={}, new={}, moved={}",
+                stateCode, startNf.size(), endNf.size(), newlyNonFunctional, movedToFunctional);
+        return new NfFacilityTrend(startNf.size(), endNf.size(), newlyNonFunctional, movedToFunctional);
+    }
+
+    /**
+     * A facility is Non-Functional at {@code asOfMs} when it has at least one NON_FUNCTIONAL ticket
+     * that was open at that moment (filed on/before it and not yet resolved/rejected).
+     */
+    private Set<String> getNonFunctionalFacilityKeys(List<TicketData> stateTickets, String stateCode, long asOfMs) {
+        Set<String> nonFunctionalFacilities = new HashSet<>();
+        for (TicketData ticketData : stateTickets) {
+            if (SYSTEM_STATUS_NON_FUNCTIONAL.equals(ticketData.getSystemFunctional()) && wasOpenAt(ticketData, asOfMs)) {
+                nonFunctionalFacilities.add(generateFacilityKey(ticketData.getData(), stateCode));
+            }
+        }
+        return nonFunctionalFacilities;
+    }
+
+    private boolean wasOpenAt(TicketData ticketData, long asOfMs) {
+        if (ticketData.getFiledDate() == null || ticketData.getFiledDate() > asOfMs) {
+            return false;
+        }
+        Long closedAt = getClosedTime(ticketData.getData());
+        return closedAt == null || closedAt > asOfMs;
+    }
+
+    /**
+     * When the ticket was closed, or null if it is still open. Prefers the first resolve/decline time
+     * recorded on the index; falls back to the incident's last-modified time, and if a closed ticket
+     * has no timestamp at all it is treated as closed since forever (never counted as open).
+     */
+    private Long getClosedTime(Map<String, Object> data) {
+        Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        if (incident == null) {
+            return null;
+        }
+        String status = (String) incident.get("applicationStatus");
+        if (status == null || !CLOSED_STATUSES.contains(status.toUpperCase())) {
+            return null;
+        }
+        Long closedAt = parseFiledDate(data.get("resolvedTimestamp"));
+        if (closedAt == null) {
+            closedAt = parseFiledDate(data.get("declinedTimestamp"));
+        }
+        if (closedAt == null && incident.get("auditDetails") instanceof Map<?, ?> audit) {
+            closedAt = parseFiledDate(audit.get("lastModifiedTime"));
+        }
+        return closedAt != null ? closedAt : 0L;
+    }
+
+    /**
+     * Matches on incident.boundary.stateCode, falling back to the plain Data.state name reshaped to
+     * "India_StateName" for tickets indexed without a boundary (same fallback as SLABreachDetectionService).
+     */
+    private boolean isInState(TicketData ticketData, String stateCode) {
+        String ticketStateCode = extractBoundaryStateCode(ticketData);
+        if (ticketStateCode == null && ticketData.getState() != null && !ticketData.getState().isBlank()) {
+            ticketStateCode = "India_" + ticketData.getState().replaceAll("\\s+", "");
+        }
+        return ticketStateCode != null
+                && (ticketStateCode.equals(stateCode) || ticketStateCode.startsWith(stateCode + "."));
+    }
+
+    /**
      * Get age bucket data for non-functional systems
      * Uses the correct age bucket logic
      * - 1 Week: 8 ≤ age in days ≤ 30
@@ -318,7 +412,7 @@ public class WeeklyReportService {
         log.trace("Getting age bucket data for stateCode: {}", stateCode);
         try {
             // Query Elasticsearch for all open tickets
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchAllRequiredTickets(false);
             log.debug("Fetched {} tickets from Elasticsearch", tickets.size());
             
             // Filter tickets by boundary.stateCode (not tenantId, since all tickets are now under 'in')
@@ -390,7 +484,7 @@ public class WeeklyReportService {
         log.trace("Getting state-wise age bucket data for stateCode: {}", stateCode);
         try {
             // Query Elasticsearch for all open tickets
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchAllRequiredTickets(false);
             log.debug("Fetched {} tickets from Elasticsearch", tickets.size());
             
             // Filter tickets by boundary.stateCode (not tenantId, since all tickets are now under 'in')

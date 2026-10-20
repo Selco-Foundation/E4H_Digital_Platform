@@ -34,17 +34,17 @@ public class FieldPlanFacilityConsumer {
     public List<FieldPlanFacility> bulkCreate(Map<String, Object> consumerRecord,
                                               @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
         log.trace("Entering bulkCreate consumer method for topic: {}", topic);
-        log.info("Received bulk create request for field plan facility from topic: {}", topic);
+        log.info("Received bulk create request for installation plan facility from topic: {}", topic);
         try {
             FieldPlanFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, FieldPlanFacilityBulkRequest.class);
             log.debug("Processing bulk create request with {} facilities", 
                     request.getFieldPlanFacilities().size());
             List<FieldPlanFacility> result = service.create(request, true);
-            log.info("Successfully processed bulk create request for field plan facility");
+            log.info("Successfully processed bulk create request for installation plan facility");
             log.trace("Exiting bulkCreate consumer method");
             return result;
         } catch (Exception exception) {
-            log.error("Error in field plan facility consumer bulk create for topic: {}", topic, exception);
+            log.error("Error in installation plan facility consumer bulk create for topic: {}", topic, exception);
             return Collections.emptyList();
         }
     }
@@ -53,17 +53,17 @@ public class FieldPlanFacilityConsumer {
     public List<FieldPlanFacility> bulkUnassign(Map<String, Object> consumerRecord,
                                               @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
         log.trace("Entering bulkUnassign consumer method for topic: {}", topic);
-        log.info("Received bulk unassign request for field plan facility from topic: {}", topic);
+        log.info("Received bulk unassign request for installation plan facility from topic: {}", topic);
         try {
             FieldPlanFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, FieldPlanFacilityBulkRequest.class);
             log.debug("Processing bulk unassign request with {} facilities", 
                     request.getFieldPlanFacilities().size());
             List<FieldPlanFacility> result = service.unassignBulk(request, true);
-            log.info("Successfully processed bulk unassign request for field plan facility");
+            log.info("Successfully processed bulk unassign request for installation plan facility");
             log.trace("Exiting bulkUnassign consumer method");
             return result;
         } catch (Exception exception) {
-            log.error("Error in field plan facility consumer bulk unassign for topic: {}", topic, exception);
+            log.error("Error in installation plan facility consumer bulk unassign for topic: {}", topic, exception);
             return Collections.emptyList();
         }
     }
@@ -75,7 +75,7 @@ public class FieldPlanFacilityConsumer {
             FieldPlanFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, FieldPlanFacilityBulkRequest.class);
             return service.updateBulk(request, true);
         } catch (Exception exception) {
-            log.error("error in fieldplan facility consumer bulk update", ExceptionUtils.getStackTrace(exception));
+            log.error("error in installation plan facility consumer bulk update", ExceptionUtils.getStackTrace(exception));
             return Collections.emptyList();
         }
     }

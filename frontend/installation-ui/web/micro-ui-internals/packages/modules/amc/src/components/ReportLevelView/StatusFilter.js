@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import RefreshButton from "../RefreshButton";
 import CustomCheckBox from "../Custom/CustomCheckBox";
 import CustomFilterIcon from "../Custom/CustomFilterIcon";
@@ -9,30 +9,29 @@ const StatusFilter = ({ t, onFilterChange, onSearchableFilterChange, selectedSta
   const [currentStatuses, setCurrentStatuses] = useState(selectedStatuses || []);
   const [currentSearchableFilters, setCurrentSearchableFilters] = useState(searchableFilters || {});
 
-  useEffect(() => {
-    // Empty status list means show all AMC reports.
-    onFilterChange(currentStatuses);
-  }, [currentStatuses]);
-
-  useEffect(() => {
-    // Dropdown filters are applied on report-level list data.
-    onSearchableFilterChange(currentSearchableFilters);
-  }, [currentSearchableFilters]);
-
   const handleStatusChange = (option, checked) => {
+    // Notify the parent only after user interaction to avoid duplicate fetches on mount.
+    let nextStatuses;
     if (checked) {
-      setCurrentStatuses([...currentStatuses, option.code]);
+      nextStatuses = [...currentStatuses, option.code];
     } else {
-      setCurrentStatuses(currentStatuses.filter(status => status !== option.code));
+      nextStatuses = currentStatuses.filter(status => status !== option.code);
     }
+    setCurrentStatuses(nextStatuses);
+    // Empty status list means show all AMC reports.
+    onFilterChange(nextStatuses);
   }
 
   const onClearAll = () => {
+    // Clear both local UI state and parent query state.
     setCurrentStatuses([]);
     setCurrentSearchableFilters({});
+    onFilterChange([]);
+    onSearchableFilterChange({});
   }
 
   const handleSearchableFilterChange = (key, option) => {
+    // Keep child dropdown selections valid when a parent location changes.
     const nextFilters = {
       ...currentSearchableFilters,
       [key]: option,
@@ -49,9 +48,10 @@ const StatusFilter = ({ t, onFilterChange, onSearchableFilterChange, selectedSta
       delete nextFilters.block;
     }
 
-    setCurrentSearchableFilters({
-      ...nextFilters,
-    });
+    const filters = { ...nextFilters };
+    setCurrentSearchableFilters(filters);
+    // Dropdown filters are applied on report-level list data.
+    onSearchableFilterChange(filters);
   }
 
   const getTranslatedOptions = (options = []) => {

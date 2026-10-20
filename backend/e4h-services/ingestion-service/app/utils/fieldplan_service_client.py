@@ -44,7 +44,7 @@ class FieldPlanServiceClient:
             'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
             'FieldPlanFacility': field_plan_facility,
         }
-        logger.trace(f"Creating field plan facility: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
+        logger.trace(f"Creating installation plan facility: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         return response.json()
@@ -56,7 +56,7 @@ class FieldPlanServiceClient:
         facilities: List[Dict[str, Any]],
     ):
         """
-        Bulk-link facilities to a field plan.
+        Bulk-link facilities to an installation plan.
 
         Each item in ``facilities`` must contain ``facilityId`` and may include
         ``additionalFields`` (schema/version/fields).
@@ -87,24 +87,24 @@ class FieldPlanServiceClient:
             "FieldPlanFacilities": field_plan_facilities,
         }
         logger.trace(
-            f"Bulk creating field plan facilities: fieldplan_id={fieldPlan_id}, count={len(facilities)}"
+            f"Bulk creating installation plan facilities: fieldplan_id={fieldPlan_id}, count={len(facilities)}"
         )
         try:
             response = requests.post(url, headers=headers, json=payload)
-            logger.info(f"Field plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facilities)}")
+            logger.info(f"Installation plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facilities)}")
             logger.debug(f"Bulk create response status: {response.status_code}")
             return response
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error bulk creating field plan facilities: {http_err}", exc_info=True)
+            logger.error(f"HTTP error bulk creating installation plan facilities: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error bulk creating field plan facilities: {conn_err}", exc_info=True)
+            logger.error(f"Connection error bulk creating installation plan facilities: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error bulk creating field plan facilities: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error bulk creating installation plan facilities: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error bulk creating field plan facilities: {req_err}", exc_info=True)
+            logger.error(f"Request error bulk creating installation plan facilities: {req_err}", exc_info=True)
             raise req_err
 
     def update_fieldPlan_facility_bulk(
@@ -147,23 +147,23 @@ class FieldPlanServiceClient:
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
             "FieldPlanFacilities": field_plan_facilities,
         }
-        logger.trace(f"Bulk updating field plan facilities: count={len(updates)}")
+        logger.trace(f"Bulk updating installation plan facilities: count={len(updates)}")
         try:
             response = requests.post(url, headers=headers, json=payload)
-            logger.info(f"Field plan facility bulk update accepted: count={len(updates)}")
+            logger.info(f"Installation plan facility bulk update accepted: count={len(updates)}")
             logger.debug(f"Bulk update response status: {response.status_code}")
             return response
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error bulk updating field plan facilities: {http_err}", exc_info=True)
+            logger.error(f"HTTP error bulk updating installation plan facilities: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error bulk updating field plan facilities: {conn_err}", exc_info=True)
+            logger.error(f"Connection error bulk updating installation plan facilities: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error bulk updating field plan facilities: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error bulk updating installation plan facilities: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error bulk updating field plan facilities: {req_err}", exc_info=True)
+            logger.error(f"Request error bulk updating installation plan facilities: {req_err}", exc_info=True)
             raise req_err
 
     def search_fieldPlan(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
@@ -214,16 +214,16 @@ class FieldPlanServiceClient:
             }
 
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error searching field plan: {http_err}", exc_info=True)
+            logger.error(f"HTTP error searching installation plan: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error searching field plan: {conn_err}", exc_info=True)
+            logger.error(f"Connection error searching installation plan: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error searching field plan: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error searching installation plan: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error searching field plan: {req_err}", exc_info=True)
+            logger.error(f"Request error searching installation plan: {req_err}", exc_info=True)
             raise req_err
 
     def search_fieldplan_facility(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
@@ -273,26 +273,26 @@ class FieldPlanServiceClient:
             }
 
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error searching field plan facility: {http_err}", exc_info=True)
+            logger.error(f"HTTP error searching installation plan facility: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error searching field plan facility: {conn_err}", exc_info=True)
+            logger.error(f"Connection error searching installation plan facility: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error searching field plan facility: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error searching installation plan facility: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error searching field plan facility: {req_err}", exc_info=True)
+            logger.error(f"Request error searching installation plan facility: {req_err}", exc_info=True)
             raise req_err
 
 
     def unlink_fieldplan_facility(self, request_info: RequestInfo, fieldplan_id: str, facility_id: str,
                                   fieldplan_facility_data: Dict[str, Any] = None):
         """
-        Unlink a facility from a field plan by setting isDeleted to True
+        Unlink a facility from an installation plan by setting isDeleted to True
         """
         try:
-            logger.trace(f"Unlinking field plan facility: fieldplan_id={fieldplan_id}, facility_id={facility_id}")
+            logger.trace(f"Unlinking installation plan facility: fieldplan_id={fieldplan_id}, facility_id={facility_id}")
             # Use provided project_facility_data if available, otherwise search for it
             if fieldplan_facility_data:
                 target_facility = fieldplan_facility_data
@@ -311,7 +311,7 @@ class FieldPlanServiceClient:
                         break
 
                 if not target_facility:
-                    logger.warning(f"No FieldPlanFacility record found for facility {facility_id} and field plan {fieldplan_id}")
+                    logger.warning(f"No FieldPlanFacility record found for facility {facility_id} and installation plan {fieldplan_id}")
                     return None
 
             fieldplan_facility_id = target_facility.get("id")
@@ -344,21 +344,21 @@ class FieldPlanServiceClient:
 
             update_response = requests.post(update_url, headers=update_headers, json=update_payload)
             update_response.raise_for_status()
-            logger.info(f"Field plan facility unlinked successfully: fieldplan_id={fieldplan_id}, facility_id={facility_id}")
+            logger.info(f"Installation plan facility unlinked successfully: fieldplan_id={fieldplan_id}, facility_id={facility_id}")
             logger.debug(f"Unlink response: {json.loads(update_response.text)}")
             return update_response
 
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error unlinking field plan facility: {http_err}", exc_info=True)
+            logger.error(f"HTTP error unlinking installation plan facility: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error unlinking field plan facility: {conn_err}", exc_info=True)
+            logger.error(f"Connection error unlinking installation plan facility: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error unlinking field plan facility: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error unlinking installation plan facility: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error unlinking field plan facility: {req_err}", exc_info=True)
+            logger.error(f"Request error unlinking installation plan facility: {req_err}", exc_info=True)
             raise req_err
 
     def create_field_plan_templates(
@@ -412,22 +412,22 @@ class FieldPlanServiceClient:
                 (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             ))
 
-        logger.trace(f"Creating {len(items)} field plan template(s) in one bulk call")
+        logger.trace(f"Creating {len(items)} installation plan template(s) in one bulk call")
         try:
             response = requests.post(url, files=multipart_fields)
-            logger.info(f"Field plan template bulk request sent: count={len(items)}, status={response.status_code}")
+            logger.info(f"Installation plan template bulk request sent: count={len(items)}, status={response.status_code}")
             return response
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error creating field plan templates: {http_err}", exc_info=True)
+            logger.error(f"HTTP error creating installation plan templates: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error creating field plan templates: {conn_err}", exc_info=True)
+            logger.error(f"Connection error creating installation plan templates: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error creating field plan templates: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error creating installation plan templates: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error creating field plan templates: {req_err}", exc_info=True)
+            logger.error(f"Request error creating installation plan templates: {req_err}", exc_info=True)
             raise req_err
 
     def update_field_plan_templates(
@@ -437,7 +437,7 @@ class FieldPlanServiceClient:
         files: List[tuple],
     ):
         """
-        Update N existing field plan templates via the bulk endpoint
+        Update N existing installation plan templates via the bulk endpoint
         POST /field-planner/v1/field-plan-templates/_update.
 
         Sends:
@@ -480,20 +480,20 @@ class FieldPlanServiceClient:
                 (file_name, file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             ))
 
-        logger.trace(f"Updating {len(items)} field plan template(s) in one bulk call, files={len(files)}")
+        logger.trace(f"Updating {len(items)} installation plan template(s) in one bulk call, files={len(files)}")
         try:
             response = requests.post(url, files=multipart_fields)
-            logger.info(f"Field plan template bulk update sent: count={len(items)}, status={response.status_code}")
+            logger.info(f"Installation plan template bulk update sent: count={len(items)}, status={response.status_code}")
             return response
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error updating field plan templates: {http_err}", exc_info=True)
+            logger.error(f"HTTP error updating installation plan templates: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error updating field plan templates: {conn_err}", exc_info=True)
+            logger.error(f"Connection error updating installation plan templates: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error updating field plan templates: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error updating installation plan templates: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error updating field plan templates: {req_err}", exc_info=True)
+            logger.error(f"Request error updating installation plan templates: {req_err}", exc_info=True)
             raise req_err

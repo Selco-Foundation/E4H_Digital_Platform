@@ -41,7 +41,7 @@ public class ActivityFacilityUserEnrichment {
                 facilityUser.getId(), facilityUser.getUserId(), facilityUser.getActivityFacilityId());
     }
 
-    /* Enrich FieldPlan with id and audit details */
+    /* Enrich Installation Plan with id and audit details */
     private void enrichActivityFacilityUserRequestOnCreate(ActivityFacilityUser facilityUser, RequestInfo requestInfo) {
         log.trace("enrichActivityFacilityUserRequestOnCreate method invoked");
         facilityUser.setId(UUID.randomUUID().toString());

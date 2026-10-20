@@ -241,6 +241,7 @@ const ActivityDetails = ({
         onChange={(event) => handleUserDataChange(activity, index, fieldName, event.target.value.replace(/\s/g, ""))}
         style={{
           minWidth: "230px",
+          backgroundColor: "transparent",
         }}
       />
       <span

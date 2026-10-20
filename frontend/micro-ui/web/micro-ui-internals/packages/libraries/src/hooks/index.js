@@ -92,6 +92,7 @@ import { usePrivacyContext } from "./usePrivacyContext";
 import useStaticData from "./useStaticData";
 import useBoundary from "./im/useBoundary";
 import useFacility from "./im/useFacility";
+import useMappedVendors from "./im/useMappedVendors";
 import useRMSPausedFacility from "./im/useRMSFacility";
 
 
@@ -164,6 +165,7 @@ const survey = {
 const im = {
   useBoundary,
   useFacility,
+  useMappedVendors,
   useRMSPausedFacility,
 };
 

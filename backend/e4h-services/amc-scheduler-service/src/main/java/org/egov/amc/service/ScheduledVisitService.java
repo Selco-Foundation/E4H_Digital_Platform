@@ -510,13 +510,37 @@ public class ScheduledVisitService {
         return List.of(updatedScheduledVisit);
     }
 
+    /**
+     * Drops any AMC_INSTALLATION_FORM document already on the workflow - carried over from an earlier
+     * submission - so a regenerated form never ends up duplicated alongside the stale one.
+     */
+    private void removeExistingAmcInstallationFormDocument(Workflow workflow) {
+        List<Document> documents = workflow.getDocuments();
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
+        // Filtered on a copy: the list comes straight from the request body and nothing guarantees
+        // it is modifiable.
+        List<Document> remainingDocuments = new ArrayList<>(documents);
+        boolean removed = remainingDocuments.removeIf(document -> document != null
+                && AMC_INSTALLATION_FORM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType()));
+        if (removed) {
+            log.info("Dropped {} stale AMC installation form document(s) from the workflow",
+                    documents.size() - remainingDocuments.size());
+            workflow.setDocuments(remainingDocuments);
+        }
+    }
+
     private void attachAmcInstallationFormDocument(VisitReportSubmissionRequest request, ScheduledVisit existingVisit, Facility facility) {
         log.trace("Entering attachAmcInstallationFormDocument method for visitId: {}", existingVisit.getId());
+        // Regenerate on every (re)submission so the form reflects the current visit report - drop any
+        // stale AMC form document first, otherwise a re-submission would carry two of them.
+        removeExistingAmcInstallationFormDocument(request.getWorkflow());
         String fileStoreId = amcVisitReportPdfService.generateAmcVisitReportPdf(request, existingVisit, facility);
         GeoLocation geoLocation = amcVisitReportPdfService.resolveGeoLocation(request.getVisitReport());
 
         Document pdfDocument = Document.builder()
-                .documentType("AMC_INSTALLATION_FORM")
+                .documentType(AMC_INSTALLATION_FORM_DOCUMENT_TYPE)
                 .fileStoreId(fileStoreId)
                 .documentUid("AMC-FORM-" + existingVisit.getId() + "-" + System.currentTimeMillis())
                 .geoLocation(geoLocation)
@@ -632,8 +656,20 @@ public class ScheduledVisitService {
         List<ScheduledVisit> amcConfigurationList = scheduledVisitsRepository.getScheduledVisit(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
         log.debug("Found {} scheduled visits matching search criteria", amcConfigurationList.size());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        // Cache Organisation lookups within this search call: many visits share the same AMC
+        // configuration/vendor, and getVendorById is one vendor-registry call per id.
+        Map<String, Organisation> vendorOrganisationCache = new HashMap<>();
         log.info("Enriching {} scheduled visits with boundary and employee data", amcConfigurationList.size());
         for (ScheduledVisit scheduledVisit : amcConfigurationList){
+            AmcConfiguration amcConfiguration = scheduledVisit.getAmcConfiguration();
+            if (amcConfiguration != null && amcConfiguration.getVendorId() != null) {
+                Organisation organisation = vendorOrganisationCache.computeIfAbsent(
+                        amcConfiguration.getVendorId(),
+                        vendorId -> amcConfigurationService.getVendorById(request.getRequestInfo(), vendorId));
+                if (organisation != null) {
+                    amcConfiguration.setVendor(organisation);
+                }
+            }
             Facility facility = scheduledVisit.getFacility();
             if (facility != null) {
                 facilityPocPhoneUtil.decryptPocPhoneIfPresent(facility);

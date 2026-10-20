@@ -55,6 +55,7 @@ const ReasonRequiredModal = ({ t, description, loading, onConfirm, onClose }) =>
           <TextArea
             name={"reason"}
             value={reason}
+            maxlength={500}
             onChange={(e) => {
               setReason(e.target.value);
               setError("");

@@ -43,11 +43,8 @@ public class AssetValidator {
         String assetId = request.getAssetDetail().getAsset().getAssetId();
         log.info("Validating create asset request | tenantId={} assetId={}", tenantId, assetId);
         Map<String, String> errorMap = new HashMap<>();
-        validateExistingDuplicates(request.getAssetDetail().getAsset(), errorMap);
-        if (!CollectionUtils.isEmpty(errorMap)) {
-            log.warn("Validation failed: duplicate asset found | tenantId={} assetId={}", tenantId, assetId);
-            throw new CustomException(errorMap);
-        }
+        // A duplicate brand + serial number + asset type no longer rejects the creation: the asset
+        // is created and flagged instead, in AssetService.enrichPotentialDuplicate.
         Map<String, Object> mdmsData = mdmsUtil.getMDMSData(request.getRequestInfo(), tenantId);
         log.debug("Fetched MDMS data | tenantId={} keysCount={}", tenantId, mdmsData.keySet().size());
         if (!CollectionUtils.isEmpty(mdmsData.keySet())) {
@@ -413,23 +410,6 @@ public class AssetValidator {
             log.warn("Error parsing asset type MDMS data | error={}", e.getMessage());
             errorMap.put(ErrorConstants.ASSET_TYPE_MDMS_DATA_CODE, ErrorConstants.ASSET_TYPE_MDMS_DATA_MSG);
         }
-    }
-
-    private void validateExistingDuplicates(Asset asset, Map<String, String> errorMap) {
-        log.trace("AssetValidator::validateExistingDuplicates called");
-        log.debug("Checking for duplicate asset | assetId={} tenantId={}", asset.getAssetId(), asset.getTenantId());
-        Asset assetSearch = Asset.builder()
-                .tenantId(asset.getTenantId())
-                .wfStatus(asset.getWfStatus())
-                .facilityID(asset.getFacilityID())
-                .activityFacilityID(asset.getActivityFacilityID())
-                .serialNumberSearch(List.of(asset.getSerialNumber()))
-                .modelNumber(null)
-                .brandID(asset.getBrandID())
-                .build();
-        List<Asset> assets = assetService.searchAssets(assetSearch,1,0);
-        if(!assets.isEmpty())
-            errorMap.put(ErrorConstants.ASSET_DUPLICATE_VALIDATION_CODE, ErrorConstants.ASSET_DUPLICATE_VALIDATION_MSG);
     }
 
     private void validateFacilityId(Asset asset, Map<String,String> errorMap){

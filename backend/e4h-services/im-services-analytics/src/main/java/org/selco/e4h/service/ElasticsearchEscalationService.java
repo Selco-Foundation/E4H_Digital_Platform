@@ -111,6 +111,7 @@ public class ElasticsearchEscalationService {
             escalation.put("escalationId", escalationRecipientId);
             escalation.put("escalationTime", currentTime);
             escalation.put("escalationLevel", escalationLevel);
+            escalation.put("applicationStatus", ticket.getApplicationStatus());
             params.put("escalation", escalation);
             script.put("params", params);
             

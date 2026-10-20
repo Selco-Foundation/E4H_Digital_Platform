@@ -28,6 +28,7 @@ import java.sql.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.egov.activity.util.ActivityConstants.APPROVED_BY_QC_SPOC;
 import static org.egov.activity.util.ActivityConstants.INSTALLATION_REPORT_PART_B_EDITOR;
 import static org.egov.activity.util.ActivityConstants.SUBMITTED_BY_SUPERVISOR;
 import static org.egov.common.utils.CommonUtils.populateErrorDetails;
@@ -35,6 +36,8 @@ import static org.egov.common.utils.CommonUtils.populateErrorDetails;
 @Service
 @Slf4j
 public class ActivityService {
+
+    private static final String INSTALLATION_REPORT_BOM_DOCUMENT_TYPE = "INSTALLATION_REPORT_BOM";
 
     private final ActivityFacilityRepository activityFacilityRepository;
 
@@ -54,6 +57,7 @@ public class ActivityService {
     private final AmcSchedulerService amcSchedulerService;
 
     private final ActivityAnalyticsService activityAnalyticsService;
+    private final BomPdfService bomPdfService;
 
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
@@ -61,7 +65,7 @@ public class ActivityService {
     @Autowired
     public ActivityService(
             ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService) {
+            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService, BomPdfService bomPdfService) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityFacilityRepository = activityFacilityRepository;
@@ -77,6 +81,7 @@ public class ActivityService {
             this.boundaryUtil = boundaryUtil;
             this.amcSchedulerService = amcSchedulerService;
             this.activityAnalyticsService = activityAnalyticsService;
+            this.bomPdfService = bomPdfService;
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
@@ -110,11 +115,21 @@ public class ActivityService {
         List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
 
         try {
+            // Resolve all distinct activity codes in one query instead of one query per facility -
+            // most/all facilities in a batch share the same activity code.
+            List<String> activityCodes = activityFacilities.stream()
+                    .map(ActivityFacility::getActivityId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            Map<String, Activity> activityByCode = activityFacilityRepository.getActivitiesByCodes(activityCodes).stream()
+                    .collect(Collectors.toMap(Activity::getCode, activity -> activity, (a, b) -> a));
+
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.trace("Enriching activity facility with id: {}", activityFacility.getId());
-                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo(), activityByCode);
                 List<ActivityFacilityUser> usersFacility = new ArrayList<>();
-                // Get reviewer users. Can see facility activity on UI directly by getting field plan first
+                // Get reviewer users. Can see facility activity on UI directly by getting installation plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
                     for (String userId : activityFacility.getReviewerUser()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
@@ -171,13 +186,58 @@ public class ActivityService {
             }
 
             log.debug("Pushing activity facilities to topic: {}", activityConfiguration.getCreateActivityFacilityTopic());
-            producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
+            pushActivityFacilitiesInSizeBatches(activityFacilities, request.getRequestInfo());
             log.info("Successfully created {} activity facilities", facilityCount);
         } catch (Exception exception) {
             log.error("Error occurred while creating activity facilities, count: {}", facilityCount, exception);
         }
 
         return activityFacilities;
+    }
+
+    /**
+     * Splits activityFacilities into Kafka messages bounded by serialized byte size rather than
+     * item count, since each item's additionalDetails carries a BOM template copy whose size varies
+     * by systemType - a fixed item count can't guarantee staying under the producer's
+     * max.request.size (default 1 MiB) for every template.
+     */
+    private void pushActivityFacilitiesInSizeBatches(List<ActivityFacility> activityFacilities, RequestInfo requestInfo) {
+        int maxBatchBytes = activityConfiguration.getCreateActivityFacilityBatchMaxBytes();
+        List<ActivityFacility> currentBatch = new ArrayList<>();
+        long currentBatchBytes = 0;
+
+        for (ActivityFacility activityFacility : activityFacilities) {
+            long itemBytes = estimateSerializedSize(activityFacility);
+            if (!currentBatch.isEmpty() && currentBatchBytes + itemBytes > maxBatchBytes) {
+                pushActivityFacilityBatch(currentBatch, requestInfo);
+                currentBatch = new ArrayList<>();
+                currentBatchBytes = 0;
+            }
+            currentBatch.add(activityFacility);
+            currentBatchBytes += itemBytes;
+        }
+
+        if (!currentBatch.isEmpty()) {
+            pushActivityFacilityBatch(currentBatch, requestInfo);
+        }
+    }
+
+    private void pushActivityFacilityBatch(List<ActivityFacility> batch, RequestInfo requestInfo) {
+        ActivityFacilityBulkRequest batchRequest = ActivityFacilityBulkRequest.builder()
+                .requestInfo(requestInfo)
+                .activityFacilities(batch)
+                .build();
+        log.debug("Pushing batch of {} activity facilities to topic: {}", batch.size(), activityConfiguration.getCreateActivityFacilityTopic());
+        producer.push(activityConfiguration.getCreateActivityFacilityTopic(), batchRequest);
+    }
+
+    private long estimateSerializedSize(Object object) {
+        try {
+            return mapper.writeValueAsBytes(object).length;
+        } catch (Exception exception) {
+            log.warn("Unable to estimate serialized size, falling back to 0", exception);
+            return 0;
+        }
     }
 
     public List<ActivityAssignment> createActivityAssignment(ActivityAssignmentBulkRequest request) {
@@ -289,6 +349,155 @@ public class ActivityService {
         }
 
             return activityFacilities;
+    }
+
+    /**
+     * The generated installation report (INSTALLATION_REPORT_BOM) of every activity facility of one
+     * installation plan that QC SPOC has approved.
+     */
+    public List<InstallationReportDocument> searchInstallationReportDocumentsByFieldPlanId(RequestInfo requestInfo, String fieldPlanId, String tenantId) {
+        log.info("Fetching installation report documents for fieldPlanId: {}", fieldPlanId);
+        return collectInstallationReportDocuments(requestInfo, List.of(fieldPlanId), resolveTenantId(tenantId));
+    }
+
+    /**
+     * Same, for every installation plan of a project: the plans are resolved from field-planner
+     * first, then their approved activity facilities are read in one search.
+     */
+    public List<InstallationReportDocument> searchInstallationReportDocumentsByProjectId(RequestInfo requestInfo, String projectId, String tenantId) {
+        log.info("Fetching installation report documents for projectId: {}", projectId);
+        String resolvedTenantId = resolveTenantId(tenantId);
+        List<String> fieldPlanIds = activityValidator.getFieldPlanIdsByProjectId(requestInfo, projectId, resolvedTenantId);
+        if (fieldPlanIds.isEmpty()) {
+            log.warn("No installation plan found for projectId: {} - returning no installation report", projectId);
+            return Collections.emptyList();
+        }
+        return collectInstallationReportDocuments(requestInfo, fieldPlanIds, resolvedTenantId);
+    }
+
+    private List<InstallationReportDocument> collectInstallationReportDocuments(RequestInfo requestInfo, List<String> fieldPlanIds, String tenantId) {
+        ActivityFacilitySearchCriteria criteria = ActivityFacilitySearchCriteria.builder()
+                .fieldPlanId(fieldPlanIds)
+                .statuses(List.of(APPROVED_BY_QC_SPOC))
+                .tenantId(tenantId)
+                .build();
+        ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
+                .requestInfo(requestInfo)
+                .criteria(criteria)
+                .build();
+
+        List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest,
+                activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(), tenantId, false, null);
+        log.debug("Found {} approved activity facilities across {} installation plans",
+                activityFacilities != null ? activityFacilities.size() : 0, fieldPlanIds.size());
+        if (activityFacilities == null || activityFacilities.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<InstallationReportDocument> installationReportDocuments = new ArrayList<>();
+        for (ActivityFacility activityFacility : activityFacilities) {
+            Document report = findLatestInstallationReportDocument(activityFacility, requestInfo);
+            if (report == null) {
+                // Approved without a generated report: possible for facilities approved before the
+                // report was generated backend side. Skipped rather than returned with a null id.
+                log.warn("No {} document found for approved activityFacilityId: {}",
+                        INSTALLATION_REPORT_BOM_DOCUMENT_TYPE, activityFacility.getId());
+                continue;
+            }
+            installationReportDocuments.add(InstallationReportDocument.builder()
+                    .filestoreId(report.getFileStoreId())
+                    .facilityName(activityFacility.getFacility() != null
+                            ? activityFacility.getFacility().getFacilityName() : null)
+                    .projectId(resolveProjectId(activityFacility))
+                    .projectName(resolveProjectName(activityFacility))
+                    .fieldPlanId(activityFacility.getFieldPlanId())
+                    .build());
+        }
+        log.info("Returning {} installation report documents out of {} approved activity facilities",
+                installationReportDocuments.size(), activityFacilities.size());
+        return installationReportDocuments;
+    }
+
+    /**
+     * The most recent INSTALLATION_REPORT_BOM document carried by the activity facility's workflow
+     * history. A re-submitted report leaves one such document per submission, and only the last one
+     * reflects the facility as approved.
+     */
+    private Document findLatestInstallationReportDocument(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        List<ProcessInstance> processInstances = workflowService.getProcessInstanceById(
+                activityFacility.getId(), activityFacility.getTenantId(), requestInfo, activityConfiguration.getMaxLimit());
+        if (processInstances == null || processInstances.isEmpty()) {
+            return null;
+        }
+
+        // Sorted rather than trusting the workflow's own ordering, so "the last one" stays the last
+        // one whichever order the search returns.
+        List<ProcessInstance> orderedByTime = new ArrayList<>(processInstances);
+        orderedByTime.sort(Comparator.comparingLong(ActivityService::processInstanceTime));
+
+        Document latest = null;
+        long latestTime = Long.MIN_VALUE;
+        for (ProcessInstance processInstance : orderedByTime) {
+            if (processInstance.getDocuments() == null) {
+                continue;
+            }
+            long processInstanceTime = processInstanceTime(processInstance);
+            for (Document document : processInstance.getDocuments()) {
+                if (document == null || document.getFileStoreId() == null
+                        || !INSTALLATION_REPORT_BOM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType())) {
+                    continue;
+                }
+                long documentTime = documentTime(document, processInstanceTime);
+                if (documentTime >= latestTime) {
+                    latest = document;
+                    latestTime = documentTime;
+                }
+            }
+        }
+        return latest;
+    }
+
+    /* Transition time, falling back on the document's own audit details when the workflow has none. */
+    private static long processInstanceTime(ProcessInstance processInstance) {
+        if (processInstance.getAuditDetails() == null) {
+            return 0L;
+        }
+        if (processInstance.getAuditDetails().getCreatedTime() != null) {
+            return processInstance.getAuditDetails().getCreatedTime();
+        }
+        return processInstance.getAuditDetails().getLastModifiedTime() != null
+                ? processInstance.getAuditDetails().getLastModifiedTime() : 0L;
+    }
+
+    private static long documentTime(Document document, long fallback) {
+        if (document.getAuditDetails() != null && document.getAuditDetails().getCreatedTime() != null) {
+            return document.getAuditDetails().getCreatedTime();
+        }
+        return fallback;
+    }
+
+    private static String resolveProjectId(ActivityFacility activityFacility) {
+        FieldPlan fieldPlan = activityFacility.getFieldPlan();
+        if (fieldPlan == null) {
+            return null;
+        }
+        if (fieldPlan.getProjectId() != null) {
+            return fieldPlan.getProjectId();
+        }
+        return fieldPlan.getProject() != null ? fieldPlan.getProject().getId() : null;
+    }
+
+    /* Carried by the installation plan's project, which field-planner joins on every plan search. */
+    private static String resolveProjectName(ActivityFacility activityFacility) {
+        FieldPlan fieldPlan = activityFacility.getFieldPlan();
+        if (fieldPlan == null || fieldPlan.getProject() == null) {
+            return null;
+        }
+        return fieldPlan.getProject().getName();
+    }
+
+    private String resolveTenantId(String tenantId) {
+        return (tenantId == null || tenantId.isBlank()) ? activityConfiguration.getTenantId() : tenantId;
     }
 
     public List<FacilityStatusAgregation> getStatusFacilityAssignmentsAgregation(String fieldPlanId) {
@@ -441,6 +650,15 @@ public class ActivityService {
         // state the action fired FROM to tell a submission apart from a re-submission.
         String priorStatus = existingActivityFacitlity.getStatus();
 
+        // On every (re)submission, the BOM installation report PDF is regenerated and attached to
+        // the workflow's documents BEFORE the transition call - that call is the only place
+        // documents travel to workflow-v2. Regenerating every time (rather than skipping when one
+        // is already present) is required so project_date and any BOM/serial-number changes stay
+        // current across a reject-then-resubmit cycle.
+        if ("SUBMIT_REPORT_A".equalsIgnoreCase(request.getWorkflow().getAction()) || "SUBMIT_REPORT_B".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            attachBomInstallationReportDocument(request, existingActivityFacitlity);
+        }
+
         // 2. Call workflow transition
         ProcessInstance updatedWorkflow;
         try {
@@ -518,6 +736,40 @@ public class ActivityService {
 
         log.info("Workflow update completed for activity facility: {}, new status: {}", request.getActivityFacilityId(), updatedWorkflow.getState().getState());
         return new FacilityStatusWrapper(updatedActivityFacility, updatedWorkflow.getState().getState(), null, null);
+    }
+
+    /**
+     * Drops any INSTALLATION_REPORT_BOM document already on the workflow - carried over from an
+     * earlier submission - so a regenerated report never ends up duplicated alongside the stale one.
+     */
+    private void removeExistingBomInstallationReportDocument(Workflow workflow) {
+        List<Document> documents = workflow.getDocuments();
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
+        documents.removeIf(document -> document != null
+                && INSTALLATION_REPORT_BOM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType()));
+    }
+
+    private void attachBomInstallationReportDocument(FacilityWorkflowRequest request, ActivityFacility activityFacility) {
+        log.trace("Entering attachBomInstallationReportDocument method for activityFacilityId: {}", activityFacility.getId());
+        // Regenerate on every (re)submission so project_date and any BOM/serial-number changes stay
+        // current - drop any stale BOM report document before generating the fresh one.
+        removeExistingBomInstallationReportDocument(request.getWorkflow());
+        // Read before addDocumentsItem below, so the report never carries its own previous output.
+        List<Document> workflowDocuments = request.getWorkflow().getDocuments();
+        String fileStoreId = bomPdfService.generateInstallationReportPdf(request.getRequestInfo(), activityFacility, workflowDocuments);
+        AuditDetails auditDetails = activityServiceUtil.getAuditDetails(request.getRequestInfo().getUserInfo().getUuid(), null, true);
+
+        Document pdfDocument = Document.builder()
+                .documentType(INSTALLATION_REPORT_BOM_DOCUMENT_TYPE)
+                .fileStoreId(fileStoreId)
+                .documentUid("BOM-" + activityFacility.getId() + "-" + System.currentTimeMillis())
+                .auditDetails(auditDetails)
+                .build();
+
+        request.getWorkflow().addDocumentsItem(pdfDocument);
+        log.info("BOM installation report document attached to workflow for activityFacilityId: {}", activityFacility.getId());
     }
 
     private void handleTransactionsAndComment(FacilityWorkflowRequest request, ProcessInstance updatedWorkflow) {
@@ -785,7 +1037,7 @@ public class ActivityService {
         log.debug("Activity facility update request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
         log.debug("Fetching existing activity facilities from database");
         List<ActivityFacility> activityFacilityListFromDB = searchActivityFacility(
@@ -795,7 +1047,7 @@ public class ActivityService {
         log.debug("Retrieved {} activity facilities from database for update", activityFacilityListFromDB != null ? activityFacilityListFromDB.size() : 0);
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         activityValidator.validateUpdateAgainstDB(request.getActivityFacilities(), activityFacilityListFromDB);
 
@@ -820,7 +1072,7 @@ public class ActivityService {
         log.debug("Activity assignment update request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
         log.debug("Fetching existing activity assignments from database");
         List<ActivityAssignment> activityAssignmentListFromDB = searchAssignedActivity(
@@ -830,7 +1082,7 @@ public class ActivityService {
         log.debug("Retrieved {} activity assignments from database for update", activityAssignmentListFromDB != null ? activityAssignmentListFromDB.size() : 0);
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         activityValidator.validateUpdateActivityAssignmentAgainstDB(request.getActivityAssignments(), activityAssignmentListFromDB);
 
@@ -917,7 +1169,7 @@ public class ActivityService {
         if (!isValidCascadingUpdateActivityFacility(activityFacilityFromDB, activityFacility)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 
@@ -940,7 +1192,7 @@ public class ActivityService {
         if (!isValidCascadingUpdateActivityAssignment(activityAssignmentFromDB, activityAssignment)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 
@@ -1289,7 +1541,7 @@ public class ActivityService {
 
     /**
      * Resolves vendor organisation names for users assigned as INSTALLATION_REPORT_PART_B_EDITOR
-     * on the same field plan (via activity assignment search criteria).
+     * on the same installation plan (via activity assignment search criteria).
      */
     private Map<String, String> fetchVendorNamesByUserIds(List<String> userIds, String tenantId, RequestInfo requestInfo) {
         if (userIds == null || userIds.isEmpty()) {
@@ -1496,17 +1748,17 @@ public class ActivityService {
         try {
             log.info("Triggering installation completion side effects for activity facility: {}", activityFacilityId);
 
-            // Get project ID from field plan
+            // Get project ID from installation plan
             String projectId = null;
             if (activityFacility.getFieldPlanId() != null) {
-                log.debug("Fetching field plan for fieldPlanId: {}", activityFacility.getFieldPlanId());
+                log.debug("Fetching installation plan for fieldPlanId: {}", activityFacility.getFieldPlanId());
                 FieldPlan fieldPlan = activityValidator.getFieldPlanById(
                         requestInfo,
                         activityFacility.getFieldPlanId(),
                         activityFacility.getTenantId());
                 if (fieldPlan != null) {
                     projectId = fieldPlan.getProjectId();
-                    log.debug("Retrieved projectId: {} from field plan", projectId);
+                    log.debug("Retrieved projectId: {} from installation plan", projectId);
                 }
             }
 

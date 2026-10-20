@@ -137,8 +137,8 @@ public class FieldPlannerServiceUtil {
     }
 
     public void mergeAdditionalDetails(FieldPlan fieldPlan, FieldPlan fieldPlanFromDb) {
-        log.trace("Entering mergeAdditionalDetails method for field plan ID: {}", fieldPlan.getId());
-        log.debug("Merging additional details for field plan");
+        log.trace("Entering mergeAdditionalDetails method for installation plan ID: {}", fieldPlan.getId());
+        log.debug("Merging additional details for installation plan");
         JsonNode json = jsonMerge(objectMapper.valueToTree(fieldPlanFromDb.getAdditionalDetails()),
                 objectMapper.valueToTree(fieldPlan.getAdditionalDetails()));
         fieldPlan.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
@@ -188,8 +188,8 @@ public class FieldPlannerServiceUtil {
     private String getDuration(FieldPlan fieldPlan) {
         log.trace("Entering getDuration method");
         if (fieldPlan.getStartDate() == null || fieldPlan.getEndDate() == null) {
-            log.error("Start date or end date is null for field plan");
-            throw new RuntimeException("Start date and end date are required for fieldPlan name generation");
+            log.error("Start date or end date is null for installation plan");
+            throw new RuntimeException("Start date and end date are required for installation plan name generation");
         }
 
         LocalDateTime startDate = LocalDateTime.ofInstant(
@@ -214,7 +214,7 @@ public class FieldPlannerServiceUtil {
 
     public static String replaceActivityAssignmentEmailBody(String role, String fieldPlanName, String username, String password, String contenue){
         log.trace("Entering replaceActivityAssignmentEmailBody method");
-        log.debug("Replacing email body placeholders for role: {}, field plan: {}", role, fieldPlanName);
+        log.debug("Replacing email body placeholders for role: {}, installation plan: {}", role, fieldPlanName);
         String result = contenue.replace(":role",role )
                 .replace(":fieldPlanName", fieldPlanName)
                 .replace(":login_agent", username)

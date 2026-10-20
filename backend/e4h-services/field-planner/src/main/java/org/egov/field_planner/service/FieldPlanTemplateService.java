@@ -78,10 +78,10 @@ public class FieldPlanTemplateService {
                 enrichment.enrichOnCreate(template, request.getRequestInfo());
             }
             producer.push(fieldPlannerConfiguration.getCreateFieldPlanTemplateTopic(), request);
-            log.info("Successfully pushed {} field plan templates for creation", templates.size());
+            log.info("Successfully pushed {} installation plan templates for creation", templates.size());
         } catch (Exception exception) {
-            log.error("Error occurred while creating field plan templates: {}", ExceptionUtils.getStackTrace(exception));
-            throw new CustomException("FIELD_PLAN_TEMPLATE_CREATE", "Failed to create field plan templates");
+            log.error("Error occurred while creating installation plan templates: {}", ExceptionUtils.getStackTrace(exception));
+            throw new CustomException("FIELD_PLAN_TEMPLATE_CREATE", "Failed to create installation plan templates");
         }
         return templates;
     }
@@ -127,7 +127,7 @@ public class FieldPlanTemplateService {
         try {
             return fileStoreService.upload(requestInfo, excelFile);
         } catch (IOException e) {
-            log.error("Failed to upload field plan template Excel file", e);
+            log.error("Failed to upload installation plan template Excel file", e);
             throw new CustomException("ERROR_FIELD_PLAN_TEMPLATE_UPLOAD", "Failed to upload Excel file: " + e.getMessage());
         }
     }
@@ -165,8 +165,8 @@ public class FieldPlanTemplateService {
                         errorMap.put("INVALID_FIELDPLAN_" + i, "fieldPlanId does not exist: " + template.getFieldPlanId());
                     });
         } catch (Exception e) {
-            log.error("Error while validating field plan ids", ExceptionUtils.getStackTrace(e));
-            throw new CustomException("FIELDPLAN_ERROR", "Error while validating field plan ids");
+            log.error("Error while validating installation plan ids", ExceptionUtils.getStackTrace(e));
+            throw new CustomException("FIELDPLAN_ERROR", "Error while validating installation plan ids");
         }
 
         if (!errorMap.isEmpty()) {

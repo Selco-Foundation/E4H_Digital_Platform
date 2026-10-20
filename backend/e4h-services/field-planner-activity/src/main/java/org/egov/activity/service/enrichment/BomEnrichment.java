@@ -42,7 +42,7 @@ public class BomEnrichment {
         log.debug("Enriched BOM with id: {}, documents count: {}", billOfMaterial.getId(), documentCount);
     }
 
-    /* Enrich FieldPlan with id and audit details */
+    /* Enrich Installation Plan with id and audit details */
     private void enrichBomRequestOnCreate(BillOfMaterial billOfMaterial, RequestInfo requestInfo) {
         log.trace("enrichBomRequestOnCreate method invoked");
         billOfMaterial.setId(UUID.randomUUID().toString());

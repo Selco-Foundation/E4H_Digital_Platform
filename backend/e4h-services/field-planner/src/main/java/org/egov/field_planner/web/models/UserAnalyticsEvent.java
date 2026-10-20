@@ -40,7 +40,7 @@ public class UserAnalyticsEvent {
     @JsonProperty("event_time")
     private String eventTime;
 
-    /** Source application — always MANAGEMENT_HUB here, field plans are authored there. */
+    /** Source application — always MANAGEMENT_HUB here, installation plans are authored there. */
     @JsonProperty("application")
     private String application;
 
@@ -68,7 +68,7 @@ public class UserAnalyticsEvent {
     @JsonProperty("module")
     private String module;
 
-    /** Business entity id — the field plan, or the ICC report for an upload. */
+    /** Business entity id — the installation plan, or the ICC report for an upload. */
     @JsonProperty("entity_id")
     private String entityId;
 

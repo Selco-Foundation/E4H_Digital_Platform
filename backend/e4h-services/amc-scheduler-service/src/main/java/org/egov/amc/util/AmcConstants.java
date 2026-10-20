@@ -41,6 +41,9 @@ public class AmcConstants {
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
+    /** Workflow document type of the AMC visit report PDF generated on report submission. */
+    public static final String AMC_INSTALLATION_FORM_DOCUMENT_TYPE = "AMC_INSTALLATION_FORM";
+
     // User-analytics event (shared user-analytics-report index, see AmcAnalyticsService)
     public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
     public static final String MDMS_MASTER_AMC = "AMC";

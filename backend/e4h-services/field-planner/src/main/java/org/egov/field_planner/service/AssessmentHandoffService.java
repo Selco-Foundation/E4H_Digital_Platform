@@ -43,7 +43,7 @@ public class AssessmentHandoffService {
         String installationProjectId = fieldPlanFacilityRepository
                 .findProjectIdByFieldPlanId(request.getInstallationFieldPlanId())
                 .orElseThrow(() -> new CustomException(AssessmentConstants.ASSESSMENT_PROJECT_NOT_FOUND,
-                        "Installation field plan not found: " + request.getInstallationFieldPlanId()));
+                        "Installation plan not found: " + request.getInstallationFieldPlanId()));
 
         String userId = request.getRequestInfo().getUserInfo().getUuid();
         fieldPlanFacilityRepository.linkAssessmentSource(
@@ -57,7 +57,7 @@ public class AssessmentHandoffService {
         if (sameProject) {
             if (AssessmentConstants.COMPLETION_MOVED_TO_FIELD_PLAN.equals(facility.getAssessmentCompletionStatus())) {
                 throw new CustomException(AssessmentConstants.ASSESSMENT_FACILITY_ALREADY_ON_FIELD_PLAN,
-                        "Facility already handed off to a field plan");
+                        "Facility already handed off to an installation plan");
             }
             applySameProjectHandoff(facility, request, userId);
         }

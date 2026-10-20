@@ -230,6 +230,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
     facilityDetails: {
       id: activityFacilityData?.activityFacility?.id,
       facilityName: activityFacilityData?.activityFacility?.facility?.facility_name,
+      projectName: activityFacilityData?.activityFacility?.fieldPlan?.project?.name,
       facilityId: activityFacilityData?.activityFacility?.facilityId,
       facilityType: facility.facility_type,
       status: activityFacilityData?.activityFacility?.status,

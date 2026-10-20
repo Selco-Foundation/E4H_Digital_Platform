@@ -68,7 +68,7 @@ public class BOMApiController {
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<BomResponse> searchBillOfMaterials(
-            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody BomSearchRequest request,
+            @ApiParam(value = "Details for the installation plan.", required = true) @Valid @RequestBody BomSearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
         log.trace("searchBillOfMaterials endpoint invoked with limit: {}, offset: {}, tenantId: {}", urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());

@@ -78,9 +78,13 @@ jobs:
           build-args: |
             JAR_FILE=backend/e4h-services/amc-scheduler-service/target/*.jar
 
+      - name: Prepare DB migration build context
+        run: |
+          cp backend/e4h-services/amc-scheduler-service/target/*.jar backend/e4h-services/amc-scheduler-service/src/main/resources/db/amc-service.jar
+
       - name: Build and Push Docker image for Amc-Service-DB
         run: |
-          docker build  -t selcohub/amc-service-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
+          docker build  --build-arg JAR_FILE=amc-service.jar -t selcohub/amc-service-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
           docker push selcohub/amc-service-db:${{ env.VERSION }}-${{ env.commit_hash }}
         working-directory: backend/e4h-services/amc-scheduler-service/src/main/resources/db
 

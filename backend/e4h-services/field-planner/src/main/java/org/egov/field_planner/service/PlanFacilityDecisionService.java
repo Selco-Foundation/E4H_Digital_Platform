@@ -139,9 +139,7 @@ public class PlanFacilityDecisionService {
         long now = System.currentTimeMillis();
         Map<String, Object> assessmentUpdates = new HashMap<>();
         assessmentUpdates.put("overallManuallySet", true);
-        if (StringUtils.isNotBlank(item.getRemarks())) {
-            assessmentUpdates.put("remarks", item.getRemarks());
-        }
+        assessmentUpdates.put("remarks", StringUtils.isNotBlank(item.getRemarks()) ? item.getRemarks() : null);
         Map<String, Object> additionalDetails = searchService.buildAssessmentMetadataUpdate(facility, assessmentUpdates);
         additionalDetails = AssessmentAdditionalDetailsHelper.appendAuditEvent(
                 additionalDetails,

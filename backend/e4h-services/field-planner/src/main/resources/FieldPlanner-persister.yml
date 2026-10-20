@@ -818,7 +818,7 @@ serviceMaps:
             - jsonPath: $.comments.*.auditDetails.lastModifiedTime
 
     - version: 1.0
-      description: Saves field plan templates
+      description: Saves installation plan templates
       fromTopic: save-field-plan-template-topic
       isTransaction: true
       isAuditEnabled: true
@@ -846,7 +846,7 @@ serviceMaps:
             - jsonPath: $.FieldPlanTemplates.*.auditDetails.lastModifiedTime
 
     - version: 1.0
-      description: Updates field plan templates
+      description: Updates installation plan templates
       fromTopic: update-field-plan-template-topic
       isTransaction: true
       isAuditEnabled: true

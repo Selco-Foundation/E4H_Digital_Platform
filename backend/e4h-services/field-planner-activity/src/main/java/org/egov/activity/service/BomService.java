@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,7 +125,7 @@ public class BomService {
         log.debug("Bill of materials update request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for installation plan based on installation plan IDs provided in the request
          */
         log.debug("Fetching existing bill of materials from database");
         List<BillOfMaterial> bomListFromDB = searchBillOfMaterials(
@@ -134,7 +135,7 @@ public class BomService {
         log.debug("Retrieved {} bill of materials from database for update", bomListFromDB != null ? bomListFromDB.size() : 0);
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update installation plan request against the installation plans fetched from the database
          */
         bomValidator.validateUpdateAgainstDB(request.getBillOfMaterials(), bomListFromDB);
 
@@ -237,10 +238,14 @@ public class BomService {
     /**
      * The client sends the raw, ungrouped documents array nested inside "bom.documents" (not as
      * a sibling field on the request), and the PDF service reads tenantId from "bom.tenantId".
-     * For every code in the common-masters.InstallationImages MDMS master, this combines the
-     * fileStoreIds of all raw entries whose documentType is "INSTALLATION_IMAGE-<code>" into one
-     * grouped entry, with documentName resolved from that code's description, then overwrites
-     * "bom.documents" with the grouped result.
+     * For every image the request's system type requires, this combines the fileStoreIds of all raw
+     * entries whose documentType is "INSTALLATION_IMAGE-&lt;code&gt;" into one grouped entry, with
+     * documentName resolved from that code's description, then overwrites "bom.documents" with the
+     * grouped result.
+     * <p>
+     * Only the images the system type declares are emitted, in the order that system type defines -
+     * an AC_ON_GRID_THREE_PHASE report must not carry the DC-only sections, and the master's array
+     * order is not the report's order.
      */
     @SuppressWarnings("unchecked")
     private void enrichBomData(GenerateBOMPdfRequest request) {
@@ -255,28 +260,70 @@ public class BomService {
                 ? (List<Map<String, Object>>) rawDocuments
                 : Collections.emptyList();
 
-        Map<String, String> installationImageDescriptions =
-                mdmsUtils.fetchInstallationImageDescriptions(request.getRequestInfo(), TENANTID);
+        List<InstallationImageMaster> installationImages =
+                installationImagesForSystem(request.getRequestInfo(), request.getSystem());
 
-        // Every code from the MDMS master gets an entry so its documentName always renders,
+        // Every image required by this system type gets an entry so its documentName always renders,
         // even when no matching upload exists — fileStoreIds is just empty in that case.
+        //
+        // The pdf-service data-config for every bom_* report looks up each section by POSITION -
+        // "installation_image_1_title" reads documents[documentType=='INSTALLATION_IMAGE-1'],
+        // "_2_title" reads '-2', and so on sequentially. It does NOT know about MDMS codes at all.
+        // So the emitted documentType here must be the 1-based position of this image within THIS
+        // system type's sorted list (INSTALLATION_IMAGE-1, -2, -3, ...), never the raw MDMS code -
+        // codes are scattered arbitrarily across 1-46 and hardly ever match their position (e.g. for
+        // AC_OFF_GRID the 2nd required image is master code 33, not code 2). Emitting the raw code
+        // here silently dropped every image whose code fell outside the mapping's slot range, and
+        // produced "NA" for slots whose literal code number happened to belong to a different
+        // system type. Raw uploads are still matched by their true master code (uploads are tagged
+        // INSTALLATION_IMAGE-<code> by the field app), only the outgoing documentType is positional.
         List<BomPdfDocument> groupedDocuments = new ArrayList<>();
-        for (Map.Entry<String, String> entry : installationImageDescriptions.entrySet()) {
-            String documentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + entry.getKey();
+        int position = 1;
+        for (InstallationImageMaster installationImage : installationImages) {
+            String masterDocumentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + installationImage.getCode();
+            String positionalDocumentType = INSTALLATION_IMAGE_DOCUMENT_TYPE_PREFIX + position;
 
             List<String> fileStoreIds = documents.stream()
-                    .filter(document -> documentType.equals(document.get("documentType")) && document.get(FILE_STORE_ID_KEY) != null)
+                    .filter(document -> masterDocumentType.equals(document.get("documentType")) && document.get(FILE_STORE_ID_KEY) != null)
                     .map(document -> String.valueOf(document.get(FILE_STORE_ID_KEY)))
                     .collect(Collectors.toList());
 
             groupedDocuments.add(BomPdfDocument.builder()
-                    .documentType(documentType)
-                    .documentName(entry.getValue())
+                    .documentType(positionalDocumentType)
+                    .documentName(installationImage.getDescription())
                     .fileStoreIds(fileStoreIds)
                     .build());
+            position++;
         }
 
         bomData.put(DOCUMENTS_KEY, groupedDocuments);
+    }
+
+    /**
+     * The active InstallationImages entries that declare this system type, sorted by the order that
+     * system type gives them. An entry whose system_types does not list the system type is dropped:
+     * that image is not part of this system's installation report.
+     */
+    private List<InstallationImageMaster> installationImagesForSystem(RequestInfo requestInfo, String systemType) {
+        List<InstallationImageMaster> allImages = mdmsUtils.fetchInstallationImages(requestInfo, TENANTID);
+
+        List<InstallationImageMaster> imagesForSystem = allImages.stream()
+                .filter(image -> !Boolean.FALSE.equals(image.getActive()))
+                .filter(image -> image.getOrderBySystemType() != null
+                        && image.getOrderBySystemType().containsKey(systemType))
+                .sorted(Comparator.comparingDouble(image -> image.getOrderBySystemType().get(systemType)))
+                .collect(Collectors.toList());
+
+        if (imagesForSystem.isEmpty()) {
+            // Not fatal - the rest of the report is still valid - but it always means the master and
+            // the system type codes have drifted apart, so it must be visible in the logs.
+            log.warn("No InstallationImages entry declares system type {} - the report will carry no images. " +
+                    "Checked {} master entries.", systemType, allImages.size());
+        } else {
+            log.debug("Rendering {} of {} InstallationImages entries for system type {}",
+                    imagesForSystem.size(), allImages.size(), systemType);
+        }
+        return imagesForSystem;
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
@@ -318,7 +365,7 @@ public class BomService {
         if (!isValidCascadingUpdate(bomFromDB, billOfMaterial)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
-                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade Installation Plan date update true"
             );
         }
 

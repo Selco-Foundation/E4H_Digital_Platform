@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { EditIcon } from "@egovernments/digit-ui-react-components";
+import DownloadReports from "./DownloadReports";
 import { useHistory } from "react-router-dom";
 
 const InfoCard = ({ t, project }) => {
@@ -50,32 +51,23 @@ const InfoCard = ({ t, project }) => {
         position: "relative",
       }}
     >
-      <div
-        style={{
-          fontFamily: "Roboto",
-          fontWeight: "700",
-          fontSize: "24px",
-          lineHeight: "100%",
-          letterSpacing: "0px",
-          color: "#0B4B66",
-          marginBottom: "20px",
-        }}
-      >
-        {t("PM_PROJECT_PROJECT_DETAILS")}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ fontFamily: "Roboto", fontWeight: "700", fontSize: "24px", lineHeight: "100%", letterSpacing: "0px", color: "#0B4B66" }}>
+            {t("PM_PROJECT_PROJECT_DETAILS")}
+          </div>
+          <button
+            type="button"
+            style={{ padding: "0px", backgroundColor: "white" }}
+            onClick={handleProjectDetailsNavigation}
+          >
+            <EditIcon />
+          </button>
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <DownloadReports t={t} projectId={id} />
+        </div>
       </div>
-      <button
-        type="button"
-        style={{
-          position: "absolute",
-          top: "20px",
-          right: "20px",
-          padding: "0px",
-          backgroundColor: "white",
-        }}
-        onClick={handleProjectDetailsNavigation}
-      >
-        <EditIcon />
-      </button>
       <div
         style={{
           display: "flex",

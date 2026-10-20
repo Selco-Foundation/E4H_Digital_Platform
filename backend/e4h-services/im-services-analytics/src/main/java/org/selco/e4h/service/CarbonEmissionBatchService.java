@@ -179,6 +179,9 @@ public class CarbonEmissionBatchService {
 
         Map<YearMonth, Double> projectionSolarKwh = new LinkedHashMap<>();
         List<Co2MonthlyDocument> projections = new ArrayList<>();
+        // Collected across the whole lifecycle and published as one batch, so the facility costs a
+        // single Kafka message rather than one per month.
+        List<Co2MonthlyDocument> actuals = new ArrayList<>();
 
         for (YearMonth ym = lifecycleStart; !ym.isAfter(lifecycleEnd); ym = ym.plusMonths(1)) {
             if (!ym.isAfter(current)) {
@@ -188,7 +191,7 @@ public class CarbonEmissionBatchService {
                         facility, ym.getMonthValue(), ym.getYear(),
                         emission.solarKwh(), emission.tonnes());
                 doc.setCo2EmissionsAvoidedInTonnes(emission.tonnes());
-                indexerRepository.publishActual(doc);
+                actuals.add(doc);
             } else {
                 if (rmsStart != null && !calculator.hasSunshineHoursForState(facility, references)) {
                     log.warn("Skipping projection months facilityId={} — no sunshine hours for state={}",
@@ -199,6 +202,8 @@ public class CarbonEmissionBatchService {
                 projectionSolarKwh.put(ym, solarKwh);
             }
         }
+
+        indexerRepository.publishActuals(actuals);
 
         if (!projectionSolarKwh.isEmpty()) {
             calculator.applyAnnualProjectionSolarCap(projectionSolarKwh, facility, references);

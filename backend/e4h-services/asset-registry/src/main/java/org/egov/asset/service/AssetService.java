@@ -6,7 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.mapper.AssetRowMapper;
 import org.egov.asset.mapper.DocumentRowMapper;
 import org.egov.asset.repository.AssetRepository;
+import org.egov.asset.util.AssetConstants;
 import org.egov.asset.util.ErrorConstants;
+import org.egov.asset.util.FacilityUtil;
 import org.egov.asset.util.IdgenUtil;
 import org.egov.asset.util.ResponseInfoFactory;
 import org.egov.asset.web.models.Asset;
@@ -32,16 +34,21 @@ public class AssetService {
     private final DocumentRowMapper documentRowMapper;
     private final IdgenUtil idgenUtil;
     private final AssetRepository assetRepository;
+    /** Facilities named in one duplicate flag, capped so a serial number shared estate-wide stays cheap. */
+    private static final int MAX_DUPLICATE_FACILITIES = 20;
+
     private final ResponseInfoFactory responseInfoFactory;
+    private final FacilityUtil facilityUtil;
 
     @Autowired
-    public AssetService(JdbcTemplate jdbcTemplate, AssetRowMapper assetRowMapper, DocumentRowMapper documentRowMapper, IdgenUtil idgenUtil, AssetRepository assetRepository, ResponseInfoFactory responseInfoFactory) {
+    public AssetService(JdbcTemplate jdbcTemplate, AssetRowMapper assetRowMapper, DocumentRowMapper documentRowMapper, IdgenUtil idgenUtil, AssetRepository assetRepository, ResponseInfoFactory responseInfoFactory, FacilityUtil facilityUtil) {
         this.jdbcTemplate = jdbcTemplate;
         this.assetRowMapper = assetRowMapper;
         this.documentRowMapper = documentRowMapper;
         this.idgenUtil = idgenUtil;
         this.assetRepository = assetRepository;
         this.responseInfoFactory = responseInfoFactory;
+        this.facilityUtil = facilityUtil;
     }
 
     public AssetCreateResponse createAsset(AssetCreateRequest request) {
@@ -76,6 +83,8 @@ public class AssetService {
             IntStream.range(0, documentIds.size())
                     .forEach(i -> request.getAssetDetail().getAsset().getDocuments().get(i).setId(documentIds.get(i)));
 
+            enrichPotentialDuplicate(request.getAssetDetail().getAsset());
+
             log.info("Pushing asset creation to repository | assetId={}", request.getAssetDetail().getAsset().getAssetId());
             assetRepository.pushCreateAsset(request.getAssetDetail().getAsset());
             log.info("Asset created successfully | assetId={} tenantId={}", 
@@ -90,6 +99,116 @@ public class AssetService {
         } catch (Exception e) {
             log.error("Unexpected error creating asset | tenantId={}", tenantId, e);
             throw new CustomException("ASSET_CREATION_ERROR", "Failed to create asset: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Flags the asset as a potential duplicate when the same Asset Brand + Asset Serial Number
+     * combination already exists in the registry, by writing {@code isPotentialDuplicate} into its
+     * assetDetails (persisted as-is in the asset_details JSONB column).
+     * <p>
+     * The flag is informational only: a duplicate is never rejected, the asset is created or updated
+     * either way. It is written on every asset, true or false, so consumers never have to tell a
+     * non-duplicate apart from an asset created before this check existed.
+     * <p>
+     * Runs on both create and update: an update can move an asset onto an already used brand +
+     * serial number, and can equally move it off one, so the flag is always re-evaluated.
+     */
+    void enrichPotentialDuplicate(Asset asset) {
+        log.trace("AssetService::enrichPotentialDuplicate called");
+        List<DuplicateMatch> matches = findDuplicates(asset);
+        boolean isPotentialDuplicate = !matches.isEmpty();
+
+        // Copied rather than mutated in place: the map comes straight from the request body and
+        // nothing guarantees it is modifiable.
+        Map<String, Object> assetDetails = asset.getAssetDetails() == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(asset.getAssetDetails());
+        assetDetails.put(AssetConstants.IS_POTENTIAL_DUPLICATE, isPotentialDuplicate);
+
+        if (isPotentialDuplicate) {
+            // Every health facility the serial number was already submitted from, so the UI can name
+            // them all. Facilities whose name cannot be resolved are left out rather than carried as
+            // nulls - the duplicate flag stands on its own.
+            List<String> duplicateFacilityNames = matches.stream()
+                    .map(match -> facilityUtil.getFacilityName(match.tenantId(), match.facilityId()))
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            assetDetails.put(AssetConstants.DUPLICATE_FACILITY_NAME, duplicateFacilityNames);
+            log.info("Potential duplicate asset | assetId={} assetTypeID={} brandID={} serialNumber={} duplicateFacilities={} duplicateFacilityNames={}",
+                    asset.getAssetId(), asset.getAssetTypeID(), asset.getBrandID(), asset.getSerialNumber(),
+                    matches.size(), duplicateFacilityNames);
+        } else {
+            // An update can clear a duplicate - a corrected serial number must not keep pointing at
+            // the facilities it used to clash with.
+            assetDetails.remove(AssetConstants.DUPLICATE_FACILITY_NAME);
+            log.info("No duplicate found | assetId={} assetTypeID={} brandID={} serialNumber={}",
+                    asset.getAssetId(), asset.getAssetTypeID(), asset.getBrandID(), asset.getSerialNumber());
+        }
+
+        asset.setAssetDetails(assetDetails);
+    }
+
+    /* One health facility a duplicate serial number was already submitted from. */
+    private record DuplicateMatch(String facilityId, String tenantId) {
+    }
+
+    /**
+     * Every health facility already holding an asset with this brand and serial number, oldest
+     * submission first, empty when there is none. The lookup is global - no tenant, facility, asset
+     * type or workflow status narrowing - as required by the duplicate rule. A blank brand or serial
+     * number cannot form the duplicate key, so it never matches.
+     * <p>
+     * Asset type is deliberately not part of the key: the flag is advisory, so missing a duplicate
+     * costs more than flagging one, and the same serial number keyed under two different asset types
+     * is itself a data-entry mistake worth surfacing.
+     * <p>
+     * The asset's own row is excluded, otherwise every update of an unchanged asset would match
+     * itself. On create that row does not exist yet, so excluding it changes nothing.
+     * <p>
+     * Grouped by facility, so several assets recorded against one facility are one match and cost
+     * one facility-service lookup.
+     */
+    private List<DuplicateMatch> findDuplicates(Asset asset) {
+        log.trace("AssetService::findDuplicates called");
+        String brandId = asset.getBrandID();
+        String serialNumber = asset.getSerialNumber();
+        if (brandId == null || brandId.isBlank() || serialNumber == null || serialNumber.isBlank()) {
+            log.debug("Incomplete duplicate key, skipping lookup | assetId={} brandID={} serialNumber={}",
+                    asset.getAssetId(), brandId, serialNumber);
+            return Collections.emptyList();
+        }
+
+        StringBuilder query = new StringBuilder(
+                "SELECT facility_id, tenant_id, MIN(created_time) AS first_created_time FROM asset"
+                        + " WHERE brand_id = ? AND serial_number = ?");
+        List<Object> params = new ArrayList<>(List.of(brandId, serialNumber));
+        if (asset.getAssetId() != null && !asset.getAssetId().isBlank()) {
+            query.append(" AND asset_id <> ?");
+            params.add(asset.getAssetId());
+        }
+        query.append(" GROUP BY facility_id, tenant_id ORDER BY first_created_time ASC LIMIT ?");
+        params.add(MAX_DUPLICATE_FACILITIES + 1);
+
+        try {
+            List<DuplicateMatch> matches = jdbcTemplate.query(query.toString(), params.toArray(),
+                    (rs, rowNum) -> new DuplicateMatch(rs.getString("facility_id"), rs.getString("tenant_id")));
+            log.info("Duplicate lookup completed | brandID={} serialNumber={} facilityMatches={}",
+                    brandId, serialNumber, matches.size());
+            if (matches.size() > MAX_DUPLICATE_FACILITIES) {
+                // A placeholder serial number bulk-loaded across the whole estate would otherwise fan
+                // out into one facility-service call per facility on every create and update.
+                log.warn("Serial number {} of brand {} is recorded against more than {} facilities - naming the first {} only",
+                        serialNumber, brandId, MAX_DUPLICATE_FACILITIES, MAX_DUPLICATE_FACILITIES);
+                return matches.subList(0, MAX_DUPLICATE_FACILITIES);
+            }
+            return matches;
+        } catch (Exception e) {
+            log.error("Error checking for duplicate asset | brandID={} serialNumber={} error={}",
+                    brandId, serialNumber, e.getMessage(), e);
+            throw new CustomException("ASSET_DUPLICATE_CHECK_ERROR",
+                    "Failed to check for duplicate assets: " + e.getMessage());
         }
     }
 
@@ -326,6 +445,9 @@ public class AssetService {
             updated.getAuditDetails().setLastModifiedTime(System.currentTimeMillis());
             log.debug("Updated audit details for assetId={}", updated.getAssetId());
         }
+
+        enrichPotentialDuplicate(updated);
+
         log.info("Pushing asset update to repository | assetId={}", assetId);
         assetRepository.pushUpdateAsset(updated);
         log.info("Asset updated successfully | assetId={} tenantId={}", assetId, updated.getTenantId());
