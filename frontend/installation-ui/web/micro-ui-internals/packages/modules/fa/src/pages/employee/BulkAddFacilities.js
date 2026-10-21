@@ -4,7 +4,7 @@ import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-comp
 import { IngestionService } from "../../services/Ingestion";
 import { FAService } from "../../services/FA";
 import useBoundary from "../../hooks/useBoundary";
-import { buildBoundaryDataTree, EMPTY_GEOGRAPHY } from "../../utilities/GeographySelection";
+import { buildBoundaryCodeSelection, EMPTY_GEOGRAPHY } from "../../utilities/GeographySelection";
 
 const BulkAddFacilities = () => {
 
@@ -44,7 +44,7 @@ const BulkAddFacilities = () => {
         return;
       }
       setBlockUI(true);
-      await IngestionService.downloadFacilityDataTemplate(buildBoundaryDataTree(geography, boundary));
+      await IngestionService.downloadFacilityDataTemplate(buildBoundaryCodeSelection(geography, boundary));
       setBlockUI(false);
       setToast({ key: "success", label: "FACILITY_TEMPLATE_DOWNLOAD_SUCCESS" });
 

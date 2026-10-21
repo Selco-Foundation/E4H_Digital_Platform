@@ -23,6 +23,36 @@ const childrenOf = (nodes, parentCode) =>
   (nodes || []).filter((node) => node.parentCode === parentCode).map((node) => node.code);
 
 /**
+ * The selection as the fewest boundary codes that cover the same blocks, for
+ * `/template/facilityIngestion`'s `boundary_codes` field: a district whose every block is covered
+ * collapses to the district code, and a state whose every district is covered to the state code.
+ * Same meaning as `buildBoundaryDataTree` - a level picked on its own means all of it - but the
+ * whole country is a few dozen codes instead of a tree of every block, which the gateway's
+ * request-size limit rejects (HTTP 413).
+ */
+export const buildBoundaryCodeSelection = (geography, boundary) => {
+  const tree = buildBoundaryDataTree(geography, boundary);
+  const codes = [];
+  (tree.children || []).forEach((state) => {
+    const covered = [];
+    const partial = [];
+    (state.children || []).forEach((district) => {
+      const blocks = (district.children || []).map((block) => block.boundaryCode);
+      if (!blocks.length) return;
+      if (blocks.length === childrenOf(boundary?.blocks, district.boundaryCode).length) covered.push(district.boundaryCode);
+      else partial.push(...blocks);
+    });
+    // Districts with no blocks never reach the template, so they don't stop a state collapsing.
+    const districtsWithBlocks = childrenOf(boundary?.districts, state.boundaryCode).filter(
+      (district) => childrenOf(boundary?.blocks, district).length > 0
+    );
+    if (!partial.length && covered.length && covered.length === districtsWithBlocks.length) codes.push(state.boundaryCode);
+    else codes.push(...covered, ...partial);
+  });
+  return codes;
+};
+
+/**
  * The selection as the `boundary_data` tree `/template/facilityIngestion` takes
  * (country -> state -> district -> block). The server reads each node's `boundaryCode`;
  * `name` carries the code too.
