@@ -66,7 +66,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
             log.debug("🔃 Added sort clause: field='{}', order='{}'", sortClauseFieldPath, sortOrder);
 
-            List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
+            List<String> sourceFilterPathList = withSlaSourceFields(configuration.getSourceFilterPathList());
             addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
             log.debug("📌 Added source filter: {}", sourceFilterPathList);
         }
@@ -396,6 +396,23 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         return baseEsQuery;
     }
 
+    /**
+     * The fields the live SLA remaining values are computed from (see InboxServiceV2). Added here rather
+     * than relying on the MDMS sourceFilterPathList, which would silently drop them and leave the inbox
+     * returning the values stored at the last state change.
+     */
+    private static final List<String> SLA_SOURCE_FIELDS = Arrays.asList(
+            DATA_PREFIX + INDEXED_STATE_SLA, DATA_PREFIX + STATE_ENTERED_TIME, DATA_PREFIX + TOTAL_SLA_BASE, DATA_PREFIX + STATE_SLA_DUE_AT);
+
+    /** A copy of the configured list with the SLA fields appended; the configured list itself is cached and shared. */
+    private List<String> withSlaSourceFields(List<String> sourceFilterPathList) {
+        if (CollectionUtils.isEmpty(sourceFilterPathList))
+            return sourceFilterPathList;
+        List<String> paths = new ArrayList<>(sourceFilterPathList);
+        SLA_SOURCE_FIELDS.stream().filter(field -> !paths.contains(field)).forEach(paths::add);
+        return paths;
+    }
+
     private void addSourceFilterToBaseQuery(Map<String, Object> baseEsQuery, List<String> sourceFilterPathList) {
         if (!CollectionUtils.isEmpty(sourceFilterPathList))
             baseEsQuery.put(SOURCE_KEY, sourceFilterPathList);
@@ -557,7 +574,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         Map<String, Object> warnAtRange = new HashMap<>();
         warnAtRange.put("lte", System.currentTimeMillis());
         Map<String, Object> anchored = Collections.singletonMap("range",
-                Collections.singletonMap("Data." + STATE_SLA_WARN_AT, warnAtRange));
+                Collections.singletonMap(DATA_PREFIX + STATE_SLA_WARN_AT, warnAtRange));
 
         Map<String, Object> legacyScript = new HashMap<>();
         legacyScript.put("source",
@@ -569,7 +586,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         legacyScript.put("lang", "painless");
         Map<String, Object> legacyBool = new HashMap<>();
         legacyBool.put("must_not", Collections.singletonList(Collections.singletonMap("exists",
-                Collections.singletonMap("field", "Data." + STATE_ENTERED_TIME))));
+                Collections.singletonMap("field", DATA_PREFIX + STATE_ENTERED_TIME))));
         legacyBool.put("filter", Collections.singletonList(Collections.singletonMap("script",
                 Collections.singletonMap("script", legacyScript))));
 
@@ -832,7 +849,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         String path = nameToPathMap.get(key);
 
         if (StringUtils.isEmpty(path))
-            path = "Data." + key + ".keyword";
+            path = DATA_PREFIX + key + ".keyword";
 
         return path;
     }

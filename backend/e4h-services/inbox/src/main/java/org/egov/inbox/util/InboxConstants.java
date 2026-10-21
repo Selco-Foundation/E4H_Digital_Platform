@@ -90,6 +90,9 @@ public class InboxConstants {
     // Field the index stores the state SLA under; STATE_SLA above is the inbox response key
     public static final String INDEXED_STATE_SLA = "stateSla";
 
+    // Prefix of every field nested under the indexed document's Data object
+    public static final String DATA_PREFIX = "Data.";
+
     // SLA anchors im-services writes on every state change, see IndexView there
     public static final String STATE_ENTERED_TIME = "stateEnteredTime";
 
