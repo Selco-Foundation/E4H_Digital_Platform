@@ -50,3 +50,25 @@ class RequiredFieldValidator(Validator):
             logger.debug("Required field validation completed: all rows passed")
 
         return result_df
+
+
+class RequiredColumnValidator(Validator):
+    """Fails every row when the sheet lacks a column the schema marks required.
+    RequiredFieldValidator only checks the cells of columns that are present, so a sheet from an
+    older template - missing a column added to the schema since - would otherwise pass."""
+
+    def __init__(self, columns: List[MDMSColumn]):
+        self.required_columns = [col.name for col in columns if col.required and col.name]
+
+    def validate(self, data: pd.DataFrame) -> pd.DataFrame:
+        result_df = data.copy()
+        result_df["status"] = result_df.get("status", None)
+        result_df["error"] = result_df.get("error", "")
+        missing = [name for name in self.required_columns
+                   if name not in result_df.columns and name + " (Mandatory)" not in result_df.columns]
+        if missing:
+            result_df["error"] = result_df["error"].fillna("").astype(str) + (
+                "Missing column(s) %s - download the latest template. "
+                % ", ".join("'%s'" % name for name in missing))
+            result_df["status"] = "fail"
+        return result_df
