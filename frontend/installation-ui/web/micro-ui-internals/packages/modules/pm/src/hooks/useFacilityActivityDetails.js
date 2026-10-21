@@ -1,6 +1,7 @@
 import {useQuery, useQueryClient} from "react-query";
 import { DocumentService } from "../services/Document";
 import { ActivityService } from "../services/Activity";
+import { isRectificationSite } from "../components/Custom/RectificationBadge";
 import { FilestoreService } from "../services/Filestore";
 
 const generateAuditTrail = (workflow, transactions) => {
@@ -238,6 +239,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       district: activityFacilityData?.activityFacility?.facility?.boundary?.district,
       assigned: assignedVendorName || assigneeDetails.name,
       systemType: facility.facility_details?.systemType || activityFacilityData?.activityFacility?.additionalDetails?.systemType,
+      isRectificationSite: isRectificationSite(activityFacilityData?.activityFacility?.additionalDetails),
     },
     auditTrail,
     workflow: activityFacilityData?.workflow,

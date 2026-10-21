@@ -9,6 +9,7 @@ import SearchActionCentre from "../../components/FacilityTable/SearchAction";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import useFacility from "../../hooks/useFacility";
 import CustomCheckBox from "../../components/Custom/CustomCheckBox";
+import { WithRectificationBadge, getRectificationCellStyle } from "../../components/Custom/RectificationBadge";
 
 const FacilityTable = ({ t }) => {
 
@@ -197,16 +198,18 @@ const FacilityTable = ({ t }) => {
       Header: t("CS_HEALTH_FACILITY"),
       Cell: ({ row }) => {
         return (
-          <div>
-            <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
-              <Link
-                to={`/${window.contextPath}/employee/qc/field-plan/${activityAssignmentId}/facilities/${row.original["id"]}`}
-                style={{ color: "#C84C0E" }}
-              >
-                {row.original["facilityName"]}
-              </Link>
-            </span>
-          </div>
+          <WithRectificationBadge show={row.original["isRectificationSite"]}>
+            <div>
+              <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
+                <Link
+                  to={`/${window.contextPath}/employee/qc/field-plan/${activityAssignmentId}/facilities/${row.original["id"]}`}
+                  style={{ color: "#C84C0E" }}
+                >
+                  {row.original["facilityName"]}
+                </Link>
+              </span>
+            </div>
+          </WithRectificationBadge>
         );
       },
     },
@@ -304,12 +307,14 @@ const FacilityTable = ({ t }) => {
             customTableWrapperClassName={"health-facility-table"}
             data={fetchedData}
             columns={columns}
-            getCellProps={() => {
+            getCellProps={(cell) => {
               return {
                 style: {
                   maxWidth: "100%",
                   padding: "17.24px 18px",
                   fontSize: "15px",
+                  // The selection column renders outside the table border, so it stays untinted.
+                  ...(cell?.column?.id !== "selection" ? getRectificationCellStyle(cell) : {}),
                 },
               };
             }}

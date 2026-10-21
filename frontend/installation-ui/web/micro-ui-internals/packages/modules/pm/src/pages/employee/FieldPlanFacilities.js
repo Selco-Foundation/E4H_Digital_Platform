@@ -8,6 +8,7 @@ import useActivityFacility from "../../hooks/useActivityFacility";
 import Filter from "../../components/FieldPlanFacilities/Filter";
 import SearchAction from "../../components/FieldPlanFacilities/SearchAction";
 import { populateWorkingFieldPlan, populateWorkingFacility } from "../../redux/actions";
+import { WithRectificationBadge, getRectificationCellStyle } from "../../components/Custom/RectificationBadge";
 
 const FieldPlanFacilities = () => {
 
@@ -124,14 +125,16 @@ const FieldPlanFacilities = () => {
       {
         Header: t("CS_HEALTH_FACILITY"),
         Cell: ({ row }) => (
-          <span className="link" onClick={() => dispatch(populateWorkingFacility(row.original))}>
-            <Link
-              to={`/${window.contextPath}/employee/pm/field-plans/${fieldPlanId}/facilities/${row.original["id"]}/details`}
-              style={{ color: "#C84C0E" }}
-            >
-              {row.original["facilityName"]}
-            </Link>
-          </span>
+          <WithRectificationBadge show={row.original["isRectificationSite"]}>
+            <span className="link" onClick={() => dispatch(populateWorkingFacility(row.original))}>
+              <Link
+                to={`/${window.contextPath}/employee/pm/field-plans/${fieldPlanId}/facilities/${row.original["id"]}/details`}
+                style={{ color: "#C84C0E" }}
+              >
+                {row.original["facilityName"]}
+              </Link>
+            </span>
+          </WithRectificationBadge>
         ),
       },
       {
@@ -190,12 +193,13 @@ const FieldPlanFacilities = () => {
             customTableWrapperClassName={"field-plan-facility-table"}
             data={facilityData.facilities}
             columns={columns}
-            getCellProps={() => {
+            getCellProps={(cell) => {
               return {
                 style: {
                   maxWidth: "100%",
                   padding: "17.24px 18px",
                   fontSize: "15px",
+                  ...getRectificationCellStyle(cell),
                 },
               };
             }}

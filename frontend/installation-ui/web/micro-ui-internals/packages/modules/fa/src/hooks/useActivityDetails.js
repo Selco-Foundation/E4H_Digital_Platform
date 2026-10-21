@@ -1,6 +1,7 @@
 import {useQuery, useQueryClient} from "react-query";
 import { FAService } from "../services/FA";
 import { ActivityService } from "../services/Activity";
+import { isRectificationSite } from "../components/Custom/RectificationBadge";
 import { FilestoreService } from "../services/Filestore";
 
 const generateAuditTrail = (workflow, transactions) => {
@@ -154,6 +155,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       facilityId: activityFacilityData?.activityFacility?.facilityId,
       fieldPlanName: activityFacilityData?.activityFacility?.fieldPlan?.name,
       systemType: additionalDetails.systemType,
+      isRectificationSite: isRectificationSite(additionalDetails),
       solarSolutionDesignType: solarSolutionDesignType?.toUpperCase() === "CUSTOM"
         ? additionalDetails.customSolarSolutionDesignType || solarSolutionDesignType
         : solarSolutionDesignType,

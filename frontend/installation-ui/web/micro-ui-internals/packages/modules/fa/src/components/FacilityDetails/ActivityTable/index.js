@@ -3,6 +3,7 @@ import useActivity from "../../../hooks/useActivity";
 import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import Filter from "./Filter";
 import { Link } from "react-router-dom";
+import { WithRectificationBadge, getRectificationCellStyle } from "../../Custom/RectificationBadge";
 
 const ActivityTable = ({ t, facilityId }) => {
 
@@ -37,7 +38,11 @@ const ActivityTable = ({ t, facilityId }) => {
     {
       Header: t("CS_ACTIVITY_TYPE"),
       Cell: ({ row }) => {
-        return GetCell(row.original["activityType"] ? row.original["activityType"] : "-");
+        return (
+          <WithRectificationBadge show={row.original["isRectificationSite"]}>
+            {GetCell(row.original["activityType"] ? row.original["activityType"] : "-")}
+          </WithRectificationBadge>
+        );
       },
     },
     {
@@ -139,12 +144,13 @@ const ActivityTable = ({ t, facilityId }) => {
             customTableWrapperClassName={"facility-details-table"}
             data={fetchedData}
             columns={columns}
-            getCellProps={() => {
+            getCellProps={(cell) => {
               return {
                 style: {
                   maxWidth: "100%",
                   padding: "17.24px 18px",
                   fontSize: "15px",
+                  ...getRectificationCellStyle(cell),
                 },
               };
             }}
