@@ -57,6 +57,15 @@ def flatten_boundaries(boundary_json: Dict) -> List[Boundary]:
     return boundaries
 
 
+def select_boundaries_by_codes(boundaries: List[Boundary], codes) -> List[Boundary]:
+    """The blocks lying under any of `codes` - each a state, district or block code, as the
+    geography step's `boundary_codes` sends them. `get_all_boundaries` rows hold codes at every
+    level, so each level is compared directly."""
+    wanted = {code for code in codes if code}
+    return [b for b in boundaries
+            if b.block in wanted or b.district in wanted or b.state in wanted]
+
+
 def flatten_boundary_codes(boundary_json: Dict) -> List[Boundary]:
     """Like `flatten_boundaries`, but every level holds its boundary CODE, not its name.
 

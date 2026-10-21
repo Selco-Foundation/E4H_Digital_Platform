@@ -215,13 +215,15 @@ export const IngestionService = {
     };
   },
 
-  /** `boundaryData` (the geography step's tree) limits the template - its BlockBoundaryCodes sheet
-   *  and its State/District/Block dropdowns - to those blocks; without it, every block. */
-  downloadFacilityDataTemplate: async (boundaryData) => {
+  /** `boundaryCodes` (the geography step's `buildBoundaryCodeSelection`) limits the template - its
+   *  BlockBoundaryCodes sheet and its State/District/Block dropdowns - to the blocks under those
+   *  state, district and block codes; without it, every block. Codes rather than the whole tree,
+   *  so selecting every state stays under the gateway's request-size limit. */
+  downloadFacilityDataTemplate: async (boundaryCodes) => {
     const endpoint = "/ingestion-service/template/facilityIngestion";
     const data = new FormData();
-    if (boundaryData) {
-      data.append("boundary_data", JSON.stringify(boundaryData));
+    if (boundaryCodes) {
+      data.append("boundary_codes", JSON.stringify(boundaryCodes));
     }
 
     await CustomRequest({

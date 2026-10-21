@@ -1,3 +1,4 @@
+import re
 from typing import Dict, List, Union, Any, Optional, Tuple
 
 import numpy as np
@@ -761,3 +762,47 @@ def add_health_category_hfr_nin_validations(
 ) -> None:
     """Backward-compatible alias; applies HEALTH HFR/NIN and ANGANWADI PoC Username rules."""
     add_facility_category_conditional_validations(file_path, sheet_name)
+
+
+BOUNDARY_TEMPLATE_SHEET = "Boundary Data"
+# A pattern that only lists literal choices, e.g. ^(Block|Sub-district|Both)$ - offered as a
+# dropdown in the template.
+_CHOICE_PATTERN = re.compile(r"^\^\(([^()\[\]\\*+?{}.$^]+(?:\|[^()\[\]\\*+?{}.$^]+)*)\)\$$")
+
+
+def schema_choices(pattern):
+    """The literal values a column's pattern allows, or None if it isn't a plain choice list."""
+    match = _CHOICE_PATTERN.match(pattern or "")
+    return match.group(1).split("|") if match else None
+
+
+def write_boundary_template(path: str, columns, rows: int = 5000) -> None:
+    """The empty boundary ingestion template, one column per BoundaryIngestionSchema column in
+    the schema's order. Every column is text-formatted so Excel keeps codes as typed, and a
+    column whose pattern is a plain choice list gets those choices as a dropdown."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = BOUNDARY_TEMPLATE_SHEET
+    names = [column.name for column in columns if column.name]
+    sheet.append(names)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+    for index, column in enumerate([c for c in columns if c.name], start=1):
+        letter = sheet.cell(row=1, column=index).column_letter
+        sheet.column_dimensions[letter].width = max(16, len(column.name) + 4)
+        # A column style, not per-cell formats, so the sheet has no pre-filled empty rows.
+        sheet.column_dimensions[letter].number_format = "@"
+        choices = schema_choices(column.pattern)
+        if choices:
+            dropdown = DataValidation(type="list", formula1='"%s"' % ",".join(choices),
+                                      allow_blank=not column.required, showErrorMessage=True,
+                                      errorTitle=column.name,
+                                      error="Pick one of: %s" % ", ".join(choices))
+            dropdown.add("%s2:%s%d" % (letter, letter, rows + 1))
+            sheet.add_data_validation(dropdown)
+    sheet.freeze_panes = "A2"
+    workbook.save(path)
