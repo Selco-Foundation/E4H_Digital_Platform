@@ -37,7 +37,9 @@ const BulkAddFacilities = () => {
 
   const handleFacilityTemplateDownload = async () => {
     try {
-      if (!geography.blocks.length) {
+      // Only the state is required: an empty district or block level means "all of it"
+      // (`buildBoundaryDataTree`), so the template covers the whole state.
+      if (!geography.states.length) {
         setToast({ key: "error", label: "FA_BULK_ADD_SELECT_GEOGRAPHY" });
         return;
       }
@@ -117,14 +119,17 @@ const BulkAddFacilities = () => {
             customProps: { name: "geographyHeader", t },
             populators: { name: "geographyHeader" },
           },
+          // Only the state is mandatory: an empty district or block level stands for all of
+          // them (`buildBoundaryDataTree`), so those two narrow the template rather than
+          // complete it.
           ...[
-            ["states", "PM_CREATE_PROJECT_LABEL_STATE"],
-            ["districts", "PM_CREATE_PROJECT_LABEL_DISTRICTS"],
-            ["blocks", "PM_CREATE_PROJECT_LABEL_BLOCKS"],
-          ].map(([level, label]) => ({
+            ["states", "PM_CREATE_PROJECT_LABEL_STATE", true],
+            ["districts", "PM_CREATE_PROJECT_LABEL_DISTRICTS", false],
+            ["blocks", "PM_CREATE_PROJECT_LABEL_BLOCKS", false],
+          ].map(([level, label, isMandatory]) => ({
             inline: true,
             label,
-            isMandatory: true,
+            isMandatory,
             key: `geography_${level}`,
             type: "component",
             component: "FAGeographyLevelSelector",
@@ -156,7 +161,7 @@ const BulkAddFacilities = () => {
               heading: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE",
               description: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE_DESC",
               handleDownload: handleFacilityTemplateDownload,
-              disabled: geography.blocks.length === 0,
+              disabled: geography.states.length === 0,
               t,
             },
             route: "project-duration-2",

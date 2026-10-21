@@ -18,10 +18,20 @@ export const pruneGeography = (geography, boundary) => {
   return { states: geography.states, districts, blocks };
 };
 
+/** Codes of every node in `nodes` whose parent is `parentCode`. */
+const childrenOf = (nodes, parentCode) =>
+  (nodes || []).filter((node) => node.parentCode === parentCode).map((node) => node.code);
+
 /**
  * The selection as the `boundary_data` tree `/template/facilityIngestion` takes
- * (country -> state -> district -> block). Only branches ending in a selected block are kept.
- * The server reads each node's `boundaryCode`; `name` carries the code too.
+ * (country -> state -> district -> block). The server reads each node's `boundaryCode`;
+ * `name` carries the code too.
+ *
+ * Picking a level means "all of it": a state with no district picked under it expands to every
+ * district in that state, and a district with no block picked expands to every block in it. So
+ * selecting only a state yields that whole state, which is what makes the template downloadable
+ * before any district or block is chosen. Narrowing by district or block is a refinement, not a
+ * requirement.
  */
 export const buildBoundaryDataTree = (geography, boundary, countryCode = "India") => {
   const pruned = pruneGeography(geography, boundary);
@@ -34,33 +44,29 @@ export const buildBoundaryDataTree = (geography, boundary, countryCode = "India"
     blocksByDistrict.set(district, [...(blocksByDistrict.get(district) || []), block]);
   });
   const districtsByState = new Map();
-  pruned.districts
-    .filter((district) => blocksByDistrict.has(district))
-    .forEach((district) => {
-      const state = districtParent.get(district);
-      districtsByState.set(state, [...(districtsByState.get(state) || []), district]);
-    });
+  pruned.districts.forEach((district) => {
+    const state = districtParent.get(district);
+    districtsByState.set(state, [...(districtsByState.get(state) || []), district]);
+  });
 
   return {
     boundaryCode: countryCode,
     type: "country",
     name: countryCode,
-    children: pruned.states
-      .filter((state) => districtsByState.has(state))
-      .map((state) => ({
-        boundaryCode: state,
-        type: "state",
-        name: state,
-        children: districtsByState.get(state).map((district) => ({
-          boundaryCode: district,
-          type: "district",
-          name: district,
-          children: blocksByDistrict.get(district).map((block) => ({
-            boundaryCode: block,
-            type: "block",
-            name: block,
-          })),
+    children: pruned.states.map((state) => ({
+      boundaryCode: state,
+      type: "state",
+      name: state,
+      children: (districtsByState.get(state) || childrenOf(boundary?.districts, state)).map((district) => ({
+        boundaryCode: district,
+        type: "district",
+        name: district,
+        children: (blocksByDistrict.get(district) || childrenOf(boundary?.blocks, district)).map((block) => ({
+          boundaryCode: block,
+          type: "block",
+          name: block,
         })),
       })),
+    })),
   };
 };
