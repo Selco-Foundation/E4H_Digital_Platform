@@ -112,6 +112,35 @@ const BoundaryAdminActions = ({ t }) => {
         }
       };
 
+      // LGD codes travel down the hierarchy, denormalised: a State carries its state code, a
+      // District state + district, a Block all three plus the tier. A state or district picked from
+      // the list keeps what it already stores, and the tiers created under it inherit that.
+      const newDistrict = isStateTextMode || isDistrictTextMode;
+      const existingLgd = await BoundaryService.fetchBoundaryLgdCodes(
+        [isStateTextMode ? "" : computed.state, newDistrict ? "" : computed.district],
+        tenantId
+      );
+      const typed = (value) => (getCode(value) || "").toString().trim();
+      const lgdState = isStateTextMode
+        ? typed(data?.lgdStateCode)
+        : existingLgd[computed.state]?.lgdStateCode || existingLgd[computed.district]?.lgdStateCode;
+      const lgdDistrict = newDistrict ? typed(data?.lgdDistrictCode) : existingLgd[computed.district]?.lgdDistrictCode;
+      const lgdBlock = typed(data?.lgdBlockCode);
+      const tierLgd = {
+        State: { lgdStateCode: lgdState },
+        District: { lgdStateCode: lgdState, lgdDistrictCode: lgdDistrict },
+        Block: {
+          lgdStateCode: lgdState,
+          lgdDistrictCode: lgdDistrict,
+          lgdBlockCode: lgdBlock,
+          // No block code means no claim about which LGD tier it is.
+          lgdBlockTier: lgdBlock ? typed(data?.lgdBlockTier) || "Block" : "",
+        },
+      };
+      // Empty values are left out so the columns stay NULL rather than "".
+      const lgdFieldsFor = (boundaryType) =>
+        Object.fromEntries(Object.entries(tierLgd[boundaryType] || {}).filter(([, value]) => value));
+
       const createBoundaryAndRel = async ({ name, code, boundaryType, parent, geographyDetails, ignoreIfExists }) => {
         try {
           await BoundaryService.createBoundary({
@@ -120,6 +149,7 @@ const BoundaryAdminActions = ({ t }) => {
                 tenantId,
                 code,
                 geometry: null,
+                ...lgdFieldsFor(boundaryType),
               },
             ],
           });

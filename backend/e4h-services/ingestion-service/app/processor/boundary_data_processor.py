@@ -1,3 +1,4 @@
+import math
 import os
 import string
 from typing import List, Dict, Set, Tuple, Optional
@@ -20,6 +21,41 @@ boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
 logger = AppLogger().get_logger()
+
+# Optional LGD identity columns. A sheet without them ingests exactly as before; when
+# present, the codes are stored on the boundary so a later LGD extract can be matched on
+# code rather than name. A rename then updates the localization label while the boundary
+# code - which facility codes are built from - stays put.
+LGD_STATE_CODE_COLUMN = "LGD State Code"
+LGD_DISTRICT_CODE_COLUMN = "LGD District Code"
+LGD_BLOCK_CODE_COLUMN = "LGD Block Code"
+# Which LGD tier the block code came from. In LGD a Development Block and a
+# Sub-district both hang directly off District, and our Block slot holds a mix of
+# the two, so the code alone would be ambiguous to reconcile against.
+LGD_BLOCK_TIER_COLUMN = "LGD Block Tier"
+
+
+def _read_identity_cell(row, column):
+    """Read an optional code cell as a string.
+
+    Excel hands these back as floats (29.0) once pandas infers the column as numeric,
+    so integral values are rendered without the trailing '.0'.
+    """
+    value = row.get(column)
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        if math.isnan(value):
+            return ""
+        if value.is_integer():
+            return str(int(value))
+    text = str(value).strip()
+    return "" if text.lower() in ("nan", "none") else text
+
+
+def _lgd_details(**codes):
+    """Drop empty codes so a partially filled sheet doesn't store blank identity fields."""
+    return {key: value for key, value in codes.items() if value}
 
 
 class BoundaryDataProcessor:
@@ -62,6 +98,7 @@ class BoundaryDataProcessor:
     def process_data(self):
         """Process and validate boundary data"""
 
+        logger.trace("Starting boundary data processing")
         if isinstance(self.data_loader, BoundaryExcelDataLoader):
             boundary_df = self.data_loader.get_boundary_data()
             logger.info(boundary_df.head(2))
@@ -171,7 +208,11 @@ class BoundaryDataProcessor:
         return f"{parent_full_code}_{generated_code}" if parent_full_code else generated_code
 
     def _organize_boundary_data(self, boundary_df):
-        """Organize boundary data into hierarchical structure with full codes"""
+        """Organize boundary data into hierarchical structure with full codes.
+        Keyed by full code, never by the bare leaf name: block and district names repeat
+        across the country ("Sadar", "Bilaspur"), and keying by name would silently drop
+        every repeat after the first - and attach the first one's LGD codes to it.
+        """
         self._load_boundary_localizations()
 
         for index, row in boundary_df.iterrows():
@@ -188,6 +229,13 @@ class BoundaryDataProcessor:
             level_codes: Dict[str, str] = {}
             country_code = state_code = district_code = None
 
+            # Optional LGD identity columns. Absent for hand-made sheets, in which case
+            # the boundary is created without LGD codes exactly as before.
+            lgd_state = _read_identity_cell(row, LGD_STATE_CODE_COLUMN)
+            lgd_district = _read_identity_cell(row, LGD_DISTRICT_CODE_COLUMN)
+            lgd_block = _read_identity_cell(row, LGD_BLOCK_CODE_COLUMN)
+            lgd_tier = _read_identity_cell(row, LGD_BLOCK_TIER_COLUMN)
+
             # Country level
             if country:
                 country_code = self._effective_full_code(country, country_label or country, None)
@@ -198,7 +246,8 @@ class BoundaryDataProcessor:
                         "name": country,
                         "localization_label": country_label or country,
                         "parent": None,
-                        "full_code": country_code
+                        "full_code": country_code,
+                        "lgd": {},
                     }
 
             # State level
@@ -211,7 +260,8 @@ class BoundaryDataProcessor:
                         "name": state,
                         "localization_label": state_label or state,
                         "parent": country_code,
-                        "full_code": state_code
+                        "full_code": state_code,
+                        "lgd": _lgd_details(stateCode=lgd_state),
                     }
 
             # District level
@@ -224,7 +274,8 @@ class BoundaryDataProcessor:
                         "name": district,
                         "localization_label": district_label or district,
                         "parent": state_code,
-                        "full_code": district_code
+                        "full_code": district_code,
+                        "lgd": _lgd_details(stateCode=lgd_state, districtCode=lgd_district),
                     }
 
             # Block level
@@ -237,7 +288,11 @@ class BoundaryDataProcessor:
                         "name": block,
                         "localization_label": block_label or block,
                         "parent": district_code,
-                        "full_code": block_code
+                        "full_code": block_code,
+                        "lgd": _lgd_details(stateCode=lgd_state,
+                                                                    districtCode=lgd_district,
+                                                                    blockCode=lgd_block,
+                                                                    blockTier=lgd_tier),
                     }
 
             self.row_level_codes[index] = level_codes
@@ -293,11 +348,25 @@ class BoundaryDataProcessor:
                     continue
                 if self._boundary_exists(full_code):
                     continue
-                boundaries_to_create.append({
+                boundary = {
                     "tenantId": "in",
                     "code": full_code,
                     "geometry": None
-                })
+                }
+                # LGD identity goes into the boundary's own lgd_* columns, denormalised
+                # down the hierarchy: a State carries only its state code, a District its
+                # state and district, a Block all three. These are what a later import
+                # reconciles on, since a boundary code is derived from the name and so
+                # changes when the name does.
+                lgd = data.get("lgd") or {}
+                if lgd.get("stateCode"):
+                    boundary["lgdStateCode"] = lgd["stateCode"]
+                if lgd.get("districtCode"):
+                    boundary["lgdDistrictCode"] = lgd["districtCode"]
+                if lgd.get("blockCode"):
+                    boundary["lgdBlockCode"] = lgd["blockCode"]
+                    boundary["lgdBlockTier"] = lgd.get("blockTier") or "Block"
+                boundaries_to_create.append(boundary)
 
         if not boundaries_to_create:
             logger.info("No new boundaries to create")

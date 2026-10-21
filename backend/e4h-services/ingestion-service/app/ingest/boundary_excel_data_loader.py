@@ -16,9 +16,12 @@ class BoundaryExcelDataLoader(DataLoader):
     def load_data(self) -> bool:
         try:
             # Load boundary data
+            # Every cell as text: a code typed as a number would otherwise come back as 29.0
+            # in a column with blanks, and fail a digits-only schema pattern.
             self.boundary_df = pd.read_excel(
                 self.file_path,
-                sheet_name=self.boundary_sheet
+                sheet_name=self.boundary_sheet,
+                dtype=str,
             )
 
             # Initialize tracking columns

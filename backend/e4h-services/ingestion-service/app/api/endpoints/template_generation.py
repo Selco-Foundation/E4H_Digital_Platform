@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Optional, List, Dict
 import psycopg2
@@ -15,7 +16,10 @@ from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
-from app.schemas.boundary import Boundary, flatten_boundaries
+from app.utils.excel_utils import write_boundary_template
+from app.schemas.boundary import (
+    Boundary, flatten_boundaries, flatten_boundary_codes, select_boundaries_by_codes,
+)
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
 from app.utils.convertor import request_info_from_json, apply_field_plan_facility_additional_fields
 from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_prefilled_rows_in_excel, \
@@ -367,7 +371,9 @@ async def get_boundary_ingestion_template(
     """
     Generate an empty boundary ingestion template with the required columns.
     Sheet name: 'Boundary Data'
-    Columns: Country, State, District, Block
+    Columns: one per data-ingestion.BoundaryIngestionSchema column, in the schema's order -
+    Country, State, District, Block and the LGD code columns. A column whose pattern is a plain
+    choice list (LGD Block Tier) gets those choices as a dropdown.
     """
     output_file_path = None
     request_info = request_info_from_json(payload.get("RequestInfo", {}))
@@ -377,9 +383,13 @@ async def get_boundary_ingestion_template(
         output_filename = f"boundary_ingestion_template_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
 
-        # Create an empty DataFrame with the expected boundary columns
-        df = pd.DataFrame(columns=["Country", "State", "District", "Block"])
-        df.to_excel(output_file_path, sheet_name="Boundary Data", index=False)
+        try:
+            boundary_schema = MDMSClient(mdms_url).fetch_boundary_schema(request_info)
+            schema_columns = boundary_schema.mdms[0].data.columns
+        except Exception as e:
+            logger.error(f"Error fetching BoundaryIngestionSchema from MDMS: {e}")
+            raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
+        write_boundary_template(output_file_path, schema_columns)
 
         logger.info(f"Successfully created boundary ingestion template at {output_file_path}")
 
@@ -653,9 +663,37 @@ async def get_facility_ingestion_template_with_data(
             response_description="Returns Excel template with facility schema and boundary codes")
 async def get_facility_ingestion_template(
         facility_service: FacilityTemplateService = Depends(),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        boundary_codes: str = Form(default=""),
+        boundary_data: str = Form(default="")
 ):
+    """Limits the template - its BlockBoundaryCodes sheet and its State/District/Block
+    dropdowns - to the geography step's selection; with neither field, every block in the tenant.
+
+    `boundary_codes`: a JSON list of state, district and block codes; the template holds every
+    block under any of them. This is what the UI sends - the whole country is a few dozen codes.
+    `boundary_data`: the older JSON country -> state -> district -> block tree (each node's
+    `boundaryCode` is what counts). Still accepted, but a tree of every block outgrows the
+    gateway's request-size limit (HTTP 413)."""
     request_info = request_info_from_json(request_info)
+    selected_boundaries: Optional[List[Boundary]] = None
+    selected_codes: Optional[List[str]] = None
+    if boundary_codes.strip():
+        try:
+            selected_codes = json.loads(boundary_codes)
+            if not isinstance(selected_codes, list) or not all(isinstance(c, str) for c in selected_codes):
+                raise ValueError("expected a list of codes")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"boundary_codes is not a JSON list of codes: {e}")
+        if not any(code.strip() for code in selected_codes):
+            raise HTTPException(status_code=400, detail="boundary_codes is empty - select at least one block")
+    elif boundary_data.strip():
+        try:
+            selected_boundaries = flatten_boundary_codes(json.loads(boundary_data))
+        except (ValueError, TypeError, AttributeError) as e:
+            raise HTTPException(status_code=400, detail=f"boundary_data is not a valid boundary tree: {e}")
+        if not selected_boundaries:
+            raise HTTPException(status_code=400, detail="boundary_data has no blocks - select at least one block")
     mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -663,18 +701,26 @@ async def get_facility_ingestion_template(
         output_file_path = create_temp_file(suffix=".xlsx")
         try:
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchemaWithoutBoundaryCode')
-            boundary_data = facility_service.get_all_boundaries(request_info)
+            if selected_boundaries is not None:
+                template_boundaries = selected_boundaries
+            else:
+                template_boundaries = facility_service.get_all_boundaries(request_info)
+                if selected_codes is not None:
+                    template_boundaries = select_boundaries_by_codes(template_boundaries, selected_codes)
             vendor_data = facility_service.get_all_vendor_codes(request_info)
         except Exception as e:
             logger.error(f"Error fetching data from external services: {e}")
             cleanup_temp_file(output_file_path)
             raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
+        if not template_boundaries and selected_codes is not None:
+            cleanup_temp_file(output_file_path)
+            raise HTTPException(status_code=400, detail="boundary_codes match no blocks - select at least one block")
 
         try:
             facility_service.generate_template_file(
                 output_path=output_file_path,
                 facility_schema=facility_schema,
-                boundary_data=boundary_data,
+                boundary_data=template_boundaries,
                 vendor_data=vendor_data
             )
             logger.info(f"Successfully created facility ingestion template at {output_file_path}")
@@ -689,6 +735,10 @@ async def get_facility_ingestion_template(
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+    except HTTPException:
+        # A deliberate 400 (e.g. boundary_codes matching no blocks) keeps its status and message
+        # instead of being re-wrapped as a 500 below.
+        raise
     except Exception as e:
         logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
