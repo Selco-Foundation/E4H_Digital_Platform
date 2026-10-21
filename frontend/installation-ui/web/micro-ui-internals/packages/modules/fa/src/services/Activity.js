@@ -1,4 +1,5 @@
 import {Request} from "@egovernments/digit-ui-libraries";
+import { applyRectificationMock } from "../utilities/rectificationMock";
 
 export const ActivityService = {
 
@@ -13,7 +14,7 @@ export const ActivityService = {
       limit,
     }
 
-    return await Request({
+    const response = await Request({
       url: endpoint,
       data: queryFilter,
       userService: true,
@@ -22,6 +23,8 @@ export const ActivityService = {
       params : params,
       headers: headers,
     });
+
+    return applyRectificationMock(response);
   },
 
 }
