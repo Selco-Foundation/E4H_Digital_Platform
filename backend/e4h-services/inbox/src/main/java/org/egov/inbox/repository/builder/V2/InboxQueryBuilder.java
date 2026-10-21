@@ -66,7 +66,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
             log.debug("🔃 Added sort clause: field='{}', order='{}'", sortClauseFieldPath, sortOrder);
 
-            List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
+            List<String> sourceFilterPathList = withSlaSourceFields(configuration.getSourceFilterPathList());
             addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
             log.debug("📌 Added source filter: {}", sourceFilterPathList);
         }
@@ -394,6 +394,23 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         innerBoolClause.put(MUST_KEY, mustClauseList);
 
         return baseEsQuery;
+    }
+
+    /**
+     * The fields the live SLA remaining values are computed from (see InboxServiceV2). Added here rather
+     * than relying on the MDMS sourceFilterPathList, which would silently drop them and leave the inbox
+     * returning the values stored at the last state change.
+     */
+    private static final List<String> SLA_SOURCE_FIELDS = Arrays.asList(
+            "Data." + INDEXED_STATE_SLA, "Data." + STATE_ENTERED_TIME, "Data." + TOTAL_SLA_BASE, "Data." + STATE_SLA_DUE_AT);
+
+    /** A copy of the configured list with the SLA fields appended; the configured list itself is cached and shared. */
+    private List<String> withSlaSourceFields(List<String> sourceFilterPathList) {
+        if (CollectionUtils.isEmpty(sourceFilterPathList))
+            return sourceFilterPathList;
+        List<String> paths = new ArrayList<>(sourceFilterPathList);
+        SLA_SOURCE_FIELDS.stream().filter(field -> !paths.contains(field)).forEach(paths::add);
+        return paths;
     }
 
     private void addSourceFilterToBaseQuery(Map<String, Object> baseEsQuery, List<String> sourceFilterPathList) {
