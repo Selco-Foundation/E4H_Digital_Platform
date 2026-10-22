@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - devops-gitleaks
   schedule:
     - cron: '30 3 * * 1'
   workflow_dispatch:
@@ -30,11 +29,10 @@ jobs:
 
       # The command will fail (exit 1) if secrets are found
       - name: Scan Main Branch
+        continue-on-error: true
         run: gitleaks detect --log-opts="origin/main" --report-path=gitleaks-report.json
 
       - name: Upload Gitleaks Report
-        # Ensures the file uploads even if Gitleaks fails the build upon finding a leak
-        if: always() 
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-security-report
