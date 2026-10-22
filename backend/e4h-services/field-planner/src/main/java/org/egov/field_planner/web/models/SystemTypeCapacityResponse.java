@@ -16,8 +16,6 @@ import java.util.List;
 @NoArgsConstructor
 public class SystemTypeCapacityResponse {
     private ResponseInfo responseInfo;
-    // Facilities whose additionalFields rectificationSite is "No" or absent
+    // Each entry's rectificationSite tells regular and rectification combinations apart
     private List<SystemTypeCapacity> systemTypeCapacities;
-    // Facilities whose additionalFields rectificationSite is "Yes"
-    private List<SystemTypeCapacity> rectificationSystemTypeCapacities;
 }

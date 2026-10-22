@@ -199,7 +199,7 @@ public class FieldPlannerApiController {
         log.info("Received installation plan facility systemType/totalSystemCapacity search request for tenant: {}",
                 urlParams.getTenantId());
 
-        SystemTypeCapacityResponse response = fieldPlannerFacilityService.searchSystemTypeCapacity(
+        List<SystemTypeCapacity> systemTypeCapacities = fieldPlannerFacilityService.searchSystemTypeCapacity(
                 request,
                 urlParams.getLimit(),
                 urlParams.getOffset(),
@@ -207,9 +207,12 @@ public class FieldPlannerApiController {
                 urlParams.getLastChangedSince(),
                 urlParams.getIncludeDeleted()
         );
-        response.setResponseInfo(ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true));
-        log.info("Installation plan facility systemType/totalSystemCapacity search completed, found {} regular and {} rectification results",
-                response.getSystemTypeCapacities().size(), response.getRectificationSystemTypeCapacities().size());
+        SystemTypeCapacityResponse response = SystemTypeCapacityResponse.builder()
+                .responseInfo(ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true))
+                .systemTypeCapacities(systemTypeCapacities)
+                .build();
+        log.info("Installation plan facility systemType/totalSystemCapacity search completed, found {} results",
+                systemTypeCapacities.size());
         log.trace("Exiting searchFieldPlanFacilitySystemTypeCapacity endpoint");
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
