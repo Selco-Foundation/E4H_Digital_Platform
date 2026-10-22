@@ -11,6 +11,7 @@ from app.ingest.service.data_loader import DataLoader
 from app.ingest.service.data_writer import DataWriter
 from app.ingest.service.validator import Validator
 from app.schemas.request_info import RequestInfo
+from app.utils.boundary_code_utils import boundary_code_segment
 from app.utils.boundary_service_client import BoundaryServiceClient
 from app.utils.convertor import build_localization_reverse_map
 from app.utils.localization_service_client import LocalizationServiceClient
@@ -22,9 +23,11 @@ localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
 logger = AppLogger().get_logger()
 
-# Optional LGD identity columns. A sheet without them ingests exactly as before; when
-# present, the codes are stored on the boundary so a later LGD extract can be matched on
-# code rather than name. A rename then updates the localization label while the boundary
+# LGD identity columns - defined, and required, by data-ingestion.BoundaryIngestionSchema,
+# whose validators reject a row without them before it gets here. The codes are stored on
+# each boundary this upload creates, so a later LGD extract can be matched on code rather
+# than name; a level that already exists keeps the codes it has. Where rows disagree, the
+# first row for a level wins. A rename then updates the localization label while the boundary
 # code - which facility codes are built from - stays put.
 LGD_STATE_CODE_COLUMN = "LGD State Code"
 LGD_DISTRICT_CODE_COLUMN = "LGD District Code"
@@ -85,6 +88,9 @@ class BoundaryDataProcessor:
         self.existing_boundaries: Set[str] = set()
         # casefold(code) -> canonical code from boundary service
         self.existing_boundaries_casefold: Dict[str, str] = {}
+        # code built from the sheet -> existing boundary's exact code, where they differ only
+        # in letter case (see _adopt_existing_codes)
+        self.code_renames: Dict[str, str] = {}
 
         # normalized localization message -> list of "Boundary_<code>" localization codes
         self.localization_reverse_map: Dict[str, List[str]] = {}
@@ -123,6 +129,7 @@ class BoundaryDataProcessor:
         valid_boundaries_df = boundary_df[boundary_df["status"].isna()]
         self._organize_boundary_data(valid_boundaries_df)
         self._check_existing_boundaries()
+        self._adopt_existing_codes()
         self._create_new_boundaries()
         self._create_boundary_relationships()
         self._upsert_localization_for_boundaries()
@@ -229,8 +236,7 @@ class BoundaryDataProcessor:
             level_codes: Dict[str, str] = {}
             country_code = state_code = district_code = None
 
-            # Optional LGD identity columns. Absent for hand-made sheets, in which case
-            # the boundary is created without LGD codes exactly as before.
+            # LGD identity columns (required by the schema).
             lgd_state = _read_identity_cell(row, LGD_STATE_CODE_COLUMN)
             lgd_district = _read_identity_cell(row, LGD_DISTRICT_CODE_COLUMN)
             lgd_block = _read_identity_cell(row, LGD_BLOCK_CODE_COLUMN)
@@ -329,6 +335,36 @@ class BoundaryDataProcessor:
                 logger.error(f"Error checking existing boundaries: {e}")
 
         logger.info(f"Found {len(self.existing_boundaries)} existing boundaries in the system")
+
+    def _adopt_existing_codes(self) -> None:
+        """Use an existing boundary's exact code where this run's code matches it only in
+        letter case. boundary-service treats such codes as duplicates on create, but links a
+        relationship only to the exact code - so creating would be skipped and the link would
+        then fail ('Boundary entity does not exist'), taking every child below with it. A
+        renamed parent also renames the codes built under it."""
+        renamed: Dict[str, str] = {}
+        for level in self.hierarchy_levels:
+            adopted: Dict[str, Dict] = {}
+            for data in self.boundary_data[level].values():
+                old_code, old_parent = data["full_code"], data["parent"]
+                parent = renamed.get(old_parent, old_parent) if old_parent else old_parent
+                code = old_code
+                if parent != old_parent and old_code.startswith(old_parent + "_"):
+                    code = parent + old_code[len(old_parent):]
+                code = self.existing_boundaries_casefold.get(code.casefold(), code)
+                if code != old_code:
+                    renamed[old_code] = code
+                data["full_code"], data["parent"] = code, parent
+                adopted.setdefault(code, data)
+            self.boundary_data[level] = adopted
+        if renamed:
+            self.code_renames.update(renamed)
+            self.all_boundary_full_codes = {renamed.get(c, c) for c in self.all_boundary_full_codes}
+            logger.info(f"Using existing codes for {len(renamed)} boundaries that differ only in "
+                        f"letter case, e.g. {next(iter(renamed.items()))}")
+        for level_codes in self.row_level_codes.values():
+            for level, code in list(level_codes.items()):
+                level_codes[level] = self.code_renames.get(code, code)
 
     def _boundary_exists(self, full_code: str) -> bool:
         return full_code.casefold() in self.existing_boundaries_casefold
@@ -556,20 +592,16 @@ class BoundaryDataProcessor:
         if not text or not text.strip():
             return ""
 
-        cleaned = re.sub(r"[_\-]+", " ", text.strip())
-
-        parts = cleaned.split()
-
-        # First letter of each token uppercased; concatenated for boundary codes (no spaces)
-        return "".join(word[:1].upper() + word[1:] for word in parts)
+        return boundary_code_segment(text)
 
     @staticmethod
     def boundary_localization_label(cell) -> str:
-        """Trim ends, collapse internal whitespace to single spaces, title-case each word (e.g. 'West Bengal')."""
+        """The name as typed, with ends trimmed and internal whitespace collapsed. Not
+        re-cased: title-casing turned 'Chanditala-II' into 'Chanditala-ii' and 'G.Madugula'
+        into 'G.madugula'."""
         if cell is None or (isinstance(cell, float) and pd.isna(cell)):
             return ""
         raw = str(cell).strip()
         if not raw:
             return ""
-        normalized = re.sub(r"\s+", " ", raw)
-        return string.capwords(normalized)
+        return re.sub(r"\s+", " ", raw)
