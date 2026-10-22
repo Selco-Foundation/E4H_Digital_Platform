@@ -46,4 +46,31 @@ public class Boundary {
 
     @JsonProperty("additionalDetails")
     private JsonNode additionalDetails = null;
+
+    /*
+     * Local Government Directory identity, denormalised down the hierarchy: a State fills
+     * only lgdStateCode, a District fills state + district, a Block fills all three.
+     *
+     * These are what reconciliation matches on. A boundary code is derived from the name
+     * (and some were hand-entered), so it cannot be compared against LGD; an LGD code
+     * survives a rename, which lets a later import update the label rather than create a
+     * second boundary.
+     */
+
+    @JsonProperty("lgdStateCode")
+    private String lgdStateCode = null;
+
+    @JsonProperty("lgdDistrictCode")
+    private String lgdDistrictCode = null;
+
+    /** Development Block or Sub-district code - lgdBlockTier says which. */
+    @JsonProperty("lgdBlockCode")
+    private String lgdBlockCode = null;
+
+    /**
+     * "Block", "Sub-district", or "Both" when the name exists at both tiers; "Panchayat" or
+     * "Village" when the boundary sits below block level and lgdBlockCode is its container.
+     */
+    @JsonProperty("lgdBlockTier")
+    private String lgdBlockTier = null;
 }
