@@ -6,11 +6,14 @@ import { FilestoreService } from "../../services/Filestore";
 import { FieldPlanService } from "../../services/FieldPlan";
 import { IngestionService } from "../../services/Ingestion";
 import CommonUtils from "../../utilities/CommonUtils";
+import { isRectificationValue, withRectificationKey } from "../../utilities/ICCPrepopulationUtils";
+import RectificationBadge, { RECTIFICATION_COLORS } from "../Custom/RectificationBadge";
 
 const getEmptyRow = (id = "icc-row-3") => ({
   id,
   systemType: null,
   totalSystemCapacity: null,
+  isRectification: false,
   file: null,
   template: null,
   templateFile: null,
@@ -83,6 +86,7 @@ const getICCReportFormData = (row, file, fieldPlanId, tenantId) => {
     id: row.template?.id || "",
     systemType: row.systemType?.code,
     totalSystemCapacity: normalizeCapacity(row.totalSystemCapacity?.code || row.totalSystemCapacity?.name),
+    isRectification: Boolean(row.isRectification),
     fieldPlanId,
     tenantId,
   }];
@@ -97,7 +101,7 @@ const getRowKey = (row = {}) => {
   const systemTypeKey = normalizeSystemTypeKey(row.systemType?.name || row.systemType?.code);
   const capacityKey = normalizeCapacity(row.totalSystemCapacity?.name || row.totalSystemCapacity?.code);
 
-  return systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "";
+  return withRectificationKey(systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "", row.isRectification);
 };
 
 const getUniqueRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
@@ -343,12 +347,18 @@ const getTemplateForRow = (row, templates = []) => {
   ));
 };
 
+// TODO: confirm field-planner's template field name for the rectification flag once the backend ships it.
+const isSavedRectificationTemplate = (template = {}) => isRectificationValue(template.isRectification);
+
 const getSavedTemplateForRow = (row, templates = []) => {
   const systemTypeName = getICCApiSystemType(row.systemType?.name);
   const systemTypeCode = row.systemType?.code;
   const capacity = row.totalSystemCapacity?.name;
+  // A rectification row must never pick up the regular template (or vice versa), or an upload would replace it.
+  const sameSiteType = (template) => isSavedRectificationTemplate(template) === Boolean(row.isRectification);
 
   const matchedTemplate = templates.find((template) => (
+    sameSiteType(template) &&
     [systemTypeCode, systemTypeName].some((systemType) => normalizeValue(getSavedTemplateSystemType(template)) === normalizeValue(systemType)) &&
     (!capacity || normalizeCapacity(getSavedTemplateCapacity(template)) === normalizeCapacity(capacity))
   ));
@@ -358,6 +368,7 @@ const getSavedTemplateForRow = (row, templates = []) => {
   }
 
   return templates.find((template) => (
+    sameSiteType(template) &&
     [systemTypeCode, systemTypeName].some((systemType) => normalizeValue(getSavedTemplateSystemType(template)) === normalizeValue(systemType))
   ));
 };
@@ -415,6 +426,7 @@ const getRowsFromSavedTemplates = (templates = [], systemTypeMaster = []) => (
       ...getEmptyRow(`icc-row-saved-${template.id || index}`),
       systemType,
       totalSystemCapacity: capacity,
+      isRectification: isSavedRectificationTemplate(template),
       file: fileName || fileStoreId ? {
         name: fileName,
         isSavedTemplate: true,
@@ -437,11 +449,14 @@ const getRowsFromSystemTypeCapacities = (systemTypeCapacities = [], systemTypeMa
     const capacityValue = systemTypeCapacity.totalSystemCapacity || systemTypeCapacity.totalCapacity || systemTypeCapacity.capacity;
     const systemType = getSystemTypeOption(systemTypeValue, systemTypeMaster);
     const capacity = getOption(capacityValue);
+    // TODO: confirm the field name once field-planner returns the rectification dimension (mocked in services/FieldPlan.js).
+    const isRectification = isRectificationValue(systemTypeCapacity.isRectification);
 
     return {
-      ...getEmptyRow(`icc-row-api-${systemType.code || systemType.name || index}-${normalizeCapacity(capacityValue)}`),
+      ...getEmptyRow(withRectificationKey(`icc-row-api-${systemType.code || systemType.name || index}-${normalizeCapacity(capacityValue)}`, isRectification)),
       systemType,
       totalSystemCapacity: capacity,
+      isRectification,
       capacityOptions: capacity ? [capacity] : [],
     };
   })
@@ -590,26 +605,31 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           const isCustomCapacity = isCustomCapacitySelection(selectedCapacity) &&
             hasValue(customCapacity);
           const capacity = isCustomCapacity ? customCapacity : selectedCapacity;
+          // Optional column: blank or "No" keeps the facility on the regular template.
+          // TODO: confirm the exact header once the MDMS FieldPlanFacilityIngestionSchema column is added.
+          const isRectification = isRectificationValue(getColumnValue(row, ["rectification site?", "rectification site"]));
 
           if (normalizeValue(includedInFieldPlan) !== "yes" || !systemTypeValue) {
             return;
           }
 
-          const rowKey = `${normalizeSystemTypeKey(systemType.name || systemType.code)}-${normalizeCapacity(capacity)}`;
+          const rowKey = withRectificationKey(`${normalizeSystemTypeKey(systemType.name || systemType.code)}-${normalizeCapacity(capacity)}`, isRectification);
 
           systemCapacityRows[rowKey] = {
             systemType,
             capacity,
             isCustomCapacity,
+            isRectification,
           };
         });
 
-        const parsedRows = Object.values(systemCapacityRows).map(({ systemType, capacity, isCustomCapacity }, index) => ({
-          ...getEmptyRow(`icc-row-${systemType.code || systemType.name || index}-${normalizeCapacity(capacity)}`),
+        const parsedRows = Object.values(systemCapacityRows).map(({ systemType, capacity, isCustomCapacity, isRectification }, index) => ({
+          ...getEmptyRow(withRectificationKey(`icc-row-${systemType.code || systemType.name || index}-${normalizeCapacity(capacity)}`, isRectification)),
           systemType,
           totalSystemCapacity: getOption(capacity),
           capacityOptions: capacity ? [getOption(capacity)] : [],
           isCustomCapacity,
+          isRectification,
         }));
 
         setRows((prevRows) => {
@@ -909,15 +929,17 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     </div>
   );
 
-  const ReadOnlyField = ({ value }) => (
+  const ReadOnlyField = ({ value, suffix = null }) => (
     <div
       className={"icc-prepopulation-read-only"}
       style={{
         height: "40px",
         width: "100%",
+        gap: "8px",
       }}
     >
       {value || ""}
+      {suffix}
     </div>
   );
 
@@ -934,7 +956,20 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     </span>
   );
 
-  const displayRows = getUniqueRows(rows);
+  // Each rectification row is listed right after its regular counterpart.
+  const displayRows = getUniqueRows(rows)
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const baseKeyA = getRowKey({ ...a.row, isRectification: false });
+      const baseKeyB = getRowKey({ ...b.row, isRectification: false });
+
+      if (baseKeyA && baseKeyA === baseKeyB) {
+        return Number(Boolean(a.row.isRectification)) - Number(Boolean(b.row.isRectification));
+      }
+
+      return a.index - b.index;
+    })
+    .map(({ row }) => row);
 
   return (
     <div
@@ -1236,10 +1271,17 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           <div
             key={row.id}
             className={"icc-prepopulation-row"}
+            style={row.isRectification ? {
+              backgroundColor: RECTIFICATION_COLORS.rowBackground,
+              borderColor: RECTIFICATION_COLORS.badgeBorder,
+            } : undefined}
           >
             <FieldWrapper>
               <FieldLabel label={"ICC_SYSTEM_TYPE"} />
-              <ReadOnlyField value={row.systemType?.name} />
+              <ReadOnlyField
+                value={row.systemType?.name}
+                suffix={row.isRectification ? <RectificationBadge size="compact" /> : null}
+              />
               {validationAttempt > 0 && !row.systemType && <RequiredError />}
             </FieldWrapper>
             <FieldWrapper>
@@ -1248,7 +1290,11 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
               {validationAttempt > 0 && !row.totalSystemCapacity && <RequiredError />}
             </FieldWrapper>
             <FieldWrapper className={"icc-prepopulation-file-field"}>
-              <FieldLabel label={row.file ? "ICC_PRE_FILLING_TEMPLATE" : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"} />
+              <FieldLabel
+                label={row.file
+                  ? "ICC_PRE_FILLING_TEMPLATE"
+                  : row.isRectification ? "ICC_UPLOAD_PRE_FILLING_TEMPLATE_OPTIONAL" : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"}
+              />
               <div className={"icc-prepopulation-template-actions"}>
                 <div
                   className={`icc-prepopulation-upload icc-prepopulation-template-input ${row.file ? "has-file" : ""}`}
@@ -1399,7 +1445,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
                   />
                 </div>
               )}
-              {validationAttempt > 0 && !row.file && !row.validationErrorFile && <RequiredError />}
+              {validationAttempt > 0 && !row.isRectification && !row.file && !row.validationErrorFile && <RequiredError />}
             </FieldWrapper>
           </div>
         ))}
