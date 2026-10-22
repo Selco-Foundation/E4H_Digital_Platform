@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - devops-gitleaks
   schedule:
     - cron: '30 3 * * 1'
   workflow_dispatch:
