@@ -898,7 +898,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     }
   };
 
-  const FieldLabel = ({ label }) => (
+  // Mandatory fields get the same red asterisk as FormComposer labels; optional fields stay unmarked.
+  const FieldLabel = ({ label, isMandatory = false }) => (
     <CardLabel
       className={"card-label-smaller icc-prepopulation-label"}
       style={{
@@ -914,6 +915,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       }}
     >
       {t(label)}
+      {isMandatory && <span className={"mandatory-span"}>*</span>}
     </CardLabel>
   );
 
@@ -1293,7 +1295,8 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
               <FieldLabel
                 label={row.file
                   ? "ICC_PRE_FILLING_TEMPLATE"
-                  : row.isRectification ? "ICC_UPLOAD_PRE_FILLING_TEMPLATE_OPTIONAL" : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"}
+                  : "ICC_UPLOAD_PRE_FILLING_TEMPLATE"}
+                isMandatory={!row.isRectification}
               />
               <div className={"icc-prepopulation-template-actions"}>
                 <div
