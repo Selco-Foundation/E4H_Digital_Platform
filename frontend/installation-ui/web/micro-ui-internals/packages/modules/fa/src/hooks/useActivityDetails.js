@@ -164,8 +164,8 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
         : totalSystemCapacity,
       facilityType: facility.facility_type,
       status: activityFacilityData?.activityFacility?.status,
-      block: activityFacilityData?.activityFacility?.facility?.boundaryCode,
-      district: activityFacilityData?.activityFacility?.facility?.additionalDetails?.district,
+      block: facility?.boundary?.block,
+      district: facility?.boundary?.district,
       assigned: assigneeDetails.name,
     },
     activityDetails: {
