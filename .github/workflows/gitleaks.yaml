@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - devops-gitleaks
   schedule:
     - cron: '30 3 * * 1'
   workflow_dispatch:
@@ -22,7 +23,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Scan for secrets
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_LEAKS }}
+      - name: Install Gitleaks
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gitleaks
+
+      # The command will fail (exit 1) if secrets are found
+      - name: Scan Main Branch
+        run: gitleaks detect --log-opts="origin/main" --report-path=gitleaks-report.json
+
+      - name: Upload Gitleaks Report
+        # Ensures the file uploads even if Gitleaks fails the build upon finding a leak
+        if: always() 
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-security-report
+          path: gitleaks-report.json
+          retention-days: 5 # Deletes after 5 days
