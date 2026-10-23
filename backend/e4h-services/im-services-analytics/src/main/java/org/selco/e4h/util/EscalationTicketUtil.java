@@ -8,8 +8,10 @@ import java.util.Map;
 
 public final class EscalationTicketUtil {
 
-    private static final List<String> CLOSED_STATUSES = List.of(
-            "RESOLVED", "CLOSED_AFTER_RESOLUTION", "CLOSED_AFTER_REJECTION", "REJECTED");
+    // Workflow status codes have no underscore in "CLOSEDAFTER..." - use the shared constants, never literals.
+    public static final List<String> CLOSED_STATUSES = List.of(
+            IMConstants.RESOLVED, IMConstants.CLOSED_AFTER_RESOLUTION,
+            IMConstants.CLOSED_AFTER_REJECTION, IMConstants.REJECTED);
 
     private EscalationTicketUtil() {
     }
@@ -35,8 +37,13 @@ public final class EscalationTicketUtil {
                 }
             }
         }
+        // Reshape the plain name ("Arunachal Pradesh") to the boundary-code form ("India_ArunachalPradesh")
+        // so these tickets match state codes like every other ticket (same as SLABreachDetectionService).
         Object plainState = data.get("state");
-        return plainState != null ? plainState.toString() : null;
+        if (plainState == null || plainState.toString().isBlank()) {
+            return null;
+        }
+        return "India_" + plainState.toString().replaceAll("\\s+", "");
     }
 
     public static boolean isClosed(EscalationTicket ticket) {
