@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2200" height="1110" viewBox="0 0 2200 1110">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#455A64"/></marker><marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C62828"/></marker></defs>
+<rect x="0" y="0" width="2200" height="1110" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1.2"/>
+<text x="30" y="48" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="28" font-weight="bold" fill="#2E7D32" text-anchor="start" >Incident Management — Ticket Workflow (current production)</text>
+<text x="30" y="76" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#5F6368" text-anchor="start" >Core flow plus the out-of-warranty branch, SLA clock and post-closure feedback. Box colour = who holds the ticket in that state.</text>
+<rect x="30" y="94" width="22" height="16" rx="4" fill="#EDE4FA" stroke="#8E6CC9" stroke-width="1.2"/>
+<text x="60" y="107" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >CRM (COMPLAINT_ASSESSOR)</text>
+<rect x="251.60000000000002" y="94" width="22" height="16" rx="4" fill="#FDE7C8" stroke="#D9963F" stroke-width="1.2"/>
+<text x="281.6" y="107" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Vendor (COMPLAINT_RESOLVER)</text>
+<rect x="493.90000000000003" y="94" width="22" height="16" rx="4" fill="#D7F2EE" stroke="#3C9D93" stroke-width="1.2"/>
+<text x="523.9000000000001" y="107" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Tech POC (COMPLAINT_FACILITATOR_2)</text>
+<rect x="784.5" y="94" width="22" height="16" rx="4" fill="#D3E3FD" stroke="#4A7FE0" stroke-width="1.2"/>
+<text x="814.5" y="107" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >State SPOC (COMPLAINT_FACILITATOR_1)</text>
+<rect x="1088.9" y="94" width="22" height="16" rx="4" fill="#DFF3DF" stroke="#4CAF50" stroke-width="1.2"/>
+<text x="1118.9" y="107" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Health staff (COMPLAINANT)</text>
+<rect x="1324.3000000000002" y="94" width="22" height="16" rx="4" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1.2"/>
+<text x="1354.3000000000002" y="107" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Closed — no owner</text>
+<circle cx="1507.6000000000001" cy="102" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M1507.6000000000001,96 L1507.6000000000001,102 L1512.6000000000001,105" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<text x="1525.6000000000001" y="107" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >SLA clock runs in this state</text>
+<rect x="30" y="248" width="170" height="48" rx="24" fill="#FFFFFF" stroke="#455A64" stroke-width="1.2"/>
+<text x="115" y="269" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle" >Ticket raised</text>
+<text x="115" y="286" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="11.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >APPLY (Health staff)</text>
+<rect x="262" y="233" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="260" y="230" width="260" height="84" rx="10" fill="#EDE4FA" stroke="#8E6CC9" stroke-width="1.6"/>
+<text x="274" y="256" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >Pending assignment</text>
+<text x="274" y="276" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >PENDINGFORASSIGNMENT</text>
+<text x="274" y="298" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#8E6CC9" text-anchor="start" font-style="italic">CRM</text>
+<circle cx="502" cy="248" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M502,242 L502,248 L507,251" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<rect x="622" y="233" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="620" y="230" width="260" height="84" rx="10" fill="#FDE7C8" stroke="#D9963F" stroke-width="1.6"/>
+<text x="634" y="256" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >Pending resolution</text>
+<text x="634" y="276" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >PENDINGRESOLUTION</text>
+<text x="634" y="298" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#D9963F" text-anchor="start" font-style="italic">Vendor</text>
+<circle cx="862" cy="248" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M862,242 L862,248 L867,251" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<rect x="1012" y="233" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="1010" y="230" width="260" height="84" rx="10" fill="#DFF3DF" stroke="#4CAF50" stroke-width="1.6"/>
+<text x="1024" y="256" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >Resolved</text>
+<text x="1024" y="276" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >RESOLVED</text>
+<text x="1024" y="298" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#4CAF50" text-anchor="start" font-style="italic">Health staff</text>
+<rect x="1392" y="233" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="1390" y="230" width="260" height="84" rx="10" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1.6"/>
+<text x="1404" y="256" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >Closed (resolved)</text>
+<text x="1404" y="276" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >CLOSEDAFTERRESOLUTION</text>
+<text x="1404" y="298" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#90A4AE" text-anchor="start" font-style="italic">Closed</text>
+<rect x="1770" y="230" width="260" height="84" rx="10" fill="#FFFDF5" stroke="#E0C068" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="1784" y="256" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#5C4A00" text-anchor="start" >Feedback rating</text>
+<text x="1784" y="276" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >action RATE</text>
+<text x="1784" y="298" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#8A6D00" text-anchor="start" font-style="italic">1–5 stars + comment</text>
+<rect x="262" y="443" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="260" y="440" width="260" height="84" rx="10" fill="#DFF3DF" stroke="#4CAF50" stroke-width="1.6"/>
+<text x="274" y="466" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >Rejected</text>
+<text x="274" y="486" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >REJECTED</text>
+<text x="274" y="508" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#4CAF50" text-anchor="start" font-style="italic">Health staff</text>
+<rect x="262" y="603" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="260" y="600" width="260" height="84" rx="10" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1.6"/>
+<text x="274" y="626" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >Closed (rejected)</text>
+<text x="274" y="646" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >CLOSEDAFTERREJECTION</text>
+<text x="274" y="668" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#90A4AE" text-anchor="start" font-style="italic">Closed</text>
+<path d="M200,272 L260,272.0" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M520,258 L620,258" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="570" y="250" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="middle" >ASSIGN</text>
+<path d="M620,292 L520,292" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="570" y="310" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="middle" >SENDBACK</text>
+<text x="570" y="325" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="11.5" font-weight="normal" fill="#455A64" text-anchor="middle" >reason required</text>
+<path d="M880,272.0 L1010,272.0" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="945" y="264" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="middle" >RESOLVE</text>
+<path d="M1270,272.0 L1390,272.0" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="1330" y="264" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="middle" >CLOSE</text>
+<text x="1330" y="294" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="11.5" font-weight="normal" fill="#455A64" text-anchor="middle" >auto-close job</text>
+<path d="M1650,272.0 L1770,272" fill="none" stroke="#8A6D00" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="1710" y="264" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#8A6D00" text-anchor="middle" >RATE</text>
+<text x="1710" y="294" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="11.5" font-weight="normal" fill="#8A6D00" text-anchor="middle" >ticket reporter</text>
+<path d="M770,230 C770,184 825,184 825,230" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="838" y="204" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="start" >REASSIGN</text>
+<path d="M1070,230 L1070,150 L460,150 L460,230" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="760" y="142" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="middle" >REOPEN — Health staff, within 10 days of last update</text>
+<path d="M330,314 L330,440" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="320" y="380" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="end" >REJECT</text>
+<path d="M420,440 L420,314" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="430" y="380" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="start" >REOPEN</text>
+<path d="M390.0,524 L390.0,600" fill="none" stroke="#455A64" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="402" y="572" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#455A64" text-anchor="start" >CLOSE</text>
+<text x="402" y="587" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="11.5" font-weight="normal" fill="#455A64" text-anchor="start" >auto-close job</text>
+<rect x="570" y="520" width="1150" height="470" rx="12" fill="#FFF5F5" stroke="#E57373" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="780" y="548" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#C62828" text-anchor="start" >OUT-OF-WARRANTY BRANCH</text>
+<text x="780" y="567" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#8E2B2B" text-anchor="start" >Fault not covered by warranty → quotation review → State SPOC re-assigns.</text>
+<text x="780" y="584" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#8E2B2B" text-anchor="start" >Ticket stays tagged warrantyStatus = OUT_OF_WARRANTY.</text>
+<rect x="622" y="643" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="620" y="640" width="260" height="84" rx="10" fill="#D7F2EE" stroke="#3C9D93" stroke-width="1.6"/>
+<text x="634" y="666" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >OOW quotation review</text>
+<text x="634" y="686" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >OUT_OF_WARRANTY_PENDING_TECH_POC</text>
+<text x="634" y="708" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C9D93" text-anchor="start" font-style="italic">Tech POC</text>
+<circle cx="862" cy="658" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M862,652 L862,658 L867,661" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<rect x="1012" y="643" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="1010" y="640" width="260" height="84" rx="10" fill="#D3E3FD" stroke="#4A7FE0" stroke-width="1.6"/>
+<text x="1024" y="666" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >OOW pending assignment</text>
+<text x="1024" y="686" font-family="Consolas, Menlo, monospace" font-size="9.5" font-weight="normal" fill="#5F6368" text-anchor="start" >PENDING_ASSIGNMENT_OUT_OF_WARRANTY</text>
+<text x="1024" y="708" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#4A7FE0" text-anchor="start" font-style="italic">State SPOC</text>
+<circle cx="1252" cy="658" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M1252,652 L1252,658 L1257,661" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<rect x="1392" y="643" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="1390" y="640" width="260" height="84" rx="10" fill="#FDE7C8" stroke="#D9963F" stroke-width="1.6"/>
+<text x="1404" y="666" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >OOW pending resolution</text>
+<text x="1404" y="686" font-family="Consolas, Menlo, monospace" font-size="9.5" font-weight="normal" fill="#5F6368" text-anchor="start" >PENDING_RESOLUTION_OUT_OF_WARRANTY</text>
+<text x="1404" y="708" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#D9963F" text-anchor="start" font-style="italic">Vendor</text>
+<circle cx="1632" cy="658" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M1632,652 L1632,658 L1637,661" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<rect x="622" y="863" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="620" y="860" width="260" height="84" rx="10" fill="#FDE7C8" stroke="#D9963F" stroke-width="1.6"/>
+<text x="634" y="886" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >Quotation revision</text>
+<text x="634" y="906" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="start" >PENDING_REVISION</text>
+<text x="634" y="928" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#D9963F" text-anchor="start" font-style="italic">Vendor</text>
+<circle cx="862" cy="878" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M862,872 L862,878 L867,881" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<rect x="1012" y="863" width="260" height="84" rx="10" fill="#000" opacity="0.06"/>
+<rect x="1010" y="860" width="260" height="84" rx="10" fill="#D7F2EE" stroke="#3C9D93" stroke-width="1.6"/>
+<text x="1024" y="886" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start" >OOW review — round 2</text>
+<text x="1024" y="906" font-family="Consolas, Menlo, monospace" font-size="9.5" font-weight="normal" fill="#5F6368" text-anchor="start" >OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2</text>
+<text x="1024" y="928" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C9D93" text-anchor="start" font-style="italic">Tech POC</text>
+<circle cx="1252" cy="878" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M1252,872 L1252,878 L1257,881" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<path d="M750.0,314 L750.0,640" fill="none" stroke="#C62828" stroke-width="1.8" marker-end="url(#arrR)"/>
+<text x="762" y="410" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#C62828" text-anchor="start" >OUT_OF_WARRANTY</text>
+<text x="762" y="425" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="11.5" font-weight="normal" fill="#C62828" text-anchor="start" >Vendor + quotation &amp; cost</text>
+<path d="M880,682.0 L1010,682.0" fill="none" stroke="#C62828" stroke-width="1.8" marker-end="url(#arrR)"/>
+<text x="945" y="674" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#C62828" text-anchor="middle" >APPROVE</text>
+<path d="M750.0,724 L750.0,860" fill="none" stroke="#C62828" stroke-width="1.8" marker-end="url(#arrR)"/>
+<text x="760" y="800" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#C62828" text-anchor="start" >REVISE</text>
+<text x="760" y="815" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="11.5" font-weight="normal" fill="#C62828" text-anchor="start" >comment ≥ 50 chars</text>
+<path d="M880,902.0 L1010,902.0" fill="none" stroke="#C62828" stroke-width="1.8" marker-end="url(#arrR)"/>
+<text x="945" y="894" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#C62828" text-anchor="middle" >SUBMIT</text>
+<path d="M1140.0,860 L1140.0,724" fill="none" stroke="#C62828" stroke-width="1.8" marker-end="url(#arrR)"/>
+<text x="1150" y="780" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#C62828" text-anchor="start" >APPROVE</text>
+<path d="M1270,682.0 L1390,682.0" fill="none" stroke="#C62828" stroke-width="1.8" marker-end="url(#arrR)"/>
+<text x="1330" y="674" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#C62828" text-anchor="middle" >ASSIGN</text>
+<path d="M1520.0,640 L1520.0,480 L1180.0,480 L1180.0,314" fill="none" stroke="#C62828" stroke-width="1.8" marker-end="url(#arrR)"/>
+<text x="1370" y="472" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#C62828" text-anchor="middle" >RESOLVE → normal close path</text>
+<rect x="1770" y="360" width="400" height="630" rx="10" fill="#FFFFFF" stroke="#C62828" stroke-width="1.4"/>
+<circle cx="1796" cy="386" r="11" fill="#FFFFFF" stroke="#C62828" stroke-width="1.8"/>
+<path d="M1796,380 L1796,386 L1801,389" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<text x="1816" y="392" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#C62828" text-anchor="start" >SLA rules (v2.0.0)</text>
+<text x="1790" y="430" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >1. Priority decides the SLA set</text>
+<text x="1790" y="452" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Asset type + issue type → High, Medium</text>
+<text x="1790" y="471" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >or Low (default Medium). The ticket runs</text>
+<text x="1790" y="490" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >on workflow Incident_High / _Medium / _Low.</text>
+<text x="1790" y="517" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >2. Each state has its own SLA</text>
+<text x="1790" y="539" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Every state with a clock has a time limit</text>
+<text x="1790" y="558" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >per priority, so each role (CRM, Vendor,</text>
+<text x="1790" y="577" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Tech POC, State SPOC) has its own target.</text>
+<text x="1790" y="604" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >3. Clock pauses outside business hours</text>
+<text x="1790" y="626" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Only working hours (IST) set in MDMS</text>
+<text x="1790" y="645" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >common-masters.BusinessHours count.</text>
+<text x="1790" y="664" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Nights and non-working days are excluded.</text>
+<text x="1790" y="683" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >No public-holiday calendar is applied.</text>
+<text x="1790" y="710" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >4. Total SLA</text>
+<text x="1790" y="732" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Sum of the SLAs of states passed through</text>
+<text x="1790" y="751" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >+ the expected next state. Shown as</text>
+<text x="1790" y="770" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >‘SLA remaining’ on the ticket and dashboards.</text>
+<text x="1790" y="797" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >5. Escalation e-mails</text>
+<text x="1790" y="819" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >L0 at 70% of SLA used · L1 at breach ·</text>
+<text x="1790" y="838" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >L2 16 h after breach (daily e-mail, Mon–Sat).</text>
+<text x="1790" y="865" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >6. Resolved / closed states have no clock</text>
+<text x="30" y="1022" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3C4043" text-anchor="start" >Other live branches not drawn here: Out of scope (Vendor → State SPOC → Vendor), Spare part needed, RMS device tickets (auto-created by rms-service, Tech POC review), Theft tickets.</text>
+<text x="30" y="1046" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3C4043" text-anchor="start" >Feedback: only the person who reported the ticket can rate it, and only after it is Closed (resolved). Rating does not reopen or change the ticket.</text>
+<text x="30" y="1084" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#80868B" text-anchor="start" >Source: im-services IMConstants / SLAService / WorkflowSmsNotificationService, IM micro-ui ComplaintDetails &amp; ComplaintFeedback, egov-workflow-v2 PrioritySLAService. Last updated 2026-10-22.</text>
+</svg>
