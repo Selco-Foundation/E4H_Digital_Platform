@@ -178,7 +178,15 @@ def facility_validation(
     validate_unique_ids(df, schema, add_err)
     validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_anganwadi_poc_username(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
-    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client, request_info)
+    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client, request_info,
+                     check_db=False)
+    # Indexed by df position, so the row numbers in the messages match the sheet.
+    identifier_conflicts = collect_identifier_conflicts(
+        new_rows.set_index("index"), schema["column_list"], facility_client, request_info
+    )
+    for i, msgs in identifier_conflicts.items():
+        for msg in msgs:
+            add_err(i, msg)
     for i, row in new_rows.iterrows():
         for msg in collect_coordinate_errors_for_row(row):
             add_err(new_rows.loc[i, "index"], msg)
@@ -481,9 +489,9 @@ def prefetch_existing_hfr_nin(
                 cache[_hfr_nin_cache_key(key, value)] = value in existing
 
 
-def validate_hfr_nin(df, add_err, facility_client, request_info=None):
+def validate_hfr_nin(df, add_err, facility_client, request_info=None, check_db=True):
     checked_in_db = HfrNinDuplicateCache()
-    if request_info is not None:
+    if request_info is not None and check_db:
         prefetch_existing_hfr_nin(df, facility_client, request_info, checked_in_db)
 
     for idx, row in df.iterrows():
@@ -494,6 +502,7 @@ def validate_hfr_nin(df, add_err, facility_client, request_info=None):
             add_err=add_err,
             facility_client=facility_client,
             checked_in_db=checked_in_db,
+            check_db=check_db,
         )
 
 
@@ -504,8 +513,12 @@ def validate_hfr_nin_for_row(
     add_err: Callable[[Any, str], None],
     facility_client: Any,
     checked_in_db: MutableMapping[str, bool],
+    check_db: bool = True,
 ) -> None:
-    """Category-aware HFR/NIN checks + duplicate lookup (shared by bulk validate and import)."""
+    """Category-aware HFR/NIN checks + duplicate lookup (shared by bulk validate and import).
+
+    check_db=False skips the duplicate lookup, for callers that use collect_identifier_conflicts.
+    """
     hfr = row.get("HFR ID", "")
     nin = row.get("NIN ID", "")
 
@@ -516,7 +529,7 @@ def validate_hfr_nin_for_row(
     if is_health_facility_category(category) and not hfr and not nin:
         add_err(row_idx, ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH)
 
-    if not hfr and not nin:
+    if (not hfr and not nin) or not check_db:
         return
 
     check_db_duplicates(
@@ -536,6 +549,7 @@ def collect_hfr_nin_errors_for_row(
     df: pd.DataFrame,
     facility_client: Any,
     checked_in_db: MutableMapping[str, bool],
+    check_db: bool = True,
 ) -> List[str]:
     out: List[str] = []
 
@@ -549,6 +563,7 @@ def collect_hfr_nin_errors_for_row(
         add_err=add_err,
         facility_client=facility_client,
         checked_in_db=checked_in_db,
+        check_db=check_db,
     )
     return list(dict.fromkeys(out))
 
@@ -610,6 +625,90 @@ def collect_anganwadi_poc_username_errors_for_row(
     if pd.isna(val) or str(val).strip() == "":
         return [ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI]
     return []
+
+
+IDENTIFIER_VALIDATION_CHUNK_SIZE = 1000
+IDENTIFIER_VALIDATION_TENANT_ID = "in"
+FACILITY_NAME_COLUMN = "Health Centre Name (Mandatory)"
+
+
+def _cell_text(row: pd.Series, header: Optional[str]) -> str:
+    if not header or header not in row.index:
+        return ""
+    val = row.get(header)
+    return str(val).strip() if pd.notna(val) else ""
+
+
+def collect_identifier_conflicts(
+    df: pd.DataFrame,
+    facility_schema_column_list: List[Dict[str, Any]],
+    facility_client: Any,
+    request_info: Any,
+) -> Dict[Any, List[str]]:
+    """Check HFR ID, NIN ID and PoC Username of every row of df; returns errors by df index.
+
+    df must be indexed by sheet position (0 = first data row); messages cite rows as index + 2.
+
+    The facility POC's HRMS username is one of these values (PoC Username for ANGANWADI,
+    otherwise HFR ID, then NIN ID), and HRMS does not allow duplicate usernames, so a value must
+    be unique across all three columns:
+    - within the file, checked here (a row may repeat a value in its own columns), and
+    - among existing facilities and HRMS usernames, checked by facility-service
+      (/_validate-identifiers, the same check facility create runs).
+    """
+    poc_header = resolve_spreadsheet_header_for_schema_code(
+        df, facility_schema_column_list, "facility_poc_username"
+    )
+    fields = (("HFR ID", "HFR ID"), ("NIN ID", "NIN ID"), ("PoC Username", poc_header))
+
+    errors: Dict[Any, List[str]] = {}
+    first_owner: Dict[str, tuple] = {}
+    to_check: List[tuple] = []
+    for idx, row in df.iterrows():
+        values = {label: _cell_text(row, header) for label, header in fields}
+        values = {label: v for label, v in values.items() if v}
+        if not values:
+            continue
+        row_errors = []
+        for label, value in values.items():
+            owner = first_owner.setdefault(value, (idx, label))
+            if owner[0] != idx:
+                row_errors.append(
+                    f"{label} '{value}' is also the {owner[1]} of row {owner[0] + 2} in this file"
+                )
+        if row_errors:
+            errors[idx] = row_errors
+            continue
+        to_check.append((idx, {
+            "facilityName": _cell_text(row, FACILITY_NAME_COLUMN) or None,
+            "hfrId": values.get("HFR ID"),
+            "ninId": values.get("NIN ID"),
+            "facilityPocUsername": values.get("PoC Username"),
+        }))
+
+    if hasattr(request_info, "model_dump"):
+        request_info_payload = request_info.model_dump(by_alias=True, exclude_none=True)
+    else:
+        request_info_payload = request_info or {}
+
+    for start in range(0, len(to_check), IDENTIFIER_VALIDATION_CHUNK_SIZE):
+        chunk = to_check[start:start + IDENTIFIER_VALIDATION_CHUNK_SIZE]
+        try:
+            conflicts = facility_client.validate_identifiers(
+                request_info_payload, IDENTIFIER_VALIDATION_TENANT_ID, [payload for _, payload in chunk]
+            )
+        except Exception as e:
+            for idx, _ in chunk:
+                errors.setdefault(idx, []).append(
+                    f"Could not check HFR ID / NIN ID / PoC Username for duplicates: {e}"
+                )
+            continue
+        for conflict in conflicts:
+            position = conflict.get("index")
+            if isinstance(position, int) and 0 <= position < len(chunk):
+                errors.setdefault(chunk[position][0], []).extend(conflict.get("errors") or [])
+
+    return errors
 
 
 def check_db_duplicates(cache, facility_client, add_err, df, row_idx, hfr=None, nin=None):
