@@ -39,6 +39,7 @@ import { Close } from "../../Icons";
 import { useTranslation } from "react-i18next";
 import { isError, useQueryClient } from "react-query";
 import StarRated from "../../components/timelineInstances/StarRated";
+import VideoService from "../../services/Video";
 import _ from "lodash";
 
 const MapView = (props) => {
@@ -664,6 +665,19 @@ export const ComplaintDetails = (props) => {
   }, []);
   const [toast, setToast] = useState(false);
   const [error, setError] = useState("");
+  const [downloadingVideo, setDownloadingVideo] = useState(null);
+
+  const downloadVideo = async (videoUrl, videoName) => {
+    setDownloadingVideo(videoUrl);
+    try {
+      await VideoService.download(videoUrl, videoName);
+    } catch (downloadError) {
+      console.error("Video download failed", downloadError);
+      setError(t("CS_COMMON_SOMETHING_WENT_WRONG"));
+    } finally {
+      setDownloadingVideo(null);
+    }
+  };
   const stateTenantId = Digit.ULBService.getStateId();
   const tenant =
     Digit.SessionStorage.get("Employee.tenantId") === stateTenantId
@@ -1213,7 +1227,61 @@ export const ComplaintDetails = (props) => {
           <div>
             <CardLabel style={{ marginTop: "18px", fontWeight: "bolder" }}>{t("CS_TICKET_ADDITIONAL_DETAILS")}</CardLabel>
             <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.fullImage || []} onClick={(source, index) => zoomImageWrapper(source, index)} />
-            <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.videos || []} onClick={(source, index) => zoomImageWrapper(source, index)} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+              {(imagesToShowBelowComplaintDetails?.videos || []).filter((video) => video.original).map((video, index) => {
+                const videoUrl = video.original;
+                const videoName = `Video ${index + 1}`;
+                return (
+                  <div
+                    key={video.fileStoreId || index}
+                    style={{ width: "240px", maxWidth: "100%", border: "1px solid #ccc", borderRadius: "6px", padding: "10px", boxSizing: "border-box" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => downloadVideo(videoUrl, videoName)}
+                      disabled={downloadingVideo !== null}
+                      aria-busy={downloadingVideo === videoUrl}
+                      aria-label={`${t("CS_COMMON_DOWNLOAD")} ${videoName}`}
+                      title={t("CS_COMMON_DOWNLOAD")}
+                      style={{
+                        position: "relative",
+                        display: "block",
+                        width: "100%",
+                        padding: 0,
+                        border: "none",
+                        backgroundColor: "#000",
+                        borderRadius: "4px",
+                        overflow: "hidden",
+                        cursor: downloadingVideo !== null ? "wait" : "pointer",
+                        opacity: downloadingVideo === videoUrl ? 0.5 : 1,
+                      }}
+                    >
+                      <video
+                        src={videoUrl}
+                        preload="metadata"
+                        muted
+                        playsInline
+                        style={{ display: "block", width: "100%", height: "160px", objectFit: "contain", pointerEvents: "none" }}
+                      />
+                      <svg
+                        width="40"
+                        height="40"
+                        viewBox="0 0 30 30"
+                        aria-hidden="true"
+                        focusable="false"
+                        style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }}
+                      >
+                        <circle cx="15" cy="15" r="14" fill="rgba(0, 0, 0, 0.8)" stroke="white" strokeWidth="2" />
+                        <path d="M12 9 L22 15 L12 21 Z" fill="white" />
+                      </svg>
+                    </button>
+                    <div style={{ paddingTop: "10px" }}>
+                      <strong>{videoName}</strong>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : null}
         <BreakLine />
