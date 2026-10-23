@@ -9,6 +9,7 @@ import {
   ConnectingCheckPoints,
   CheckPoint,
   DisplayPhotos,
+  DownloadIcon,
   MediaRow,
   LastRow,
   Row,
@@ -1230,38 +1231,19 @@ export const ComplaintDetails = (props) => {
             <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               {(imagesToShowBelowComplaintDetails?.videos || []).filter((video) => video.original).map((video, index) => {
                 const videoUrl = video.original;
-                const videoName = `Video ${index + 1}`;
+                const videoName = `${t("CS_TICKET_VIDEO_NAME")} ${index + 1}`;
                 return (
                   <div
                     key={video.fileStoreId || index}
                     style={{ width: "240px", maxWidth: "100%", border: "1px solid #ccc", borderRadius: "6px", padding: "10px", boxSizing: "border-box" }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => downloadVideo(videoUrl, videoName)}
-                      disabled={downloadingVideo !== null}
-                      aria-busy={downloadingVideo === videoUrl}
-                      aria-label={`${t("CS_COMMON_DOWNLOAD")} ${videoName}`}
-                      title={t("CS_COMMON_DOWNLOAD")}
-                      style={{
-                        position: "relative",
-                        display: "block",
-                        width: "100%",
-                        padding: 0,
-                        border: "none",
-                        backgroundColor: "#000",
-                        borderRadius: "4px",
-                        overflow: "hidden",
-                        cursor: downloadingVideo !== null ? "wait" : "pointer",
-                        opacity: downloadingVideo === videoUrl ? 0.5 : 1,
-                      }}
-                    >
+                    <div style={{ position: "relative" }}>
                       <video
                         src={videoUrl}
                         preload="metadata"
                         muted
                         playsInline
-                        style={{ display: "block", width: "100%", height: "160px", objectFit: "contain", pointerEvents: "none" }}
+                        style={{ display: "block", width: "100%", height: "160px", objectFit: "contain", backgroundColor: "#000", borderRadius: "4px", pointerEvents: "none" }}
                       />
                       <svg
                         width="40"
@@ -1274,9 +1256,28 @@ export const ComplaintDetails = (props) => {
                         <circle cx="15" cy="15" r="14" fill="rgba(0, 0, 0, 0.8)" stroke="white" strokeWidth="2" />
                         <path d="M12 9 L22 15 L12 21 Z" fill="white" />
                       </svg>
-                    </button>
-                    <div style={{ paddingTop: "10px" }}>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", paddingTop: "10px" }}>
                       <strong>{videoName}</strong>
+                      <button
+                        type="button"
+                        onClick={() => downloadVideo(videoUrl, videoName)}
+                        disabled={downloadingVideo !== null}
+                        aria-busy={downloadingVideo === videoUrl}
+                        aria-label={`${t("CS_COMMON_DOWNLOAD")} ${videoName}`}
+                        title={t("CS_COMMON_DOWNLOAD")}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "4px",
+                          border: "none",
+                          background: "transparent",
+                          cursor: downloadingVideo !== null ? "wait" : "pointer",
+                          opacity: downloadingVideo === videoUrl ? 0.5 : 1,
+                        }}
+                      >
+                        <DownloadIcon fill="#C84C0E" />
+                      </button>
                     </div>
                   </div>
                 );
