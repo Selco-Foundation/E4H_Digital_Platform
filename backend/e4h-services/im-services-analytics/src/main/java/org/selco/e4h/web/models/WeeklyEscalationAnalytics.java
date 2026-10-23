@@ -55,6 +55,11 @@ public class WeeklyEscalationAnalytics {
     @Builder.Default
     private List<WeeklyEscalationEffectivenessRow> escalationEffectiveness = new ArrayList<>();
 
+    /** Distinct tickets escalated (any level) in the week - a ticket escalated to both L2 and L3 counts once. */
+    private int escalatedTicketsTotal;
+    /** Of {@link #escalatedTicketsTotal}, how many were resolved after their escalation. */
+    private int resolvedEscalatedTicketsTotal;
+
     @Builder.Default
     private List<WeeklyStateNfTrendRow> stateNfTrend = new ArrayList<>();
 
