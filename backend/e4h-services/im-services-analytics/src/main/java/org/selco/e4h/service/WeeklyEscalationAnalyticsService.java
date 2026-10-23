@@ -63,7 +63,13 @@ public class WeeklyEscalationAnalyticsService {
     private final WorkflowService workflowService;
     private final FacilityRegistryClient facilityRegistryClient;
 
-    public WeeklyEscalationAnalytics buildAnalytics(Set<String> stateCodes, RequestInfo requestInfo) {
+    public WeeklyEscalationAnalytics buildAnalytics(Set<String> mdmsStateCodes, RequestInfo requestInfo) {
+        // MDMS gives some state codes with a space ("India_Arunachal Pradesh") while tickets and
+        // facility-service use "India_ArunachalPradesh" - without this, that state matches no tickets
+        // and its facility count silently becomes the whole registry.
+        Set<String> stateCodes = mdmsStateCodes.stream()
+                .map(s -> s.replaceAll("\\s+", ""))
+                .collect(Collectors.toSet());
         Date[] reportWeek = getPreviousWeekDates(0);
         Date[] priorWeek = getPreviousWeekDates(1);
         long weekStartMs = reportWeek[0].getTime();
@@ -131,6 +137,8 @@ public class WeeklyEscalationAnalyticsService {
                 .facilitiesRestored(facilitiesRestored)
                 .theftCases(acc.theftCases)
                 .escalationEffectiveness(effectiveness)
+                .escalatedTicketsTotal(acc.escalatedTickets.size())
+                .resolvedEscalatedTicketsTotal(acc.resolvedEscalatedTickets.size())
                 .stateNfTrend(stateNfTrend)
                 .overallTrend(overallTrend)
                 .totalOpenTrend(totalOpenTrend)
@@ -164,9 +172,14 @@ public class WeeklyEscalationAnalyticsService {
         List<WeeklyTheftCaseRow> theftCases = new ArrayList<>();
         int openTheftCases = 0;
         Map<String, int[]> effectivenessByLevel = new LinkedHashMap<>(); // [escalated, resolved]
+        // Distinct tickets across levels, for the TOTAL row (a ticket escalated to L2 and L3 counts once).
+        Set<String> escalatedTickets = new HashSet<>();
+        Set<String> resolvedEscalatedTickets = new HashSet<>();
         Map<String, Double> vendorTatDaysSum = new HashMap<>();
         Map<String, Integer> vendorTatCount = new HashMap<>();
         Map<String, Boolean> vendorFallbackWithinSla = new HashMap<>();
+        // Tickets resolved this week, credited to a vendor later once workflow history is known.
+        List<ResolvedTicket> resolvedThisWeek = new ArrayList<>();
         int openAsOfPriorWeekEnd = 0;
 
         String lowestTatVendorName() {
@@ -184,6 +197,10 @@ public class WeeklyEscalationAnalyticsService {
             }
             return Math.round((vendorTatDaysSum.get(vendor) / vendorTatCount.get(vendor)) * 10.0) / 10.0;
         }
+    }
+
+    /** mappedVendor is blank when the facility has no vendor; tatDays is null when filedDate is unknown. */
+    private record ResolvedTicket(String incidentId, String mappedVendor, boolean withinSla, Double tatDays) {
     }
 
     private static class VendorAgg {
@@ -215,8 +232,8 @@ public class WeeklyEscalationAnalyticsService {
             stateOverview.setRaisedThisWeek(stateOverview.getRaisedThisWeek() + 1);
         }
 
-        if (ticket.getSlaBreachTime() != null && ticket.getSlaBreachTime() >= weekStartMs
-                && ticket.getSlaBreachTime() <= weekEndMs) {
+        boolean newlyBreachedThisWeek = isFirstEscalatedWithin(ticket, weekStartMs, weekEndMs);
+        if (newlyBreachedThisWeek) {
             acc.nationalOverview.setNewBreaches(acc.nationalOverview.getNewBreaches() + 1);
             stateOverview.setNewBreaches(stateOverview.getNewBreaches() + 1);
         }
@@ -234,6 +251,11 @@ public class WeeklyEscalationAnalyticsService {
                 acc.nationalOverview.setResolvedAfterBreach(acc.nationalOverview.getResolvedAfterBreach() + 1);
                 stateOverview.setResolvedAfterBreach(stateOverview.getResolvedAfterBreach() + 1);
             }
+            // A resolved ticket's current status is RESOLVED/CLOSEDAFTERRESOLUTION, never a vendor
+            // state, so vendor credit can't come from the status check below - it is decided in
+            // creditVendorResolutions from the workflow history instead.
+            acc.resolvedThisWeek.add(new ResolvedTicket(ticket.getIncidentId(), ticket.getMappedVendor(), withinSla,
+                    filedDate != null ? (resolvedTs - filedDate) / (double) DAY_MS : null));
         }
 
         if (!closed) {
@@ -310,25 +332,13 @@ public class WeeklyEscalationAnalyticsService {
                 // Fallback used only if real workflow history is unavailable for this ticket.
                 acc.vendorFallbackWithinSla.put(ticket.getIncidentId(), !stepBreached);
             }
-            if (ticket.getSlaBreachTime() != null && ticket.getSlaBreachTime() >= weekStartMs
-                    && ticket.getSlaBreachTime() <= weekEndMs) {
+            if (newlyBreachedThisWeek) {
                 vendorAgg.newBreachesThisWeek++;
-            }
-            if (resolvedThisWeek) {
-                if (withinSla) {
-                    vendorAgg.resolvedWithinSlaCount++;
-                } else {
-                    vendorAgg.resolvedAfterBreachCount++;
-                }
-                if (filedDate != null) {
-                    double tatDays = (resolvedTs - filedDate) / (double) DAY_MS;
-                    acc.vendorTatDaysSum.merge(vendor, tatDays, Double::sum);
-                    acc.vendorTatCount.merge(vendor, 1, Integer::sum);
-                }
             }
         }
 
         if (ticket.getEscalationInfo() != null) {
+            String ticketKey = ticket.getIncidentId() != null ? ticket.getIncidentId() : ticket.getId();
             for (EscalationInfo info : ticket.getEscalationInfo()) {
                 if (info.getEscalationTime() == null || info.getEscalationTime() < weekStartMs
                         || info.getEscalationTime() > weekEndMs) {
@@ -337,8 +347,10 @@ public class WeeklyEscalationAnalyticsService {
                 if ("LEVEL_TWO".equals(info.getEscalationLevel()) || "LEVEL_THREE".equals(info.getEscalationLevel())) {
                     int[] counts = acc.effectivenessByLevel.computeIfAbsent(info.getEscalationLevel(), k -> new int[2]);
                     counts[0]++;
+                    acc.escalatedTickets.add(ticketKey);
                     if (closed && resolvedTs != null && resolvedTs > info.getEscalationTime()) {
                         counts[1]++;
+                        acc.resolvedEscalatedTickets.add(ticketKey);
                     }
                 }
             }
@@ -353,8 +365,10 @@ public class WeeklyEscalationAnalyticsService {
      * workflow service call fails, or a ticket has no vendor-state entry in its history).
      */
     private void resolveVendorResponseRates(WeekAccumulator acc, RequestInfo requestInfo) {
-        List<String> allIncidentIds = acc.vendorAgg.values().stream()
-                .flatMap(v -> v.incidentIds.stream())
+        List<String> allIncidentIds = java.util.stream.Stream.concat(
+                        acc.vendorAgg.values().stream().flatMap(v -> v.incidentIds.stream()),
+                        acc.resolvedThisWeek.stream().map(ResolvedTicket::incidentId))
+                .filter(java.util.Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
         if (allIncidentIds.isEmpty()) {
@@ -367,6 +381,8 @@ public class WeeklyEscalationAnalyticsService {
                 .filter(pi -> pi.getBusinessId() != null)
                 .collect(Collectors.groupingBy(ProcessInstance::getBusinessId));
 
+        creditVendorResolutions(acc, historyByBusinessId);
+
         for (VendorAgg vendorAgg : acc.vendorAgg.values()) {
             for (String incidentId : vendorAgg.incidentIds) {
                 Boolean respondedWithinSla = VendorResponseUtil.respondedWithinSla(historyByBusinessId.get(incidentId));
@@ -378,6 +394,63 @@ public class WeeklyEscalationAnalyticsService {
                 }
             }
         }
+    }
+
+    /**
+     * Credits each ticket resolved this week to its mapped vendor (resolved counts + TAT) when the
+     * workflow history shows the RESOLVED step came straight out of a vendor-owned state. Tickets
+     * resolved from any other stage are left out of vendor stats (they still count in the overall
+     * "Tickets Resolved" numbers). Without usable history, the mapped vendor is credited.
+     */
+    private void creditVendorResolutions(WeekAccumulator acc, Map<String, List<ProcessInstance>> historyByBusinessId) {
+        int credited = 0;
+        int notVendor = 0;
+        int noHistory = 0;
+        for (ResolvedTicket resolved : acc.resolvedThisWeek) {
+            if (resolved.mappedVendor() == null || resolved.mappedVendor().isBlank()) {
+                notVendor++;
+                continue;
+            }
+            Boolean byVendor = VendorResponseUtil.resolvedFromVendorState(historyByBusinessId.get(resolved.incidentId()));
+            if (byVendor == null) {
+                noHistory++;
+            } else if (!byVendor) {
+                notVendor++;
+                continue;
+            }
+            String vendor = resolved.mappedVendor().trim();
+            VendorAgg vendorAgg = acc.vendorAgg.computeIfAbsent(vendor, k -> new VendorAgg());
+            if (resolved.withinSla()) {
+                vendorAgg.resolvedWithinSlaCount++;
+            } else {
+                vendorAgg.resolvedAfterBreachCount++;
+            }
+            if (resolved.tatDays() != null) {
+                acc.vendorTatDaysSum.merge(vendor, resolved.tatDays(), Double::sum);
+                acc.vendorTatCount.merge(vendor, 1, Integer::sum);
+            }
+            credited++;
+        }
+        log.info("Resolved this week: {} total, {} credited to vendors ({} without workflow history), {} not resolved by a vendor",
+                acc.resolvedThisWeek.size(), credited, noHistory, notVendor);
+    }
+
+    /**
+     * A ticket counts as a new SLA breach in the week the daily escalation job first escalated it -
+     * the escalation history is the only stored record of when a breach happened. (The ticket's
+     * slaBreachTime is not usable here: ElasticSearchClient sets it to "now" whenever slaRemaining
+     * is negative, so it always falls after the report week.)
+     */
+    private boolean isFirstEscalatedWithin(EscalationTicket ticket, long weekStartMs, long weekEndMs) {
+        if (ticket.getEscalationInfo() == null) {
+            return false;
+        }
+        Long firstEscalation = ticket.getEscalationInfo().stream()
+                .map(EscalationInfo::getEscalationTime)
+                .filter(java.util.Objects::nonNull)
+                .min(Long::compare)
+                .orElse(null);
+        return firstEscalation != null && firstEscalation >= weekStartMs && firstEscalation <= weekEndMs;
     }
 
     /**
@@ -407,8 +480,7 @@ public class WeeklyEscalationAnalyticsService {
                 continue;
             }
 
-            if (ticket.getSlaBreachTime() != null && ticket.getSlaBreachTime() >= weekStartMs
-                    && ticket.getSlaBreachTime() <= weekEndMs) {
+            if (isFirstEscalatedWithin(ticket, weekStartMs, weekEndMs)) {
                 breaches++;
             }
 
@@ -436,7 +508,7 @@ public class WeeklyEscalationAnalyticsService {
 
     private List<WeeklyTrendMetric> buildOverallTrend(TrendCounts lastWeek, TrendCounts thisWeek) {
         List<WeeklyTrendMetric> rows = new ArrayList<>();
-        rows.add(trendMetric("Total SLA Breaches", lastWeek.breaches(), thisWeek.breaches()));
+        rows.add(trendMetric("New SLA Breaches (escalated)", lastWeek.breaches(), thisWeek.breaches()));
         rows.add(trendMetric("Tickets Resolved (within SLA)", lastWeek.resolvedWithinSla(), thisWeek.resolvedWithinSla()));
         rows.add(trendMetric("Tickets Resolved (breached SLA)", lastWeek.resolvedAfterBreach(), thisWeek.resolvedAfterBreach()));
         rows.add(trendMetric("New Theft Cases", lastWeek.theftCases(), thisWeek.theftCases()));
@@ -462,7 +534,10 @@ public class WeeklyEscalationAnalyticsService {
         for (Map.Entry<String, VendorAgg> entry : vendorAgg.entrySet()) {
             VendorAgg v = entry.getValue();
             int resolvedTotal = v.resolvedWithinSlaCount + v.resolvedAfterBreachCount;
-            double resolutionRate = v.ticketsAssigned > 0 ? (resolvedTotal * 100.0 / v.ticketsAssigned) : 0;
+            // ticketsAssigned only counts tickets still open at a vendor stage, so resolved ones are
+            // added back to keep the rate within 0-100%.
+            int handled = v.ticketsAssigned + resolvedTotal;
+            double resolutionRate = handled > 0 ? (resolvedTotal * 100.0 / handled) : 0;
             double responseRate = v.ticketsAssigned > 0 ? (v.respondedWithinStepSla * 100.0 / v.ticketsAssigned) : 0;
             rows.add(WeeklyVendorPerformanceRow.builder()
                     .vendorName(entry.getKey())
@@ -588,7 +663,7 @@ public class WeeklyEscalationAnalyticsService {
                     String bottleneck = stateBottlenecks.entrySet().stream()
                             .max(Map.Entry.comparingByValue())
                             .map(Map.Entry::getKey)
-                            .orElse("Pending Resolution");
+                            .orElse("No open SLA-breached tickets");
                     nfAlerts.add(WeeklyNfAlert.builder()
                             .stateName(stateName)
                             .nfPct(nfPct)
