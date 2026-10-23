@@ -57,13 +57,16 @@ public class WeeklyLeadershipEmailService {
     private static final String CELL_MUTED_CENTER = "padding:10px 8px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#6b7280;text-align:center;";
 
     private String renderKeyHighlights(WeeklyEscalationAnalytics analytics) {
-        int facilitiesRestored = analytics.getFacilitiesRestored() == null ? 0
-                : analytics.getFacilitiesRestored().stream().mapToInt(r -> r.getRestoredCount()).sum();
+        // Same figure as the TOTAL of the "moved from Non-Functional to Functional" column below, so
+        // the highlight and the table can never disagree.
+        int facilitiesRestored = analytics.getStateNfTrend() == null ? 0
+                : analytics.getStateNfTrend().stream().mapToInt(WeeklyStateNfTrendRow::getFacilitiesMovedToFunctional).sum();
         int ticketsResolved = (analytics.getNationalOverview() != null
                 ? analytics.getNationalOverview().getResolvedWithinSla() + analytics.getNationalOverview().getResolvedAfterBreach()
                 : 0);
         String vendorLine = analytics.getVendorLowestTatName() != null
-                ? commonUtility.escapeHtml(analytics.getVendorLowestTatName()) + " (" + analytics.getVendorLowestTatDays() + "d)"
+                ? commonUtility.escapeHtml(analytics.getVendorLowestTatName())
+                        + " (" + analytics.getVendorLowestTatDays() + " days)"
                 : "No resolved vendor tickets this week";
 
         return "<ul style=\"font-size:14px;line-height:20px;margin:0;\">"
@@ -78,11 +81,11 @@ public class WeeklyLeadershipEmailService {
             return "<tr><td colspan=\"4\" style=\"" + CELL_MUTED_CENTER + "\">No escalations last week</td></tr>";
         }
         StringBuilder html = new StringBuilder();
-        int totalEscalated = 0;
-        int totalResolved = 0;
+        // Distinct tickets, not the sum of the rows: a ticket escalated to both L2 and L3 appears in
+        // each level's row but is still one ticket.
+        int totalEscalated = analytics.getEscalatedTicketsTotal();
+        int totalResolved = analytics.getResolvedEscalatedTicketsTotal();
         for (WeeklyEscalationEffectivenessRow row : analytics.getEscalationEffectiveness()) {
-            totalEscalated += row.getEscalatedCount();
-            totalResolved += row.getResolvedCount();
             html.append("<tr><td style=\"").append(CELL).append("\">").append(commonUtility.escapeHtml(row.getLevelLabel())).append("</td>")
                     .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getEscalatedCount()).append("</td>")
                     .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getResolvedCount()).append("</td>")
@@ -102,11 +105,14 @@ public class WeeklyLeadershipEmailService {
         }
         StringBuilder html = new StringBuilder();
         for (WeeklyTrendMetric row : analytics.getOverallTrend()) {
+            // A % change from zero is meaningless ("Up 100%" for 0 -> 2), so say so explicitly.
+            String change = row.getLastWeekValue() == 0 && row.getThisWeekValue() > 0
+                    ? "Up from 0"
+                    : (row.getArrow() + " " + Math.abs(row.getChangePct()) + "%").trim();
             html.append("<tr><td style=\"").append(CELL).append("\">").append(commonUtility.escapeHtml(row.getLabel())).append("</td>")
                     .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getLastWeekValue()).append("</td>")
                     .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getThisWeekValue()).append("</td>")
-                    .append("<td style=\"").append(CELL_RIGHT).append("\">").append(row.getArrow()).append(" ")
-                    .append(Math.abs(row.getChangePct())).append("%</td></tr>");
+                    .append("<td style=\"").append(CELL_RIGHT).append("\">").append(change).append("</td></tr>");
         }
         return html.toString();
     }
