@@ -207,9 +207,8 @@ public class FieldPlannerApiController {
                 urlParams.getLastChangedSince(),
                 urlParams.getIncludeDeleted()
         );
-        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         SystemTypeCapacityResponse response = SystemTypeCapacityResponse.builder()
-                .responseInfo(responseInfo)
+                .responseInfo(ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true))
                 .systemTypeCapacities(systemTypeCapacities)
                 .build();
         log.info("Installation plan facility systemType/totalSystemCapacity search completed, found {} results",
