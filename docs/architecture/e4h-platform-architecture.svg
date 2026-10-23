@@ -1,0 +1,330 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2520" height="1600" viewBox="0 0 2520 1600">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A8A8A8"/></marker></defs>
+<rect x="0" y="0" width="2520" height="1600" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1" />
+<text x="60" y="88" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="38" font-weight="bold" fill="#38761D" text-anchor="start" >E4H Services Architecture</text>
+<text x="60" y="120" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="normal" fill="#5F6368" text-anchor="start" >v1.3 architecture updated with the services, Kafka topics, ES indices and external integrations added since — additions marked in green</text>
+<rect x="60" y="160" width="30" height="26" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="110" y="180" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#3C4043" text-anchor="start" >New Services</text>
+<rect x="60" y="202" width="30" height="26" rx="2" fill="#C9DAF8" stroke="#9DB8EA" stroke-width="1" />
+<text x="110" y="222" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#3C4043" text-anchor="start" >External Integrations</text>
+<rect x="60" y="244" width="30" height="26" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="110" y="264" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#3C4043" text-anchor="start" >Existing Services To be Used As-is</text>
+<rect x="60" y="286" width="30" height="26" rx="2" fill="#FF9900" stroke="#E08600" stroke-width="1" />
+<text x="110" y="306" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#3C4043" text-anchor="start" >Code reuse with customization</text>
+<rect x="60" y="328" width="30" height="26" rx="2" fill="#FFFFFF" stroke="#2E7D32" stroke-width="3" />
+<text x="110" y="348" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#2E7D32" text-anchor="start" >Added in this update</text>
+<rect x="723" y="184" width="190" height="95" rx="2" fill="#000" opacity="0.13"/>
+<rect x="720" y="180" width="190" height="95" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="815.0" y="207.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Asset</text>
+<text x="815.0" y="224.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Management</text>
+<text x="815.0" y="241.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Mobile App</text>
+<text x="815.0" y="258.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >mobile/ (Flutter)</text>
+<rect x="953" y="184" width="190" height="95" rx="2" fill="#000" opacity="0.13"/>
+<rect x="950" y="180" width="190" height="95" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="1045.0" y="224.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Admin Console</text>
+<text x="1045.0" y="241.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >installation-ui</text>
+<rect x="1183" y="184" width="190" height="95" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1180" y="180" width="190" height="95" rx="2" fill="#FFFFFF" stroke="#2E7D32" stroke-width="3" />
+<text x="1275.0" y="224.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >MDMS Workbench</text>
+<text x="1275.0" y="241.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >web/workbench</text>
+<rect x="1327" y="171" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="1351.5" y="183.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="1703" y="49" width="300" height="90" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1700" y="45" width="300" height="90" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="1850.0" y="86.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Asset Management Web</text>
+<text x="1850.0" y="103.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Portal (Employees)</text>
+<rect x="1563" y="304" width="200" height="90" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1560" y="300" width="200" height="90" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="1660.0" y="341.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#E69138" text-anchor="middle" >Service Specific</text>
+<text x="1660.0" y="358.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#E69138" text-anchor="middle" >Employee UI</text>
+<rect x="1793" y="304" width="200" height="90" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1790" y="300" width="200" height="90" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="1890.0" y="333.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Incident Mgmt Web</text>
+<text x="1890.0" y="350.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Portal (per state)</text>
+<text x="1890.0" y="367.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >micro-ui</text>
+<rect x="2023" y="304" width="200" height="90" rx="2" fill="#000" opacity="0.13"/>
+<rect x="2020" y="300" width="200" height="90" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="2120.0" y="350.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#4A86E8" text-anchor="middle" >Dashboard (Kibana)</text>
+<path d="M1850,135 L1850,210 L1660,210 L1660,300" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="95" y="430" width="2125" height="40" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<rect x="98" y="474" width="2125" height="4" fill="#000" opacity="0.08"/>
+<text x="1157" y="456" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="normal" fill="#4A86E8" text-anchor="middle" >API Gateway</text>
+<rect x="70" y="495" width="2170" height="250" rx="4" fill="#F3F3F3" stroke="#E0E0E0" stroke-width="1" stroke-dasharray="5 4" />
+<text x="105" y="600" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#5F6368" text-anchor="middle" >E4H</text>
+<rect x="193" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="190" y="515" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="280.0" y="555.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Facility</text>
+<text x="280.0" y="572.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >facility-service</text>
+<rect x="403" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="400" y="515" width="180" height="88" rx="2" fill="#FF9900" stroke="#E08600" stroke-width="1" />
+<text x="490.0" y="555.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Organisation</text>
+<text x="490.0" y="572.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#3D2200" text-anchor="middle" >vendor-registry</text>
+<rect x="613" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="610" y="515" width="180" height="88" rx="2" fill="#FF9900" stroke="#E08600" stroke-width="1" />
+<text x="700.0" y="555.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Project</text>
+<text x="700.0" y="572.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#3D2200" text-anchor="middle" >project</text>
+<rect x="823" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="820" y="515" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="910.0" y="555.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Field Planner</text>
+<text x="910.0" y="572.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >field-planner</text>
+<rect x="1033" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1030" y="515" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="1120.0" y="555.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Activity</text>
+<text x="1120.0" y="572.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >activity</text>
+<rect x="1243" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1240" y="515" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="1330.0" y="547.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Asset &amp;</text>
+<text x="1330.0" y="564.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Maintenance</text>
+<text x="1330.0" y="581.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >asset-registry · amc</text>
+<rect x="1453" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1450" y="515" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="1540.0" y="547.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Configurable</text>
+<text x="1540.0" y="564.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Rule Engine</text>
+<text x="1540.0" y="581.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >rms-service</text>
+<rect x="1663" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1660" y="515" width="180" height="88" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="1750.0" y="547.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Incident</text>
+<text x="1750.0" y="564.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Management</text>
+<text x="1750.0" y="581.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >im-services</text>
+<rect x="1873" y="519" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1870" y="515" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="1960.0" y="555.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Excel Ingestion</text>
+<text x="1960.0" y="572.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >ingestion-service</text>
+<rect x="193" y="644" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="190" y="640" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#2E7D32" stroke-width="3" />
+<text x="280.0" y="680.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Assessment</text>
+<text x="280.0" y="697.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >in field-planner</text>
+<rect x="327" y="631" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="351.5" y="643.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="403" y="644" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="400" y="640" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#2E7D32" stroke-width="3" />
+<text x="490.0" y="680.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Video Processor</text>
+<text x="490.0" y="697.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >processor-services</text>
+<rect x="537" y="631" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="561.5" y="643.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="613" y="644" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="610" y="640" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#2E7D32" stroke-width="3" />
+<text x="700.0" y="680.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Bulk Indexer</text>
+<text x="700.0" y="697.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >bulk-indexer</text>
+<rect x="747" y="631" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="771.5" y="643.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="823" y="644" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="820" y="640" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#2E7D32" stroke-width="3" />
+<text x="910.0" y="680.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Translator</text>
+<text x="910.0" y="697.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >translator-service</text>
+<rect x="957" y="631" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="981.5" y="643.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="1033" y="644" width="180" height="88" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1030" y="640" width="180" height="88" rx="2" fill="#FCE5CD" stroke="#2E7D32" stroke-width="3" />
+<text x="1120.0" y="680.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Scheduled Jobs</text>
+<text x="1120.0" y="697.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >K8s CronJobs</text>
+<rect x="1167" y="631" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="1191.5" y="643.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<text x="1250" y="676" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Scheduled jobs: RMS rule engine (every 15 min), RMS mapping sync/validate,</text>
+<text x="1250" y="694" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >ticket-pause expiry, daily &amp; weekly escalation e-mails, monthly CO2,</text>
+<text x="1250" y="712" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >AMC visit scheduling, daily auto-close.</text>
+<path d="M378,470 L378,790" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M392,790 L392,470" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="370" y="772" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#202124" text-anchor="end" >Authenticate</text>
+<text x="400" y="772" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#202124" text-anchor="start" >Authorize</text>
+<rect x="70" y="760" width="2170" height="790" rx="4" fill="#F3F3F3" stroke="#E0E0E0" stroke-width="1" stroke-dasharray="5 4" />
+<text x="95" y="788" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#5F6368" text-anchor="start" >DIGIT</text>
+<rect x="98" y="809" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="95" y="805" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="190.0" y="844.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Individual</text>
+<text x="190.0" y="861.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service</text>
+<rect x="333" y="809" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="330" y="805" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="425.0" y="844.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >User Service</text>
+<text x="425.0" y="861.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >egov-user</text>
+<rect x="98" y="924" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="95" y="920" width="190" height="85" rx="2" fill="#FF9900" stroke="#E08600" stroke-width="1" />
+<text x="190.0" y="950.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Employee</text>
+<text x="190.0" y="967.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Registry (HRMS)</text>
+<text x="190.0" y="984.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#3D2200" text-anchor="middle" >egov-hrms</text>
+<rect x="333" y="924" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="330" y="920" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="425.0" y="959.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Role</text>
+<text x="425.0" y="976.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service</text>
+<rect x="98" y="1039" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="95" y="1035" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="190.0" y="1074.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Encryption</text>
+<text x="190.0" y="1091.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >egov-enc-service</text>
+<rect x="333" y="1039" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="330" y="1035" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="425.0" y="1065.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Language</text>
+<text x="425.0" y="1082.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service</text>
+<text x="425.0" y="1099.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >egov-localization</text>
+<rect x="98" y="1154" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="95" y="1150" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="190.0" y="1180.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Master Data</text>
+<text x="190.0" y="1197.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service (v2)</text>
+<text x="190.0" y="1214.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >mdms-v2</text>
+<rect x="333" y="1154" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="330" y="1150" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="425.0" y="1189.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >File Store</text>
+<text x="425.0" y="1206.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >egov-filestore</text>
+<rect x="98" y="1274" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="95" y="1270" width="190" height="85" rx="2" fill="#FF9900" stroke="#2E7D32" stroke-width="3" />
+<text x="190.0" y="1300.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Boundary</text>
+<text x="190.0" y="1317.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service</text>
+<text x="190.0" y="1334.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#3D2200" text-anchor="middle" >boundary-service</text>
+<rect x="242" y="1261" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="266.5" y="1273.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="333" y="1274" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="330" y="1270" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#2E7D32" stroke-width="3" />
+<text x="425.0" y="1309.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >URL Shortener</text>
+<text x="425.0" y="1326.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >egov-url-shortening</text>
+<rect x="477" y="1261" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="501.5" y="1273.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="98" y="1394" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="95" y="1390" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#2E7D32" stroke-width="3" />
+<text x="190.0" y="1429.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >OTP Service</text>
+<text x="190.0" y="1446.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >user-otp</text>
+<rect x="242" y="1381" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="266.5" y="1393.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="333" y="1394" width="190" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="330" y="1390" width="190" height="85" rx="2" fill="#FFFFFF" stroke="#2E7D32" stroke-width="3" />
+<text x="425.0" y="1429.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Redis Cache</text>
+<text x="425.0" y="1446.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >amc · planner · project</text>
+<rect x="477" y="1381" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="501.5" y="1393.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<path d="M425,890 L425,920" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="773" y="809" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="770" y="805" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="870.0" y="835.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >ID Generation</text>
+<text x="870.0" y="852.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service</text>
+<text x="870.0" y="869.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >egov-idgen</text>
+<rect x="1013" y="809" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1010" y="805" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="1110.0" y="844.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Survey</text>
+<text x="1110.0" y="861.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service</text>
+<rect x="1723" y="809" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1720" y="805" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="1820.0" y="852.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#4A86E8" text-anchor="middle" >PDF Service</text>
+<rect x="1963" y="809" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1960" y="805" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="2060.0" y="835.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Inbox</text>
+<text x="2060.0" y="852.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service (v2)</text>
+<text x="2060.0" y="869.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >inbox</text>
+<rect x="552" y="925" width="200" height="95" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<rect x="568" y="944" width="200" height="95" rx="2" fill="#000" opacity="0.13"/>
+<rect x="565" y="940" width="200" height="95" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="665.0" y="984.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Any E4H</text>
+<text x="665.0" y="1001.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Service</text>
+<rect x="960" y="935" width="720" height="110" rx="2" fill="#FFFFFF" stroke="#2E7D32" stroke-width="3" />
+<rect x="963" y="1049" width="720" height="4" fill="#000" opacity="0.08"/>
+<text x="1320" y="960" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="normal" fill="#4A86E8" text-anchor="middle" >Queue Service (Apache Kafka)</text>
+<text x="1320" y="984" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3C4043" text-anchor="middle" >save/update-im-request · *-indexer topics · im-auto-escalation · process-im-video-request</text>
+<text x="1320" y="1002" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3C4043" text-anchor="middle" >bulk-index-documents · egov.core.notification.sms / .email · save-wf-transitions</text>
+<text x="1320" y="1020" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3C4043" text-anchor="middle" >carbon-emission-calculate · process-audit-records · save-*/update-* domain topics → persister</text>
+<rect x="1588" y="926" width="98" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="1637.0" y="938.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >TOPICS ADDED</text>
+<rect x="1783" y="954" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1780" y="950" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="1880.0" y="989.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Workflow</text>
+<text x="1880.0" y="1006.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >egov-workflow-v2</text>
+<rect x="853" y="1134" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="850" y="1130" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="950.0" y="1177.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Persister</text>
+<rect x="1073" y="1134" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1070" y="1130" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="1170.0" y="1169.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Signed</text>
+<text x="1170.0" y="1186.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Audit</text>
+<rect x="1293" y="1134" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1290" y="1130" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="1390.0" y="1177.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Indexer</text>
+<rect x="1743" y="1114" width="220" height="80" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1740" y="1110" width="220" height="80" rx="2" fill="#FCE5CD" stroke="#E6C7A3" stroke-width="1" />
+<text x="1850.0" y="1138.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >E4H Event Processor</text>
+<text x="1850.0" y="1155.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >(Analytics)</text>
+<text x="1850.0" y="1172.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >im-services-analytics</text>
+<path d="M2010,1116 L2010,1234 A95.0,16 0 0 0 2200,1234 L2200,1116" fill="#FFFFFF" stroke="#9E9E9E" stroke-width="1.4"/>
+<ellipse cx="2105.0" cy="1116" rx="95.0" ry="16" fill="#FFFFFF" stroke="#9E9E9E" stroke-width="1.4"/>
+<text x="2105.0" y="1183.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#4A86E8" text-anchor="middle" >Analytical DB</text>
+<text x="2105.0" y="1201.0" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="middle" >Elasticsearch</text>
+<path d="M560,1286 L560,1384 A100.0,16 0 0 0 760,1384 L760,1286" fill="#FFFFFF" stroke="#9E9E9E" stroke-width="1.4"/>
+<ellipse cx="660.0" cy="1286" rx="100.0" ry="16" fill="#FFFFFF" stroke="#9E9E9E" stroke-width="1.4"/>
+<text x="660.0" y="1343.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Relational</text>
+<text x="660.0" y="1361.0" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#5F6368" text-anchor="middle" >PostgreSQL</text>
+<rect x="1173" y="1304" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1170" y="1300" width="200" height="85" rx="2" fill="#C9DAF8" stroke="#9DB8EA" stroke-width="1" />
+<text x="1270.0" y="1339.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >SMS</text>
+<text x="1270.0" y="1356.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >SMSCountry gateway</text>
+<rect x="1413" y="1304" width="200" height="85" rx="2" fill="#000" opacity="0.13"/>
+<rect x="1410" y="1300" width="200" height="85" rx="2" fill="#FFFFFF" stroke="#D0D0D0" stroke-width="1" />
+<text x="1510.0" y="1339.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#4A86E8" text-anchor="middle" >Email</text>
+<text x="1510.0" y="1356.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >notification-mail</text>
+<rect x="1720" y="1280" width="500" height="150" rx="2" fill="#FFFFFF" stroke="#2E7D32" stroke-width="3" />
+<text x="1970" y="1306" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle" >Analytical DB — Elasticsearch indices</text>
+<text x="1970" y="1330" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3C4043" text-anchor="middle" >computed-sla-im-services · co2-monthly-facility-index</text>
+<text x="1970" y="1349" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3C4043" text-anchor="middle" >co2-monthly-projection-facility-index</text>
+<text x="1970" y="1368" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3C4043" text-anchor="middle" >user-analytics-report · health-facility-index</text>
+<text x="1970" y="1387" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3C4043" text-anchor="middle" >phc-master-list · IM ticket &amp; audit indices</text>
+<text x="1970" y="1406" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3C4043" text-anchor="middle" >Written by Indexer, Bulk Indexer, Event Processor</text>
+<rect x="2121" y="1271" width="105" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="2173.5" y="1283.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >INDICES ADDED</text>
+<path d="M615,940 L615,847 L770,847" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M700,940 L700,912 L1880,912 L1880,950" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M765,990 L960,990" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="860" y="980" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#202124" text-anchor="middle" >Write/Update</text>
+<path d="M660,1035 L660,1270" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="645" y="1230" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#202124" text-anchor="end" >Read</text>
+<path d="M1000,1045 L1000,1095 L950,1095 L950,1130" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M1390,1045 L1390,1130" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M1280,1045 L1280,1300" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M1560,1045 L1560,1300" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M1680,990 L1710,990 L1710,1150 L1740,1150" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M1050,1172 L1070,1172" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M950,1215 L950,1335 L760,1335" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M1490,1205 L2010,1205" fill="none" stroke="#A8A8A8" stroke-width="1.8" stroke-dasharray="2 4" marker-end="url(#arr)"/>
+<path d="M1960,1150 L2010,1150" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M2060,890 L2060,1100" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M2185,1100 L2185,390" fill="none" stroke="#A8A8A8" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="2265" y="495" width="235" height="1055" rx="4" fill="#FFFFFF" stroke="#2E7D32" stroke-width="2" stroke-dasharray="6 4" />
+<text x="2382" y="525" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="middle" >External Integrations</text>
+<rect x="2285" y="554" width="200" height="110" rx="2" fill="#000" opacity="0.13"/>
+<rect x="2282" y="550" width="200" height="110" rx="2" fill="#C9DAF8" stroke="#2E7D32" stroke-width="3" />
+<text x="2382.0" y="593.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Theiox RMS API</text>
+<text x="2382.0" y="610.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >used by rms-service</text>
+<text x="2382.0" y="627.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >selco.theiox.com</text>
+<rect x="2439" y="541" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="2463.5" y="553.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="2285" y="716" width="200" height="110" rx="2" fill="#000" opacity="0.13"/>
+<rect x="2282" y="712" width="200" height="110" rx="2" fill="#C9DAF8" stroke="#2E7D32" stroke-width="3" />
+<text x="2382.0" y="755.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Google Gemini</text>
+<text x="2382.0" y="772.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >used by translator</text>
+<text x="2382.0" y="789.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >generativelanguage API</text>
+<rect x="2439" y="703" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="2463.5" y="715.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="2285" y="878" width="200" height="110" rx="2" fill="#000" opacity="0.13"/>
+<rect x="2282" y="874" width="200" height="110" rx="2" fill="#C9DAF8" stroke="#2E7D32" stroke-width="3" />
+<text x="2382.0" y="917.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >SMSCountry</text>
+<text x="2382.0" y="934.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >used by SMS service</text>
+<text x="2382.0" y="951.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >restapi.smscountry.com</text>
+<rect x="2439" y="865" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="2463.5" y="877.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="2285" y="1040" width="200" height="110" rx="2" fill="#000" opacity="0.13"/>
+<rect x="2282" y="1036" width="200" height="110" rx="2" fill="#C9DAF8" stroke="#2E7D32" stroke-width="3" />
+<text x="2382.0" y="1070.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >AWS S3 / MinIO</text>
+<text x="2382.0" y="1087.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >/ Azure Blob</text>
+<text x="2382.0" y="1104.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >used by File Store</text>
+<text x="2382.0" y="1121.5" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >object storage</text>
+<rect x="2439" y="1027" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="2463.5" y="1039.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="2285" y="1202" width="200" height="110" rx="2" fill="#000" opacity="0.13"/>
+<rect x="2282" y="1198" width="200" height="110" rx="2" fill="#C9DAF8" stroke="#2E7D32" stroke-width="3" />
+<text x="2382.0" y="1241.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >SMTP relay</text>
+<text x="2382.0" y="1258.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >used by Email</text>
+<text x="2382.0" y="1275.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >notification-mail</text>
+<rect x="2439" y="1189" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="2463.5" y="1201.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<rect x="2285" y="1364" width="200" height="110" rx="2" fill="#000" opacity="0.13"/>
+<rect x="2282" y="1360" width="200" height="110" rx="2" fill="#C9DAF8" stroke="#2E7D32" stroke-width="3" />
+<text x="2382.0" y="1403.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >Jaeger tracing</text>
+<text x="2382.0" y="1420.0" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="middle" >all services (OTel)</text>
+<text x="2382.0" y="1437.0" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="normal" fill="#5F6368" text-anchor="middle" >jaeger-collector</text>
+<rect x="2439" y="1351" width="49" height="17" rx="8" fill="#2E7D32" stroke="none" stroke-width="1" />
+<text x="2463.5" y="1363.5" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle" >ADDED</text>
+<text x="60" y="1580" font-family="Lato, Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#80868B" text-anchor="start" >Updated 2026-10-23 from the v1.3 diagram. Service names in grey are the deployable services in this repo.</text>
+</svg>
