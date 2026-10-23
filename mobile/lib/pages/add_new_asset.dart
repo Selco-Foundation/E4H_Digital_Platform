@@ -263,6 +263,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   @override
   void dispose() {
     _locSub?.cancel();
+    for (final c in _capacityControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -369,13 +372,28 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     }
   }
 
-  void _applyPrefilledCapacityToAsset(AssetModel asset) {
-    final cap = _prefilledCapacityFor(currentAssetType);
-    if (cap.isEmpty) return;
+  bool get _isRectification =>
+      activityFacilityWorkflow
+          ?.activityFacility.additionalDetails?.isRectification ==
+      true;
 
+  String? _capacityOf(AssetModel asset, String assetType) {
+    switch (assetType.toLowerCase()) {
+      case 'battery':
+        return asset.batteryCapacity;
+      case 'panel':
+        return asset.panelCapacity;
+      case 'inverter':
+        return asset.inverterCapacity;
+      default:
+        return asset.capacity;
+    }
+  }
+
+  void _setCapacity(AssetModel asset, String assetType, String cap) {
     asset.capacity = cap;
 
-    switch (currentAssetType.toLowerCase()) {
+    switch (assetType.toLowerCase()) {
       case 'battery':
         asset.batteryCapacity = cap;
         break;
@@ -388,6 +406,20 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     }
   }
 
+  void _applyPrefilledCapacityToAsset(AssetModel asset) {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    // Rectification capacity is editable: the template only seeds an empty value
+    // and must not overwrite what the user entered when cached assets reload.
+    if (_isRectification &&
+        (_capacityOf(asset, currentAssetType) ?? '').isNotEmpty) {
+      return;
+    }
+
+    _setCapacity(asset, currentAssetType, cap);
+  }
+
   void _applyPrefilledCapacityToAllAssets() {
     final cap = _prefilledCapacityFor(currentAssetType);
     if (cap.isEmpty) return;
@@ -395,6 +427,45 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     for (final a in _assets) {
       _applyPrefilledCapacityToAsset(a);
     }
+  }
+
+  // Keyed by the asset for per-asset inverter capacity, by asset type for the
+  // battery/panel capacity shared by every asset of that type.
+  final Map<Object, TextEditingController> _capacityControllers = {};
+
+  /// Read-only template value on installation sites; editable (prefilled when
+  /// a template exists) on rectification sites. Pass [asset] for a per-asset
+  /// field, omit it for a field shared by all assets of [assetType].
+  Widget _capacityInput(String assetType, {AssetModel? asset}) {
+    final prefilled = _prefilledCapacityFor(assetType);
+    if (!_isRectification) {
+      return DigitTextFormInput(
+        key: ValueKey('$assetType-cap-$prefilled'),
+        controller: TextEditingController(text: prefilled),
+        isDisabled: true,
+        readOnly: true,
+        keyboardType: TextInputType.text,
+      );
+    }
+
+    final targets = asset != null ? [asset] : _assets;
+    final current =
+        targets.isEmpty ? '' : (_capacityOf(targets.first, assetType) ?? '');
+    final controller = _capacityControllers.putIfAbsent(
+        asset ?? assetType, () => TextEditingController(text: current));
+    if (controller.text.isEmpty && current.isNotEmpty) {
+      controller.text = current;
+    }
+
+    return DigitTextFormInput(
+      controller: controller,
+      keyboardType: TextInputType.text,
+      onChange: (value) => setState(() {
+        for (final a in targets) {
+          _setCapacity(a, assetType, value.trim());
+        }
+      }),
+    );
   }
 
   bool _isAssetComplete(AssetModel a, String assetType) {
@@ -818,16 +889,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           LabeledField(
             label: context.translate(i18.common.capacity),
             capitalizedFirstLetter: false,
-            child: DigitTextFormInput(
-              key: ValueKey(
-                  'inverter-cap-${_prefilledCapacityFor('inverter')}'),
-              controller: TextEditingController(
-                text: _prefilledCapacityFor('inverter'),
-              ),
-              isDisabled: true,
-              readOnly: true,
-              keyboardType: TextInputType.text,
-            ),
+            child: _capacityInput('inverter', asset: asset),
           ),
           // Inverter capacity unit — commented out, not deleted. The
           // capacity field above now spans the full row width in its place.
@@ -929,16 +991,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             LabeledField(
               label: context.translate(i18.common.capacity),
               capitalizedFirstLetter: false,
-              child: DigitTextFormInput(
-                key: ValueKey(
-                    'battery-cap-${_prefilledCapacityFor('battery')}'),
-                controller: TextEditingController(
-                  text: _prefilledCapacityFor('battery'),
-                ),
-                isDisabled: true,
-                readOnly: true,
-                keyboardType: TextInputType.text,
-              ),
+              child: _capacityInput('battery'),
             ),
             // Current-field unit — commented out, not deleted. The Current
             // field above now spans the full row width in its place.
@@ -976,15 +1029,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             LabeledField(
               label: context.translate(i18.common.capacity),
               capitalizedFirstLetter: false,
-              child: DigitTextFormInput(
-                key: ValueKey('panel-cap-${_prefilledCapacityFor('panel')}'),
-                controller: TextEditingController(
-                  text: _prefilledCapacityFor('panel'),
-                ),
-                isDisabled: true,
-                readOnly: true,
-                keyboardType: TextInputType.text,
-              ),
+              child: _capacityInput('panel'),
             ),
             // Panel capacity unit — commented out, not deleted. The
             // capacity field above now spans the full row width in its place.

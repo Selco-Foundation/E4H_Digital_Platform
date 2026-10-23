@@ -46,6 +46,7 @@ import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
+import '../widgets/rectification_badge.dart';
 
 @RoutePage()
 class OverallAssetSummaryPage extends StatefulWidget {
@@ -557,7 +558,12 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   key: ValueKey(_currentProjectId),
                                   future: AssetSubmissionEligibilityRepository(
                                     context.read<ActivityFacilityBloc>().isar,
-                                  ).hasReadyAssets(_currentProjectId ?? ''),
+                                  ).hasReadyAssets(_currentProjectId ?? '',
+                                      allowZeroAssets: projectWorkflow
+                                              ?.activityFacility
+                                              .additionalDetails
+                                              ?.isRectification ==
+                                          true),
                                   builder: (context, readiness) {
                                     final isDisabled = readiness.data != true;
                                     return reportState.maybeWhen(
@@ -736,6 +742,14 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    if (projectWorkflow
+                                            ?.activityFacility
+                                            .additionalDetails
+                                            ?.isRectification ==
+                                        true) ...[
+                                      const RectificationBadge(),
+                                      const SizedBox(height: spacer2),
+                                    ],
                                     Text(
                                       'Summary',
                                       style: textTheme.headingXl.copyWith(

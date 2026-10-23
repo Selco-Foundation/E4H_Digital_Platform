@@ -373,6 +373,9 @@ class _InboxPageState extends State<InboxPage>
                   );
                   return inboxState.when(
                     submitted: () => InboxReportCard(
+                        isRectification: project.activityFacility
+                                .additionalDetails?.isRectification ==
+                            true,
                         isBookmarked: bookmarkIds
                             .contains(project.activityFacility.id.trim()),
                         isSavingBookmark: !bookmarksLoaded ||
@@ -403,6 +406,9 @@ class _InboxPageState extends State<InboxPage>
                         district: locality.district,
                         block: locality.block),
                     rejected: () => InboxReportRejectedCard(
+                      isRectification: project.activityFacility
+                              .additionalDetails?.isRectification ==
+                          true,
                       dateLabelKey: i18.common.rejectedDate,
                       isBookmarked: bookmarkIds
                           .contains(project.activityFacility.id.trim()),
@@ -434,6 +440,9 @@ class _InboxPageState extends State<InboxPage>
                       },
                     ),
                     approved: () => InboxReportCard(
+                        isRectification: project.activityFacility
+                                .additionalDetails?.isRectification ==
+                            true,
                         dateLabelKey: i18.common.approvedDate,
                         isBookmarked: bookmarkIds
                             .contains(project.activityFacility.id.trim()),

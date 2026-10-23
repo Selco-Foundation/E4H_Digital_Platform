@@ -29,6 +29,7 @@ import '../utils/utils.dart';
 import '../widgets/cards/report_detail_row.dart';
 import '../widgets/bookmarks/report_bookmarks.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/rectification_badge.dart';
 
 @RoutePage()
 class SelectHealthFacilityPage extends StatefulWidget {
@@ -517,142 +518,146 @@ class InstallationReportCard extends StatelessWidget {
 
         final solutionDocsUrl = matchedSystemDesign?.data.url ?? '';
 
-        return DigitCard(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(
-                      child: Text("$title",
-                          style: textTheme.headingL
-                              .copyWith(color: theme.colorTheme.text.primary))),
-                  if (onToggleBookmark != null)
-                    ReportBookmarkButton(
-                        selected: isBookmarked,
-                        saving: isSavingBookmark,
-                        onPressed: onToggleBookmark,
-                        addLabelKey: i18.installationBookmarks.add,
-                        removeLabelKey: i18.installationBookmarks.remove),
-                ]),
-                const SizedBox(height: spacer4),
-                const DigitDivider(dividerType: DividerType.small),
-                ReportDetailRow(
-                  label: context.translate(i18.common.status),
-                  value: _detailText(
-                    context.translate('$status'),
-                    textTheme,
-                    theme,
-                  ),
+        return RectificationAwareCard(
+          isRectification: isRectification,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                    child: Text("$title",
+                        style: textTheme.headingL
+                            .copyWith(color: theme.colorTheme.text.primary))),
+                if (onToggleBookmark != null)
+                  ReportBookmarkButton(
+                      selected: isBookmarked,
+                      saving: isSavingBookmark,
+                      onPressed: onToggleBookmark,
+                      addLabelKey: i18.installationBookmarks.add,
+                      removeLabelKey: i18.installationBookmarks.remove),
+              ]),
+              const SizedBox(height: spacer4),
+              const DigitDivider(dividerType: DividerType.small),
+              ReportDetailRow(
+                label: context.translate(i18.common.status),
+                value: _detailText(
+                  context.translate('$status'),
+                  textTheme,
+                  theme,
                 ),
-                ReportDetailRow(
-                  label: context.translate(i18.common.dateAssigned),
-                  value: _detailText(formattedDate, textTheme, theme),
-                ),
-                ReportDetailRow(
-                  label: context.translate(i18.common.solutionDoc),
-                  value: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.picture_as_pdf,
-                        color: theme.colorTheme.primary.primary1,
-                      ),
-                      const SizedBox(width: spacer1),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            if (solutionDocsUrl.isNotEmpty) {
-                              context.router.push(PdfViewerRoute(
-                                  path: "$fileStoreFileUrl$solutionDocsUrl"));
-                            }
-                          },
-                          child: Text(
-                            context.translate(i18.common.solutionDoc),
-                            style: textTheme.bodyL.copyWith(
-                              color: theme.colorTheme.text.disabled,
-                              fontSize: spacer3,
-                            ),
-                            softWrap: true,
-                            overflow: TextOverflow.visible,
+              ),
+              ReportDetailRow(
+                label: context.translate(i18.common.dateAssigned),
+                value: _detailText(formattedDate, textTheme, theme),
+              ),
+              ReportDetailRow(
+                label: context.translate(i18.common.solutionDoc),
+                value: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.picture_as_pdf,
+                      color: theme.colorTheme.primary.primary1,
+                    ),
+                    const SizedBox(width: spacer1),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          if (solutionDocsUrl.isNotEmpty) {
+                            context.router.push(PdfViewerRoute(
+                                path: "$fileStoreFileUrl$solutionDocsUrl"));
+                          }
+                        },
+                        child: Text(
+                          context.translate(i18.common.solutionDoc),
+                          style: textTheme.bodyL.copyWith(
+                            color: theme.colorTheme.text.disabled,
+                            fontSize: spacer3,
                           ),
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-                ReportDetailRow(
-                  label: context.translate(i18.common.state),
-                  value: _detailText(_displayValue(state), textTheme, theme),
-                ),
-                ReportDetailRow(
-                  label: context.translate(i18.common.district),
-                  value: _detailText(_displayValue(district), textTheme, theme),
-                ),
-                ReportDetailRow(
-                  label: context.translate(i18.common.block),
-                  value: _detailText(_displayValue(block), textTheme, theme),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: spacer4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: LinearProgressIndicator(
-                          borderRadius: BorderRadius.circular(spacer1),
-                          backgroundColor: theme.colorTheme.generic.background,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            theme.colorTheme.alert.success,
-                          ),
-                          value: fraction,
-                          minHeight: spacer3,
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
                         ),
                       ),
-                      const SizedBox(width: spacer3),
-                      Text(
-                        '${(fraction * 100).round()}%',
-                        style: textTheme.bodyS.copyWith(
-                          color: theme.colorTheme.text.secondary,
-                        ),
-                      )
-                    ],
-                  ),
+                    )
+                  ],
                 ),
-                DigitButton(
+              ),
+              ReportDetailRow(
+                label: context.translate(i18.common.state),
+                value: _detailText(_displayValue(state), textTheme, theme),
+              ),
+              ReportDetailRow(
+                label: context.translate(i18.common.district),
+                value: _detailText(_displayValue(district), textTheme, theme),
+              ),
+              ReportDetailRow(
+                label: context.translate(i18.common.block),
+                value: _detailText(_displayValue(block), textTheme, theme),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: spacer4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: LinearProgressIndicator(
+                        borderRadius: BorderRadius.circular(spacer1),
+                        backgroundColor: theme.colorTheme.generic.background,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          theme.colorTheme.alert.success,
+                        ),
+                        value: fraction,
+                        minHeight: spacer3,
+                      ),
+                    ),
+                    const SizedBox(width: spacer3),
+                    Text(
+                      '${(fraction * 100).round()}%',
+                      style: textTheme.bodyS.copyWith(
+                        color: theme.colorTheme.text.secondary,
+                      ),
+                    )
+                  ],
+                ),
+              ),
+              DigitButton(
+                mainAxisSize: MainAxisSize.max,
+                label: (fraction * 100).round() > 0
+                    ? context.translate(
+                        i18.selectHealthFacility.resumeInstallationReport)
+                    : context.translate(
+                        i18.selectHealthFacility.startInstallationReport),
+                onPressed: onPress,
+                type: DigitButtonType.primary,
+                size: DigitButtonSize.large,
+              ),
+              const SizedBox(height: spacer4),
+              FutureBuilder<bool>(
+                key: ValueKey(projectId),
+                future: AssetSubmissionEligibilityRepository(
+                  context.read<ActivityFacilityBloc>().isar,
+                ).hasReadyAssets(projectId ?? '',
+                    allowZeroAssets: isRectification),
+                builder: (context, readiness) => DigitButton(
                   mainAxisSize: MainAxisSize.max,
-                  label: (fraction * 100).round() > 0
-                      ? context.translate(
-                          i18.selectHealthFacility.resumeInstallationReport)
-                      : context.translate(
-                          i18.selectHealthFacility.startInstallationReport),
+                  label: context
+                      .translate(i18.selectHealthFacility.submitForApproval),
                   onPressed: onPress,
-                  type: DigitButtonType.primary,
+                  isDisabled: readiness.data != true,
+                  type: DigitButtonType.secondary,
                   size: DigitButtonSize.large,
                 ),
-                const SizedBox(height: spacer4),
-                FutureBuilder<bool>(
-                  key: ValueKey(projectId),
-                  future: AssetSubmissionEligibilityRepository(
-                    context.read<ActivityFacilityBloc>().isar,
-                  ).hasReadyAssets(projectId ?? ''),
-                  builder: (context, readiness) => DigitButton(
-                    mainAxisSize: MainAxisSize.max,
-                    label: context
-                        .translate(i18.selectHealthFacility.submitForApproval),
-                    onPressed: onPress,
-                    isDisabled: readiness.data != true,
-                    type: DigitButtonType.secondary,
-                    size: DigitButtonSize.large,
-                  ),
-                ),
-              ],
-            )
-          ],
+              ),
+            ],
+          ),
         );
       },
     );
   }
+
+  bool get isRectification =>
+      activityFacility?.activityFacility.additionalDetails?.isRectification ==
+      true;
 
   String _displayValue(String? value) {
     final normalized = value?.trim() ?? '';

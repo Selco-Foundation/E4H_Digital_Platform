@@ -33,6 +33,7 @@ import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
+import '../widgets/rectification_badge.dart';
 
 @RoutePage()
 class InboxAssetSummaryPage extends StatefulWidget {
@@ -397,6 +398,14 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
+                                      if (workflow
+                                              ?.activityFacility
+                                              .additionalDetails
+                                              ?.isRectification ==
+                                          true) ...[
+                                        const RectificationBadge(),
+                                        const SizedBox(height: spacer2),
+                                      ],
                                       Text(
                                         context.translate(i18
                                             .inboxAssetSummary.summaryOverview),

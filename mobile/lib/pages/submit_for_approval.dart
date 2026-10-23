@@ -44,6 +44,7 @@ import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
+import '../widgets/rectification_badge.dart';
 
 @RoutePage()
 class SubmitForApprovalPage extends StatefulWidget {
@@ -655,6 +656,12 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (project?.activityFacility.additionalDetails
+                              ?.isRectification ==
+                          true) ...[
+                        const RectificationBadge(),
+                        const SizedBox(height: spacer2),
+                      ],
                       Text(
                         context.translate(i18.submitForApproval.summary),
                         style: textTheme.headingXl

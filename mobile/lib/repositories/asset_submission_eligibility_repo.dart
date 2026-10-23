@@ -9,12 +9,17 @@ class AssetSubmissionEligibilityRepository {
 
   AssetSubmissionEligibilityRepository(this.isar);
 
-  Future<bool> hasReadyAssets(String activityFacilityId) async {
+  /// [allowZeroAssets] is for rectification sites, where a visit may install
+  /// nothing (e.g. wiring only): they qualify when no asset type has a
+  /// non-zero count. A type declared with a count still has to be completed.
+  Future<bool> hasReadyAssets(String activityFacilityId,
+      {bool allowZeroAssets = false}) async {
     if (activityFacilityId.isEmpty) return false;
     final counts = await isar.cacheAssetCounts
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
         .findAll();
+    var anyDeclared = false;
     for (final type in assetTypes) {
       final entries = counts
           .where((entry) => entry.assetType.trim().toLowerCase() == type)
@@ -25,6 +30,7 @@ class AssetSubmissionEligibilityRepository {
           return order != 0 ? order : a.id.compareTo(b.id);
         });
       if (entries.isEmpty || entries.last.count <= 0) continue;
+      anyDeclared = true;
       final saved = await isar.cacheAddNewAssets
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
@@ -33,7 +39,7 @@ class AssetSubmissionEligibilityRepository {
           .count();
       if (saved > 0) return true;
     }
-    return false;
+    return allowZeroAssets && !anyDeclared;
   }
 
   Future<Map<String, List<CacheAddNewAsset>>> savedAssetsByType(

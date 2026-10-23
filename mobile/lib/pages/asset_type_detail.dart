@@ -15,6 +15,7 @@ import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
+import '../model/brand/brand.dart';
 import '../model/mdms/mdms.dart';
 import '../model/warranty/warranty.dart';
 import '../router/app_router.dart';
@@ -46,6 +47,16 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
 
   final TextEditingController brandController = TextEditingController();
 
+  // Active brands for this asset type; selectable only on rectification sites.
+  List<Brand> assetBrands = [];
+
+  bool get _isRectification =>
+      projectWorkflow?.activityFacility.additionalDetails?.isRectification ==
+      true;
+
+  String? _brandNameFor(String code) =>
+      assetBrands.firstWhereOrNull((b) => b.code == code)?.name ?? code;
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +75,12 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
               .map((w) => w)
               .where((w) =>
                   w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
+              .toList();
+          assetBrands = (brand.firstOrNull?.data.brand ?? const <Brand>[])
+              .where((b) =>
+                  b.active &&
+                  b.assetTypeCode.toUpperCase() ==
+                      assetTypeTitle.toUpperCase())
               .toList();
           return assetType;
         });
@@ -125,9 +142,13 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
             final entry = entries.firstOrNull;
             if (entry != null) {
               setState(() {
-                // Only use cached brand code if ActivityFacility doesn't provide one
+                // Only use cached brand code if ActivityFacility doesn't provide one —
+                // except on rectification sites, where the user's own choice wins
                 final cachedBrand = (entry.brand ?? '').trim();
-                if ((selectedBrandCode ?? '').trim().isEmpty &&
+                if (_isRectification && cachedBrand.isNotEmpty) {
+                  selectedBrandCode = cachedBrand;
+                  selectedBrandName = _brandNameFor(cachedBrand);
+                } else if ((selectedBrandCode ?? '').trim().isEmpty &&
                     cachedBrand.isNotEmpty) {
                   selectedBrandCode = cachedBrand;
                 }
@@ -272,12 +293,31 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                               labelStyle: textTheme.headingS.copyWith(
                                   color: theme.colorTheme.text.primary),
                               capitalizedFirstLetter: false,
-                              child: DigitTextFormInput(
-                                controller: brandController,
-                                isDisabled: true,
-                                readOnly: true,
-                                keyboardType: TextInputType.none,
-                              ),
+                              child: _isRectification
+                                  ? DigitDropdown(
+                                      sentenceCaseEnabled: false,
+                                      selectedOption: DropdownItem(
+                                        name: selectedBrandName ?? '',
+                                        code: selectedBrandCode ?? '',
+                                      ),
+                                      items: assetBrands
+                                          .map((b) => DropdownItem(
+                                              name: b.name, code: b.code))
+                                          .toList(),
+                                      onSelect: (DropdownItem selected) {
+                                        setState(() {
+                                          selectedBrandCode = selected.code;
+                                          selectedBrandName = selected.name;
+                                          brandController.text = selected.name;
+                                        });
+                                      },
+                                    )
+                                  : DigitTextFormInput(
+                                      controller: brandController,
+                                      isDisabled: true,
+                                      readOnly: true,
+                                      keyboardType: TextInputType.none,
+                                    ),
                             ),
                           ])
                         ],

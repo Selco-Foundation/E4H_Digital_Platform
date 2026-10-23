@@ -14426,13 +14426,18 @@ const AdditionalDetailsSchema = Schema(
       type: IsarType.object,
       target: r'AssetTypeAdditionalDetails',
     ),
-    r'status': PropertySchema(
+    r'rectificationSite': PropertySchema(
       id: 5,
+      name: r'rectificationSite',
+      type: IsarType.bool,
+    ),
+    r'status': PropertySchema(
+      id: 6,
       name: r'status',
       type: IsarType.string,
     ),
     r'systemCode': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'systemCode',
       type: IsarType.string,
     )
@@ -14532,8 +14537,9 @@ void _additionalDetailsSerialize(
     AssetTypeAdditionalDetailsSchema.serialize,
     object.panel,
   );
-  writer.writeString(offsets[5], object.status);
-  writer.writeString(offsets[6], object.systemCode);
+  writer.writeBool(offsets[5], object.rectificationSite);
+  writer.writeString(offsets[6], object.status);
+  writer.writeString(offsets[7], object.systemCode);
 }
 
 AdditionalDetails _additionalDetailsDeserialize(
@@ -14564,8 +14570,9 @@ AdditionalDetails _additionalDetailsDeserialize(
     AssetTypeAdditionalDetailsSchema.deserialize,
     allOffsets,
   );
-  object.status = reader.readStringOrNull(offsets[5]);
-  object.systemCode = reader.readStringOrNull(offsets[6]);
+  object.rectificationSite = reader.readBoolOrNull(offsets[5]);
+  object.status = reader.readStringOrNull(offsets[6]);
+  object.systemCode = reader.readStringOrNull(offsets[7]);
   return object;
 }
 
@@ -14603,8 +14610,10 @@ P _additionalDetailsDeserializeProp<P>(
         allOffsets,
       )) as P;
     case 5:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset)) as P;
     case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -14835,6 +14844,34 @@ extension AdditionalDetailsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
         property: r'panel',
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      rectificationSiteIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'rectificationSite',
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      rectificationSiteIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'rectificationSite',
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      rectificationSiteEqualTo(bool? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'rectificationSite',
+        value: value,
       ));
     });
   }
