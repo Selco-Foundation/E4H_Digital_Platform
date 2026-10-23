@@ -83,6 +83,10 @@ public final class EscalationActorUtil {
                     "Out of Warranty - Pending with Vendor for Resolution";
             case EscalationWorkflowStates.PENDING_RESOLUTION_OUT_OF_SCOPE ->
                     "Out of Scope - Pending Resolution";
+            case EscalationWorkflowStates.OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2 ->
+                    "Out of Warranty (Revised Quotation) - Pending with Tech POC";
+            case EscalationWorkflowStates.PENDING_REVISION -> "Out of Warranty - Quotation Revision Pending with Vendor";
+            case EscalationWorkflowStates.PENDING_FOR_REASSIGNMENT -> "Pending For Reassignment";
             default -> applicationStatus;
         };
     }
