@@ -62,6 +62,21 @@ public class FacilityV2ApiController {
     }
 
 
+    /**
+     * Checks HFR ID, NIN ID and POC username of facilities before they are created, with the same
+     * uniqueness rules as {@code /create} (across all three fields, within the request, among
+     * existing facilities and among HRMS usernames). Nothing is created.
+     */
+    @PostMapping("/_validate-identifiers")
+    public ResponseEntity<FacilityIdentifierValidationResponse> validateFacilityIdentifiers(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Identifiers of the facilities to check",
+                    required = true
+            )
+            @Valid @RequestBody FacilityIdentifierValidationRequest identifierValidationRequest) {
+        return ResponseEntity.ok(facilityService.validateIdentifiers(identifierValidationRequest));
+    }
+
     @RequestMapping(value = "/assessment/create", method = RequestMethod.POST)
     public ResponseEntity<FacilityAssessment> createHFAssessment(@Parameter(in = ParameterIn.DEFAULT, description = "Health facility assessment data created", required = true, schema = @Schema()) @Valid @RequestBody FacilityAssessmentCreateRequest body) {
         log.trace("Entering createHFAssessment endpoint");

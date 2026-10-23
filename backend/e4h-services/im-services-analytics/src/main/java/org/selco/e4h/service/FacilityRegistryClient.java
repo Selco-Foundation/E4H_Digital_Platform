@@ -71,6 +71,10 @@ public class FacilityRegistryClient {
         Map<String, Object> criteria = new HashMap<>();
         criteria.put("tenantIds", List.of("in"));
         criteria.put("state", List.of(stateCode));
+        // Only facilities under O&M can raise maintenance tickets. Set explicitly: without it,
+        // facility-service decides by caller - no user gets O&M-ready only, a system user also gets
+        // not-yet-onboarded facilities (e.g. Gujarat 203 vs 308).
+        criteria.put("isOnmReady", true);
         criteria.put("limit", 1);
         criteria.put("offset", 0);
         criteria.put("sendNonPaginatedResponse", false);
@@ -84,10 +88,29 @@ public class FacilityRegistryClient {
             String response = restTemplate.postForObject(
                     properties.getFacilityHost() + properties.getFacilityBulkSearchPath(),
                     new HttpEntity<>(body, headers), String.class);
-            JsonNode totalCount = objectMapper.readTree(response).path("totalCount");
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode totalCount = root.path("totalCount");
             if (!totalCount.isNumber()) {
                 log.warn("Facility bulk search returned no totalCount for state={}", stateCode);
                 return null;
+            }
+            // If the state code isn't one facility-service recognises, the filter can be silently
+            // dropped and the count becomes the whole registry - make sure the sample row is really
+            // from the requested state before trusting the count.
+            JsonNode facilities = root.path("facilities");
+            if (totalCount.asInt() > 0 && (!facilities.isArray() || facilities.isEmpty())) {
+                // An unrecognised state code returns no rows but the whole registry's totalCount.
+                log.error("Facility count for state={} returned totalCount={} but no facilities - state code not recognised, treating as unknown",
+                        stateCode, totalCount.asInt());
+                return null;
+            }
+            if (facilities.isArray() && !facilities.isEmpty()) {
+                String sampleState = facilities.get(0).path("boundary").path("state").asText(null);
+                if (!stateCode.equals(sampleState)) {
+                    log.error("Facility count for state={} ignored the state filter (sample facility is in {}) - treating as unknown",
+                            stateCode, sampleState);
+                    return null;
+                }
             }
             return totalCount.asInt();
         } catch (Exception e) {
