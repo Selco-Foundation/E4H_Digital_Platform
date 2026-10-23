@@ -128,7 +128,7 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
   }
 
   Future<void> _openDrafts() async {
-    await context.router.push(const AssessmentDraftRoute());
+    await context.router.push(AssessmentDraftRoute());
     await _loadCounts();
   }
 

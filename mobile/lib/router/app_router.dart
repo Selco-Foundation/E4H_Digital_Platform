@@ -57,6 +57,8 @@ import '../pages/welcome.dart';
 import '../router/routes.dart';
 import '../utils/utils.dart';
 import '../widgets/customized_digit_widget/qr_scanner.dart';
+import '../repositories/assessment_draft_repo.dart';
+import '../repositories/assessment_form_repo.dart';
 
 export 'package:auto_route/auto_route.dart';
 

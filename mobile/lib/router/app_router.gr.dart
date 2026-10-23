@@ -89,9 +89,15 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     AssessmentDraftRoute.name: (routeData) {
+      final args = routeData.argsAs<AssessmentDraftRouteArgs>(
+          orElse: () => const AssessmentDraftRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const AssessmentDraftPage(),
+        child: AssessmentDraftPage(
+          key: args.key,
+          repository: args.repository,
+          forms: args.forms,
+        ),
       );
     },
     AssessmentDynamicFormRoute.name: (routeData) {
@@ -624,16 +630,45 @@ class AmcSelectFacilityRouteArgs {
 
 /// generated route for
 /// [AssessmentDraftPage]
-class AssessmentDraftRoute extends PageRouteInfo<void> {
-  const AssessmentDraftRoute({List<PageRouteInfo>? children})
-      : super(
+class AssessmentDraftRoute extends PageRouteInfo<AssessmentDraftRouteArgs> {
+  AssessmentDraftRoute({
+    Key? key,
+    AssessmentDraftRepository? repository,
+    AssessmentFormRepository? forms,
+    List<PageRouteInfo>? children,
+  }) : super(
           AssessmentDraftRoute.name,
+          args: AssessmentDraftRouteArgs(
+            key: key,
+            repository: repository,
+            forms: forms,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'AssessmentDraftRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<AssessmentDraftRouteArgs> page =
+      PageInfo<AssessmentDraftRouteArgs>(name);
+}
+
+class AssessmentDraftRouteArgs {
+  const AssessmentDraftRouteArgs({
+    this.key,
+    this.repository,
+    this.forms,
+  });
+
+  final Key? key;
+
+  final AssessmentDraftRepository? repository;
+
+  final AssessmentFormRepository? forms;
+
+  @override
+  String toString() {
+    return 'AssessmentDraftRouteArgs{key: $key, repository: $repository, forms: $forms}';
+  }
 }
 
 /// generated route for
