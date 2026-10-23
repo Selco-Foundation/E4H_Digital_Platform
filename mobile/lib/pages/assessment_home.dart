@@ -131,7 +131,7 @@ class _AssessmentHomePageState extends State<AssessmentHomePage> {
         icon: Icons.autorenew,
         label: context.translate(i18.home.dataSync),
         onPressed: () => context.router.push(
-              const AssessmentDraftRoute(),
+              AssessmentDraftRoute(),
             ),
       ),
     ];
