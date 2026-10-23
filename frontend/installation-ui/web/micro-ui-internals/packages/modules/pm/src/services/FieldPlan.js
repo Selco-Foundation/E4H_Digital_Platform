@@ -1,5 +1,4 @@
 import {Request} from "@egovernments/digit-ui-libraries";
-import { applyRectificationCapacityMock } from "../utilities/rectificationICCMock";
 
 export const FieldPlanService = {
 
@@ -122,7 +121,7 @@ export const FieldPlanService = {
       response?.data?.SystemTypeCapacities ||
       [];
 
-    return applyRectificationCapacityMock(Array.isArray(systemTypeCapacities) ? systemTypeCapacities : [systemTypeCapacities]);
+    return Array.isArray(systemTypeCapacities) ? systemTypeCapacities : [systemTypeCapacities];
   },
 
 }

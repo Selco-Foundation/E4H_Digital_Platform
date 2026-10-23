@@ -49,6 +49,13 @@ const getColumnValue = (row = {}, possibleKeys = []) => {
   return matchedKey ? row[matchedKey] : "";
 };
 
+// Header-substring match, the same way ingestion finds the optional "Rectification Site" column.
+const getColumnValueContaining = (row = {}, partialKey = "") => {
+  const matchedKey = Object.keys(row).find((key) => key?.toString?.().trim().toLowerCase().includes(partialKey));
+
+  return matchedKey ? row[matchedKey] : "";
+};
+
 const getTemplateFileNameForRow = (row, template) => {
   if (!template?.fileStoreId) {
     return "";
@@ -86,7 +93,7 @@ const getICCReportFormData = (row, file, fieldPlanId, tenantId) => {
     id: row.template?.id || "",
     systemType: row.systemType?.code,
     totalSystemCapacity: normalizeCapacity(row.totalSystemCapacity?.code || row.totalSystemCapacity?.name),
-    isRectification: Boolean(row.isRectification),
+    rectificationSite: Boolean(row.isRectification),
     fieldPlanId,
     tenantId,
   }];
@@ -347,8 +354,7 @@ const getTemplateForRow = (row, templates = []) => {
   ));
 };
 
-// TODO: confirm field-planner's template field name for the rectification flag once the backend ships it.
-const isSavedRectificationTemplate = (template = {}) => isRectificationValue(template.isRectification);
+const isSavedRectificationTemplate = (template = {}) => isRectificationValue(template.rectificationSite);
 
 const getSavedTemplateForRow = (row, templates = []) => {
   const systemTypeName = getICCApiSystemType(row.systemType?.name);
@@ -449,8 +455,7 @@ const getRowsFromSystemTypeCapacities = (systemTypeCapacities = [], systemTypeMa
     const capacityValue = systemTypeCapacity.totalSystemCapacity || systemTypeCapacity.totalCapacity || systemTypeCapacity.capacity;
     const systemType = getSystemTypeOption(systemTypeValue, systemTypeMaster);
     const capacity = getOption(capacityValue);
-    // TODO: confirm the field name once field-planner returns the rectification dimension (mocked in services/FieldPlan.js).
-    const isRectification = isRectificationValue(systemTypeCapacity.isRectification);
+    const isRectification = isRectificationValue(systemTypeCapacity.rectificationSite);
 
     return {
       ...getEmptyRow(withRectificationKey(`icc-row-api-${systemType.code || systemType.name || index}-${normalizeCapacity(capacityValue)}`, isRectification)),
@@ -606,8 +611,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
             hasValue(customCapacity);
           const capacity = isCustomCapacity ? customCapacity : selectedCapacity;
           // Optional column: blank or "No" keeps the facility on the regular template.
-          // TODO: confirm the exact header once the MDMS FieldPlanFacilityIngestionSchema column is added.
-          const isRectification = isRectificationValue(getColumnValue(row, ["rectification site?", "rectification site"]));
+          const isRectification = isRectificationValue(getColumnValueContaining(row, "rectification site"));
 
           if (normalizeValue(includedInFieldPlan) !== "yes" || !systemTypeValue) {
             return;

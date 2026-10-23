@@ -83,7 +83,7 @@ const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
     id: row.template?.id || "",
     systemType: row.systemType?.code,
     totalSystemCapacity: getSystemCapacityValue(row.totalSystemCapacity),
-    isRectification: Boolean(row.isRectification),
+    rectificationSite: Boolean(row.isRectification),
     fieldPlanId: fieldPlanId,
     tenantId: tenantId,
   }));

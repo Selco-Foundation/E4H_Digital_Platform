@@ -1,9 +1,9 @@
 // Shared by CreateFieldPlan (step 3 gate + bulk upload) and ICCPrepopulationConfiguration (row building),
 // so both agree on what makes two ICC rows the same row.
 
-const TRUTHY_VALUES = ["true", "yes"];
+const TRUTHY_VALUES = ["true", "yes", "1"];
 
-// Accepts true / "true" / "Yes" (Excel "Rectification Site?" column, API flags); anything else is a regular row.
+// Same values ingestion/field-planner treat as a rectification site (Excel column, rectificationSite flags); anything else is regular.
 export const isRectificationValue = (value) => (
   value === true || TRUTHY_VALUES.includes(value?.toString?.().trim().toLowerCase())
 );
