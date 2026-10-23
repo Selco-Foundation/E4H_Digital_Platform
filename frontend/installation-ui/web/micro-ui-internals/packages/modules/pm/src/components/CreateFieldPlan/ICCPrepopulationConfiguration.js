@@ -962,19 +962,23 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
     </span>
   );
 
-  // Each rectification row is listed right after its regular counterpart.
-  const displayRows = getUniqueRows(rows)
-    .map((row, index) => ({ row, index }))
-    .sort((a, b) => {
-      const baseKeyA = getRowKey({ ...a.row, isRectification: false });
-      const baseKeyB = getRowKey({ ...b.row, isRectification: false });
-
-      if (baseKeyA && baseKeyA === baseKeyB) {
-        return Number(Boolean(a.row.isRectification)) - Number(Boolean(b.row.isRectification));
-      }
-
-      return a.index - b.index;
-    })
+  // Each rectification row is listed right after its regular counterpart: groups keep the order in which
+  // their (systemType, capacity) first appears, and within a group the regular row comes first.
+  const uniqueRows = getUniqueRows(rows);
+  const groupOrder = {};
+  uniqueRows.forEach((row, index) => {
+    const baseKey = getRowKey({ ...row, isRectification: false }) || row.id;
+    if (groupOrder[baseKey] === undefined) {
+      groupOrder[baseKey] = index;
+    }
+  });
+  const displayRows = uniqueRows
+    .map((row, index) => ({ row, index, group: groupOrder[getRowKey({ ...row, isRectification: false }) || row.id] }))
+    .sort((a, b) => (
+      a.group - b.group ||
+      Number(Boolean(a.row.isRectification)) - Number(Boolean(b.row.isRectification)) ||
+      a.index - b.index
+    ))
     .map(({ row }) => row);
 
   return (
