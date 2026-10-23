@@ -25,11 +25,16 @@ import '../blocs/user_type/user_type.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
+import '../repositories/asset_submission_eligibility_repo.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
+import '../repositories/asset_handover_document_repo.dart';
+import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
+import '../utils/document_upload_validation.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/required_bom_form_key_validation.dart';
 import '../utils/sync_popup_guard.dart';
 import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
@@ -222,12 +227,15 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
     final facilityCode = projectWorkflow?.activityFacility.facility
         ?.facilityDetails?.solar_solution_design_type;
+    final facilitySystemType =
+        projectWorkflow?.activityFacility.facility?.facilityDetails?.systemType;
 
     final sys = await ActivityFacilityWorkflowRepository()
         .getActivityFacilitySystem(
             isar: isar,
             activityFacilityId: _currentProjectId!,
             solutionDesignList: solutionDesignList,
+            facilitySystemType: facilitySystemType,
             facilitySolutionDesignCode: facilityCode);
 
     if (!mounted) return;
@@ -241,7 +249,28 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         InstallationImagesRepository(context.read<CacheAssetBloc>().isar);
     return repo.hasCachedImages(
       activityFacilityId: _currentProjectId!,
-      userType: userType,
+    );
+  }
+
+  Future<bool> _hasInstallationCompletionCertificate() async {
+    if (_currentProjectId == null) return false;
+
+    final repo = InstallationCompletionCertificateRepository(
+      context.read<CacheAssetBloc>().isar,
+    );
+    return repo.hasCachedFiles(
+      activityFacilityId: _currentProjectId!,
+    );
+  }
+
+  Future<bool> _hasAssetHandoverDocument() async {
+    if (_currentProjectId == null) return false;
+
+    final repo = AssetHandoverDocumentRepository(
+      context.read<CacheAssetBloc>().isar,
+    );
+    return repo.hasCachedFiles(
+      activityFacilityId: _currentProjectId!,
     );
   }
 
@@ -265,6 +294,99 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
               fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<MissingRequiredDocumentMessage?>
+      _missingRequiredDocumentMessage() async {
+    return missingRequiredDocumentMessage(
+      hasInstallationCompletionCertificate:
+          await _hasInstallationCompletionCertificate(),
+      hasAssetHandoverDocument: await _hasAssetHandoverDocument(),
+      localizationKeys: RequiredDocumentLocalizationKeys(
+        requiredInstallationCompletionCertificateTitle:
+            i18.overallAssetSummary.requiredInstallationCompletionCertificate,
+        uploadRequiredInstallationCompletionCertificateMessage: i18
+            .overallAssetSummary
+            .uploadRequiredInstallationCompletionCertificate,
+        requiredAssetHandoverDocumentTitle:
+            i18.overallAssetSummary.requiredAssetHandoverDocument,
+        uploadRequiredAssetHandoverDocumentMessage:
+            i18.overallAssetSummary.uploadRequiredAssetHandoverDocument,
+        requiredBothDocumentsTitle:
+            i18.overallAssetSummary.requiredInstallationDocuments,
+        uploadRequiredBothDocumentsMessage: i18.overallAssetSummary
+            .uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument,
+      ),
+    );
+  }
+
+  void _showRequiredDocumentPopup(MissingRequiredDocumentMessage message) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: context.translate(message.titleKey),
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            context.translate(message.messageKey),
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRequiredBomFormKeysPopup(
+    MissingRequiredBomFormKeysMessage message,
+  ) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: message.title,
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            message.message,
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: spacer4),
+          ...message.missingMessages.map(
+            (missingMessage) => Padding(
+              padding: const EdgeInsets.only(bottom: spacer2),
+              child: Text(
+                missingMessage,
+                textAlign: TextAlign.center,
+                style: textTheme.bodyL.copyWith(
+                  color: theme.colorTheme.text.primary,
+                ),
+              ),
             ),
           ),
         ],
@@ -425,145 +547,185 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                             footer: BlocBuilder<OverallAssetSummaryBloc,
                                 OverallAssetSummaryState>(
                               builder: (context, overallState) {
-                                int batteryCount = 0,
-                                    inverterCount = 0,
-                                    panelCount = 0;
-
-                                overallState.when(
-                                  initial: () {},
-                                  loading: () {},
-                                  error: (_) {},
-                                  loaded: (bCount, iCount, pCount) {
-                                    batteryCount = bCount;
-                                    inverterCount = iCount;
-                                    panelCount = pCount;
-                                  },
-                                );
-
                                 final String resolvedUserType =
                                     userState.maybeWhen(
                                   supervisor: () => USER_TYPES.SUPERVISOR.name,
                                   orElse: () => USER_TYPES.FIELD_STAFF.name,
                                 );
 
-                                final bool isDisabled = (batteryCount == 0 ||
-                                    inverterCount == 0 ||
-                                    panelCount == 0);
-
-                                return reportState.maybeWhen(
-                                  submitted: () => const SizedBox.shrink(),
-                                  orElse: () => FooterButton(
-                                    showSuffixIcon: false,
-                                    text: progress?.isActive == true
-                                        ? 'Submitting...'
-                                        : context.translate(
-                                            i18.common.coreCommonSubmit),
-                                    isDisabled: progress?.isActive == true
-                                        ? true
-                                        : isDisabled,
-                                    onPress: progress?.isActive == true
-                                        ? () {}
-                                        : () async {
-                                            if (isDisabled) return;
-                                            if (resolvedUserType ==
+                                return FutureBuilder<bool>(
+                                  key: ValueKey(_currentProjectId),
+                                  future: AssetSubmissionEligibilityRepository(
+                                    context.read<ActivityFacilityBloc>().isar,
+                                  ).hasReadyAssets(_currentProjectId ?? ''),
+                                  builder: (context, readiness) {
+                                    final isDisabled = readiness.data != true;
+                                    return reportState.maybeWhen(
+                                      submitted: () => const SizedBox.shrink(),
+                                      orElse: () => FooterButton(
+                                        showSuffixIcon: false,
+                                        text: progress?.isActive == true
+                                            ? 'Submitting...'
+                                            : context.translate(
+                                                i18.common.coreCommonSubmit),
+                                        isDisabled: progress?.isActive == true
+                                            ? true
+                                            : isDisabled,
+                                        onPress: progress?.isActive == true
+                                            ? () {}
+                                            : () async {
+                                                if (isDisabled) return;
+                                                final isar = context
+                                                    .read<
+                                                        ActivityFacilityBloc>()
+                                                    .isar;
+                                                if (resolvedUserType ==
+                                                        USER_TYPES
+                                                            .SUPERVISOR.name &&
+                                                    !await _hasInstallationImages()) {
+                                                  _showInstallationImagesRequiredPopup();
+                                                  return;
+                                                }
+                                                if (resolvedUserType ==
                                                     USER_TYPES
-                                                        .SUPERVISOR.name &&
-                                                !await _hasInstallationImages()) {
-                                              _showInstallationImagesRequiredPopup();
-                                              return;
-                                            }
-                                            await _ensureLocationLoaded();
-
-                                            final selState = context
-                                                .read<
-                                                    SelectedActivityFacilityBloc>()
-                                                .state;
-                                            selState.whenOrNull(
-                                                selected: (project) {
-                                              context
-                                                  .read<ActivityFacilityBloc>()
-                                                  .add(
-                                                    ActivityFacilityEvent
-                                                        .addUnSubmitted(project,
-                                                            resolvedUserType),
+                                                        .SUPERVISOR.name) {
+                                                  final missingDocumentMessage =
+                                                      await _missingRequiredDocumentMessage();
+                                                  if (!mounted) return;
+                                                  if (missingDocumentMessage !=
+                                                      null) {
+                                                    _showRequiredDocumentPopup(
+                                                      missingDocumentMessage,
+                                                    );
+                                                    return;
+                                                  }
+                                                  final missingBomFormKeysMessage =
+                                                      await missingRequiredBomFormKeysMessage(
+                                                    isar: isar,
+                                                    activityFacilityId:
+                                                        _currentProjectId!,
+                                                    userType: resolvedUserType,
+                                                    systemCode: _system,
                                                   );
+                                                  if (!mounted) return;
+                                                  if (missingBomFormKeysMessage !=
+                                                      null) {
+                                                    _showRequiredBomFormKeysPopup(
+                                                      missingBomFormKeysMessage,
+                                                    );
+                                                    return;
+                                                  }
+                                                }
+                                                await _ensureLocationLoaded();
+                                                if (!mounted) return;
 
-                                              final lat =
-                                                  _latitude?.toString() ?? '';
-                                              final lng =
-                                                  _longitude?.toString() ?? '';
+                                                final selState = this
+                                                    .context
+                                                    .read<
+                                                        SelectedActivityFacilityBloc>()
+                                                    .state;
+                                                selState.whenOrNull(
+                                                    selected: (project) {
+                                                  this
+                                                      .context
+                                                      .read<
+                                                          ActivityFacilityBloc>()
+                                                      .add(
+                                                        ActivityFacilityEvent
+                                                            .addUnSubmitted(
+                                                                project,
+                                                                resolvedUserType),
+                                                      );
 
-                                              final keptExisting =
-                                                  _existingReports.map((e) =>
-                                                      CompletionFileInput(
-                                                        projectId:
-                                                            _currentProjectId!,
-                                                        filePath: e.filePath,
-                                                        fileType: e.fileType,
-                                                        fileName: e.fileName,
-                                                        latitude: lat,
-                                                        longitude: lng,
-                                                        index: null,
-                                                      ));
+                                                  final lat =
+                                                      _latitude?.toString() ??
+                                                          '';
+                                                  final lng =
+                                                      _longitude?.toString() ??
+                                                          '';
 
-                                              final pickedInputs = _pickedFiles
-                                                  .where((pf) =>
-                                                      pf.path != null &&
-                                                      pf.path!.isNotEmpty)
-                                                  .map((pf) =>
-                                                      CompletionFileInput(
-                                                        projectId:
-                                                            _currentProjectId!,
-                                                        filePath: pf.path!,
-                                                        fileType: inferFileType(
-                                                            pf.path!),
-                                                        fileName:
-                                                            pf.name.isNotEmpty
-                                                                ? pf.name
-                                                                : p.basename(
-                                                                    pf.path!),
-                                                        latitude: lat,
-                                                        longitude: lng,
-                                                        index: null,
-                                                      ));
+                                                  final keptExisting =
+                                                      _existingReports.map((e) =>
+                                                          CompletionFileInput(
+                                                            projectId:
+                                                                _currentProjectId!,
+                                                            filePath:
+                                                                e.filePath,
+                                                            fileType:
+                                                                e.fileType,
+                                                            fileName:
+                                                                e.fileName,
+                                                            latitude: lat,
+                                                            longitude: lng,
+                                                            index: null,
+                                                          ));
 
-                                              final inputs = [
-                                                ...keptExisting,
-                                                ...pickedInputs
-                                              ].toList();
+                                                  final pickedInputs =
+                                                      _pickedFiles
+                                                          .where((pf) =>
+                                                              pf.path != null &&
+                                                              pf.path!
+                                                                  .isNotEmpty)
+                                                          .map((pf) =>
+                                                              CompletionFileInput(
+                                                                projectId:
+                                                                    _currentProjectId!,
+                                                                filePath:
+                                                                    pf.path!,
+                                                                fileType:
+                                                                    inferFileType(
+                                                                        pf.path!),
+                                                                fileName: pf
+                                                                        .name
+                                                                        .isNotEmpty
+                                                                    ? pf.name
+                                                                    : p.basename(
+                                                                        pf.path!),
+                                                                latitude: lat,
+                                                                longitude: lng,
+                                                                index: null,
+                                                              ));
 
-                                              context
-                                                  .read<
-                                                      CacheCompletionReportBloc>()
-                                                  .add(
-                                                    CacheCompletionReportEvent
-                                                        .replaceAllForProject(
-                                                      projectId:
-                                                          _currentProjectId!,
-                                                      files: inputs,
-                                                    ),
-                                                  );
-                                              context
-                                                  .read<AssetSubmissionBloc>()
-                                                  .add(
-                                                    AssetSubmissionEvent
-                                                        .submitAll(
-                                                      activityFacilityId:
-                                                          project
-                                                              .activityFacility
-                                                              .id,
-                                                      facilityId: project
-                                                              .activityFacility
-                                                              .facility
-                                                              ?.facilityId ??
-                                                          "",
-                                                      userType:
-                                                          resolvedUserType,
-                                                    ),
-                                                  );
-                                            });
-                                          },
-                                  ),
+                                                  final inputs = [
+                                                    ...keptExisting,
+                                                    ...pickedInputs
+                                                  ].toList();
+
+                                                  context
+                                                      .read<
+                                                          CacheCompletionReportBloc>()
+                                                      .add(
+                                                        CacheCompletionReportEvent
+                                                            .replaceAllForProject(
+                                                          projectId:
+                                                              _currentProjectId!,
+                                                          files: inputs,
+                                                        ),
+                                                      );
+                                                  context
+                                                      .read<
+                                                          AssetSubmissionBloc>()
+                                                      .add(
+                                                        AssetSubmissionEvent
+                                                            .submitAll(
+                                                          activityFacilityId:
+                                                              project
+                                                                  .activityFacility
+                                                                  .id,
+                                                          facilityId: project
+                                                                  .activityFacility
+                                                                  .facility
+                                                                  ?.facilityId ??
+                                                              "",
+                                                          userType:
+                                                              resolvedUserType,
+                                                        ),
+                                                      );
+                                                });
+                                              },
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -590,8 +752,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               children: [
                                                 ElementAssetSummary(
                                                     count: 0,
-                                                    text: context.translate(
-                                                        i18.assetCount.batteries)),
+                                                    text: context.translate(i18
+                                                        .assetCount.batteries)),
                                                 ElementAssetSummary(
                                                   count: 0,
                                                   text: context.translate(
@@ -679,8 +841,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 DigitButton(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
-                                                  label: context
-                                                      .translate(i18.common.retry),
+                                                  label: context.translate(
+                                                      i18.common.retry),
                                                   prefixIcon: Icons.refresh,
                                                   onPressed: () {
                                                     final selState = context
@@ -747,8 +909,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                       .INVERTER.name
                                                       .toLowerCase(),
                                                   count: inverterCount,
-                                                  text: context.translate(i18
-                                                      .assetCount.inverters),
+                                                  text: context.translate(
+                                                      i18.assetCount.inverters),
                                                   onAddDetailPress: () {
                                                     _handleAddDetailPress(
                                                         ASSET_TYPES
@@ -831,10 +993,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                         DigitButton(
                                                           mainAxisSize:
                                                               MainAxisSize.max,
-                                                          label: context
-                                                              .translate(i18
-                                                                  .overallAssetSummary
-                                                                  .addMoreAssets),
+                                                          label: context.translate(i18
+                                                              .overallAssetSummary
+                                                              .addMoreAssets),
                                                           prefixIcon:
                                                               Icons.add_box,
                                                           onPressed: () {

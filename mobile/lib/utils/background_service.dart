@@ -4,16 +4,18 @@ import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:isar/isar.dart';
 
-import '../data/nosql/cache_add_new_asset.dart';
-import '../data/nosql/cache_amc_installation_form.dart';
-import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';
+import '../data/nosql/cache_add_new_asset.dart';
+import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../data/nosql/cache_asset_handover_document.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_installation_completion_certificate.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_operation_checkpoint.dart';
@@ -21,16 +23,19 @@ import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/nosql/cache_submission_job.dart';
 import '../data/secure_storage/secureStore.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset/asset.dart';
 import '../model/audit_details/audit_details.dart';
 import '../model/document/document.dart';
-import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/transaction/transaction.dart';
+import '../repositories/asset_submission_eligibility_repo.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/app_init_repo.dart';
+import '../repositories/asset_handover_document_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
+import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../repositories/operation_progress_repo.dart';
 import '../repositories/scheduled_visit_repo.dart';
@@ -464,7 +469,8 @@ class BackgroundServiceController {
 }
 
 String _pretty(Object? e) {
-  final s = e?.toString() ?? 'Failed.';
+  final s = (e is DioException ? DioErrorParser.parse(e) : e)?.toString() ??
+      'Failed.';
   final lower = s.toLowerCase();
 
   if (lower.contains('session_expired') ||
@@ -1038,16 +1044,6 @@ bool _isInstallBomPdfNameOrPath(String value) {
   return s.contains('installation') && s.contains('bom');
 }
 
-Future<void> _deleteLocalFileIfExists(String path) async {
-  if (path.trim().isEmpty) return;
-  try {
-    final f = File(path);
-    if (await f.exists()) {
-      await f.delete();
-    }
-  } catch (_) {}
-}
-
 Future<void> _performSubmissionForActivityFacility({
   required Isar isar,
   required String activityFacilityId,
@@ -1057,7 +1053,6 @@ Future<void> _performSubmissionForActivityFacility({
 }) async {
   try {
     final repo = AssetRepository();
-    const types = ['inverter', 'battery', 'panel'];
     final now = DateTime.now().toUtc();
     final currentUserId = await SecureStore().getSelectedIndividual() ?? '';
     final remoteRepo = ActivityFacilityRemoteRepository();
@@ -1073,21 +1068,17 @@ Future<void> _performSubmissionForActivityFacility({
       service: service,
     );
 
-    final assetsByType = <String, List<CacheAddNewAsset>>{};
+    final eligibility = AssetSubmissionEligibilityRepository(isar);
+    if (!await eligibility.hasReadyAssets(activityFacilityId)) {
+      throw Exception('No completed asset type is available for submission.');
+    }
+    final assetsByType =
+        await eligibility.savedAssetsByType(activityFacilityId);
+    final types = assetsByType.keys.toList();
     final specByType = <String, CacheSpecification>{};
     final detailByType = <String, CacheAssetDetail>{};
 
     for (final type in types) {
-      final assets = await isar.cacheAddNewAssets
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .filter()
-          .assetTypeEqualTo(type)
-          .findAll();
-      if (assets.isEmpty) {
-        throw Exception("No cached assets found for type $type.");
-      }
-
       final spec = await isar.cacheSpecifications
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
@@ -1104,7 +1095,6 @@ Future<void> _performSubmissionForActivityFacility({
         throw Exception("Missing specification or detail for type $type.");
       }
 
-      assetsByType[type] = assets;
       specByType[type] = spec;
       detailByType[type] = detail;
     }
@@ -1117,17 +1107,34 @@ Future<void> _performSubmissionForActivityFacility({
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
         .findAll();
+    final completionCertificates = await isar
+        .cacheInstallationCompletionCertificates
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .findAll();
+    final assetHandoverDocuments = await isar.cacheAssetHandoverDocuments
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .findAll();
 
     final workflowMediaItems =
         workflowMedia.where((item) => item.filePath.isNotEmpty).toList();
     final installationImageItems =
         installationImages.where((item) => item.photoPath.isNotEmpty).toList();
+    final completionCertificateItems = completionCertificates
+        .where((item) => item.filePath.isNotEmpty)
+        .toList();
+    final assetHandoverDocumentItems = assetHandoverDocuments
+        .where((item) => item.filePath.isNotEmpty)
+        .toList();
     final assetPhotoItems = assetsByType.values
         .expand((items) => items)
         .where((a) => a.photoPath.isNotEmpty)
         .toList();
     final totalAssetMediaUploads = workflowMediaItems.length +
         installationImageItems.length +
+        completionCertificateItems.length +
+        assetHandoverDocumentItems.length +
         assetPhotoItems.length;
 
     await _runUploadStage<CacheMediaUpload>(
@@ -1238,6 +1245,83 @@ Future<void> _performSubmissionForActivityFacility({
       },
     );
 
+    await _runUploadStage<CacheInstallationCompletionCertificate>(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      stageKey: 'uploading_asset_media',
+      completedSteps: 4,
+      items: completionCertificateItems,
+      totalItems: totalAssetMediaUploads,
+      service: service,
+      initialStageProgressCurrent: workflowMediaItems.length +
+          assetPhotoItems.length +
+          installationImageItems.length,
+      concurrency: 3,
+      run: (entry) async {
+        final itemKey = entry.id.toString();
+        final checkpoint = await _getCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'installation_completion_certificate_upload',
+          itemKey: itemKey,
+        );
+        if (checkpoint?.status == OperationCheckpointStatuses.success &&
+            (checkpoint?.remoteId?.isNotEmpty ?? false)) {
+          return;
+        }
+        final remoteId = await getFilestoreUrl(entry.filePath);
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'installation_completion_certificate_upload',
+          itemKey: itemKey,
+          status: OperationCheckpointStatuses.success,
+          remoteId: remoteId,
+        );
+      },
+    );
+
+    await _runUploadStage<CacheAssetHandoverDocument>(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      stageKey: 'uploading_asset_media',
+      completedSteps: 4,
+      items: assetHandoverDocumentItems,
+      totalItems: totalAssetMediaUploads,
+      service: service,
+      initialStageProgressCurrent: workflowMediaItems.length +
+          assetPhotoItems.length +
+          installationImageItems.length +
+          completionCertificateItems.length,
+      concurrency: 3,
+      run: (entry) async {
+        final itemKey = entry.id.toString();
+        final checkpoint = await _getCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'asset_handover_document_upload',
+          itemKey: itemKey,
+        );
+        if (checkpoint?.status == OperationCheckpointStatuses.success &&
+            (checkpoint?.remoteId?.isNotEmpty ?? false)) {
+          return;
+        }
+        final remoteId = await getFilestoreUrl(entry.filePath);
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'asset_handover_document_upload',
+          itemKey: itemKey,
+          status: OperationCheckpointStatuses.success,
+          remoteId: remoteId,
+        );
+      },
+    );
+
     final workflowDocuments = <Document>[];
     for (final media
         in workflowMedia.where((item) => item.filePath.isNotEmpty)) {
@@ -1278,7 +1362,57 @@ Future<void> _performSubmissionForActivityFacility({
         Document(
           documentType: 'INSTALLATION_IMAGE-${entry.code}',
           fileStore: remoteId,
-          documentUid: 'INSTALLATION-IMAGE-${entry.code}-${entry.id}',
+          documentUid:
+              'INSTALLATION-IMAGE-${entry.code}-${entry.order}-${entry.id}',
+          geoLocation: GeoLocation(
+            latitude: entry.latitude,
+            longitude: entry.longitude,
+          ),
+        ),
+      );
+    }
+
+    final completionCertificateDocuments = <Document>[];
+    for (final entry in completionCertificateItems) {
+      final checkpoint = await _getCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'installation_completion_certificate_upload',
+        itemKey: entry.id.toString(),
+      );
+      final remoteId = checkpoint?.remoteId;
+      if (remoteId == null || remoteId.isEmpty) continue;
+      completionCertificateDocuments.add(
+        Document(
+          documentType: 'INSTALLATION_COMPLETION_CERTIFICATE',
+          fileStore: remoteId,
+          documentUid:
+              'INSTALLATION-COMPLETION-CERTIFICATE-${entry.fileType}-${entry.id}',
+          geoLocation: GeoLocation(
+            latitude: entry.latitude,
+            longitude: entry.longitude,
+          ),
+        ),
+      );
+    }
+
+    final assetHandoverDocumentsPayload = <Document>[];
+    for (final entry in assetHandoverDocumentItems) {
+      final checkpoint = await _getCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'asset_handover_document_upload',
+        itemKey: entry.id.toString(),
+      );
+      final remoteId = checkpoint?.remoteId;
+      if (remoteId == null || remoteId.isEmpty) continue;
+      assetHandoverDocumentsPayload.add(
+        Document(
+          documentType: 'ASSET_HANDOVER_DOCUMENT',
+          fileStore: remoteId,
+          documentUid: 'ASSET-HANDOVER-DOCUMENT-${entry.fileType}-${entry.id}',
           geoLocation: GeoLocation(
             latitude: entry.latitude,
             longitude: entry.longitude,
@@ -1370,61 +1504,8 @@ Future<void> _performSubmissionForActivityFacility({
         activityFacilityId: activityFacilityId,
         operationType: OperationTypes.submit,
         status: OperationStatuses.running,
-        stageKey: 'generating_bom_pdf',
-        completedSteps: 6,
-        service: service,
-      );
-
-      final bomCheckpoint = await _getCheckpoint(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        operationType: OperationTypes.submit,
-        checkpointKey: 'bom_pdf',
-        itemKey: activityFacilityId,
-      );
-      String bomFileStoreId = bomCheckpoint?.remoteId ?? '';
-      if (bomFileStoreId.isEmpty) {
-        bomFileStoreId = await BomRepository().generateBomPdf(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          userType: userType,
-        );
-        await _saveCheckpoint(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          operationType: OperationTypes.submit,
-          checkpointKey: 'bom_pdf',
-          itemKey: activityFacilityId,
-          status: OperationCheckpointStatuses.success,
-          remoteId: bomFileStoreId,
-        );
-      }
-
-      workflowDocuments.removeWhere((d) =>
-          (d.documentType ?? '').toUpperCase().contains(installationReportBom));
-      final lat = workflowDocuments.isNotEmpty
-          ? workflowDocuments.first.geoLocation?.latitude ?? ''
-          : '';
-      final lon = workflowDocuments.isNotEmpty
-          ? workflowDocuments.first.geoLocation?.longitude ?? ''
-          : '';
-      workflowDocuments.add(
-        Document(
-          documentType: installationReportBom,
-          fileStore: bomFileStoreId,
-          documentUid:
-              'BOM-$activityFacilityId-${DateTime.now().millisecondsSinceEpoch}',
-          geoLocation: GeoLocation(latitude: lat, longitude: lon),
-        ),
-      );
-
-      await _writeOperationStage(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        operationType: OperationTypes.submit,
-        status: OperationStatuses.running,
         stageKey: 'submitting_bom',
-        completedSteps: 7,
+        completedSteps: 6,
         service: service,
       );
 
@@ -1463,7 +1544,7 @@ Future<void> _performSubmissionForActivityFacility({
       operationType: OperationTypes.submit,
       status: OperationStatuses.running,
       stageKey: 'submitting_assets',
-      completedSteps: 8,
+      completedSteps: 7,
       service: service,
     );
 
@@ -1524,13 +1605,13 @@ Future<void> _performSubmissionForActivityFacility({
               ? saved.capacityUnit
               : null,
           panelCapacity: type == ASSET_TYPES.PANEL.name.toLowerCase()
-              ? double.parse(saved.panelCapacity!)
+              ? saved.panelCapacity
               : null,
           batteryCapacity: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-              ? double.parse(saved.batteryCapacity!)
+              ? saved.batteryCapacity
               : null,
           batteryVoltage: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-              ? double.parse(saved.batteryVoltage!)
+              ? double.tryParse(saved.batteryVoltage ?? '')
               : null,
           batteryType: type == ASSET_TYPES.BATTERY.name.toLowerCase()
               ? saved.batteryType
@@ -1540,7 +1621,7 @@ Future<void> _performSubmissionForActivityFacility({
               ? saved.voltageUnit
               : null,
           inverterCapacity: type == ASSET_TYPES.INVERTER.name.toLowerCase()
-              ? double.parse(saved.inverterCapacity!)
+              ? saved.inverterCapacity
               : null,
           inverterCapacityUnit: type == ASSET_TYPES.INVERTER.name.toLowerCase()
               ? saved.inverterCapacityUnit
@@ -1569,8 +1650,11 @@ Future<void> _performSubmissionForActivityFacility({
           auditDetails: (saved.assetId?.isNotEmpty ?? false) ? audit : null,
         );
 
-        final updatedAsset =
-            await repo.createOrUpdateAsset(asset: assetModel, isar: isar);
+        final updatedAsset = await repo.createOrUpdateAsset(
+          asset: assetModel,
+          isar: isar,
+          cacheEntryId: saved.id,
+        );
         await _saveCheckpoint(
           isar: isar,
           activityFacilityId: activityFacilityId,
@@ -1589,7 +1673,7 @@ Future<void> _performSubmissionForActivityFacility({
       operationType: OperationTypes.submit,
       status: OperationStatuses.running,
       stageKey: 'finalizing_workflow_submission',
-      completedSteps: 9,
+      completedSteps: 8,
       service: service,
     );
 
@@ -1609,6 +1693,8 @@ Future<void> _performSubmissionForActivityFacility({
         documents: [
           ...workflowDocuments,
           ...installationImageDocuments,
+          ...completionCertificateDocuments,
+          ...assetHandoverDocumentsPayload,
           ...completionDocuments,
         ],
       );
@@ -1628,7 +1714,7 @@ Future<void> _performSubmissionForActivityFacility({
       operationType: OperationTypes.submit,
       status: OperationStatuses.running,
       stageKey: 'cleaning_up_local_cache',
-      completedSteps: 10,
+      completedSteps: 9,
       service: service,
     );
 
@@ -1654,12 +1740,16 @@ Future<void> _performSubmissionForActivityFacility({
           .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
       await InstallationImagesRepository(isar).deleteAllCachedImages(
         activityFacilityId: activityFacilityId,
-        userType: userType,
+      );
+      await InstallationCompletionCertificateRepository(isar).clearProject(
+        activityFacilityId: activityFacilityId,
+      );
+      await AssetHandoverDocumentRepository(isar).clearProject(
+        activityFacilityId: activityFacilityId,
       );
       await workflowRepo.deleteWorkflowMediaDocs(
         isar: isar,
         activityFacilityId: activityFacilityId,
-        userType: userType,
       );
       await _saveCheckpoint(
         isar: isar,
@@ -1796,12 +1886,16 @@ Future<void> _performRejectionForActivityFacility({
           .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
       await InstallationImagesRepository(isar).deleteAllCachedImages(
         activityFacilityId: activityFacilityId,
-        userType: userType,
+      );
+      await InstallationCompletionCertificateRepository(isar).clearProject(
+        activityFacilityId: activityFacilityId,
+      );
+      await AssetHandoverDocumentRepository(isar).clearProject(
+        activityFacilityId: activityFacilityId,
       );
       await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
         isar: isar,
         activityFacilityId: activityFacilityId,
-        userType: userType,
       );
       await _saveCheckpoint(
         isar: isar,
@@ -1927,14 +2021,6 @@ Future<void> _performScheduleVisitSubmission({
   }
 
   final responses = jsonDecode(form.dataJson) as Map<String, dynamic>;
-  final amcFormRepo = AmcDynamicFormRepository();
-
-  final pdfFileStoreId = await amcFormRepo.generateFormPdf(
-      isar: isar, scheduledVisitId: scheduledVisitId, userType: userType);
-
-  if (pdfFileStoreId == null || pdfFileStoreId.isEmpty) {
-    throw Exception('Failed to generate AMC PDF');
-  }
 
   final cachedMedia = await isar.cacheAmcMediaUploads
       .where()
@@ -1964,48 +2050,17 @@ Future<void> _performScheduleVisitSubmission({
     );
   }
 
-  final workflowDocuments = <Document>[];
-
-  final String? mediaLat =
-      cachedMedia.isNotEmpty ? cachedMedia.first.latitude : null;
-  final String? mediaLon =
-      cachedMedia.isNotEmpty ? cachedMedia.first.longitude : null;
-
-  workflowDocuments.add(
-    Document(
-      documentType: 'AMC_INSTALLATION_FORM',
-      fileStore: pdfFileStoreId,
-      documentUid:
-          'AMC-FORM-$scheduledVisitId-${DateTime.now().millisecondsSinceEpoch}',
-      geoLocation: GeoLocation(
-        latitude: mediaLat,
-        longitude: mediaLon,
-      ),
-    ),
-  );
-
   final remote = ScheduledVisitRemoteRepository();
   await remote.updateVisitWorkflow(
     visitId: scheduledVisitId,
     schemaCode: "12345678",
     version: 1,
     responses: responses,
-    workflowDocuments: workflowDocuments,
     visitDocuments: visitDocuments,
   );
 
   await PrefilledScheduledVisitRepository(isar)
       .addOrTouch(scheduledVisitId: scheduledVisitId, userType: userType);
-  final installationForm = workflowDocuments.first;
-  await ScheduledVisitRepository(isar).upsertCacheAmcInstallationForm(
-      isar,
-      new CacheAmcInstallationForm(
-        scheduledVisitId: scheduledVisitId,
-        filePath: installationForm.fileStore ?? '',
-        latitude: installationForm.geoLocation?.latitude ?? '',
-        longitude: installationForm.geoLocation?.longitude ?? '',
-        userType: userType,
-      ));
 }
 
 class PlainError implements Exception {

@@ -16,19 +16,20 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$InstallationImagesEvent {
+  String get systemType => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function() fetch,
+    required TResult Function(String systemType) fetch,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? fetch,
+    TResult? Function(String systemType)? fetch,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? fetch,
+    TResult Function(String systemType)? fetch,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -48,6 +49,10 @@ mixin _$InstallationImagesEvent {
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
+
+  @JsonKey(ignore: true)
+  $InstallationImagesEventCopyWith<InstallationImagesEvent> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -55,6 +60,8 @@ abstract class $InstallationImagesEventCopyWith<$Res> {
   factory $InstallationImagesEventCopyWith(InstallationImagesEvent value,
           $Res Function(InstallationImagesEvent) then) =
       _$InstallationImagesEventCopyWithImpl<$Res, InstallationImagesEvent>;
+  @useResult
+  $Res call({String systemType});
 }
 
 /// @nodoc
@@ -67,13 +74,30 @@ class _$InstallationImagesEventCopyWithImpl<$Res,
   final $Val _value;
   // ignore: unused_field
   final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? systemType = null,
+  }) {
+    return _then(_value.copyWith(
+      systemType: null == systemType
+          ? _value.systemType
+          : systemType // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
+  }
 }
 
 /// @nodoc
-abstract class _$$FetchImplCopyWith<$Res> {
+abstract class _$$FetchImplCopyWith<$Res>
+    implements $InstallationImagesEventCopyWith<$Res> {
   factory _$$FetchImplCopyWith(
           _$FetchImpl value, $Res Function(_$FetchImpl) then) =
       __$$FetchImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String systemType});
 }
 
 /// @nodoc
@@ -83,51 +107,76 @@ class __$$FetchImplCopyWithImpl<$Res>
   __$$FetchImplCopyWithImpl(
       _$FetchImpl _value, $Res Function(_$FetchImpl) _then)
       : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? systemType = null,
+  }) {
+    return _then(_$FetchImpl(
+      systemType: null == systemType
+          ? _value.systemType
+          : systemType // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
 }
 
 /// @nodoc
 
 class _$FetchImpl implements _Fetch {
-  const _$FetchImpl();
+  const _$FetchImpl({required this.systemType});
+
+  @override
+  final String systemType;
 
   @override
   String toString() {
-    return 'InstallationImagesEvent.fetch()';
+    return 'InstallationImagesEvent.fetch(systemType: $systemType)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$FetchImpl);
+        (other.runtimeType == runtimeType &&
+            other is _$FetchImpl &&
+            (identical(other.systemType, systemType) ||
+                other.systemType == systemType));
   }
 
   @override
-  int get hashCode => runtimeType.hashCode;
+  int get hashCode => Object.hash(runtimeType, systemType);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FetchImplCopyWith<_$FetchImpl> get copyWith =>
+      __$$FetchImplCopyWithImpl<_$FetchImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function() fetch,
+    required TResult Function(String systemType) fetch,
   }) {
-    return fetch();
+    return fetch(systemType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? fetch,
+    TResult? Function(String systemType)? fetch,
   }) {
-    return fetch?.call();
+    return fetch?.call(systemType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? fetch,
+    TResult Function(String systemType)? fetch,
     required TResult orElse(),
   }) {
     if (fetch != null) {
-      return fetch();
+      return fetch(systemType);
     }
     return orElse();
   }
@@ -162,7 +211,14 @@ class _$FetchImpl implements _Fetch {
 }
 
 abstract class _Fetch implements InstallationImagesEvent {
-  const factory _Fetch() = _$FetchImpl;
+  const factory _Fetch({required final String systemType}) = _$FetchImpl;
+
+  @override
+  String get systemType;
+  @override
+  @JsonKey(ignore: true)
+  _$$FetchImplCopyWith<_$FetchImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc

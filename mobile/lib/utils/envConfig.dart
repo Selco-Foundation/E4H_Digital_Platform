@@ -1,9 +1,29 @@
+// ignore_for_file: file_names
+
 import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 EnvironmentConfiguration envConfig = EnvironmentConfiguration.instance;
+
+Uri? buildEnvironmentUrl(String baseUrl, String relativePath) {
+  final normalizedBaseUrl = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+  final normalizedPath = relativePath.trim().replaceFirst(RegExp(r'^/+'), '');
+
+  if (normalizedBaseUrl.isEmpty || normalizedPath.isEmpty) {
+    return null;
+  }
+
+  final uri = Uri.tryParse('$normalizedBaseUrl/$normalizedPath');
+  if (uri == null ||
+      !uri.hasAuthority ||
+      (uri.scheme != 'http' && uri.scheme != 'https')) {
+    return null;
+  }
+
+  return uri;
+}
 
 class EnvironmentConfiguration {
   static final EnvironmentConfiguration _instance =
@@ -88,6 +108,16 @@ class Variables {
     'https://health-dev.digit.org/',
   );
 
+  static const _privacyPolicyUrl = EnvEntry(
+    'PRIVACY_POLICY_URL',
+    '',
+  );
+
+  static const _termsAndConditionsUrl = EnvEntry(
+    'TERMS_AND_CONDITIONS_URL',
+    '',
+  );
+
   static const _mdmsApi = EnvEntry(
     'MDMS_API_PATH',
     'egov-mdms-service/v1/_search',
@@ -117,11 +147,25 @@ class Variables {
       ? _baseUrl.value
       : _dotEnv.get(_baseUrl.key, fallback: _baseUrl.value);
 
+  String get privacyPolicyUrl => useFallbackValues
+      ? _privacyPolicyUrl.value
+      : _dotEnv.get(
+          _privacyPolicyUrl.key,
+          fallback: _privacyPolicyUrl.value,
+        );
+
+  String get termsAndConditionsUrl => useFallbackValues
+      ? _termsAndConditionsUrl.value
+      : _dotEnv.get(
+          _termsAndConditionsUrl.key,
+          fallback: _termsAndConditionsUrl.value,
+        );
+
   String get mdmsApiPath => useFallbackValues
       ? _mdmsApi.value
       : _dotEnv.get(_mdmsApi.key, fallback: _mdmsApi.value);
 
-  String get completeMdmsApiUrl => '${baseUrl}${mdmsApiPath}';
+  String get completeMdmsApiUrl => '$baseUrl$mdmsApiPath';
 
   String get mobileAppGlobalUrl => useFallbackValues
       ? _mobileAppGlobal.value

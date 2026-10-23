@@ -149,7 +149,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
         builder: (context, state) {
           final detailHeading = state.when(
             initial: () => 'Details',
-            inverter: () => 'Inverter Details',
+            inverter: () => 'Inverter / PCU Details',
             battery: () => 'Battery Details',
             panel: () => 'Panel Details',
           );
