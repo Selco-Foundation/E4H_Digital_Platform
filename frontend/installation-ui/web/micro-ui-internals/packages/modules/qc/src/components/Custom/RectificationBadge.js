@@ -3,23 +3,24 @@ import { useTranslation } from "react-i18next";
 
 // Identical copies live in pm, qc and fa (components/Custom/RectificationBadge.js) — keep them in sync.
 
-const TRUTHY_FLAG_VALUES = ["true", "yes"];
+// Same truthy values field-planner/ingestion accept for rectificationSite.
+const TRUTHY_FLAG_VALUES = ["true", "yes", "1"];
 
 const isTruthyFlag = (value) => value === true || TRUTHY_FLAG_VALUES.includes(value?.toString?.().trim().toLowerCase());
 
-// Accepts both shapes the flag arrives in:
-//   activity facility additionalDetails  -> { isRectificationSite: true, systemType, ... }
-//   field plan facility additionalDetails -> { fields: [{ key: "isRectificationSite", value: true }] }
+// Accepts both shapes the backend sends `rectificationSite` in:
+//   activity facility additionalDetails  -> { rectificationSite: true, systemType, ... } (set at scheduling)
+//   field plan facility additionalDetails -> { fields: [{ key: "rectificationSite", value: "Yes" }] }
 export const isRectificationSite = (additionalDetails) => {
   if (!additionalDetails) {
     return false;
   }
 
-  if (Object.prototype.hasOwnProperty.call(additionalDetails, "isRectificationSite")) {
-    return isTruthyFlag(additionalDetails.isRectificationSite);
+  if (Object.prototype.hasOwnProperty.call(additionalDetails, "rectificationSite")) {
+    return isTruthyFlag(additionalDetails.rectificationSite);
   }
 
-  const field = additionalDetails.fields?.find?.((item) => item?.key === "isRectificationSite");
+  const field = additionalDetails.fields?.find?.((item) => item?.key === "rectificationSite");
   return isTruthyFlag(field?.value);
 };
 
