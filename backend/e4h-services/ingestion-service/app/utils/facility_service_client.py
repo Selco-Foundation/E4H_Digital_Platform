@@ -33,6 +33,19 @@ class FacilityServiceClient:
             logger.error(f"An error occurred: {req_err}")
             raise req_err
 
+    def validate_identifiers(self, request_info_payload: Dict[str, Any], tenant_id: str,
+                             facilities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Check HFR ID, NIN ID and PoC Username of facilities before creating them.
+
+        facilities: [{"facilityName", "hfrId", "ninId", "facilityPocUsername"}, ...]
+        Returns facility-service's conflicts: [{"index": <position in facilities>, "errors": [...]}].
+        """
+        url = f"{self.facility_service_url}/facility-service/v2/facility/_validate-identifiers"
+        payload = {"RequestInfo": request_info_payload, "tenantId": tenant_id, "facilities": facilities}
+        response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=120)
+        response.raise_for_status()
+        return (response.json() or {}).get("conflicts", []) or []
+
     def search_facility(
         self,
         tenant_id: str,

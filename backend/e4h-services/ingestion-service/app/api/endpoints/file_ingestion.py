@@ -30,8 +30,7 @@ from app.utils.facility_validator import (
     collect_hfr_nin_errors_for_row,
     collect_anganwadi_poc_username_errors_for_row,
     collect_coordinate_errors_for_row,
-    HfrNinDuplicateCache,
-    prefetch_existing_hfr_nin,
+    collect_identifier_conflicts,
 )
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
@@ -189,23 +188,28 @@ def _bulk_create_facilities_for_ingestion(
         facility_schema: List[Dict],
         are_facilities_onm_ready: bool,
         vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]],
-        hfr_nin_db_cache: HfrNinDuplicateCache,
 ) -> None:
     """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service)."""
     pending_creates: List[tuple] = []
 
     rows_to_process = df[df['status'] != 'success']
-    prefetch_existing_hfr_nin(rows_to_process, facility_client, request_info, hfr_nin_db_cache)
+    # HFR ID / NIN ID / PoC Username duplicates (within the file, among existing facilities and
+    # HRMS usernames), so each offending row fails on its own instead of failing its whole chunk.
+    identifier_conflicts = collect_identifier_conflicts(
+        rows_to_process, facility_schema, facility_client, request_info,
+    )
 
     for index, row in rows_to_process.iterrows():
         hfr_nin_errs = collect_hfr_nin_errors_for_row(
-            row, index, df, facility_client, hfr_nin_db_cache,
+            row, index, df, facility_client, {}, check_db=False,
         )
         anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
             row, index, df, facility_schema,
         )
         coordinate_errs = collect_coordinate_errors_for_row(row)
-        pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs, *coordinate_errs]))
+        pre_errs = list(dict.fromkeys([
+            *hfr_nin_errs, *anganwadi_poc_errs, *identifier_conflicts.get(index, []), *coordinate_errs,
+        ]))
         if pre_errs:
             df.at[index, 'status'] = 'failed'
             df.at[index, 'error'] = '; '.join(pre_errs)
@@ -267,10 +271,13 @@ def _bulk_create_facilities_for_ingestion(
         if (
             create_resp.status_code == 400
             and len(creation_meta) > 1
-            and FACILITY_SERVICE_DESERIALIZE_ERROR in (error_message or '').lower()
+            and (
+                FACILITY_SERVICE_DESERIALIZE_ERROR in (error_message or '').lower()
+                or _bulk_create_error_code(create_resp) in FACILITY_SERVICE_RETRY_ROW_BY_ROW_ERROR_CODES
+            )
         ):
-            # The request body was rejected before any facility was processed, so one bad
-            # row would fail the whole chunk. Retry row by row so only the bad rows fail.
+            # The request was rejected before any facility was persisted, so one bad row would
+            # fail the whole chunk. Retry row by row so only the bad rows fail.
             logger.warning(
                 "Bulk facility create rejected as unparseable (%s); retrying %s rows individually",
                 error_message, len(creation_meta),
@@ -292,6 +299,18 @@ def _bulk_create_facilities_for_ingestion(
 # Lowercased fragment of the facility-service error returned when the JSON body cannot be parsed
 # (e.g. a non-numeric latitude). Nothing has been persisted when this error is returned.
 FACILITY_SERVICE_DESERIALIZE_ERROR = 'failed to deserialize'
+
+# facility-service error codes raised during validation, before any facility of the request is
+# persisted, so a rejected chunk can safely be retried row by row. The identifier pre-check above
+# normally catches these; this covers values taken between that check and the create.
+FACILITY_SERVICE_RETRY_ROW_BY_ROW_ERROR_CODES = {'FACILITY_DUPLICATE_IDENTIFIER'}
+
+
+def _bulk_create_error_code(create_resp) -> Optional[str]:
+    try:
+        return (create_resp.json().get('Errors') or [{}])[0].get('code')
+    except Exception:
+        return None
 
 
 def _bulk_create_error_message(create_resp) -> Optional[str]:
@@ -741,7 +760,6 @@ async def upload_facilities_excel_sheet(
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
             org_client = OrganizationServiceClient(org_service_url) if org_service_url else None
             vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]] = {}
-            hfr_nin_db_cache = HfrNinDuplicateCache()
 
             _bulk_create_facilities_for_ingestion(
                 df=df,
@@ -751,7 +769,6 @@ async def upload_facilities_excel_sheet(
                 facility_schema=facility_schema,
                 are_facilities_onm_ready=are_facilities_onm_ready,
                 vendor_mapping_cache=vendor_mapping_cache,
-                hfr_nin_db_cache=hfr_nin_db_cache,
             )
 
         writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)
