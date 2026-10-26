@@ -144,9 +144,9 @@
 <path d="M1796,380 L1796,386 L1801,389" stroke="#C62828" stroke-width="1.8" fill="none" stroke-linecap="round"/>
 <text x="1816" y="392" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#C62828" text-anchor="start" >SLA rules (v2.0.0)</text>
 <text x="1790" y="430" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >1. Priority decides the SLA set</text>
-<text x="1790" y="452" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Asset type + issue type → High, Medium</text>
-<text x="1790" y="471" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >or Low (default Medium). The ticket runs</text>
-<text x="1790" y="490" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >on workflow Incident_High / _Medium / _Low.</text>
+<text x="1790" y="452" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Asset type, issue type and whether the</text>
+<text x="1790" y="471" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >system works → High, Medium or Low</text>
+<text x="1790" y="490" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >(default Medium). Workflow Incident_High/_Medium/_Low.</text>
 <text x="1790" y="517" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >2. Each state has its own SLA</text>
 <text x="1790" y="539" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Every state with a clock has a time limit</text>
 <text x="1790" y="558" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >per priority, so each role (CRM, Vendor,</text>
@@ -159,11 +159,12 @@
 <text x="1790" y="710" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >4. Total SLA</text>
 <text x="1790" y="732" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Sum of the SLAs of states passed through</text>
 <text x="1790" y="751" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >+ the expected next state. Shown as</text>
-<text x="1790" y="770" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >‘SLA remaining’ on the ticket and dashboards.</text>
+<text x="1790" y="770" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >‘SLA remaining’ in the inbox and dashboards.</text>
 <text x="1790" y="797" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >5. Escalation e-mails</text>
-<text x="1790" y="819" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >L0 at 70% of SLA used · L1 at breach ·</text>
-<text x="1790" y="838" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >L2 16 h after breach (daily e-mail, Mon–Sat).</text>
-<text x="1790" y="865" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >6. Resolved / closed states have no clock</text>
+<text x="1790" y="819" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >L0 at 70% of SLA used · L1 at breach (daily, Mon–Sat)</text>
+<text x="1790" y="838" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >L2 16 h after breach → Senior Program Manager</text>
+<text x="1790" y="857" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >L3 48 h after L2, no status change → Procurement</text>
+<text x="1790" y="884" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start" >6. Resolved / closed states have no clock</text>
 <text x="30" y="1022" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3C4043" text-anchor="start" >Other live branches not drawn here: Out of scope (Vendor → State SPOC → Vendor), Spare part needed, RMS device tickets (auto-created by rms-service, Tech POC review), Theft tickets.</text>
 <text x="30" y="1046" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3C4043" text-anchor="start" >Feedback: only the person who reported the ticket can rate it, and only after it is Closed (resolved). Rating does not reopen or change the ticket.</text>
 <text x="30" y="1084" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#80868B" text-anchor="start" >Source: im-services IMConstants / SLAService / WorkflowSmsNotificationService, IM micro-ui ComplaintDetails &amp; ComplaintFeedback, egov-workflow-v2 PrioritySLAService. Last updated 2026-10-22.</text>
