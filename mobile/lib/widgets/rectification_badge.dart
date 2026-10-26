@@ -1,3 +1,4 @@
+import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
@@ -5,40 +6,36 @@ import 'package:flutter/material.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 
-// Mirrors the web RectificationBadge (installation-ui pm/qc/fa components/Custom) — keep the colours in sync.
-class RectificationColors {
-  static const badgeBackground = Color(0xFFF3EFFA);
-  static const badgeBorder = Color(0xFFD8CCF0);
-  static const badgeText = Color(0xFF5B3A8E);
-  static const cardBackground = Color(0xFFFAF8FD);
-}
-
+// Uses DIGIT's Info pair (alert.info / alert.infoBg), like the web
+// RectificationBadge (installation-ui pm/qc/fa components/Custom): rectification
+// is extra information, not a status.
 class RectificationBadge extends StatelessWidget {
   const RectificationBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final alert = Theme.of(context).colorTheme.alert;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(6, 2, 8, 2),
       decoration: BoxDecoration(
-        color: RectificationColors.badgeBackground,
-        border: Border.all(color: RectificationColors.badgeBorder),
+        color: alert.infoBg,
+        border: Border.all(color: alert.info),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.build_outlined,
-              size: 12, color: RectificationColors.badgeText),
+          Icon(Icons.build_outlined, size: 12, color: alert.info),
           const SizedBox(width: 4),
           Text(
             context.translate(i18.common.rectification),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               height: 16 / 12,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.2,
-              color: RectificationColors.badgeText,
+              color: alert.info,
             ),
           ),
         ],
@@ -47,9 +44,12 @@ class RectificationBadge extends StatelessWidget {
   }
 }
 
-/// A [DigitCard] that, for rectification sites, gets the tinted treatment and
-/// the badge pinned top-left above [child]. DigitCard paints its own white
-/// background, so the tint lives on an inner container with zero card padding.
+/// A [DigitCard] that, for rectification sites, gets an Info border and the
+/// badge pinned top-left above [child]. The card stays white: the orange
+/// secondary buttons on these cards fall below AA contrast on alert.infoBg
+/// (the same reason the web leaves table rows untinted). DigitCard only draws
+/// a border for its flat secondary type, so the border lives on an inner
+/// container with zero card padding.
 class RectificationAwareCard extends StatelessWidget {
   final bool isRectification;
   final Widget child;
@@ -71,8 +71,7 @@ class RectificationAwareCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(spacer4),
           decoration: BoxDecoration(
-            color: RectificationColors.cardBackground,
-            border: Border.all(color: RectificationColors.badgeBorder),
+            border: Border.all(color: Theme.of(context).colorTheme.alert.info),
             borderRadius: BorderRadius.circular(spacer1),
           ),
           child: Column(
