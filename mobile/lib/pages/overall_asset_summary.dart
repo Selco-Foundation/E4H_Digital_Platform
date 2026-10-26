@@ -243,6 +243,12 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     setState(() => _system = sys);
   }
 
+  // Installation images, completion certificate and handover document are
+  // optional on rectification sites.
+  bool get _isRectification =>
+      projectWorkflow?.activityFacility.additionalDetails?.isRectification ==
+      true;
+
   Future<bool> _hasInstallationImages() async {
     if (_currentProjectId == null) return false;
 
@@ -588,6 +594,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 if (resolvedUserType ==
                                                         USER_TYPES
                                                             .SUPERVISOR.name &&
+                                                    !_isRectification &&
                                                     !await _hasInstallationImages()) {
                                                   _showInstallationImagesRequiredPopup();
                                                   return;
@@ -596,7 +603,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                     USER_TYPES
                                                         .SUPERVISOR.name) {
                                                   final missingDocumentMessage =
-                                                      await _missingRequiredDocumentMessage();
+                                                      _isRectification
+                                                          ? null
+                                                          : await _missingRequiredDocumentMessage();
                                                   if (!mounted) return;
                                                   if (missingDocumentMessage !=
                                                       null) {
