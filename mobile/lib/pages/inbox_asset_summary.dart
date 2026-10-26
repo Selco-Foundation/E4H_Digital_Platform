@@ -398,11 +398,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      if (workflow
-                                              ?.activityFacility
-                                              .additionalDetails
-                                              ?.isRectification ==
-                                          true) ...[
+                                      if (isRectificationSite(workflow)) ...[
                                         const RectificationBadge(),
                                         const SizedBox(height: spacer2),
                                       ],

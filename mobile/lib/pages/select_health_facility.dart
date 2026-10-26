@@ -655,9 +655,7 @@ class InstallationReportCard extends StatelessWidget {
     );
   }
 
-  bool get isRectification =>
-      activityFacility?.activityFacility.additionalDetails?.isRectification ==
-      true;
+  bool get isRectification => isRectificationSite(activityFacility);
 
   String _displayValue(String? value) {
     final normalized = value?.trim() ?? '';

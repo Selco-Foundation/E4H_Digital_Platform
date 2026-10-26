@@ -373,9 +373,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   }
 
   bool get _isRectification =>
-      activityFacilityWorkflow
-          ?.activityFacility.additionalDetails?.isRectification ==
-      true;
+      isRectificationSite(activityFacilityWorkflow);
 
   String? _capacityOf(AssetModel asset, String assetType) {
     switch (assetType.toLowerCase()) {

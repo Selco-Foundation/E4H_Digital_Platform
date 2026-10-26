@@ -51,8 +51,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   List<Brand> assetBrands = [];
 
   bool get _isRectification =>
-      projectWorkflow?.activityFacility.additionalDetails?.isRectification ==
-      true;
+      isRectificationSite(projectWorkflow);
 
   String? _brandNameFor(String code) =>
       assetBrands.firstWhereOrNull((b) => b.code == code)?.name ?? code;

@@ -329,11 +329,8 @@ class _DraftPageState extends State<DraftPage>
                                       return Column(
                                         children: [
                                           InboxReportCard(
-                                            isRectification: project
-                                                    .activityFacility
-                                                    .additionalDetails
-                                                    ?.isRectification ==
-                                                true,
+                                            isRectification:
+                                                isRectificationSite(project),
                                             isBookmarked: bookmarkIds.contains(
                                                 project.activityFacility.id),
                                             isSavingBookmark:

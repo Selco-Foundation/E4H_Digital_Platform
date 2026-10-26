@@ -243,15 +243,10 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
     return _selectedCountFor(requirement) == requirement.requiredCount;
   }
 
-  bool get _isRectification =>
-      context
-          .read<SelectedActivityFacilityBloc>()
-          .state
-          .whenOrNull(selected: (wf) => wf)
-          ?.activityFacility
-          .additionalDetails
-          ?.isRectification ==
-      true;
+  bool get _isRectification => isRectificationSite(context
+      .read<SelectedActivityFacilityBloc>()
+      .state
+      .whenOrNull(selected: (wf) => wf));
 
   // Rectification images are optional: any count up to the required one is
   // accepted (the picker already caps it at requiredCount).

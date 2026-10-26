@@ -280,7 +280,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   // Installation images, completion certificate and handover document are
   // optional on rectification sites.
   bool get _isRectification =>
-      project?.activityFacility.additionalDetails?.isRectification == true;
+      isRectificationSite(project);
 
   Future<bool> _hasInstallationImages() async {
     if (activityFacilityId.isEmpty) return false;
@@ -663,9 +663,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (project?.activityFacility.additionalDetails
-                              ?.isRectification ==
-                          true) ...[
+                      if (_isRectification) ...[
                         const RectificationBadge(),
                         const SizedBox(height: spacer2),
                       ],

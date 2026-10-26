@@ -245,9 +245,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
   // Installation images, completion certificate and handover document are
   // optional on rectification sites.
-  bool get _isRectification =>
-      projectWorkflow?.activityFacility.additionalDetails?.isRectification ==
-      true;
+  bool get _isRectification => isRectificationSite(projectWorkflow);
 
   Future<bool> _hasInstallationImages() async {
     if (_currentProjectId == null) return false;
@@ -565,11 +563,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   future: AssetSubmissionEligibilityRepository(
                                     context.read<ActivityFacilityBloc>().isar,
                                   ).hasReadyAssets(_currentProjectId ?? '',
-                                      allowZeroAssets: projectWorkflow
-                                              ?.activityFacility
-                                              .additionalDetails
-                                              ?.isRectification ==
-                                          true),
+                                      allowZeroAssets: _isRectification),
                                   builder: (context, readiness) {
                                     final isDisabled = readiness.data != true;
                                     return reportState.maybeWhen(
@@ -751,11 +745,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (projectWorkflow
-                                            ?.activityFacility
-                                            .additionalDetails
-                                            ?.isRectification ==
-                                        true) ...[
+                                    if (_isRectification) ...[
                                       const RectificationBadge(),
                                       const SizedBox(height: spacer2),
                                     ],
