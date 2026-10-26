@@ -27,7 +27,7 @@
 <text x="1526.0" y="164" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#1F3A5F" text-anchor="middle" >Infrastructure</text>
 <rect x="1638" y="146" width="172" height="26" rx="4" fill="#3B78E7" stroke="none" stroke-width="1" opacity="0.14"/>
 <text x="1724.0" y="164" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#3B78E7" text-anchor="middle" >External</text>
-<text x="386.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 386.0 340)">mdms-service-v2</text>
+<text x="386.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 386.0 340)">egov-mdms-service-v2</text>
 <text x="430.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 430.0 340)">egov-user</text>
 <text x="474.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 474.0 340)">egov-localization</text>
 <text x="518.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 518.0 340)">egov-idgen</text>
@@ -36,9 +36,9 @@
 <text x="650.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 650.0 340)">boundary-service</text>
 <text x="694.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 694.0 340)">egov-enc-service</text>
 <text x="738.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 738.0 340)">egov-filestore</text>
-<text x="782.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 782.0 340)">user-otp</text>
+<text x="782.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 782.0 340)">egov-otp</text>
 <text x="826.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 826.0 340)">pdf-service</text>
-<text x="870.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 870.0 340)">url-shortener</text>
+<text x="870.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 870.0 340)">egov-url-shortening</text>
 <text x="914.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 914.0 340)">egov-indexer</text>
 <text x="958.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 958.0 340)">individual / household / product</text>
 <text x="1002.0" y="340" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" transform="rotate(-60 1002.0 340)">im-services</text>
@@ -137,10 +137,11 @@
 <circle cx="646.0" cy="519.5" r="7.5" fill="#5F6368"/>
 <circle cx="998.0" cy="519.5" r="7.5" fill="#C97A1C"/>
 <circle cx="690.0" cy="519.5" r="7.5" fill="#5F6368"/>
+<circle cx="866.0" cy="519.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="519.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1526.0" cy="519.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="519.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="524" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >11</text>
+<text x="1864" y="524" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >12</text>
 <rect x="30" y="535" width="1782" height="31" rx="0" fill="#F8F9FA" stroke="none" stroke-width="1" />
 <rect x="40" y="543" width="14" height="14" rx="3" fill="#F9A23B" stroke="#C97A1C" stroke-width="1" />
 <text x="62" y="555" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >vendor-registry</text>
@@ -157,9 +158,11 @@
 <circle cx="646.0" cy="550.5" r="7.5" fill="#5F6368"/>
 <circle cx="1086.0" cy="550.5" r="7.5" fill="#C97A1C"/>
 <circle cx="1262.0" cy="550.5" r="7.5" fill="#C97A1C"/>
+<circle cx="866.0" cy="550.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="550.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="550.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="555" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >11</text>
+<circle cx="1614.0" cy="550.5" r="7.5" fill="#1F3A5F"/>
+<text x="1864" y="555" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >12</text>
 <rect x="40" y="574" width="14" height="14" rx="3" fill="#F9A23B" stroke="#C97A1C" stroke-width="1" />
 <text x="62" y="586" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >project</text>
 <text x="352" y="586" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#80868B" text-anchor="end" >/project</text>
@@ -169,11 +172,16 @@
 <circle cx="954.0" cy="581.5" r="7.5" fill="#5F6368"/>
 <circle cx="1086.0" cy="581.5" r="7.5" fill="#C97A1C"/>
 <circle cx="646.0" cy="581.5" r="7.5" fill="#5F6368"/>
+<circle cx="1306.0" cy="581.5" r="7.5" fill="#C97A1C"/>
+<circle cx="602.0" cy="581.5" r="7.5" fill="#5F6368"/>
+<circle cx="514.0" cy="581.5" r="7.5" fill="#5F6368"/>
+<circle cx="470.0" cy="581.5" r="7.5" fill="#5F6368"/>
+<circle cx="558.0" cy="581.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="581.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1482.0" cy="581.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="581.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1614.0" cy="581.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="586" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >5</text>
+<text x="1864" y="586" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >10</text>
 <rect x="30" y="597" width="1782" height="31" rx="0" fill="#F8F9FA" stroke="none" stroke-width="1" />
 <rect x="40" y="605" width="14" height="14" rx="3" fill="#FCE5CD" stroke="#E0A96D" stroke-width="1" />
 <text x="62" y="617" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >field-planner</text>
@@ -188,11 +196,13 @@
 <circle cx="1262.0" cy="612.5" r="7.5" fill="#C97A1C"/>
 <circle cx="734.0" cy="612.5" r="7.5" fill="#5F6368"/>
 <circle cx="470.0" cy="612.5" r="7.5" fill="#5F6368"/>
+<circle cx="514.0" cy="612.5" r="7.5" fill="#5F6368"/>
+<circle cx="954.0" cy="612.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="612.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1482.0" cy="612.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="612.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1614.0" cy="612.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="617" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >9</text>
+<text x="1864" y="617" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >11</text>
 <rect x="40" y="636" width="14" height="14" rx="3" fill="#FCE5CD" stroke="#E0A96D" stroke-width="1" />
 <text x="62" y="648" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >field-planner-activity</text>
 <text x="352" y="648" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#80868B" text-anchor="end" >/activity</text>
@@ -207,11 +217,14 @@
 <circle cx="1130.0" cy="643.5" r="7.5" fill="#C97A1C"/>
 <circle cx="1306.0" cy="643.5" r="7.5" fill="#C97A1C"/>
 <circle cx="1350.0" cy="643.5" r="7.5" fill="#C97A1C"/>
+<circle cx="514.0" cy="643.5" r="7.5" fill="#5F6368"/>
+<circle cx="470.0" cy="643.5" r="7.5" fill="#5F6368"/>
+<circle cx="382.0" cy="643.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="643.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1482.0" cy="643.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="643.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1614.0" cy="643.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="648" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >10</text>
+<text x="1864" y="648" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >13</text>
 <rect x="30" y="659" width="1782" height="31" rx="0" fill="#F8F9FA" stroke="none" stroke-width="1" />
 <rect x="40" y="667" width="14" height="14" rx="3" fill="#FCE5CD" stroke="#E0A96D" stroke-width="1" />
 <text x="62" y="679" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >asset-registry</text>
@@ -225,9 +238,11 @@
 <circle cx="1262.0" cy="674.5" r="7.5" fill="#C97A1C"/>
 <circle cx="558.0" cy="674.5" r="7.5" fill="#5F6368"/>
 <circle cx="470.0" cy="674.5" r="7.5" fill="#5F6368"/>
+<circle cx="866.0" cy="674.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="674.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="674.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="679" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >8</text>
+<circle cx="1614.0" cy="674.5" r="7.5" fill="#1F3A5F"/>
+<text x="1864" y="679" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >9</text>
 <rect x="40" y="698" width="14" height="14" rx="3" fill="#FCE5CD" stroke="#E0A96D" stroke-width="1" />
 <text x="62" y="710" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >amc-scheduler-service</text>
 <text x="352" y="710" font-family="Consolas, Menlo, monospace" font-size="11" font-weight="normal" fill="#80868B" text-anchor="end" >/asset-amc</text>
@@ -244,10 +259,12 @@
 <circle cx="778.0" cy="705.5" r="7.5" fill="#5F6368"/>
 <circle cx="1130.0" cy="705.5" r="7.5" fill="#C97A1C"/>
 <circle cx="690.0" cy="705.5" r="7.5" fill="#5F6368"/>
+<circle cx="954.0" cy="705.5" r="7.5" fill="#5F6368"/>
+<circle cx="470.0" cy="705.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="705.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1482.0" cy="705.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="705.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="710" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >12</text>
+<text x="1864" y="710" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >14</text>
 <rect x="30" y="721" width="1782" height="31" rx="0" fill="#F8F9FA" stroke="none" stroke-width="1" />
 <rect x="40" y="729" width="14" height="14" rx="3" fill="#F9A23B" stroke="#C97A1C" stroke-width="1" />
 <text x="62" y="741" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >inbox</text>
@@ -301,9 +318,11 @@
 <circle cx="426.0" cy="888.5" r="7.5" fill="#5F6368"/>
 <circle cx="514.0" cy="888.5" r="7.5" fill="#5F6368"/>
 <circle cx="558.0" cy="888.5" r="7.5" fill="#5F6368"/>
+<circle cx="866.0" cy="888.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="888.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="888.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="893" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >6</text>
+<circle cx="1614.0" cy="888.5" r="7.5" fill="#1F3A5F"/>
+<text x="1864" y="893" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >7</text>
 <rect x="30" y="904" width="1782" height="31" rx="0" fill="#F8F9FA" stroke="none" stroke-width="1" />
 <rect x="40" y="912" width="14" height="14" rx="3" fill="#FFFFFF" stroke="#AEB4BB" stroke-width="1" />
 <text x="62" y="924" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >egov-mdms-service-v2</text>
@@ -319,10 +338,11 @@
 <circle cx="382.0" cy="950.5" r="7.5" fill="#5F6368"/>
 <circle cx="426.0" cy="950.5" r="7.5" fill="#5F6368"/>
 <circle cx="998.0" cy="950.5" r="7.5" fill="#C97A1C"/>
+<circle cx="910.0" cy="950.5" r="7.5" fill="#5F6368"/>
 <circle cx="1438.0" cy="950.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1526.0" cy="950.5" r="7.5" fill="#1F3A5F"/>
 <circle cx="1570.0" cy="950.5" r="7.5" fill="#1F3A5F"/>
-<text x="1864" y="955" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >3</text>
+<text x="1864" y="955" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="middle" >4</text>
 <rect x="30" y="966" width="1782" height="31" rx="0" fill="#F8F9FA" stroke="none" stroke-width="1" />
 <rect x="40" y="974" width="14" height="14" rx="3" fill="#FFFFFF" stroke="#AEB4BB" stroke-width="1" />
 <text x="62" y="986" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#202124" text-anchor="start" >egov-idgen</text>
@@ -401,20 +421,20 @@
 <line x1="1812" y1="352" x2="1812" y2="1126" stroke="#AEB4BB" stroke-width="1.4"/>
 <rect x="30" y="1094" width="1782" height="32" rx="0" fill="#E8F0FE" stroke="none" stroke-width="1" />
 <text x="40" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#1A4DB3" text-anchor="start" >Fan-in (used by N services)</text>
-<text x="382.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >15</text>
+<text x="382.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >16</text>
 <text x="426.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >11</text>
-<text x="470.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >9</text>
-<text x="514.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >7</text>
-<text x="558.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >10</text>
-<text x="602.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >10</text>
+<text x="470.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >12</text>
+<text x="514.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >10</text>
+<text x="558.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >11</text>
+<text x="602.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >11</text>
 <text x="646.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >10</text>
 <text x="690.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >3</text>
 <text x="734.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >6</text>
 <text x="778.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >2</text>
 <text x="822.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >2</text>
-<text x="866.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >1</text>
-<text x="910.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >2</text>
-<text x="954.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >2</text>
+<text x="866.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >5</text>
+<text x="910.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >3</text>
+<text x="954.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >4</text>
 <text x="998.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >4</text>
 <text x="1042.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >2</text>
 <text x="1086.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >10</text>
@@ -422,69 +442,69 @@
 <text x="1174.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >4</text>
 <text x="1218.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >2</text>
 <text x="1262.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >4</text>
-<text x="1306.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >2</text>
+<text x="1306.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >3</text>
 <text x="1350.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >2</text>
 <text x="1394.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >1</text>
 <text x="1438.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >17</text>
 <text x="1482.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >4</text>
 <text x="1526.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >5</text>
 <text x="1570.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >16</text>
-<text x="1614.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >9</text>
+<text x="1614.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >12</text>
 <text x="1658.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >1</text>
 <text x="1702.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >1</text>
 <text x="1746.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >1</text>
 <text x="1790.0" y="1115" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" fill="#1A4DB3" text-anchor="middle" >1</text>
 <rect x="1916" y="146" width="440" height="980" rx="8" fill="#FFFFFF" stroke="#AEB4BB" stroke-width="1" />
 <text x="1934" y="176" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1F3A5F" text-anchor="start" >Most depended-on (fan-in)</text>
-<text x="1934" y="202" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >mdms-service-v2</text>
+<text x="1934" y="202" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-mdms-service-v2</text>
 <rect x="2116" y="191" width="180.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2302.0" y="202" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >15</text>
-<text x="1934" y="228" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-user</text>
-<rect x="2116" y="217" width="132.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2254.0" y="228" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >11</text>
+<text x="2302.0" y="202" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >16</text>
+<text x="1934" y="228" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-localization</text>
+<rect x="2116" y="217" width="135.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2257.0" y="228" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >12</text>
 <text x="1934" y="254" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-workflow-v2</text>
-<rect x="2116" y="243" width="120.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2242.0" y="254" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >10</text>
-<text x="1934" y="280" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-hrms</text>
-<rect x="2116" y="269" width="120.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2242.0" y="280" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >10</text>
-<text x="1934" y="306" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >health-facility-registry</text>
-<rect x="2116" y="295" width="120.0" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2242.0" y="306" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >10</text>
-<text x="1934" y="332" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >boundary-service</text>
-<rect x="2116" y="321" width="120.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2242.0" y="332" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >10</text>
-<text x="1934" y="358" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-localization</text>
-<rect x="2116" y="347" width="108.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2230.0" y="358" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >9</text>
-<text x="1934" y="384" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-idgen</text>
-<rect x="2116" y="373" width="84.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2206.0" y="384" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >7</text>
+<rect x="2116" y="243" width="123.75" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2245.75" y="254" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >11</text>
+<text x="1934" y="280" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-user</text>
+<rect x="2116" y="269" width="123.75" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2245.75" y="280" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >11</text>
+<text x="1934" y="306" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-hrms</text>
+<rect x="2116" y="295" width="123.75" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2245.75" y="306" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >11</text>
+<text x="1934" y="332" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-idgen</text>
+<rect x="2116" y="321" width="112.5" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2234.5" y="332" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >10</text>
+<text x="1934" y="358" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >health-facility-registry</text>
+<rect x="2116" y="347" width="112.5" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2234.5" y="358" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >10</text>
+<text x="1934" y="384" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >boundary-service</text>
+<rect x="2116" y="373" width="112.5" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2234.5" y="384" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >10</text>
 <text x="1934" y="410" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >egov-filestore</text>
-<rect x="2116" y="399" width="72.0" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2194.0" y="410" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >6</text>
+<rect x="2116" y="399" width="67.5" height="13" rx="3" fill="#5F6368" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2189.5" y="410" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >6</text>
 <text x="1934" y="436" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >vendor-registry</text>
-<rect x="2116" y="425" width="60.0" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2182.0" y="436" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >5</text>
+<rect x="2116" y="425" width="56.25" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2178.25" y="436" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >5</text>
 <text x="1934" y="480" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1F3A5F" text-anchor="start" >Most coupled (REST fan-out)</text>
-<text x="1934" y="506" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >ingestion-service</text>
+<text x="1934" y="506" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >amc-scheduler-service</text>
 <rect x="2116" y="495" width="180.0" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2302.0" y="506" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >12</text>
-<text x="1934" y="532" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >im-services</text>
-<rect x="2116" y="521" width="180.0" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2302.0" y="532" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >12</text>
-<text x="1934" y="558" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >amc-scheduler-service</text>
-<rect x="2116" y="547" width="180.0" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2302.0" y="558" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >12</text>
-<text x="1934" y="584" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >vendor-registry</text>
-<rect x="2116" y="573" width="165.0" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2287.0" y="584" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >11</text>
-<text x="1934" y="610" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >health-facility-registry</text>
-<rect x="2116" y="599" width="165.0" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2287.0" y="610" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >11</text>
-<text x="1934" y="636" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >im-services-analytics</text>
-<rect x="2116" y="625" width="150.0" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
-<text x="2272.0" y="636" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >10</text>
+<text x="2302.0" y="506" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >14</text>
+<text x="1934" y="532" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >field-planner-activity</text>
+<rect x="2116" y="521" width="167.14285714285714" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2289.1428571428573" y="532" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >13</text>
+<text x="1934" y="558" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >vendor-registry</text>
+<rect x="2116" y="547" width="154.28571428571428" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2276.285714285714" y="558" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >12</text>
+<text x="1934" y="584" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >ingestion-service</text>
+<rect x="2116" y="573" width="154.28571428571428" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2276.285714285714" y="584" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >12</text>
+<text x="1934" y="610" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >im-services</text>
+<rect x="2116" y="599" width="154.28571428571428" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2276.285714285714" y="610" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >12</text>
+<text x="1934" y="636" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start" >health-facility-registry</text>
+<rect x="2116" y="625" width="154.28571428571428" height="13" rx="3" fill="#C97A1C" stroke="none" stroke-width="1" opacity="0.85"/>
+<text x="2276.285714285714" y="636" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3C4043" text-anchor="start" >12</text>
 <text x="1934" y="680" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1F3A5F" text-anchor="start" >Change-impact notes</text>
 <text x="1934" y="699" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >• mdms, egov-user, workflow and hrms contracts are</text>
 <text x="1946" y="718" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >platform-wide: test across all consumers on change.</text>
@@ -500,5 +520,5 @@
 <text x="1934" y="929" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1F3A5F" text-anchor="start" >Related</text>
 <text x="1934" y="948" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >e4h-platform-architecture.png — services,</text>
 <text x="1934" y="967" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3C4043" text-anchor="start" >Kafka topics, ES indices, external integrations</text>
-<text x="30" y="1180" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#80868B" text-anchor="start" >Source: *.host / *.endpoint properties in backend/**/src/main/resources/application.properties, app/utils/*_client.py (ingestion-service), @KafkaListener classes, *-persister.yml. Last updated 2026-10-23.</text>
+<text x="30" y="1180" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#80868B" text-anchor="start" >Source: *.host / *.endpoint properties in backend/**/src/main/resources/application.properties, app/utils/*_client.py (ingestion-service), @KafkaListener classes, *-persister.yml. Last updated 2026-10-26.</text>
 </svg>
