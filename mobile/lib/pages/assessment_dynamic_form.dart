@@ -63,11 +63,11 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
   bool _isFrozenDraft = false;
   String? _error;
   AssessmentSubmissionRequest? _pendingRequest;
-  AssessmentFormType? _resolvedFormType;
+  String? _resolvedFormType;
   AssessmentFacilityDetails? _facilityDetails;
+  final Set<String> _editableFieldNames = {};
 
-  String get _schemaKey =>
-      '${_resolvedFormType?.schemaName ?? 'Assessment.Pending'}:'
+  String get _schemaKey => 'Assessment.${_resolvedFormType ?? 'Pending'}:'
       '${widget.facility.planFacilityId ?? 'missing'}';
 
   @override
@@ -102,38 +102,39 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       _facilityDetails = null;
     });
     try {
-      late final AssessmentFormType formType;
+      late final String formType;
       late final Map<String, dynamic> schema;
       if (draftRequest != null) {
         final draftMode = draftRequest.assessmentPhase == AssessmentPhase.PHONE
             ? AssessmentMode.remote
             : AssessmentMode.onSite;
-        final resolved = AssessmentFormType.expectedFor(
+        final resolved = await _repository.selectFormCode(
           facilityCategory: category,
           mode: draftMode,
+          cacheOnly: true,
         );
-        if (resolved == null) {
-          throw const FormatException(
-            'Unsupported assessment facility category',
-          );
-        }
         formType = resolved;
         schema = await _repository.loadCachedMobileSchema(formType);
       } else {
         final facilityDetails = _getFacilityDetails(
           widget.facility.facilityId,
         );
-        final expected = AssessmentFormType.expectedFor(
+        final expected = await _repository.selectFormCode(
           facilityCategory: category,
           mode: widget.assessmentMode,
         );
-        if (expected == null) {
-          throw const FormatException(
-              'Unsupported assessment facility category');
-        }
         formType = expected;
         _facilityDetails = await facilityDetails;
         schema = await _repository.loadMobileSchema(formType);
+      }
+      _editableFieldNames.clear();
+      for (final page in (schema['pages'] as Map).values) {
+        for (final entry in (page['properties'] as Map).entries) {
+          if (entry.value['readOnly'] != true &&
+              entry.value['displayOnly'] != true) {
+            _editableFieldNames.add(entry.key.toString());
+          }
+        }
       }
       _resolvedFormType = formType;
       if (!mounted) return;
@@ -195,7 +196,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       if (formType != null)
         ...buildAssessmentFacilityDefaults(
           facility: _facilityDetails,
-          formType: formType,
+          editableFieldNames: _editableFieldNames,
           fallbackFacility: widget.facility,
         ),
       if (draftRequest != null)
@@ -383,8 +384,11 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         AssessmentSubmissionRequest(
           planFacilityId: planFacilityId,
           tenantId: envConfig.variables.tenantId,
-          facilityCategory: formType.facilityCategory,
-          assessmentPhase: formType.phase,
+          facilityCategory:
+              widget.facility.facilityCategory!.trim().toUpperCase(),
+          assessmentPhase: widget.assessmentMode == AssessmentMode.remote
+              ? AssessmentPhase.PHONE
+              : AssessmentPhase.FIELD,
           submissionData: Map<String, dynamic>.from(
             jsonSafe(buildAssessmentSubmissionData(schema)) as Map,
           ),
@@ -490,14 +494,14 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
   }
 
   Map<String, dynamic>? _facilityDefaultsForDraft(
-    AssessmentFormType? formType,
+    String? formType,
   ) {
     final cached = widget.draftFacilityDefaults;
     if (cached != null) return Map<String, dynamic>.from(cached);
     if (formType == null) return null;
     return buildAssessmentFacilityDefaults(
       facility: _facilityDetails,
-      formType: formType,
+      editableFieldNames: _editableFieldNames,
       fallbackFacility: widget.facility,
     );
   }

@@ -175,13 +175,13 @@ enum AssessmentUnableToContactReason {
 }
 
 class AssessmentFormResolution {
-  final AssessmentFormType formType;
+  final String formType;
 
   const AssessmentFormResolution({required this.formType});
 
   factory AssessmentFormResolution.fromJson(Map<String, dynamic> json) {
-    final formType = AssessmentFormType.fromCode(json['formType']?.toString());
-    if (formType == null) {
+    final formType = json['formType']?.toString().trim();
+    if (formType == null || formType.isEmpty) {
       throw const FormatException('Assessment form type is missing');
     }
     return AssessmentFormResolution(formType: formType);

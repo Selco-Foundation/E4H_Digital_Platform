@@ -3,7 +3,6 @@ import 'package:digit_forms_engine/models/property_schema/property_schema.dart';
 import 'package:digit_forms_engine/utils/utils.dart' as forms_utils;
 
 import '../model/assessment/assessment_form.dart';
-import '../model/assessment/assessment_form_type.dart';
 import '../model/assessment/assessment_queue.dart';
 
 Map<String, dynamic> buildAssessmentDraftDefaults({
@@ -53,7 +52,7 @@ Map<String, dynamic> normalizeAssessmentDraftDefaultsForPage({
 
 Map<String, dynamic> buildAssessmentFacilityDefaults({
   required AssessmentFacilityDetails? facility,
-  required AssessmentFormType formType,
+  required Set<String> editableFieldNames,
   AssessmentQueueFacility? fallbackFacility,
 }) {
   String display(String? value) {
@@ -79,8 +78,6 @@ Map<String, dynamic> buildAssessmentFacilityDefaults({
       .whereType<String>()
       .where((value) => value.isNotEmpty)
       .join(', ');
-  final isAwc = formType == AssessmentFormType.AWC_PHONE ||
-      formType == AssessmentFormType.AWC_FIELD;
   final inChargeName = firstValue([
     facility?.facilityPocName,
     fallbackFacility?.facilityInCharge.name,
@@ -112,16 +109,22 @@ Map<String, dynamic> buildAssessmentFacilityDefaults({
         fallbackFacility?.facilityId,
       ]),
     ),
-    'facilityInChargeName':
-        isAwc ? editable(inChargeName) : display(inChargeName),
+    'facilityInChargeName': editableFieldNames.contains('facilityInChargeName')
+        ? editable(inChargeName)
+        : display(inChargeName),
     'facilityInChargeContact':
-        isAwc ? editable(inChargeContact) : display(inChargeContact),
+        editableFieldNames.contains('facilityInChargeContact')
+            ? editable(inChargeContact)
+            : display(inChargeContact),
     'facilityInChargeDesignation': '',
-    'alternateContactName':
-        isAwc ? editable(alternateName) : display(alternateName),
+    'alternateContactName': editableFieldNames.contains('alternateContactName')
+        ? editable(alternateName)
+        : display(alternateName),
     'alternateContactDesignation': '',
     'alternateContactNumber':
-        isAwc ? editable(alternateContact) : display(alternateContact),
+        editableFieldNames.contains('alternateContactNumber')
+            ? editable(alternateContact)
+            : display(alternateContact),
     'ninId': display(facility?.ninId),
     'hfrId': display(facility?.hfrId),
   };

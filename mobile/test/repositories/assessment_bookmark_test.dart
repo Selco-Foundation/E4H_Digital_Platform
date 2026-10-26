@@ -1,3 +1,4 @@
+import '../support/assessment_mdms.dart';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -320,7 +321,10 @@ void main() {
         }
       }));
       final forms = AssessmentFormRepository(
-          dio: dio, storage: store, tenantId: 'tenant');
+          appInitRepo: AssessmentMdms(),
+          dio: dio,
+          storage: store,
+          tenantId: 'tenant');
       final request = AssessmentSubmissionRequest(
           planFacilityId: 'plan-facility',
           tenantId: 'tenant',
