@@ -53,6 +53,9 @@ public class RMSConfiguration {
     @Value("${im.service.create.endpoint}")
     private String imServiceCreateEndpoint;
 
+    @Value("${im.service.count.endpoint:/im-services/v2/request/_count}")
+    private String imServiceCountEndpoint;
+
     @Value("${im.service.request.timeout:30000}")
     private Integer imServiceTimeout;
 

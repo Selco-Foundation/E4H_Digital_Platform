@@ -5,11 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.Alert;
 import org.egov.rms.model.FacilityDetails;
-import org.egov.rms.repository.AlertRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.Set;
 
 /**
  * Enforces business rules that suppress new IM tickets when certain open incidents
@@ -20,7 +20,7 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class TicketCreationGuardService {
 
-    private final AlertRepository alertRepository;
+    private final OpenIncidentChecker openIncidentChecker;
     private final TicketPauseService ticketPauseService;
     private final FacilityEligibilityService facilityEligibilityService;
     private final FacilityServiceClient facilityServiceClient;
@@ -51,7 +51,7 @@ public class TicketCreationGuardService {
         }
 
         // Rule set 2: Any open inverter shutdown incident blocks all new RMS tickets.
-        if (hasOpenInverterShutdownIncident(facilityId)) {
+        if (hasOpenInverterShutdownIncident(alert)) {
             log.info(
                     "TICKET POLICY: Skipping ticket — open inverter shutdown incident for facility {} (alert type {}, subType {})",
                     facilityId, alert.getAlertType(), alert.getAlertSubType());
@@ -59,7 +59,7 @@ public class TicketCreationGuardService {
         }
 
         // Rule set 1: Open battery disconnected OR deep-discharge incident blocks battery, inverter shutdown, and running-on-grid tickets.
-        if (hasBatteryRootCauseBlockingIncident(facilityId) && isInBatteryIsolationScope(alert)) {
+        if (isInBatteryIsolationScope(alert) && hasBatteryRootCauseBlockingIncident(alert)) {
             log.info(
                     "TICKET POLICY: Skipping ticket — open battery disconnected or deep-discharge incident for facility {} blocks this category (alert type {}, subType {})",
                     facilityId, alert.getAlertType(), alert.getAlertSubType());
@@ -114,13 +114,12 @@ public class TicketCreationGuardService {
         return null;
     }
 
-    private boolean hasOpenInverterShutdownIncident(String facilityId) {
-        return alertRepository.hasOpenIncidentForRmsFacility(facilityId, "INVERTER", "ShutdownInverter");
+    private boolean hasOpenInverterShutdownIncident(Alert alert) {
+        return openIncidentChecker.hasOpenIncident(alert, "INVERTER", Set.of("ShutdownInverter"));
     }
 
-    private boolean hasBatteryRootCauseBlockingIncident(String facilityId) {
-        return alertRepository.hasOpenIncidentForRmsFacility(facilityId, "BATTERY", "BatteryDisconnected")
-                || alertRepository.hasOpenIncidentForRmsFacility(facilityId, "BATTERY", "DeepDischarge");
+    private boolean hasBatteryRootCauseBlockingIncident(Alert alert) {
+        return openIncidentChecker.hasOpenIncident(alert, "BATTERY", Set.of("BatteryDisconnected", "DeepDischarge"));
     }
 
     private boolean isInBatteryIsolationScope(Alert alert) {
