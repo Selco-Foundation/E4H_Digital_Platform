@@ -2,9 +2,9 @@
 
 This page updates the existing Incident Management (IM) workflow documentation. That documentation covers the state diagram, the 7-state transition table, SLA config, the workflow JSON, and the re-open, send-back and auto-close flows. Everything in it still holds. This page adds three things that are live in production but were not documented:
 
-1. [SLA rules](#1-sla-rules): priority-based SLA, the clock pausing outside business hours, and SLA per role.
-2. [Out-of-warranty branch](#2-out-of-warranty-branch): Vendor flags a ticket, Tech POC reviews the quotation, State SPOC re-assigns.
-3. [Feedback rating](#3-feedback-rating): collected after a ticket is closed.
+1. **SLA rules:** priority-based SLA, the clock pausing outside business hours, and SLA per role.
+2. **Out-of-warranty branch:** Vendor flags a ticket, Tech POC reviews the quotation, State SPOC re-assigns.
+3. **Feedback rating:** collected after a ticket is closed.
 
 ![IM ticket workflow](im-workflow.png)
 
@@ -23,7 +23,7 @@ This page updates the existing Incident Management (IM) workflow documentation. 
 
 Actions are taken by whoever holds the ticket in the "From" state, unless the table says otherwise. Rows marked **New** are the additions in this update.
 
-The **SLA clock** column says what the clock does once the ticket reaches the "To" state, and whose time it measures. See [SLA rules](#1-sla-rules).
+The **SLA clock** column says what the clock does once the ticket reaches the "To" state, and whose time it measures. See section 1, SLA rules.
 
 | # | From state | Action | By | To state | SLA clock | Notes |
 |---|---|---|---|---|---|---|
@@ -37,7 +37,7 @@ The **SLA clock** column says what the clock does once the ticket reaches the "T
 | 8 | `RESOLVED` | `CLOSE` | System | `CLOSEDAFTERRESOLUTION` | None | Auto-close job |
 | 9 | `REJECTED` | `REOPEN` | Health staff | `PENDINGFORASSIGNMENT` | **Restarts:** CRM | |
 | 10 | `REJECTED` | `CLOSE` | System | `CLOSEDAFTERREJECTION` | None | Auto-close job |
-| 11 | `CLOSEDAFTERRESOLUTION` | `RATE` | Ticket reporter | *(no change)* | None | **New.** See [Feedback rating](#3-feedback-rating) |
+| 11 | `CLOSEDAFTERRESOLUTION` | `RATE` | Ticket reporter | *(no change)* | None | **New.** See section 3, Feedback rating |
 | 12 | `PENDINGRESOLUTION` | `OUT_OF_WARRANTY` | Vendor | `OUT_OF_WARRANTY_PENDING_TECH_POC` | **Runs:** Tech POC | **New.** Quotation required. Tech POC gets an SMS |
 | 13 | `OUT_OF_WARRANTY_PENDING_TECH_POC` | `APPROVE` | Tech POC | `PENDING_ASSIGNMENT_OUT_OF_WARRANTY` | **Runs:** State SPOC | **New.** State SPOC and Health staff get an SMS |
 | 14 | `OUT_OF_WARRANTY_PENDING_TECH_POC` | `REVISE` | Tech POC | `PENDING_REVISION` | **Runs:** Vendor | **New.** Comment of at least 50 characters. Vendor gets an SMS |
@@ -122,7 +122,7 @@ Since v2.0.0, the person who raised a ticket can rate the service once the ticke
 - **Who:** only the person who reported the ticket.
 - **When:** only after the ticket is *Closed (resolved)*. It is not available on rejected tickets or while the ticket is still open.
 - **What:** a rating of 1 to 5 stars, which is required, plus an optional comment.
-- **How to reach it:** use the **Rate** link on the ticket timeline, or the survey link in the closure notification. If a rating already exists, the timeline shows the stars instead of the link.
+- **How to reach it:** use the **Rate** link on the ticket timeline. If a rating already exists, the timeline shows the stars instead of the link.
 - **Effect:** none on the ticket itself. Rating does not reopen it, change its state or affect its SLA.
 - **Mobile app:** not available. Feedback can only be given in the web portal.
 
