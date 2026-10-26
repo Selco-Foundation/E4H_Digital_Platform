@@ -199,6 +199,23 @@ class AppInitRepo {
     );
   }
 
+  Future<List<Map<String, dynamic>>> searchAssessmentCategoryFormsRaw(
+    MdmsRequestModel request, {
+    bool useCacheRead = false,
+    bool cacheOnly = false,
+    MdmsRawDocsValidator? validator,
+  }) {
+    final storage = SecureStore();
+    return _searchCachedRawDocs(
+      request: request,
+      readCache: storage.getAssessmentCategoryFormsRaw,
+      writeCache: storage.setAssessmentCategoryFormsRaw,
+      useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
+      validator: validator,
+    );
+  }
+
   Future<List<Map<String, dynamic>>> searchAssessmentFormConfigsRaw(
     MdmsRequestModel mdmsRequestBody, {
     bool useCacheRead = false,

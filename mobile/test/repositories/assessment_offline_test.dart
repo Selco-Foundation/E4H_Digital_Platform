@@ -12,6 +12,7 @@ import '../../lib/model/assessment/assessment_mode.dart';
 import '../../lib/repositories/assessment_form_repo.dart';
 import '../../lib/repositories/assessment_queue_repo.dart';
 import '../../lib/repositories/assessment_queue_cache_repo.dart';
+import '../support/assessment_mdms.dart';
 import '../support/offline_isar.dart';
 
 class MemoryStore extends SecureStore {
@@ -167,8 +168,8 @@ void main() {
         throwsA(isA<DioException>()));
   });
 
-  for (final type in AssessmentFormType.values) {
-    test('${type.name} resolves before submitting and stops on resolve failure',
+  for (final type in ['HF_PHONE', 'HF_FIELD', 'AWC_PHONE', 'AWC_FIELD']) {
+    test('$type resolves before submitting and stops on resolve failure',
         () async {
       final paths = <String>[];
       var fail = false;
@@ -183,19 +184,24 @@ void main() {
               requestOptions: options,
               statusCode: 200,
               data: options.path.endsWith('_resolve')
-                  ? {'formType': type.name}
+                  ? {'formType': type}
                   : {
                       'submission': {'id': 'report'}
                     }));
         }
       }));
       final repo = AssessmentFormRepository(
-          dio: dio, storage: MemoryStore(), tenantId: 'tenant');
+          dio: dio,
+          appInitRepo: AssessmentMdms(),
+          storage: MemoryStore(),
+          tenantId: 'tenant');
       final request = AssessmentSubmissionRequest(
           planFacilityId: 'facility',
           tenantId: 'tenant',
-          facilityCategory: type.facilityCategory,
-          assessmentPhase: type.phase,
+          facilityCategory: (type.startsWith('HF_') ? 'HEALTH' : 'ANGANWADI'),
+          assessmentPhase: (type.endsWith('_PHONE')
+              ? AssessmentPhase.PHONE
+              : AssessmentPhase.FIELD),
           submissionData: {'answer': 1},
           clientSubmissionTime: 123);
       expect((await repo.submitAssessment(request)).submissionId, 'report');
@@ -217,8 +223,11 @@ void main() {
     final dio = Dio();
     dio.interceptors.add(InterceptorsWrapper(
         onRequest: (_, __) => fail('Unexpected network call')));
-    final repo =
-        AssessmentFormRepository(dio: dio, storage: store, tenantId: 'tenant');
+    final repo = AssessmentFormRepository(
+        dio: dio,
+        appInitRepo: AssessmentMdms(),
+        storage: store,
+        tenantId: 'tenant');
     expect(
         (await repo.getFacilityDetails(facilityId: 'facility'))?.facilityName,
         'Clinic');
