@@ -9,7 +9,7 @@ import SearchActionCentre from "../../components/FacilityTable/SearchAction";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import useFacility from "../../hooks/useFacility";
 import CustomCheckBox from "../../components/Custom/CustomCheckBox";
-import { WithRectificationBadge, getRectificationCellStyle } from "../../components/Custom/RectificationBadge";
+import { WithRectificationBadge } from "../../components/Custom/RectificationBadge";
 
 const FacilityTable = ({ t }) => {
 
@@ -307,14 +307,12 @@ const FacilityTable = ({ t }) => {
             customTableWrapperClassName={"health-facility-table"}
             data={fetchedData}
             columns={columns}
-            getCellProps={(cell) => {
+            getCellProps={() => {
               return {
                 style: {
                   maxWidth: "100%",
                   padding: "17.24px 18px",
                   fontSize: "15px",
-                  // The selection column renders outside the table border, so it stays untinted.
-                  ...(cell?.column?.id !== "selection" ? getRectificationCellStyle(cell) : {}),
                 },
               };
             }}

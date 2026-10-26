@@ -8,7 +8,7 @@ import useActivityFacility from "../../hooks/useActivityFacility";
 import Filter from "../../components/FieldPlanFacilities/Filter";
 import SearchAction from "../../components/FieldPlanFacilities/SearchAction";
 import { populateWorkingFieldPlan, populateWorkingFacility } from "../../redux/actions";
-import { WithRectificationBadge, getRectificationCellStyle } from "../../components/Custom/RectificationBadge";
+import { WithRectificationBadge } from "../../components/Custom/RectificationBadge";
 
 const FieldPlanFacilities = () => {
 
@@ -193,13 +193,12 @@ const FieldPlanFacilities = () => {
             customTableWrapperClassName={"field-plan-facility-table"}
             data={facilityData.facilities}
             columns={columns}
-            getCellProps={(cell) => {
+            getCellProps={() => {
               return {
                 style: {
                   maxWidth: "100%",
                   padding: "17.24px 18px",
                   fontSize: "15px",
-                  ...getRectificationCellStyle(cell),
                 },
               };
             }}

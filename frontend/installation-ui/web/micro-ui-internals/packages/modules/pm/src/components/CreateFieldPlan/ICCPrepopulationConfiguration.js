@@ -7,7 +7,7 @@ import { FieldPlanService } from "../../services/FieldPlan";
 import { IngestionService } from "../../services/Ingestion";
 import CommonUtils from "../../utilities/CommonUtils";
 import { isRectificationValue, withRectificationKey } from "../../utilities/ICCPrepopulationUtils";
-import RectificationBadge, { RECTIFICATION_COLORS } from "../Custom/RectificationBadge";
+import RectificationBadge from "../Custom/RectificationBadge";
 
 const getEmptyRow = (id = "icc-row-3") => ({
   id,
@@ -1281,10 +1281,6 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
           <div
             key={row.id}
             className={"icc-prepopulation-row"}
-            style={row.isRectification ? {
-              backgroundColor: RECTIFICATION_COLORS.rowBackground,
-              borderColor: RECTIFICATION_COLORS.badgeBorder,
-            } : undefined}
           >
             <FieldWrapper>
               <FieldLabel label={"ICC_SYSTEM_TYPE"} />

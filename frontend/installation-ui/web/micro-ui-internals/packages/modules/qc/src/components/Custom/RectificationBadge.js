@@ -24,12 +24,11 @@ export const isRectificationSite = (additionalDetails) => {
   return isTruthyFlag(field?.value);
 };
 
+// DIGIT palette Info pair (alertInfo / alertInfoBg). Rectification is extra information, not a status.
 export const RECTIFICATION_COLORS = {
-  badgeBackground: "#F3EFFA",
-  badgeBorder: "#D8CCF0",
-  badgeText: "#5B3A8E",
-  rowBackground: "#FAF8FD",
-  headerBorder: "#ECE5F7",
+  info: "#0057BD",
+  infoBackground: "#DEEFFF",
+  cardBadgeBackground: "#FFFFFF",
 };
 
 // "compact" sits inline with 15px table text without growing the row; "default" is for cards.
@@ -44,7 +43,7 @@ const WrenchIcon = ({ size = 12 }) => (
     height={size}
     viewBox="0 0 24 24"
     fill="none"
-    stroke={RECTIFICATION_COLORS.badgeText}
+    stroke={RECTIFICATION_COLORS.info}
     strokeWidth="2.2"
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -69,10 +68,10 @@ const RectificationBadge = ({ size = "default", style = {}, className = "" }) =>
         height: dimensions.height,
         boxSizing: "border-box",
         padding: dimensions.padding,
-        border: `1px solid ${RECTIFICATION_COLORS.badgeBorder}`,
+        border: `1px solid ${RECTIFICATION_COLORS.info}`,
         borderRadius: "4px",
-        backgroundColor: RECTIFICATION_COLORS.badgeBackground,
-        color: RECTIFICATION_COLORS.badgeText,
+        backgroundColor: RECTIFICATION_COLORS.infoBackground,
+        color: RECTIFICATION_COLORS.info,
         fontSize: dimensions.fontSize,
         lineHeight: dimensions.lineHeight,
         fontWeight: 500,
@@ -90,6 +89,7 @@ const RectificationBadge = ({ size = "default", style = {}, className = "" }) =>
 };
 
 // Table cells: places a compact badge on the same line after `children`, so the row keeps its height.
+// Rows are not tinted: an alertInfoBg row would drop the orange facility links below AA contrast.
 export const WithRectificationBadge = ({ show, children }) => {
   if (!show) {
     return children;
@@ -104,23 +104,23 @@ export const WithRectificationBadge = ({ show, children }) => {
 };
 
 // Detail screens: pins the badge to the top-right corner of a `position: relative` card.
+// White fill so it stays visible on the alertInfoBg card.
 export const RectificationCardBadge = ({ show }) => {
   if (!show) {
     return null;
   }
 
-  return <RectificationBadge style={{ position: "absolute", top: "16px", right: "16px" }} />;
+  return (
+    <RectificationBadge
+      style={{ position: "absolute", top: "16px", right: "16px", backgroundColor: RECTIFICATION_COLORS.cardBadgeBackground }}
+    />
+  );
 };
 
-// Row tint for DIGIT <Table>: spread into the object returned from getCellProps(cell).
-export const getRectificationCellStyle = (cell) => (
-  cell?.row?.original?.isRectificationSite ? { backgroundColor: RECTIFICATION_COLORS.rowBackground } : {}
-);
-
-// Tinted treatment for a facility InfoCard; spread over its base style. `position: relative` anchors RectificationCardBadge.
+// Info treatment for a facility InfoCard; spread over its base style. `position: relative` anchors RectificationCardBadge.
 export const getRectificationCardStyle = (show) => (
   show
-    ? { position: "relative", background: RECTIFICATION_COLORS.rowBackground, border: `1px solid ${RECTIFICATION_COLORS.badgeBorder}` }
+    ? { position: "relative", background: RECTIFICATION_COLORS.infoBackground, border: `1px solid ${RECTIFICATION_COLORS.info}` }
     : {}
 );
 
