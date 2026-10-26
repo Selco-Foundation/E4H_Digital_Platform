@@ -14,29 +14,28 @@ class RectificationBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final alert = Theme.of(context).colorTheme.alert;
+    final theme = Theme.of(context);
+    final alert = theme.colorTheme.alert;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 2, 8, 2),
+      padding:
+          const EdgeInsets.symmetric(horizontal: spacer2, vertical: spacer1),
       decoration: BoxDecoration(
         color: alert.infoBg,
         border: Border.all(color: alert.info),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(spacer1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.build_outlined, size: 12, color: alert.info),
-          const SizedBox(width: 4),
+          Icon(Icons.build_outlined, size: spacer3, color: alert.info),
+          const SizedBox(width: spacer1),
           Text(
             context.translate(i18.common.rectification),
-            style: TextStyle(
-              fontSize: 12,
-              height: 16 / 12,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.2,
-              color: alert.info,
-            ),
+            style: theme
+                .digitTextTheme(context)
+                .bodyXS
+                .copyWith(color: alert.info),
           ),
         ],
       ),
