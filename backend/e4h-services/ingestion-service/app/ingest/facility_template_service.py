@@ -47,6 +47,11 @@ ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES = {
     "isActive",
     "include_in_fieldplan",
     "included_in_field_plan",
+    "rectificationSite",
+}
+# Column codes are compared lowercased, so MDMS codes can be listed above as written (camelCase).
+_ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES_LOWER = {
+    code.lower() for code in ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES
 }
 
 ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS = (
@@ -75,7 +80,7 @@ def _skip_column_for_assessment_include(col: Dict[str, Any]) -> bool:
     """Assessment include template: project facility snapshot + Include in Assessment Plan only."""
     column_code = (col.get("code") or "").strip().lower()
     col_name = (col.get("name") or "").strip().lower()
-    if column_code in ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES:
+    if column_code in _ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES_LOWER:
         return True
     if any(fragment in col_name for fragment in ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS):
         return True
