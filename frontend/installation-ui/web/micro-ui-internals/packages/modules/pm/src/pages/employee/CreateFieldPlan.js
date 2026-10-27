@@ -17,6 +17,7 @@ import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useActivityAssignment from "../../hooks/useActivityAssignment";
 import CommonUtils from "../../utilities/CommonUtils";
+import { isICCRowComplete, withRectificationKey } from "../../utilities/ICCPrepopulationUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
 const getICCTemplates = (fieldPlan, fieldPlanData) => (
@@ -32,7 +33,7 @@ const getICCPrepopulationRows = (data) => Array.isArray(data) ? data : data?.icc
 const isICCPrepopulationComplete = (data) => {
   const rows = getUniqueICCPrepopulationRows(getICCPrepopulationRows(data));
 
-  return rows.length > 0 && rows.every((row) => row?.systemType && row?.totalSystemCapacity && row?.file);
+  return rows.length > 0 && rows.every(isICCRowComplete);
 };
 
 const getSystemCapacityValue = (capacity) => {
@@ -53,7 +54,7 @@ const getICCPrepopulationRowKey = (row = {}) => {
   const systemTypeKey = normalizeICCValue(row.systemType?.name || row.systemType?.code).replace(/[\s_-]+/g, "");
   const capacityKey = getSystemCapacityValue(row.totalSystemCapacity);
 
-  return systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "";
+  return withRectificationKey(systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "", row.isRectification);
 };
 
 const getUniqueICCPrepopulationRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
@@ -82,6 +83,7 @@ const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
     id: row.template?.id || "",
     systemType: row.systemType?.code,
     totalSystemCapacity: getSystemCapacityValue(row.totalSystemCapacity),
+    rectificationSite: Boolean(row.isRectification),
     fieldPlanId: fieldPlanId,
     tenantId: tenantId,
   }));
