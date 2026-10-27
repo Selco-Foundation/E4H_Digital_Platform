@@ -76,6 +76,23 @@ export const BoundaryService = {
     });
   },
 
+  /** Stored LGD codes of existing boundaries, keyed by boundary code (`/boundary/_search` returns
+   *  lgdStateCode / lgdDistrictCode / lgdBlockCode / lgdBlockTier). Blank codes are skipped. */
+  fetchBoundaryLgdCodes: async (codes, tenantId) => {
+    const wanted = (codes || []).filter(Boolean);
+    if (!wanted.length) return {};
+    const response = await Request({
+      url: "/boundary-service/boundary/_search",
+      userService: true,
+      method: "POST",
+      auth: true,
+      data: {},
+      params: { tenantId, codes: wanted.join(",") },
+      headers: { "Content-Type": "application/json" },
+    });
+    return Object.fromEntries((response?.Boundary || []).filter((row) => row?.code).map((row) => [row.code, row]));
+  },
+
   createBoundary: async (boundaryData) => {
     return await Request({
       url: "/boundary-service/boundary/_create",

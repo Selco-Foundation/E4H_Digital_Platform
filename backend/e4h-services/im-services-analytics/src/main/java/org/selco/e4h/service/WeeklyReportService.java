@@ -10,6 +10,7 @@ import org.selco.e4h.web.models.ArrowData;
 import org.selco.e4h.web.models.TicketData;
 import org.selco.e4h.util.CommonUtility;
 import org.selco.e4h.util.ElasticSearchClient;
+import org.selco.e4h.util.EscalationTicketUtil;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -36,8 +37,6 @@ public class WeeklyReportService {
     private static final String FIELD_FILED_DATE = "filedDate";
     private static final String FIELD_CREATED_TIME = "createdTime";
     private static final String SYSTEM_STATUS_NON_FUNCTIONAL = "NON_FUNCTIONAL";
-    private static final Set<String> CLOSED_STATUSES = Set.of(
-            "RESOLVED", "CLOSED_AFTER_RESOLUTION", "CLOSED_AFTER_REJECTION", "REJECTED");
 
     static {
         // Set timezone to IST for date formatting
@@ -372,7 +371,7 @@ public class WeeklyReportService {
             return null;
         }
         String status = (String) incident.get("applicationStatus");
-        if (status == null || !CLOSED_STATUSES.contains(status.toUpperCase())) {
+        if (status == null || !EscalationTicketUtil.CLOSED_STATUSES.contains(status.toUpperCase())) {
             return null;
         }
         Long closedAt = parseFiledDate(data.get("resolvedTimestamp"));

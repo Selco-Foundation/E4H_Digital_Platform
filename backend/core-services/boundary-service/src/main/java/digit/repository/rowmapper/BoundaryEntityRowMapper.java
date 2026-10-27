@@ -58,6 +58,10 @@ public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary
                         .geometry(parseJsonSafely(resultSet.getString("geometry")))
                         .additionalDetails(parseJsonSafely(resultSet.getString("additionaldetails")))
                         .tenantId(resultSet.getString("tenantid"))
+                        .lgdStateCode(resultSet.getString("lgd_state_code"))
+                        .lgdDistrictCode(resultSet.getString("lgd_district_code"))
+                        .lgdBlockCode(resultSet.getString("lgd_block_code"))
+                        .lgdBlockTier(resultSet.getString("lgd_block_tier"))
                         .build();
             } catch (JsonProcessingException e) {
                 throw new CustomException("JSON_PARSE_ERROR" , "Failed to parse either additional details or geometry json");
