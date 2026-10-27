@@ -41,13 +41,24 @@ EDITABLE_SOLAR_COLUMN_CODES = {
 
 ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES = {
     *EDITABLE_SOLAR_COLUMN_CODES,
+    # "isActive" is the real MDMS code for "Included in Installation Plan" in
+    # data-ingestion.FieldPlanFacilityIngestionSchema; the other two are kept for older/other
+    # schema versions that might still use them.
+    "isActive",
     "include_in_fieldplan",
     "included_in_field_plan",
+    "rectificationSite",
+}
+# Column codes are compared lowercased, so MDMS codes can be listed above as written (camelCase).
+_ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES_LOWER = {
+    code.lower() for code in ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES
 }
 
 ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS = (
     "include in field plan",
     "included in field plan",
+    "include in installation plan",
+    "included in installation plan",
     "include in project",
     "system type",
     "total system capacity",
@@ -69,7 +80,7 @@ def _skip_column_for_assessment_include(col: Dict[str, Any]) -> bool:
     """Assessment include template: project facility snapshot + Include in Assessment Plan only."""
     column_code = (col.get("code") or "").strip().lower()
     col_name = (col.get("name") or "").strip().lower()
-    if column_code in ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES:
+    if column_code in _ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES_LOWER:
         return True
     if any(fragment in col_name for fragment in ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS):
         return True
