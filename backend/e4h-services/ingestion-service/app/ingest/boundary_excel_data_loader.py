@@ -4,6 +4,7 @@ import pandas as pd
 
 from app.core.logging import AppLogger
 from app.ingest.service.data_loader import DataLoader
+from app.utils.boundary_code_utils import boundary_code_segment
 
 logger = AppLogger().get_logger()
 class BoundaryExcelDataLoader(DataLoader):
@@ -83,10 +84,5 @@ class BoundaryExcelDataLoader(DataLoader):
         if not text or not text.strip():
             return ""
 
-        cleaned = re.sub(r"[_\-]+", " ", text.strip())
-
-        # Split sur espaces
-        parts = cleaned.split()
-
-        # Met juste la première lettre en majuscule, sans forcer le reste en minuscule
-        return "".join(word[:1].upper() + word[1:] for word in parts)
+        # Same builder as BoundaryDataProcessor, so the duplicate check sees the codes it creates
+        return boundary_code_segment(text)
