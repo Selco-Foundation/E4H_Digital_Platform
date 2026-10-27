@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
 import { ActivityService } from "../services/Activity";
+import { isRectificationSite } from "../components/Custom/RectificationBadge";
 
 const formatAddress = (address = {}) => {
   const parts = [
@@ -37,6 +38,7 @@ const formatFacilities = (facilities) => {
       pocNumber: activityFacility?.pocNumber,
       startDate: activityFacility?.startDate,
       endDate: activityFacility?.endDate,
+      isRectificationSite: isRectificationSite(activityFacility?.additionalDetails),
       raw: activityFacility,
     };
   });

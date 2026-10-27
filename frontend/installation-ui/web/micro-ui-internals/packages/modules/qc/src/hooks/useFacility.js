@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
 import { ActivityService } from "../services/Activity";
+import { isRectificationSite } from "../components/Custom/RectificationBadge";
 
 const formatFacilities = (facilities) => {
   return facilities?.map((row) => ({
@@ -9,7 +10,8 @@ const formatFacilities = (facilities) => {
       status: row?.activityFacility?.status,
       block: row?.activityFacility?.facility?.boundary?.block,
       district: row?.activityFacility?.facility?.boundary?.district,
-      assigned: row?.activityFacility?.staffVendorName 
+      assigned: row?.activityFacility?.staffVendorName,
+      isRectificationSite: isRectificationSite(row?.activityFacility?.additionalDetails),
   }));
 }
 

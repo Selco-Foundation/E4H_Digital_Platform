@@ -8,6 +8,7 @@ import useActivityFacility from "../../hooks/useActivityFacility";
 import Filter from "../../components/FieldPlanFacilities/Filter";
 import SearchAction from "../../components/FieldPlanFacilities/SearchAction";
 import { populateWorkingFieldPlan, populateWorkingFacility } from "../../redux/actions";
+import { WithRectificationBadge } from "../../components/Custom/RectificationBadge";
 
 const FieldPlanFacilities = () => {
 
@@ -124,14 +125,16 @@ const FieldPlanFacilities = () => {
       {
         Header: t("CS_HEALTH_FACILITY"),
         Cell: ({ row }) => (
-          <span className="link" onClick={() => dispatch(populateWorkingFacility(row.original))}>
-            <Link
-              to={`/${window.contextPath}/employee/pm/field-plans/${fieldPlanId}/facilities/${row.original["id"]}/details`}
-              style={{ color: "#C84C0E" }}
-            >
-              {row.original["facilityName"]}
-            </Link>
-          </span>
+          <WithRectificationBadge show={row.original["isRectificationSite"]}>
+            <span className="link" onClick={() => dispatch(populateWorkingFacility(row.original))}>
+              <Link
+                to={`/${window.contextPath}/employee/pm/field-plans/${fieldPlanId}/facilities/${row.original["id"]}/details`}
+                style={{ color: "#C84C0E" }}
+              >
+                {row.original["facilityName"]}
+              </Link>
+            </span>
+          </WithRectificationBadge>
         ),
       },
       {
