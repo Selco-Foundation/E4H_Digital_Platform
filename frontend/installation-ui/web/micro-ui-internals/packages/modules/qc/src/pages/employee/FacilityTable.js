@@ -9,6 +9,7 @@ import SearchActionCentre from "../../components/FacilityTable/SearchAction";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import useFacility from "../../hooks/useFacility";
 import CustomCheckBox from "../../components/Custom/CustomCheckBox";
+import { WithRectificationBadge } from "../../components/Custom/RectificationBadge";
 
 const FacilityTable = ({ t }) => {
 
@@ -197,16 +198,18 @@ const FacilityTable = ({ t }) => {
       Header: t("CS_HEALTH_FACILITY"),
       Cell: ({ row }) => {
         return (
-          <div>
-            <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
-              <Link
-                to={`/${window.contextPath}/employee/qc/field-plan/${activityAssignmentId}/facilities/${row.original["id"]}`}
-                style={{ color: "#C84C0E" }}
-              >
-                {row.original["facilityName"]}
-              </Link>
-            </span>
-          </div>
+          <WithRectificationBadge show={row.original["isRectificationSite"]}>
+            <div>
+              <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
+                <Link
+                  to={`/${window.contextPath}/employee/qc/field-plan/${activityAssignmentId}/facilities/${row.original["id"]}`}
+                  style={{ color: "#C84C0E" }}
+                >
+                  {row.original["facilityName"]}
+                </Link>
+              </span>
+            </div>
+          </WithRectificationBadge>
         );
       },
     },
