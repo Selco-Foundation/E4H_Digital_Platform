@@ -111,6 +111,7 @@ public class FieldPlanTemplateService {
             FieldPlanTemplate templateFromDb = findTemplateById(template.getId(), templatesFromDb);
             if (templateFromDb != null) {
                 mergeTemplateData(template, templateFromDb);
+                template.setRectificationSite(templateFromDb.getRectificationSite());
                 String fileStoreId = hasNewFiles
                         ? uploadExcelFile(request.getRequestInfo(), excelFiles.get(i))
                         : templateFromDb.getFileStoreId();

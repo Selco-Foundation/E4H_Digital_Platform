@@ -1572,6 +1572,11 @@ async def upload_facility_selection_excel_sheet(
             os.unlink(input_temp_file.name)
 
 
+def _is_rectification_site(value):
+    """ICC item rectificationSite flag: true/"Yes"/"1" -> True; absent, false or "No" -> False."""
+    return str(value).strip().lower() in ("true", "yes", "1") if value is not None else False
+
+
 @router.post('/icc-reports',
              summary='Bulk-upload ICC report Excel files, validate each against its System Type, '
                      'convert to JSON, and store them via field-planner in one call',
@@ -1582,7 +1587,9 @@ async def upload_icc_reports(
             ...,
             description='JSON array of metadata objects, one per file, paired positionally with '
                         'icc_files: [{"systemType": "...", "totalSystemCapacity": "...", '
-                        '"fieldPlanId": "...", "tenantId": "in"}]'
+                        '"fieldPlanId": "...", "tenantId": "in", "rectificationSite": false}] - '
+                        'rectificationSite (optional, default false) = true for a rectification '
+                        'site ICC template, which skips the mandatory Solar Module/Battery/Inverter values'
         ),
         icc_files: List[UploadFile] = File(
             ..., description="ICC Report Excel files (.xlsx), positionally paired with items"
@@ -1650,10 +1657,12 @@ async def upload_icc_reports(
         for idx, (item, upload) in enumerate(zip(parsed_items, icc_files)):
             temp_file, _ = await _save_upload_to_temp_file(upload, suffix=".xlsx")
             temp_files.append((temp_file, upload))
+            rectification_site = _is_rectification_site(item.get("rectificationSite"))
             try:
                 detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
                     temp_file.name, item["systemType"],
                     mdms_client=mdms_client, request_info=request_info_obj,
+                    rectification_site=rectification_site,
                 )
                 converted.append({
                     "tenant_id": item.get("tenantId", "in"),
@@ -1661,6 +1670,7 @@ async def upload_icc_reports(
                     "system_type": item["systemType"],
                     "total_capacity": item["totalSystemCapacity"],
                     "template_data": icc_json,
+                    "rectification_site": rectification_site,
                 })
                 logger.info(
                     f"ICC report[{idx}] converted: systemType={item['systemType']} "
@@ -1737,7 +1747,8 @@ async def update_icc_reports(
             ...,
             description='JSON array of metadata objects, one per template to update: '
                         '[{"id": "...", "systemType": "...", "totalSystemCapacity": "...", '
-                        '"fieldPlanId": "...", "tenantId": "in"}]'
+                        '"fieldPlanId": "...", "tenantId": "in", "rectificationSite": false}] - '
+                        'rectificationSite must match the stored template (it cannot be changed)'
         ),
         icc_files: Optional[List[UploadFile]] = File(
             default=None,
@@ -1812,6 +1823,11 @@ async def update_icc_reports(
         for idx, item in enumerate(parsed_items):
             upload = icc_files[idx] if has_files else None
             template_data = None
+            # None -> not provided; field-planner keeps the stored value
+            rectification_site = (
+                _is_rectification_site(item.get("rectificationSite"))
+                if item.get("rectificationSite") is not None else None
+            )
             if upload is not None:
                 temp_file, _ = await _save_upload_to_temp_file(upload, suffix=".xlsx")
                 temp_files.append((temp_file, upload))
@@ -1819,6 +1835,7 @@ async def update_icc_reports(
                     detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
                         temp_file.name, item["systemType"],
                         mdms_client=mdms_client, request_info=request_info_obj,
+                        rectification_site=bool(rectification_site),
                     )
                     template_data = icc_json
                     logger.info(
@@ -1840,6 +1857,7 @@ async def update_icc_reports(
                 "system_type": item["systemType"],
                 "total_capacity": item["totalSystemCapacity"],
                 "template_data": template_data,
+                "rectification_site": rectification_site,
             })
 
         if failed_files:
@@ -3150,6 +3168,7 @@ async def create_fielplan_facilities(
         EDITABLE_ADDITIONAL_FIELD_KEYS = {
             "systemType", "solarSolutionDesignType", "totalSystemCapacity",
             "customSolarSolutionDesignType", "customTotalSystemCapacity",
+            "rectificationSite",
         }
 
         def validate_custom_capacity_numeric(value):
@@ -3182,6 +3201,7 @@ async def create_fielplan_facilities(
         total_system_capacity_col = find_col("Total System Capacity")
         custom_solution_design_col = find_col("Custom Solution Design Type")
         custom_total_system_capacity_col = find_col("Custom Total System Capacity")
+        rectification_site_col = find_col("Rectification Site")
 
         # MDMS schema for facilityType/systemType/solarSolutionDesignType/totalSystemCapacity
         # code lookups (see build_field_plan_facility_additional_details) - falls back to raw
@@ -3329,6 +3349,7 @@ async def create_fielplan_facilities(
                                         solution_design_type_column=solution_design_type_col,
                                         custom_solution_design_column=custom_solution_design_col,
                                         custom_total_system_capacity_column=custom_total_system_capacity_col,
+                                        rectification_site_column=rectification_site_col,
                                     ) or {}
 
                                     # Only a key the Excel row actually fills in and that differs
@@ -3425,6 +3446,7 @@ async def create_fielplan_facilities(
                                         solution_design_type_column=solution_design_type_col,
                                         custom_solution_design_column=custom_solution_design_col,
                                         custom_total_system_capacity_column=custom_total_system_capacity_col,
+                                        rectification_site_column=rectification_site_col,
                                     )
                                     plan_facility_id = resolve_plan_facility_id_for_handoff(
                                         facility_id, eligible_map

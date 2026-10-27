@@ -395,6 +395,7 @@ class FieldPlanServiceClient:
                     "systemType": item["system_type"],
                     "totalCapacity": item["total_capacity"],
                     "templateData": item["template_data"],
+                    "rectificationSite": item.get("rectification_site", False),
                 }
                 for item in items
             ],
@@ -466,6 +467,8 @@ class FieldPlanServiceClient:
                     "systemType": item["system_type"],
                     "totalCapacity": item["total_capacity"],
                     "templateData": item.get("template_data"),
+                    # None -> field-planner keeps the stored value; a different value is rejected
+                    "rectificationSite": item.get("rectification_site"),
                 }
                 for item in items
             ],

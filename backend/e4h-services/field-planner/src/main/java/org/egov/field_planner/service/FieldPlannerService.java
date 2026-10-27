@@ -22,8 +22,10 @@ import org.egov.field_planner.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -601,10 +603,23 @@ public class FieldPlannerService {
         if (StringUtils.equalsIgnoreCase(totalSystemCapacity, "CUSTOM")) {
             totalSystemCapacity = (String) additionalDetails.get("customTotalSystemCapacity");
         }
+        // Rectification sites have their own ICC template for the same systemType/totalSystemCapacity.
+        // Stored as a boolean on the ActivityFacility (the FieldPlanFacility holds "Yes"/"No").
+        Object rectificationSiteValue = additionalDetails.get("rectificationSite");
+        boolean rectificationSite = rectificationSiteValue != null
+                && "yes".equalsIgnoreCase(String.valueOf(rectificationSiteValue).trim());
+        additionalDetails.put("rectificationSite", rectificationSite);
         if (StringUtils.isNotBlank(systemType)) {
-            FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType, totalSystemCapacity);
-            if (template != null && template.getTemplateData() != null) {
-                Map<String, Object> templateData = template.getTemplateData();
+            FieldPlanTemplate template = findFieldPlanTemplate(request, fieldPlanFacility.getFieldPlanId(), systemType,
+                    totalSystemCapacity, rectificationSite);
+            Map<String, Object> templateData = template != null ? template.getTemplateData() : null;
+            if (templateData == null && rectificationSite) {
+                // A rectification site may be scheduled without any ICC template -> same BOM keys, every value null
+                log.info("No rectification FieldPlanTemplate for fieldPlanId: {}, systemType: {} - using an empty BOM",
+                        fieldPlanFacility.getFieldPlanId(), systemType);
+                templateData = buildEmptyBomTemplateData(request, fieldPlanFacility.getFieldPlanId(), systemType, totalSystemCapacity);
+            }
+            if (templateData != null) {
                 additionalDetails.put("bom", templateData);
                 additionalDetails.put("panel", buildBomComponent(templateData, "solar_module_capacity", "solar_module_make",
                         brandCodeByNameByAssetType.getOrDefault("PANEL", Collections.emptyMap())));
@@ -621,6 +636,83 @@ public class FieldPlannerService {
 
         log.trace("Exiting buildActivityFacilityAdditionalDetails method");
         return additionalDetails;
+    }
+
+    private static final String ICC_BOM_SKELETON_RESOURCE = "icc/bom_skeleton_keys.json";
+
+    // Lazily loaded from ICC_BOM_SKELETON_RESOURCE: systemType -> BOM keys of that system type's ICC format
+    private volatile Map<String, List<String>> iccBomSkeletonKeysBySystemType;
+
+    /**
+     * Builds a BOM templateData with every key of the facility's ICC format and every value null, for a
+     * rectification site scheduled without its own ICC template. Only the keys are ever reused, never the
+     * values, taken from (first match wins): the regular template of the same fieldPlan/systemType/capacity,
+     * the latest template of the same systemType in any fieldPlan, then the static skeleton resource.
+     */
+    private Map<String, Object> buildEmptyBomTemplateData(
+            FieldPlanRequest request, String fieldPlanId, String systemType, String totalSystemCapacity) {
+        Collection<String> keys = null;
+        FieldPlanTemplate regularTemplate = findFieldPlanTemplate(request, fieldPlanId, systemType, totalSystemCapacity, false);
+        if (regularTemplate != null && regularTemplate.getTemplateData() != null && !regularTemplate.getTemplateData().isEmpty()) {
+            keys = regularTemplate.getTemplateData().keySet();
+        }
+        if (keys == null) {
+            FieldPlanTemplate latestTemplate = findLatestTemplateBySystemType(request, systemType);
+            if (latestTemplate != null && latestTemplate.getTemplateData() != null && !latestTemplate.getTemplateData().isEmpty()) {
+                keys = latestTemplate.getTemplateData().keySet();
+            }
+        }
+        if (keys == null) {
+            keys = getIccBomSkeletonKeys(systemType);
+        }
+        if (keys.isEmpty()) {
+            log.warn("No BOM keys found for systemType: {} - empty BOM used for rectification site", systemType);
+        }
+        Map<String, Object> emptyTemplateData = new LinkedHashMap<>();
+        keys.forEach(key -> emptyTemplateData.put(key, null));
+        return emptyTemplateData;
+    }
+
+    private FieldPlanTemplate findLatestTemplateBySystemType(FieldPlanRequest request, String systemType) {
+        try {
+            FieldPlanTemplateSearchRequest searchRequest = FieldPlanTemplateSearchRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .criteria(FieldPlanTemplateSearchCriteria.builder().systemType(List.of(systemType)).build())
+                    .build();
+            // search results are ordered by last_modified_time DESC
+            List<FieldPlanTemplate> templates = fieldPlanTemplateService.search(searchRequest, 1, 0, "in", null);
+            return (templates != null && !templates.isEmpty()) ? templates.get(0) : null;
+        } catch (Exception e) {
+            log.error("Error searching latest installation plan template for systemType: {}", systemType, e);
+            return null;
+        }
+    }
+
+    private List<String> getIccBomSkeletonKeys(String systemType) {
+        if (iccBomSkeletonKeysBySystemType == null) {
+            synchronized (this) {
+                if (iccBomSkeletonKeysBySystemType == null) {
+                    iccBomSkeletonKeysBySystemType = loadIccBomSkeletonKeys();
+                }
+            }
+        }
+        return iccBomSkeletonKeysBySystemType.getOrDefault(systemType, Collections.emptyList());
+    }
+
+    private Map<String, List<String>> loadIccBomSkeletonKeys() {
+        Map<String, List<String>> result = new HashMap<>();
+        try (InputStream inputStream = new ClassPathResource(ICC_BOM_SKELETON_RESOURCE).getInputStream()) {
+            JsonNode root = mapper.readTree(inputStream);
+            JsonNode keysByFormat = root.path("keysByFormat");
+            root.path("systemTypeToFormat").fields().forEachRemaining(entry -> {
+                List<String> keys = new ArrayList<>();
+                keysByFormat.path(entry.getValue().asText()).forEach(key -> keys.add(key.asText()));
+                result.put(entry.getKey(), keys);
+            });
+        } catch (Exception e) {
+            log.error("Error loading ICC BOM skeleton keys from {}", ICC_BOM_SKELETON_RESOURCE, e);
+        }
+        return result;
     }
 
     // The BOM template's "inverter" component is named differently per system type - only one
@@ -720,12 +812,14 @@ public class FieldPlannerService {
         return result;
     }
 
-    private FieldPlanTemplate findFieldPlanTemplate(FieldPlanRequest request, String fieldPlanId, String systemType, String totalSystemCapacity) {
+    private FieldPlanTemplate findFieldPlanTemplate(FieldPlanRequest request, String fieldPlanId, String systemType,
+                                                    String totalSystemCapacity, boolean rectificationSite) {
         try {
             FieldPlanTemplateSearchCriteria criteria = FieldPlanTemplateSearchCriteria.builder()
                     .fieldPlanId(List.of(fieldPlanId))
                     .systemType(List.of(systemType))
                     .totalCapacity(List.of(totalSystemCapacity))
+                    .rectificationSite(rectificationSite)
                     .build();
             FieldPlanTemplateSearchRequest searchRequest = FieldPlanTemplateSearchRequest.builder()
                     .requestInfo(request.getRequestInfo())

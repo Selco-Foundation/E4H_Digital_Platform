@@ -828,7 +828,7 @@ serviceMaps:
       userUuidJsonPath: $.FieldPlanTemplates.[0].auditDetails.createdBy
       auditAttributeBasePath: $.FieldPlanTemplates.*
       queryMaps:
-        - query: INSERT INTO field_plan_template (id, field_plan_id, system_type, total_capacity, template_data, tenant_id, file_store_id, created_by, last_modified_by, created_time, last_modified_time) VALUES (?,?,?,?,?,?,?,?,?,?,?);
+        - query: INSERT INTO field_plan_template (id, field_plan_id, system_type, total_capacity, template_data, tenant_id, file_store_id, rectification_site, created_by, last_modified_by, created_time, last_modified_time) VALUES (?,?,?,?,?,?,?,?,?,?,?,?);
           basePath: $.FieldPlanTemplates.*
           jsonMaps:
             - jsonPath: $.FieldPlanTemplates.*.id
@@ -840,6 +840,7 @@ serviceMaps:
               dbType: JSONB
             - jsonPath: $.FieldPlanTemplates.*.tenantId
             - jsonPath: $.FieldPlanTemplates.*.fileStoreId
+            - jsonPath: $.FieldPlanTemplates.*.rectificationSite
             - jsonPath: $.FieldPlanTemplates.*.auditDetails.createdBy
             - jsonPath: $.FieldPlanTemplates.*.auditDetails.lastModifiedBy
             - jsonPath: $.FieldPlanTemplates.*.auditDetails.createdTime
