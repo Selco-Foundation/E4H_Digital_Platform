@@ -14,6 +14,9 @@ public final class EscalationWorkflowStates {
     public static final String PENDING_RESOLUTION_SPARE_PART_NEEDED = "PENDING_RESOLUTION_SPARE_PART_NEEDED";
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
     public static final String PENDING_RESOLUTION_OUT_OF_SCOPE = "PENDING_RESOLUTION_OUT_OF_SCOPE";
+    public static final String OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2 = "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2";
+    public static final String PENDING_REVISION = "PENDING_REVISION";
+    public static final String PENDING_FOR_REASSIGNMENT = "PENDINGFORREASSIGNMENT";
 
     public static final List<String> STATE_SPOC_DAILY_STATES = List.of(
             PENDING_FOR_ASSIGNMENT,

@@ -11,6 +11,7 @@ from app.ingest.service.data_loader import DataLoader
 from app.ingest.service.data_writer import DataWriter
 from app.ingest.service.validator import Validator
 from app.schemas.request_info import RequestInfo
+from app.utils.boundary_code_utils import boundary_code_segment
 from app.utils.boundary_service_client import BoundaryServiceClient
 from app.utils.localization_service_client import LocalizationServiceClient
 
@@ -21,9 +22,11 @@ localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
 logger = AppLogger().get_logger()
 
-# Optional LGD identity columns. A sheet without them ingests exactly as before; when
-# present, the codes are stored on the boundary so a later LGD extract can be matched on
-# code rather than name. A rename then updates the localization label while the boundary
+# LGD identity columns - defined, and required, by data-ingestion.BoundaryIngestionSchema,
+# whose validators reject a row without them before it gets here. The codes are stored on
+# each boundary this upload creates, so a later LGD extract can be matched on code rather
+# than name; a level that already exists keeps the codes it has. Where rows disagree, the
+# first row for a level wins. A rename then updates the localization label while the boundary
 # code - which facility codes are built from - stays put.
 LGD_STATE_CODE_COLUMN = "LGD State Code"
 LGD_DISTRICT_CODE_COLUMN = "LGD District Code"
@@ -84,6 +87,9 @@ class BoundaryDataProcessor:
         self.existing_boundaries: Set[str] = set()
         # casefold(code) -> canonical code from boundary service
         self.existing_boundaries_casefold: Dict[str, str] = {}
+        # code built from the sheet -> existing boundary's exact code, where they differ only
+        # in letter case (see _adopt_existing_codes)
+        self.code_renames: Dict[str, str] = {}
 
         # Track failed operations
         self.failed_boundaries: Dict[str, str] = {}  # {full_code: error_message}
@@ -118,6 +124,7 @@ class BoundaryDataProcessor:
         valid_boundaries_df = boundary_df[boundary_df["status"].isna()]
         self._organize_boundary_data(valid_boundaries_df)
         self._check_existing_boundaries()
+        self._adopt_existing_codes()
         self._create_new_boundaries()
         self._create_boundary_relationships()
         self._upsert_localization_for_boundaries()
@@ -150,8 +157,12 @@ class BoundaryDataProcessor:
             district = self.to_camel_case(str(row.get('District', '')).strip())
             block = self.to_camel_case(str(row.get('Block', '')).strip())
 
-            # Optional LGD identity columns. Absent for hand-made sheets, in which case
-            # the boundary is created without LGD codes exactly as before.
+            # LGD identity columns (required by the schema).
+            country_label = self.boundary_localization_label(row.get("Country"))
+            state_label = self.boundary_localization_label(row.get("State"))
+            district_label = self.boundary_localization_label(row.get("District"))
+            block_label = self.boundary_localization_label(row.get("Block"))
+
             lgd_state = _read_identity_cell(row, LGD_STATE_CODE_COLUMN)
             lgd_district = _read_identity_cell(row, LGD_DISTRICT_CODE_COLUMN)
             lgd_block = _read_identity_cell(row, LGD_BLOCK_CODE_COLUMN)
@@ -164,6 +175,7 @@ class BoundaryDataProcessor:
                 if full_code not in self.boundary_data["Country"]:
                     self.boundary_data["Country"][full_code] = {
                         "name": country,
+                        "localization_label": country_label or country,
                         "parent": None,
                         "full_code": full_code,
                         "lgd": {},
@@ -176,6 +188,7 @@ class BoundaryDataProcessor:
                 if full_code not in self.boundary_data["State"]:
                     self.boundary_data["State"][full_code] = {
                         "name": state,
+                        "localization_label": state_label or state,
                         "parent": country,
                         "full_code": full_code,
                         "lgd": _lgd_details(stateCode=lgd_state),
@@ -188,6 +201,7 @@ class BoundaryDataProcessor:
                 if full_code not in self.boundary_data["District"]:
                     self.boundary_data["District"][full_code] = {
                         "name": district,
+                        "localization_label": district_label or district,
                         "parent": f"{country}_{state}",
                         "full_code": full_code,
                         "lgd": _lgd_details(stateCode=lgd_state, districtCode=lgd_district),
@@ -200,6 +214,7 @@ class BoundaryDataProcessor:
                 if full_code not in self.boundary_data["Block"]:
                     self.boundary_data["Block"][full_code] = {
                         "name": block,
+                        "localization_label": block_label or block,
                         "parent": f"{country}_{state}_{district}",
                         "full_code": full_code,
                         "lgd": _lgd_details(stateCode=lgd_state,
@@ -240,6 +255,33 @@ class BoundaryDataProcessor:
                 logger.error(f"Error checking existing boundaries: {e}")
 
         logger.info(f"Found {len(self.existing_boundaries)} existing boundaries in the system")
+
+    def _adopt_existing_codes(self) -> None:
+        """Use an existing boundary's exact code where this run's code matches it only in
+        letter case. boundary-service treats such codes as duplicates on create, but links a
+        relationship only to the exact code - so creating would be skipped and the link would
+        then fail ('Boundary entity does not exist'), taking every child below with it. A
+        renamed parent also renames the codes built under it."""
+        renamed: Dict[str, str] = {}
+        for level in self.hierarchy_levels:
+            adopted: Dict[str, Dict] = {}
+            for data in self.boundary_data[level].values():
+                old_code, old_parent = data["full_code"], data["parent"]
+                parent = renamed.get(old_parent, old_parent) if old_parent else old_parent
+                code = old_code
+                if parent != old_parent and old_code.startswith(old_parent + "_"):
+                    code = parent + old_code[len(old_parent):]
+                code = self.existing_boundaries_casefold.get(code.casefold(), code)
+                if code != old_code:
+                    renamed[old_code] = code
+                data["full_code"], data["parent"] = code, parent
+                adopted.setdefault(code, data)
+            self.boundary_data[level] = adopted
+        if renamed:
+            self.code_renames.update(renamed)
+            self.all_boundary_full_codes = {renamed.get(c, c) for c in self.all_boundary_full_codes}
+            logger.info(f"Using existing codes for {len(renamed)} boundaries that differ only in "
+                        f"letter case, e.g. {next(iter(renamed.items()))}")
 
     def _boundary_exists(self, full_code: str) -> bool:
         return full_code.casefold() in self.existing_boundaries_casefold
@@ -330,14 +372,16 @@ class BoundaryDataProcessor:
         block = self.to_camel_case(str(row.get('Block', '')).strip())
 
         if block and district and state and country:
-            return f"{country}_{state}_{district}_{block}"
-        if district and state and country:
-            return f"{country}_{state}_{district}"
-        if state and country:
-            return f"{country}_{state}"
-        if country:
-            return country
-        return None
+            code = f"{country}_{state}_{district}_{block}"
+        elif district and state and country:
+            code = f"{country}_{state}_{district}"
+        elif state and country:
+            code = f"{country}_{state}"
+        elif country:
+            code = country
+        else:
+            return None
+        return self.code_renames.get(code, code)
 
     def _create_boundary_relationships(self):
         """Create boundary relationships in hierarchical order"""
@@ -452,13 +496,14 @@ class BoundaryDataProcessor:
 
             # Check each level that exists in this row
             if country:
-                full_code = country
+                full_code = self.code_renames.get(country, country)
                 if full_code in self.failed_boundaries:
                     row_failed = True
                     row_errors.append(f"Failed to create Country '{country}': {self.failed_boundaries[full_code]}")
 
             if state and country:
                 full_code = f"{country}_{state}"
+                full_code = self.code_renames.get(full_code, full_code)
                 if full_code in self.failed_boundaries:
                     row_failed = True
                     row_errors.append(f"Failed to create State '{state}': {self.failed_boundaries[full_code]}")
@@ -469,6 +514,7 @@ class BoundaryDataProcessor:
 
             if district and state and country:
                 full_code = f"{country}_{state}_{district}"
+                full_code = self.code_renames.get(full_code, full_code)
                 if full_code in self.failed_boundaries:
                     row_failed = True
                     row_errors.append(
@@ -480,6 +526,7 @@ class BoundaryDataProcessor:
 
             if block and district and state and country:
                 full_code = f"{country}_{state}_{district}_{block}"
+                full_code = self.code_renames.get(full_code, full_code)
                 if full_code in self.failed_boundaries:
                     row_failed = True
                     row_errors.append(f"Failed to create Block '{block}': {self.failed_boundaries[full_code]}")
@@ -501,10 +548,15 @@ class BoundaryDataProcessor:
         if not text or not text.strip():
             return ""
 
-        cleaned = re.sub(r"[_\-]+", " ", text.strip())
+        return boundary_code_segment(text)
 
-        # Split sur espaces
-        parts = cleaned.split()
-
-        # Met juste la première lettre en majuscule, sans forcer le reste en minuscule
-        return "".join(word[:1].upper() + word[1:] for word in parts)
+    @staticmethod
+    def boundary_localization_label(cell) -> str:
+        """The name as typed, with ends trimmed and internal whitespace collapsed - what the
+        boundary's label shows. The code is built separately (to_camel_case)."""
+        if cell is None or (isinstance(cell, float) and pd.isna(cell)):
+            return ""
+        raw = str(cell).strip()
+        if not raw:
+            return ""
+        return re.sub(r"\s+", " ", raw)
