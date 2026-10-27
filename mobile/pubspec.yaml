@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 1.0.0+7
+version: 1.0.0+8
 
 environment:
   sdk: '>=3.0.0 <=4.0.0'
@@ -56,6 +56,7 @@ dependencies:
   flutter_pdfview: ^1.4.1+1
   internet_connection_checker_plus: ^2.7.2
   image_picker: ^1.1.2
+  camera: 0.11.0+2
   image_picker_android: 0.8.12+12
   image_picker_platform_interface: 2.10.1
   digit_scanner: ^1.0.6+4
