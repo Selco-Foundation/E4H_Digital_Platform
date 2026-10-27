@@ -60,6 +60,7 @@ import 'model/appconfig/mdmsResponse.dart';
 import 'model/data_model.init.dart';
 import 'repositories/app_init_repo.dart';
 import 'router/app_router.dart';
+import 'widgets/app_safe_area.dart';
 import 'utils/background_service.dart';
 import 'utils/constants.dart';
 import 'utils/app_logger.dart';
@@ -239,6 +240,9 @@ class _MainAppState extends State<MainApp> {
                       syncIntlDefaultLocale(selectedLocale);
 
                       return MaterialApp.router(
+                        builder: (context, child) => AppSafeArea(
+                          child: child ?? const SizedBox.shrink(),
+                        ),
                         scaffoldMessengerKey: scaffoldMessengerKey,
                         theme: DigitTheme.instance.mobileTheme,
                         routerDelegate: _approuter.delegate(),
