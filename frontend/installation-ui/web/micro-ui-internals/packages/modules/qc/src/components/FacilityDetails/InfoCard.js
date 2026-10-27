@@ -1,4 +1,5 @@
 import React from "react";
+import { RectificationCardBadge, getRectificationCardStyle } from "../Custom/RectificationBadge";
 
 const InfoCard = ({ t, facilityDetails }) => {
 
@@ -20,8 +21,10 @@ const InfoCard = ({ t, facilityDetails }) => {
       borderRadius: "4px",
       boxShadow: "0px 0px 4px rgba(0, 0, 0, 0.25)",
       border: "1px solid #eee",
-      minWidth: "900px"
+      minWidth: "900px",
+      ...getRectificationCardStyle(facilityDetails.isRectificationSite),
     }}>
+      <RectificationCardBadge show={facilityDetails.isRectificationSite} />
       {InfoCardItem(t("INSTALLATION_PLAN_NAME"), facilityDetails.fieldPlanName || "-")}
       {InfoCardItem(t("CS_DISTRICT"), facilityDetails.district ? t(`Boundary_${facilityDetails.district}`) : "-")}
       {InfoCardItem(t("CS_BLOCK"), facilityDetails.block ? t(`Boundary_${facilityDetails.block}`) : "-")}

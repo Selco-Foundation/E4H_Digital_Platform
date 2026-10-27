@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
 import { ActivityService } from "../services/Activity";
+import { isRectificationSite } from "../components/Custom/RectificationBadge";
 
 const formatDate = (timestamp) => {
   if (!timestamp) return "";
@@ -29,6 +30,7 @@ const formatFacilities = (facilities) => {
     fieldPlanCode: row?.activityFacility?.fieldPlan?.name,
     activityStartDate: formatDate(row?.activityFacility?.activatedAt),
     activityEndDate: formatDate(getActivityEndDate(row?.activityFacility)),
+    isRectificationSite: isRectificationSite(row?.activityFacility?.additionalDetails),
   }));
 };
 
