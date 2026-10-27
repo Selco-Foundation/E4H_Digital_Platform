@@ -623,7 +623,6 @@ class AdditionalDetails with AdditionalDetailsMappable {
   AssetTypeAdditionalDetails? panel;
   String? bomJson;
 
-  // Set by field-planner at scheduling from the Installation Plan's "Rectification Site?" column.
   bool? rectificationSite;
 
   @ignore
@@ -684,7 +683,6 @@ class AdditionalDetails with AdditionalDetailsMappable {
         'rectificationSite': rectificationSite,
       };
 
-  // Backend sends a boolean; tolerate the "Yes"/"true"/"1" strings the web UI also accepts.
   static bool? _parseFlag(Object? value) {
     if (value == null) return null;
     if (value is bool) return value;
