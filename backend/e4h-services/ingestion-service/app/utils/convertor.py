@@ -558,6 +558,7 @@ def build_field_plan_facility_additional_details(
     solution_design_type_column: Optional[str] = None,
     custom_solution_design_column: Optional[str] = None,
     custom_total_system_capacity_column: Optional[str] = None,
+    rectification_site_column: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Extract facility type + solar configuration values from an Excel row, resolved to their MDMS
@@ -599,6 +600,13 @@ def build_field_plan_facility_additional_details(
         custom_total_system_capacity = _cell_str(row.get(custom_total_system_capacity_column, ""))
         if custom_total_system_capacity:
             details["customTotalSystemCapacity"] = custom_total_system_capacity
+    if rectification_site_column:
+        rectification_site = _cell_str(row.get(rectification_site_column, ""))
+        if rectification_site:
+            # enum-yes-no column - normalized to "Yes"/"No" like the template's yes/no rendering
+            details["rectificationSite"] = (
+                "Yes" if rectification_site.lower() in ("true", "yes", "1") else "No"
+            )
     return details or None
 
 
@@ -638,6 +646,10 @@ def build_field_plan_facility_additional_fields(
                 "value": str(additional_details["customTotalSystemCapacity"]),
             }
         )
+    if additional_details.get("rectificationSite"):
+        fields.append(
+            {"key": "rectificationSite", "value": str(additional_details["rectificationSite"])}
+        )
     if not fields:
         return None
     return {
@@ -657,6 +669,7 @@ FIELD_PLAN_FACILITY_ADDITIONAL_FIELD_TO_SCHEMA_PATH = {
     "totalSystemCapacity": "total_system_capacity",
     "customSolarSolutionDesignType": "custom_solar_solution_design",
     "customTotalSystemCapacity": "custom_solar_system_capacity",
+    "rectificationSite": "rectificationSite",
 }
 
 
@@ -700,6 +713,7 @@ def build_field_plan_facility_bulk_entry(
     solution_design_type_column: Optional[str] = None,
     custom_solution_design_column: Optional[str] = None,
     custom_total_system_capacity_column: Optional[str] = None,
+    rectification_site_column: Optional[str] = None,
 ) -> Dict[str, Any]:
     additional_details = build_field_plan_facility_additional_details(
         row,
@@ -710,6 +724,7 @@ def build_field_plan_facility_bulk_entry(
         solution_design_type_column=solution_design_type_column,
         custom_solution_design_column=custom_solution_design_column,
         custom_total_system_capacity_column=custom_total_system_capacity_column,
+        rectification_site_column=rectification_site_column,
     )
     entry: Dict[str, Any] = {"facilityId": facility_id}
     additional_fields = build_field_plan_facility_additional_fields(additional_details)

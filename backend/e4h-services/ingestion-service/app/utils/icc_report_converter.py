@@ -675,7 +675,7 @@ def _is_mandatory_bom_column(keys, mandatory_prefixes):
     )
 
 
-def validate_bom_editable_fields_filled(wb, detected_type):
+def validate_bom_editable_fields_filled(wb, detected_type, enforce_mandatory_components=True):
     """
     Validation 3 (BOM completeness): Make/Capacity/Quantity cells across the editable BOM tables
     (the "Bill Of Material..." sections listed in SECTION_TEMPLATE_HEADERS - Solar System /
@@ -693,6 +693,10 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     (non-blank but non-numeric) Quantity values are rare and specific, so those stay listed in
     full per-row detail.
 
+    enforce_mandatory_components=False (rectification ICC templates) skips the mandatory
+    Solar Module / Solar Battery / Inverter Make/Capacity/Quantity check only - the numeric
+    Quantity check still runs.
+
     Raises ICCValidationError on any failure (blank-mandatory and/or invalid-number); returns
     nothing on success.
     """
@@ -703,7 +707,7 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     with open(template_path) as f:
         template = json.load(f)
 
-    mandatory_prefixes = _mandatory_bom_key_prefixes(detected_type)
+    mandatory_prefixes = _mandatory_bom_key_prefixes(detected_type) if enforce_mandatory_components else ()
 
     by_section = OrderedDict()
     for inst in instances:
@@ -749,10 +753,13 @@ def validate_bom_editable_fields_filled(wb, detected_type):
         error_lines.append(f"{section}: {', '.join(parts)} missing")
     error_lines.extend(invalid_numeric_errors)
 
+    if enforce_mandatory_components:
+        rules = ("Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in; "
+                 "every row's Quantity must also be a number wherever filled in")
+    else:
+        rules = "every row's Quantity must be a number wherever filled in"
     raise ICCValidationError(
-        "The uploaded ICC report has invalid fields in the editable BOM tables "
-        "(Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in; "
-        "every row's Quantity must also be a number wherever filled in):\n- "
+        f"The uploaded ICC report has invalid fields in the editable BOM tables ({rules}):\n- "
         + "\n- ".join(error_lines)
     )
 
@@ -918,7 +925,8 @@ def validate_bom_brand_names(data, detected_type, mdms_client, request_info):
         )
 
 
-def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, request_info=None):
+def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, request_info=None,
+                         rectification_site=False):
     """Single entry point for the /icc-reports endpoint: raises ICCValidationError on any
     Validation 1/2/3/4 failure (nothing is saved in that case); otherwise returns
     (detected_type, data, fallback_fields, unmatched_fields).
@@ -935,6 +943,9 @@ def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, req
     omit either to skip it (e.g. for callers/tests without MDMS access). There is no longer an
     MDMS-backed capacity-options check - Capacity is a free-form field for every BOM row,
     including Solar Module/Solar Battery/Inverter.
+
+    rectification_site=True (rectification ICC template) skips only the mandatory Solar Module /
+    Solar Battery / Inverter values of Validation 3; every other validation still runs.
     """
     try:
         wb = load_workbook(xlsx_path, data_only=True)
@@ -945,7 +956,9 @@ def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, req
 
     errors = []
     try:
-        validate_bom_editable_fields_filled(wb, detected_type)
+        validate_bom_editable_fields_filled(
+            wb, detected_type, enforce_mandatory_components=not rectification_site
+        )
     except ICCValidationError as exc:
         errors.append(str(exc))
 

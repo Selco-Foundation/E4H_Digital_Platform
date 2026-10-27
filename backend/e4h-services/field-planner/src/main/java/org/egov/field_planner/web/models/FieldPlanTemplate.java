@@ -49,6 +49,10 @@ public class FieldPlanTemplate {
     @JsonProperty("fileStoreId")
     private String fileStoreId;
 
+    // true -> ICC template for rectification sites (fieldplan-facility additionalFields rectificationSite = Yes)
+    @JsonProperty("rectificationSite")
+    private Boolean rectificationSite;
+
     @JsonProperty("auditDetails")
     @Valid
     private AuditDetails auditDetails;
