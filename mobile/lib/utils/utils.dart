@@ -98,6 +98,9 @@ Transaction? latestTransactionWithComments(ActivityFacilityWorkflow? workflow) {
   return null;
 }
 
+bool isRectificationSite(ActivityFacilityWorkflow? workflow) =>
+    workflow?.activityFacility.additionalDetails?.isRectification == true;
+
 void saveCacheSpecification(
   BuildContext context, {
   required String activityFacilityId,

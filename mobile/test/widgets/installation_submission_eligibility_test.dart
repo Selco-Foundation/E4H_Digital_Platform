@@ -5,6 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar/isar.dart';
 import '../../lib/blocs/activity_facility/activity_facility.dart';
 import '../../lib/blocs/app_init/app_init.dart';
+import '../../lib/model/activity_facility/activity_facility.dart';
+import '../../lib/model/activity_facility_workflow/activity_facility_workflow.dart';
+import '../../lib/widgets/rectification_badge.dart';
 import '../../lib/pages/select_health_facility.dart';
 import '../../lib/utils/i18_key_constants.dart' as i18;
 import '../support/asset_store.dart';
@@ -69,6 +72,50 @@ void main() {
       expect(submit().isDisabled, isFalse);
       submit().onPressed();
       expect(taps, 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
+  for (final rectification in [true, false]) {
+    testWidgets(
+        'zero-asset submission is ${rectification ? 'enabled' : 'blocked'} '
+        'for ${rectification ? 'a rectification' : 'an installation'} site',
+        (tester) async {
+      final store = AssetStore();
+      final bloc = LocalActivityBloc(store);
+      final init = LocalInit();
+      addTearDown(bloc.close);
+      addTearDown(init.close);
+      await tester.pumpWidget(MultiBlocProvider(
+          providers: [
+            BlocProvider<ActivityFacilityBloc>.value(value: bloc),
+            BlocProvider<AppInitialization>.value(value: init),
+          ],
+          child: MaterialApp(
+              theme: DigitTheme.instance.mobileTheme,
+              home: Scaffold(
+                  body: SingleChildScrollView(
+                      child: InstallationReportCard(
+                activityFacility: ActivityFacilityWorkflow(
+                  activityFacility: ActivityFacility(
+                    id: 'facility',
+                    additionalDetails: AdditionalDetails()
+                      ..rectificationSite = rectification,
+                  ),
+                ),
+                projectId: 'facility',
+                title: 'Clinic',
+                dateAssigned: DateTime(2026),
+                fraction: 0,
+                onPress: () {},
+              ))))));
+      await tester.pumpAndSettle();
+      final submit = tester
+          .widgetList<DigitButton>(find.byType(DigitButton))
+          .singleWhere((button) =>
+              button.label == i18.selectHealthFacility.submitForApproval);
+      expect(submit.isDisabled, !rectification);
+      expect(find.byType(RectificationBadge),
+          rectification ? findsOneWidget : findsNothing);
       expect(tester.takeException(), isNull);
     });
   }

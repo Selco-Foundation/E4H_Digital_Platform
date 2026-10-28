@@ -3,7 +3,6 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
-import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -13,6 +12,7 @@ import '../../utils/i18_key_constants.dart' as i18;
 import '../../utils/utils.dart';
 import 'report_detail_row.dart';
 import '../bookmarks/report_bookmarks.dart';
+import '../rectification_badge.dart';
 
 class InboxReportCard extends StatelessWidget {
   final bool isBookmarked;
@@ -31,6 +31,7 @@ class InboxReportCard extends StatelessWidget {
   final int? visitNumber;
   final int? durationMonths;
   final int? visitFrequencyMonths;
+  final bool isRectification;
 
   const InboxReportCard({
     super.key,
@@ -50,6 +51,7 @@ class InboxReportCard extends StatelessWidget {
     this.visitNumber,
     this.durationMonths,
     this.visitFrequencyMonths,
+    this.isRectification = false,
   });
 
   @override
@@ -60,8 +62,9 @@ class InboxReportCard extends StatelessWidget {
     final formattedDate =
         date == null ? '—' : DateFormat('dd/MM/yy').format(date);
 
-    return DigitCard(children: [
-      Column(
+    return RectificationAwareCard(
+      isRectification: isRectification,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -135,8 +138,8 @@ class InboxReportCard extends StatelessWidget {
               type: DigitButtonType.secondary,
               size: DigitButtonSize.large),
         ],
-      )
-    ]);
+      ),
+    );
   }
 
   String _displayValue(String? value) {

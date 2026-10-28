@@ -1069,7 +1069,15 @@ Future<void> _performSubmissionForActivityFacility({
     );
 
     final eligibility = AssetSubmissionEligibilityRepository(isar);
-    if (!await eligibility.hasReadyAssets(activityFacilityId)) {
+    final workflowRow = await isar.cacheActivityFacilityWorkflows
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .findFirst();
+    final isRectification =
+        workflowRow?.activityFacility.additionalDetails?.isRectification ==
+            true;
+    if (!await eligibility.hasReadyAssets(activityFacilityId,
+        allowZeroAssets: isRectification)) {
       throw Exception('No completed asset type is available for submission.');
     }
     final assetsByType =

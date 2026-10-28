@@ -46,6 +46,7 @@ import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
+import '../widgets/rectification_badge.dart';
 
 @RoutePage()
 class OverallAssetSummaryPage extends StatefulWidget {
@@ -241,6 +242,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     if (!mounted) return;
     setState(() => _system = sys);
   }
+
+  // Installation images, completion certificate and handover document are
+  // optional on rectification sites.
+  bool get _isRectification => isRectificationSite(projectWorkflow);
 
   Future<bool> _hasInstallationImages() async {
     if (_currentProjectId == null) return false;
@@ -557,7 +562,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   key: ValueKey(_currentProjectId),
                                   future: AssetSubmissionEligibilityRepository(
                                     context.read<ActivityFacilityBloc>().isar,
-                                  ).hasReadyAssets(_currentProjectId ?? ''),
+                                  ).hasReadyAssets(_currentProjectId ?? '',
+                                      allowZeroAssets: _isRectification),
                                   builder: (context, readiness) {
                                     final isDisabled = readiness.data != true;
                                     return reportState.maybeWhen(
@@ -582,6 +588,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 if (resolvedUserType ==
                                                         USER_TYPES
                                                             .SUPERVISOR.name &&
+                                                    !_isRectification &&
                                                     !await _hasInstallationImages()) {
                                                   _showInstallationImagesRequiredPopup();
                                                   return;
@@ -590,7 +597,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                     USER_TYPES
                                                         .SUPERVISOR.name) {
                                                   final missingDocumentMessage =
-                                                      await _missingRequiredDocumentMessage();
+                                                      _isRectification
+                                                          ? null
+                                                          : await _missingRequiredDocumentMessage();
                                                   if (!mounted) return;
                                                   if (missingDocumentMessage !=
                                                       null) {
@@ -736,6 +745,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    if (_isRectification) ...[
+                                      const RectificationBadge(),
+                                      const SizedBox(height: spacer2),
+                                    ],
                                     Text(
                                       'Summary',
                                       style: textTheme.headingXl.copyWith(

@@ -44,6 +44,7 @@ import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
+import '../widgets/rectification_badge.dart';
 
 @RoutePage()
 class SubmitForApprovalPage extends StatefulWidget {
@@ -275,6 +276,11 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     if (!mounted) return;
     setState(() => _system = sys);
   }
+
+  // Installation images, completion certificate and handover document are
+  // optional on rectification sites.
+  bool get _isRectification =>
+      isRectificationSite(project);
 
   Future<bool> _hasInstallationImages() async {
     if (activityFacilityId.isEmpty) return false;
@@ -556,13 +562,15 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                             final isar =
                                 context.read<ActivityFacilityBloc>().isar;
                             if (isSupervisor &&
+                                !_isRectification &&
                                 !await _hasInstallationImages()) {
                               _showInstallationImagesRequiredPopup();
                               return;
                             }
                             if (isSupervisor) {
-                              final missingDocumentMessage =
-                                  await _missingRequiredDocumentMessage();
+                              final missingDocumentMessage = _isRectification
+                                  ? null
+                                  : await _missingRequiredDocumentMessage();
                               if (!mounted) return;
                               if (missingDocumentMessage != null) {
                                 _showRequiredDocumentPopup(
@@ -655,6 +663,10 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (_isRectification) ...[
+                        const RectificationBadge(),
+                        const SizedBox(height: spacer2),
+                      ],
                       Text(
                         context.translate(i18.submitForApproval.summary),
                         style: textTheme.headingXl
