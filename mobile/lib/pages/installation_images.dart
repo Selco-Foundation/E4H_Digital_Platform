@@ -243,14 +243,25 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
     return _selectedCountFor(requirement) == requirement.requiredCount;
   }
 
+  bool get _isRectification => isRectificationSite(context
+      .read<SelectedActivityFacilityBloc>()
+      .state
+      .whenOrNull(selected: (wf) => wf));
+
+  // Rectification images are optional: any count up to the required one is
+  // accepted (the picker already caps it at requiredCount).
+  bool _isRequirementSatisfied(InstallationImageItem requirement) {
+    return _isRectification || _isRequirementComplete(requirement);
+  }
+
   bool _hasAnyInvalidRequirement(List<InstallationImageItem> requirements) {
     return requirements
-        .any((requirement) => !_isRequirementComplete(requirement));
+        .any((requirement) => !_isRequirementSatisfied(requirement));
   }
 
   String? _validationErrorFor(InstallationImageItem requirement) {
     if (!_hasAttemptedValidation) return null;
-    if (_isRequirementComplete(requirement)) return null;
+    if (_isRequirementSatisfied(requirement)) return null;
     return 'Required ${requirement.requiredCount} '
         '${requirement.requiredCount == 1 ? 'image' : 'images'}, '
         'selected ${_selectedCountFor(requirement)}';
@@ -280,7 +291,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   ) {
     if (message == null || message.isEmpty) return false;
     if (_sectionMessages.containsKey(requirement.code)) return true;
-    return !_isRequirementComplete(requirement);
+    return !_isRequirementSatisfied(requirement);
   }
 
   void _handleImagesSelected(

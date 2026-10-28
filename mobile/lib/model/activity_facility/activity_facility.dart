@@ -623,6 +623,11 @@ class AdditionalDetails with AdditionalDetailsMappable {
   AssetTypeAdditionalDetails? panel;
   String? bomJson;
 
+  bool? rectificationSite;
+
+  @ignore
+  bool get isRectification => rectificationSite == true;
+
   @ignore
   Map<String, dynamic>? get bom => bomJson == null
       ? null
@@ -640,6 +645,7 @@ class AdditionalDetails with AdditionalDetailsMappable {
         ? Facility.fromMap(Map<String, dynamic>.from(m['facility']))
         : null;
     a.systemCode = m['systemCode']?.toString();
+    a.rectificationSite = _parseFlag(m['rectificationSite']);
     final b = m['battery'];
     if (b is Map) {
       a.battery =
@@ -674,5 +680,13 @@ class AdditionalDetails with AdditionalDetailsMappable {
         'inverter': inverter?.toMap(),
         'panel': panel?.toMap(),
         'bom': bom,
+        'rectificationSite': rectificationSite,
       };
+
+  static bool? _parseFlag(Object? value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    return const ['true', 'yes', '1']
+        .contains(value.toString().trim().toLowerCase());
+  }
 }

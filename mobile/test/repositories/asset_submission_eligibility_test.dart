@@ -77,4 +77,26 @@ void main() {
     expect(await repo.hasReadyAssets(''), isFalse);
     expect(await repo.savedAssetsByType('facility'), isEmpty);
   });
+  test('rectification sites may submit with no assets declared', () async {
+    final store = AssetStore();
+    final repo = AssetSubmissionEligibilityRepository(store);
+    expect(
+        await repo.hasReadyAssets('facility', allowZeroAssets: true), isTrue);
+    store.counts.add(count('battery', quantity: 0));
+    expect(
+        await repo.hasReadyAssets('facility', allowZeroAssets: true), isTrue);
+    expect(await repo.hasReadyAssets(''), isFalse);
+    expect(await repo.hasReadyAssets('', allowZeroAssets: true), isFalse);
+  });
+  test('rectification sites must still complete a declared asset type',
+      () async {
+    final store = AssetStore();
+    store.counts.add(count('panel'));
+    final repo = AssetSubmissionEligibilityRepository(store);
+    expect(
+        await repo.hasReadyAssets('facility', allowZeroAssets: true), isFalse);
+    store.assets.add(asset('panel'));
+    expect(
+        await repo.hasReadyAssets('facility', allowZeroAssets: true), isTrue);
+  });
 }
