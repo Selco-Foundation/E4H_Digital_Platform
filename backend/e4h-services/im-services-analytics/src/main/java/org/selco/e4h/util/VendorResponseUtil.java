@@ -65,4 +65,36 @@ public final class VendorResponseUtil {
         long elapsed = System.currentTimeMillis() - assignedTime;
         return slaMs != null && elapsed <= slaMs;
     }
+
+    private static final String VENDOR_ROLE = "COMPLAINT_RESOLVER";
+
+    /**
+     * @return {@code true} if the ticket's first RESOLVED step was done by a vendor user (role
+     *         COMPLAINT_RESOLVER) or came straight out of a vendor-owned state, {@code false} if it
+     *         was resolved by someone else, {@code null} if the history is unavailable or has no
+     *         RESOLVED step. The role check matters: tickets migrated from the old system only carry
+     *         the final RESOLVE step in their history, so there is no previous state to look at.
+     */
+    public static Boolean resolvedFromVendorState(List<ProcessInstance> history) {
+        if (history == null || history.isEmpty()) {
+            return null;
+        }
+        List<ProcessInstance> sorted = history.stream()
+                .filter(pi -> pi.getAuditDetails() != null && pi.getAuditDetails().getCreatedTime() != null)
+                .sorted(Comparator.comparing(pi -> pi.getAuditDetails().getCreatedTime()))
+                .toList();
+
+        String previousStatus = null;
+        for (ProcessInstance pi : sorted) {
+            String applicationStatus = pi.getState() != null ? pi.getState().getApplicationStatus() : null;
+            if (IMConstants.RESOLVED.equals(applicationStatus)) {
+                boolean resolvedByVendorUser = pi.getAssigner() != null && pi.getAssigner().getRoles() != null
+                        && pi.getAssigner().getRoles().stream().anyMatch(r -> VENDOR_ROLE.equals(r.getCode()));
+                return resolvedByVendorUser
+                        || (previousStatus != null && EscalationWorkflowStates.VENDOR_STATES.contains(previousStatus));
+            }
+            previousStatus = applicationStatus;
+        }
+        return null;
+    }
 }

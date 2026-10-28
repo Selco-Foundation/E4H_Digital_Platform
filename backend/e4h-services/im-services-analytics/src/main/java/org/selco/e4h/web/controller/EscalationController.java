@@ -864,10 +864,7 @@ public class EscalationController {
     }
 
     private boolean isClosed(String status) {
-        return status.equalsIgnoreCase("RESOLVED") ||
-               status.equalsIgnoreCase("CLOSED_AFTER_RESOLUTION") ||
-               status.equalsIgnoreCase("CLOSED_AFTER_REJECTION") ||
-               status.equalsIgnoreCase("REJECTED");
+        return EscalationTicketUtil.CLOSED_STATUSES.contains(status.toUpperCase());
     }
 
     private Map<String, Object> getOrCreateFacilityRow(Map<String, Map<String, Object>> agg,

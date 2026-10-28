@@ -1,3 +1,4 @@
+import re
 from typing import Dict, List, Union, Any, Optional, Tuple
 
 import numpy as np
@@ -10,7 +11,8 @@ from app.utils.facility_validator import (
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
 from openpyxl.styles import Protection, Alignment, PatternFill
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter, quote_sheetname
+from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.datavalidation import DataValidation
 
 from app.core.logging import AppLogger
@@ -515,6 +517,162 @@ def add_non_blank_validations_to_file(
         raise
 
 
+BOUNDARY_LISTS_SHEET = "_BoundaryLists"
+
+
+def _write_text(ws, row: int, column: int, value: str) -> None:
+    """Write `value` as a plain string. openpyxl stores a string starting with '=' as a
+    formula, and an apostrophe prefix would become part of the value (so the dropdown would
+    offer "'=X" and the upload would not match), so set the cell's type instead."""
+    cell = ws.cell(row=row, column=column, value=value)
+    cell.data_type = "s"
+
+
+def add_dependent_boundary_dropdowns(
+        file_path: str,
+        sheet_name: str,
+        boundary_records: List[Dict[str, str]],
+        state_header: str = "State",
+        district_header: str = "District",
+        block_header: str = "Block",
+        max_extra_rows: int = 1000,
+) -> None:
+    """Cascading State -> District -> Block dropdowns on `sheet_name`.
+
+    `boundary_records` are rows with localized "State", "District" and "Block" display
+    names - the same rows written to the BlockBoundaryCodes sheet - so the lists offer
+    exactly the boundaries in the template, and an upload still resolves by display name.
+
+    Layout, on a very-hidden sheet `_BoundaryLists`:
+      * column A - every state, workbook name BL_STATES;
+      * columns B:C - BL_DMAP: state -> name of that state's district list;
+      * columns D:E - BL_BMAP: "state|district" -> name of that district's block list.
+        The key carries the state because district names repeat across states (Bilaspur);
+      * F1 - left empty, named BL_NONE: the list a row gets while its parent is blank;
+      * from column G - one column per list, named BL_D_<n> (districts of a state) and
+        BL_B_<n> (blocks of a district). Running numbers, because a display name is not a
+        legal Excel name.
+    District and Block validate against INDIRECT(IFERROR(VLOOKUP(...), "BL_NONE")) of the
+    cells to their left, with relative rows, so each row offers the children of its own
+    selection - and an empty list, rather than Excel's #N/A, until that selection is made.
+
+    Headers are matched with or without the " (Mandatory)" suffix; a missing column is
+    skipped with a warning rather than failing the template.
+    """
+    tree: Dict[str, Dict[str, set]] = {}
+    for record in boundary_records:
+        state = str(record.get("State") or "").strip()
+        district = str(record.get("District") or "").strip()
+        block = str(record.get("Block") or "").strip()
+        if not state:
+            continue
+        districts = tree.setdefault(state, {})
+        if district:
+            blocks = districts.setdefault(district, set())
+            if block:
+                blocks.add(block)
+    if not tree:
+        logger.warning("No boundaries to build State/District/Block dropdowns from")
+        return
+
+    wb = load_workbook(file_path)
+    ws = wb[sheet_name]
+
+    letters: Dict[str, str] = {}
+    for cell in ws[1]:
+        if cell.value is not None:
+            letters[_header_base_name(cell.value).lower()] = cell.column_letter
+    state_col = letters.get(state_header.lower())
+    district_col = letters.get(district_header.lower())
+    block_col = letters.get(block_header.lower())
+    if not state_col:
+        logger.warning(f"No '{state_header}' column in '{sheet_name}'; boundary dropdowns skipped")
+        return
+
+    if BOUNDARY_LISTS_SHEET in wb.sheetnames:
+        del wb[BOUNDARY_LISTS_SHEET]
+    lists = wb.create_sheet(BOUNDARY_LISTS_SHEET)
+    lists.sheet_state = "veryHidden"
+    ref_sheet = quote_sheetname(BOUNDARY_LISTS_SHEET)
+
+    def define(name: str, ref: str) -> None:
+        if name in wb.defined_names:
+            del wb.defined_names[name]
+        wb.defined_names[name] = DefinedName(name, attr_text=f"{ref_sheet}!{ref}")
+
+    states = sorted(tree, key=str.casefold)
+    for row, state in enumerate(states, start=1):
+        _write_text(lists, row, 1, state)
+    define("BL_STATES", f"$A$1:$A${len(states)}")
+
+    # F1 stays empty: with no State (or District) in the row the lookup fails, and the list
+    # falls back to this blank cell instead of offering Excel's #N/A as the only choice.
+    define("BL_NONE", "$F$1")
+    next_col = 7  # G
+    d_map_row = b_map_row = 0
+    list_no = 0
+    for state in states:
+        districts = sorted(tree[state], key=str.casefold)
+        if not districts:
+            continue
+        list_no += 1
+        d_name = f"BL_D_{list_no}"
+        letter = get_column_letter(next_col)
+        for row, district in enumerate(districts, start=1):
+            _write_text(lists, row, next_col, district)
+        define(d_name, f"${letter}$1:${letter}${len(districts)}")
+        next_col += 1
+        d_map_row += 1
+        _write_text(lists, d_map_row, 2, state)
+        lists.cell(row=d_map_row, column=3, value=d_name)
+
+        for district in districts:
+            blocks = sorted(tree[state][district], key=str.casefold)
+            if not blocks:
+                continue
+            list_no += 1
+            b_name = f"BL_B_{list_no}"
+            letter = get_column_letter(next_col)
+            for row, block in enumerate(blocks, start=1):
+                _write_text(lists, row, next_col, block)
+            define(b_name, f"${letter}$1:${letter}${len(blocks)}")
+            next_col += 1
+            b_map_row += 1
+            _write_text(lists, b_map_row, 4, f"{state}|{district}")
+            lists.cell(row=b_map_row, column=5, value=b_name)
+
+    if d_map_row:
+        define("BL_DMAP", f"$B$1:$C${d_map_row}")
+    if b_map_row:
+        define("BL_BMAP", f"$D$1:$E${b_map_row}")
+
+    last_row = max(ws.max_row + max_extra_rows, 2)
+
+    def validate(col: str, formula: str, what: str, prompt: str) -> None:
+        dv = DataValidation(type="list", formula1=formula, allow_blank=True,
+                            showErrorMessage=True, showInputMessage=True)
+        dv.error = f"Please select a {what} from the list"
+        dv.errorTitle = "Invalid Entry"
+        dv.prompt = prompt
+        dv.promptTitle = f"Select {what}"
+        dv.add(f"{col}2:{col}{last_row}")
+        ws.add_data_validation(dv)
+
+    validate(state_col, "BL_STATES", "state", "Select a state from the dropdown")
+    if district_col and d_map_row:
+        validate(district_col,
+                 f'INDIRECT(IFERROR(VLOOKUP(${state_col}2,BL_DMAP,2,FALSE),"BL_NONE"))',
+                 "district", "Select the State first, then a district from the dropdown")
+    if block_col and district_col and b_map_row:
+        validate(block_col,
+                 f'INDIRECT(IFERROR(VLOOKUP(${state_col}2&"|"&${district_col}2,BL_BMAP,2,FALSE),"BL_NONE"))',
+                 "block", "Select the State and District first, then a block from the dropdown")
+
+    wb.save(file_path)
+    logger.info(f"Added State/District/Block dropdowns to '{sheet_name}': {len(states)} states, "
+                f"{d_map_row} district lists, {b_map_row} block lists")
+
+
 def _header_base_name(header: Any) -> str:
     if header is None:
         return ""
@@ -604,3 +762,47 @@ def add_health_category_hfr_nin_validations(
 ) -> None:
     """Backward-compatible alias; applies HEALTH HFR/NIN and ANGANWADI PoC Username rules."""
     add_facility_category_conditional_validations(file_path, sheet_name)
+
+
+BOUNDARY_TEMPLATE_SHEET = "Boundary Data"
+# A pattern that only lists literal choices, e.g. ^(Block|Sub-district|Both)$ - offered as a
+# dropdown in the template.
+_CHOICE_PATTERN = re.compile(r"^\^\(([^()\[\]\\*+?{}.$^]+(?:\|[^()\[\]\\*+?{}.$^]+)*)\)\$$")
+
+
+def schema_choices(pattern):
+    """The literal values a column's pattern allows, or None if it isn't a plain choice list."""
+    match = _CHOICE_PATTERN.match(pattern or "")
+    return match.group(1).split("|") if match else None
+
+
+def write_boundary_template(path: str, columns, rows: int = 5000) -> None:
+    """The empty boundary ingestion template, one column per BoundaryIngestionSchema column in
+    the schema's order. Every column is text-formatted so Excel keeps codes as typed, and a
+    column whose pattern is a plain choice list gets those choices as a dropdown."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = BOUNDARY_TEMPLATE_SHEET
+    names = [column.name for column in columns if column.name]
+    sheet.append(names)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+    for index, column in enumerate([c for c in columns if c.name], start=1):
+        letter = sheet.cell(row=1, column=index).column_letter
+        sheet.column_dimensions[letter].width = max(16, len(column.name) + 4)
+        # A column style, not per-cell formats, so the sheet has no pre-filled empty rows.
+        sheet.column_dimensions[letter].number_format = "@"
+        choices = schema_choices(column.pattern)
+        if choices:
+            dropdown = DataValidation(type="list", formula1='"%s"' % ",".join(choices),
+                                      allow_blank=not column.required, showErrorMessage=True,
+                                      errorTitle=column.name,
+                                      error="Pick one of: %s" % ", ".join(choices))
+            dropdown.add("%s2:%s%d" % (letter, letter, rows + 1))
+            sheet.add_data_validation(dropdown)
+    sheet.freeze_panes = "A2"
+    workbook.save(path)
