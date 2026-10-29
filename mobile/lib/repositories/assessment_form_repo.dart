@@ -15,7 +15,6 @@ import 'assessment_api_paths.dart';
 import 'assessment_bookmark_repo.dart';
 
 class AssessmentFormRepository {
-  static const categorySchemaCode = 'facility.CategoryAssessmentForm';
   static const mobileSchemaCode = 'assessment.AssessmentMobileFormSchema';
   static const resolvePath = AssessmentApiPaths.formResolve;
   static const phoneSubmissionPath = AssessmentApiPaths.phoneSubmission;
@@ -39,76 +38,20 @@ class AssessmentFormRepository {
         _storage = storage ?? SecureStore(),
         _appInitRepo = appInitRepo ?? AppInitRepo();
 
-  Future<List<Map<String, dynamic>>> _searchCategoryForms({
-    bool useCacheRead = false,
-    bool cacheOnly = false,
-  }) async {
-    final documents = await _appInitRepo.searchAssessmentCategoryFormsRaw(
-      MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: _tenantId ?? envConfig.variables.tenantId,
-        schemaCode: categorySchemaCode,
-        moduleDetails: const [],
-      )),
-      useCacheRead: useCacheRead,
-      cacheOnly: cacheOnly,
-      validator: (documents) {
-        final categories = <String>{};
-        for (final doc in documents.where((doc) =>
-            doc['isActive'] != false &&
-            doc['data'] is Map &&
-            doc['data']['active'] != false)) {
-          final data = doc['data'] as Map;
-          final category = data['category']?.toString().trim().toUpperCase();
-          final codes = data['assessment_code_form'];
-          if (doc['schemaCode'] != categorySchemaCode ||
-              category == null ||
-              category.isEmpty ||
-              !categories.add(category) ||
-              codes is! List ||
-              codes.isEmpty ||
-              codes.any((code) =>
-                  code is! String ||
-                  code.trim().isEmpty ||
-                  code != code.trim())) {
-            throw const FormatException('Invalid assessment category mapping');
-          }
-        }
-        if (categories.isEmpty) {
-          throw const FormatException(
-              'Assessment category mappings are missing');
-        }
-      },
-    );
-    return documents
-        .where((doc) =>
-            doc['isActive'] != false &&
-            doc['data'] is Map &&
-            doc['data']['active'] != false)
-        .toList();
-  }
-
   Future<String> selectFormCode({
     required String facilityCategory,
     required AssessmentMode mode,
-    bool cacheOnly = false,
+    String? questionnaire,
   }) async {
-    final mappings =
-        await _searchCategoryForms(useCacheRead: true, cacheOnly: cacheOnly);
-    final category = facilityCategory.trim().toUpperCase();
-    final suffix = mode == AssessmentMode.remote ? '_PHONE' : '_FIELD';
-    final matches = mappings
-        .where((doc) =>
-            doc['data']['category'].toString().trim().toUpperCase() == category)
-        .expand((doc) =>
-            (doc['data']['assessment_code_form'] as List).cast<String>())
-        .where((code) => code.endsWith(suffix))
-        .toList();
-    if (matches.length != 1) {
-      throw FormatException(
-          'Expected one $suffix assessment form for $facilityCategory');
-    }
-    return matches.single;
+    final assigned = questionnaire?.trim();
+    if (assigned != null && assigned.isNotEmpty) return assigned;
+    final prefix = switch (facilityCategory.trim().toUpperCase()) {
+      'HEALTH' => 'HF',
+      'ANGANWADI' => 'AWC',
+      _ =>
+        throw const FormatException('Unsupported assessment facility category'),
+    };
+    return '${prefix}_${mode == AssessmentMode.remote ? 'PHONE' : 'FIELD'}';
   }
 
   Future<AssessmentFormResolution> resolveForm({
@@ -116,10 +59,12 @@ class AssessmentFormRepository {
     required String facilityCategory,
     required AssessmentMode assessmentMode,
     String? tenantId,
+    String? formType,
   }) async {
     final expected = await selectFormCode(
       facilityCategory: facilityCategory,
       mode: assessmentMode,
+      questionnaire: formType,
     );
     try {
       final response = await _dio.post(
@@ -189,57 +134,31 @@ class AssessmentFormRepository {
   Future<Map<String, dynamic>> loadMobileSchema(
     String formType,
   ) async {
-    final cached = await _loadCompleteTransformedCache();
-    if (cached != null && cached.containsKey(formType)) {
-      return cached[formType]!;
-    }
-
-    final documents = await _searchMobileSchemas(useCacheRead: true);
+    final cached = await _appInitRepo.loadByName('Assessment.$formType');
+    if (_isValidTransformedSchema(cached, formType)) return cached!;
+    final documents = await _searchMobileSchemas();
     await _transformAndCache(documents);
-    final refreshed = await _loadCompleteTransformedCache();
-    if (refreshed == null || !refreshed.containsKey(formType)) {
-      throw const FormatException(
-        'Assessment mobile schema cache is incomplete',
-      );
-    }
-    return refreshed[formType]!;
+    return loadCachedMobileSchema(formType);
   }
 
-  Future<Map<String, dynamic>> loadCachedMobileSchema(
-    String formType,
-  ) async {
-    final cached = await _loadCompleteTransformedCache();
-    if (cached == null || !cached.containsKey(formType)) {
-      throw const FormatException(
-        'Assessment mobile schema cache is incomplete',
-      );
+  Future<Map<String, dynamic>> loadCachedMobileSchema(String formType) async {
+    final cached = await _appInitRepo.loadByName('Assessment.$formType');
+    if (!_isValidTransformedSchema(cached, formType)) {
+      throw FormatException(
+          'Assessment mobile schema is unavailable: $formType');
     }
-    return cached[formType]!;
+    return cached!;
   }
 
   Future<void> preloadMobileSchemas({bool forceRefresh = true}) async {
-    List<Map<String, dynamic>>? previousMappings;
-    try {
-      previousMappings = await _searchCategoryForms(cacheOnly: true);
-    } catch (_) {
-      // First preload has no cached category mappings.
-    }
-    try {
-      await _searchCategoryForms(useCacheRead: !forceRefresh);
-    } catch (error) {
-      if (isAuthenticationFailure(error)) rethrow;
-      await _searchCategoryForms(cacheOnly: true);
-    }
-    if (!forceRefresh && await _loadCompleteTransformedCache() != null) {
-      return;
-    }
+    if (!forceRefresh && await _loadCompleteTransformedCache() != null) return;
 
     if (forceRefresh) {
       try {
         final documents = await _searchMobileSchemas();
         await _transformAndCache(documents);
         if (await _loadCompleteTransformedCache() == null) {
-          throw const FormatException('Mapped assessment schemas are missing');
+          throw const FormatException('Assessment mobile schemas are missing');
         }
         return;
       } catch (remoteError, stackTrace) {
@@ -249,16 +168,13 @@ class AssessmentFormRepository {
           message: remoteError.toString(),
           stackTrace: stackTrace,
         );
-        if (previousMappings != null) {
-          await _storage.setAssessmentCategoryFormsRaw(previousMappings);
-        }
         if (await _loadCompleteTransformedCache() != null) return;
         try {
           final cachedDocuments = await _searchMobileSchemas(cacheOnly: true);
           await _transformAndCache(cachedDocuments);
           if (await _loadCompleteTransformedCache() == null) {
             throw const FormatException(
-                'Mapped assessment schemas are missing');
+                'Assessment mobile schemas are missing');
           }
           return;
         } catch (_) {
@@ -369,16 +285,14 @@ class AssessmentFormRepository {
   Future<Map<String, Map<String, dynamic>>?>
       _loadCompleteTransformedCache() async {
     final result = <String, Map<String, dynamic>>{};
-    final List<Map<String, dynamic>> mappings;
+    final List<Map<String, dynamic>> documents;
     try {
-      mappings = await _searchCategoryForms(cacheOnly: true);
+      documents = await _searchMobileSchemas(cacheOnly: true);
     } catch (_) {
       return null;
     }
-    final codes = mappings
-        .expand((doc) =>
-            (doc['data']['assessment_code_form'] as List).cast<String>())
-        .toSet();
+    final codes =
+        documents.map((doc) => doc['uniqueIdentifier'].toString().trim());
     for (final formType in codes) {
       final cached = await _appInitRepo.loadByName('Assessment.$formType');
       if (!_isValidTransformedSchema(cached, formType)) return null;
@@ -439,9 +353,11 @@ class AssessmentFormRepository {
   }
 
   Future<AssessmentSubmissionResponse> submitAssessment(
-    AssessmentSubmissionRequest request,
-  ) async {
+    AssessmentSubmissionRequest request, {
+    String? formType,
+  }) async {
     await resolveForm(
+      formType: formType,
       tenantId: request.tenantId,
       planFacilityId: request.planFacilityId,
       facilityCategory: request.facilityCategory,

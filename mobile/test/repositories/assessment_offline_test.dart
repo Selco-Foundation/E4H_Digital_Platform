@@ -10,10 +10,11 @@ import '../../lib/model/assessment/assessment_form.dart';
 import '../../lib/model/assessment/assessment_form_type.dart';
 import '../../lib/model/assessment/assessment_mode.dart';
 import '../../lib/repositories/assessment_form_repo.dart';
+import '../../lib/repositories/assessment_draft_repo.dart';
+import '../../lib/model/assessment/assessment_queue.dart';
 import '../../lib/repositories/assessment_queue_repo.dart';
 import '../../lib/pages/assessment_work_home.dart';
 import '../../lib/repositories/assessment_queue_cache_repo.dart';
-import '../support/assessment_mdms.dart';
 import '../support/offline_isar.dart';
 
 class MemoryStore extends SecureStore {
@@ -87,6 +88,8 @@ void main() {
               {
                 'planFacilityId': 'one',
                 'facilityName': 'Clinic 7',
+                'onRemoteQuestionnaire': 'AWC_NEW_PHONE',
+                'onSiteQuestionnaire': 'AWC_FIELD',
                 'lastActionTime': 1
               }
           ],
@@ -113,6 +116,8 @@ void main() {
     final cached = await repo()
         .search(assessmentMode: AssessmentMode.remote, searchText: 'clinic');
     expect(cached.facilities.single.facilityName, 'Clinic 7');
+    expect(cached.facilities.single.onRemoteQuestionnaire, 'AWC_NEW_PHONE');
+    expect(cached.facilities.single.onSiteQuestionnaire, 'AWC_FIELD');
     expect(cached.count, 1);
     await expectLater(
       loadAssessmentWorkCounts(
@@ -212,10 +217,7 @@ void main() {
         }
       }));
       final repo = AssessmentFormRepository(
-          dio: dio,
-          appInitRepo: AssessmentMdms(),
-          storage: MemoryStore(),
-          tenantId: 'tenant');
+          dio: dio, storage: MemoryStore(), tenantId: 'tenant');
       final request = AssessmentSubmissionRequest(
           planFacilityId: 'facility',
           tenantId: 'tenant',
@@ -237,6 +239,67 @@ void main() {
     });
   }
 
+  test(
+      'drafts retain custom questionnaire metadata without changing submission payloads',
+      () async {
+    final directory =
+        await Directory.systemTemp.createTemp('assessment-questionnaire-');
+    final isar =
+        await openOfflineIsar(directory.path, 'assessment-questionnaire');
+    addTearDown(() async {
+      await isar.close();
+      await directory.delete(recursive: true);
+    });
+    const request = AssessmentSubmissionRequest(
+        planFacilityId: 'custom',
+        tenantId: 'tenant',
+        facilityCategory: 'ANGANWADI',
+        assessmentPhase: AssessmentPhase.PHONE,
+        submissionData: {'remarks': 'saved answer'},
+        clientSubmissionTime: 123);
+    await AssessmentDraftRepository(isar).save(
+      request: request,
+      facility: const AssessmentQueueFacility(planFacilityId: 'custom'),
+      assessorId: 'user',
+      blocked: false,
+      error: 'offline',
+      facilityDefaults: {
+        AssessmentDraftRepository.formTypeKey: 'AWC_NEW_PHONE'
+      },
+    );
+    final drafts = AssessmentDraftRepository(isar);
+    final draft = (await drafts.find(
+        tenantId: 'tenant',
+        assessorId: 'user',
+        planFacilityId: 'custom',
+        phase: AssessmentPhase.PHONE))!;
+    final forms = AssessmentFormRepository(dio: Dio(), tenantId: 'tenant');
+    expect(
+        await forms.selectFormCode(
+            facilityCategory: request.facilityCategory,
+            mode: AssessmentMode.remote,
+            questionnaire: drafts.formTypeOf(draft)),
+        'AWC_NEW_PHONE');
+    expect(drafts.requestOf(draft).toJson(), request.toJson());
+    final legacyRequest = AssessmentSubmissionRequest.fromJson({
+      ...request.toJson(),
+      'planFacilityId': 'legacy',
+    });
+    final legacy = await drafts.save(
+        request: legacyRequest,
+        facility: const AssessmentQueueFacility(planFacilityId: 'legacy'),
+        assessorId: 'legacy-user',
+        blocked: false,
+        error: 'offline');
+    expect(drafts.formTypeOf(legacy), isNull);
+    expect(
+        await forms.selectFormCode(
+            facilityCategory: request.facilityCategory,
+            mode: AssessmentMode.remote,
+            questionnaire: drafts.formTypeOf(legacy)),
+        'AWC_PHONE');
+  });
+
   test('cached facility details load without a network call', () async {
     final store = MemoryStore();
     await store.setAssessmentResponse(['facility', 'tenant', 'facility'],
@@ -244,11 +307,8 @@ void main() {
     final dio = Dio();
     dio.interceptors.add(InterceptorsWrapper(
         onRequest: (_, __) => fail('Unexpected network call')));
-    final repo = AssessmentFormRepository(
-        dio: dio,
-        appInitRepo: AssessmentMdms(),
-        storage: store,
-        tenantId: 'tenant');
+    final repo =
+        AssessmentFormRepository(dio: dio, storage: store, tenantId: 'tenant');
     expect(
         (await repo.getFacilityDetails(facilityId: 'facility'))?.facilityName,
         'Clinic');

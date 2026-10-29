@@ -111,7 +111,9 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         final resolved = await _repository.selectFormCode(
           facilityCategory: category,
           mode: draftMode,
-          cacheOnly: true,
+          questionnaire: widget
+                  .draftFacilityDefaults?[AssessmentDraftRepository.formTypeKey]
+              as String?,
         );
         formType = resolved;
         schema = await _repository.loadCachedMobileSchema(formType);
@@ -122,6 +124,9 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         final expected = await _repository.selectFormCode(
           facilityCategory: category,
           mode: widget.assessmentMode,
+          questionnaire: widget.assessmentMode == AssessmentMode.remote
+              ? widget.facility.onRemoteQuestionnaire
+              : widget.facility.onSiteQuestionnaire,
         );
         formType = expected;
         _facilityDetails = await facilityDetails;
@@ -400,7 +405,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       _error = null;
     });
     try {
-      await _repository.submitAssessment(request);
+      await _repository.submitAssessment(request, formType: formType);
       final isar = await Constants().isar;
       await AssessmentDraftRepository(isar).delete(
         request.tenantId,
@@ -496,14 +501,17 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
   Map<String, dynamic>? _facilityDefaultsForDraft(
     String? formType,
   ) {
-    final cached = widget.draftFacilityDefaults;
-    if (cached != null) return Map<String, dynamic>.from(cached);
-    if (formType == null) return null;
-    return buildAssessmentFacilityDefaults(
-      facility: _facilityDetails,
-      editableFieldNames: _editableFieldNames,
-      fallbackFacility: widget.facility,
-    );
+    if (formType == null) return widget.draftFacilityDefaults;
+    return {
+      ...?widget.draftFacilityDefaults,
+      if (widget.draftFacilityDefaults == null)
+        ...buildAssessmentFacilityDefaults(
+          facility: _facilityDetails,
+          editableFieldNames: _editableFieldNames,
+          fallbackFacility: widget.facility,
+        ),
+      AssessmentDraftRepository.formTypeKey: formType,
+    };
   }
 
   List<Map<String, Widget>> _customComponents(

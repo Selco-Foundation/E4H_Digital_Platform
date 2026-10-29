@@ -40,6 +40,8 @@ class AssessmentQueueFacility {
   final AssessmentQueueContact alternativeContact;
   final String? phoneStatus;
   final String? fieldStatus;
+  final String? onSiteQuestionnaire;
+  final String? onRemoteQuestionnaire;
   final int? lastActionTime;
 
   const AssessmentQueueFacility({
@@ -58,6 +60,8 @@ class AssessmentQueueFacility {
     this.alternativeContact = const AssessmentQueueContact(),
     this.phoneStatus,
     this.fieldStatus,
+    this.onSiteQuestionnaire,
+    this.onRemoteQuestionnaire,
     this.lastActionTime,
   });
 
@@ -75,6 +79,8 @@ class AssessmentQueueFacility {
         'block': block,
         'phoneStatus': phoneStatus,
         'fieldStatus': fieldStatus,
+        'onSiteQuestionnaire': onSiteQuestionnaire,
+        'onRemoteQuestionnaire': onRemoteQuestionnaire,
         'lastActionTime': lastActionTime,
         'facilityInCharge': facilityInCharge.toJson(),
         'alternativeContact': alternativeContact.toJson(),
@@ -105,6 +111,8 @@ class AssessmentQueueFacility {
       ),
       phoneStatus: _asString(json['phoneStatus']),
       fieldStatus: _asString(json['fieldStatus']),
+      onSiteQuestionnaire: _asString(json['onSiteQuestionnaire']),
+      onRemoteQuestionnaire: _asString(json['onRemoteQuestionnaire']),
       lastActionTime: _asInt(json['lastActionTime']),
     );
   }
