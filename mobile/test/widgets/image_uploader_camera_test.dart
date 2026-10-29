@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:digit_ui_components/theme/digit_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -154,4 +156,85 @@ void main() {
     expect(launches, 1);
     expect(deliveries, 1);
   });
+  for (final systemBack in [true, false]) {
+    testWidgets(
+        'confirmed camera photo preserves nested report navigation; system Back: $systemBack',
+        (tester) async {
+      final root = GlobalKey<NavigatorState>();
+      final reports = GlobalKey<NavigatorState>();
+      final platformCalls = <MethodCall>[];
+      var deliveries = 0;
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        platformCalls.add(call);
+        return null;
+      });
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+        tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(400, 800);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        navigatorKey: root,
+        theme: DigitTheme.instance.mobileTheme,
+        home: NavigatorPopHandler(
+          onPop: () => reports.currentState!.pop(),
+          child: Navigator(
+            key: reports,
+            onGenerateRoute: (_) => MaterialPageRoute<void>(
+                builder: (_) => const Scaffold(body: Text('Previous report'))),
+          ),
+        ),
+      ));
+      reports.currentState!.push(MaterialPageRoute<void>(
+          builder: (reportContext) => Scaffold(
+                appBar: AppBar(
+                    leading: IconButton(
+                        key: const Key('report-back'),
+                        onPressed: () => Navigator.of(reportContext).maybePop(),
+                        icon: const Icon(Icons.arrow_back))),
+                body: ImageUploader(
+                  cameraCaptureLauncher: (context) =>
+                      Navigator.of(context).push<XFile>(MaterialPageRoute(
+                    builder: (cameraContext) => Scaffold(
+                        body: TextButton(
+                      onPressed: () => Navigator.of(cameraContext)
+                          .pop(XFile(capturedImage.path)),
+                      child: const Text('Use photo'),
+                    )),
+                  )),
+                  onImagesSelected: (_) => deliveries++,
+                ),
+              )));
+      await tester.pumpAndSettle();
+      await openCamera(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Use photo'));
+      await tester.pumpAndSettle();
+      expect(deliveries, 1);
+      expect(root.currentState!.canPop(), isFalse);
+      expect(reports.currentState!.canPop(), isTrue);
+      expect(
+          platformCalls
+              .where((call) =>
+                  call.method == 'SystemNavigator.setFrameworkHandlesBack')
+              .last
+              .arguments,
+          isTrue);
+      if (systemBack) {
+        await tester.binding.handlePopRoute();
+      } else {
+        await tester.tap(find.byKey(const Key('report-back')));
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('Previous report'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      debugDefaultTargetPlatformOverride = null;
+    });
+  }
 }
