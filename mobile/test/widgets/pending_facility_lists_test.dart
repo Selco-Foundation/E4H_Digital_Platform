@@ -74,11 +74,14 @@ class RecordingSubmission
 
 class RecordingAssessmentForms extends AssessmentFormRepository {
   final submitted = <String>[];
+  final formTypes = <String, String?>{};
   RecordingAssessmentForms() : super(dio: Dio());
   @override
   Future<AssessmentSubmissionResponse> submitAssessment(
-      AssessmentSubmissionRequest request) async {
+      AssessmentSubmissionRequest request,
+      {String? formType}) async {
     submitted.add(request.planFacilityId);
+    formTypes[request.planFacilityId] = formType;
     return const AssessmentSubmissionResponse();
   }
 }
@@ -375,7 +378,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  Future<void> seedDraft(String id, AssessmentPhase phase, String name) async {
+  Future<void> seedDraft(String id, AssessmentPhase phase, String name,
+      {String? formType}) async {
     final tenant = envConfig.variables.tenantId;
     final request = AssessmentSubmissionRequest(
         planFacilityId: id,
@@ -394,6 +398,9 @@ void main() {
           planFacilityId: id,
           facilityName: name,
           facilityType: 'HF',
+          facilityDefaultsJson: formType == null
+              ? null
+              : jsonEncode({AssessmentDraftRepository.formTypeKey: formType}),
           requestJson: jsonEncode(request.toJson())));
     });
   }
@@ -406,7 +413,8 @@ void main() {
         assessorId: 'user',
         phase: AssessmentPhase.FIELD);
     await tester.runAsync(() async {
-      await seedDraft('phone', AssessmentPhase.PHONE, 'Kanur Phone');
+      await seedDraft('phone', AssessmentPhase.PHONE, 'Kanur Phone',
+          formType: 'AWC_NEW_PHONE');
       await seedDraft('field', AssessmentPhase.FIELD, 'Kanur Field');
 
       await fieldBookmarks.save(const AssessmentQueueFacility(
@@ -429,6 +437,8 @@ void main() {
         assessorId: 'user',
         phase: AssessmentPhase.PHONE);
     expect((await phoneBookmarks.list()).single.planFacilityId, 'phone');
+    expect((await phoneBookmarks.list()).single.onRemoteQuestionnaire,
+        'AWC_NEW_PHONE');
     await filter(tester, 'BOOKMARKED');
     tester.widget<DigitTabBar>(find.byType(DigitTabBar)).onTabSelected(1);
     await settle(tester);
@@ -446,7 +456,8 @@ void main() {
       'assessment Sync All still processes drafts hidden by search and phase',
       (tester) async {
     await tester.runAsync(() async {
-      await seedDraft('phone', AssessmentPhase.PHONE, 'Phone');
+      await seedDraft('phone', AssessmentPhase.PHONE, 'Phone',
+          formType: 'AWC_NEW_PHONE');
       await seedDraft('field', AssessmentPhase.FIELD, 'Field');
     });
     final forms = RecordingAssessmentForms();
@@ -465,6 +476,7 @@ void main() {
     footer.onPress();
     await settle(tester);
     expect(forms.submitted, unorderedEquals(['phone', 'field']));
+    expect(forms.formTypes, {'phone': 'AWC_NEW_PHONE', 'field': null});
     expect(drafts.records, isEmpty);
     expect(tester.takeException(), isNull);
   });

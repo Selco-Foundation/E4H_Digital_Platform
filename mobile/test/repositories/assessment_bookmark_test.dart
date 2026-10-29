@@ -1,4 +1,3 @@
-import '../support/assessment_mdms.dart';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -73,6 +72,8 @@ const facility = AssessmentQueueFacility(
     facilityId: 'facility',
     facilityName: 'Clinic',
     facilityCategory: 'HEALTH',
+    onRemoteQuestionnaire: 'HF_NEW_PHONE',
+    onSiteQuestionnaire: 'HF_FIELD',
     district: 'District',
     facilityInCharge: AssessmentQueueContact(name: 'Contact', phone: '123'));
 
@@ -87,6 +88,8 @@ void main() {
         assessorId: 'user',
         phase: AssessmentPhase.PHONE);
     await repo().save(facility);
+    expect((await repo().list()).single.onRemoteQuestionnaire, 'HF_NEW_PHONE');
+    expect((await repo().list()).single.onSiteQuestionnaire, 'HF_FIELD');
     final storage = SecureStore();
     await storage.setAssessmentResponse(
         ['queue', 'tenant', 'user', 'PHONE'], {'queue': []});
@@ -321,10 +324,7 @@ void main() {
         }
       }));
       final forms = AssessmentFormRepository(
-          appInitRepo: AssessmentMdms(),
-          dio: dio,
-          storage: store,
-          tenantId: 'tenant');
+          dio: dio, storage: store, tenantId: 'tenant');
       final request = AssessmentSubmissionRequest(
           planFacilityId: 'plan-facility',
           tenantId: 'tenant',

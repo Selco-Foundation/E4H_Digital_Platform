@@ -13,6 +13,8 @@ class AssessmentDraftStatus {
 }
 
 class AssessmentDraftRepository {
+  // Local metadata only; never included in submissionData or API payloads.
+  static const formTypeKey = '_assessmentFormType';
   final Isar isar;
 
   const AssessmentDraftRepository(this.isar);
@@ -177,6 +179,9 @@ class AssessmentDraftRepository {
       await isar.cacheAssessmentDrafts.put(draft);
     });
   }
+
+  String? formTypeOf(CacheAssessmentDraft draft) =>
+      facilityDefaultsOf(draft)?[formTypeKey] as String?;
 
   AssessmentSubmissionRequest requestOf(CacheAssessmentDraft draft) =>
       AssessmentSubmissionRequest.fromJson(

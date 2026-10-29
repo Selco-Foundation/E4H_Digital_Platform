@@ -90,6 +90,14 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
             planFacilityId: draft.planFacilityId,
             facilityName: draft.facilityName,
             facilityCategory: request.facilityCategory,
+            onRemoteQuestionnaire:
+                request.assessmentPhase == AssessmentPhase.PHONE
+                    ? repository.formTypeOf(draft)
+                    : null,
+            onSiteQuestionnaire:
+                request.assessmentPhase == AssessmentPhase.FIELD
+                    ? repository.formTypeOf(draft)
+                    : null,
             facilityType: draft.facilityType,
             state: draft.state,
             district: draft.district,
@@ -168,7 +176,8 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
     for (final draft in pending) {
       try {
         final request = drafts.requestOf(draft);
-        await forms.submitAssessment(request);
+        await forms.submitAssessment(request,
+            formType: drafts.formTypeOf(draft));
         await drafts.delete(
           request.tenantId,
           request.planFacilityId,
