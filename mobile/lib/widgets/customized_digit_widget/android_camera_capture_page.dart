@@ -3,8 +3,11 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
+import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../utils/app_logger.dart';
 
 @visibleForTesting
 Size calculateCameraPreviewCoverSize({
@@ -114,6 +117,8 @@ class AndroidCameraCapturePage extends StatefulWidget {
 class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
     with WidgetsBindingObserver {
   CameraController? _controller;
+  List<CameraDescription> _cameras = [];
+  CameraLensDirection _selectedLens = CameraLensDirection.back;
   XFile? _capturedPhoto;
   String? _errorMessage;
   bool _initializing = true;
@@ -157,22 +162,18 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
       final cameras = await availableCameras();
       if (!mounted || generation != _initializationGeneration) return;
 
-      CameraDescription? rearCamera;
-      for (final camera in cameras) {
-        if (camera.lensDirection == CameraLensDirection.back) {
-          rearCamera = camera;
-          break;
-        }
-      }
-      if (rearCamera == null) {
+      _cameras = cameras;
+      if (cameras.isEmpty) {
         throw CameraException(
-          'NoRearCamera',
-          'No rear camera is available on this device.',
-        );
+            'NoCamera', 'No camera is available on this device.');
       }
-
+      final selectedCamera = cameras.firstWhere(
+        (camera) => camera.lensDirection == _selectedLens,
+        orElse: () => cameras.first,
+      );
+      _selectedLens = selectedCamera.lensDirection;
       final controller = CameraController(
-        rearCamera,
+        selectedCamera,
         ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
@@ -201,6 +202,20 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
             'Camera could not be started. Retry or select a photo from the gallery.';
       });
     }
+  }
+
+  bool get _hasBothCameras =>
+      _cameras
+          .any((camera) => camera.lensDirection == CameraLensDirection.front) &&
+      _cameras
+          .any((camera) => camera.lensDirection == CameraLensDirection.back);
+
+  Future<void> _switchCamera() async {
+    if (!_canCapture || _capturing || !_hasBothCameras) return;
+    _selectedLens = _selectedLens == CameraLensDirection.back
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
+    await _initializeCamera();
   }
 
   String _cameraErrorMessage(CameraException error) {
@@ -240,12 +255,16 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
     try {
       final photo = await controller.takePicture();
       if (!mounted) return;
-      await _disposeController();
+      setState(() => _capturedPhoto = photo);
+      // Unmount the live preview before releasing the controller it listens to.
+      await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
-      setState(() {
-        _capturedPhoto = photo;
-        _capturing = false;
-      });
+      try {
+        await _disposeController();
+      } catch (error) {
+        AppLogger.instance.info('Camera cleanup failed: ${error.runtimeType}');
+      }
+      if (mounted) setState(() => _capturing = false);
     } on CameraException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -262,6 +281,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
   }
 
   Future<void> _retryPhoto() async {
+    if (_capturing) return;
     final capturedPhoto = _capturedPhoto;
     setState(() {
       _capturedPhoto = null;
@@ -282,7 +302,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
 
   void _confirmPhoto() {
     final capturedPhoto = _capturedPhoto;
-    if (_returningPhoto || capturedPhoto == null) return;
+    if (_capturing || _returningPhoto || capturedPhoto == null) return;
     _returningPhoto = true;
     Navigator.of(context).pop<XFile>(capturedPhoto);
   }
@@ -350,6 +370,18 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
                         tooltip: 'Cancel',
                       ),
                     ),
+                    if (_capturedPhoto == null && _hasBothCameras)
+                      Positioned(
+                        top: spacer2,
+                        right: spacer2,
+                        child: IconButton.filledTonal(
+                          key: const Key('camera-switch'),
+                          onPressed:
+                              _canCapture && !_capturing ? _switchCamera : null,
+                          icon: const Icon(Icons.flip_camera_android),
+                          tooltip: 'Switch camera',
+                        ),
+                      ),
                     if (_capturedPhoto == null && _canCapture)
                       Positioned(
                         left: 0,
@@ -384,7 +416,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
                             Expanded(
                               child: OutlinedButton.icon(
                                 key: const Key('camera-retry'),
-                                onPressed: _retryPhoto,
+                                onPressed: _capturing ? null : _retryPhoto,
                                 icon: const Icon(Icons.refresh),
                                 label: const Text('Retry'),
                                 style: OutlinedButton.styleFrom(
@@ -397,7 +429,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
                             Expanded(
                               child: FilledButton.icon(
                                 key: const Key('camera-confirm'),
-                                onPressed: _confirmPhoto,
+                                onPressed: _capturing ? null : _confirmPhoto,
                                 icon: const Icon(Icons.check),
                                 label: const Text('Use photo'),
                               ),

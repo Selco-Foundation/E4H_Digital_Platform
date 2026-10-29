@@ -317,7 +317,7 @@ class _ImageUploaderState extends State<ImageUploader>
         });
         final capturedPhoto =
             await (widget.cameraCaptureLauncher?.call(context) ??
-                Navigator.of(context, rootNavigator: true).push<XFile>(
+                Navigator.of(context).push<XFile>(
                   MaterialPageRoute<XFile>(
                     fullscreenDialog: true,
                     builder: (_) => const AndroidCameraCapturePage(),
