@@ -41,6 +41,10 @@ public final class AssessmentConstants {
     public static final String PHASE_PHONE = "PHONE";
     public static final String PHASE_FIELD = "FIELD";
 
+    /** additionalDetails keys holding the assessment form chosen for a plan facility at include time. */
+    public static final String DETAIL_ON_REMOTE_QUESTIONNAIRE = "onRemoteQuestionnaire";
+    public static final String DETAIL_ON_SITE_QUESTIONNAIRE = "onSiteQuestionnaire";
+
     public static final String CATEGORY_HEALTH = "HEALTH";
     public static final String CATEGORY_ANGANWADI = "ANGANWADI";
 
