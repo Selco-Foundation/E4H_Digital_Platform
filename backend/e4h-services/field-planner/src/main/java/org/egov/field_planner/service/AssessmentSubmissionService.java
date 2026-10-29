@@ -81,7 +81,15 @@ public class AssessmentSubmissionService {
                 .phoneStatus(facility.getPhoneStatus())
                 .fieldStatus(facility.getFieldStatus())
                 .lastActionTime(facility.getLastActionTime())
+                .onSiteQuestionnaire(detailAsString(facility, "onSiteQuestionnaire"))
+                .onRemoteQuestionnaire(detailAsString(facility, "onRemoteQuestionnaire"))
                 .build();
+    }
+
+    private String detailAsString(PlanFacility facility, String key) {
+        Map<String, Object> details = facility.getAdditionalDetails();
+        Object value = details != null ? details.get(key) : null;
+        return value != null ? value.toString() : null;
     }
 
     private int resolveLimit(Integer limit) {
