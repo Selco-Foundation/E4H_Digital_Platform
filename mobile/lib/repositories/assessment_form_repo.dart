@@ -10,6 +10,7 @@ import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'app_init_repo.dart' hide envConfig;
+import 'cache_fallback.dart';
 import 'assessment_api_paths.dart';
 import 'assessment_bookmark_repo.dart';
 
@@ -225,7 +226,8 @@ class AssessmentFormRepository {
     }
     try {
       await _searchCategoryForms(useCacheRead: !forceRefresh);
-    } catch (_) {
+    } catch (error) {
+      if (isAuthenticationFailure(error)) rethrow;
       await _searchCategoryForms(cacheOnly: true);
     }
     if (!forceRefresh && await _loadCompleteTransformedCache() != null) {
@@ -241,6 +243,7 @@ class AssessmentFormRepository {
         }
         return;
       } catch (remoteError, stackTrace) {
+        if (isAuthenticationFailure(remoteError)) rethrow;
         AppLogger.instance.error(
           title: 'Assessment mobile schema refresh',
           message: remoteError.toString(),

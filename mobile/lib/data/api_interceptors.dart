@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:synchronized/synchronized.dart';
 
 import '../model/request/requestInfo.dart';
 import '../model/response/responsemodel.dart';
@@ -81,19 +80,24 @@ class AuthTokenInterceptor extends Interceptor {
 
   final AuthRepository _authRepository;
   final Dio? _retryClient;
-  final _lock = Lock();
-  static const _maxRetries = 5;
+  Future<String>? _refreshing;
+  int? _refreshingSession;
+  static int _sessionGeneration = 0;
+  static int get sessionGeneration => _sessionGeneration;
+
+  static void invalidateSession() => _sessionGeneration++;
 
   static SessionExpiredCallback? onSessionExpired;
 
   static bool _logoutTriggered = false;
 
   static void resetLogoutGuard() {
+    invalidateSession();
     _logoutTriggered = false;
   }
 
-  Future<void> _triggerLogoutOnce() async {
-    if (_logoutTriggered) return;
+  Future<void> _triggerLogoutOnce(int generation) async {
+    if (_logoutTriggered || generation != sessionGeneration) return;
     _logoutTriggered = true;
 
     // 1) clear stored tokens
@@ -101,7 +105,8 @@ class AuthTokenInterceptor extends Interceptor {
       await _authRepository.logout();
     } catch (_) {}
 
-    // 2) notify UI layer (navigation + bloc)
+    // A new login may have completed while credentials were being cleared.
+    if (sessionGeneration != generation + 1) return;
     try {
       await onSessionExpired?.call();
     } catch (_) {}
@@ -120,17 +125,15 @@ class AuthTokenInterceptor extends Interceptor {
   bool _refreshTokenLooksExpired(Object e) {
     if (e is MissingRefreshCredentials) return true;
     if (e is DioError) {
-      final code = e.response?.statusCode;
-
-      if (code == 401 || code == 403) return true;
-
       final data = e.response?.data;
       if (data is Map) {
         final err = (data['error'] ?? '').toString().toLowerCase();
         final desc = (data['error_description'] ?? '').toString().toLowerCase();
 
-        if (err.contains('invalid') || desc.contains('invalid')) return true;
-        if (err.contains('expired') || desc.contains('expired')) return true;
+        return err == 'invalid_grant' ||
+            err == 'invalid_token' ||
+            desc.contains('invalid refresh token') ||
+            desc.contains('expired refresh token');
       }
     }
     return false;
@@ -141,6 +144,14 @@ class AuthTokenInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    options.extra.putIfAbsent('sessionGeneration', () => sessionGeneration);
+    if (options.extra['sessionGeneration'] != sessionGeneration) {
+      return handler.reject(DioException(
+        requestOptions: options,
+        type: DioExceptionType.cancel,
+        message: 'Session changed',
+      ));
+    }
     final secureStore = SecureStore();
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
@@ -165,6 +176,19 @@ class AuthTokenInterceptor extends Interceptor {
   }
 
   @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    if (response.requestOptions.extra['sessionGeneration'] !=
+        sessionGeneration) {
+      return handler.reject(DioException(
+        requestOptions: response.requestOptions,
+        type: DioExceptionType.cancel,
+        message: 'Session changed',
+      ));
+    }
+    handler.next(response);
+  }
+
+  @override
   void onError(DioError err, ErrorInterceptorHandler handler) async {
     if (err.requestOptions.extra[suppressSessionExpiryExtraKey] == true) {
       return handler.next(err);
@@ -176,32 +200,49 @@ class AuthTokenInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    final attempts = (err.requestOptions.extra['retryAttempts'] as int?) ?? 0;
-    if (attempts >= _maxRetries) {
-      await _triggerLogoutOnce();
-      return handler.reject(_sessionExpiredError(err));
+    final generation = err.requestOptions.extra['sessionGeneration'];
+    if (generation != sessionGeneration ||
+        err.requestOptions.extra['authRetried'] == true) {
+      return handler.next(err);
     }
 
     try {
-      await _lock.synchronized(() async {
-        await _authRepository.refreshToken();
-      });
+      final currentToken = await SecureStore().getAccessToken();
+      final sentInfo = err.requestOptions.data is Map
+          ? err.requestOptions.data['RequestInfo']
+          : null;
+      final sentToken = sentInfo is Map ? sentInfo['authToken'] : null;
+      if (generation != sessionGeneration) return handler.next(err);
+      if (currentToken == null || currentToken == sentToken) {
+        if (_refreshingSession != generation) {
+          _refreshing = null;
+          _refreshingSession = generation as int;
+        }
+        final refresh = _refreshing ??= _authRepository.refreshToken();
+        try {
+          await refresh;
+        } finally {
+          if (identical(_refreshing, refresh)) _refreshing = null;
+        }
+      }
     } catch (e) {
-      // If refresh token is invalid/expired -> logout immediately
-      if (_refreshTokenLooksExpired(e)) {
-        await _triggerLogoutOnce();
+      AppLogger.instance.info(
+        'Refresh failed for ${err.requestOptions.uri.path}: '
+        '${e is DioException ? e.response?.statusCode : e.runtimeType}',
+      );
+      if (generation == sessionGeneration && _refreshTokenLooksExpired(e)) {
+        await _triggerLogoutOnce(generation as int);
         return handler.reject(_sessionExpiredError(err));
       }
-
       return handler.next(err);
     }
+    if (generation != sessionGeneration) return handler.next(err);
 
     try {
       final dio = _retryClient ?? DioClient().dio;
 
       final ro = err.requestOptions;
-      ro.extra = Map<String, dynamic>.from(ro.extra)
-        ..update('retryAttempts', (v) => (v as int) + 1, ifAbsent: () => 1);
+      ro.extra = Map<String, dynamic>.from(ro.extra)..['authRetried'] = true;
 
       final newResponse = await dio.fetch(ro);
       return handler.resolve(newResponse);

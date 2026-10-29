@@ -11,6 +11,7 @@ import '../../lib/model/assessment/assessment_form_type.dart';
 import '../../lib/model/assessment/assessment_mode.dart';
 import '../../lib/repositories/assessment_form_repo.dart';
 import '../../lib/repositories/assessment_queue_repo.dart';
+import '../../lib/pages/assessment_work_home.dart';
 import '../../lib/repositories/assessment_queue_cache_repo.dart';
 import '../support/assessment_mdms.dart';
 import '../support/offline_isar.dart';
@@ -58,6 +59,7 @@ void main() {
     final cache = IsarAssessmentQueueCache(isar);
     final dio = Dio();
     var offline = false;
+    var emptyRemote = false;
     var status = 0;
     var offlinePrecheck = false;
     var sessionExpired = false;
@@ -81,14 +83,19 @@ void main() {
         handler
             .resolve(Response(requestOptions: options, statusCode: 200, data: {
           'queue': [
-            {
-              'planFacilityId': 'one',
-              'facilityName': 'Clinic 7',
-              'lastActionTime': 1
-            }
+            if (!emptyRemote)
+              {
+                'planFacilityId': 'one',
+                'facilityName': 'Clinic 7',
+                'lastActionTime': 1
+              }
           ],
-          'count': 12,
-          'pagination': {'offset': 0, 'limit': 10, 'total': 12}
+          'count': emptyRemote ? 0 : 12,
+          'pagination': {
+            'offset': 0,
+            'limit': 10,
+            'total': emptyRemote ? 0 : 12
+          }
         }));
       }
     }));
@@ -107,21 +114,28 @@ void main() {
         .search(assessmentMode: AssessmentMode.remote, searchText: 'clinic');
     expect(cached.facilities.single.facilityName, 'Clinic 7');
     expect(cached.count, 1);
-    expect(
-        (await repo().search(
-                assessmentMode: AssessmentMode.onSite, searchText: 'clinic'))
-            .facilities,
-        isEmpty);
-    expect(
-        (await repo(user: 'other').search(
-                assessmentMode: AssessmentMode.remote, searchText: 'clinic'))
-            .facilities,
-        isEmpty);
-    expect(
-        (await repo(tenant: 'other').search(
-                assessmentMode: AssessmentMode.remote, searchText: 'clinic'))
-            .facilities,
-        isEmpty);
+    await expectLater(
+      loadAssessmentWorkCounts(
+        repository: repo(user: 'other'),
+        hasRemoteAssessment: true,
+        hasOnSiteAssessment: false,
+      ),
+      throwsA(isA<DioException>()),
+    );
+
+    for (final (repository, mode) in [
+      (repo(), AssessmentMode.onSite),
+      (repo(user: 'other'), AssessmentMode.remote),
+      (repo(tenant: 'other'), AssessmentMode.remote),
+    ]) {
+      await expectLater(
+        repository.search(
+          assessmentMode: mode,
+          searchText: 'clinic',
+        ),
+        throwsA(isA<DioException>()),
+      );
+    }
     expect(
         (await repo().search(
                 assessmentMode: AssessmentMode.remote,
@@ -166,6 +180,13 @@ void main() {
         repo().search(
             assessmentMode: AssessmentMode.remote, searchText: 'clinic'),
         throwsA(isA<DioException>()));
+    offline = false;
+    emptyRemote = true;
+    final emptyPage = await repo(user: 'new-user')
+        .search(assessmentMode: AssessmentMode.remote);
+    expect(emptyPage.facilities, isEmpty);
+    expect(emptyPage.count,
+        0); // A successful empty response remains a valid empty result.
   });
 
   for (final type in ['HF_PHONE', 'HF_FIELD', 'AWC_PHONE', 'AWC_FIELD']) {

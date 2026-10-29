@@ -28,15 +28,11 @@ Future<AssessmentWorkCounts> loadAssessmentWorkCounts({
 }) async {
   final counts = await Future.wait<int>([
     if (hasRemoteAssessment)
-      repository
-          .count(assessmentMode: AssessmentMode.remote)
-          .onError((_, __) => 0)
+      repository.count(assessmentMode: AssessmentMode.remote)
     else
       Future<int>.value(0),
     if (hasOnSiteAssessment)
-      repository
-          .count(assessmentMode: AssessmentMode.onSite)
-          .onError((_, __) => 0)
+      repository.count(assessmentMode: AssessmentMode.onSite)
     else
       Future<int>.value(0),
   ]);
@@ -52,8 +48,10 @@ class AssessmentWorkHomePage extends StatefulWidget {
 }
 
 class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
-  int _remoteCount = 0;
-  int _onSiteCount = 0;
+  int? _remoteCount;
+  int? _onSiteCount;
+  bool _countsFailed = false;
+  bool _loadingCounts = false;
   int _draftCount = 0;
 
   @override
@@ -63,7 +61,8 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
   }
 
   Future<void> _loadCounts() async {
-    if (!mounted) return;
+    if (!mounted || _loadingCounts) return;
+    _loadingCounts = true;
 
     final roleCodes = _roleCodes(context);
     final hasRemoteAssessment = roleCodes.contains(assessorRoleCode);
@@ -87,15 +86,21 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
       assessorId: assessorId,
       allowedPhases: allowedPhases,
     );
-    final counts = await queueCountsFuture;
-    final draftCount = await draftCountFuture;
-
-    if (!mounted) return;
-    setState(() {
-      _remoteCount = counts.remote;
-      _onSiteCount = counts.onSite;
-      _draftCount = draftCount;
-    });
+    try {
+      final counts = await queueCountsFuture;
+      final draftCount = await draftCountFuture;
+      if (!mounted) return;
+      setState(() {
+        _remoteCount = counts.remote;
+        _onSiteCount = counts.onSite;
+        _draftCount = draftCount;
+        _countsFailed = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _countsFailed = true);
+    } finally {
+      _loadingCounts = false;
+    }
   }
 
   Future<int> _loadDraftCount({
@@ -174,6 +179,14 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
                   ),
                 ),
                 const SizedBox(height: spacer4),
+                if (_countsFailed) ...[
+                  Text(context
+                      .translate(i18.assessmentSelectFacility.failedToLoad)),
+                  TextButton(
+                    onPressed: _loadCounts,
+                    child: Text(context.translate(i18.common.retry)),
+                  ),
+                ],
                 AssessmentWorkCards(
                   hasRemoteAssessment: hasRemoteAssessment,
                   hasOnSiteAssessment: hasOnSiteAssessment,
@@ -196,8 +209,8 @@ class _AssessmentWorkHomePageState extends State<AssessmentWorkHomePage> {
 class AssessmentWorkCards extends StatelessWidget {
   final bool hasRemoteAssessment;
   final bool hasOnSiteAssessment;
-  final int remoteCount;
-  final int onSiteCount;
+  final int? remoteCount;
+  final int? onSiteCount;
   final int draftCount;
   final VoidCallback onRemotePressed;
   final VoidCallback onOnSitePressed;
@@ -221,7 +234,7 @@ class AssessmentWorkCards extends StatelessWidget {
       children: [
         if (hasRemoteAssessment)
           ReportCard(
-            badgeCount: remoteCount,
+            badgeCount: remoteCount ?? 0,
             onPress: onRemotePressed,
             icon: Icons.phone_in_talk_outlined,
             heading: context.translate(i18.assessmentWorkHome.newRemote),
@@ -231,7 +244,7 @@ class AssessmentWorkCards extends StatelessWidget {
           ),
         if (hasOnSiteAssessment)
           ReportCard(
-            badgeCount: onSiteCount,
+            badgeCount: onSiteCount ?? 0,
             onPress: onOnSitePressed,
             icon: Icons.location_on_outlined,
             heading: context.translate(i18.assessmentWorkHome.newOnSite),
