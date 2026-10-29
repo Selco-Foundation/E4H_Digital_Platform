@@ -52,6 +52,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       _userRequest = response.userRequest!;
 
+      AuthTokenInterceptor.resetLogoutGuard();
       await Future.wait([
         secureStore.setAccessToken(_accesstoken),
         secureStore.setAccessInfo(ResponseModel(
@@ -62,7 +63,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             userRequest: _userRequest)),
       ]);
 
-      AuthTokenInterceptor.resetLogoutGuard();
       await authRepository.reportLogin(_userRequest);
 
       emit(AuthState.authenticated(
@@ -145,6 +145,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const AuthState.unauthenticated());
         return;
       }
+      AuthTokenInterceptor.resetLogoutGuard();
       _accesstoken = accessInfo.access_token;
       _refreshtoken = accessInfo.refresh_token!;
       _userRequest = accessInfo.userRequest!;

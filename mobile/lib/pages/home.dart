@@ -75,7 +75,9 @@ class _HomePageState extends State<HomePage>
 
   void _refreshPendingSyncState() {
     if (!mounted) return;
-    context.read<CacheSyncRecordBloc>().add(CacheSyncRecordEvent.fetch(_userType));
+    context
+        .read<CacheSyncRecordBloc>()
+        .add(CacheSyncRecordEvent.fetch(_userType));
   }
 
   void _maybeShowPendingSyncPopup(CacheSyncRecordState state) {
@@ -262,90 +264,87 @@ class _HomePageState extends State<HomePage>
       listener: _handleAssetSubmissionState,
       child: BlocListener<CacheSyncRecordBloc, CacheSyncRecordState>(
         listener: (context, state) => _maybeShowPendingSyncPopup(state),
-        child: Stack(
-          children: [
-            const MdmsGate(),
-            Scaffold(
-              backgroundColor: DigitTheme.instance.colorScheme.surface,
-              body: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: spacer2),
-                child: ScrollableContent(
-                  backgroundColor: theme.colorTheme.generic.background,
-                  header: const BackNavigationHelpHeaderWidget(
-                    showBackNavigation: false,
-                    showHelp: true,
+        child: MdmsGate(
+          child: Scaffold(
+            backgroundColor: DigitTheme.instance.colorScheme.surface,
+            body: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: spacer2),
+              child: ScrollableContent(
+                backgroundColor: theme.colorTheme.generic.background,
+                header: const BackNavigationHelpHeaderWidget(
+                  showBackNavigation: false,
+                  showHelp: true,
+                ),
+                footer: const PoweredByDigit(version: ''),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.only(top: spacer6),
+                    sliver: SliverGrid(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final item = homeItems[index];
+                          return HomeItemCard(
+                            icon: item['icon'],
+                            label: item['label'],
+                            onPressed: item['onPressed'],
+                          );
+                        },
+                        childCount: homeItems.length,
+                      ),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: spacer4,
+                        childAspectRatio:
+                            (screenWidth / 2) / (170 * (screenWidth / 375)),
+                      ),
+                    ),
                   ),
-                  footer: const PoweredByDigit(version: ''),
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.only(top: spacer6),
-                      sliver: SliverGrid(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final item = homeItems[index];
-                            return HomeItemCard(
-                              icon: item['icon'],
-                              label: item['label'],
-                              onPressed: item['onPressed'],
+                ],
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        top: spacer2, left: spacer2, right: spacer2),
+                    child: Column(
+                      children: [
+                        BlocBuilder<CacheSyncRecordBloc, CacheSyncRecordState>(
+                          builder: (context, state) {
+                            pendingRecords = state.maybeWhen(
+                              loaded: (record, pending) => pending.toString(),
+                              loading: () => "---",
+                              notFound: (val) => "$val",
+                              orElse: () => "---",
+                            );
+                            return InfoCard(
+                              title: "Data Sync Pending!",
+                              type: InfoType.warning,
+                              description:
+                                  'There are $pendingRecords record${pendingRecords == '1' ? '' : 's'} yet to be synced',
                             );
                           },
-                          childCount: homeItems.length,
                         ),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: spacer4,
-                          childAspectRatio:
-                              (screenWidth / 2) / (170 * (screenWidth / 375)),
+                        const SizedBox(height: spacer3),
+                        BlocBuilder<ActivityFacilityBloc,
+                            ActivityFacilityState>(
+                          builder: (context, state) {
+                            assignedFacility = state.maybeWhen(
+                              newlyAssignedLoaded: (count) => "$count",
+                              orElse: () => "0",
+                            );
+                            return InfoCard(
+                              title: "Facilities assigned",
+                              type: InfoType.info,
+                              description:
+                                  '$assignedFacility more facilit${assignedFacility == '1' ? 'y' : 'ies'} have been assigned to you.',
+                            );
+                          },
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                          top: spacer2, left: spacer2, right: spacer2),
-                      child: Column(
-                        children: [
-                          BlocBuilder<CacheSyncRecordBloc, CacheSyncRecordState>(
-                            builder: (context, state) {
-                              pendingRecords = state.maybeWhen(
-                                loaded: (record, pending) => pending.toString(),
-                                loading: () => "---",
-                                notFound: (val) => "$val",
-                                orElse: () => "---",
-                              );
-                              return InfoCard(
-                                title: "Data Sync Pending!",
-                                type: InfoType.warning,
-                                description:
-                                    'There are $pendingRecords record${pendingRecords == '1' ? '' : 's'} yet to be synced',
-                              );
-                            },
-                          ),
-                          const SizedBox(height: spacer3),
-                          BlocBuilder<ActivityFacilityBloc,
-                              ActivityFacilityState>(
-                            builder: (context, state) {
-                              assignedFacility = state.maybeWhen(
-                                newlyAssignedLoaded: (count) => "$count",
-                                orElse: () => "0",
-                              );
-                              return InfoCard(
-                                title: "Facilities assigned",
-                                type: InfoType.info,
-                                description:
-                                    '$assignedFacility more facilit${assignedFacility == '1' ? 'y' : 'ies'} have been assigned to you.',
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

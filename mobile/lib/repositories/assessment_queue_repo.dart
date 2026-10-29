@@ -141,7 +141,7 @@ class AssessmentQueueRepository {
     } catch (error) {
       if (isAuthenticationFailure(error)) rethrow;
       if (assessorId == null || assessorId.isEmpty) rethrow;
-      return _cache.search(
+      final cached = await _cache.search(
           tenantId: tenantId,
           assessorId: assessorId,
           phase: phase,
@@ -149,6 +149,21 @@ class AssessmentQueueRepository {
           sortOrder: sortOrder,
           offset: offset,
           limit: limit);
+      if (cached.count == 0) {
+        // An empty local cache does not establish that no facilities are assigned.
+        // An unmatched filter is still valid when this scope has downloaded data.
+        final scope = await _cache.search(
+          tenantId: tenantId,
+          assessorId: assessorId,
+          phase: phase,
+          query: '',
+          sortOrder: sortOrder,
+          offset: 0,
+          limit: 0,
+        );
+        if (scope.count == 0) rethrow;
+      }
+      return cached;
     }
 
     return AssessmentQueueResponse.fromJson(

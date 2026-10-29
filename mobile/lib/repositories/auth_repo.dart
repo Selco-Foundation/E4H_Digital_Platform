@@ -19,7 +19,8 @@ class MissingRefreshCredentials implements Exception {
 }
 
 class AuthRepository {
-  AuthRepository();
+  final Dio? _refreshClient;
+  AuthRepository({Dio? refreshClient}) : _refreshClient = refreshClient;
 
   Future<ResponseModel> validateLogin(LoginModel body) async {
     final formData = body.toJson();
@@ -95,6 +96,7 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    AuthTokenInterceptor.invalidateSession();
     final secureStore = SecureStore();
     await secureStore.deleteAccessToken();
     await secureStore.deleteAccessInfo();
@@ -102,6 +104,7 @@ class AuthRepository {
   }
 
   Future<String> refreshToken() async {
+    final generation = AuthTokenInterceptor.sessionGeneration;
     final secureStore = SecureStore();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
 
@@ -111,7 +114,7 @@ class AuthRepository {
       throw const MissingRefreshCredentials();
     }
 
-    final dio = Dio(configuredApiOptions());
+    final dio = _refreshClient ?? Dio(configuredApiOptions());
     final form = {
       'grant_type': 'refresh_token',
       'refresh_token': accessInfo.refresh_token,
@@ -125,8 +128,15 @@ class AuthRepository {
         data: form, options: Options(headers: headers));
     final body = ResponseModel.fromJson(resp.data);
 
-    await secureStore.setAccessToken(body.access_token);
-    await secureStore.setAccessInfo(body);
+    final currentInfo = await secureStore.getAccessInfo();
+    if (generation != AuthTokenInterceptor.sessionGeneration ||
+        currentInfo?.refresh_token != accessInfo.refresh_token) {
+      throw StateError('Session changed during token refresh');
+    }
+    await Future.wait([
+      secureStore.setAccessToken(body.access_token),
+      secureStore.setAccessInfo(body),
+    ]);
 
     return body.access_token;
   }
