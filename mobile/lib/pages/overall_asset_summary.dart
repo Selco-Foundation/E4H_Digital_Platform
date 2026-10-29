@@ -609,13 +609,17 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                     return;
                                                   }
                                                   final missingBomFormKeysMessage =
-                                                      await missingRequiredBomFormKeysMessage(
-                                                    isar: isar,
-                                                    activityFacilityId:
-                                                        _currentProjectId!,
-                                                    userType: resolvedUserType,
-                                                    systemCode: _system,
-                                                  );
+                                                      _isRectification
+                                                          ? null
+                                                          : await missingRequiredBomFormKeysMessage(
+                                                              isar: isar,
+                                                              activityFacilityId:
+                                                                  _currentProjectId!,
+                                                              userType:
+                                                                  resolvedUserType,
+                                                              systemCode:
+                                                                  _system,
+                                                            );
                                                   if (!mounted) return;
                                                   if (missingBomFormKeysMessage !=
                                                       null) {

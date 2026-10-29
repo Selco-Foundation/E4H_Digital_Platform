@@ -578,13 +578,14 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                 );
                                 return;
                               }
-                              final missingBomFormKeysMessage =
-                                  await missingRequiredBomFormKeysMessage(
-                                isar: isar,
-                                activityFacilityId: activityFacilityId,
-                                userType: userType,
-                                systemCode: _system,
-                              );
+                              final missingBomFormKeysMessage = _isRectification
+                                  ? null
+                                  : await missingRequiredBomFormKeysMessage(
+                                      isar: isar,
+                                      activityFacilityId: activityFacilityId,
+                                      userType: userType,
+                                      systemCode: _system,
+                                    );
                               if (!mounted) return;
                               if (missingBomFormKeysMessage != null) {
                                 _showRequiredBomFormKeysPopup(
