@@ -539,8 +539,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     final warrantyDuration = summary.detailEntry?.warranty ?? '—';
     final brandCode = summary.detailEntry?.brand ?? '—';
     final systemCode = summary.specEntry?.system ?? '—';
-    final capacity = summary.specEntry?.totalCapacity.toString() ?? '—';
-    final capacityUnit = summary.specEntry?.totalCapacityUnit ?? '-';
 
     final brand = brandMdmsList.first.data.brand
             .map((m) => m)
@@ -557,6 +555,12 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     final assetCards = summary.addedAssets.asMap().entries.map((e) {
       final index = e.key;
       final asset = e.value;
+      final capacity = switch (asset.assetType.toLowerCase()) {
+        'battery' => asset.batteryCapacity,
+        'panel' => asset.panelCapacity,
+        'inverter' => asset.inverterCapacity,
+        _ => null,
+      };
       return Padding(
         padding: const EdgeInsets.only(top: spacer4),
         child: DigitCard(
@@ -600,8 +604,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: spacer3),
                       child: Text(
-                        // Unit suffix commented out, not deleted: '$capacity$capacityUnit'
-                        capacity,
+                        capacity?.trim().isNotEmpty == true ? capacity! : '—',
                         style: textTheme.bodyS.copyWith(
                           color: Theme.of(context).colorTheme.text.primary,
                         ),
@@ -691,11 +694,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             ),
           ),
           Row(children: [
-            KeyColumn(keys: [
-              context.translate(i18.assetSummary.system),
-              context.translate(i18.common.capacity),
-            ]),
-            ValueColumn(values: [system, '$capacity$capacityUnit']),
+            KeyColumn(keys: [context.translate(i18.assetSummary.system)]),
+            ValueColumn(values: [system]),
           ]),
         ]),
         const SizedBox(height: spacer4),
