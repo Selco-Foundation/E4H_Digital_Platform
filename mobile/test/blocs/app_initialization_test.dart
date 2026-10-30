@@ -192,12 +192,25 @@ void main() {
       await tester.pumpWidget(BlocProvider.value(
         value: bloc,
         child: const MaterialApp(
-            home: MdmsGate(child: Scaffold(body: Text('Report')))),
+            home: MdmsGate(
+                module: MdmsModule.installation,
+                child: Scaffold(body: Text('Report')))),
       ));
       await tester.runAsync(() => refreshed);
       await tester.pumpAndSettle();
       expect(assetRequests, 2);
       expect(bloc.state, isA<Initialized>());
+      expect(find.byType(Dialog), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(BlocProvider.value(
+        value: bloc,
+        child: const MaterialApp(
+            home: MdmsGate(
+                module: MdmsModule.installation,
+                child: Scaffold(body: Text('Report')))),
+      ));
+      await tester.pumpAndSettle();
+      expect(assetRequests, 2);
       expect(find.byType(Dialog), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
     });

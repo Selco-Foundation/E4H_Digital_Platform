@@ -26,6 +26,8 @@ const _sessionExpiredMdmsError = 'SESSION_EXPIRED';
 const _mdmsFallbackFailureMessage =
     'Failed to load configuration data. Please try again.';
 
+enum MdmsModule { installation, amc, assessment }
+
 class AppInitialization extends Bloc<InitEvent, InitState> {
   AppInitialization({AppInitRepo? repository})
       : _repository = repository ?? AppInitRepo(),
@@ -36,7 +38,19 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
 
   final AppInitRepo _repository;
   int? _loadingSession;
+  final Map<MdmsModule, int> _readyModules = {};
   MdmsResponseModel? _cachedAppConfig;
+
+  bool isModuleReady(MdmsModule module) =>
+      _readyModules[module] == AuthTokenInterceptor.sessionGeneration;
+
+  void markModuleReady(MdmsModule module, int session) {
+    if (session == AuthTokenInterceptor.sessionGeneration) {
+      _readyModules[module] = session;
+    }
+  }
+
+  void invalidateModule(MdmsModule module) => _readyModules.remove(module);
 
   MdmsResponseModel? get cachedAppConfig => _cachedAppConfig;
 

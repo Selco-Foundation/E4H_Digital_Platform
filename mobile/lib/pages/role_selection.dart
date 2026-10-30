@@ -3,6 +3,7 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/auth/authbloc.dart';
 import '../blocs/role_selection/role_selection.dart';
 import '../blocs/user_type/user_type.dart';
@@ -78,6 +79,13 @@ class _RoleSelectionView extends StatelessWidget {
                                   ),
                                 );
 
+                            context.read<AppInitialization>().invalidateModule(
+                                  role.isAssessment
+                                      ? MdmsModule.assessment
+                                      : role.isAmc
+                                          ? MdmsModule.amc
+                                          : MdmsModule.installation,
+                                );
                             context.router.replace(
                               role.isAssessment
                                   ? const AssessmentHomeRoute()

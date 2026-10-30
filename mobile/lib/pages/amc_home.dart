@@ -5,6 +5,7 @@ import 'package:digit_ui_components/widgets/powered_by_digit.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/cache_fallback.dart';
@@ -71,6 +72,7 @@ class _AmcHomePageState extends State<AmcHomePage> {
     ];
 
     return MdmsGate(
+      module: MdmsModule.amc,
       load: _prefetchAmcSchemas,
       child: Scaffold(
         backgroundColor: DigitTheme.instance.colorScheme.surface,

@@ -10,9 +10,15 @@ import '../../utils/i18_key_constants.dart' as i18;
 /// Home-only configuration loading. A failed load blocks entry until Retry succeeds.
 class MdmsGate extends StatefulWidget {
   final Widget child;
+  final MdmsModule module;
   final Future<void> Function()? load;
 
-  const MdmsGate({super.key, required this.child, this.load});
+  const MdmsGate({
+    super.key,
+    required this.module,
+    required this.child,
+    this.load,
+  });
 
   @override
   State<MdmsGate> createState() => _MdmsGateState();
@@ -27,6 +33,8 @@ class _MdmsGateState extends State<MdmsGate> {
   @override
   void initState() {
     super.initState();
+    _ready = context.read<AppInitialization>().isModuleReady(widget.module);
+    if (_ready) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _load();
     });
@@ -44,6 +52,7 @@ class _MdmsGateState extends State<MdmsGate> {
 
   Future<void> _load() async {
     if (_loading) return;
+    final initialization = context.read<AppInitialization>();
     final session = AuthTokenInterceptor.sessionGeneration;
     setState(() {
       _loading = true;
@@ -74,6 +83,7 @@ class _MdmsGateState extends State<MdmsGate> {
     try {
       await (widget.load ?? _loadInstallation)();
       succeeded = true;
+      if (mounted) initialization.markModuleReady(widget.module, session);
     } catch (_) {
       // The auth interceptor handles expired sessions. Other errors stay retryable.
     } finally {
