@@ -486,24 +486,6 @@ class BomRepository {
     return rec != null;
   }
 
-  Future<bool> _hasAnyLocalBomDocs({
-    required Isar isar,
-    required String activityFacilityId,
-  }) async {
-    final docs = await getAllForProject(isar, activityFacilityId);
-    return docs.isNotEmpty;
-  }
-
-  Future<bool> _hasAnyServerBackedBomDoc({
-    required Isar isar,
-    required String activityFacilityId,
-  }) async {
-    final docs = await getAllForProject(isar, activityFacilityId);
-    return docs.any(
-      (d) => (d.serverBomId ?? '').trim().isNotEmpty,
-    );
-  }
-
   Future<Map<String, dynamic>> _getModelBomValues({
     required Isar isar,
     required String activityFacilityId,
@@ -579,31 +561,7 @@ class BomRepository {
     );
 
     if (globalKv != null && globalKv.isNotEmpty) {
-      final hasLocalForSchema = await hasLocalBomForSchema(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-        schemaKey: schemaKey,
-      );
-
-      if (hasLocalForSchema) {
-        return Map<String, dynamic>.from(globalKv);
-      }
-
-      final hasServerBackedBom = await _hasAnyServerBackedBomDoc(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-      );
-      if (hasServerBackedBom) {
-        return Map<String, dynamic>.from(globalKv);
-      }
-
-      final hasAnyLocalDocs = await _hasAnyLocalBomDocs(
-        isar: isar,
-        activityFacilityId: activityFacilityId,
-      );
-      if (!hasAnyLocalDocs) {
-        return Map<String, dynamic>.from(globalKv);
-      }
+      return Map<String, dynamic>.from(globalKv);
     }
 
     return _getModelBomValues(
