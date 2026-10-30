@@ -5,6 +5,7 @@ import 'package:digit_ui_components/widgets/powered_by_digit.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../repositories/assessment_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -46,6 +47,7 @@ class _AssessmentHomePageState extends State<AssessmentHomePage> {
     ];
 
     return MdmsGate(
+      module: MdmsModule.assessment,
       load: () => _repository.preloadMobileSchemas(forceRefresh: true),
       child: Scaffold(
         backgroundColor: DigitTheme.instance.colorScheme.surface,

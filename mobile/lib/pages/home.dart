@@ -5,6 +5,7 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/cache_sync_record/cache_sync_record.dart';
@@ -265,6 +266,7 @@ class _HomePageState extends State<HomePage>
       child: BlocListener<CacheSyncRecordBloc, CacheSyncRecordState>(
         listener: (context, state) => _maybeShowPendingSyncPopup(state),
         child: MdmsGate(
+          module: MdmsModule.installation,
           child: Scaffold(
             backgroundColor: DigitTheme.instance.colorScheme.surface,
             body: Padding(
