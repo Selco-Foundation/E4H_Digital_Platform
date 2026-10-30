@@ -27,7 +27,8 @@ extension ContextExt on BuildContext {
 
 extension LocalizationExtension on BuildContext {
   String translate(String key) {
-    final localization = AppLocalizations.of(this);
+    final localization =
+        Localizations.of<AppLocalizations>(this, AppLocalizations);
     return localization?.translate(key) ?? key;
   }
 }

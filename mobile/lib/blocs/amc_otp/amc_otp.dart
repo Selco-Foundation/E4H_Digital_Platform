@@ -2,8 +2,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
-import '../../model/document/document.dart';
-import '../../model/scheduled_visit/scheduled_visit.dart';
 import '../../repositories/dynamic_form_repo.dart';
 import '../../repositories/scheduled_visit_repo.dart';
 import '../../utils/app_logger.dart';
@@ -35,9 +33,11 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       await scheduledVisitRepo.resendVisitOtp(visitId: event.visitId);
       emit(const AmcOtpState.resendSuccess());
     } catch (e) {
-      AppLogger.instance.error(title: "Resend AMC Service completion code", message: e.toString());
+      AppLogger.instance.error(
+          title: "Resend AMC Service completion code", message: e.toString());
       emit(
-        const AmcOtpState.failure('Failed to resend AMC Service completion code. Please try again.'),
+        const AmcOtpState.failure(
+            'Failed to resend AMC Service completion code. Please try again.'),
       );
     }
   }
@@ -49,43 +49,6 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
     emit(const AmcOtpState.submitLoading());
 
     try {
-      final localScheduleVisitRepo = ScheduledVisitRepository(isar);
-      final cachedForm =
-          await localScheduleVisitRepo.getCacheAmcInstallationForm(
-        scheduledVisitId: event.visitId,
-        userType: USER_TYPES.AMC.name,
-      );
-
-      List<Document>? workflowDocuments;
-      String fileStoreId = "";
-      if (cachedForm != null) {
-        try {
-          fileStoreId = await getFilestoreUrl(cachedForm.filePath);
-        } catch (e) {
-          AppLogger.instance.error(title: "AMC Form", message: e.toString());
-          emit(const AmcOtpState.failure('File upload failed'));
-          return;
-        }
-        final doc = Document(
-            documentType: 'AMC_INSTALLATION_FORM',
-            fileStore: fileStoreId,
-            documentUid:
-                'AMC-FORM-${event.visitId}-${DateTime.now().millisecondsSinceEpoch}',
-            geoLocation: GeoLocation(
-                latitude: cachedForm.latitude,
-                longitude: cachedForm.longitude));
-
-        workflowDocuments = [doc];
-      } else {
-        final docs =
-            (event.scheduledVisit?.processInstances.isNotEmpty ?? false)
-                ? event.scheduledVisit!.processInstances.first.documents
-                : null;
-        if (docs != null && docs.isNotEmpty) {
-          workflowDocuments = docs;
-        }
-      }
-
       await scheduledVisitRepo.updateVisitWorkflow(
         visitId: event.visitId,
         schemaCode: event.schemaCode,
@@ -93,7 +56,6 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
         otp: event.otp,
         status: 'SUBMIT_OTP',
         responses: null,
-        workflowDocuments: workflowDocuments,
         visitDocuments: null,
       );
       try {
@@ -103,14 +65,6 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
         AppLogger.instance.error(
             title: CLEANUP_ERROR,
             message: '$ERROR_CLEARING_CACHE prefilled scheduled visit.');
-      }
-      try {
-        await localScheduleVisitRepo.deleteInstallationForm(
-            scheduledVisitId: event.visitId);
-      } catch (e) {
-        AppLogger.instance.error(
-            title: CLEANUP_ERROR,
-            message: '$ERROR_CLEARING_CACHE Schedule visit form');
       }
       try {
         await AmcDynamicFormRepository()
@@ -136,7 +90,9 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       }
       emit(const AmcOtpState.submitSuccess());
     } catch (e) {
-      AppLogger.instance.error(title: "AMC AMC Service completion code Submit", message: e.toString());
+      AppLogger.instance.error(
+          title: "AMC AMC Service completion code Submit",
+          message: e.toString());
       emit(const AmcOtpState.failure(
           'Invalid AMC Service completion code or request failed. Please try again.'));
     }
@@ -154,7 +110,6 @@ class AmcOtpEvent with _$AmcOtpEvent {
     required String schemaCode,
     required int version,
     required String otp,
-    ScheduledVisit? scheduledVisit,
   }) = AmcOtpEventSubmit;
 }
 

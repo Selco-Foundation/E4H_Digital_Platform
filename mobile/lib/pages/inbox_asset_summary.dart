@@ -22,7 +22,6 @@ import '../blocs/user_type/user_type.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
-import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -34,6 +33,7 @@ import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
+import '../widgets/rectification_badge.dart';
 
 @RoutePage()
 class InboxAssetSummaryPage extends StatefulWidget {
@@ -98,8 +98,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     if (activityFacilityId == null) {
       context.showSnackBar(
         SnackBar(
-            content:
-                Text(context.translate(i18.inboxAssetSummary.noProjectSelected))),
+            content: Text(
+                context.translate(i18.inboxAssetSummary.noProjectSelected))),
       );
       return;
     }
@@ -151,12 +151,15 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
 
     final facilityCode = workflow?.activityFacility.facility?.facilityDetails
         ?.solar_solution_design_type;
+    final facilitySystemType =
+        workflow?.activityFacility.facility?.facilityDetails?.systemType;
 
     final sys = await ActivityFacilityWorkflowRepository()
         .getActivityFacilitySystem(
             isar: isar,
             activityFacilityId: _currentProjectId!,
             solutionDesignList: solutionDesignList,
+            facilitySystemType: facilitySystemType,
             facilitySolutionDesignCode: facilityCode);
 
     if (!mounted) return;
@@ -395,6 +398,10 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
+                                      if (isRectificationSite(workflow)) ...[
+                                        const RectificationBadge(),
+                                        const SizedBox(height: spacer2),
+                                      ],
                                       Text(
                                         context.translate(i18
                                             .inboxAssetSummary.summaryOverview),
@@ -454,8 +461,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                           ),
                                           ElementAssetSummary(
                                             count: panel,
-                                            text: context
-                                                .translate(i18.assetCount.panels),
+                                            text: context.translate(
+                                                i18.assetCount.panels),
                                             lastCard: true,
                                             onPress: () {
                                               context.read<AssetTypeBloc>().add(

@@ -169,7 +169,6 @@ class AssetSubmissionBloc
 
     final localEntries = await _isar.cacheUnsubmittedActivityFacilitys
         .where()
-        .filter()
         .userTypeEqualTo(event.userType)
         .findAll();
 

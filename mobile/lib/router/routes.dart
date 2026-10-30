@@ -28,6 +28,12 @@ class Routes {
   static const pdfViewer = 'pdf-viewer?path';
   static const dynamicForm = 'forms/:pageName';
   static const amcHome = 'amc-home';
+  static const assessmentHome = 'assessment-home';
+  static const assessmentWorkHome = 'assessment-work-home';
+  static const assessmentSelectFacility = 'assessment-select-facility';
+  static const assessmentDraft = 'assessment-draft';
+  static const assessmentDynamicForm = 'assessment-dynamic-form/:pageName';
+  static const assessmentSubmissionSuccess = 'assessment-submission-success';
   static const amcReportHome = 'amc-report-home';
   static const amcSelectFacility = 'amc-select-facility';
   static const amcDynamicForm = 'amc-dynamic-form';
@@ -38,4 +44,7 @@ class Routes {
   static const amcRejectionReasons = 'amc-rejection-reasons';
   static const installationCompletionImages = 'installationCompletionImages';
   static const roleSelection = 'role-selection';
+  static const installationCompletionCertificate =
+      'installation-completion-certificate';
+  static const assetHandoverDocument = 'asset-handover-document';
 }

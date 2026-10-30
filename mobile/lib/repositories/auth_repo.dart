@@ -14,15 +14,19 @@ import '../model/role_actions/role_actions_model.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 
+class MissingRefreshCredentials implements Exception {
+  const MissingRefreshCredentials();
+}
+
 class AuthRepository {
-  AuthRepository();
+  final Dio? _refreshClient;
+  AuthRepository({Dio? refreshClient}) : _refreshClient = refreshClient;
+
   Future<ResponseModel> validateLogin(LoginModel body) async {
     final formData = body.toJson();
 
-    final authClient = Dio();
-    authClient.options.baseUrl = envConfig.variables.baseUrl;
+    final authClient = Dio(configuredApiOptions());
     authClient.interceptors.addAll([
-      NetworkPrecheckInterceptor(),
       NetworkErrorNormalizerInterceptor(),
     ]);
 
@@ -41,6 +45,32 @@ class AuthRepository {
       return responseBody;
     } on DioException catch (err) {
       throw _normalizedLoginException(err);
+    }
+  }
+
+  Future<void> reportLogin(UserRequest user) async {
+    const path = 'im-services/user/login/_report';
+
+    try {
+      final client = DioClient().dio;
+      await client.post(
+        path,
+        data: {
+          'User': user.toJson(),
+          'application': 'FIELD_ASSIST',
+        },
+        options: Options(
+          extra: const {
+            suppressSessionExpiryExtraKey: true,
+          },
+        ),
+      );
+    } catch (error, stackTrace) {
+      AppLogger.instance.error(
+        title: 'Login report error',
+        message: error.toString(),
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -66,6 +96,7 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    AuthTokenInterceptor.invalidateSession();
     final secureStore = SecureStore();
     await secureStore.deleteAccessToken();
     await secureStore.deleteAccessInfo();
@@ -73,15 +104,17 @@ class AuthRepository {
   }
 
   Future<String> refreshToken() async {
+    final generation = AuthTokenInterceptor.sessionGeneration;
     final secureStore = SecureStore();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
 
-    AppLogger.instance.info("refreshing token accessInfo $accessInfo");
-    if (accessInfo!.refresh_token == null) {
-      throw Exception("No refresh token stored");
+    AppLogger.instance.info("Refreshing authentication token");
+    if (accessInfo == null ||
+        accessInfo.refresh_token?.trim().isNotEmpty != true) {
+      throw const MissingRefreshCredentials();
     }
 
-    final dio = Dio()..options.baseUrl = envConfig.variables.baseUrl;
+    final dio = _refreshClient ?? Dio(configuredApiOptions());
     final form = {
       'grant_type': 'refresh_token',
       'refresh_token': accessInfo.refresh_token,
@@ -95,8 +128,15 @@ class AuthRepository {
         data: form, options: Options(headers: headers));
     final body = ResponseModel.fromJson(resp.data);
 
-    await secureStore.setAccessToken(body.access_token);
-    await secureStore.setAccessInfo(body);
+    final currentInfo = await secureStore.getAccessInfo();
+    if (generation != AuthTokenInterceptor.sessionGeneration ||
+        currentInfo?.refresh_token != accessInfo.refresh_token) {
+      throw StateError('Session changed during token refresh');
+    }
+    await Future.wait([
+      secureStore.setAccessToken(body.access_token),
+      secureStore.setAccessInfo(body),
+    ]);
 
     return body.access_token;
   }

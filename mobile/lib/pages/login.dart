@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
@@ -8,12 +10,16 @@ import 'package:recase/recase.dart';
 
 import '../blocs/auth/authbloc.dart';
 import '../blocs/user_type/user_type.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../router/app_router.dart';
+import '../utils/app_logger.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/role_login_resolver.dart';
 import '../utils/utils.dart';
 import '../widgets/navigation/navbar.dart';
+import '../widgets/privacy_policy/login_consent_checkbox.dart';
+import '../widgets/privacy_policy/policy_dialog_launcher.dart';
 
 @RoutePage()
 class LoginPage extends StatefulWidget {
@@ -25,13 +31,117 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   var passwordVisible = false;
+  bool _navigating = false;
   bool isPrivacyEnabled = false;
+  bool _isConsentStatusLoading = true;
+  bool _hasAcceptedConsent = false;
+  bool _shouldPersistConsentOnAuthentication = false;
   static const _userId = 'userId';
   static const _password = 'password';
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadConsentStatus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(_navigateAuthenticated(context.read<AuthBloc>().state));
+      }
+    });
+  }
+
+  Future<void> _navigateAuthenticated(AuthState state) async {
+    await state.whenOrNull(
+      authenticated: (accesstoken, refreshtoken, userRequest) async {
+        if (_navigating) return;
+        _navigating = true;
+        await _persistConsentAfterAuthentication();
+        if (!mounted) return;
+        if (context.read<AuthBloc>().state != state) {
+          _navigating = false;
+          return;
+        }
+
+        final resolution = RoleLoginResolver.resolveRoles(
+          userRequest?.roles ?? const [],
+        );
+
+        if (resolution.requiresSelection) {
+          context.router.replace(
+            const AuthenticatedRouteWrapper(
+              children: [RoleSelectionRoute()],
+            ),
+          );
+          return;
+        }
+
+        final directUserType =
+            resolution.directUserType ?? USER_TYPES.FIELD_STAFF;
+        context.read<UserTypeBloc>().add(
+              UserTypeEvent.typeSelected(
+                directUserType.name.toLowerCase(),
+              ),
+            );
+
+        if (directUserType == USER_TYPES.AMC) {
+          context.router.replace(
+            const AuthenticatedRouteWrapper(
+              children: [AmcHomeRoute()],
+            ),
+          );
+          return;
+        }
+
+        if (directUserType == USER_TYPES.ASSESSOR) {
+          context.router.replace(
+            const AuthenticatedRouteWrapper(
+              children: [AssessmentHomeRoute()],
+            ),
+          );
+          return;
+        }
+
+        context.router.replace(
+          const AuthenticatedRouteWrapper(),
+        );
+      },
+    );
+  }
+
+  Future<void> _loadConsentStatus() async {
+    var hasAcceptedConsent = false;
+    try {
+      hasAcceptedConsent = await SecureStore().hasAcceptedLoginConsent();
+    } catch (error, stackTrace) {
+      AppLogger.instance.error(
+        title: 'Login consent read failed',
+        message: error.toString(),
+        stackTrace: stackTrace,
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _hasAcceptedConsent = hasAcceptedConsent;
+      _isConsentStatusLoading = false;
+    });
+  }
+
+  Future<void> _persistConsentAfterAuthentication() async {
+    if (_hasAcceptedConsent || !_shouldPersistConsentOnAuthentication) {
+      return;
+    }
+
+    try {
+      await SecureStore().setLoginConsentAccepted();
+      _hasAcceptedConsent = true;
+    } catch (error, stackTrace) {
+      AppLogger.instance.error(
+        title: 'Login consent write failed',
+        message: error.toString(),
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override
@@ -105,51 +215,37 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
+                    if (!_isConsentStatusLoading && !_hasAcceptedConsent)
+                      LoginConsentCheckbox(
+                        value: isPrivacyEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            isPrivacyEnabled = value;
+                          });
+                        },
+                        prefixText: context.translate(i18.login.consentPrefix),
+                        privacyPolicyText:
+                            context.translate(i18.login.privacyPolicy),
+                        connectorText:
+                            context.translate(i18.login.consentConnector),
+                        termsAndConditionsText:
+                            context.translate(i18.login.termsAndConditions),
+                        onPrivacyPolicyTap: () => showPrivacyPolicy(context),
+                        onTermsAndConditionsTap: () =>
+                            showTermsAndConditions(context),
+                      ),
                     BlocConsumer<AuthBloc, AuthState>(
                       listener: (context, state) {
                         state.whenOrNull(
                           error: (message) {
+                            _shouldPersistConsentOnAuthentication = false;
                             context.showSnackBar(SnackBar(
                               content: Text(context.translate(message)),
                               backgroundColor: const Light().alertError,
                             ));
                           },
-                          authenticated:
-                              (accesstoken, refreshtoken, userRequest) {
-                            final resolution = RoleLoginResolver.resolveRoles(
-                              userRequest?.roles ?? const [],
-                            );
-
-                            if (resolution.requiresSelection) {
-                              context.router.replace(
-                                const AuthenticatedRouteWrapper(
-                                  children: [RoleSelectionRoute()],
-                                ),
-                              );
-                              return;
-                            }
-
-                            final directUserType = resolution.directUserType ??
-                                USER_TYPES.FIELD_STAFF;
-                            context.read<UserTypeBloc>().add(
-                                  UserTypeEvent.typeSelected(
-                                    directUserType.name.toLowerCase(),
-                                  ),
-                                );
-
-                            if (directUserType == USER_TYPES.AMC) {
-                              context.router.replace(
-                                const AuthenticatedRouteWrapper(
-                                  children: [AmcHomeRoute()],
-                                ),
-                              );
-                              return;
-                            }
-
-                            context.router.replace(
-                              const AuthenticatedRouteWrapper(),
-                            );
-                          },
+                          authenticated: (_, __, ___) =>
+                              unawaited(_navigateAuthenticated(state)),
                         );
                       },
                       builder: (context, state) {
@@ -163,13 +259,22 @@ class _LoginPageState extends State<LoginPage> {
                             mainAxisSize: MainAxisSize.max,
                           ),
                           orElse: () => DigitButton(
+                            isDisabled: _isConsentStatusLoading ||
+                                (!_hasAcceptedConsent && !isPrivacyEnabled),
                             label:
                                 context.translate(i18.common.coreCommonLogin),
                             type: DigitButtonType.primary,
                             onPressed: () {
+                              if (_isConsentStatusLoading ||
+                                  (!_hasAcceptedConsent && !isPrivacyEnabled)) {
+                                return;
+                              }
+
                               form.markAllAsTouched();
                               if (!form.valid) return;
 
+                              _shouldPersistConsentOnAuthentication =
+                                  !_hasAcceptedConsent && isPrivacyEnabled;
                               FocusManager.instance.primaryFocus?.unfocus();
                               context.read<AuthBloc>().add(
                                     AuthEvent.login(

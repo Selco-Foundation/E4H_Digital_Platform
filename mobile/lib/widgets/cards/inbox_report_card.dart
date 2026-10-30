@@ -3,53 +3,89 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
-import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../utils/extensions.dart';
+import '../../utils/report_date_label.dart';
 import '../../utils/i18_key_constants.dart' as i18;
+import '../../utils/utils.dart';
 import 'report_detail_row.dart';
+import '../bookmarks/report_bookmarks.dart';
+import '../rectification_badge.dart';
 
 class InboxReportCard extends StatelessWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
   final String? title;
   final String? status;
   final String? state;
   final String? district;
   final String? block;
-  final DateTime dateAssigned;
+  final DateTime? dateAssigned;
+  final String? dateLabelKey;
   final Function() onPress;
   final bool? isAmc;
   final bool? isOtp;
+  final int? visitNumber;
+  final int? durationMonths;
+  final int? visitFrequencyMonths;
+  final bool isRectification;
 
   const InboxReportCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
     this.title,
     this.status,
     this.state,
     this.district,
     this.block,
     required this.dateAssigned,
+    this.dateLabelKey,
     required this.onPress,
     this.isAmc = false,
     this.isOtp = false,
+    this.visitNumber,
+    this.durationMonths,
+    this.visitFrequencyMonths,
+    this.isRectification = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-    String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
+    final date = dateAssigned;
+    final formattedDate =
+        date == null ? '—' : DateFormat('dd/MM/yy').format(date);
 
-    return DigitCard(children: [
-      Column(
+    return RectificationAwareCard(
+      isRectification: isRectification,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "${title}",
-            style: textTheme.headingM
-                .copyWith(color: theme.colorTheme.primary.primary2),
-          ),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+                child: Text(
+              "$title",
+              style: textTheme.headingM
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            )),
+            if (onToggleBookmark != null)
+              ReportBookmarkButton(
+                  selected: isBookmarked,
+                  saving: isSavingBookmark,
+                  onPressed: onToggleBookmark,
+                  addLabelKey: isAmc == true
+                      ? i18.amcBookmarks.add
+                      : i18.installationBookmarks.add,
+                  removeLabelKey: isAmc == true
+                      ? i18.amcBookmarks.remove
+                      : i18.installationBookmarks.remove),
+          ]),
           const SizedBox(height: spacer4),
           const DigitDivider(dividerType: DividerType.small),
           ReportDetailRow(
@@ -61,7 +97,8 @@ class InboxReportCard extends StatelessWidget {
             ),
           ),
           ReportDetailRow(
-            label: context.translate(i18.common.submissionDate),
+            label: reportDateLabel(
+                dateLabelKey ?? i18.common.submissionDate, context.translate),
             value: _detailText(formattedDate, textTheme, theme),
           ),
           ReportDetailRow(
@@ -76,6 +113,19 @@ class InboxReportCard extends StatelessWidget {
             label: context.translate(i18.common.block),
             value: _detailText(_displayValue(block), textTheme, theme),
           ),
+          if (isAmc == true)
+            ReportDetailRow(
+              label: context.translate(i18.amcSelectFacility.amcNumber),
+              value: _detailText(
+                formatAmcNumber(
+                  visitNumber,
+                  durationMonths,
+                  visitFrequencyMonths,
+                ),
+                textTheme,
+                theme,
+              ),
+            ),
           const SizedBox(height: spacer4),
           DigitButton(
               mainAxisSize: MainAxisSize.max,
@@ -88,8 +138,8 @@ class InboxReportCard extends StatelessWidget {
               type: DigitButtonType.secondary,
               size: DigitButtonSize.large),
         ],
-      )
-    ]);
+      ),
+    );
   }
 
   String _displayValue(String? value) {

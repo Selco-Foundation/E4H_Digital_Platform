@@ -68,7 +68,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
       builder: (context, state) {
         final specHeading = state.when(
           initial: () => 'Specification',
-          inverter: () => 'Inverter Specifications',
+          inverter: () => 'Inverter / PCU Specifications',
           battery: () => 'Battery Specifications',
           panel: () => 'Panel Specifications',
         );
@@ -130,45 +130,6 @@ class _SpecificationPageState extends State<SpecificationPage> {
                               initialValue: systemName,
                               keyboardType: TextInputType.none,
                             ),
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: LabeledField(
-                                  label: context
-                                      .translate(i18.specification.totalCapacity),
-                                  labelStyle: textTheme.headingS.copyWith(
-                                      color: theme.colorTheme.text.primary),
-                                  capitalizedFirstLetter: false,
-                                  child: DigitTextFormInput(
-                                    keyboardType: TextInputType.none,
-                                    controller: TextEditingController(),
-                                    isDisabled: true,
-                                    readOnly: true,
-                                    initialValue: totalCapacity,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: spacer6),
-                              Expanded(
-                                flex: 1,
-                                child: LabeledField(
-                                  label: context.translate(i18.common.unit),
-                                  labelStyle: textTheme.headingS.copyWith(
-                                      color: theme.colorTheme.text.primary),
-                                  capitalizedFirstLetter: false,
-                                  child: DigitTextFormInput(
-                                    controller: TextEditingController(),
-                                    isDisabled: true,
-                                    readOnly: true,
-                                    initialValue: totalCapacityUom,
-                                    keyboardType: TextInputType.text,
-                                    onChange: (value) {},
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         ])
                       ],

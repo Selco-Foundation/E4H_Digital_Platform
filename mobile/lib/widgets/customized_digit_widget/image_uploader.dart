@@ -15,6 +15,9 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../utils/app_logger.dart';
+import 'android_camera_capture_page.dart';
+
+typedef CameraCaptureLauncher = Future<XFile?> Function(BuildContext context);
 
 enum _PickerSessionPhase { idle, launching, awaitingResult, recovering }
 
@@ -39,6 +42,7 @@ class ImageUploader extends StatefulWidget {
 
   final bool recoverLostDataOnResume;
   final bool requestFullMetadata;
+  final CameraCaptureLauncher? cameraCaptureLauncher;
 
   const ImageUploader({
     super.key,
@@ -60,6 +64,7 @@ class ImageUploader extends StatefulWidget {
     this.maxHeight,
     this.recoverLostDataOnResume = true,
     this.requestFullMetadata = false,
+    this.cameraCaptureLauncher,
   });
 
   @override
@@ -125,6 +130,7 @@ class _ImageUploaderState extends State<ImageUploader>
         'ImageUploader lifecycle resumed phase=${_pickerPhase.name} session=${_activeSessionToken ?? -1}',
       );
       if (!widget.recoverLostDataOnResume) return;
+      if (_activeSource != ImageSource.gallery) return;
       if (!_hasActivePickerSession || _recoveryAttemptedSinceResume) return;
       _recoveryAttemptedSinceResume = true;
       Future<void>.delayed(const Duration(milliseconds: 150), () {
@@ -300,6 +306,33 @@ class _ImageUploaderState extends State<ImageUploader>
               ),
             );
           },
+        );
+        return;
+      }
+
+      if (source == ImageSource.camera &&
+          (Platform.isAndroid || widget.cameraCaptureLauncher != null)) {
+        setState(() {
+          _pickerPhase = _PickerSessionPhase.awaitingResult;
+        });
+        final capturedPhoto =
+            await (widget.cameraCaptureLauncher?.call(context) ??
+                Navigator.of(context).push<XFile>(
+                  MaterialPageRoute<XFile>(
+                    fullscreenDialog: true,
+                    builder: (_) => const AndroidCameraCapturePage(),
+                  ),
+                ));
+
+        if (!mounted || _activeSessionToken != sessionToken) return;
+        if (capturedPhoto == null) {
+          _completeSession(sessionToken);
+          return;
+        }
+        await _processPickedFiles(
+          <XFile>[capturedPhoto],
+          sessionToken: sessionToken,
+          fromRecovery: false,
         );
         return;
       }
@@ -554,6 +587,7 @@ class _ImageUploaderState extends State<ImageUploader>
   }) async {
     if (kIsWeb) return;
     if (!mounted) return;
+    if (_activeSource != ImageSource.gallery) return;
     if (!allowWithoutActiveSession && !_hasActivePickerSession) return;
 
     final sessionToken = _activeSessionToken ?? ++_sessionToken;

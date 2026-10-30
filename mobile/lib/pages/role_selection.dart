@@ -3,6 +3,7 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/auth/authbloc.dart';
 import '../blocs/role_selection/role_selection.dart';
 import '../blocs/user_type/user_type.dart';
@@ -61,7 +62,13 @@ class _RoleSelectionView extends StatelessWidget {
                         final role = state.availableRoles[index];
                         return HomeItemCard(
                           icon: _iconForRole(role),
-                          label: role.isAmc ? role.label : "Installation",
+                          label: role.moduleLabel,
+                          labelPadding: role.isAssessment
+                              ? const EdgeInsets.symmetric(
+                                  horizontal: spacer2,
+                                )
+                              : null,
+                          fitLabelOnOneLine: role.isAssessment,
                           onPressed: () {
                             context.read<RoleSelectionBloc>().add(
                                   RoleSelectionRoleSelected(role),
@@ -72,10 +79,19 @@ class _RoleSelectionView extends StatelessWidget {
                                   ),
                                 );
 
+                            context.read<AppInitialization>().invalidateModule(
+                                  role.isAssessment
+                                      ? MdmsModule.assessment
+                                      : role.isAmc
+                                          ? MdmsModule.amc
+                                          : MdmsModule.installation,
+                                );
                             context.router.replace(
-                              role.isAmc
-                                  ? const AmcHomeRoute()
-                                  : const HomeRoute(),
+                              role.isAssessment
+                                  ? const AssessmentHomeRoute()
+                                  : role.isAmc
+                                      ? const AmcHomeRoute()
+                                      : const HomeRoute(),
                             );
                           },
                         );
@@ -107,6 +123,8 @@ class _RoleSelectionView extends StatelessWidget {
         return Icons.supervisor_account_outlined;
       case RoleSelectionOption.amc:
         return Icons.home_repair_service_outlined;
+      case RoleSelectionOption.assessment:
+        return Icons.business_center_outlined;
     }
   }
 }
