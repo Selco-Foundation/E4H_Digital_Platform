@@ -69,6 +69,7 @@ public class ServiceRequestValidator {
         //validateMDMS(request, mdmsData);
         //validateDepartment(request, mdmsData);
         validateReOpen(request);
+        validateOnHold(request);
         RequestSearchCriteria criteria = RequestSearchCriteria.builder().ids(Collections.singleton(id)).tenantId(tenantId).build();
         criteria.setIsPlainSearch(false);
         List<IncidentWrapper> incidentWrappers = repository.getIncidentWrappers(criteria);
@@ -210,6 +211,40 @@ public class ServiceRequestValidator {
         if(System.currentTimeMillis()-lastModifiedTime > config.getComplainMaxIdleTime())
             throw new CustomException("INVALID_ACTION","Complaint is closed");
 
+    }
+
+
+    /**
+     * Validates the ON_HOLD action: a known reason, the government acknowledgement letter,
+     * and a comment of at most 500 characters that is mandatory when the reason is Other.
+     * @param request The request to update complaint
+     */
+    void validateOnHold(IncidentRequest request){
+        if(!IM_WF_ON_HOLD.equalsIgnoreCase(request.getWorkflow().getAction()))
+            return;
+
+        Map<String,String> errorMap = new HashMap<>();
+        Workflow workflow = request.getWorkflow();
+
+        String reason = workflow.getOnHoldReason() == null ? null : workflow.getOnHoldReason().getReason();
+        if(!ON_HOLD_REASON_FUND_UNAVAILABLE.equals(reason) && !ON_HOLD_REASON_OTHER.equals(reason))
+            errorMap.put("INVALID_ON_HOLD_REASON","On hold reason must be one of "
+                    + ON_HOLD_REASON_FUND_UNAVAILABLE + ", " + ON_HOLD_REASON_OTHER);
+
+        String comments = workflow.getComments();
+        if(ON_HOLD_REASON_OTHER.equals(reason) && StringUtils.isBlank(comments))
+            errorMap.put("ON_HOLD_COMMENT_MANDATORY","Comment is mandatory when the on hold reason is Other");
+        if(comments != null && comments.length() > ON_HOLD_COMMENT_MAX_LENGTH)
+            errorMap.put("ON_HOLD_COMMENT_LENGTH_EXCEEDED","Comment cannot exceed " + ON_HOLD_COMMENT_MAX_LENGTH + " characters");
+
+        boolean hasDocument = !CollectionUtils.isEmpty(workflow.getVerificationDocuments())
+                && workflow.getVerificationDocuments().stream()
+                        .anyMatch(document -> document != null && StringUtils.isNotBlank(document.getFileStoreId()));
+        if(!hasDocument)
+            errorMap.put("ON_HOLD_DOCUMENT_MANDATORY","Government acknowledgement letter is mandatory to put the ticket on hold");
+
+        if(!errorMap.isEmpty())
+            throw new CustomException(errorMap);
     }
 
 

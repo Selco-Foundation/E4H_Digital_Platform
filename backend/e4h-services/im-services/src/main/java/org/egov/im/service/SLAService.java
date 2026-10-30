@@ -36,6 +36,23 @@ public class SLAService {
         this.imPriorityRepository = imPriorityRepository;
     }
     
+    /**
+     * Returns the part of the workflow history that the SLA is measured over. Taking a ticket off
+     * hold resets its SLA, so everything up to and including the most recent
+     * {@code OUT_OF_WARRANTY_ON_HOLD} instance is dropped. While the ticket is still on hold the
+     * result is empty, which leaves no SLA defined and none elapsed.
+     *
+     * @param processInstances workflow history, oldest first
+     */
+    public List<ProcessInstance> getCurrentSlaCycle(List<ProcessInstance> processInstances) {
+        for (int i = processInstances.size() - 1; i >= 0; i--) {
+            if (OUT_OF_WARRANTY_ON_HOLD.equals(processInstances.get(i).getState().getApplicationStatus())) {
+                return new ArrayList<>(processInstances.subList(i + 1, processInstances.size()));
+            }
+        }
+        return processInstances;
+    }
+
     public long computeTotalSla(String currentState, List<State> states, List<ProcessInstance> processInstances) {
         log.trace("SLAService::computeTotalSla method invoked");
         log.info("Computing total SLA for currentState={}", currentState);

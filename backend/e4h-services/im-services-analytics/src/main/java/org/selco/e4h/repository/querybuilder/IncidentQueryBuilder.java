@@ -40,7 +40,8 @@ public class IncidentQueryBuilder {
                     "  'PENDING_ASSIGNMENT_OUT_OF_WARRANTY', " +
                     "  'PENDING_RESOLUTION_SPARE_PART_NEEDED', " +
                     "  'PENDING_RESOLUTION_OUT_OF_WARRANTY', " +
-                    "  'PENDINGRESOLUTION' " +
+                    "  'PENDINGRESOLUTION', " +
+                    "  'OUT_OF_WARRANTY_ON_HOLD' " +
                     ")";
 
     public String getStatusIncidentOccurence(String boundaryCode, List<Object> preparedStmtList) {

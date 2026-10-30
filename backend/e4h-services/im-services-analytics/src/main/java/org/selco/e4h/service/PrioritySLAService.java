@@ -100,6 +100,7 @@ public class PrioritySLAService {
         List<ProcessInstance> processInstances = workflowService.getAllProcessInstances(tenantId,IncidentId, requestInfo);
         Collections.reverse(processInstances);
         log.debug("Retrieved {} process instances for incident: {}", processInstances.size(), IncidentId);
+        processInstances = getCurrentSlaCycle(processInstances);
 
         if (tenantId.contains(".")) tenantId = tenantId.split("\\.")[0];
         String state = (String) ((Map<String, Object>) currentProcessInstance.get(STATE)).get("applicationStatus");
@@ -135,6 +136,13 @@ public class PrioritySLAService {
 
         long totalSlaRemaining = definedTotalSla - businessElapsedFromCreated;
         long slaRemaining = stateSla - businessElapsedFromModified;
+        if (OUT_OF_WARRANTY_ON_HOLD.equals(state)) {
+            // SLA is paused while on hold: write neutral values so the ticket is neither breached nor nearing SLA
+            stateSla = 0;
+            slaRemaining = 0;
+            definedTotalSla = 0;
+            totalSlaRemaining = 0;
+        }
         log.debug("SLA calculations - stateSla: {}ms, totalSla: {}ms, slaRemaining: {}ms, totalSlaRemaining: {}ms",
             stateSla, definedTotalSla, slaRemaining, totalSlaRemaining);
 
@@ -292,6 +300,22 @@ public class PrioritySLAService {
         }
         log.debug("Calculated business milliseconds: {}ms", total);
         return total;
+    }
+
+    /**
+     * Returns the part of the workflow history that the SLA is measured over. Taking a ticket off
+     * hold resets its SLA, so everything up to and including the most recent
+     * {@code OUT_OF_WARRANTY_ON_HOLD} instance is dropped. Mirrors im-services SLAService.
+     *
+     * @param processInstances workflow history, oldest first
+     */
+    private List<ProcessInstance> getCurrentSlaCycle(List<ProcessInstance> processInstances) {
+        for (int i = processInstances.size() - 1; i >= 0; i--) {
+            if (OUT_OF_WARRANTY_ON_HOLD.equals(processInstances.get(i).getState().getApplicationStatus())) {
+                return new ArrayList<>(processInstances.subList(i + 1, processInstances.size()));
+            }
+        }
+        return processInstances;
     }
 
     public long calculateBusinessDurationForAllStates(List<ProcessInstance> processInstances, BusinessHours businessHours) {
