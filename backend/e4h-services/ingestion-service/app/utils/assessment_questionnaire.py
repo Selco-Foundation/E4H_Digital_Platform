@@ -24,7 +24,8 @@ _MODE_SUFFIXES = {MODE_SITE: "_FIELD", MODE_REMOTE: "_PHONE"}
 
 ON_SITE_QUESTIONNAIRE_HEADER = "On Site Questionnaire (Mandatory)"
 ON_REMOTE_QUESTIONNAIRE_HEADER = "On Remote Questionnaire (Mandatory)"
-QUESTIONNAIRE_HEADERS = {MODE_SITE: ON_SITE_QUESTIONNAIRE_HEADER, MODE_REMOTE: ON_REMOTE_QUESTIONNAIRE_HEADER}
+# Sheet column order: remote first, then on-site.
+QUESTIONNAIRE_HEADERS = {MODE_REMOTE: ON_REMOTE_QUESTIONNAIRE_HEADER, MODE_SITE: ON_SITE_QUESTIONNAIRE_HEADER}
 # Keys the chosen forms are sent under to field-planner, which keeps them in additionalDetails.
 QUESTIONNAIRE_PAYLOAD_KEYS = {MODE_SITE: "onSiteQuestionnaire", MODE_REMOTE: "onRemoteQuestionnaire"}
 _HEADER_FRAGMENTS = {MODE_SITE: "on site questionnaire", MODE_REMOTE: "on remote questionnaire"}
@@ -65,6 +66,13 @@ class QuestionnaireOptions:
                     labels.append(label)
         return labels
 
+    def form_label(self, category: Any, mode: str, form_code: Any) -> Optional[str]:
+        code = _cell_text(form_code)
+        for label, candidate in self.options.get(self.category_code(category), {}).get(mode, {}).items():
+            if candidate == code:
+                return label
+        return None
+
     def form_code(self, category: Any, mode: str, label: Any) -> Optional[str]:
         return self.options.get(self.category_code(category), {}).get(mode, {}).get(_cell_text(label))
 
@@ -100,9 +108,11 @@ def load_questionnaire_options(mdms_client, request_info) -> QuestionnaireOption
                                f"{'no active form schema' if mode else 'code does not end in _PHONE or _FIELD'}")
                 continue
             if label in by_mode[mode]:
+                # Two forms of one column with the same label: the code tells them apart, so both
+                # stay selectable and the choice still maps back to a single form.
                 logger.warning(f"Assessment forms {by_mode[mode][label]} and {code} share the label "
-                               f"'{label}' for category {category}; keeping {by_mode[mode][label]}")
-                continue
+                               f"'{label}' for category {category}; showing the code beside it")
+                label = f"{label} ({code})"
             by_mode[mode][label] = code
         options[category] = by_mode
 
@@ -120,7 +130,7 @@ def load_questionnaire_options(mdms_client, request_info) -> QuestionnaireOption
 
 
 def find_questionnaire_columns(df: pd.DataFrame) -> Dict[str, Optional[str]]:
-    columns: Dict[str, Optional[str]] = {MODE_SITE: None, MODE_REMOTE: None}
+    columns: Dict[str, Optional[str]] = {mode: None for mode in QUESTIONNAIRE_HEADERS}
     for col in df.columns:
         col_lower = str(col).lower()
         for mode, fragment in _HEADER_FRAGMENTS.items():
