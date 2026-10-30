@@ -55,6 +55,10 @@ public class Workflow   {
         @JsonProperty("outOfScopeReason")
         private String outOfScopeReason = null;
 
+        @JsonProperty("onHoldReason")
+        @Valid
+        private OnHoldReason onHoldReason;
+
         public Workflow addAssignesItem(String assignesItem) {
             if (this.assignes == null) {
             this.assignes = new ArrayList<>();

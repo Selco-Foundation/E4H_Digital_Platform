@@ -517,9 +517,10 @@ public class ElasticSearchClient {
             // Extract comments from incident
             String comments = (String) incident.get("comments");
 
-            // Determine SLA compliance status
-            boolean slaComplianceCurrentStatus = slaRemaining != null && getLongValue(slaRemaining) > 0;
-            boolean slaComplianceOverallTicket = totalSlaRemaining != null && getLongValue(totalSlaRemaining) > 0;
+            // Determine SLA compliance status; the SLA is paused while on hold, so it cannot be breached
+            boolean isOnHold = OUT_OF_WARRANTY_ON_HOLD.equals(incident.get("applicationStatus"));
+            boolean slaComplianceCurrentStatus = isOnHold || (slaRemaining != null && getLongValue(slaRemaining) > 0);
+            boolean slaComplianceOverallTicket = isOnHold || (totalSlaRemaining != null && getLongValue(totalSlaRemaining) > 0);
 
             String definedSlaDurationCurrentStatus = stateSla != null ? stateSla.toString() : "Not Defined";
             Object definedTotalSla = data.get("definedTotalSla");

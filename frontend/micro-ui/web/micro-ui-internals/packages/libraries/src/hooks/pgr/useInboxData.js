@@ -95,7 +95,8 @@ const filterData = (data) => {
 };
 
 const combineResponses = (items, currentUserUuid, currentUser, t) => {
-  const closedStates = ["RESOLVED", "CLOSEDAFTERRESOLUTION", "REJECTED", "CLOSEDAFTERREJECTION"];
+  // On-hold tickets have no running SLA clock, so they show "-" like closed ones
+  const closedStates = ["RESOLVED", "CLOSEDAFTERRESOLUTION", "REJECTED", "CLOSEDAFTERREJECTION", "OUT_OF_WARRANTY_ON_HOLD"];
   const roleStatusMapping = {
     PENDINGFORASSIGNMENT: "COMPLAINT_ASSESSOR",
     PENDINGFORASSIGNMENT_THEFT: "COMPLAINT_ASSESSOR",

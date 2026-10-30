@@ -76,6 +76,7 @@ public final class EscalationActorUtil {
             case EscalationWorkflowStates.OUT_OF_WARRANTY_PENDING_TECH_POC -> "Out of Warranty - Pending with Tech POC";
             case EscalationWorkflowStates.OUT_OF_SCOPE -> "Out of Scope - Pending with State SPOC";
             case EscalationWorkflowStates.PENDING_ASSIGNMENT_OUT_OF_WARRANTY -> "Out of Warranty - Pending with State SPOC";
+            case EscalationWorkflowStates.OUT_OF_WARRANTY_ON_HOLD -> "Out of Warranty - On Hold";
             case EscalationWorkflowStates.PENDING_RESOLUTION -> "Pending Resolution";
             case EscalationWorkflowStates.PENDING_RESOLUTION_SPARE_PART_NEEDED ->
                     "Spare Part Change - Pending with Vendor for Resolution";
