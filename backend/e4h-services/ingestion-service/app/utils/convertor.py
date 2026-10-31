@@ -158,6 +158,11 @@ def format_facility_data_for_template(
             if include_column_name:
                 row[include_column_name] = facility.get("include_in_assessment_plan", "")
 
+            # Values the caller already resolved for its own columns (e.g. saved questionnaires).
+            for header, value in (facility.get("template_prefill") or {}).items():
+                if header in headers:
+                    row[header] = value
+
             formatted_rows.append(row)
 
     return formatted_rows
