@@ -81,7 +81,15 @@ public class AssessmentSubmissionService {
                 .phoneStatus(facility.getPhoneStatus())
                 .fieldStatus(facility.getFieldStatus())
                 .lastActionTime(facility.getLastActionTime())
+                .onSiteQuestionnaire(detailAsString(facility, AssessmentConstants.DETAIL_ON_SITE_QUESTIONNAIRE))
+                .onRemoteQuestionnaire(detailAsString(facility, AssessmentConstants.DETAIL_ON_REMOTE_QUESTIONNAIRE))
                 .build();
+    }
+
+    private String detailAsString(PlanFacility facility, String key) {
+        Map<String, Object> details = facility.getAdditionalDetails();
+        Object value = details != null ? details.get(key) : null;
+        return value != null ? value.toString() : null;
     }
 
     private int resolveLimit(Integer limit) {
@@ -100,7 +108,8 @@ public class AssessmentSubmissionService {
             throw new CustomException(AssessmentConstants.ASSESSMENT_CATEGORY_MISMATCH,
                     "facilityCategory does not match plan facility snapshot");
         }
-        String formType = mdmsService.resolveFormType(request.getFacilityCategory(), request.getAssessmentPhase());
+        String formType = mdmsService.resolveFormType(
+                facility, request.getFacilityCategory(), request.getAssessmentPhase());
         String tenantId = resolveTenantId(request.getTenantId());
         AssessmentFormSchema schema = mdmsService.getFormSchema(
                 request.getRequestInfo(), tenantId, formType);
@@ -127,7 +136,8 @@ public class AssessmentSubmissionService {
                     "Remote assessment already completed");
         }
 
-        String formType = mdmsService.resolveFormType(request.getFacilityCategory(), AssessmentConstants.PHASE_PHONE);
+        String formType = mdmsService.resolveFormType(
+                facility, request.getFacilityCategory(), AssessmentConstants.PHASE_PHONE);
         String tenantId = resolveTenantId(request.getTenantId());
         AssessmentFormSchema schema = mdmsService.getFormSchema(
                 request.getRequestInfo(), tenantId, formType);
@@ -190,7 +200,8 @@ public class AssessmentSubmissionService {
                     "On-site assessment must be assigned (field_status=PENDING) before submit");
         }
 
-        String formType = mdmsService.resolveFormType(request.getFacilityCategory(), AssessmentConstants.PHASE_FIELD);
+        String formType = mdmsService.resolveFormType(
+                facility, request.getFacilityCategory(), AssessmentConstants.PHASE_FIELD);
         String tenantId = resolveTenantId(request.getTenantId());
         AssessmentFormSchema schema = mdmsService.getFormSchema(
                 request.getRequestInfo(), tenantId, formType);
