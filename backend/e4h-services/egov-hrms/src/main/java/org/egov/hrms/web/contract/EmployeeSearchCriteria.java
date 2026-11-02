@@ -56,6 +56,14 @@ public class EmployeeSearchCriteria {
 
 	public Boolean searchOnlyInBoundary;
 
+	/**
+	 * Load jurisdictions[].roles. Set by the controller, never by the caller: the v2 API turns it
+	 * on, v1 leaves it off so its response shape is unchanged. The update path turns it on too,
+	 * because the role-preserving merge in EmployeeService reads the roles off the record it
+	 * loads - without it the merge silently has nothing to preserve.
+	 */
+	public Boolean includeJurisdictionRoles;
+
 	public Integer offset;
 	
 	public Integer limit;

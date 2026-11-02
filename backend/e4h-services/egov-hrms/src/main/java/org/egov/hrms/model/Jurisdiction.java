@@ -42,6 +42,8 @@ package org.egov.hrms.model;
 
 import lombok.*;
 
+import java.util.List;
+
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
@@ -82,5 +84,13 @@ public class Jurisdiction {
     private AuditDetails auditDetails;
 
     private Boolean isActive;
+
+    /**
+     * Roles the employee holds at this boundary. Empty or absent means every role they hold.
+     *
+     * Absent is not the same as empty on update: see EmployeeService.enrichUpdateRequest,
+     * which treats null as "unchanged" and only an explicit empty list as "clear".
+     */
+    private List<JurisdictionRole> roles;
 
 }
