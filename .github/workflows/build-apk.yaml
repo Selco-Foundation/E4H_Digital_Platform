@@ -67,7 +67,7 @@ jobs:
       - name: Set up release signing
         if: env.HAS_SIGNING_KEY == 'true'
         env:
-          EXTRA_ENV_BASE64: ${{ secrets.ANDROID_EXTRA_ENV_BASE64 }}
+          EXTRA_ENV_BASE64: ${{ secrets.ANDROID_EXTRA_ENV_DEV_BASE64 }}
           GOOGLE_SERVICE_JSON_BASE64: ${{ secrets.ANDROID_GOOGLE_SERVICE_JSON_BASE64 }}
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
