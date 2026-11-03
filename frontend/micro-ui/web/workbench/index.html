@@ -24,6 +24,12 @@
       rel="stylesheet"
       href="https://unpkg.com/@selco/selco-css@1.8.32/dist/index.css"
     />
+    <!-- selco-css adds a "/" after each breadcrumb item, but the DIGIT BreadCrumb already renders its own separator -->
+    <style>
+      .digit-bread-crumb--item:not(:last-child):after {
+        content: none;
+      }
+    </style>
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#00bcd1" />
