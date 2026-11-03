@@ -3,9 +3,8 @@ name: Build Android APK
 on:
   push:
     branches:
-      - main
+      - staging
       - develop
-      - dev-apk-build
     tags:
       - "v*"               # tag pushes ignore the paths filter and always build
     paths:
@@ -109,4 +108,4 @@ jobs:
 
       - name: Clean up signing files
         if: always()
-        run: rm -f android/app/upload-keystore.jks android/key.properties .env
+        run: rm -f android/app/upload-keystore.jks android/app/google-services.json android/key.properties .env
