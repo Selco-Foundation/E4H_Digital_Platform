@@ -231,8 +231,10 @@ function CustomFieldTemplate(props) {
     !label?.includes(Digit.Utils.locale.getTransformedLocale(moduleName)) &&
     !label?.includes(Digit.Utils.locale.getTransformedLocale(masterName))
   ) {
-    titleCode = Digit.Utils.locale.getTransformedLocale(`${moduleName}.${moduleName}_${label?.slice(0, -2)}`);
-    additionalCode = label?.slice(-2);
+    // Selco: array item labels end in " -<index>"; cutting a fixed 2 characters broke indexes of 10 or more
+    const indexMatch = label?.match(/^(.*?)\s*(-\d+)$/);
+    titleCode = Digit.Utils.locale.getTransformedLocale(`${moduleName}.${moduleName}_${indexMatch ? indexMatch[1] : label?.slice(0, -2)}`);
+    additionalCode = indexMatch ? indexMatch[2] : label?.slice(-2);
   }
 
   return (
