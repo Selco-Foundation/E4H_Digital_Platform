@@ -813,28 +813,22 @@ export const UICustomizations = {
       }
     },
     combineData: ({ isLoading, isFetching, data, defaultData, refetch, refetchDefault }) => {
-      //for every message in data we need to query defaultData , if same code is there then populate a field in data and return data
-      // data?.messages?.forEach((message,idx) => {
-      //   message.defaultMessage = ""
-      //   defaultData?.messages?.forEach((defaultMessage,defaultIdx)=> {
-      //     if(message.code === defaultMessage.code){
-      //       message.defaultMessage = defaultMessage.message
-      //     }
-      //   })
-      // })
-      // return data
-      //TODO: Revisit this logic
-      defaultData?.messages?.forEach((message, idx) => {
-        message.defaultMessage = ""
-        data?.messages?.forEach((defaultMessage, defaultIdx) => {
-          if (message.code === defaultMessage.code) {
-            message.defaultMessage = defaultMessage.message
-            message.originalLocale = defaultMessage.locale
-          }
-        })
-      })
-      return defaultData
-
+      // Selco: rows used to come only from the "default" locale, which Livelihood never seeds, so every search showed
+      // an empty table. Show each module+code from either response: message is the default-locale text (blank when
+      // there is none) and defaultMessage the selected locale's text, as the result columns expect.
+      const rows = {};
+      defaultData?.messages?.forEach((message) => {
+        rows[`${message.module}|${message.code}`] = { ...message, defaultMessage: "" };
+      });
+      data?.messages?.forEach((message) => {
+        const key = `${message.module}|${message.code}`;
+        rows[key] = {
+          ...(rows[key] || { code: message.code, module: message.module, message: "" }),
+          defaultMessage: message.message,
+          originalLocale: message.locale,
+        };
+      });
+      return { ...(defaultData || data), messages: Object.values(rows) };
     }
   },
   ViewMdmsConfig: {
