@@ -27,6 +27,7 @@ import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
+import '../widgets/facility_list_controls.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/bookmarks/report_bookmarks.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -47,6 +48,17 @@ class _AmcInboxPageState extends State<AmcInboxPage>
   String _searchQuery = '';
   String? _sortDirection;
   bool get _bookmarksOnly => _sortDirection == 'BOOKMARKED';
+
+  Future<void> _refreshVisits() async {
+    if (_bookmarksOnly) return _reloadBookmarks();
+    final bloc = context.read<ScheduledVisitBloc>();
+    final completed = bloc.stream.firstWhere((state) => state.maybeWhen(
+        loaded: (_, __, ___, ____, _____) => true,
+        failure: (_) => true,
+        orElse: () => false));
+    _fetchProjects(_selectedTabIndex);
+    await completed;
+  }
 
   Future<void> _reloadBookmarks() =>
       loadBookmarks(only: _bookmarksOnly, query: _searchQuery);
@@ -153,149 +165,155 @@ class _AmcInboxPageState extends State<AmcInboxPage>
             return false;
           },
           child: Scaffold(
-            body: ScrollableContent(
-              backgroundColor: theme.colorTheme.generic.background,
-              header: const BackNavigationHelpHeaderWidget(
-                showBackNavigation: true,
-                showHelp: false,
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: spacer2, horizontal: spacer4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            context.translate(i18.inbox.title),
-                            style: textTheme.headingXl.copyWith(
-                                color: theme.colorTheme.primary.primary2),
+            body: RefreshableFacilityList(
+              onRefresh: _refreshVisits,
+              child: ScrollableContent(
+                backgroundColor: theme.colorTheme.generic.background,
+                header: const BackNavigationHelpHeaderWidget(
+                  showBackNavigation: true,
+                  showHelp: false,
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: spacer2, horizontal: spacer4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              context.translate(i18.inbox.title),
+                              style: textTheme.headingXl.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: spacer4),
+                        SizedBox(
+                          height: spacer12 + spacer1,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return DigitTabBar(
+                                tabs: tabs,
+                                initialIndex: _selectedTabIndex,
+                                onTabSelected: (index) =>
+                                    _onTabChanged(index, userState),
+                                tabBarThemeData:
+                                    DigitTabBarThemeData.defaultTheme(context)
+                                        .copyWith(
+                                            tabWidth: constraints.maxWidth /
+                                                tabs.length,
+                                            padding: EdgeInsets.zero),
+                              );
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: spacer4),
-                      SizedBox(
-                        height: spacer12 + spacer1,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return DigitTabBar(
-                              tabs: tabs,
-                              initialIndex: _selectedTabIndex,
-                              onTabSelected: (index) =>
-                                  _onTabChanged(index, userState),
-                              tabBarThemeData:
-                                  DigitTabBarThemeData.defaultTheme(context)
-                                      .copyWith(
-                                          tabWidth: constraints.maxWidth /
-                                              tabs.length,
-                                          padding: EdgeInsets.zero),
+                        ),
+                        const SizedBox(height: spacer4),
+                        DigitCard(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: DigitSearchFormInput(
+                                    innerLabel: context.translate(
+                                        i18.inbox.searchHealthFacility),
+                                    suffixIcon: Icons.search,
+                                    onChange: (text) {
+                                      setState(() {
+                                        _searchQuery = text;
+                                        if (!_bookmarksOnly) {
+                                          _sortDirection = null;
+                                        }
+                                      });
+                                      if (_bookmarksOnly ||
+                                          text.isEmpty ||
+                                          text.length >=
+                                              minFacilitySearchQueryLength) {
+                                        _fetchProjects(_selectedTabIndex);
+                                      }
+                                    },
+                                    iconColor: const Light().primary2,
+                                    enableBorder: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(spacer1),
+                                      borderSide: BorderSide(
+                                          color:
+                                              theme.colorTheme.text.secondary),
+                                    ),
+                                    focusBorder: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(spacer1),
+                                      borderSide: BorderSide(
+                                          color:
+                                              theme.colorTheme.text.secondary),
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _showSortPopup(
+                                      textTheme, theme, userState),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.import_export,
+                                        color:
+                                            theme.colorTheme.primary.primary1,
+                                        size: spacer8,
+                                      ),
+                                      Text(context.translate(i18.common.sort),
+                                          style: textTheme.headingS.copyWith(
+                                              color: theme
+                                                  .colorTheme.primary.primary1))
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                        const SizedBox(height: spacer4),
+                        if (!_bookmarksOnly && bookmarksFailed)
+                          bookmarkLoadError(_reloadBookmarks),
+                        BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
+                          builder: (context, visitState) {
+                            if (_bookmarksOnly) {
+                              if (bookmarksLoading) return loadingIndicator();
+                              if (bookmarksFailed) {
+                                return bookmarkLoadError(_reloadBookmarks);
+                              }
+                              return _buildVisitList(bookmarkedItems
+                                  .where((visit) =>
+                                      _statusesForTab(_selectedTabIndex)
+                                          .contains(visit.status))
+                                  .toList());
+                            }
+                            return visitState.maybeWhen(
+                              initial: () => loadingIndicator(),
+                              loading: () => loadingIndicator(),
+                              failure: (message) => Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: spacer4),
+                                  child: Text(message),
+                                ),
+                              ),
+                              loaded: (items, hasMore, totalCount, fromCache,
+                                  isLoadingMore) {
+                                return _buildVisitList(
+                                  items,
+                                  isLoadingMore: isLoadingMore,
+                                );
+                              },
+                              orElse: () => const SizedBox.shrink(),
                             );
                           },
                         ),
-                      ),
-                      const SizedBox(height: spacer4),
-                      DigitCard(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DigitSearchFormInput(
-                                  innerLabel: context.translate(
-                                      i18.inbox.searchHealthFacility),
-                                  suffixIcon: Icons.search,
-                                  onChange: (text) {
-                                    setState(() {
-                                      _searchQuery = text;
-                                      if (!_bookmarksOnly) {
-                                        _sortDirection = null;
-                                      }
-                                    });
-                                    if (_bookmarksOnly ||
-                                        text.isEmpty ||
-                                        text.length >=
-                                            minFacilitySearchQueryLength) {
-                                      _fetchProjects(_selectedTabIndex);
-                                    }
-                                  },
-                                  iconColor: const Light().primary2,
-                                  enableBorder: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(spacer1),
-                                    borderSide: BorderSide(
-                                        color: theme.colorTheme.text.secondary),
-                                  ),
-                                  focusBorder: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(spacer1),
-                                    borderSide: BorderSide(
-                                        color: theme.colorTheme.text.secondary),
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () =>
-                                    _showSortPopup(textTheme, theme, userState),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.import_export,
-                                      color: theme.colorTheme.primary.primary1,
-                                      size: spacer8,
-                                    ),
-                                    Text(context.translate(i18.common.sort),
-                                        style: textTheme.headingS.copyWith(
-                                            color: theme
-                                                .colorTheme.primary.primary1))
-                                  ],
-                                ),
-                              ),
-                            ],
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: spacer4),
-                      if (!_bookmarksOnly && bookmarksFailed)
-                        bookmarkLoadError(_reloadBookmarks),
-                      BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
-                        builder: (context, visitState) {
-                          if (_bookmarksOnly) {
-                            if (bookmarksLoading) return loadingIndicator();
-                            if (bookmarksFailed) {
-                              return bookmarkLoadError(_reloadBookmarks);
-                            }
-                            return _buildVisitList(bookmarkedItems
-                                .where((visit) =>
-                                    _statusesForTab(_selectedTabIndex)
-                                        .contains(visit.status))
-                                .toList());
-                          }
-                          return visitState.maybeWhen(
-                            initial: () => loadingIndicator(),
-                            loading: () => loadingIndicator(),
-                            failure: (message) => Center(
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: spacer4),
-                                child: Text(message),
-                              ),
-                            ),
-                            loaded: (items, hasMore, totalCount, fromCache,
-                                isLoadingMore) {
-                              return _buildVisitList(
-                                items,
-                                isLoadingMore: isLoadingMore,
-                              );
-                            },
-                            orElse: () => const SizedBox.shrink(),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: spacer5),
-                    ],
+                        const SizedBox(height: spacer5),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
