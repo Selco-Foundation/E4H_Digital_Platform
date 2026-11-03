@@ -9,7 +9,7 @@ import { filter, isMatchWith } from "lodash";
 const SidebarItems = () => {
 
     const tenantId = Digit.ULBService.getCurrentTenantId();
-    const mdms_context_path = window?.globalConfigs?.getConfig("MDMS_V2_CONTEXT_PATH") || "mdms-v2";
+    const mdms_context_path = window?.globalConfigs?.getConfig("MDMS_V2_CONTEXT_PATH") || window?.globalConfigs?.getConfig("MDMS_CONTEXT_PATH") || "mdms-v2";
     const history = useHistory();
     const { t } = useTranslation();
     const searchParams = new URLSearchParams(location.search);

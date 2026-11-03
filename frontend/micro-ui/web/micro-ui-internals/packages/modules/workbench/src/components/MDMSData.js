@@ -9,7 +9,7 @@ import {
   
   // Get MDMS context path from global config or use default fallback
   const mdms_context_path =
-    window?.globalConfigs?.getConfig("MDMS_V2_CONTEXT_PATH") || "mdms-v2";
+    window?.globalConfigs?.getConfig("MDMS_V2_CONTEXT_PATH") || window?.globalConfigs?.getConfig("MDMS_CONTEXT_PATH") || "mdms-v2";
   
   const MDMSManager = () => {
     // States for schema query params and data management
