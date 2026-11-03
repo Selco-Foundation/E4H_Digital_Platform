@@ -18,9 +18,11 @@ import java.util.Map;
 /**
  * The role-aware employee API.
  *
- * The only difference from {@link EmployeeController} is that jurisdictions here carry the roles
- * the employee holds at each boundary, on both the request and the response. v1 keeps its original
- * shape so its callers are unaffected, and is not being deprecated.
+ * This is the endpoint callers should use when they care about the roles a jurisdiction applies to.
+ * The version is a contract marker, not a technical boundary: both controllers share one Jurisdiction
+ * model and one EmployeeService, so v1 accepts and returns the roles too. What v1 offers is the
+ * promise that its shape will not change again, so its existing callers need not be touched; it is
+ * not being deprecated.
  *
  * Versioning the contract does not version the storage: both controllers write the same tables, so
  * a v1 update can still remove roles a v2 caller set. What prevents that is the merge in
