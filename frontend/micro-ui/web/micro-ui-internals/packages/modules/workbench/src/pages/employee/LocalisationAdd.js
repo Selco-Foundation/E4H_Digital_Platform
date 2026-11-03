@@ -37,10 +37,10 @@ const langDropdownConfig = {
     optionsKey: "label",
     optionsCustomStyle: { top: "2.3rem" },
     mdmsConfig: {
-      masterName: "StateInfo",
+      masterName: "Languages",
       moduleName: "common-masters",
-      // localePrefix: "WBH_LOCALE_",
-      select: "(data)=>{ return data['common-masters'].StateInfo?.[0]?.languages }",
+      // Selco: StateInfo in Livelihood is a list of states without languages; use the Languages master
+      select: "(data)=>{ return data['common-masters'].Languages?.map((language) => ({ label: language.label, value: language.code })) }",
     },
     styles: { width: "50%" },
   },
@@ -56,10 +56,10 @@ const localeDropdownConfig = {
     optionsKey: "label",
     optionsCustomStyle: { top: "2.3rem" },
     mdmsConfig: {
-      masterName: "StateInfo",
+      masterName: "LocalizationModules",
       moduleName: "common-masters",
-      // localePrefix: "WBH_LOCALE_",
-      select: "(data)=>{ return data['common-masters'].StateInfo?.[0]?.localizationModules }",
+      // Selco: StateInfo in Livelihood has no localizationModules; use the LocalizationModules master
+      select: "(data)=>{ return data['common-masters'].LocalizationModules }",
     },
     styles: { width: "50%" },
   },
@@ -171,9 +171,10 @@ const LocalisationAdd = () => {
   const [isDownloadDisabled, setIsDownloadDisabled] = useState(true);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
 
-  const { data: localeData } = Digit.Hooks.useCustomMDMS(stateId, "common-masters", [{ name: "StateInfo" }], {
+  // Selco: Livelihood's StateInfo has no languages; read the Languages master instead
+  const { data: localeData } = Digit.Hooks.useCustomMDMS(stateId, "common-masters", [{ name: "Languages" }], {
     select: (data) => {
-      const languages = data["common-masters"].StateInfo?.[0]?.languages || [];
+      const languages = (data["common-masters"].Languages || []).map((language) => ({ label: language.label, value: language.code }));
       const defaultLanguage = {
         label: "Message",
         value: "default",

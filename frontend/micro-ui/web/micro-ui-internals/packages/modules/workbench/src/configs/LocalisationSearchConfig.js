@@ -48,11 +48,11 @@ export const Config = {
               optionsKey: "label",
               optionsCustomStyle: { top: "2.3rem" },
               mdmsConfig: {
-                masterName: "StateInfo",
+                masterName: "Languages",
                 moduleName: "common-masters",
-                // localePrefix: "WBH_LOCALE_",
+                // Selco: StateInfo in Livelihood is a list of states without languages; use the Languages master
                 select:
-                    "(data)=>{ return data['common-masters'].StateInfo?.[0]?.languages }"
+                    "(data)=>{ return data['common-masters'].Languages?.map((language) => ({ label: language.label, value: language.code })) }"
                 } 
             },
           },
@@ -66,11 +66,11 @@ export const Config = {
               optionsKey: "label",
               optionsCustomStyle: { top: "2.3rem" },
               mdmsConfig: {
-                masterName: "StateInfo",
+                masterName: "LocalizationModules",
                 moduleName: "common-masters",
-                // localePrefix: "WBH_LOCALE_",
+                // Selco: StateInfo in Livelihood has no localizationModules; use the LocalizationModules master
                 select:
-                    "(data)=>{ return data['common-masters'].StateInfo?.[0]?.localizationModules }"
+                    "(data)=>{ return data['common-masters'].LocalizationModules }"
                 } 
             },
           },
