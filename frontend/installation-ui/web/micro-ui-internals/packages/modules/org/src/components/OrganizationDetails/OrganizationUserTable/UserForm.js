@@ -4,6 +4,13 @@ import useBoundary from "../../../hooks/useBoundary";
 import CommonUtils from "../../../utilities/CommonUtils";
 import CustomDustbinIcon from "../../Custom/CustomDustbinIcon";
 import CustomUndoIcon from "../../Custom/CustomUndoButton";
+import AppliesToSelector from "./AppliesToSelector";
+import {
+  appliesToAllRoles,
+  collapseRoleCodesToGroups,
+  expandGroupsToRoleCodes,
+  pruneAssignmentGroups,
+} from "../../../utilities/jurisdictionRoles";
 
 const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast }) => {
 
@@ -20,6 +27,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   const [debouncedJurisdictionSearch, setDebouncedJurisdictionSearch] = useState("");
   const isPlatformOrgAdmin = (info?.roles || []).map((role) => role?.code).includes("ORG_PLATFORM_ADMIN");
   const [totalAssignmentsToDisplay, setTotalAssignmentsToDisplay] = useState(0);
+  const [selectedRoleGroups, setSelectedRoleGroups] = useState([]);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -63,16 +71,23 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         email: createdUser.emailId,
         roles: roleGroups.filter((roleGroup) => roleGroup.roleCodes.every((roleCode) => roleCodes.includes(roleCode))),
       });
+      setSelectedRoleGroups(roleGroups.filter((roleGroup) => roleGroup.roleCodes.every((roleCode) => roleCodes.includes(roleCode))));
     }
   }, [mdmsResponse]);
 
   useEffect(() => {
+    if (!mdmsResponse) return;
     const createdAssessments = [];
     (createdUser?.jurisdiction || []).forEach(jurisdiction => {
-      createdAssessments.push(jurisdiction);
+      createdAssessments.push({
+        ...jurisdiction,
+        // Stored as role codes; the form works in groups. An empty list stays empty, which
+        // is "all roles" and must not be confused with "no match found".
+        roles: jurisdiction.roles?.length ? collapseRoleCodesToGroups(jurisdiction.roles, roleGroups) : null,
+      });
     })
     setSavedAssignments(createdAssessments);
-  }, []);
+  }, [mdmsResponse]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {setDebouncedJurisdictionSearch(jurisdictionSearch)}, 500);
@@ -91,6 +106,50 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     setTotalAssignmentsToDisplay(filteredSavedAssignments.length);
     setSavedAssignmentsToDisplay(filteredSavedAssignments.slice(pageOffset, Math.min(filteredSavedAssignments.length, pageOffset + pageSize)));
   }, [t, savedAssignments, debouncedJurisdictionSearch, pageOffset, pageSize]);
+
+  // Rule 3: dropping a role group strips it from every assignment scoped to it. A row left
+  // with nothing is meaningless rather than invalid, so it goes and the admin is told which.
+  useEffect(() => {
+    if (!mdmsResponse) return;
+
+    const emptied = [];
+    const pruneList = (list) => list.reduce((kept, assignment) => {
+      const retained = pruneAssignmentGroups(assignment, selectedRoleGroups);
+      if (retained === null) {
+        kept.push(assignment);
+      } else if (retained.length) {
+        kept.push({ ...assignment, roles: retained });
+      } else {
+        emptied.push(assignment.boundary || assignment.facility?.code || assignment.block?.code
+          || assignment.district?.code || assignment.state?.code || assignment.country?.code);
+      }
+      return kept;
+    }, []);
+
+    setAssignments((prev) => {
+      const next = pruneList(prev);
+      return next.length === prev.length ? prev : next;
+    });
+    setSavedAssignments((prev) => {
+      const next = pruneList(prev);
+      return next.length === prev.length ? prev : next;
+    });
+
+    if (emptied.length) {
+      setFormToast({
+        key: "warning",
+        label: `${t("ORG_ASSIGNMENT_REMOVED_WITH_ROLE")}: ${emptied.filter(Boolean).join(", ")}`,
+      });
+    }
+  }, [selectedRoleGroups, mdmsResponse]);
+
+  const setAssignmentRoles = useCallback((index, roles) => {
+    setAssignments((prev) => prev.map((assignment, i) => (i === index ? { ...assignment, roles } : assignment)));
+  }, []);
+
+  const setSavedAssignmentRoles = useCallback((id, roles) => {
+    setSavedAssignments((prev) => prev.map((assignment) => (assignment.id === id ? { ...assignment, roles } : assignment)));
+  }, []);
 
   const isFormLoading = boundaryLoading || mdmsLoading;
 
@@ -276,8 +335,17 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         roles: userRoles,
       }
 
+      // §1.3: an incoming jurisdiction with an id and roles == null keeps its stored roles,
+      // so every row the form rendered sends `roles` explicitly. [] is "all roles", and is
+      // what clears stored scoping; omitting the key would mean "unchanged".
       const jurisdictions = (savedAssignments || [])
-        .map((savedAssignment) => ({...savedAssignment, isActive: !savedAssignment.isDeleted}));
+        .map((savedAssignment) => ({
+          ...savedAssignment,
+          isActive: !savedAssignment.isDeleted,
+          roles: appliesToAllRoles(savedAssignment)
+            ? []
+            : roles.filter((role) => expandGroupsToRoleCodes(savedAssignment.roles).includes(role.code)),
+        }));
 
       assignments.forEach((assignment) => {
         let jurisdiction;
@@ -322,14 +390,26 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             isActive: !assignment.isDeleted,
           }
         }
-        if (jurisdiction) jurisdictions.push(jurisdiction);
+        if (jurisdiction) {
+          jurisdiction.roles = appliesToAllRoles(assignment)
+            ? []
+            : roles.filter((role) => expandGroupsToRoleCodes(assignment.roles).includes(role.code));
+          jurisdictions.push(jurisdiction);
+        }
       })
+
+      // Rule 4 (Q9): a user with no jurisdiction sees nothing, so create must not be the
+      // place that silently produces one. The backend rejects it too.
+      if (!createdUser?.orgUserId && !jurisdictions.some((jurisdiction) => jurisdiction.isActive)) {
+        setFormToast({ key: "error", label: t("ORG_USER_AT_LEAST_ONE_ASSIGNMENT") });
+        return;
+      }
 
       onFormSubmit(formattedFormData, jurisdictions);
     } else {
       setFormToast({ key: "error", label: t("USER_CREATION_SELECT_ROLE_ERROR") });
     }
-  }, [assignments, mdmsResponse, savedAssignments]);
+  }, [assignments, mdmsResponse, savedAssignments, createdUser]);
 
   const handleAssignmentFormChange = useCallback((index, _, formData) => {
     if (CommonUtils.isNotEqual(assignments[index].country, formData.country) ||
@@ -408,6 +488,18 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       },
     },
     {
+      Header: t("ORG_ASSIGNMENT_APPLIES_TO"),
+      Cell: ({ row }) => (
+        <AppliesToSelector
+          t={t}
+          value={row.original["roles"]}
+          options={selectedRoleGroups}
+          disabled={row.original["isDeleted"]}
+          onChange={(roles) => setSavedAssignmentRoles(row.original["id"], roles)}
+        />
+      ),
+    },
+    {
       Header: t("CS_COMMON_ACTIONS"),
       Cell: ({ row }) => {
         return GetCell(
@@ -478,6 +570,11 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         key={JSON.stringify(defaultValues)}
         defaultValues={defaultValues}
         config={userFormConfig}
+        onFormValueChange={(_, formData) => {
+          if (CommonUtils.isNotEqual(selectedRoleGroups, formData?.roles || [])) {
+            setSelectedRoleGroups(formData?.roles || []);
+          }
+        }}
         onSubmit={handleFormSubmit}
         label={t("CORE_COMMON_SAVE")}
         heading={""}
@@ -563,7 +660,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                   </button>
                 </div>
                 <FormComposerV2
-                  key={JSON.stringify(assignment)}
+                  key={JSON.stringify({ ...assignment, roles: undefined })}
                   defaultValues={assignment}
                   config={assignmentsConfig(false)}
                   onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
@@ -572,6 +669,15 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                   cardStyle={{ boxShadow: "none" }}
                   submitInForm={false}
                 />
+                <div style={{ padding: "0 0 20px" }}>
+                  <div style={{ fontWeight: 700, marginBottom: "8px" }}>{t("ORG_ASSIGNMENT_APPLIES_TO")}</div>
+                  <AppliesToSelector
+                    t={t}
+                    value={assignment.roles}
+                    options={selectedRoleGroups}
+                    onChange={(roles) => setAssignmentRoles(index, roles)}
+                  />
+                </div>
               </div>
             ))
           }
