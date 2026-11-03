@@ -434,9 +434,10 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         }
       }
 
-      // Rule 4 (Q9): a user with no jurisdiction sees nothing, so create must not be the
-      // place that silently produces one. The backend rejects it too.
-      if (!createdUser?.orgUserId && !jurisdictions.some((jurisdiction) => jurisdiction.isActive)) {
+      // Rule 4 (Q9): a user with no active jurisdiction sees nothing. This holds on update as
+      // well as create - removing the last assignment is the easiest way to produce such a
+      // user, and the backend refuses it too (ORG_USER_JURISDICTION_REQUIRED).
+      if (!jurisdictions.some((jurisdiction) => jurisdiction.isActive)) {
         setFormToast({ key: "error", label: t("ORG_USER_AT_LEAST_ONE_ASSIGNMENT") });
         return;
       }
