@@ -1,14 +1,17 @@
 import React from "react";
-import { Dropdown, RemoveableTag } from "@egovernments/digit-ui-react-components";
+import { MultiSelectDropdown } from "@egovernments/digit-ui-react-components";
 import { appliesToAllRoles, describeAllRoles } from "../../../utilities/jurisdictionRoles";
 
 /**
  * "Applies to" — which of the user's roles one jurisdiction scopes.
  *
+ * The same MultiSelectDropdown the user form uses for the roles field, so picking roles
+ * works the same way in both places.
+ *
  * `value` is a list of OrgRoleGroups, or null/empty for "every role the user holds". The two
- * are different things and the UI has to say which it is: an empty multiselect reads as
- * *none*, the exact opposite, so the unscoped state is drawn as an explicit `All roles` chip
- * with the roles it currently resolves to underneath it.
+ * are different things and the dropdown alone cannot say which it is: an empty multiselect
+ * reads as *none*, the exact opposite. So while nothing is picked, the unscoped state is
+ * spelled out as an `All roles` chip with the roles it currently resolves to underneath.
  *
  * Narrowing is a live rule, not a snapshot — `All roles` keeps meaning "whatever the user
  * holds", so granting a role later widens every unscoped jurisdiction with it.
@@ -16,24 +19,11 @@ import { appliesToAllRoles, describeAllRoles } from "../../../utilities/jurisdic
 const AppliesToSelector = ({ t, value, options = [], onChange, disabled = false }) => {
   const selected = value || [];
   const isAllRoles = appliesToAllRoles({ roles: selected });
-  const selectedCodes = new Set(selected.map((group) => group?.code));
-  const remaining = options.filter((group) => !selectedCodes.has(group?.code));
-
-  const addGroup = (group) => {
-    if (!group) return;
-    onChange([...selected, group]);
-  };
-
-  const removeGroup = (code) => {
-    const next = selected.filter((group) => group?.code !== code);
-    // Clearing the last chip means "stop narrowing", not "applies to nothing".
-    onChange(next.length ? next : null);
-  };
 
   return (
     <div style={{ minWidth: "220px" }}>
-      {isAllRoles ? (
-        <div>
+      {isAllRoles && (
+        <div style={{ marginBottom: "8px" }}>
           <span
             style={{
               display: "inline-block",
@@ -52,25 +42,20 @@ const AppliesToSelector = ({ t, value, options = [], onChange, disabled = false 
             </div>
           )}
         </div>
-      ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "4px" }}>
-          {selected.map((group) => (
-            <RemoveableTag
-              key={group.code}
-              text={group.name}
-              onClick={() => !disabled && removeGroup(group.code)}
-            />
-          ))}
-        </div>
       )}
-      {!disabled && !!remaining.length && (
-        <Dropdown
-          t={t}
-          option={remaining}
-          optionKey={"name"}
-          selected={""}
-          select={addGroup}
-          placeholder={t("ORG_ASSIGNMENT_NARROW_TO_ROLE")}
+      {!disabled && (
+        <MultiSelectDropdown
+          options={options}
+          optionsKey={"name"}
+          selected={selected}
+          onSelect={(e) => {
+            const picked = (e || []).map((row) => (row?.[1] ? row[1] : null)).filter(Boolean);
+            // Clearing the last one means "stop narrowing", not "applies to nothing".
+            onChange(picked.length ? picked : null);
+          }}
+          defaultLabel={t("ORG_ASSIGNMENT_NARROW_TO_ROLE")}
+          defaultUnit={t("ORG_ASSIGNMENT_ROLES_SELECTED")}
+          config={{ isDropdownWithChip: true }}
         />
       )}
     </div>
