@@ -32,7 +32,9 @@ const CustomSelectWidget = (props) => {
     multiple = false,
     schema = { schemaCode: "", fieldPath: "" },
   } = props;
-  const { schemaCode = `${moduleName}.${masterName}`, tenantId, fieldPath } = schema;
+  const { schemaCode = `${moduleName}.${masterName}`, tenantId: schemaTenantId, fieldPath } = schema;
+  // Selco: the schema usually has no tenantId; without one the gateway cannot authorise the search (401)
+  const tenantId = schemaTenantId || Digit.ULBService.getStateId();
   const [prefix, setPrefix] = useState(schemaCode);
   const { configs, updateConfigs, updateSchema, schema: formSchema, formData } = Digit.Hooks.workbench.useWorkbenchFormContext();
 useEffect(()=>{
