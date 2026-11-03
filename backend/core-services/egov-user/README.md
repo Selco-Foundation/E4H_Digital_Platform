@@ -90,6 +90,16 @@ k) `POST /user/oauth/token`
 
 Endpoint for login. If the user is citizen the login is otp based else it is password based.
 
+l) `POST /users/v2/_create`
+
+Bulk user create. Accepts up to `egov.user.bulk.max` users (default 100) per request. Encryption, uniqueness check, BCrypt
+hashing (pool size `egov.user.bulk.bcrypt.threads`, default 4) and INSERTs are batched across the whole request. Duplicates
+(against the DB or within the batch) are dropped and returned with `id = null`; callers correlate by `username`.
+
+`POST /_search` and `POST /v1/_search` also accept bulk criteria `userNames: [...]` and `mobileNumbers: [...]`, which generate
+a `WHERE ... IN (...)` clause with values encrypted in one enc-service call. If both the scalar and list form of a field are
+set, the list wins and a warning is logged.
+
 
 
 ### Kafka Consumers
