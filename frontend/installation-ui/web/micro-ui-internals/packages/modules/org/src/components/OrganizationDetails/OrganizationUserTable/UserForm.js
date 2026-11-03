@@ -4,6 +4,7 @@ import useBoundary from "../../../hooks/useBoundary";
 import CommonUtils from "../../../utilities/CommonUtils";
 import CustomDustbinIcon from "../../Custom/CustomDustbinIcon";
 import CustomUndoIcon from "../../Custom/CustomUndoButton";
+import CustomEditIcon from "../../Custom/CustomEditIcon";
 import AppliesToSelector from "./AppliesToSelector";
 import {
   appliesToAllRoles,
@@ -145,10 +146,6 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
 
   const setAssignmentRoles = useCallback((index, roles) => {
     setAssignments((prev) => prev.map((assignment, i) => (i === index ? { ...assignment, roles } : assignment)));
-  }, []);
-
-  const setSavedAssignmentRoles = useCallback((id, roles) => {
-    setSavedAssignments((prev) => prev.map((assignment) => (assignment.id === id ? { ...assignment, roles } : assignment)));
   }, []);
 
   const isFormLoading = boundaryLoading || mdmsLoading;
@@ -349,7 +346,11 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
 
       assignments.forEach((assignment) => {
         let jurisdiction;
-        if (assignment.facility?.code) {
+        // Lifted out of the table for editing: it already is a jurisdiction, and keeps its
+        // id so this updates the stored row instead of adding a second at the same boundary.
+        if (assignment.id) {
+          jurisdiction = { ...assignment, isActive: !assignment.isDeleted };
+        } else if (assignment.facility?.code) {
           jurisdiction = {
             hierarchy: "SELCO",
             boundary: assignment.facility.code,
@@ -436,6 +437,26 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     ));
   }
 
+  /**
+   * Editing a saved assignment lifts it out of the table into the card list above, where the
+   * roles selector has room. It keeps its id, so on save it still updates the jurisdiction it
+   * came from rather than creating a second one at the same boundary.
+   */
+  const editSavedAssignment = (id) => {
+    const target = savedAssignments.find((savedAssignment) => savedAssignment.id === id);
+    if (!target) return;
+    setSavedAssignments((prev) => prev.filter((savedAssignment) => savedAssignment.id !== id));
+    setAssignments((prev) => [target, ...prev]);
+  };
+
+  /** Put it back in the table. Edits are kept — nothing is written until the form is saved. */
+  const returnSavedAssignmentToTable = (index) => {
+    const target = assignments[index];
+    if (!target) return;
+    setAssignments((prev) => prev.filter((_, i) => i !== index));
+    setSavedAssignments((prev) => [...prev, target]);
+  };
+
   const deleteSavedAssignment = (id) => {
     setSavedAssignments((prevSavedAssignments) => prevSavedAssignments.reduce(
       (aggregate, savedAssignment) => {
@@ -461,6 +482,31 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       }, []
     ));
   }
+
+  /** Scoping as read-only chips, matching how the users table lists a user's roles. */
+  const GetRoleTags = (groups, isDeleted) => (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+      {appliesToAllRoles({ roles: groups }) ? (
+        <span style={{ backgroundColor: "#EEEEEE", color: isDeleted ? "#bc210a" : "#505A5F", width: "fit-content", padding: "5px 10px" }}>
+          {t("ORG_ASSIGNMENT_ALL_ROLES")}
+        </span>
+      ) : (
+        groups.map((group) => (
+          <span
+            key={group.code}
+            style={{
+              backgroundColor: "#F1FFF8",
+              color: isDeleted ? "#bc210a" : "#00703C",
+              width: "fit-content",
+              padding: "5px 10px",
+            }}
+          >
+            {group.name}
+          </span>
+        ))
+      )}
+    </div>
+  );
 
   const GetCell = (value, isDeleted) => (
     <span className="cell-text" style={{ color: isDeleted ? "#bc210a" : "#000000" }}>
@@ -489,15 +535,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     },
     {
       Header: t("ORG_ASSIGNMENT_APPLIES_TO"),
-      Cell: ({ row }) => (
-        <AppliesToSelector
-          t={t}
-          value={row.original["roles"]}
-          options={selectedRoleGroups}
-          disabled={row.original["isDeleted"]}
-          onChange={(roles) => setSavedAssignmentRoles(row.original["id"], roles)}
-        />
-      ),
+      Cell: ({ row }) => GetRoleTags(row.original["roles"], row.original["isDeleted"]),
     },
     {
       Header: t("CS_COMMON_ACTIONS"),
@@ -515,13 +553,22 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             )
             :
             (
-              <button
-                type="button"
-                style={{background: "none"}}
-                onClick={() => deleteSavedAssignment(row.original["id"])}
-              >
-                <CustomDustbinIcon colourFill={"#bc210a"} />
-              </button>
+              <div>
+                <button
+                  type="button"
+                  style={{paddingTop: "3px", backgroundColor: "white", marginRight: "5px"}}
+                  onClick={() => editSavedAssignment(row.original["id"])}
+                >
+                  <CustomEditIcon width={"18"} height={"18"} viewBox={"0 0 20 20"} />
+                </button>
+                <button
+                  type="button"
+                  style={{background: "none"}}
+                  onClick={() => deleteSavedAssignment(row.original["id"])}
+                >
+                  <CustomDustbinIcon colourFill={"#bc210a"} />
+                </button>
+              </div>
             )
         );
       },
@@ -652,23 +699,57 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                     margin: 0,
                     fontSize: "18px",
                     fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
                   }}>
-                    {t("NEW_ASSIGNMENT") + ":"}
+                    {assignment.id ? t("EDIT_ASSIGNMENT") + ":" : t("NEW_ASSIGNMENT") + ":"}
+                    {assignment.id && (
+                      <span style={{
+                        backgroundColor: "#EEEEEE",
+                        color: "#505A5F",
+                        padding: "4px 12px",
+                        borderRadius: "4px",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                      }}>
+                        {t("ORG_ASSIGNMENT_SAVED_EARLIER")}
+                      </span>
+                    )}
                   </h2>
-                  <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
-                    <CustomDustbinIcon colourFill={"#bc210a"} />
-                  </button>
+                  {assignment.id ? (
+                    <Button
+                      variation="secondary"
+                      label={t("CORE_COMMON_DONE")}
+                      onButtonClick={() => returnSavedAssignmentToTable(index)}
+                      style={{ height: "32px" }}
+                    />
+                  ) : (
+                    <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
+                      <CustomDustbinIcon colourFill={"#bc210a"} />
+                    </button>
+                  )}
                 </div>
-                <FormComposerV2
-                  key={JSON.stringify({ ...assignment, roles: undefined })}
-                  defaultValues={assignment}
-                  config={assignmentsConfig(false)}
-                  onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
-                  label={""}
-                  heading={""}
-                  cardStyle={{ boxShadow: "none" }}
-                  submitInForm={false}
-                />
+                {assignment.id ? (
+                  // A saved jurisdiction's boundary is what identifies it; changing it here
+                  // would silently move the grant rather than edit it. Shown, not editable.
+                  <div style={{ marginBottom: "20px", fontSize: "16px" }}>
+                    <span style={{ color: "#787878" }}>{t("BOUNDARY_NAME")}: </span>
+                    <span style={{ fontWeight: 700 }}>{t(`Boundary_${assignment.boundary}`)}</span>
+                    <span style={{ color: "#787878" }}>{` (${assignment.boundaryType})`}</span>
+                  </div>
+                ) : (
+                  <FormComposerV2
+                    key={JSON.stringify({ ...assignment, roles: undefined })}
+                    defaultValues={assignment}
+                    config={assignmentsConfig(false)}
+                    onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
+                    label={""}
+                    heading={""}
+                    cardStyle={{ boxShadow: "none" }}
+                    submitInForm={false}
+                  />
+                )}
                 <div style={{ padding: "0 0 20px" }}>
                   <div style={{ fontWeight: 700, marginBottom: "8px" }}>{t("ORG_ASSIGNMENT_APPLIES_TO")}</div>
                   <AppliesToSelector
