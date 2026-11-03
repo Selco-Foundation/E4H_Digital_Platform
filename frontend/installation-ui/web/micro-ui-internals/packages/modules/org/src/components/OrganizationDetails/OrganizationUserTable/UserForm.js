@@ -153,6 +153,21 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   // with nothing is meaningless rather than invalid, so it goes and the admin is told which.
   useEffect(() => {
     if (!mdmsResponse) return;
+    /**
+     * Don't prune while the form has reported no roles for a user who demonstrably has some.
+     *
+     * selectedRoleGroups is seeded from createdUser in an effect above, and this one runs in
+     * the same commit, where the state is still its initial []. Pruning against that reads as
+     * "holds no roles at all" and deletes every narrowed jurisdiction the user has - which is
+     * what made a scoped row vanish from the table on open.
+     *
+     * A ref set in the seeding effect would not help: refs change synchronously, so this pass
+     * would see it set while the state it describes has not propagated yet.
+     *
+     * Clearing the roles field by hand lands here too, and is also skipped. That costs nothing:
+     * roles are mandatory, so a save in that state is rejected before scoping matters.
+     */
+    if (createdUser?.orgUserId && !selectedRoleGroups.length && createdUser.roles?.length) return;
 
     const emptied = [];
     const pruneList = (list) => list.reduce((kept, assignment) => {
