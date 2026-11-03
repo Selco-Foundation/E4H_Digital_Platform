@@ -13,6 +13,47 @@ import {
   pruneAssignmentGroups,
 } from "../../../utilities/jurisdictionRoles";
 
+/**
+ * A saved jurisdiction stores only its own boundary code and type. The add-assignment
+ * cascade needs the whole chain above it, and every selector matches its options on
+ * parentCode, so the ancestors have to be the boundaryData entries themselves rather than
+ * bare codes - otherwise each selector drops the value it was given as stale.
+ */
+const buildBoundaryCascade = (boundary, boundaryType, boundaryData, t) => {
+  const cascade = { country: null, state: null, district: null, block: null, facility: null };
+  const levels = [
+    { key: "country", type: "Country", list: boundaryData?.countries },
+    { key: "state", type: "State", list: boundaryData?.states },
+    { key: "district", type: "District", list: boundaryData?.districts },
+    { key: "block", type: "Block", list: boundaryData?.blocks },
+    { key: "facility", type: "Facility", list: boundaryData?.facilities },
+  ];
+
+  let index = levels.findIndex((level) => level.type === boundaryType);
+  let code = boundary;
+  while (index >= 0 && code) {
+    const match = (levels[index].list || []).find((entry) => entry.code === code);
+    if (!match) break;
+    cascade[levels[index].key] = { ...match, name: t(`Boundary_${match.code}`) };
+    code = match.parentCode;
+    index -= 1;
+  }
+  return cascade;
+};
+
+/** The deepest level the cascade has a value for is the jurisdiction's boundary. */
+const resolveCascadeBoundary = (assignment) => {
+  const levels = [
+    { key: "facility", type: "Facility" },
+    { key: "block", type: "Block" },
+    { key: "district", type: "District" },
+    { key: "state", type: "State" },
+    { key: "country", type: "Country" },
+  ];
+  const level = levels.find(({ key }) => assignment?.[key]?.code);
+  return level ? { boundary: assignment[level.key].code, boundaryType: level.type } : null;
+};
+
 const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
@@ -344,52 +385,31 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             : roles.filter((role) => expandGroupsToRoleCodes(savedAssignment.roles).includes(role.code)),
         }));
 
-      assignments.forEach((assignment) => {
-        let jurisdiction;
-        // Lifted out of the table for editing: it already is a jurisdiction, and keeps its
-        // id so this updates the stored row instead of adding a second at the same boundary.
+      for (const assignment of assignments) {
+        const resolved = resolveCascadeBoundary(assignment);
+        let jurisdiction = resolved && {
+          hierarchy: "SELCO",
+          boundary: resolved.boundary,
+          boundaryType: resolved.boundaryType,
+          tenantId: tenantId,
+          isActive: !assignment.isDeleted,
+        };
+        // A row lifted out of the table carries the stored identity, but takes its boundary
+        // from the cascade like any other - so moving it edits the grant instead of looking
+        // edited and saving the old boundary back.
         if (assignment.id) {
-          jurisdiction = { ...assignment, isActive: !assignment.isDeleted };
-        } else if (assignment.facility?.code) {
-          jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.facility.code,
-            boundaryType: "Facility",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
+          if (!jurisdiction) {
+            setFormToast({ key: "error", label: t("ORG_ASSIGNMENT_BOUNDARY_REQUIRED") });
+            return;
           }
-        } else if (assignment.block?.code) {
           jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.block.code,
-            boundaryType: "Block",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
-          }
-        } else if (assignment.district?.code) {
-          jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.district.code,
-            boundaryType: "District",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
-          }
-        } else if (assignment.state?.code) {
-          jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.state.code,
-            boundaryType: "State",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
-          }
-        } else if (assignment.country?.code) {
-          jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.country.code,
-            boundaryType: "Country",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
-          }
+            ...jurisdiction,
+            id: assignment.id,
+            orgId: assignment.orgId,
+            code: assignment.code,
+            additionalDetails: assignment.additionalDetails,
+            auditDetails: assignment.auditDetails,
+          };
         }
         if (jurisdiction) {
           jurisdiction.roles = appliesToAllRoles(assignment)
@@ -397,7 +417,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             : roles.filter((role) => expandGroupsToRoleCodes(assignment.roles).includes(role.code));
           jurisdictions.push(jurisdiction);
         }
-      })
+      }
 
       // Rule 4 (Q9): a user with no jurisdiction sees nothing, so create must not be the
       // place that silently produces one. The backend rejects it too.
@@ -438,23 +458,33 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   }
 
   /**
-   * Editing a saved assignment lifts it out of the table into the card list above, where the
-   * roles selector has room. It keeps its id, so on save it still updates the jurisdiction it
-   * came from rather than creating a second one at the same boundary.
+   * Editing a saved assignment lifts it out of the table into the same card used for adding
+   * one, with the boundary cascade pre-filled from its stored boundary. It keeps its id, so
+   * on save it updates the jurisdiction it came from rather than adding a second one.
    */
   const editSavedAssignment = (id) => {
     const target = savedAssignments.find((savedAssignment) => savedAssignment.id === id);
     if (!target) return;
     setSavedAssignments((prev) => prev.filter((savedAssignment) => savedAssignment.id !== id));
-    setAssignments((prev) => [target, ...prev]);
+    setAssignments((prev) => [
+      { ...target, ...buildBoundaryCascade(target.boundary, target.boundaryType, boundaryData, t) },
+      ...prev,
+    ]);
   };
 
   /** Put it back in the table. Edits are kept — nothing is written until the form is saved. */
   const returnSavedAssignmentToTable = (index) => {
     const target = assignments[index];
     if (!target) return;
+    // The table reads boundary/boundaryType, so a boundary changed in the card has to be
+    // written back onto them or the row would keep showing the one it was saved with.
+    const resolved = resolveCascadeBoundary(target);
+    if (!resolved) {
+      setFormToast({ key: "error", label: t("ORG_ASSIGNMENT_BOUNDARY_REQUIRED") });
+      return;
+    }
     setAssignments((prev) => prev.filter((_, i) => i !== index));
-    setSavedAssignments((prev) => [...prev, target]);
+    setSavedAssignments((prev) => [...prev, { ...target, ...resolved }]);
   };
 
   const deleteSavedAssignment = (id) => {
@@ -730,26 +760,16 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                     </button>
                   )}
                 </div>
-                {assignment.id ? (
-                  // A saved jurisdiction's boundary is what identifies it; changing it here
-                  // would silently move the grant rather than edit it. Shown, not editable.
-                  <div style={{ marginBottom: "20px", fontSize: "16px" }}>
-                    <span style={{ color: "#787878" }}>{t("BOUNDARY_NAME")}: </span>
-                    <span style={{ fontWeight: 700 }}>{t(`Boundary_${assignment.boundary}`)}</span>
-                    <span style={{ color: "#787878" }}>{` (${assignment.boundaryType})`}</span>
-                  </div>
-                ) : (
-                  <FormComposerV2
-                    key={JSON.stringify({ ...assignment, roles: undefined })}
-                    defaultValues={assignment}
-                    config={assignmentsConfig(false)}
-                    onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
-                    label={""}
-                    heading={""}
-                    cardStyle={{ boxShadow: "none" }}
-                    submitInForm={false}
-                  />
-                )}
+                <FormComposerV2
+                  key={JSON.stringify({ ...assignment, roles: undefined })}
+                  defaultValues={assignment}
+                  config={assignmentsConfig(false)}
+                  onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
+                  label={""}
+                  heading={""}
+                  cardStyle={{ boxShadow: "none" }}
+                  submitInForm={false}
+                />
                 <div style={{ padding: "0 0 20px" }}>
                   <div style={{ fontWeight: 700, marginBottom: "8px" }}>{t("ORG_ASSIGNMENT_APPLIES_TO")}</div>
                   <AppliesToSelector
