@@ -169,6 +169,8 @@ class RecordingVisits extends Bloc<ScheduledVisitEvent, ScheduledVisitState>
   RecordingVisits()
       : super(const ScheduledVisitState.loaded(
             items: [], hasMore: false, totalCount: 0));
+  void show(ScheduledVisitState state) => emit(state);
+
   @override
   Isar get isar => DraftIsar();
   @override
@@ -749,6 +751,157 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text(i18.common.retry));
       expect(activity.events.last, sorted);
+    });
+  }
+
+  for (final page in <String, Widget>{
+    'New installation': const SelectHealthFacilityPage(),
+    'Installation Inbox': const InboxPage(),
+    'AMC New Report': const AmcSelectFacilityPage(),
+    'AMC Inbox': const AmcInboxPage(),
+  }.entries) {
+    final amc = page.key.startsWith('AMC');
+    for (final size in [0, 1, 6]) {
+      testWidgets(
+          '${page.key} pull refreshes $size rows and finishes on success/failure',
+          (tester) async {
+        final activity = RecordingActivity();
+        final visitBloc = RecordingVisits();
+        final facilities =
+            List.generate(size, (i) => facility('$i', 'Clinic $i'));
+        final scheduled = List.generate(
+            size,
+            (i) => ScheduledVisit(
+                id: '$i',
+                status: 'SCHEDULED',
+                facility: Facility()..facilityName = 'Clinic $i'));
+        void ready() {
+          if (amc) {
+            visitBloc.show(ScheduledVisitState.loaded(
+                items: scheduled, hasMore: false, totalCount: size));
+          } else {
+            activity.show(ActivityFacilityState.paginatedLoaded(
+                items: facilities, hasMore: false, totalCount: size));
+          }
+        }
+
+        List<Object> requests() => amc
+            ? visitBloc.events
+                .where((event) => event.maybeWhen(
+                    loadInitial: (_, __, ___) => true, orElse: () => false))
+                .toList()
+            : activity.events
+                .where((event) =>
+                    event is FetchActivityFacilityByWorkflowEvent ||
+                    event is FetchActivityFacilitySortedEvent ||
+                    event is FetchActivityFacilityBySearchEvent)
+                .toList();
+        ready();
+        await tester.pumpWidget(
+            app(page.value, activityBloc: activity, visitBloc: visitBloc));
+        await tester.pumpAndSettle();
+        for (final fail in [false, true]) {
+          final before = requests().length;
+          await tester.drag(
+              find.byType(CustomScrollView).first, const Offset(0, 450));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+          expect(requests().length, before + 1);
+          var completed = false;
+          tester
+              .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+              .show()
+              .then((_) => completed = true);
+          await tester.pump();
+          expect(completed, isFalse);
+          if (amc) {
+            visitBloc.show(const ScheduledVisitState.loading());
+          } else {
+            activity.show(const ActivityFacilityState.searchLoading());
+          }
+          await tester.pump();
+          if (fail) {
+            if (amc) {
+              visitBloc.show(const ScheduledVisitState.failure('Offline'));
+            } else {
+              activity.show(const ActivityFacilityState.listFailure());
+            }
+          } else {
+            ready();
+          }
+          await tester.pumpAndSettle();
+          expect(completed, isTrue);
+          expect(tester.takeException(), isNull);
+        }
+      });
+    }
+
+    testWidgets(
+        '${page.key} refresh preserves criteria and reloads bookmarks locally',
+        (tester) async {
+      final activity = RecordingActivity();
+      final visitBloc = RecordingVisits();
+      List<Object> requests() => amc
+          ? visitBloc.events
+              .where((event) => event.maybeWhen(
+                  loadInitial: (_, __, ___) => true, orElse: () => false))
+              .toList()
+          : activity.events
+              .where((event) =>
+                  event is FetchActivityFacilityByWorkflowEvent ||
+                  event is FetchActivityFacilitySortedEvent ||
+                  event is FetchActivityFacilityBySearchEvent)
+              .toList();
+      void finish() {
+        if (amc) {
+          visitBloc.show(const ScheduledVisitState.loading());
+        } else {
+          activity.show(const ActivityFacilityState.searchLoading());
+        }
+      }
+
+      Future<void> refreshAndCompare() async {
+        final expected = requests().last;
+        final before = requests().length;
+        await tester.drag(
+            find.byType(CustomScrollView).first, const Offset(0, 450));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(requests().length, before + 1);
+        expect(requests().last, expected);
+        finish();
+        await tester.pump();
+        if (amc) {
+          visitBloc.show(const ScheduledVisitState.loaded(
+              items: [], hasMore: false, totalCount: 0));
+        } else {
+          activity.show(const ActivityFacilityState.paginatedLoaded(
+              items: [], hasMore: false, totalCount: 0));
+        }
+        await tester.pumpAndSettle();
+      }
+
+      await tester.pumpWidget(
+          app(page.value, activityBloc: activity, visitBloc: visitBloc));
+      await tester.pumpAndSettle();
+      if (page.key.contains('Inbox')) {
+        tester.widget<DigitTabBar>(find.byType(DigitTabBar)).onTabSelected(1);
+        await tester.pumpAndSettle();
+      }
+      await tester.enterText(find.byType(TextField), 'Clinic');
+      await tester.pumpAndSettle();
+      await refreshAndCompare();
+      await tester.enterText(find.byType(TextField), '');
+      await tester.pumpAndSettle();
+      await filter(tester, 'ASC');
+      await refreshAndCompare();
+      await filter(tester, 'BOOKMARKED');
+      final before = requests().length;
+      await tester.drag(
+          find.byType(CustomScrollView).first, const Offset(0, 450));
+      await tester.pumpAndSettle();
+      expect(requests().length, before);
+      expect(tester.takeException(), isNull);
     });
   }
 

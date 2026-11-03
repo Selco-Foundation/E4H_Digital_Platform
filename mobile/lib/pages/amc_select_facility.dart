@@ -25,6 +25,7 @@ import '../utils/extensions.dart';
 import '../utils/report_date_label.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
+import '../widgets/facility_list_controls.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/cards/report_detail_row.dart';
 import '../widgets/bookmarks/report_bookmarks.dart';
@@ -57,6 +58,17 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
     bookmarkSaveFailedKey = i18.amcBookmarks.saveFailed;
     _reloadBookmarks();
     if (!_bookmarksOnly) _fetchVisits();
+  }
+
+  Future<void> _refreshVisits() async {
+    if (_bookmarksOnly) return _reloadBookmarks();
+    final bloc = context.read<ScheduledVisitBloc>();
+    final completed = bloc.stream.firstWhere((state) => state.maybeWhen(
+        loaded: (_, __, ___, ____, _____) => true,
+        failure: (_) => true,
+        orElse: () => false));
+    _fetchVisits();
+    await completed;
   }
 
   Future<void> _reloadBookmarks() => loadBookmarks(
@@ -140,192 +152,201 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage>
             return false;
           },
           child: Scaffold(
-            body: ScrollableContent(
-              backgroundColor: theme.colorTheme.generic.background,
-              children: [
-                const BackNavigationHelpHeaderWidget(
-                  showBackNavigation: true,
-                  showHelp: false,
-                ),
-                Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: spacer4,
-                        vertical: spacer2,
-                      ),
-                      child: _buildSearchAndSortControls(textTheme, theme),
-                    ),
-                    const SizedBox(height: spacer2),
-                    if (!_bookmarksOnly && bookmarksFailed)
-                      bookmarkLoadError(_reloadBookmarks),
-                    state.maybeWhen(
-                      loading: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: spacer8),
-                          child: CircularProgressIndicator(),
+            body: RefreshableFacilityList(
+              onRefresh: _refreshVisits,
+              child: ScrollableContent(
+                backgroundColor: theme.colorTheme.generic.background,
+                children: [
+                  const BackNavigationHelpHeaderWidget(
+                    showBackNavigation: true,
+                    showHelp: false,
+                  ),
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: spacer4,
+                          vertical: spacer2,
                         ),
+                        child: _buildSearchAndSortControls(textTheme, theme),
                       ),
-                      failure: (msg) => _bookmarksOnly
-                          ? bookmarkLoadError(_reloadBookmarks)
-                          : Padding(
-                              padding: const EdgeInsets.all(spacer2),
-                              child: Text(
-                                context.translate(
-                                    i18.amcSelectFacility.failedToLoadVisits),
-                                style: textTheme.bodyS.copyWith(
-                                    color: theme.colorTheme.alert.error),
-                              ),
-                            ),
-                      loaded: (items, hasMore, totalCount, fromCache,
-                          isLoadingMore) {
-                        if (items.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.all(spacer4),
-                            child: Text(
-                              context.translate(_searchQuery.trim().isNotEmpty
-                                  ? i18.common.noMatchingFacilitiesFound
-                                  : _bookmarksOnly
-                                      ? i18.amcBookmarks.empty
-                                      : i18.amcSelectFacility.noVisitsFound),
-                              style: textTheme.bodyS.copyWith(
-                                color: theme.colorTheme.text.secondary,
-                              ),
-                            ),
-                          );
-                        }
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: spacer4,
-                            vertical: spacer2,
+                      const SizedBox(height: spacer2),
+                      if (!_bookmarksOnly && bookmarksFailed)
+                        bookmarkLoadError(_reloadBookmarks),
+                      state.maybeWhen(
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: spacer8),
+                            child: CircularProgressIndicator(),
                           ),
-                          child: Column(
-                            children: [
-                              for (int index = 0;
-                                  index < items.length;
-                                  index++) ...[
-                                FutureBuilder(
-                                    future: AmcDynamicFormRepository()
-                                        .resolveFormActionLabel(
-                                      isar: isar,
-                                      scheduledVisitId: items[index].id ?? '',
-                                      schemaKey: schemaKey,
-                                      origin: FormOrigin.overallSummary,
+                        ),
+                        failure: (msg) => _bookmarksOnly
+                            ? bookmarkLoadError(_reloadBookmarks)
+                            : Padding(
+                                padding: const EdgeInsets.all(spacer2),
+                                child: Text(
+                                  context.translate(
+                                      i18.amcSelectFacility.failedToLoadVisits),
+                                  style: textTheme.bodyS.copyWith(
+                                      color: theme.colorTheme.alert.error),
+                                ),
+                              ),
+                        loaded: (items, hasMore, totalCount, fromCache,
+                            isLoadingMore) {
+                          if (items.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.all(spacer4),
+                              child: Text(
+                                context.translate(_searchQuery.trim().isNotEmpty
+                                    ? i18.common.noMatchingFacilitiesFound
+                                    : _bookmarksOnly
+                                        ? i18.amcBookmarks.empty
+                                        : i18.amcSelectFacility.noVisitsFound),
+                                style: textTheme.bodyS.copyWith(
+                                  color: theme.colorTheme.text.secondary,
+                                ),
+                              ),
+                            );
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: spacer4,
+                              vertical: spacer2,
+                            ),
+                            child: Column(
+                              children: [
+                                for (int index = 0;
+                                    index < items.length;
+                                    index++) ...[
+                                  FutureBuilder(
+                                      future: AmcDynamicFormRepository()
+                                          .resolveFormActionLabel(
+                                        isar: isar,
+                                        scheduledVisitId: items[index].id ?? '',
+                                        schemaKey: schemaKey,
+                                        origin: FormOrigin.overallSummary,
+                                      ),
+                                      builder: (context, snapshot) {
+                                        final label = snapshot.data ?? 'Start';
+                                        final locality =
+                                            parseBoundaryCodeLocality(
+                                          items[index].facility?.boundaryCode,
+                                        );
+                                        return AMCInstallationReportCard(
+                                            isBookmarked: bookmarkIds.contains(
+                                                items[index].id?.trim()),
+                                            isSavingBookmark: !bookmarksLoaded ||
+                                                savingBookmarks.contains(
+                                                    items[index].id?.trim()),
+                                            onToggleBookmark: items[index]
+                                                        .id
+                                                        ?.trim()
+                                                        .isNotEmpty !=
+                                                    true
+                                                ? null
+                                                : () => toggleBookmark(
+                                                    items[index],
+                                                    reload: _reloadBookmarks),
+                                            scheduledVisitId: items[index].id,
+                                            visitNumber:
+                                                items[index].visitNumber,
+                                            durationMonths: items[index]
+                                                .amcConfiguration
+                                                ?.durationMonths,
+                                            visitFrequencyMonths: items[index]
+                                                .amcConfiguration
+                                                ?.visitFrequencyMonths,
+                                            label: label,
+                                            title: items[index]
+                                                    .facility
+                                                    ?.facilityName ??
+                                                '',
+                                            status: items[index].status,
+                                            state: locality.state,
+                                            district: locality.district,
+                                            block: locality.block,
+                                            dateAssigned:
+                                                items[index].displayDate,
+                                            onSubmit: () async {
+                                              context
+                                                  .read<
+                                                      SelectedScheduledVisitBloc>()
+                                                  .add(
+                                                      SelectedScheduledVisitEvent
+                                                          .select(
+                                                              items[index]));
+                                              context
+                                                  .read<SelectedAmcOriginBloc>()
+                                                  .add(
+                                                      const SelectedAmcOriginEvent
+                                                          .select(FormOrigin
+                                                              .overallSummary));
+                                              await context.router
+                                                  .push(const AmcOtpRoute());
+                                              if (mounted) {
+                                                await _reloadBookmarks();
+                                              }
+                                            },
+                                            onPress: () async {
+                                              final scheduledVisit =
+                                                  items[index];
+
+                                              context
+                                                  .read<
+                                                      SelectedScheduledVisitBloc>()
+                                                  .add(
+                                                      SelectedScheduledVisitEvent
+                                                          .select(
+                                                              scheduledVisit));
+
+                                              context
+                                                  .read<SelectedAmcOriginBloc>()
+                                                  .add(
+                                                      const SelectedAmcOriginEvent
+                                                          .select(FormOrigin
+                                                              .overallSummary));
+
+                                              await context.router.push(
+                                                AmcDynamicFormRoute(
+                                                  pageName: 'AMC_Report',
+                                                  uniqueIdentifier:
+                                                      'AssetForm.AMC_SCHEDULED_MAINTENANCE',
+                                                  schemaName: schemaKey,
+                                                  scheduledVisit: items[index],
+                                                  origin:
+                                                      FormOrigin.overallSummary,
+                                                ),
+                                              );
+                                              if (mounted) {
+                                                await _reloadBookmarks();
+                                              }
+                                            });
+                                      }),
+                                  const SizedBox(height: spacer2),
+                                  if (index != items.length - 1)
+                                    const DigitDivider(
+                                      dividerType: DividerType.small,
                                     ),
-                                    builder: (context, snapshot) {
-                                      final label = snapshot.data ?? 'Start';
-                                      final locality =
-                                          parseBoundaryCodeLocality(
-                                        items[index].facility?.boundaryCode,
-                                      );
-                                      return AMCInstallationReportCard(
-                                          isBookmarked: bookmarkIds.contains(
-                                              items[index].id?.trim()),
-                                          isSavingBookmark: !bookmarksLoaded ||
-                                              savingBookmarks.contains(
-                                                  items[index].id?.trim()),
-                                          onToggleBookmark: items[index]
-                                                      .id
-                                                      ?.trim()
-                                                      .isNotEmpty !=
-                                                  true
-                                              ? null
-                                              : () => toggleBookmark(
-                                                  items[index],
-                                                  reload: _reloadBookmarks),
-                                          scheduledVisitId: items[index].id,
-                                          visitNumber: items[index].visitNumber,
-                                          durationMonths: items[index]
-                                              .amcConfiguration
-                                              ?.durationMonths,
-                                          visitFrequencyMonths: items[index]
-                                              .amcConfiguration
-                                              ?.visitFrequencyMonths,
-                                          label: label,
-                                          title: items[index]
-                                                  .facility
-                                                  ?.facilityName ??
-                                              '',
-                                          status: items[index].status,
-                                          state: locality.state,
-                                          district: locality.district,
-                                          block: locality.block,
-                                          dateAssigned:
-                                              items[index].displayDate,
-                                          onSubmit: () async {
-                                            context
-                                                .read<
-                                                    SelectedScheduledVisitBloc>()
-                                                .add(SelectedScheduledVisitEvent
-                                                    .select(items[index]));
-                                            context
-                                                .read<SelectedAmcOriginBloc>()
-                                                .add(
-                                                    const SelectedAmcOriginEvent
-                                                        .select(FormOrigin
-                                                            .overallSummary));
-                                            await context.router
-                                                .push(const AmcOtpRoute());
-                                            if (mounted) {
-                                              await _reloadBookmarks();
-                                            }
-                                          },
-                                          onPress: () async {
-                                            final scheduledVisit = items[index];
-
-                                            context
-                                                .read<
-                                                    SelectedScheduledVisitBloc>()
-                                                .add(SelectedScheduledVisitEvent
-                                                    .select(scheduledVisit));
-
-                                            context
-                                                .read<SelectedAmcOriginBloc>()
-                                                .add(
-                                                    const SelectedAmcOriginEvent
-                                                        .select(FormOrigin
-                                                            .overallSummary));
-
-                                            await context.router.push(
-                                              AmcDynamicFormRoute(
-                                                pageName: 'AMC_Report',
-                                                uniqueIdentifier:
-                                                    'AssetForm.AMC_SCHEDULED_MAINTENANCE',
-                                                schemaName: schemaKey,
-                                                scheduledVisit: items[index],
-                                                origin:
-                                                    FormOrigin.overallSummary,
-                                              ),
-                                            );
-                                            if (mounted) {
-                                              await _reloadBookmarks();
-                                            }
-                                          });
-                                    }),
-                                const SizedBox(height: spacer2),
-                                if (index != items.length - 1)
-                                  const DigitDivider(
-                                    dividerType: DividerType.small,
+                                ],
+                                if (isLoadingMore)
+                                  const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: spacer2),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
                                   ),
                               ],
-                              if (isLoadingMore)
-                                const Padding(
-                                  padding:
-                                      EdgeInsets.symmetric(vertical: spacer2),
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                      orElse: () => const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
-              ],
+                            ),
+                          );
+                        },
+                        orElse: () => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );

@@ -20,6 +20,7 @@ import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
+import '../widgets/facility_list_controls.dart';
 import '../widgets/bookmarks/report_bookmarks.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/cards/inbox_report_rejected_card.dart';
@@ -60,6 +61,16 @@ class _InboxPageState extends State<InboxPage>
       }
       _fetchProjects(userState, _selectedTabIndex);
     });
+  }
+
+  Future<void> _refreshProjects() async {
+    if (_bookmarksOnly) return _reloadBookmarks();
+    final bloc = context.read<ActivityFacilityBloc>();
+    final completed = bloc.stream.firstWhere((state) =>
+        state is ActivityFacilityPaginatedLoaded ||
+        state is ActivityFacilityListFailure);
+    _fetchProjects(context.read<UserTypeBloc>().state, _selectedTabIndex);
+    await completed;
   }
 
   Future<void> _reloadBookmarks() =>
@@ -194,153 +205,160 @@ class _InboxPageState extends State<InboxPage>
             return false;
           },
           child: Scaffold(
-            body: ScrollableContent(
-              backgroundColor: theme.colorTheme.generic.background,
-              header: const BackNavigationHelpHeaderWidget(
-                showBackNavigation: true,
-                showHelp: false,
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: spacer2, horizontal: spacer4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            context.translate(i18.inbox.title),
-                            style: textTheme.headingXl.copyWith(
-                                color: theme.colorTheme.primary.primary2),
+            body: RefreshableFacilityList(
+              onRefresh: _refreshProjects,
+              child: ScrollableContent(
+                backgroundColor: theme.colorTheme.generic.background,
+                header: const BackNavigationHelpHeaderWidget(
+                  showBackNavigation: true,
+                  showHelp: false,
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: spacer2, horizontal: spacer4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              context.translate(i18.inbox.title),
+                              style: textTheme.headingXl.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: spacer4),
+                        SizedBox(
+                          height: spacer12 + spacer1,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return DigitTabBar(
+                                tabs: tabs,
+                                initialIndex: _selectedTabIndex,
+                                onTabSelected: (index) =>
+                                    _onTabChanged(index, userState),
+                                tabBarThemeData:
+                                    DigitTabBarThemeData.defaultTheme(context)
+                                        .copyWith(
+                                            tabWidth: constraints.maxWidth /
+                                                tabs.length,
+                                            padding: EdgeInsets.zero),
+                              );
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: spacer4),
-                      SizedBox(
-                        height: spacer12 + spacer1,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return DigitTabBar(
-                              tabs: tabs,
-                              initialIndex: _selectedTabIndex,
-                              onTabSelected: (index) =>
-                                  _onTabChanged(index, userState),
-                              tabBarThemeData:
-                                  DigitTabBarThemeData.defaultTheme(context)
-                                      .copyWith(
-                                          tabWidth: constraints.maxWidth /
-                                              tabs.length,
-                                          padding: EdgeInsets.zero),
+                        ),
+                        const SizedBox(height: spacer4),
+                        DigitCard(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: DigitSearchFormInput(
+                                    innerLabel: context.translate(
+                                        i18.inbox.searchHealthFacility),
+                                    suffixIcon: Icons.search,
+                                    onChange: (text) {
+                                      setState(() {
+                                        _searchQuery = text;
+                                        if (!_bookmarksOnly) {
+                                          _sortDirection = null;
+                                        }
+                                      });
+                                      _fetchProjects(
+                                          userState, _selectedTabIndex);
+                                    },
+                                    iconColor: const Light().primary2,
+                                    enableBorder: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(spacer1),
+                                      borderSide: BorderSide(
+                                          color:
+                                              theme.colorTheme.text.secondary),
+                                    ),
+                                    focusBorder: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(spacer1),
+                                      borderSide: BorderSide(
+                                          color:
+                                              theme.colorTheme.text.secondary),
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _showSortPopup(
+                                      textTheme, theme, userState),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.import_export,
+                                        color:
+                                            theme.colorTheme.primary.primary1,
+                                        size: spacer8,
+                                      ),
+                                      Text(context.translate(i18.common.sort),
+                                          style: textTheme.headingS.copyWith(
+                                              color: theme
+                                                  .colorTheme.primary.primary1))
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                        const SizedBox(height: spacer4),
+                        if (!_bookmarksOnly && bookmarksFailed)
+                          bookmarkLoadError(_reloadBookmarks),
+                        BlocBuilder<ActivityFacilityBloc,
+                            ActivityFacilityState>(
+                          buildWhen: (_, state) =>
+                              state is ActivityFacilitySearchLoading ||
+                              state is ActivityFacilityListFailure ||
+                              state is ActivityFacilityPaginatedLoaded,
+                          builder: (context, projectState) {
+                            if (_bookmarksOnly) {
+                              if (bookmarksLoading) return _loadingIndicator();
+                              if (bookmarksFailed) {
+                                return bookmarkLoadError(_reloadBookmarks);
+                              }
+                              final statuses = _workflowStatusesForTab(
+                                  userState, _selectedTabIndex);
+                              return _buildList(
+                                  bookmarkedItems
+                                      .where((project) =>
+                                          statuses.contains(project.status))
+                                      .toList(),
+                                  userState);
+                            }
+                            if (!_listRequested) return _loadingIndicator();
+                            return projectState.maybeWhen(
+                              initial: () => _loadingIndicator(),
+                              listFailure: () => _listLoadError(() =>
+                                  _fetchProjects(userState, _selectedTabIndex)),
+                              paginatedLoaded: (items,
+                                      hasMore,
+                                      totalCount,
+                                      fromCache,
+                                      isLoadingMore,
+                                      rawFetchedCount) =>
+                                  _buildList(
+                                items,
+                                userState,
+                                isLoadingMore: isLoadingMore,
+                              ),
+                              searchLoading: () => _loadingIndicator(),
+                              orElse: () => _loadingIndicator(),
                             );
                           },
                         ),
-                      ),
-                      const SizedBox(height: spacer4),
-                      DigitCard(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DigitSearchFormInput(
-                                  innerLabel: context.translate(
-                                      i18.inbox.searchHealthFacility),
-                                  suffixIcon: Icons.search,
-                                  onChange: (text) {
-                                    setState(() {
-                                      _searchQuery = text;
-                                      if (!_bookmarksOnly) {
-                                        _sortDirection = null;
-                                      }
-                                    });
-                                    _fetchProjects(
-                                        userState, _selectedTabIndex);
-                                  },
-                                  iconColor: const Light().primary2,
-                                  enableBorder: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(spacer1),
-                                    borderSide: BorderSide(
-                                        color: theme.colorTheme.text.secondary),
-                                  ),
-                                  focusBorder: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(spacer1),
-                                    borderSide: BorderSide(
-                                        color: theme.colorTheme.text.secondary),
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () =>
-                                    _showSortPopup(textTheme, theme, userState),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.import_export,
-                                      color: theme.colorTheme.primary.primary1,
-                                      size: spacer8,
-                                    ),
-                                    Text(context.translate(i18.common.sort),
-                                        style: textTheme.headingS.copyWith(
-                                            color: theme
-                                                .colorTheme.primary.primary1))
-                                  ],
-                                ),
-                              ),
-                            ],
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: spacer4),
-                      if (!_bookmarksOnly && bookmarksFailed)
-                        bookmarkLoadError(_reloadBookmarks),
-                      BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                        buildWhen: (_, state) =>
-                            state is ActivityFacilitySearchLoading ||
-                            state is ActivityFacilityListFailure ||
-                            state is ActivityFacilityPaginatedLoaded,
-                        builder: (context, projectState) {
-                          if (_bookmarksOnly) {
-                            if (bookmarksLoading) return _loadingIndicator();
-                            if (bookmarksFailed) {
-                              return bookmarkLoadError(_reloadBookmarks);
-                            }
-                            final statuses = _workflowStatusesForTab(
-                                userState, _selectedTabIndex);
-                            return _buildList(
-                                bookmarkedItems
-                                    .where((project) =>
-                                        statuses.contains(project.status))
-                                    .toList(),
-                                userState);
-                          }
-                          if (!_listRequested) return _loadingIndicator();
-                          return projectState.maybeWhen(
-                            initial: () => _loadingIndicator(),
-                            listFailure: () => _listLoadError(() =>
-                                _fetchProjects(userState, _selectedTabIndex)),
-                            paginatedLoaded: (items,
-                                    hasMore,
-                                    totalCount,
-                                    fromCache,
-                                    isLoadingMore,
-                                    rawFetchedCount) =>
-                                _buildList(
-                              items,
-                              userState,
-                              isLoadingMore: isLoadingMore,
-                            ),
-                            searchLoading: () => _loadingIndicator(),
-                            orElse: () => _loadingIndicator(),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: spacer5),
-                    ],
+                        const SizedBox(height: spacer5),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

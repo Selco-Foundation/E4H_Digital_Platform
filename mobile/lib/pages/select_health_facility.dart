@@ -26,6 +26,7 @@ import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
+import '../widgets/facility_list_controls.dart';
 import '../widgets/cards/report_detail_row.dart';
 import '../widgets/bookmarks/report_bookmarks.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -66,6 +67,16 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
       _reloadBookmarks();
       if (!_bookmarksOnly) _fetchProject();
     });
+  }
+
+  Future<void> _refreshProjects() async {
+    if (_bookmarksOnly) return _reloadBookmarks();
+    final bloc = context.read<ActivityFacilityBloc>();
+    final completed = bloc.stream.firstWhere((state) =>
+        state is ActivityFacilityPaginatedLoaded ||
+        state is ActivityFacilityListFailure);
+    _fetchProject();
+    await completed;
   }
 
   Future<void> _reloadBookmarks() async {
@@ -201,92 +212,96 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
             }
             return false;
           },
-          child: ScrollableContent(
-            backgroundColor: theme.colorTheme.generic.background,
-            children: [
-              const BackNavigationHelpHeaderWidget(
-                showBackNavigation: true,
-                showHelp: false,
-              ),
-              Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: spacer4, vertical: spacer2),
-                    child: _buildSearchAndSortControls(textTheme, theme),
-                  ),
-                  const SizedBox(height: spacer2),
-                  BlocListener<ActivityFacilityBloc, ActivityFacilityState>(
-                    listenWhen: (prev, curr) => prev != curr,
-                    listener: (context, state) {
-                      state.maybeWhen(
-                        paginatedLoaded: (items, hasMore, totalCount, fromCache,
-                            isLoadingMore, rawFetchedCount) {
-                          for (final p in items) {
-                            for (final t in const [
-                              'inverter',
-                              'battery',
-                              'panel'
-                            ]) {
-                              context.read<CacheAssetCountBloc>().add(
-                                  CacheAssetCountEvent.get(
-                                      p.activityFacility.id, t));
-                            }
-                          }
-                        },
-                        orElse: () {},
-                      );
-                    },
-                    child: BlocBuilder<ActivityFacilityBloc,
-                        ActivityFacilityState>(
-                      buildWhen: (_, state) =>
-                          state is ActivityFacilitySearchLoading ||
-                          state is ActivityFacilityListFailure ||
-                          state is ActivityFacilityPaginatedLoaded,
-                      builder: (context, state) {
-                        if (_bookmarksOnly) {
-                          if (bookmarksLoading) return _loadingIndicator();
-                          if (bookmarksFailed) {
-                            return bookmarkLoadError(_reloadBookmarks);
-                          }
-                          return _buildProjectList(bookmarkedItems
-                              .where((project) =>
-                                  _workflowStatuses().contains(project.status))
-                              .toList());
-                        }
-                        if (!_listRequested) return _loadingIndicator();
-                        return Column(children: [
-                          if (bookmarksFailed)
-                            bookmarkLoadError(_reloadBookmarks),
-                          state.maybeWhen(
-                            initial: () => _loadingIndicator(),
-                            listFailure: () => _listLoadError(_fetchProject),
-                            paginatedLoaded: (items, hasMore, totalCount,
-                                fromCache, isLoadingMore, rawFetchedCount) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildProjectList(items),
-                                  if (isLoadingMore)
-                                    const Padding(
-                                      padding: EdgeInsets.only(bottom: spacer4),
-                                      child: Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                    ),
-                                ],
-                              );
-                            },
-                            searchLoading: () => _loadingIndicator(),
-                            orElse: () => _loadingIndicator(),
-                          ),
-                        ]);
-                      },
+          child: RefreshableFacilityList(
+            onRefresh: _refreshProjects,
+            child: ScrollableContent(
+              backgroundColor: theme.colorTheme.generic.background,
+              children: [
+                const BackNavigationHelpHeaderWidget(
+                  showBackNavigation: true,
+                  showHelp: false,
+                ),
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: spacer4, vertical: spacer2),
+                      child: _buildSearchAndSortControls(textTheme, theme),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(height: spacer2),
+                    BlocListener<ActivityFacilityBloc, ActivityFacilityState>(
+                      listenWhen: (prev, curr) => prev != curr,
+                      listener: (context, state) {
+                        state.maybeWhen(
+                          paginatedLoaded: (items, hasMore, totalCount,
+                              fromCache, isLoadingMore, rawFetchedCount) {
+                            for (final p in items) {
+                              for (final t in const [
+                                'inverter',
+                                'battery',
+                                'panel'
+                              ]) {
+                                context.read<CacheAssetCountBloc>().add(
+                                    CacheAssetCountEvent.get(
+                                        p.activityFacility.id, t));
+                              }
+                            }
+                          },
+                          orElse: () {},
+                        );
+                      },
+                      child: BlocBuilder<ActivityFacilityBloc,
+                          ActivityFacilityState>(
+                        buildWhen: (_, state) =>
+                            state is ActivityFacilitySearchLoading ||
+                            state is ActivityFacilityListFailure ||
+                            state is ActivityFacilityPaginatedLoaded,
+                        builder: (context, state) {
+                          if (_bookmarksOnly) {
+                            if (bookmarksLoading) return _loadingIndicator();
+                            if (bookmarksFailed) {
+                              return bookmarkLoadError(_reloadBookmarks);
+                            }
+                            return _buildProjectList(bookmarkedItems
+                                .where((project) => _workflowStatuses()
+                                    .contains(project.status))
+                                .toList());
+                          }
+                          if (!_listRequested) return _loadingIndicator();
+                          return Column(children: [
+                            if (bookmarksFailed)
+                              bookmarkLoadError(_reloadBookmarks),
+                            state.maybeWhen(
+                              initial: () => _loadingIndicator(),
+                              listFailure: () => _listLoadError(_fetchProject),
+                              paginatedLoaded: (items, hasMore, totalCount,
+                                  fromCache, isLoadingMore, rawFetchedCount) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildProjectList(items),
+                                    if (isLoadingMore)
+                                      const Padding(
+                                        padding:
+                                            EdgeInsets.only(bottom: spacer4),
+                                        child: Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                              searchLoading: () => _loadingIndicator(),
+                              orElse: () => _loadingIndicator(),
+                            ),
+                          ]);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
