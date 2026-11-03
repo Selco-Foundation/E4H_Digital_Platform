@@ -50,6 +50,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
   String? _sortDirection;
   bool get _bookmarksOnly => _sortDirection == 'BOOKMARKED';
   String _searchQuery = '';
+  bool _listRequested = false;
 
   final Map<String, Map<String, int>> _progress = {};
 
@@ -85,6 +86,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
       _reloadBookmarks();
       return;
     }
+    if (!_listRequested) setState(() => _listRequested = true);
     final statuses = _workflowStatuses();
 
     if (_searchQuery.isNotEmpty) {
@@ -237,6 +239,10 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
                     },
                     child: BlocBuilder<ActivityFacilityBloc,
                         ActivityFacilityState>(
+                      buildWhen: (_, state) =>
+                          state is ActivityFacilitySearchLoading ||
+                          state is ActivityFacilityListFailure ||
+                          state is ActivityFacilityPaginatedLoaded,
                       builder: (context, state) {
                         if (_bookmarksOnly) {
                           if (bookmarksLoading) return _loadingIndicator();
@@ -248,12 +254,13 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
                                   _workflowStatuses().contains(project.status))
                               .toList());
                         }
+                        if (!_listRequested) return _loadingIndicator();
                         return Column(children: [
                           if (bookmarksFailed)
                             bookmarkLoadError(_reloadBookmarks),
                           state.maybeWhen(
                             initial: () => _loadingIndicator(),
-                            loading: () => _loadingIndicator(),
+                            listFailure: () => _listLoadError(_fetchProject),
                             paginatedLoaded: (items, hasMore, totalCount,
                                 fromCache, isLoadingMore, rawFetchedCount) {
                               return Column(
@@ -271,7 +278,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
                               );
                             },
                             searchLoading: () => _loadingIndicator(),
-                            orElse: () => const SizedBox.shrink(),
+                            orElse: () => _loadingIndicator(),
                           ),
                         ]);
                       },
@@ -285,6 +292,17 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage>
       ),
     );
   }
+
+  Widget _listLoadError(VoidCallback retry) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: spacer4),
+        child: Column(children: [
+          Text(context.translate(i18.home.somethingWentWrong)),
+          const SizedBox(height: spacer2),
+          TextButton(
+              onPressed: retry,
+              child: Text(context.translate(i18.common.retry))),
+        ]),
+      );
 
   Widget _loadingIndicator() => const Center(
         child: Center(
