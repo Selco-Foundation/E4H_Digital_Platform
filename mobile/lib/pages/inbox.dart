@@ -39,6 +39,7 @@ class _InboxPageState extends State<InboxPage>
 
   int _selectedTabIndex = 0;
   String _searchQuery = '';
+  bool _listRequested = false;
   String? _sortDirection;
   bool get _bookmarksOnly => _sortDirection == 'BOOKMARKED';
 
@@ -68,6 +69,7 @@ class _InboxPageState extends State<InboxPage>
     context
         .read<ReportTypeBloc>()
         .add(const ReportTypeEvent.typeSelected("inbox"));
+    if (!_listRequested) setState(() => _listRequested = true);
     final workflowStatuses = _workflowStatusesForTab(userState, tabIndex);
     final isSupervisor =
         userState.maybeWhen(supervisor: () => true, orElse: () => false);
@@ -294,6 +296,10 @@ class _InboxPageState extends State<InboxPage>
                       if (!_bookmarksOnly && bookmarksFailed)
                         bookmarkLoadError(_reloadBookmarks),
                       BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
+                        buildWhen: (_, state) =>
+                            state is ActivityFacilitySearchLoading ||
+                            state is ActivityFacilityListFailure ||
+                            state is ActivityFacilityPaginatedLoaded,
                         builder: (context, projectState) {
                           if (_bookmarksOnly) {
                             if (bookmarksLoading) return _loadingIndicator();
@@ -309,9 +315,11 @@ class _InboxPageState extends State<InboxPage>
                                     .toList(),
                                 userState);
                           }
+                          if (!_listRequested) return _loadingIndicator();
                           return projectState.maybeWhen(
                             initial: () => _loadingIndicator(),
-                            loading: () => _loadingIndicator(),
+                            listFailure: () => _listLoadError(() =>
+                                _fetchProjects(userState, _selectedTabIndex)),
                             paginatedLoaded: (items,
                                     hasMore,
                                     totalCount,
@@ -324,7 +332,7 @@ class _InboxPageState extends State<InboxPage>
                               isLoadingMore: isLoadingMore,
                             ),
                             searchLoading: () => _loadingIndicator(),
-                            orElse: () => const SizedBox.shrink(),
+                            orElse: () => _loadingIndicator(),
                           );
                         },
                       ),
@@ -339,6 +347,17 @@ class _InboxPageState extends State<InboxPage>
       },
     );
   }
+
+  Widget _listLoadError(VoidCallback retry) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: spacer4),
+        child: Column(children: [
+          Text(context.translate(i18.home.somethingWentWrong)),
+          const SizedBox(height: spacer2),
+          TextButton(
+              onPressed: retry,
+              child: Text(context.translate(i18.common.retry))),
+        ]),
+      );
 
   Widget _loadingIndicator() => const Center(
         child: Center(

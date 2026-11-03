@@ -147,6 +147,8 @@ class RecordingActivity
   RecordingActivity()
       : super(const ActivityFacilityState.paginatedLoaded(
             items: [], hasMore: false, totalCount: 0));
+  void show(ActivityFacilityState state) => emit(state);
+
   @override
   Isar get isar => UnusedIsar();
   @override
@@ -673,6 +675,82 @@ void main() {
     expect(bloc.events.length, greaterThan(requests));
     expect(tester.takeException(), isNull);
   });
+
+  for (final inbox in [false, true]) {
+    testWidgets(
+        '${inbox ? 'Inbox' : 'New installation'} shows loading, Retry, and genuine empty results',
+        (tester) async {
+      final activity = RecordingActivity();
+      await tester.pumpWidget(app(
+          inbox ? const InboxPage() : const SelectHealthFacilityPage(),
+          activityBloc: activity));
+      // Even when the shared bloc holds another screen's result on first entry.
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      activity.show(const ActivityFacilityState.searchLoading());
+      await tester.pump();
+      activity.show(const ActivityFacilityState.loading());
+      await tester.pump();
+      activity.show(const ActivityFacilityState.reportCountsLoaded(
+          newReportCount: 0, inboxCount: 0, submittedCount: 0));
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      activity.show(const ActivityFacilityState.listFailure());
+      await tester.pumpAndSettle();
+      expect(find.text(i18.home.somethingWentWrong), findsOneWidget);
+      expect(find.text(i18.common.retry), findsOneWidget);
+      final beforeRetry = activity.events.length;
+      await tester.tap(find.text(i18.common.retry));
+      expect(activity.events.length, beforeRetry + 1);
+      activity.show(const ActivityFacilityState.paginatedLoaded(
+          items: [], hasMore: false, totalCount: 0));
+      await tester.pumpAndSettle();
+      expect(find.text(i18.common.retry), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      final emptyMessage = inbox
+          ? i18.inbox.noProjectsToDisplay
+          : i18.selectHealthFacility.noProjectsFound;
+      expect(find.text(emptyMessage), findsOneWidget);
+      activity.show(const ActivityFacilityState.loading());
+      await tester.pump();
+      activity.show(const ActivityFacilityState.inCache(false));
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text(i18.common.retry), findsNothing);
+      expect(find.text(emptyMessage), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+        '${inbox ? 'Inbox' : 'New installation'} Retry preserves search and sort',
+        (tester) async {
+      final activity = RecordingActivity();
+      await tester.pumpWidget(app(
+          inbox ? const InboxPage() : const SelectHealthFacilityPage(),
+          activityBloc: activity));
+      await tester.pumpAndSettle();
+      if (inbox) {
+        tester.widget<DigitTabBar>(find.byType(DigitTabBar)).onTabSelected(1);
+        await tester.pumpAndSettle();
+      }
+      await tester.enterText(find.byType(TextField), 'Clinic');
+      await tester.pumpAndSettle();
+      final search = activity.events.last;
+      activity.show(const ActivityFacilityState.listFailure());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(i18.common.retry));
+      expect(activity.events.last, search);
+      await tester.enterText(find.byType(TextField), '');
+      await tester.pumpAndSettle();
+      await filter(tester, 'ASC');
+      final sorted = activity.events.last;
+      activity.show(const ActivityFacilityState.searchLoading());
+      await tester.pump();
+      activity.show(const ActivityFacilityState.listFailure());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(i18.common.retry));
+      expect(activity.events.last, sorted);
+    });
+  }
 
   testWidgets('AMC home keeps its three normal cards', (tester) async {
     await tester.pumpWidget(app(const AmcReportHomePage()));
