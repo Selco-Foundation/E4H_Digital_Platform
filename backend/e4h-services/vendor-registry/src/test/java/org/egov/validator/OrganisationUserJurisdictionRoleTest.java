@@ -8,6 +8,7 @@ import org.egov.util.FacilityUtil;
 import org.egov.util.HRMSUtils;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
+import org.egov.tracer.model.CustomException;
 import org.egov.util.UserUtil;
 import org.egov.web.models.Jurisdiction;
 import org.egov.web.models.Role;
@@ -134,5 +135,49 @@ class OrganisationUserJurisdictionRoleTest {
         prune(jurisdictions, null);
 
         assertTrue(jurisdictions.get(0).getRoles().isEmpty());
+    }
+
+    // --- a user always holds at least one active jurisdiction ---
+
+    private void require(List<Jurisdiction> jurisdictions, boolean listIsAuthoritative) {
+        ReflectionTestUtils.invokeMethod(
+                validator, "requireAtLeastOneActiveJurisdiction", jurisdictions, listIsAuthoritative);
+    }
+
+    @Test
+    void creatingWithoutAnyJurisdictionIsRefused() {
+        CustomException thrown = assertThrows(CustomException.class, () -> require(null, true));
+
+        assertEquals("ORG_USER_JURISDICTION_REQUIRED", thrown.getCode());
+    }
+
+    @Test
+    void creatingWithOnlyInactiveJurisdictionsIsRefused() {
+        Jurisdiction deactivated = jurisdiction("Kerala");
+        deactivated.setIsActive(false);
+
+        assertThrows(CustomException.class, () -> require(List.of(deactivated), true));
+    }
+
+    @Test
+    void removingTheLastAssignmentOnUpdateIsRefused() {
+        Jurisdiction deactivated = jurisdiction("Kerala");
+        deactivated.setIsActive(false);
+
+        assertThrows(CustomException.class, () -> require(List.of(deactivated), false));
+    }
+
+    @Test
+    void anUpdateThatOmitsJurisdictionsLeavesThemAlone() {
+        // null on update means "unchanged", not "none" - the stored user already holds one.
+        assertDoesNotThrow(() -> require(null, false));
+    }
+
+    @Test
+    void oneActiveJurisdictionIsEnough() {
+        Jurisdiction deactivated = jurisdiction("Bihar");
+        deactivated.setIsActive(false);
+
+        assertDoesNotThrow(() -> require(Arrays.asList(deactivated, jurisdiction("Kerala")), true));
     }
 }

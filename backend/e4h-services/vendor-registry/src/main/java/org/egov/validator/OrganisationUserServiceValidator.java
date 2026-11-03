@@ -130,6 +130,9 @@ public class OrganisationUserServiceValidator {
         }
         // Validate user object fields
         validateUserRequest(orgUser);
+        // A user with no jurisdiction can see nothing, so creation must supply one rather than
+        // fall back to a country-wide grant.
+        requireAtLeastOneActiveJurisdiction(orgUser.getJurisdictions(), true);
 
         // Get existing user with mobile number from hrms service
         List<Employee> employee = hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber());
@@ -484,6 +487,7 @@ public class OrganisationUserServiceValidator {
             }
 
             if (changes.isJurisdictionChanged()) {
+                requireAtLeastOneActiveJurisdiction(orgUser.getJurisdictions(), false);
                 employee.setJurisdictions(
                         hrmsUtils.buildJurisdictions(orgUser.getJurisdictions())
                 );
@@ -547,6 +551,34 @@ public class OrganisationUserServiceValidator {
             throw new CustomException(errorMap);
         }
         log.debug("Organisation user request validation completed");
+    }
+
+    /**
+     * A user must always hold at least one active jurisdiction: with none, every scoped search
+     * returns nothing and the account is silently useless.
+     *
+     * The invariant used to be kept by {@link HRMSUtils#buildJurisdictions(List)} quietly
+     * substituting a country-wide `India` grant for an empty list. That keeps the user working
+     * but gives them the whole country, which is the opposite of what an admin who removed
+     * every assignment intended. Requiring one here means the fallback is no longer reached
+     * from the API, and an admin is told instead of over-granted.
+     *
+     * `listIsAuthoritative` distinguishes the two callers. On create the list is the whole
+     * truth, so absent means none. On update a null list means "jurisdictions unchanged" - the
+     * stored user already satisfies the invariant - while an explicitly supplied list that
+     * activates nothing is an attempt to remove the last assignment, and is refused.
+     */
+    private void requireAtLeastOneActiveJurisdiction(List<Jurisdiction> jurisdictions, boolean listIsAuthoritative) {
+        if (jurisdictions == null && !listIsAuthoritative) {
+            return;
+        }
+        boolean anyActive = jurisdictions != null && jurisdictions.stream()
+                .anyMatch(j -> j != null && !Boolean.FALSE.equals(j.getIsActive()));
+        if (!anyActive) {
+            log.error("Org user has no active jurisdiction; refusing to save");
+            throw new CustomException("ORG_USER_JURISDICTION_REQUIRED",
+                    "At least one active assignment is required");
+        }
     }
 
     private List<Jurisdiction> copyJurisdictions(List<Jurisdiction> jurisdictions) {
