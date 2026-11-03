@@ -24,6 +24,27 @@ export const expandGroupsToRoleCodes = (groups) => {
 };
 
 /**
+ * Role objects for the codes a set of groups grants, ready for the payload.
+ *
+ * The two masters divide like this: `OrgRoleGroups` is the dropdown's vocabulary - one entry
+ * per selectable thing, with `roleCodes` naming the real roles it grants - and `OrgRoles`
+ * holds the role objects that go on the wire. **The group's `roleCodes` are authoritative.**
+ *
+ * So every code a group names is emitted, whether or not `OrgRoles` describes it. Filtering
+ * the codes through `OrgRoles` instead drops any code that master is missing: today that is
+ * `COMPLAINANT`, named by the `CRM` group with no `OrgRoles` entry, so picking CRM used to
+ * send `COMPLAINT_ASSESSOR` alone. That also made the chip vanish on reload, because
+ * collapsing back to a group - like the users table - requires *every* code to be present.
+ *
+ * `name` is only set when `OrgRoles` supplies one. A code's display name is never guessed:
+ * nothing renders these directly, the UI shows the group's name.
+ */
+export const buildRolesFromGroups = (groups, orgRoles) => {
+  const byCode = new Map((orgRoles || []).filter((role) => role?.code).map((role) => [role.code, role]));
+  return expandGroupsToRoleCodes(groups).map((code) => byCode.get(code) || { code });
+};
+
+/**
  * The groups that a stored jurisdiction's role codes correspond to.
  *
  * A group matches when every code it grants is present, which is the same test the user-level

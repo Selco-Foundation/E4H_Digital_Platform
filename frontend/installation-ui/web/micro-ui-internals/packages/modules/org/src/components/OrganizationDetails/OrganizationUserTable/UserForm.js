@@ -8,8 +8,8 @@ import CustomEditIcon from "../../Custom/CustomEditIcon";
 import AppliesToSelector from "./AppliesToSelector";
 import {
   appliesToAllRoles,
+  buildRolesFromGroups,
   collapseRoleCodesToGroups,
-  expandGroupsToRoleCodes,
   pruneAssignmentGroups,
 } from "../../../utilities/jurisdictionRoles";
 
@@ -382,7 +382,10 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   const handleFormSubmit = useCallback((formData) => {
     if (formData?.roles?.length) {
 
-      const userRoles = roles.filter((role) => formData.roles.some((roleGroup) => roleGroup.roleCodes.includes(role.code)));
+      // Every code the chosen groups name, not just the ones OrgRoles describes - see
+      // buildRolesFromGroups. The user's roles and their jurisdictions' roles must be built
+      // the same way, because HRMS requires the second to be a subset of the first.
+      const userRoles = buildRolesFromGroups(formData.roles, roles);
       const formattedFormData = {
         ...formData,
         roles: userRoles,
@@ -395,9 +398,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         .map((savedAssignment) => ({
           ...savedAssignment,
           isActive: !savedAssignment.isDeleted,
-          roles: appliesToAllRoles(savedAssignment)
-            ? []
-            : roles.filter((role) => expandGroupsToRoleCodes(savedAssignment.roles).includes(role.code)),
+          roles: appliesToAllRoles(savedAssignment) ? [] : buildRolesFromGroups(savedAssignment.roles, roles),
         }));
 
       for (const assignment of assignments) {
@@ -427,9 +428,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           };
         }
         if (jurisdiction) {
-          jurisdiction.roles = appliesToAllRoles(assignment)
-            ? []
-            : roles.filter((role) => expandGroupsToRoleCodes(assignment.roles).includes(role.code));
+          jurisdiction.roles = appliesToAllRoles(assignment) ? [] : buildRolesFromGroups(assignment.roles, roles);
           jurisdictions.push(jurisdiction);
         }
       }
