@@ -171,6 +171,7 @@ public class OrganisationUserServiceValidator {
                 ensureDefaultEmployeeRoleForOrgUser(user);
 
                 Employee employee1 = hrmsUtils.buildEmployee(user, orgType);
+                pruneJurisdictionRoles(employee1.getJurisdictions(), employee1.getUser().getRoles());
                 EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(request.getRequestInfo()).employees(List.of(employee1)).build();
                 List<Employee> employees = hrmsUtils.createHRMSUser(employeeRequest);
                 if (employees != null && !employees.isEmpty()) {
@@ -249,6 +250,8 @@ public class OrganisationUserServiceValidator {
                             mergeJurisdictionsForRecreateUser(
                                     existingEmployee.getJurisdictions(),
                                     orgUser.getJurisdictions()));
+                    pruneJurisdictionRoles(existingEmployee.getJurisdictions(),
+                            existingEmployee.getUser().getRoles());
 
                     EmployeeRequest employeeRequest = EmployeeRequest.builder()
                             .requestInfo(request.getRequestInfo())
@@ -486,6 +489,10 @@ public class OrganisationUserServiceValidator {
                 );
             }
 
+            // After both branches above: roles may have been trimmed without the jurisdiction
+            // branch running at all, so this cannot live inside either one.
+            pruneJurisdictionRoles(employee.getJurisdictions(), employee.getUser().getRoles());
+
             EmployeeRequest employeeRequest = EmployeeRequest.builder()
                     .requestInfo(request.getRequestInfo())
                     .employees(List.of(employee))
@@ -704,7 +711,8 @@ public class OrganisationUserServiceValidator {
         changes.setJurisdictionChanged(
                 !safeJurisSet(existing.getJurisdictions())
                         .equals(safeJurisSet(incoming.getJurisdictions())) || !safeJurisSetActive(existing.getJurisdictions())
-                        .equals(safeJurisSetActive(incoming.getJurisdictions()))
+                        .equals(safeJurisSetActive(incoming.getJurisdictions())) || !safeJurisRoleSet(existing.getJurisdictions())
+                        .equals(safeJurisRoleSet(incoming.getJurisdictions()))
         );
 
         return changes;
@@ -724,6 +732,68 @@ public class OrganisationUserServiceValidator {
                 .map(Jurisdiction::getBoundary)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * The (boundary, role) pairs a jurisdiction list scopes to, for change detection.
+     *
+     * Boundary alone is not enough once jurisdictions carry roles: narrowing Kerala from
+     * "every role" to "PROJECT_MANAGER only" changes no boundary and no active flag, so
+     * without this the edit is read as no change and never reaches HRMS. A jurisdiction with
+     * no roles contributes the boundary on its own, which is what "applies to every role the
+     * user holds" looks like.
+     */
+    private Set<String> safeJurisRoleSet(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null) return Set.of();
+        Set<String> pairs = new HashSet<>();
+        for (Jurisdiction jurisdiction : jurisdictions) {
+            if (jurisdiction == null || jurisdiction.getBoundary() == null) {
+                continue;
+            }
+            if (CollectionUtils.isEmpty(jurisdiction.getRoles())) {
+                pairs.add(jurisdiction.getBoundary());
+                continue;
+            }
+            for (Role role : jurisdiction.getRoles()) {
+                if (role != null && role.getCode() != null) {
+                    pairs.add(jurisdiction.getBoundary() + "::" + role.getCode());
+                }
+            }
+        }
+        return pairs;
+    }
+
+    /**
+     * Drop jurisdiction roles the user no longer holds.
+     *
+     * Role scoping is a narrowing of the roles on the user, so a jurisdiction can only name a
+     * role the user actually has. Take `PROJECT_MANAGER` away and any jurisdiction scoped to it
+     * is left pointing at nothing. egov-hrms rejects that outright
+     * (`ERR_HRMS_JURISDICTION_ROLE_NOT_HELD`), so without this an unrelated edit to a user whose
+     * roles were trimmed fails the whole save rather than tidying up after itself.
+     *
+     * A jurisdiction whose every role is pruned becomes unscoped — it applies to all the user's
+     * remaining roles — rather than being deleted. Removing it would revoke access at that
+     * boundary, which is a bigger decision than the admin made by unticking a role.
+     */
+    private void pruneJurisdictionRoles(List<Jurisdiction> jurisdictions, List<Role> heldRoles) {
+        if (CollectionUtils.isEmpty(jurisdictions)) {
+            return;
+        }
+        Set<String> heldRoleCodes = safeRoleSet(heldRoles);
+        for (Jurisdiction jurisdiction : jurisdictions) {
+            if (jurisdiction == null || CollectionUtils.isEmpty(jurisdiction.getRoles())) {
+                continue;
+            }
+            List<Role> retained = jurisdiction.getRoles().stream()
+                    .filter(role -> role != null && heldRoleCodes.contains(role.getCode()))
+                    .collect(Collectors.toList());
+            if (retained.size() != jurisdiction.getRoles().size()) {
+                log.info("Pruning jurisdiction roles at boundary {}: {} of {} retained",
+                        jurisdiction.getBoundary(), retained.size(), jurisdiction.getRoles().size());
+            }
+            jurisdiction.setRoles(retained);
+        }
     }
 
     private Set<Boolean> safeJurisSetActive(List<Jurisdiction> jurisdictions) {
@@ -778,6 +848,10 @@ public class OrganisationUserServiceValidator {
                 if (j.getId() != null) {
                     target.setId(j.getId());
                 }
+                // Roles come from the request even when absent there: an empty list is the
+                // explicit "applies to every role" and must overwrite the stored scoping,
+                // or re-adding a user silently keeps scoping the admin never saw.
+                target.setRoles(j.getRoles() == null ? new ArrayList<>() : j.getRoles());
                 target.setIsActive(j.getIsActive() != null ? j.getIsActive() : Boolean.TRUE);
             } else {
                 if (j.getIsActive() == null) {
