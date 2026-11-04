@@ -201,8 +201,9 @@ public class WorkflowService {
         Collections.reverse(processInstances);
         log.trace("Calculating business hours elapsed and total SLA");
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
-        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
-        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
+        List<ProcessInstance> slaCycle = slaService.getCurrentSlaCycle(processInstances);
+        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(slaCycle);
+        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), slaCycle);
         long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
         log.debug("SLA calculation completed: definedTotalSla={}, businessHoursElapsed={}, totalSlaRemaining={}", 
                 definedTotalSla, businessHoursElapsed, totalSlaRemaining);

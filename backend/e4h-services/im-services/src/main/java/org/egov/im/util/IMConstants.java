@@ -121,6 +121,20 @@ public class IMConstants {
 
     public static final String PENDING_ASSIGNMENT_OUT_OF_WARRANTY = "PENDING_ASSIGNMENT_OUT_OF_WARRANTY";
 
+    /**
+     * State SPOC has put an approved out-of-warranty ticket on hold (e.g. funds unavailable). No SLA
+     * runs here, and the SLA starts afresh once the ticket leaves this state.
+     */
+    public static final String OUT_OF_WARRANTY_ON_HOLD = "OUT_OF_WARRANTY_ON_HOLD";
+
+    public static final String IM_WF_ON_HOLD = "ON_HOLD";
+
+    public static final String ON_HOLD_REASON_FUND_UNAVAILABLE = "ON_HOLD_REASON_FUND_UNAVAILABLE";
+
+    public static final String ON_HOLD_REASON_OTHER = "ON_HOLD_REASON_OTHER";
+
+    public static final int ON_HOLD_COMMENT_MAX_LENGTH = 500;
+
     public static final String PENDING_RESOLUTION_OUT_OF_SCOPE = "PENDING_RESOLUTION_OUT_OF_SCOPE";
 
     public static final String RESOLVED = "RESOLVED";
