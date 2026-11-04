@@ -48,12 +48,19 @@ class InboxJurisdictionClauseTest {
         nameToPathMap.put("district", "Data.incident.boundary.districtCode.keyword");
         nameToPathMap.put("block", "Data.incident.boundary.blockCode.keyword");
         nameToPathMap.put("facility", "Data.incident.boundary.facilityCode.keyword");
+        nameToPathMap.put("status", "Data.incident.applicationStatus.keyword");
     }
 
     private InboxRequest request() {
+        return request(null);
+    }
+
+    private InboxRequest request(Map<String, Set<String>> statusesByRole) {
         InboxRequest inboxRequest = new InboxRequest();
         inboxRequest.setRequestInfo(new RequestInfo());
-        inboxRequest.setInbox(new InboxSearchCriteria());
+        InboxSearchCriteria inbox = new InboxSearchCriteria();
+        inbox.setActionableStatusesByRole(statusesByRole);
+        inboxRequest.setInbox(inbox);
         return inboxRequest;
     }
 
@@ -65,8 +72,14 @@ class InboxJurisdictionClauseTest {
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> build(Map<String, Object> narrowing) {
+        return build(narrowing, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> build(Map<String, Object> narrowing,
+                                            Map<String, Set<String>> statusesByRole) {
         return (List<Map<String, Object>>) ReflectionTestUtils.invokeMethod(
-                queryBuilder, "buildJurisdictionClauses", request(), narrowing, nameToPathMap);
+                queryBuilder, "buildJurisdictionClauses", request(statusesByRole), narrowing, nameToPathMap);
     }
 
     /** Every `terms` clause in a subtree, as path -> codes. */
@@ -140,6 +153,47 @@ class InboxJurisdictionClauseTest {
         List<Object> perRole = (List<Object>) bool.get("should");
         assertEquals(2, perRole.size(), "one clause per role, not one merged set");
         assertEquals(1, bool.get("minimum_should_match"));
+    }
+
+    @Test
+    void eachRolesStatusesArePairedWithItsOwnBoundaries() {
+        // The leak this closes: SPOC in S1, Tech POC in S2. A flat union would offer S1 tickets in
+        // Tech-POC states, because the user holds that role - just not there.
+        Map<String, Map<String, Set<String>>> scope = new LinkedHashMap<>();
+        scope.put("COMPLAINT_FACILITATOR_1", at("state", "S1"));
+        scope.put("COMPLAINT_FACILITATOR_2", at("state", "S2"));
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any())).thenReturn(scope);
+
+        Map<String, Set<String>> statuses = new LinkedHashMap<>();
+        statuses.put("COMPLAINT_FACILITATOR_1", new HashSet<>(List.of("PENDING_AT_SPOC")));
+        statuses.put("COMPLAINT_FACILITATOR_2", new HashSet<>(List.of("PENDING_AT_TECH_POC")));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(), statuses);
+
+        List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
+        assertEquals(2, perRole.size());
+
+        for (Object role : perRole) {
+            List<Object> pair = (List<Object>) ((Map<String, Object>) ((Map<String, Object>) role).get("bool")).get("must");
+            assertEquals(2, pair.size(), "each role pairs its boundaries with its own statuses");
+            Map<String, List<String>> terms = termsIn(role, new HashMap<>());
+            String state = terms.get("Data.incident.boundary.stateCode.keyword").get(0);
+            String status = terms.get("Data.incident.applicationStatus.keyword").get(0);
+            // S1 goes with the SPOC status, S2 with the Tech POC one - never crossed.
+            assertEquals("S1".equals(state) ? "PENDING_AT_SPOC" : "PENDING_AT_TECH_POC", status);
+        }
+    }
+
+    @Test
+    void withoutAssignedToMeTheRolePairCarriesBoundariesOnly() {
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new LinkedHashMap<>(Map.of("COMPLAINT_FACILITATOR_1", at("state", "S1"))));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(), null);
+
+        List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
+        List<Object> pair = (List<Object>) ((Map<String, Object>) ((Map<String, Object>) perRole.get(0)).get("bool")).get("must");
+        assertEquals(1, pair.size(), "no status pairing when the caller asked for everything");
     }
 
     @Test

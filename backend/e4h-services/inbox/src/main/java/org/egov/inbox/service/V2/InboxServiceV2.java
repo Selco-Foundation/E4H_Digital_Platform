@@ -413,6 +413,15 @@ public class InboxServiceV2 {
         String tenantId = inboxRequest.getInbox().getTenantId();
         processCriteria.setTenantId(tenantId);
 
+        // Per role as well as merged: the merged list narrows the whole query to statuses the caller
+        // can act on somewhere, while the per-role map lets the jurisdiction clause pair each role's
+        // statuses with that role's own boundaries. Without the pairing, holding a role in one state
+        // and a jurisdiction in another is enough to be offered the first role's work in the second.
+        inboxRequest.getInbox().setActionableStatusesByRole(
+                workflowService.getActionableStatusesByRole(inboxRequest.getRequestInfo(), businessServices,
+                        inboxRequest.getInbox().getProcessSearchCriteria()));
+
+        log.debug("Retrieving actionable statuses for role");
         HashMap<String, String> StatusIdNameMap = workflowService.getActionableStatusesForRole(inboxRequest.getRequestInfo(), businessServices,
                 inboxRequest.getInbox().getProcessSearchCriteria());
         log.info(StatusIdNameMap.toString());

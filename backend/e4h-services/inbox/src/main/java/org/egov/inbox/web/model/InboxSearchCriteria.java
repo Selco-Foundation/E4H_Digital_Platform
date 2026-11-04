@@ -33,6 +33,21 @@ public class InboxSearchCriteria {
     private HashMap<String,Object> jurisdictionSearchCriteria;
 
     /**
+     * Per role, the statuses that role can act on. Derived by the server, never read from the wire.
+     * <p>
+     * {@code @JsonIgnore} is the point of it: paired with that role's own jurisdictions it decides
+     * what the caller may see, so a client able to set it could award itself another role's work.
+     * The field exists because {@link org.egov.inbox.service.V2.InboxServiceV2} already fetches the
+     * business services needed to compute it, and the query builder runs three times per inbox load
+     * - items, total count and status counts - which would otherwise mean three more workflow calls.
+     * <p>
+     * Null means "do not pair by status": the caller asked for everything in their jurisdiction
+     * rather than the tickets waiting on them.
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private java.util.Map<String, java.util.Set<String>> actionableStatusesByRole;
+
+    /**
      * Asks for the tickets waiting on the caller rather than everything in their jurisdiction.
      * <p>
      * State SPOC and Tech POC tickets carry no assignee - im-services pools those states so that any
