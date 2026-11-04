@@ -169,28 +169,41 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
      */
     if (createdUser?.orgUserId && !selectedRoleGroups.length && createdUser.roles?.length) return;
 
+    /**
+     * Pruning runs over the current lists, not inside a setState updater.
+     *
+     * It used to build the lists inside the updaters and read `emptied` straight afterwards.
+     * React runs an updater during the next render, so `emptied` was still empty when the
+     * toast was decided - the warning could never appear. The updaters also returned `prev`
+     * whenever no whole row was dropped, which threw away rows whose roles had merely been
+     * trimmed: a group removed from the user stayed on the chip until the modal was reopened.
+     *
+     * An assignment whose roles did not change is returned by identity, so the lists are only
+     * replaced when something really changed and this effect cannot re-trigger itself.
+     */
     const emptied = [];
-    const pruneList = (list) => list.reduce((kept, assignment) => {
+    const prune = (list) => list.reduce((kept, assignment) => {
       const retained = pruneAssignmentGroups(assignment, selectedRoleGroups);
-      if (retained === null) {
+      if (retained === null || retained.length === assignment.roles.length) {
         kept.push(assignment);
       } else if (retained.length) {
         kept.push({ ...assignment, roles: retained });
       } else {
-        emptied.push(assignment.boundary || assignment.facility?.code || assignment.block?.code
-          || assignment.district?.code || assignment.state?.code || assignment.country?.code);
+        // Named the way the table names it: the admin recognises "Gujarat", not "India_Gujarat".
+        const code = assignment.boundary || assignment.facility?.code || assignment.block?.code
+          || assignment.district?.code || assignment.state?.code || assignment.country?.code;
+        if (code) emptied.push(t(`Boundary_${code}`));
       }
       return kept;
     }, []);
 
-    setAssignments((prev) => {
-      const next = pruneList(prev);
-      return next.length === prev.length ? prev : next;
-    });
-    setSavedAssignments((prev) => {
-      const next = pruneList(prev);
-      return next.length === prev.length ? prev : next;
-    });
+    const changed = (next, prev) => next.length !== prev.length || next.some((item, i) => item !== prev[i]);
+
+    const nextAssignments = prune(assignments);
+    if (changed(nextAssignments, assignments)) setAssignments(nextAssignments);
+
+    const nextSaved = prune(savedAssignments);
+    if (changed(nextSaved, savedAssignments)) setSavedAssignments(nextSaved);
 
     if (emptied.length) {
       setFormToast({
@@ -198,7 +211,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         label: `${t("ORG_ASSIGNMENT_REMOVED_WITH_ROLE")}: ${emptied.filter(Boolean).join(", ")}`,
       });
     }
-  }, [selectedRoleGroups, mdmsResponse]);
+  }, [selectedRoleGroups, mdmsResponse, assignments, savedAssignments]);
 
   const setAssignmentRoles = useCallback((index, roles) => {
     setAssignments((prev) => prev.map((assignment, i) => (i === index ? { ...assignment, roles } : assignment)));
