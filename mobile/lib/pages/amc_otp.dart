@@ -1,5 +1,7 @@
+import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_info_card.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_otp.dart';
 import 'package:digit_ui_components/widgets/atoms/reactive_fields.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
@@ -8,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import '../utils/utils.dart';
 
 import '../blocs/amc_otp/amc_otp.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
@@ -123,8 +126,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                             visitId: _currentScheduledVisitId!,
                             schemaCode: "12345678",
                             version: 1,
-                            otp: otp,
-                            scheduledVisit: scheduledVisit));
+                            otp: otp));
                       },
                     );
                   },
@@ -136,10 +138,56 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                       const SizedBox(height: spacer6),
                       Center(
                         child: Text(
+                          textAlign: TextAlign.center,
                           context.translate(i18.amcOtp.instruction),
                           style: textTheme.headingM.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
+                      ),
+                      Text.rich(
+                        TextSpan(
+                          style: textTheme.bodyL.copyWith(
+                            color: theme.colorTheme.text.primary,
+                          ),
+                          children: [
+                            TextSpan(
+                              text:
+                                  "${context.translate(i18.amcOtp.amcOtpReceiverInstruction1)} ",
+                            ),
+                            TextSpan(
+                              text:
+                                  "${scheduledVisit?.facility?.facility_poc_name ?? '___'} ",
+                              style: textTheme.bodyL.copyWith(
+                                color: theme.colorTheme.text.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  "${context.translate(i18.amcOtp.amcOtpReceiverInstruction2)} ",
+                            ),
+                            TextSpan(
+                              text: context
+                                  .translate(i18.amcOtp.amcOtpMaskedPhone),
+                              style: textTheme.bodyL.copyWith(
+                                color: theme.colorTheme.text.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text: lastPhoneDigits(
+                                scheduledVisit?.facility?.facility_poc_phone ??
+                                    '****',
+                                count: 4,
+                              ),
+                              style: textTheme.bodyL.copyWith(
+                                color: theme.colorTheme.text.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                       SizedBox(
                         width: context.width,
@@ -153,7 +201,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                             },
                           },
                           builder: (field) => DigitOTPInput(
-                            label: context.translate(i18.amcOtp.enterCode),
+                            // label: context.translate(i18.amcOtp.enterCode),
                             inputFormatter: [
                               FilteringTextInputFormatter.digitsOnly
                             ],
@@ -189,6 +237,15 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                         ],
                       ),
                     ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(spacer2),
+                    child: InfoCard(
+                      title: "",
+                      type: InfoType.warning,
+                      description:
+                          context.translate(i18.amcOtp.amcOtpNetworkWarning),
+                    ),
                   )
                 ],
               ),
