@@ -51,17 +51,23 @@ class InboxJurisdictionClauseTest {
         nameToPathMap.put("status", "Data.incident.applicationStatus.keyword");
     }
 
-    private InboxRequest request() {
-        return request(null);
-    }
-
-    private InboxRequest request(Map<String, Set<String>> statusesByRole) {
+    private InboxRequest request(Map<String, Set<String>> statusesByRole, boolean assignedToMe) {
         InboxRequest inboxRequest = new InboxRequest();
         inboxRequest.setRequestInfo(new RequestInfo());
         InboxSearchCriteria inbox = new InboxSearchCriteria();
         inbox.setActionableStatusesByRole(statusesByRole);
+        inbox.setAssignedToMe(assignedToMe);
         inboxRequest.setInbox(inbox);
         return inboxRequest;
+    }
+
+    /** Every role acts on something, which is the ordinary case. */
+    private Map<String, Set<String>> actsOnAnything(String... roleCodes) {
+        Map<String, Set<String>> statuses = new LinkedHashMap<>();
+        for (String roleCode : roleCodes) {
+            statuses.put(roleCode, new HashSet<>(List.of("SOME_STATUS")));
+        }
+        return statuses;
     }
 
     private Map<String, Set<String>> at(String level, String... codes) {
@@ -72,14 +78,16 @@ class InboxJurisdictionClauseTest {
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> build(Map<String, Object> narrowing) {
-        return build(narrowing, null);
+        return build(narrowing, actsOnAnything("COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2"), false);
     }
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> build(Map<String, Object> narrowing,
-                                            Map<String, Set<String>> statusesByRole) {
+                                            Map<String, Set<String>> statusesByRole,
+                                            boolean assignedToMe) {
         return (List<Map<String, Object>>) ReflectionTestUtils.invokeMethod(
-                queryBuilder, "buildJurisdictionClauses", request(statusesByRole), narrowing, nameToPathMap);
+                queryBuilder, "buildJurisdictionClauses", request(statusesByRole, assignedToMe),
+                narrowing, nameToPathMap);
     }
 
     /** Every `terms` clause in a subtree, as path -> codes. */
@@ -168,7 +176,7 @@ class InboxJurisdictionClauseTest {
         statuses.put("COMPLAINT_FACILITATOR_1", new HashSet<>(List.of("PENDING_AT_SPOC")));
         statuses.put("COMPLAINT_FACILITATOR_2", new HashSet<>(List.of("PENDING_AT_TECH_POC")));
 
-        List<Map<String, Object>> clauses = build(new HashMap<>(), statuses);
+        List<Map<String, Object>> clauses = build(new HashMap<>(), statuses, true);
 
         List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
         assertEquals(2, perRole.size());
@@ -189,11 +197,43 @@ class InboxJurisdictionClauseTest {
         when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new LinkedHashMap<>(Map.of("COMPLAINT_FACILITATOR_1", at("state", "S1"))));
 
-        List<Map<String, Object>> clauses = build(new HashMap<>(), null);
+        List<Map<String, Object>> clauses = build(new HashMap<>(),
+                actsOnAnything("COMPLAINT_FACILITATOR_1"), false);
 
         List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
         List<Object> pair = (List<Object>) ((Map<String, Object>) ((Map<String, Object>) perRole.get(0)).get("bool")).get("must");
         assertEquals(1, pair.size(), "no status pairing when the caller asked for everything");
+    }
+
+    @Test
+    void aRoleThatActsOnNothingHereGrantsNoVisibility() {
+        // Facility Admin in STATE_2, Complaint Assessor in STATE_1. Only the assessor role appears
+        // in the incident workflow, so only STATE_1 belongs in this inbox - holding ground in
+        // STATE_2 under a role with no part in it must not list STATE_2 tickets.
+        Map<String, Map<String, Set<String>>> scope = new LinkedHashMap<>();
+        scope.put("FACILITY_ADMIN", at("state", "STATE_2"));
+        scope.put("COMPLAINT_ASSESSOR", at("state", "STATE_1"));
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any())).thenReturn(scope);
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(),
+                actsOnAnything("COMPLAINT_ASSESSOR"), false);
+
+        List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
+        assertEquals(1, perRole.size(), "only the role that acts on incidents contributes");
+        Map<String, List<String>> terms = termsIn(clauses.get(0), new HashMap<>());
+        assertEquals(List.of("STATE_1"), terms.get("Data.incident.boundary.stateCode.keyword"));
+    }
+
+    @Test
+    void holdingGroundButNoRelevantRoleMatchesNothing() {
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new LinkedHashMap<>(Map.of("FACILITY_ADMIN", at("state", "STATE_2"))));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(), actsOnAnything(), false);
+
+        assertEquals(1, clauses.size());
+        assertTrue(((Map<String, Object>) clauses.get(0).get("bool")).containsKey("must_not"),
+                "a jurisdiction under an irrelevant role is not visibility");
     }
 
     @Test

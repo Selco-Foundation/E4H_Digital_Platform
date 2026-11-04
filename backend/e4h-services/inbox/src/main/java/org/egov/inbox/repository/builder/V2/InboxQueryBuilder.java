@@ -235,9 +235,28 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Set<String>> statusesByRole =
                     inboxRequest.getInbox().getActionableStatusesByRole();
             String statusPath = nameToPathMap.get("status");
+            boolean onlyWaitingOnMe = Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe());
 
             List<Object> perRoleClauses = new ArrayList<>();
             scopeByRole.forEach((roleCode, byLevel) -> {
+                /*
+                 * A role that can act on nothing in this workflow contributes nothing.
+                 *
+                 * Holding a jurisdiction is not the same as having business here. A Facility Admin
+                 * in STATE_2 who is also a Complaint Assessor in STATE_1 holds a jurisdiction in
+                 * both, but only the assessor role appears in the incident workflow - so only
+                 * STATE_1 belongs in this inbox. Letting the Facility Admin grant through would
+                 * list STATE_2 tickets the user can do nothing with.
+                 *
+                 * This is deliberately strict: a null map means the lookup failed, and the whole
+                 * scope is skipped rather than silently widened to every role that holds ground.
+                 */
+                if (statusesByRole == null || CollectionUtils.isEmpty(statusesByRole.get(roleCode))) {
+                    log.debug("Role {} acts on nothing in this workflow; it grants no inbox visibility",
+                            roleCode);
+                    return;
+                }
+
                 List<Object> levelClauses = termsPerLevel(byLevel, nameToPathMap);
                 if (levelClauses.isEmpty()) {
                     return;
@@ -246,14 +265,13 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 boundariesBool.put("should", levelClauses);
                 boundariesBool.put("minimum_should_match", 1);
 
-                // One pair per role: this role's boundaries AND, when the caller asked for the work
-                // waiting on them, this role's own statuses. Pairing is the point - a Tech POC in
-                // one state must not be offered Tech POC work in another, which is exactly what a
-                // flat union of statuses crossed with a flat union of boundaries allows.
+                // One pair per role: this role's boundaries and, when the caller asked for the work
+                // waiting on them, this role's own statuses too. Pairing is the point - a Tech POC
+                // in one state must not be offered Tech POC work in another, which is exactly what
+                // a flat union of statuses crossed with a flat union of boundaries allows.
                 List<Object> pair = new ArrayList<>();
                 pair.add(Collections.singletonMap("bool", boundariesBool));
-                if (statusesByRole != null && statusPath != null
-                        && !CollectionUtils.isEmpty(statusesByRole.get(roleCode))) {
+                if (onlyWaitingOnMe && statusPath != null) {
                     pair.add(Collections.singletonMap("terms", Collections.singletonMap(statusPath,
                             new ArrayList<>(statusesByRole.get(roleCode)))));
                 }
@@ -262,6 +280,15 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 roleBool.put("must", pair);
                 perRoleClauses.add(Collections.singletonMap("bool", roleBool));
             });
+
+            if (perRoleClauses.isEmpty()) {
+                // Jurisdictions, but none of them for a role that works on this module.
+                log.info("No role of the caller's acts on this module; returning an impossible clause");
+                clauses.add(Collections.singletonMap("bool",
+                        Collections.singletonMap("must_not",
+                                Collections.singletonMap("match_all", new HashMap<>()))));
+                return clauses;
+            }
             if (!perRoleClauses.isEmpty()) {
                 Map<String, Object> anyRole = new HashMap<>();
                 anyRole.put("should", perRoleClauses);

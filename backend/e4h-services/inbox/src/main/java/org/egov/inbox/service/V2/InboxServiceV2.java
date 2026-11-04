@@ -385,15 +385,28 @@ public class InboxServiceV2 {
      * Best-effort: a failure to reach the workflow engine leaves the request untouched, which is the
      * behaviour that predates this scoping. An inbox must not fail to load because a lookup failed.
      */
+    /**
+     * @return the actionable On Hold statuses held back from the default bucket, so the status
+     *         counts can still report them
+     */
     private List<String> applyActionableStatusScope(InboxRequest inboxRequest) {
-        if (!Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe())) {
-            log.debug("🗂️ assignedToMe not set, leaving the inbox scoped by jurisdiction alone");
-            return Collections.emptyList();
-        }
         try {
             List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
             if (CollectionUtils.isEmpty(businessServices)) {
                 log.warn("⚠️ No business services returned, leaving the requested statuses untouched");
+                return Collections.emptyList();
+            }
+
+            // Resolved for every request, not only for "waiting on me", because it decides which of
+            // the caller's roles have any business in this inbox at all. A Facility Admin in one
+            // state and a Complaint Assessor in another holds a jurisdiction in both, but only the
+            // assessor role acts on incidents - so only that state's tickets belong here.
+            inboxRequest.getInbox().setActionableStatusesByRole(
+                    workflowService.getActionableStatusesByRole(inboxRequest.getRequestInfo(), businessServices,
+                            inboxRequest.getInbox().getProcessSearchCriteria()));
+
+            if (!Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe())) {
+                log.debug("🗂️ assignedToMe not set, leaving the requested statuses untouched");
                 return Collections.emptyList();
             }
             return enrichActionableStatusesFromRole(inboxRequest, businessServices);
@@ -412,14 +425,6 @@ public class InboxServiceV2 {
         ProcessInstanceSearchCriteria processCriteria = inboxRequest.getInbox().getProcessSearchCriteria();
         String tenantId = inboxRequest.getInbox().getTenantId();
         processCriteria.setTenantId(tenantId);
-
-        // Per role as well as merged: the merged list narrows the whole query to statuses the caller
-        // can act on somewhere, while the per-role map lets the jurisdiction clause pair each role's
-        // statuses with that role's own boundaries. Without the pairing, holding a role in one state
-        // and a jurisdiction in another is enough to be offered the first role's work in the second.
-        inboxRequest.getInbox().setActionableStatusesByRole(
-                workflowService.getActionableStatusesByRole(inboxRequest.getRequestInfo(), businessServices,
-                        inboxRequest.getInbox().getProcessSearchCriteria()));
 
         log.debug("Retrieving actionable statuses for role");
         HashMap<String, String> StatusIdNameMap = workflowService.getActionableStatusesForRole(inboxRequest.getRequestInfo(), businessServices,
