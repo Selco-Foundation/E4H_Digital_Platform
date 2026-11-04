@@ -232,18 +232,34 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                             new HashMap<>()))));
             return clauses;
         } else {
+            Map<String, Set<String>> statusesByRole =
+                    inboxRequest.getInbox().getActionableStatusesByRole();
+            String statusPath = nameToPathMap.get("status");
+
             List<Object> perRoleClauses = new ArrayList<>();
             scopeByRole.forEach((roleCode, byLevel) -> {
                 List<Object> levelClauses = termsPerLevel(byLevel, nameToPathMap);
                 if (levelClauses.isEmpty()) {
                     return;
                 }
-                // One pair per role. Today a pair carries only the role's boundaries; the role's
-                // actionable statuses join it here, which is what stops a Tech POC in one state
-                // being offered Tech POC work in another.
+                Map<String, Object> boundariesBool = new HashMap<>();
+                boundariesBool.put("should", levelClauses);
+                boundariesBool.put("minimum_should_match", 1);
+
+                // One pair per role: this role's boundaries AND, when the caller asked for the work
+                // waiting on them, this role's own statuses. Pairing is the point - a Tech POC in
+                // one state must not be offered Tech POC work in another, which is exactly what a
+                // flat union of statuses crossed with a flat union of boundaries allows.
+                List<Object> pair = new ArrayList<>();
+                pair.add(Collections.singletonMap("bool", boundariesBool));
+                if (statusesByRole != null && statusPath != null
+                        && !CollectionUtils.isEmpty(statusesByRole.get(roleCode))) {
+                    pair.add(Collections.singletonMap("terms", Collections.singletonMap(statusPath,
+                            new ArrayList<>(statusesByRole.get(roleCode)))));
+                }
+
                 Map<String, Object> roleBool = new HashMap<>();
-                roleBool.put("should", levelClauses);
-                roleBool.put("minimum_should_match", 1);
+                roleBool.put("must", pair);
                 perRoleClauses.add(Collections.singletonMap("bool", roleBool));
             });
             if (!perRoleClauses.isEmpty()) {
@@ -321,78 +337,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         return byLevel;
     }
 
-    public List<Map<String, Object>> mergeMustClauseLists(
-            List<Map<String, Object>> list1,
-            List<Map<String, Object>> list2) {
 
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        // Conserver les éléments non-bool de list1 (ex: wildcard)
-        list1.forEach(clause -> {
-            if (!clause.containsKey("bool")) {
-                result.add(clause);
-            }
-        });
-
-        // Fonction utilitaire pour compléter should avec toutes les clés nécessaires
-        BiFunction<Map<String, Object>, List<String>, Map<String, Object>> normalizeBool = (boolClause, allKeys) -> {
-            Map<String, Object> boolCopy = new HashMap<>();
-            Map<String, Object> innerBool = new HashMap<>();
-
-            List<Map<String, Object>> shouldList = new ArrayList<>();
-            if (boolClause.containsKey("bool")) {
-                Map<String, Object> existingBool = (Map<String, Object>) boolClause.get("bool");
-                List<Map<String, Object>> existingShould = (List<Map<String, Object>>) existingBool.getOrDefault("should", new ArrayList<>());
-
-                // Ajouter toutes les clés manquantes avec empty lists
-                for (String key : allKeys) {
-                    boolean keyExists = existingShould.stream().anyMatch(map -> {
-                        if (map.containsKey("terms")) {
-                            return ((Map<String,Object>) map.get("terms")).containsKey(key);
-                        }
-                        return false;
-                    });
-                    if (!keyExists) {
-                        Map<String, Object> emptyTerms = new HashMap<>();
-                        emptyTerms.put("terms", Collections.singletonMap(key, new ArrayList<>()));
-                        existingShould.add(emptyTerms);
-                    }
-                }
-
-                shouldList.addAll(existingShould);
-                innerBool.put("should", shouldList);
-                innerBool.put("minimum_should_match", 1);
-                boolCopy.put("bool", innerBool);
-            }
-
-            return boolCopy;
-        };
-
-        // Déterminer toutes les clés possibles pour uniformiser
-        List<String> allKeys = Arrays.asList(
-                "Data.incident.boundary.countryCode.keyword",
-                "Data.incident.boundary.stateCode.keyword",
-                "Data.incident.boundary.districtCode.keyword",
-                "Data.incident.boundary.blockCode.keyword",
-                "Data.incident.boundary.facilityCode.keyword"
-        );
-
-        // Normaliser list2 et ajouter à la liste finale
-        list2.forEach(clause -> {
-            if (clause.containsKey("bool")) {
-                result.add(normalizeBool.apply(clause, allKeys));
-            }
-        });
-
-        // Normaliser list1 bools et ajouter à la liste finale
-        list1.forEach(clause -> {
-            if (clause.containsKey("bool")) {
-                result.add(normalizeBool.apply(clause, allKeys));
-            }
-        });
-
-        return result;
-    }
 
     public Map<String, Object> getESQueryProject(InboxRequest inboxRequest, Boolean isPaginationRequired) {
         String tenantId = inboxRequest.getInbox().getTenantId();
@@ -614,40 +559,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         });
     }
 
-    private void addJurisdictionSearchCriteriaToBaseQuery(Map<String, Object> params, Map<String, String> nameToPathMap,
-                                                    Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
-        params.keySet().forEach(key -> {
-            if (!(key.equals(SORT_ORDER_CONSTANT) || key.equals(SORT_BY_CONSTANT))) {
 
-                SearchParam.Operator operator = nameToOperator.get(key);
-                if (operator != null && operator.equals(SearchParam.Operator.WILDCARD)) {
-                    List<Map<String, Object>> mustClauseChild = null;
-
-                    mustClauseChild = (List<Map<String, Object>>) prepareMustClauseWildCardChild(params, key,
-                            nameToPathMap, nameToOperator);
-
-                    if (CollectionUtils.isEmpty(mustClauseChild)) {
-                        log.info("Error occurred while preparing filter for must clause. Filter for key " + key
-                                + " will not be added.");
-                    } else {
-                        mustClauseList.addAll(mustClauseChild);
-                    }
-                } else {
-
-                    Map<String, Object> mustClauseChild = null;
-                    mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap,
-                            nameToOperator);
-                    if (CollectionUtils.isEmpty(mustClauseChild)) {
-                        log.info("Error occurred while preparing filter for must clause. Filter for key " + key
-                                + " will not be added.");
-                    } else {
-                        mustClauseList.add(mustClauseChild);
-                    }
-
-                }
-            }
-        });
-    }
 
     @Override
     public Map<String, Object> getStatusCountQuery(InboxRequest inboxRequest) {
