@@ -18,6 +18,7 @@ import org.egov.inbox.web.model.workflow.ProcessInstanceSearchCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.egov.inbox.util.RoleJurisdictionScope;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
@@ -38,6 +39,9 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
     @Autowired
     private MDMSUtil mdmsUtil;
+
+    @Autowired
+    private RoleJurisdictionScope roleJurisdictionScope;
 
 
     @Override
@@ -95,8 +99,10 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
         log.debug("📥 Added module search criteria to mustClauseList");
 
-        addJurisdictionSearchCriteriaToBaseQuery(jurisdictionParams, nameToPathMap, nameToOperator, jurisdictionMustClauseList);
-        log.debug("📥 Added jurisdiction search criteria to mustClauseList");
+        log.debug("Adding jurisdiction scope to must clause");
+        jurisdictionMustClauseList.addAll(
+                buildJurisdictionClauses(inboxRequest, jurisdictionParams, nameToPathMap));
+        log.debug("Jurisdiction scope added - jurisdictionMustClauseSize: {}", jurisdictionMustClauseList.size());
 
         addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
         log.debug("📥 Added process search criteria to mustClauseList");
@@ -106,11 +112,13 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
         // Group the different blocks of should into a single should block
         List<Map<String, Object>> updatedMustClauseList = extractShouldClauses(mustClauseList);
-        List<Map<String, Object>> updatedJurisdictionMustClauseList = extractJurisdictionShouldClauses(jurisdictionMustClauseList);
-        List<Map<String, Object>> mergedMustClause = mergeMustClauseLists(updatedMustClauseList, updatedJurisdictionMustClauseList);
-        log.info("Final must clause list after conversion {} ", updatedMustClauseList);
-        log.info("Final jurisdiction must clause list after conversion {} ", updatedJurisdictionMustClauseList);
-        log.info("Final merge must clause list {} ", mergedMustClause);
+        List<Map<String, Object>> jurisdictionClauses = jurisdictionMustClauseList.stream()
+                .filter(o -> o instanceof Map)
+                .map(o -> (Map<String, Object>) o)
+                .collect(Collectors.toList());
+        List<Map<String, Object>> mergedMustClause = new ArrayList<>(updatedMustClauseList);
+        mergedMustClause.addAll(jurisdictionClauses);
+        log.debug("Must clauses merged - mergedSize: {}", mergedMustClause.size());
 
         innerBoolClause.put(MUST_KEY, mergedMustClause);
 
@@ -189,43 +197,128 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         return finalClauses;
     }
 
-    // Group the different blocks of should into a single should block
-    public List<Map<String, Object>> extractJurisdictionShouldClauses(List<Object> mustClauseList) {
-        List<Map<String, Object>> result =
-                mustClauseList.stream()
-                        .filter(o -> o instanceof Map)
-                        .map(o -> (Map<String, Object>) o)
-                        .collect(Collectors.toList());
+    /**
+     * The jurisdiction filter: what the caller is allowed to see, then what they asked to see.
+     *
+     * Two separate must clauses, so Elasticsearch does the intersecting. A caller holding
+     * STATE_1 and STATE_2 who narrows to STATE_1 gets {@code stateCode IN (S1,S2)} AND
+     * {@code stateCode IN (S1)} - STATE_1 only. Narrowing to a boundary they do not hold yields
+     * nothing, which is the right failure: the client can shrink the result, never widen it.
+     *
+     * This replaces {@code extractJurisdictionShouldClauses}, which merged every jurisdiction
+     * clause into one flat {@code should} built entirely from the request body. The body is still
+     * read, but only as the narrowing request - the scope itself now comes from HRMS.
+     *
+     * Each grant is matched at its own level, which works because every incident is indexed with
+     * its whole ancestor chain - see {@link RoleJurisdictionScope} for why that beats expanding a
+     * grant to its descendants.
+     */
+    private List<Map<String, Object>> buildJurisdictionClauses(InboxRequest inboxRequest,
+                                                               Map<String, Object> requestedNarrowing,
+                                                               Map<String, String> nameToPathMap) {
+        List<Map<String, Object>> clauses = new ArrayList<>();
 
-        List<Map<String, Object>> finalClauses = new ArrayList<>();
-        List<Object> mergedShouldList = new ArrayList<>();
-
-        for (Map<String, Object> clause : result) {
-
-            if (clause.containsKey("should")) {
-                Object shouldObj = clause.get("should");
-
-                // C’est soit un map direct, soit une liste de maps
-                if (shouldObj instanceof Map) {
-                    mergedShouldList.add(shouldObj);
-                } else if (shouldObj instanceof List) {
-                    mergedShouldList.addAll((List<?>) shouldObj);
+        Map<String, Map<String, Set<String>>> scopeByRole =
+                roleJurisdictionScope.resolve(inboxRequest.getRequestInfo());
+        if (scopeByRole == null) {
+            // Fail open: HRMS unreachable must not empty every inbox. The narrowing below still
+            // applies, so the caller keeps whatever filter they chose.
+            log.warn("No resolvable jurisdiction scope; the inbox is not scoped for this request");
+        } else if (scopeByRole.isEmpty()) {
+            // A real answer, unlike null: the caller holds nothing, so they see nothing.
+            log.info("Caller holds no jurisdiction for any role; returning an impossible clause");
+            clauses.add(Collections.singletonMap("bool",
+                    Collections.singletonMap("must_not", Collections.singletonMap("match_all",
+                            new HashMap<>()))));
+            return clauses;
+        } else {
+            List<Object> perRoleClauses = new ArrayList<>();
+            scopeByRole.forEach((roleCode, byLevel) -> {
+                List<Object> levelClauses = termsPerLevel(byLevel, nameToPathMap);
+                if (levelClauses.isEmpty()) {
+                    return;
                 }
-
+                // One pair per role. Today a pair carries only the role's boundaries; the role's
+                // actionable statuses join it here, which is what stops a Tech POC in one state
+                // being offered Tech POC work in another.
+                Map<String, Object> roleBool = new HashMap<>();
+                roleBool.put("should", levelClauses);
+                roleBool.put("minimum_should_match", 1);
+                perRoleClauses.add(Collections.singletonMap("bool", roleBool));
+            });
+            if (!perRoleClauses.isEmpty()) {
+                Map<String, Object> anyRole = new HashMap<>();
+                anyRole.put("should", perRoleClauses);
+                anyRole.put("minimum_should_match", 1);
+                clauses.add(Collections.singletonMap("bool", anyRole));
             }
         }
 
-        // Ajouter le should regroupé si non vide
-        if (!mergedShouldList.isEmpty()) {
-            Map<String, Object> groupedShould = new HashMap<>();
-            groupedShould.put("bool", new HashMap<>());
-            Map<String, Object> boolShouldList = (Map<String, Object>) groupedShould.get("bool");
-            boolShouldList.put("should", mergedShouldList);
-            boolShouldList.put("minimum_should_match", 1);
-            finalClauses.add(groupedShould);
+        List<Object> narrowingClauses = termsPerLevel(narrowingByLevel(requestedNarrowing), nameToPathMap);
+        if (!narrowingClauses.isEmpty()) {
+            Map<String, Object> narrowing = new HashMap<>();
+            narrowing.put("should", narrowingClauses);
+            narrowing.put("minimum_should_match", 1);
+            clauses.add(Collections.singletonMap("bool", narrowing));
         }
 
-        return finalClauses;
+        return clauses;
+    }
+
+    /** One {@code terms} clause per level, using the paths the inbox config already declares. */
+    private List<Object> termsPerLevel(Map<String, Set<String>> byLevel, Map<String, String> nameToPathMap) {
+        List<Object> clauses = new ArrayList<>();
+        if (CollectionUtils.isEmpty(byLevel)) {
+            return clauses;
+        }
+        byLevel.forEach((level, codes) -> {
+            String path = nameToPathMap.get(level);
+            if (path == null) {
+                log.warn("No ES path configured for jurisdiction level {}; skipping it", level);
+                return;
+            }
+            if (CollectionUtils.isEmpty(codes)) {
+                return;
+            }
+            clauses.add(Collections.singletonMap("terms",
+                    Collections.singletonMap(path, new ArrayList<>(codes))));
+        });
+        return clauses;
+    }
+
+    /**
+     * The boundary codes the client asked to be narrowed to, by level.
+     *
+     * {@code "-"} is dropped: {@code useNewInbox.js} defaults to {@code {country: ["-"]}} when
+     * session storage is empty, and treating that as a real boundary would AND an impossible
+     * country code against everything and empty the inbox.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Set<String>> narrowingByLevel(Map<String, Object> requested) {
+        Map<String, Set<String>> byLevel = new HashMap<>();
+        if (CollectionUtils.isEmpty(requested)) {
+            return byLevel;
+        }
+        requested.forEach((level, value) -> {
+            if (SORT_ORDER_CONSTANT.equals(level) || SORT_BY_CONSTANT.equals(level)) {
+                return;
+            }
+            Set<String> codes = new HashSet<>();
+            if (value instanceof List) {
+                ((List<Object>) value).forEach(item -> {
+                    if (item != null) {
+                        codes.add(String.valueOf(item));
+                    }
+                });
+            } else if (value != null) {
+                codes.add(String.valueOf(value));
+            }
+            codes.remove("-");
+            if (!codes.isEmpty()) {
+                byLevel.put(level, codes);
+            }
+        });
+        return byLevel;
     }
 
     public List<Map<String, Object>> mergeMustClauseLists(
