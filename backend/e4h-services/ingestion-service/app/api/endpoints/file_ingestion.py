@@ -58,6 +58,13 @@ from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.assessment_service_client import AssessmentServiceClient
+from app.utils.assessment_questionnaire import (
+    QUESTIONNAIRE_HEADERS,
+    find_category_column,
+    find_questionnaire_columns,
+    load_questionnaire_options,
+    resolve_row_questionnaires,
+)
 from app.utils.assessment_fieldplan_handoff import (
     load_eligible_facility_map,
     merge_assessment_validation_errors,
@@ -4711,6 +4718,21 @@ def _find_assessment_include_col(df: pd.DataFrame) -> Optional[str]:
     return None
 
 
+def _require_questionnaire_columns(df: pd.DataFrame):
+    """The On Site / On Remote questionnaire columns and the category column of an include sheet."""
+    questionnaire_cols = find_questionnaire_columns(df)
+    missing = [QUESTIONNAIRE_HEADERS[mode] for mode, col in questionnaire_cols.items() if col is None]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{', '.join(missing)} column(s) not found. Please download the template again.",
+        )
+    category_col = find_category_column(df)
+    if category_col is None:
+        raise HTTPException(status_code=400, detail="Category of Facility column not found")
+    return questionnaire_cols, category_col
+
+
 def _find_assessment_facility_id_col(df: pd.DataFrame) -> Optional[str]:
     for col in df.columns:
         if "facility id" in str(col).lower():
@@ -4951,6 +4973,8 @@ async def validate_assessment_plan_include_data(
         availability_exclusions = _build_availability_exclusions(availability_response)
 
         mdms_client = MDMSClient(mdms_url)
+        questionnaire_cols, category_col = _require_questionnaire_columns(df)
+        questionnaire_options = load_questionnaire_options(mdms_client, request_info_obj)
         validation_errors, exclusion_messages = assessment_plan_include_validation(
             df,
             mdms_client,
@@ -4959,6 +4983,8 @@ async def validate_assessment_plan_include_data(
             facility_id_col,
             linked_ids,
             availability_exclusions,
+            row_checks=lambda row: resolve_row_questionnaires(
+                row, questionnaire_options, category_col, questionnaire_cols)[1],
         )
         error_count = _apply_include_validation_results_to_dataframe(
             df, validation_errors, exclusion_messages
@@ -5075,12 +5101,16 @@ async def apply_assessment_plan_include_data(
                 detail="Validation failed: Some rows are marked as FAILED. Please fix errors and re-validate.",
             )
 
+        questionnaire_cols, category_col = _require_questionnaire_columns(df)
+        questionnaire_options = load_questionnaire_options(MDMSClient(mdms_url), request_info_obj)
+
         result_col = "Assessment Plan Include Status"
         if result_col not in df.columns:
             df[result_col] = ""
 
         yes_row_indices: List[int] = []
         facilities = []
+        questionnaire_failures = 0
         for index, row in df.iterrows():
             include_val = str(row.get(include_col, "")).strip().lower()
             if include_val != "yes":
@@ -5098,10 +5128,26 @@ async def apply_assessment_plan_include_data(
                 df.at[index, result_col] = "Skipped (missing Facility Id)"
                 continue
 
+            # Re-resolved here: the labels may have been edited since the file was validated.
+            questionnaire_codes, questionnaire_errors = resolve_row_questionnaires(
+                row, questionnaire_options, category_col, questionnaire_cols)
+            if questionnaire_errors:
+                df.at[index, result_col] = f"Failed: {'; '.join(questionnaire_errors)}"
+                questionnaire_failures += 1
+                continue
+
             yes_row_indices.append(index)
-            facilities.append(_build_assessment_include_facility_payload(row, df, facility_id_col))
+            payload = _build_assessment_include_facility_payload(row, df, facility_id_col)
+            payload.update(questionnaire_codes)
+            facilities.append(payload)
 
         if not facilities:
+            if questionnaire_failures:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No facility was included: the questionnaire choices of every Yes row are "
+                           "invalid. Please validate the file again.",
+                )
             raise HTTPException(
                 status_code=400,
                 detail="At least one facility must be marked Include in Assessment Plan = Yes",
