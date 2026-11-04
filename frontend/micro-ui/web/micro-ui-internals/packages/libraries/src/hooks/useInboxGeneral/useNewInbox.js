@@ -47,9 +47,13 @@ const useNewInboxGeneral = ({ tenantId, ModuleCode, filters, middleware = [], co
   const assignedToMe = !!(usesAssignedToMe && assignee && assignee === userName);
   const requestFilters = usesAssignedToMe ? { ...filters, assignee: undefined } : filters;
   const { workflowFilters, searchFilters, limit, offset, sortBy, sortOrder, applicationNumber } = fetchFilters(requestFilters);
-  const jurisdictionCurrentBoundaries = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
-    country: ["-"],
-  };
+  // Only what the user actually narrowed to. The inbox derives the caller's real scope from HRMS
+  // and intersects this with it, so sending the full login-time set would mean a session that
+  // predates a new jurisdiction keeps hiding its tickets until the next login.
+  const jurisdictionCurrentBoundaries = Digit.Utils.BoundaryUtil.explicitNarrowing(
+    Digit.SessionStorage.get("Jurisdiction.CurrentBoundary"),
+    Digit.SessionStorage.get("Jurisdiction.Boundaries")
+  );
 
   const query = useQuery(
     ["INBOX", workflowFilters, searchFilters, ModuleCode, limit, offset, sortBy, sortOrder, applicationNumber, assignedToMe],
@@ -59,7 +63,7 @@ const useNewInboxGeneral = ({ tenantId, ModuleCode, filters, middleware = [], co
           tenantId,
           ...(assignedToMe ? { assignedToMe } : {}),
           processSearchCriteria: workflowFilters,
-          jurisdictionSearchCriteria: jurisdictionCurrentBoundaries,
+          ...(jurisdictionCurrentBoundaries ? { jurisdictionSearchCriteria: jurisdictionCurrentBoundaries } : {}),
           moduleSearchCriteria: {
             ...searchFilters,
             sortBy, sortOrder,
