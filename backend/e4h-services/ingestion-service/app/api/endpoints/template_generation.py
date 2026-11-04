@@ -36,6 +36,12 @@ from app.utils.assessment_fieldplan_handoff import (
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
+from app.utils.assessment_questionnaire import (
+    CATEGORY_ASSESSMENT_FORM_SCHEMA,
+    QUESTIONNAIRE_HEADERS,
+    QUESTIONNAIRE_PAYLOAD_KEYS,
+    load_questionnaire_options,
+)
 from app.utils.project_category import resolve_project_category, filter_facilities_by_category
 from app.utils.project_service_client import ProjectServiceClient
 import os, tempfile, zipfile, qrcode, shutil
@@ -1430,9 +1436,19 @@ async def get_assessment_plan_include_template(
         plan_facility_response = assessment_client.search_plan_facilities(
             request_info, plan_id, export_all=True
         )
+        plan_facilities = plan_facility_response.get("facilities", []) or []
         plan_facility_ids = {
             _normalize_template_facility_id(f.get("facilityId"))
-            for f in (plan_facility_response.get("facilities", []) or [])
+            for f in plan_facilities
+            if f.get("facilityId")
+        }
+        # Questionnaires already chosen for facilities on the plan, shown again on the sheet.
+        plan_questionnaires = {
+            _normalize_template_facility_id(f.get("facilityId")): {
+                mode: (f.get("additionalDetails") or {}).get(key)
+                for mode, key in QUESTIONNAIRE_PAYLOAD_KEYS.items()
+            }
+            for f in plan_facilities
             if f.get("facilityId")
         }
 
@@ -1538,6 +1554,33 @@ async def get_assessment_plan_include_template(
             facility_service, request_info, boundary_data, all_facilities
         )
 
+        # The questionnaire dropdowns offer the forms of the categories on the sheet; the facilities
+        # of a plan share one category, and validation checks each row against its own anyway.
+        questionnaire_options = load_questionnaire_options(mdms_client, request_info)
+        for facility in all_facilities:
+            fid = _normalize_template_facility_id(facility.get("facility_id") or facility.get("facilityId"))
+            category = facility.get("facility_category") or facility.get("facilityCategory")
+            prefill = {}
+            for mode, code in plan_questionnaires.get(fid, {}).items():
+                label = questionnaire_options.form_label(category, mode, code) if code else None
+                if label:
+                    prefill[QUESTIONNAIRE_HEADERS[mode]] = label
+            facility["template_prefill"] = prefill
+        sheet_categories = {
+            questionnaire_options.category_code(f.get("facility_category") or f.get("facilityCategory"))
+            for f in all_facilities
+        } - {""}
+        if not sheet_categories:
+            sheet_categories = set(questionnaire_options.options)
+        questionnaire_columns = {
+            header: questionnaire_options.labels(mode, sorted(sheet_categories))
+            for mode, header in QUESTIONNAIRE_HEADERS.items()
+        }
+        for header, labels in questionnaire_columns.items():
+            if not labels:
+                logger.error(f"No assessment form configured in {CATEGORY_ASSESSMENT_FORM_SCHEMA} for "
+                             f"'{header}' and categories {sorted(sheet_categories)}")
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
@@ -1550,6 +1593,7 @@ async def get_assessment_plan_include_template(
             type="assessment_include",
             extra_append_rows=0,
             optimize_for_performance=True,
+            mandatory_dropdown_columns=questionnaire_columns,
         )
 
         if excluded_facility_rows:
