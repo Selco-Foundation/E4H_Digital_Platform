@@ -96,8 +96,6 @@ public class PrioritySLAService {
 
         //get process instances
         List<ProcessInstance> processInstances = workflowService.getAllProcessInstances(tenantId,IncidentId, requestInfo);
-        Collections.reverse(processInstances);
-        log.debug("Retrieved {} process instances for incident: {}", processInstances.size(), IncidentId);
         processInstances = getCurrentSlaCycle(processInstances);
 
         if (tenantId.contains(".")) tenantId = tenantId.split("\\.")[0];
@@ -107,10 +105,9 @@ public class PrioritySLAService {
         long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
         long now = Instant.now().toEpochMilli();
 
-        long businessElapsedFromCreated = calculateBusinessDurationForAllStates(processInstances, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
-        log.debug("Business elapsed time - from created: {}ms, from modified: {}ms",
-            businessElapsedFromCreated, businessElapsedFromModified);
+
+
 
         String businessService;
         String priority;
@@ -305,7 +302,7 @@ public class PrioritySLAService {
      * hold resets its SLA, so everything up to and including the most recent
      * {@code OUT_OF_WARRANTY_ON_HOLD} instance is dropped. Mirrors im-services SLAService.
      *
-     * @param processInstances workflow history, oldest first
+     * @param processInstances workflow history, oldest first (as returned by WorkflowService.getAllProcessInstances)
      */
     private List<ProcessInstance> getCurrentSlaCycle(List<ProcessInstance> processInstances) {
         for (int i = processInstances.size() - 1; i >= 0; i--) {
@@ -316,39 +313,9 @@ public class PrioritySLAService {
         return processInstances;
     }
 
-    public long calculateBusinessDurationForAllStates(List<ProcessInstance> processInstances, BusinessHours businessHours) {
-        log.trace("Calculating business duration for all states, processInstances count: {}", 
-            processInstances != null ? processInstances.size() : 0);
-        if (processInstances == null || processInstances.isEmpty()) {
-            log.debug("No process instances provided, returning 0");
-            return 0;
-        }
-        long totalBusinessDuration = 0;
-
-        for (int i = 0; i < processInstances.size(); i++) {
-            ProcessInstance current = processInstances.get(i);
-            String state = current.getState().getApplicationStatus();
-
-            if (isSlaBearingState(state)) {
-
-                long prevStateTime = current.getAuditDetails().getCreatedTime();
-                long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
-                        : Instant.now().toEpochMilli();
-
-                long stateDuration = calculateBusinessMillis(prevStateTime, nextStateTime, businessHours);
-                totalBusinessDuration += stateDuration;
-                log.debug("State: {}, duration: {}ms", state, stateDuration);
-            }
-        }
-
-        log.debug("Total business duration for all states: {}ms", totalBusinessDuration);
-        return totalBusinessDuration;
-    }
-
     public record TenantServiceStateKey(String tenantId, String businessService, String state) {}
 
     private Map<TenantServiceStateKey, Duration> loadSLADurationsFromBusinessService() {
-        log.trace("Loading SLA durations from business service database");
         try {
             String sql = """
                 SELECT s.tenantid, b.businessservice, s.applicationstatus, s.sla
