@@ -58,6 +58,13 @@ from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.assessment_service_client import AssessmentServiceClient
+from app.utils.assessment_questionnaire import (
+    QUESTIONNAIRE_HEADERS,
+    find_category_column,
+    find_questionnaire_columns,
+    load_questionnaire_options,
+    resolve_row_questionnaires,
+)
 from app.utils.assessment_fieldplan_handoff import (
     load_eligible_facility_map,
     merge_assessment_validation_errors,
@@ -1572,6 +1579,11 @@ async def upload_facility_selection_excel_sheet(
             os.unlink(input_temp_file.name)
 
 
+def _is_rectification_site(value):
+    """ICC item rectificationSite flag: true/"Yes"/"1" -> True; absent, false or "No" -> False."""
+    return str(value).strip().lower() in ("true", "yes", "1") if value is not None else False
+
+
 @router.post('/icc-reports',
              summary='Bulk-upload ICC report Excel files, validate each against its System Type, '
                      'convert to JSON, and store them via field-planner in one call',
@@ -1582,7 +1594,9 @@ async def upload_icc_reports(
             ...,
             description='JSON array of metadata objects, one per file, paired positionally with '
                         'icc_files: [{"systemType": "...", "totalSystemCapacity": "...", '
-                        '"fieldPlanId": "...", "tenantId": "in"}]'
+                        '"fieldPlanId": "...", "tenantId": "in", "rectificationSite": false}] - '
+                        'rectificationSite (optional, default false) = true for a rectification '
+                        'site ICC template, which skips the mandatory Solar Module/Battery/Inverter values'
         ),
         icc_files: List[UploadFile] = File(
             ..., description="ICC Report Excel files (.xlsx), positionally paired with items"
@@ -1650,10 +1664,12 @@ async def upload_icc_reports(
         for idx, (item, upload) in enumerate(zip(parsed_items, icc_files)):
             temp_file, _ = await _save_upload_to_temp_file(upload, suffix=".xlsx")
             temp_files.append((temp_file, upload))
+            rectification_site = _is_rectification_site(item.get("rectificationSite"))
             try:
                 detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
                     temp_file.name, item["systemType"],
                     mdms_client=mdms_client, request_info=request_info_obj,
+                    rectification_site=rectification_site,
                 )
                 converted.append({
                     "tenant_id": item.get("tenantId", "in"),
@@ -1661,6 +1677,7 @@ async def upload_icc_reports(
                     "system_type": item["systemType"],
                     "total_capacity": item["totalSystemCapacity"],
                     "template_data": icc_json,
+                    "rectification_site": rectification_site,
                 })
                 logger.info(
                     f"ICC report[{idx}] converted: systemType={item['systemType']} "
@@ -1737,7 +1754,8 @@ async def update_icc_reports(
             ...,
             description='JSON array of metadata objects, one per template to update: '
                         '[{"id": "...", "systemType": "...", "totalSystemCapacity": "...", '
-                        '"fieldPlanId": "...", "tenantId": "in"}]'
+                        '"fieldPlanId": "...", "tenantId": "in", "rectificationSite": false}] - '
+                        'rectificationSite must match the stored template (it cannot be changed)'
         ),
         icc_files: Optional[List[UploadFile]] = File(
             default=None,
@@ -1812,6 +1830,11 @@ async def update_icc_reports(
         for idx, item in enumerate(parsed_items):
             upload = icc_files[idx] if has_files else None
             template_data = None
+            # None -> not provided; field-planner keeps the stored value
+            rectification_site = (
+                _is_rectification_site(item.get("rectificationSite"))
+                if item.get("rectificationSite") is not None else None
+            )
             if upload is not None:
                 temp_file, _ = await _save_upload_to_temp_file(upload, suffix=".xlsx")
                 temp_files.append((temp_file, upload))
@@ -1819,6 +1842,7 @@ async def update_icc_reports(
                     detected_type, icc_json, fallback_fields, unmatched_fields = validate_and_convert(
                         temp_file.name, item["systemType"],
                         mdms_client=mdms_client, request_info=request_info_obj,
+                        rectification_site=bool(rectification_site),
                     )
                     template_data = icc_json
                     logger.info(
@@ -1840,6 +1864,7 @@ async def update_icc_reports(
                 "system_type": item["systemType"],
                 "total_capacity": item["totalSystemCapacity"],
                 "template_data": template_data,
+                "rectification_site": rectification_site,
             })
 
         if failed_files:
@@ -3150,6 +3175,7 @@ async def create_fielplan_facilities(
         EDITABLE_ADDITIONAL_FIELD_KEYS = {
             "systemType", "solarSolutionDesignType", "totalSystemCapacity",
             "customSolarSolutionDesignType", "customTotalSystemCapacity",
+            "rectificationSite",
         }
 
         def validate_custom_capacity_numeric(value):
@@ -3182,6 +3208,7 @@ async def create_fielplan_facilities(
         total_system_capacity_col = find_col("Total System Capacity")
         custom_solution_design_col = find_col("Custom Solution Design Type")
         custom_total_system_capacity_col = find_col("Custom Total System Capacity")
+        rectification_site_col = find_col("Rectification Site")
 
         # MDMS schema for facilityType/systemType/solarSolutionDesignType/totalSystemCapacity
         # code lookups (see build_field_plan_facility_additional_details) - falls back to raw
@@ -3329,6 +3356,7 @@ async def create_fielplan_facilities(
                                         solution_design_type_column=solution_design_type_col,
                                         custom_solution_design_column=custom_solution_design_col,
                                         custom_total_system_capacity_column=custom_total_system_capacity_col,
+                                        rectification_site_column=rectification_site_col,
                                     ) or {}
 
                                     # Only a key the Excel row actually fills in and that differs
@@ -3425,6 +3453,7 @@ async def create_fielplan_facilities(
                                         solution_design_type_column=solution_design_type_col,
                                         custom_solution_design_column=custom_solution_design_col,
                                         custom_total_system_capacity_column=custom_total_system_capacity_col,
+                                        rectification_site_column=rectification_site_col,
                                     )
                                     plan_facility_id = resolve_plan_facility_id_for_handoff(
                                         facility_id, eligible_map
@@ -4689,6 +4718,21 @@ def _find_assessment_include_col(df: pd.DataFrame) -> Optional[str]:
     return None
 
 
+def _require_questionnaire_columns(df: pd.DataFrame):
+    """The On Site / On Remote questionnaire columns and the category column of an include sheet."""
+    questionnaire_cols = find_questionnaire_columns(df)
+    missing = [QUESTIONNAIRE_HEADERS[mode] for mode, col in questionnaire_cols.items() if col is None]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{', '.join(missing)} column(s) not found. Please download the template again.",
+        )
+    category_col = find_category_column(df)
+    if category_col is None:
+        raise HTTPException(status_code=400, detail="Category of Facility column not found")
+    return questionnaire_cols, category_col
+
+
 def _find_assessment_facility_id_col(df: pd.DataFrame) -> Optional[str]:
     for col in df.columns:
         if "facility id" in str(col).lower():
@@ -4929,6 +4973,8 @@ async def validate_assessment_plan_include_data(
         availability_exclusions = _build_availability_exclusions(availability_response)
 
         mdms_client = MDMSClient(mdms_url)
+        questionnaire_cols, category_col = _require_questionnaire_columns(df)
+        questionnaire_options = load_questionnaire_options(mdms_client, request_info_obj)
         validation_errors, exclusion_messages = assessment_plan_include_validation(
             df,
             mdms_client,
@@ -4937,6 +4983,8 @@ async def validate_assessment_plan_include_data(
             facility_id_col,
             linked_ids,
             availability_exclusions,
+            row_checks=lambda row: resolve_row_questionnaires(
+                row, questionnaire_options, category_col, questionnaire_cols)[1],
         )
         error_count = _apply_include_validation_results_to_dataframe(
             df, validation_errors, exclusion_messages
@@ -5053,12 +5101,16 @@ async def apply_assessment_plan_include_data(
                 detail="Validation failed: Some rows are marked as FAILED. Please fix errors and re-validate.",
             )
 
+        questionnaire_cols, category_col = _require_questionnaire_columns(df)
+        questionnaire_options = load_questionnaire_options(MDMSClient(mdms_url), request_info_obj)
+
         result_col = "Assessment Plan Include Status"
         if result_col not in df.columns:
             df[result_col] = ""
 
         yes_row_indices: List[int] = []
         facilities = []
+        questionnaire_failures = 0
         for index, row in df.iterrows():
             include_val = str(row.get(include_col, "")).strip().lower()
             if include_val != "yes":
@@ -5076,10 +5128,26 @@ async def apply_assessment_plan_include_data(
                 df.at[index, result_col] = "Skipped (missing Facility Id)"
                 continue
 
+            # Re-resolved here: the labels may have been edited since the file was validated.
+            questionnaire_codes, questionnaire_errors = resolve_row_questionnaires(
+                row, questionnaire_options, category_col, questionnaire_cols)
+            if questionnaire_errors:
+                df.at[index, result_col] = f"Failed: {'; '.join(questionnaire_errors)}"
+                questionnaire_failures += 1
+                continue
+
             yes_row_indices.append(index)
-            facilities.append(_build_assessment_include_facility_payload(row, df, facility_id_col))
+            payload = _build_assessment_include_facility_payload(row, df, facility_id_col)
+            payload.update(questionnaire_codes)
+            facilities.append(payload)
 
         if not facilities:
+            if questionnaire_failures:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No facility was included: the questionnaire choices of every Yes row are "
+                           "invalid. Please validate the file again.",
+                )
             raise HTTPException(
                 status_code=400,
                 detail="At least one facility must be marked Include in Assessment Plan = Yes",

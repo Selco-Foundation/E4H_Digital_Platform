@@ -140,18 +140,28 @@ public class FieldPlannerFacilityService {
         log.info("Received request to search systemType/totalSystemCapacity for installation plan facility, tenant: {}", tenantId);
 
         SearchResponse<FieldPlanFacility> searchResponse = search(request, limit, offset, tenantId, lastChangedSince, includeDeleted);
-        Map<String, SystemTypeCapacity> uniqueCombinations = new LinkedHashMap<>();
+        // Rectification sites get their own ICC pre-population template, so the same
+        // systemType/totalSystemCapacity combination is listed once per rectificationSite value
+        // (regular combinations first, then rectification ones).
+        Map<String, SystemTypeCapacity> regularCombinations = new LinkedHashMap<>();
+        Map<String, SystemTypeCapacity> rectificationCombinations = new LinkedHashMap<>();
         for (FieldPlanFacility fieldPlanFacility : searchResponse.getResponse()) {
             SystemTypeCapacity systemTypeCapacity = toSystemTypeCapacity(fieldPlanFacility);
             if (systemTypeCapacity == null) {
                 continue;
             }
             String key = systemTypeCapacity.getSystemType() + "|" + systemTypeCapacity.getTotalSystemCapacity();
-            uniqueCombinations.putIfAbsent(key, systemTypeCapacity);
+            if (Boolean.TRUE.equals(systemTypeCapacity.getRectificationSite())) {
+                rectificationCombinations.putIfAbsent(key, systemTypeCapacity);
+            } else {
+                regularCombinations.putIfAbsent(key, systemTypeCapacity);
+            }
         }
-        List<SystemTypeCapacity> result = new ArrayList<>(uniqueCombinations.values());
+        List<SystemTypeCapacity> result = new ArrayList<>(regularCombinations.values());
+        result.addAll(rectificationCombinations.values());
 
-        log.info("SystemType/totalSystemCapacity search completed, found {} unique combinations", result.size());
+        log.info("SystemType/totalSystemCapacity search completed, found {} regular and {} rectification unique combinations",
+                regularCombinations.size(), rectificationCombinations.size());
         log.trace("Exiting searchSystemTypeCapacity method");
         return result;
     }
@@ -164,6 +174,7 @@ public class FieldPlannerFacilityService {
         String systemType = null;
         String totalSystemCapacity = null;
         String customTotalSystemCapacity = null;
+        String rectificationSite = null;
         for (Field field : additionalFields.getFields()) {
             if ("systemType".equals(field.getKey())) {
                 systemType = field.getValue();
@@ -171,6 +182,8 @@ public class FieldPlannerFacilityService {
                 totalSystemCapacity = field.getValue();
             } else if ("customTotalSystemCapacity".equals(field.getKey())) {
                 customTotalSystemCapacity = field.getValue();
+            } else if ("rectificationSite".equals(field.getKey())) {
+                rectificationSite = field.getValue();
             }
         }
         if ("CUSTOM".equalsIgnoreCase(totalSystemCapacity)) {
@@ -182,6 +195,8 @@ public class FieldPlannerFacilityService {
         return SystemTypeCapacity.builder()
                 .systemType(systemType)
                 .totalSystemCapacity(totalSystemCapacity)
+                // "No" or absent -> regular site
+                .rectificationSite(rectificationSite != null && "yes".equalsIgnoreCase(rectificationSite.trim()))
                 .build();
     }
 
