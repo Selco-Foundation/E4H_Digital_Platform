@@ -115,8 +115,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const [selectedRejectReason, setSelectedRejectReason] = useState(null);
   const [selectedSendBackReason, setSelectedSendBackReason] = useState(null);
   const [selectedOutOfScopeReason, setSelectedOutOfScopeReason] = useState(null);
+  const [selectedOnHoldReason, setSelectedOnHoldReason] = useState(null);
   const state = Digit.ULBService.getStateId();
   const reopenReasonMenu = [t(`CS_REOPEN_OPTION_ONE`), t(`CS_REOPEN_OPTION_TWO`), t(`CS_REOPEN_OPTION_THREE`), t(`CS_REOPEN_OPTION_FOUR`), t(`CS_REOPEN_OPTION_FIVE`)];
+  const onHoldReasonMenu = [
+    { code: "ON_HOLD_REASON_FUND_UNAVAILABLE", localizedCode: t("ON_HOLD_REASON_FUND_UNAVAILABLE") },
+    { code: "ON_HOLD_REASON_OTHER", localizedCode: t("ON_HOLD_REASON_OTHER") },
+  ];
+  const isOnHoldCommentMandatory = selectedAction === "ON_HOLD" && selectedOnHoldReason?.code === "ON_HOLD_REASON_OTHER";
   const { isMdmsLoading, data: rejectSendBackOutOfScopeReasons } = Digit.Hooks.pgr.useMDMS(state, "Incident", [
     "RejectReasons",
     "SendBackReasons",
@@ -198,6 +204,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   function onSelectOutOfScopeReason(reason) {
     setSelectedOutOfScopeReason(reason);
     setComments("");
+  }
+  function onSelectOnHoldReason(reason) {
+    setSelectedOnHoldReason(reason);
   }
   const clearError = useCallback(() => {
     setError("");
@@ -294,6 +303,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               ? t("CS_COMMON_STATUS_UPDATE")
               : selectedAction === "SUBMIT"
               ? t("CS_COMMON_SUBMIT")
+              : selectedAction === "ON_HOLD"
+              ? t("CS_COMMON_ON_HOLD")
+              : selectedAction === "RESUME"
+              ? t("CS_COMMON_RESUME")
               : t("CS_COMMON_SPARE_PART_NEEDED")
           }
         />
@@ -328,6 +341,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           ? t("CS_COMMON_STATUS_UPDATE")
           : selectedAction === "SUBMIT"
           ? t("CS_COMMON_SUBMIT")
+          : selectedAction === "ON_HOLD"
+          ? t("CS_COMMON_ON_HOLD")
+          : selectedAction === "RESUME"
+          ? t("CS_COMMON_RESUME")
           : t("CS_COMMON_SPARE_PART_NEEDED")
       }
       actionSaveOnSubmit={() => {
@@ -340,13 +357,20 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             : selectedRejectReason?.additionalInputs?.[0]?.type === "textarea");
 
         const isCommentsMandatory =
-          (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "REVISE" || selectedAction === "STATUS_UPDATE") && !comments.trim();
+          (isTextareaAction ||
+            selectedAction === "RESOLVE" ||
+            selectedAction === "REVISE" ||
+            selectedAction === "STATUS_UPDATE" ||
+            isOnHoldCommentMandatory) &&
+          !comments.trim();
 
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
           { condition: selectedAction === "SENDBACK" && !selectedSendBackReason, message: "CS_MANDATORY_SENDBACK_REASON" },
           { condition: selectedAction === "MARK_OUT_OF_SCOPE" && !selectedOutOfScopeReason, message: "CS_MANDATORY_OUT_OF_SCOPE_REASON" },
+          { condition: selectedAction === "ON_HOLD" && !selectedOnHoldReason, message: "CS_MANDATORY_ON_HOLD_REASON" },
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
+          { condition: selectedAction === "ON_HOLD" && comments?.length > 500, message: "CS_ON_HOLD_COMMENT_LENGTH_LIMIT_EXCEED" },
           { condition: comments?.length > 1000, message: "CS_COMMENT_LENGTH_LIMIT_EXCEED" },
           { condition: ["REOPEN", "REOPEN_RMS"].includes(selectedAction) && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: !isRmsAssignmentToTechPoc && selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
@@ -395,7 +419,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           },
           {
             condition:
-              ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) &&
+              ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT", "ON_HOLD"].includes(selectedAction) &&
               !isTechPocRmsResolution &&
               uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
@@ -443,8 +467,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               }
             : null;
 
+        const onHoldReason = selectedAction === "ON_HOLD" ? { reason: selectedOnHoldReason?.code } : null;
+
         onAssign(
-          selectedAction === "SPARE_PART_NEEDED" || selectedAction === "STATUS_UPDATE"
+          selectedAction === "SPARE_PART_NEEDED" || selectedAction === "STATUS_UPDATE" || selectedAction === "ON_HOLD"
             ? currentOwner
             : selectedAction === "REVISE"
             ? oowActedVendor
@@ -456,7 +482,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           selectedSendBackReason,
           oowResponses,
           selectedOutOfScopeReason,
-          spcResponses
+          spcResponses,
+          onHoldReason
         );
       }}
       error={error}
@@ -511,6 +538,13 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           </React.Fragment>
         ) : null}
 
+        {selectedAction === "ON_HOLD" ? (
+          <React.Fragment>
+            <CardLabel>{t("CS_ON_HOLD_REASON")}*</CardLabel>
+            <Dropdown selected={selectedOnHoldReason} option={onHoldReasonMenu} optionKey={"localizedCode"} select={onSelectOnHoldReason} />
+          </React.Fragment>
+        ) : null}
+
         {!isRmsAssignmentToTechPoc && (selectedAction === "ASSIGN" || selectedAction === "REASSIGN") ? (
           <React.Fragment>
             <CardLabel>{t("CS_COMMON_EMPLOYEE_NAME")}*</CardLabel>
@@ -544,6 +578,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             selectedAction !== "REOPEN" &&
             selectedAction !== "REOPEN_RMS" &&
             selectedAction !== "APPROVE" &&
+            !(selectedAction === "ON_HOLD" && !isOnHoldCommentMandatory) &&
+            selectedAction !== "RESUME" &&
             !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0]?.type !== "textarea") &&
             !(selectedAction === "MARK_OUT_OF_SCOPE" && selectedOutOfScopeReason?.additionalInputs?.[0]?.type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
@@ -584,7 +620,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         )}
         {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) ? (
           <CardLabel>{t("CS_ACTION_QUOTATION_DOCUMENT")}*</CardLabel>
-        ) : ["RESOLVE", "STATUS_UPDATE", "SPARE_PART_NEEDED"].includes(selectedAction) && !isTechPocRmsResolution ? (
+        ) : ["RESOLVE", "STATUS_UPDATE", "SPARE_PART_NEEDED", "ON_HOLD"].includes(selectedAction) && !isTechPocRmsResolution ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}</CardLabel>
@@ -624,6 +660,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           <div style={{ marginTop: "6px", fontSize: "13px", color: "#36454F" }}>{t("RESOLVE_RESOLUTION_REPORT")}</div>
         ) : selectedAction === "SPARE_PART_NEEDED" ? (
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_SPARE_PART_NEEDED_FILE_LIMIT")}</CardLabelDesc>
+        ) : selectedAction === "ON_HOLD" ? (
+          <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_ON_HOLD_FILE_DESC")}</CardLabelDesc>
         ) : (
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_FILE_LIMIT")}</CardLabelDesc>
         )}
@@ -887,6 +925,8 @@ export const ComplaintDetails = (props) => {
       case "MARK_OUT_OF_SCOPE":
       case "STATUS_UPDATE":
       case "SUBMIT":
+      case "ON_HOLD":
+      case "RESUME":
         setPopup(true);
         setDisplayMenu(false);
         break;
@@ -904,7 +944,8 @@ export const ComplaintDetails = (props) => {
     selectedSendBackReason,
     oowResponses,
     selectedOutOfScopeReason,
-    spcResponses
+    spcResponses,
+    onHoldReason
   ) {
     setBlockUI(true);
     const response = await Digit.Complaint.assign(
@@ -919,7 +960,8 @@ export const ComplaintDetails = (props) => {
       selectedSendBackReason,
       oowResponses,
       selectedOutOfScopeReason,
-      spcResponses
+      spcResponses,
+      onHoldReason
     );
     if (!response?.IncidentWrappers) {
       setBlockUI(false);
@@ -955,6 +997,7 @@ export const ComplaintDetails = (props) => {
     const oowResponsesArray = Array.from(complaintDetails?.incident?.additionalDetail?.oowResponses || []).reverse();
     const outOfScopeReasons = Array.from(complaintDetails?.incident?.additionalDetail?.outOfScopeReason || []).reverse();
     const spcResponsesArray = Array.from(complaintDetails?.incident?.additionalDetail?.spcResponses || []).reverse();
+    const onHoldReasons = Array.from(complaintDetails?.incident?.additionalDetail?.onHoldReason || []).reverse();
 
     let arrNew = arr.map((abc) => {
       switch (abc.performedAction) {
@@ -972,6 +1015,8 @@ export const ComplaintDetails = (props) => {
           return { ...abc, outOfScopeReason: outOfScopeReasons.shift() };
         case "SPARE_PART_NEEDED":
           return { ...abc, spcResponses: spcResponsesArray.shift() };
+        case "ON_HOLD":
+          return { ...abc, onHoldReason: onHoldReasons.shift() };
         default:
           return abc;
       }
@@ -1126,6 +1171,12 @@ export const ComplaintDetails = (props) => {
           <div className="TLComments">
             <h3>{t("WF_OUT_OF_SCOPE_REASON")}</h3>
             <h1>{arrNew[index]?.outOfScopeReason}</h1>
+          </div>
+        )}
+        {checkpoint.performedAction === "ON_HOLD" && arrNew[index]?.onHoldReason?.reason && (
+          <div className="TLComments">
+            <h3>{t("WF_ON_HOLD_REASON")}</h3>
+            <h1>{t(arrNew[index].onHoldReason.reason)}</h1>
           </div>
         )}
         {comment ? (

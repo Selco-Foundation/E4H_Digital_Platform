@@ -96,6 +96,12 @@ public class IMConstants {
     public static final String PENDING_ASSIGNMENT_OUT_OF_WARRANTY = "PENDING_ASSIGNMENT_OUT_OF_WARRANTY";
 
     /**
+     * Exact status indicating the State SPOC has put an out-of-warranty case on hold. The SLA is
+     * paused here and starts afresh once the ticket leaves this state.
+     */
+    public static final String OUT_OF_WARRANTY_ON_HOLD = "OUT_OF_WARRANTY_ON_HOLD";
+
+    /**
      * Exact status indicating pending resolution for out-of-warranty cases.
      */
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
