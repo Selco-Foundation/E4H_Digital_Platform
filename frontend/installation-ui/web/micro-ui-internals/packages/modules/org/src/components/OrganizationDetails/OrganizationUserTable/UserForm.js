@@ -149,83 +149,42 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     setSavedAssignmentsToDisplay(filteredSavedAssignments.slice(pageOffset, Math.min(filteredSavedAssignments.length, pageOffset + pageSize)));
   }, [t, savedAssignments, debouncedJurisdictionSearch, pageOffset, pageSize]);
 
-  // Rule 3: dropping a role group strips it from every assignment scoped to it. A row left
-  // with nothing is meaningless rather than invalid, so it goes and the admin is told which.
+  /**
+   * Dropping a role group strips it from every assignment scoped to it.
+   *
+   * An assignment left with no groups is **not** removed. Empty means "applies to every role
+   * the user holds", so it widens - but that is the admin's decision to make, and the row says
+   * so in plain sight with an `All roles` chip. Deleting access on their behalf, or marking the
+   * row deleted for them, takes a choice away that they can make themselves with the bin.
+   *
+   * Pruning runs over the current lists rather than inside a setState updater: React runs an
+   * updater during the next render, so anything computed in there is not available to the rest
+   * of the effect. An assignment whose roles did not change is returned by identity, so the
+   * lists are only replaced on a real change and this effect cannot re-trigger itself.
+   */
   useEffect(() => {
     if (!mdmsResponse) return;
     /**
      * Don't prune while the form has reported no roles for a user who demonstrably has some.
-     *
      * selectedRoleGroups is seeded from createdUser in an effect above, and this one runs in
-     * the same commit, where the state is still its initial []. Pruning against that reads as
-     * "holds no roles at all" and deletes every narrowed jurisdiction the user has - which is
-     * what made a scoped row vanish from the table on open.
-     *
-     * A ref set in the seeding effect would not help: refs change synchronously, so this pass
-     * would see it set while the state it describes has not propagated yet.
-     *
-     * Clearing the roles field by hand lands here too, and is also skipped. That costs nothing:
-     * roles are mandatory, so a save in that state is rejected before scoping matters.
+     * the same commit, where the state is still its initial [] - pruning against that reads as
+     * "holds no roles at all" and would strip the scoping off every jurisdiction they have.
      */
     if (createdUser?.orgUserId && !selectedRoleGroups.length && createdUser.roles?.length) return;
 
-    /**
-     * Pruning runs over the current lists, not inside a setState updater.
-     *
-     * It used to build the lists inside the updaters and read `emptied` straight afterwards.
-     * React runs an updater during the next render, so `emptied` was still empty when the
-     * toast was decided - the warning could never appear. The updaters also returned `prev`
-     * whenever no whole row was dropped, which threw away rows whose roles had merely been
-     * trimmed: a group removed from the user stayed on the chip until the modal was reopened.
-     *
-     * An assignment whose roles did not change is returned by identity, so the lists are only
-     * replaced when something really changed and this effect cannot re-trigger itself.
-     */
-    const emptied = [];
-    const prune = (list) => list.reduce((kept, assignment) => {
+    const prune = (list) => list.map((assignment) => {
       const retained = pruneAssignmentGroups(assignment, selectedRoleGroups);
-      if (retained === null || retained.length === assignment.roles.length) {
-        kept.push(assignment);
-      } else if (retained.length) {
-        kept.push({ ...assignment, roles: retained });
-      } else {
-        // Named the way the table names it: the admin recognises "Gujarat", not "India_Gujarat".
-        const code = assignment.boundary || assignment.facility?.code || assignment.block?.code
-          || assignment.district?.code || assignment.state?.code || assignment.country?.code;
-        if (code) emptied.push(t(`Boundary_${code}`));
-        if (assignment.id) {
-          /**
-           * A stored jurisdiction is deactivated, not dropped.
-           *
-           * Leaving it out of the list does not delete it: the update path rebuilds from what
-           * is stored, so the row comes back - and the server then prunes the roles the user
-           * no longer holds, leaving it with none. No roles means "applies to every role", so
-           * removing a role would *widen* that grant from two roles to all of them.
-           *
-           * Marked deleted it is sent with isActive false and really goes. roles are cleared
-           * so that an undo produces a visibly unscoped row rather than one this effect would
-           * immediately empty again.
-           */
-          kept.push({ ...assignment, isDeleted: true, roles: [] });
-        }
-      }
-      return kept;
-    }, []);
+      if (retained === null || retained.length === assignment.roles.length) return assignment;
+      return { ...assignment, roles: retained };
+    });
 
-    const changed = (next, prev) => next.length !== prev.length || next.some((item, i) => item !== prev[i]);
+    const changed = (next, prev) => next.some((item, i) => item !== prev[i]);
 
     const nextAssignments = prune(assignments);
     if (changed(nextAssignments, assignments)) setAssignments(nextAssignments);
 
     const nextSaved = prune(savedAssignments);
     if (changed(nextSaved, savedAssignments)) setSavedAssignments(nextSaved);
-
-    if (emptied.length) {
-      setFormToast({
-        key: "warning",
-        label: `${t("ORG_ASSIGNMENT_REMOVED_WITH_ROLE")}: ${emptied.filter(Boolean).join(", ")}`,
-      });
-    }
   }, [selectedRoleGroups, mdmsResponse, assignments, savedAssignments]);
 
   const setAssignmentRoles = useCallback((index, roles) => {
