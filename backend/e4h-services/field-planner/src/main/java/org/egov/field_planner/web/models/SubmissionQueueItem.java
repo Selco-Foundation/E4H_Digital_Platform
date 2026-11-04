@@ -50,4 +50,10 @@ public class SubmissionQueueItem {
 
     @JsonProperty("lastActionTime")
     private Long lastActionTime;
+
+    @JsonProperty("onSiteQuestionnaire")
+    private String onSiteQuestionnaire;
+
+    @JsonProperty("onRemoteQuestionnaire")
+    private String onRemoteQuestionnaire;
 }
