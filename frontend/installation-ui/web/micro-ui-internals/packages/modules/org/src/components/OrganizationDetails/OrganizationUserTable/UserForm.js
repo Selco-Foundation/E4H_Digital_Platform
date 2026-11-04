@@ -193,6 +193,21 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         const code = assignment.boundary || assignment.facility?.code || assignment.block?.code
           || assignment.district?.code || assignment.state?.code || assignment.country?.code;
         if (code) emptied.push(t(`Boundary_${code}`));
+        if (assignment.id) {
+          /**
+           * A stored jurisdiction is deactivated, not dropped.
+           *
+           * Leaving it out of the list does not delete it: the update path rebuilds from what
+           * is stored, so the row comes back - and the server then prunes the roles the user
+           * no longer holds, leaving it with none. No roles means "applies to every role", so
+           * removing a role would *widen* that grant from two roles to all of them.
+           *
+           * Marked deleted it is sent with isActive false and really goes. roles are cleared
+           * so that an undo produces a visibly unscoped row rather than one this effect would
+           * immediately empty again.
+           */
+          kept.push({ ...assignment, isDeleted: true, roles: [] });
+        }
       }
       return kept;
     }, []);
