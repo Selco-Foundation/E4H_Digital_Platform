@@ -31,6 +31,14 @@ public class IncidentQueryBuilder {
                     "FROM public.eg_incident_v2 " +
                     "WHERE applicationstatus NOT IN (" +
                     "  " + CLOSED_STATUSES +
+                    "WHERE applicationstatus IN ( " +
+                    "  'PENDINGFORASSIGNMENT', " +
+                    "  'PENDING_ASSIGNMENT_SPARE_PART_NEEDED', " +
+                    "  'PENDING_ASSIGNMENT_OUT_OF_WARRANTY', " +
+                    "  'PENDING_RESOLUTION_SPARE_PART_NEEDED', " +
+                    "  'PENDING_RESOLUTION_OUT_OF_WARRANTY', " +
+                    "  'PENDINGRESOLUTION', " +
+                    "  'OUT_OF_WARRANTY_ON_HOLD' " +
                     ")";
 
     public String getStatusIncidentOccurence(String boundaryCode, List<Object> preparedStmtList) {
