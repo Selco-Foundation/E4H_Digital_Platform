@@ -90,4 +90,10 @@ public class InboxConstants {
     public static final List<String> POOLED_ROLES = Collections.unmodifiableList(Arrays.asList(
             "COMPLAINT_FACILITATOR_1",   // State SPOC
             "COMPLAINT_FACILITATOR_2")); // Tech POC
+
+    /**
+     * Statuses left out of the "assigned to me" inbox unless the client filters on them: the ticket is
+     * parked (e.g. funds unavailable) rather than waiting on the role that can act on it.
+     */
+    public static final List<String> ON_HOLD_STATUSES = Collections.singletonList("OUT_OF_WARRANTY_ON_HOLD");
 }

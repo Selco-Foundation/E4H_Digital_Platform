@@ -18,19 +18,43 @@
       {
         "name": "State",
         "type": "string",
-        "pattern": "^[a-zA-Z\\s]+$",
+        "pattern": "^[A-Za-z0-9\\s.,'&()\\[\\]/*_-]+$",
         "required": true
       },
       {
         "name": "District",
         "type": "string",
-        "pattern": "^[a-zA-Z\\s]+$",
+        "pattern": "^[A-Za-z0-9\\s.,'&()\\[\\]/*_-]+$",
         "required": true
       },
       {
         "name": "Block",
         "type": "string",
-        "pattern": "^[a-zA-Z\\s]+$",
+        "pattern": "^[A-Za-z0-9\\s.,'&()\\[\\]/*_-]+$",
+        "required": true
+      },
+      {
+        "name": "LGD State Code",
+        "type": "string",
+        "pattern": "^\\d{1,16}$",
+        "required": true
+      },
+      {
+        "name": "LGD District Code",
+        "type": "string",
+        "pattern": "^\\d{1,16}$",
+        "required": true
+      },
+      {
+        "name": "LGD Block Code",
+        "type": "string",
+        "pattern": "^\\d{1,16}$",
+        "required": true
+      },
+      {
+        "name": "LGD Block Tier",
+        "type": "string",
+        "pattern": "^(Block|Sub-district|Both)$",
         "required": true
       }
     ]

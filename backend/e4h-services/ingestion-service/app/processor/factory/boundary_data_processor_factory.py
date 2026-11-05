@@ -3,7 +3,7 @@ from app.ingest.boundary_excel_data_loader import BoundaryExcelDataLoader
 from app.ingest.boundary_hierarchy_validator import BoundaryHierarchyValidator
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.ingest.pattern_validator import PatternValidator
-from app.ingest.required_field_validator import RequiredFieldValidator
+from app.ingest.required_field_validator import RequiredColumnValidator, RequiredFieldValidator
 from app.processor.boundary_data_processor import BoundaryDataProcessor
 from app.schemas.request_info import RequestInfo
 from app.utils.mdms_client import MDMSClient
@@ -34,6 +34,7 @@ class BoundaryDataProcessorFactory:
             mdms_client = MDMSClient(mdms_url)
             try:
                 schema = mdms_client.fetch_boundary_schema(request_info)
+                validators.append(RequiredColumnValidator(schema.mdms[0].data.columns))
                 validators.append(RequiredFieldValidator(schema.mdms[0].data.columns))
                 validators.append(PatternValidator(schema.mdms[0].data.columns))
             except Exception as e:
