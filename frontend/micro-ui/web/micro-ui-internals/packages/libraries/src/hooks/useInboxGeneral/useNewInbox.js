@@ -38,14 +38,12 @@ const useNewInboxGeneral = ({ tenantId, ModuleCode, filters, middleware = [], co
   const client = useQueryClient();
   const { t } = useTranslation();
   const { fetchFilters, searchResponseKey, businessIdAliasForSearch, businessIdsParamForSearch } = inboxConfig()[ModuleCode];
-  const { userName, roles } = Digit.UserService.getUser()?.info || {};
-  const usesAssignedToMe = ModuleCode === "Incident" && roles?.some((role) =>
-    ["COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2"].includes(role.code)
-  );
-  // The home card passes an array; the inbox passes the selected username.
-  const assignee = Array.isArray(filters?.assignee) ? filters.assignee[0]?.code : filters?.assignee;
-  const assignedToMe = !!(usesAssignedToMe && assignee && assignee === userName);
-  const requestFilters = usesAssignedToMe ? { ...filters, assignee: undefined } : filters;
+  // What "assigned to me" means is the backend's decision, per role: a pooled role matches the
+  // statuses it can act on, every other role matches on being the assignee. The frontend only says
+  // which of the two views the user asked for, and never sends an assignee alongside it - that
+  // would be a second, weaker opinion about the same thing.
+  const assignedToMe = filters?.assignedToMe !== false;
+  const requestFilters = assignedToMe ? { ...filters, assignee: undefined } : filters;
   const { workflowFilters, searchFilters, limit, offset, sortBy, sortOrder, applicationNumber } = fetchFilters(requestFilters);
   // Only what the user actually narrowed to. The inbox derives the caller's real scope from HRMS
   // and intersects this with it, so sending the full login-time set would mean a session that

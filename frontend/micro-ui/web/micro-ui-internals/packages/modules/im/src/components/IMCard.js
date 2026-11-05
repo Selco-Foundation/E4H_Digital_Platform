@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { defaultsToAssignedToMe } from "../constants/Inbox";
 import { EmployeeModuleCard } from "@selco/digit-ui-react-components";
 
 
@@ -8,14 +9,13 @@ const IMCard = () => {
   const stateTenantId = Digit.ULBService.getStateId();
   const { t } = useTranslation();
   const [total, setTotal] = useState("-");
-  const { userName, roles } = Digit.UserService.getUser().info;
+  const { roles } = Digit.UserService.getUser().info;
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
-  const isTechPocUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
 
-  const isCodePresent = (array, codeToCheck) =>{
+  const isCodePresent = (array, codeToCheck) => {
     return array.some(item => item.code === codeToCheck);
   }
-  
+
   const { data, isLoading, isFetching, isSuccess } = Digit.Hooks.useNewInboxGeneral({
     tenantId: Digit.ULBService.getCurrentTenantId(),
     ModuleCode: "Incident",
@@ -23,14 +23,10 @@ const IMCard = () => {
       limit: 10,
       offset: 0,
       services: ["Incident"],
-      ...(isCodePresent(roles, "COMPLAINT_RESOLVER")
-        ? { assignee: [{ code: userName }] }
-        : isTechPocUser
-        ? {
-            assignee: [{ code: userName }],
-            wfStatus: "RMS_DEVICE_PENDING_TECH_POC,OUT_OF_WARRANTY_PENDING_TECH_POC,OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2",
-          }
-        : {}),
+      // The same default the inbox uses, so the card and the inbox agree. They did not before:
+      // State SPOC was missing from the branching here, so his card counted every ticket while
+      // his inbox showed only his.
+      assignedToMe: defaultsToAssignedToMe(roles),
     },
     config: {
       select: (data) => {

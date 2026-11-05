@@ -3,6 +3,7 @@ import { Dropdown, RadioButtons, ActionBar, RemoveableTag, RoundedLabel } from "
 import { ApplyFilterBar, CloseSvg } from "@selco/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
 import Status from "./Status";
+import { defaultsToAssignedToMe } from "../../constants/Inbox";
 
 let pgrQuery = {};
 let wfQuery = {};
@@ -32,7 +33,7 @@ const Filter = (props) => {
     [t]
   );
   const loggedInUser = Digit.UserService.getUser();
-  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === userName;
+  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignedToMe !== false;
 
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
@@ -64,10 +65,6 @@ const Filter = (props) => {
   const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["SystemFunctionality"]);
   const isNonHcrUser = Digit.UserService.getUser()?.info.roles.some(role => (role.code !== "EMPLOYEE" && role.code !== "COMPLAINANT"));
 
-const isCodePresent = (array, codeToCheck) =>{
-  return array.some(item => item.code === codeToCheck);
-}
-
   const [selectAssigned, setSelectedAssigned] = useState(
     isAssignedToMe ? assignedToOptions[0] : assignedToOptions[1]
   );
@@ -86,20 +83,9 @@ const isCodePresent = (array, codeToCheck) =>{
     }
   );
 
+  // No statuses, no assignee: the backend works out what "mine" means for whoever is asking.
   const [wfFilters, setWfFilters] = useState(
-    searchParams?.filters?.wfFilters ||
-      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") || isStateProgramManagerUser
-        ? { assignee: [{ code: userName }] }
-        : isTechPocUser
-        ? {
-            assignee: [{ code: userName }],
-            wfStatus: [
-              { code: "RMS_DEVICE_PENDING_TECH_POC" },
-              { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
-              { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
-            ],
-          }
-        : { assignee: [{ code: "" }] })
+    searchParams?.filters?.wfFilters || { assignedToMe: defaultsToAssignedToMe(loggedInUser?.info?.roles) }
   );
 
   const toQueryParams = useCallback((filters) => {
@@ -111,6 +97,10 @@ const isCodePresent = (array, codeToCheck) =>{
         if (params) {
           query[property] = params;
         }
+      } else if (typeof filters[property] === "boolean") {
+        // assignedToMe is a flag, not a list of codes. Without this it is dropped silently and
+        // the toggle never reaches the request.
+        query[property] = filters[property];
       }
     }
     return query;
@@ -235,20 +225,9 @@ const isCodePresent = (array, codeToCheck) =>{
   }, [pgrfilters, boundaryData, facilityOptions, t]);
 
   useEffect(() => {
-    const code = selectAssigned.code === "ASSIGNED_TO_ME" ? userName : "";
     setWfFilters((prevFilters) => ({
       ...prevFilters,
-      assignee: [{ code: code }],
-      ...(isTechPocUser &&
-        (code
-          ? {
-              wfStatus: [
-                { code: "RMS_DEVICE_PENDING_TECH_POC" },
-                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
-                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
-              ],
-            }
-          : { wfStatus: [] })),
+      assignedToMe: selectAssigned.code === "ASSIGNED_TO_ME",
     }));
   }, [selectAssigned]);
 
@@ -294,7 +273,12 @@ const isCodePresent = (array, codeToCheck) =>{
     }
     pgrQuery = currentPgrQuery;
     wfQuery = currentWfQuery;
-    count += wfFilters?.assignee?.length || 0;
+    // The assigned-to-me view is a filter the user can see is on, so it counts - but only when it
+    // is not the default for their role. Previously this counted the assignee array, which was
+    // always length 1 even when its code was "", so the badge was permanently one too high.
+    if (wfFilters?.assignedToMe !== defaultsToAssignedToMe(loggedInUser?.info?.roles)) {
+      count += 1;
+    }
 
     if (props.type !== "mobile") {
       handleFilterSubmit();
@@ -408,18 +392,7 @@ const isCodePresent = (array, codeToCheck) =>{
       isSystemFunctional: [],
       applicationStatus: []
     };
-    let wfRest = isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") || isStateProgramManagerUser
-      ? { assignee: [{ code: userName }] }
-      : isTechPocUser
-      ? {
-          assignee: [{ code: userName }],
-          wfStatus: [
-            { code: "RMS_DEVICE_PENDING_TECH_POC" },
-            { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
-            { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
-          ],
-        }
-      : { assignee: [{ code: "" }] };
+    let wfRest = { assignedToMe: defaultsToAssignedToMe(loggedInUser?.info?.roles) };
     setDistrictMenu([]);
     setBlockMenu([]);
     setFacilityMenu([]);
@@ -428,7 +401,7 @@ const isCodePresent = (array, codeToCheck) =>{
     pgrQuery = {};
     wfQuery = {};
     setSelectedAssigned(
-      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) || isStateProgramManagerUser || isTechPocUser ? assignedToOptions[0] : assignedToOptions[1]
+      defaultsToAssignedToMe(loggedInUser?.info?.roles) ? assignedToOptions[0] : assignedToOptions[1]
     );
   }
 
