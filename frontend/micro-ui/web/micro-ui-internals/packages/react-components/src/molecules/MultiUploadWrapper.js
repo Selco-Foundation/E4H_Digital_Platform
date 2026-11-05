@@ -296,11 +296,19 @@ const MultiUploadWrapper = ({
     }
     return acc;
   }, {});
-  // A custom message replaces every specific one, so show it once for all the files that failed
-  const errorEntries =
-    customErrorMsg && Object.keys(groupedErrors).length
-      ? [[customErrorMsg, [...new Set(Object.values(groupedErrors).flat())]]]
-      : Object.entries(groupedErrors);
+  // Errors that apply to the same files are listed together, so a file that is both of the wrong type
+  // and too large shows both messages followed by its name once. A custom message replaces every
+  // specific one, so it is shown once for all the files that failed.
+  const errorGroups = (customErrorMsg && Object.keys(groupedErrors).length
+    ? [[customErrorMsg, [...new Set(Object.values(groupedErrors).flat())]]]
+    : Object.entries(groupedErrors)
+  ).reduce((acc, [error, names]) => {
+    const key = names.join("|");
+    const group = acc.find((g) => g.key === key);
+    if (group) group.errors.push(error);
+    else acc.push({ key, errors: [error], names });
+    return acc;
+  }, []);
 
   useEffect(() => getFormState(state), [state]);
 
@@ -341,9 +349,11 @@ const MultiUploadWrapper = ({
         mediaIntent={mediaIntent}
       />
       <span style={{ display: "flex", flexDirection: "column" }}>
-        {errorEntries.map(([error, names]) => (
-          <span key={error} style={{ display: "flex", flexDirection: "column" }}>
-            <div className="validation-error">{t(error)}</div>
+        {errorGroups.map(({ key, errors, names }) => (
+          <span key={key} style={{ display: "flex", flexDirection: "column" }}>
+            {errors.map((error) => (
+              <div key={error} className="validation-error">{t(error)}</div>
+            ))}
             {names.some((name) => name) && (
               <div className="validation-error">{`${t("ES_COMMON_DOC_FILENAME")} : ${names.filter((name) => name).join(", ")}`}</div>
             )}
