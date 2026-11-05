@@ -83,7 +83,7 @@ public class InboxServiceV2 {
 
         applyVendorTenantScope(inboxRequest);
 
-        applyActionableStatusScope(inboxRequest);
+        List<String> heldBackOnHoldStatuses = applyActionableStatusScope(inboxRequest);
 
         // Récupération de la configuration
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
@@ -108,8 +108,17 @@ public class InboxServiceV2 {
         Integer totalCount = getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
         log.info("📊 Total applications count={}", totalCount);
 
+        // On Hold tickets are left out of the default bucket but still counted, so the On Hold status
+        // filter shows how many are waiting before it is selected
+        List<String> scopedStatuses = inboxRequest.getInbox().getProcessSearchCriteria().getStatus();
+        if (!heldBackOnHoldStatuses.isEmpty()) {
+            List<String> countedStatuses = new ArrayList<>(scopedStatuses);
+            countedStatuses.addAll(heldBackOnHoldStatuses);
+            inboxRequest.getInbox().getProcessSearchCriteria().setStatus(countedStatuses);
+        }
         List<HashMap<String, Object>> statusCountMap =
                 getStatusCountMap(inboxRequest, inboxQueryConfiguration.getIndex());
+        inboxRequest.getInbox().getProcessSearchCriteria().setStatus(scopedStatuses);
         log.debug("📌 Status count map={}", statusCountMap);
 
         Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
@@ -376,25 +385,30 @@ public class InboxServiceV2 {
      * Best-effort: a failure to reach the workflow engine leaves the request untouched, which is the
      * behaviour that predates this scoping. An inbox must not fail to load because a lookup failed.
      */
-    private void applyActionableStatusScope(InboxRequest inboxRequest) {
+    private List<String> applyActionableStatusScope(InboxRequest inboxRequest) {
         if (!Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe())) {
             log.debug("🗂️ assignedToMe not set, leaving the inbox scoped by jurisdiction alone");
-            return;
+            return Collections.emptyList();
         }
         try {
             List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
             if (CollectionUtils.isEmpty(businessServices)) {
                 log.warn("⚠️ No business services returned, leaving the requested statuses untouched");
-                return;
+                return Collections.emptyList();
             }
-            enrichActionableStatusesFromRole(inboxRequest, businessServices);
+            return enrichActionableStatusesFromRole(inboxRequest, businessServices);
         } catch (Exception e) {
             log.error("❌ Failed to scope the inbox to the caller's actionable statuses, "
                     + "leaving the requested statuses untouched", e);
+            return Collections.emptyList();
         }
     }
 
-    private void enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
+    /**
+     * @return the actionable On Hold statuses left out of the default bucket, so the status counts can
+     *         still report them
+     */
+    private List<String> enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
         ProcessInstanceSearchCriteria processCriteria = inboxRequest.getInbox().getProcessSearchCriteria();
         String tenantId = inboxRequest.getInbox().getTenantId();
         processCriteria.setTenantId(tenantId);
@@ -419,10 +433,15 @@ public class InboxServiceV2 {
                         .distinct()
                         .collect(Collectors.toList());
             	inboxRequest.getInbox().getProcessSearchCriteria().setStatus(activeStatuses);
+                return StatusIdNameMap.values().stream()
+                        .filter(ON_HOLD_STATUSES::contains)
+                        .distinct()
+                        .collect(Collectors.toList());
             }
         }else{
             inboxRequest.getInbox().getProcessSearchCriteria().setStatus(new ArrayList<>());
         }
+        return Collections.emptyList();
     }
 
     public Integer getTotalApplicationCount(InboxRequest inboxRequest, String indexName) {
