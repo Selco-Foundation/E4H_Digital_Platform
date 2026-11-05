@@ -662,6 +662,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_SPARE_PART_NEEDED_FILE_LIMIT")}</CardLabelDesc>
         ) : selectedAction === "ON_HOLD" ? (
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_ON_HOLD_FILE_DESC")}</CardLabelDesc>
+        ) : selectedAction === "RESUME" ? (
+          <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_RESUME_FILE_DESC")}</CardLabelDesc>
         ) : (
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_FILE_LIMIT")}</CardLabelDesc>
         )}
