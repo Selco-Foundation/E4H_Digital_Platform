@@ -61,11 +61,18 @@ class InboxJurisdictionClauseTest {
         return inboxRequest;
     }
 
+    /** A scope holding one role, spelled out because Map.of is Java 9 and this module targets 8. */
+    private <V> Map<String, V> singleScope(String roleCode, V value) {
+        Map<String, V> scope = new LinkedHashMap<>();
+        scope.put(roleCode, value);
+        return scope;
+    }
+
     /** Every role acts on something, which is the ordinary case. */
     private Map<String, Set<String>> actsOnAnything(String... roleCodes) {
         Map<String, Set<String>> statuses = new LinkedHashMap<>();
         for (String roleCode : roleCodes) {
-            statuses.put(roleCode, new HashSet<>(List.of("SOME_STATUS")));
+            statuses.put(roleCode, new HashSet<>(Arrays.asList("SOME_STATUS")));
         }
         return statuses;
     }
@@ -111,10 +118,10 @@ class InboxJurisdictionClauseTest {
     @Test
     void narrowingToOneOfTwoHeldStatesKeepsBothClauses() {
         when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new LinkedHashMap<>(Map.of("COMPLAINT_FACILITATOR_1", at("state", "S1", "S2"))));
+                .thenReturn(singleScope("COMPLAINT_FACILITATOR_1", at("state", "S1", "S2")));
 
         Map<String, Object> narrowing = new HashMap<>();
-        narrowing.put("state", List.of("S1"));
+        narrowing.put("state", Arrays.asList("S1"));
 
         List<Map<String, Object>> clauses = build(narrowing);
 
@@ -122,11 +129,11 @@ class InboxJurisdictionClauseTest {
         assertEquals(2, clauses.size(), "expected a scope clause and a narrowing clause");
 
         Map<String, List<String>> scope = termsIn(clauses.get(0), new HashMap<>());
-        assertEquals(Set.of("S1", "S2"),
+        assertEquals(new HashSet<>(Arrays.asList("S1", "S2")),
                 new HashSet<>(scope.get("Data.incident.boundary.stateCode.keyword")));
 
         Map<String, List<String>> narrowed = termsIn(clauses.get(1), new HashMap<>());
-        assertEquals(List.of("S1"), narrowed.get("Data.incident.boundary.stateCode.keyword"));
+        assertEquals(Arrays.asList("S1"), narrowed.get("Data.incident.boundary.stateCode.keyword"));
     }
 
     @Test
@@ -134,16 +141,16 @@ class InboxJurisdictionClauseTest {
         // Holds a state; narrows to a facility inside it. Both clauses stand, and a ticket at that
         // facility carries both codes, which is why level-matching works without expansion.
         when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new LinkedHashMap<>(Map.of("COMPLAINT_FACILITATOR_2", at("state", "S1"))));
+                .thenReturn(singleScope("COMPLAINT_FACILITATOR_2", at("state", "S1")));
 
         Map<String, Object> narrowing = new HashMap<>();
-        narrowing.put("facility", List.of("F1"));
+        narrowing.put("facility", Arrays.asList("F1"));
 
         List<Map<String, Object>> clauses = build(narrowing);
 
-        assertEquals(List.of("S1"),
+        assertEquals(Arrays.asList("S1"),
                 termsIn(clauses.get(0), new HashMap<>()).get("Data.incident.boundary.stateCode.keyword"));
-        assertEquals(List.of("F1"),
+        assertEquals(Arrays.asList("F1"),
                 termsIn(clauses.get(1), new HashMap<>()).get("Data.incident.boundary.facilityCode.keyword"));
     }
 
@@ -173,8 +180,8 @@ class InboxJurisdictionClauseTest {
         when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any())).thenReturn(scope);
 
         Map<String, Set<String>> statuses = new LinkedHashMap<>();
-        statuses.put("COMPLAINT_FACILITATOR_1", new HashSet<>(List.of("PENDING_AT_SPOC")));
-        statuses.put("COMPLAINT_FACILITATOR_2", new HashSet<>(List.of("PENDING_AT_TECH_POC")));
+        statuses.put("COMPLAINT_FACILITATOR_1", new HashSet<>(Arrays.asList("PENDING_AT_SPOC")));
+        statuses.put("COMPLAINT_FACILITATOR_2", new HashSet<>(Arrays.asList("PENDING_AT_TECH_POC")));
 
         List<Map<String, Object>> clauses = build(new HashMap<>(), statuses, true);
 
@@ -195,7 +202,7 @@ class InboxJurisdictionClauseTest {
     @Test
     void withoutAssignedToMeTheRolePairCarriesBoundariesOnly() {
         when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new LinkedHashMap<>(Map.of("COMPLAINT_FACILITATOR_1", at("state", "S1"))));
+                .thenReturn(singleScope("COMPLAINT_FACILITATOR_1", at("state", "S1")));
 
         List<Map<String, Object>> clauses = build(new HashMap<>(),
                 actsOnAnything("COMPLAINT_FACILITATOR_1"), false);
@@ -221,13 +228,13 @@ class InboxJurisdictionClauseTest {
         List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
         assertEquals(1, perRole.size(), "only the role that acts on incidents contributes");
         Map<String, List<String>> terms = termsIn(clauses.get(0), new HashMap<>());
-        assertEquals(List.of("STATE_1"), terms.get("Data.incident.boundary.stateCode.keyword"));
+        assertEquals(Arrays.asList("STATE_1"), terms.get("Data.incident.boundary.stateCode.keyword"));
     }
 
     @Test
     void holdingGroundButNoRelevantRoleMatchesNothing() {
         when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new LinkedHashMap<>(Map.of("FACILITY_ADMIN", at("state", "STATE_2"))));
+                .thenReturn(singleScope("FACILITY_ADMIN", at("state", "STATE_2")));
 
         List<Map<String, Object>> clauses = build(new HashMap<>(), actsOnAnything(), false);
 
@@ -241,10 +248,10 @@ class InboxJurisdictionClauseTest {
         // useNewInbox.js sends {country: ["-"]} when session storage is empty. Taken literally it
         // would AND an impossible country code against everything.
         when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new LinkedHashMap<>(Map.of("COMPLAINT_FACILITATOR_1", at("state", "S1"))));
+                .thenReturn(singleScope("COMPLAINT_FACILITATOR_1", at("state", "S1")));
 
         Map<String, Object> narrowing = new HashMap<>();
-        narrowing.put("country", List.of("-"));
+        narrowing.put("country", Arrays.asList("-"));
 
         List<Map<String, Object>> clauses = build(narrowing);
 
@@ -258,12 +265,12 @@ class InboxJurisdictionClauseTest {
         when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any())).thenReturn(null);
 
         Map<String, Object> narrowing = new HashMap<>();
-        narrowing.put("state", List.of("S1"));
+        narrowing.put("state", Arrays.asList("S1"));
 
         List<Map<String, Object>> clauses = build(narrowing);
 
         assertEquals(1, clauses.size(), "no scope clause, but the narrowing still applies");
-        assertEquals(List.of("S1"),
+        assertEquals(Arrays.asList("S1"),
                 termsIn(clauses.get(0), new HashMap<>()).get("Data.incident.boundary.stateCode.keyword"));
     }
 
