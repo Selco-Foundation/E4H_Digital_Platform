@@ -412,7 +412,13 @@ public class InboxServiceV2 {
                 });
                 inboxRequest.getInbox().getProcessSearchCriteria().setStatus(actionableStatusUuid);
             } else {
-            	inboxRequest.getInbox().getProcessSearchCriteria().setStatus(new ArrayList<>(StatusIdNameMap.values()));
+                // On Hold tickets are parked, not waiting on the State SPOC: keep them out of the default
+                // bucket. They still come back when the On Hold status is asked for explicitly (branch above).
+                List<String> activeStatuses = StatusIdNameMap.values().stream()
+                        .filter(status -> !ON_HOLD_STATUSES.contains(status))
+                        .distinct()
+                        .collect(Collectors.toList());
+            	inboxRequest.getInbox().getProcessSearchCriteria().setStatus(activeStatuses);
             }
         }else{
             inboxRequest.getInbox().getProcessSearchCriteria().setStatus(new ArrayList<>());
