@@ -1,6 +1,8 @@
 package org.egov.inbox.repository.builder.V2;
 
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.request.Role;
+import org.egov.common.contract.request.User;
 import org.egov.inbox.util.RoleJurisdictionScope;
 import org.egov.inbox.web.model.InboxSearchCriteria;
 import org.egov.inbox.web.model.InboxRequest;
@@ -48,18 +50,36 @@ class InboxJurisdictionClauseTest {
         nameToPathMap.put("district", "Data.incident.boundary.districtCode.keyword");
         nameToPathMap.put("block", "Data.incident.boundary.blockCode.keyword");
         nameToPathMap.put("facility", "Data.incident.boundary.facilityCode.keyword");
-        nameToPathMap.put("status", "Data.incident.applicationStatus.keyword");
+        nameToPathMap.put("status", STATUS_PATH);
+        nameToPathMap.put("assignee", ASSIGNEE_PATH);
     }
 
     private InboxRequest request(Map<String, Set<String>> statusesByRole, boolean assignedToMe) {
+        return request(statusesByRole, assignedToMe, new String[0]);
+    }
+
+    private InboxRequest request(Map<String, Set<String>> statusesByRole, boolean assignedToMe,
+                                 String... heldRoles) {
         InboxRequest inboxRequest = new InboxRequest();
-        inboxRequest.setRequestInfo(new RequestInfo());
+        RequestInfo requestInfo = new RequestInfo();
+        User userInfo = new User();
+        userInfo.setUserName("me");
+        List<Role> roles = new ArrayList<>();
+        for (String code : heldRoles) {
+            roles.add(Role.builder().code(code).build());
+        }
+        userInfo.setRoles(roles);
+        requestInfo.setUserInfo(userInfo);
+        inboxRequest.setRequestInfo(requestInfo);
         InboxSearchCriteria inbox = new InboxSearchCriteria();
         inbox.setActionableStatusesByRole(statusesByRole);
         inbox.setAssignedToMe(assignedToMe);
         inboxRequest.setInbox(inbox);
         return inboxRequest;
     }
+
+    private static final String STATUS_PATH = "Data.incident.applicationStatus.keyword";
+    private static final String ASSIGNEE_PATH = "Data.currentProcessInstance.assignes.userName.keyword";
 
     /** A scope holding one role, spelled out because Map.of is Java 9 and this module targets 8. */
     private <V> Map<String, V> singleScope(String roleCode, V value) {
@@ -92,9 +112,33 @@ class InboxJurisdictionClauseTest {
     private List<Map<String, Object>> build(Map<String, Object> narrowing,
                                             Map<String, Set<String>> statusesByRole,
                                             boolean assignedToMe) {
+        return build(narrowing, statusesByRole, assignedToMe, new String[0]);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> build(Map<String, Object> narrowing,
+                                            Map<String, Set<String>> statusesByRole,
+                                            boolean assignedToMe, String... heldRoles) {
         return (List<Map<String, Object>>) ReflectionTestUtils.invokeMethod(
-                queryBuilder, "buildJurisdictionClauses", request(statusesByRole, assignedToMe),
-                narrowing, nameToPathMap);
+                queryBuilder, "buildJurisdictionClauses",
+                request(statusesByRole, assignedToMe, heldRoles), narrowing, nameToPathMap);
+    }
+
+    /** Every `term` clause in a subtree, as path -> value. */
+    @SuppressWarnings("unchecked")
+    private Map<String, String> termIn(Object node, Map<String, String> into) {
+        if (node instanceof Map) {
+            ((Map<String, Object>) node).forEach((key, value) -> {
+                if ("term".equals(key) && value instanceof Map) {
+                    ((Map<String, Object>) value).forEach((path, v) -> into.put(path, String.valueOf(v)));
+                } else {
+                    termIn(value, into);
+                }
+            });
+        } else if (node instanceof List) {
+            ((List<Object>) node).forEach(item -> termIn(item, into));
+        }
+        return into;
     }
 
     /** Every `terms` clause in a subtree, as path -> codes. */
@@ -183,7 +227,8 @@ class InboxJurisdictionClauseTest {
         statuses.put("COMPLAINT_FACILITATOR_1", new HashSet<>(Arrays.asList("PENDING_AT_SPOC")));
         statuses.put("COMPLAINT_FACILITATOR_2", new HashSet<>(Arrays.asList("PENDING_AT_TECH_POC")));
 
-        List<Map<String, Object>> clauses = build(new HashMap<>(), statuses, true);
+        List<Map<String, Object>> clauses = build(new HashMap<>(), statuses, true,
+                "COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2");
 
         List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
         assertEquals(2, perRole.size());
@@ -241,6 +286,76 @@ class InboxJurisdictionClauseTest {
         assertEquals(1, clauses.size());
         assertTrue(((Map<String, Object>) clauses.get(0).get("bool")).containsKey("must_not"),
                 "a jurisdiction under an irrelevant role is not visibility");
+    }
+
+    // --- what "mine" means per role ---
+
+    @Test
+    void aCrmUserGetsTheAssessorPairingAndNoUnrestrictedBranch() {
+        // CRM holds COMPLAINT_ASSESSOR (pooled) and COMPLAINANT (not). The complainant role must
+        // not contribute a boundaries-only branch: that branch would be unrestricted and would
+        // widen the query back to the user's whole jurisdiction, undoing the assessor pairing.
+        Map<String, Map<String, Set<String>>> scope = new LinkedHashMap<>();
+        scope.put("COMPLAINT_ASSESSOR", at("state", "S1"));
+        scope.put("COMPLAINANT", at("state", "S1"));
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any())).thenReturn(scope);
+
+        Map<String, Set<String>> statuses = new LinkedHashMap<>();
+        statuses.put("COMPLAINT_ASSESSOR", new HashSet<>(Arrays.asList("PENDINGFORASSIGNMENT")));
+        statuses.put("COMPLAINANT", new HashSet<>(Arrays.asList("RESOLVED")));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(), statuses, true,
+                "COMPLAINT_ASSESSOR", "COMPLAINANT");
+
+        List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
+        assertEquals(2, perRole.size());
+        for (Object role : perRole) {
+            List<Object> pair = (List<Object>) ((Map<String, Object>) ((Map<String, Object>) role).get("bool")).get("must");
+            assertEquals(2, pair.size(), "every branch is boundaries AND a mine test, never boundaries alone");
+        }
+        // the assessor branch narrows by status, the complainant branch by assignee
+        Map<String, List<String>> terms = termsIn(clauses.get(0), new HashMap<>());
+        assertEquals(Arrays.asList("PENDINGFORASSIGNMENT"), terms.get(STATUS_PATH));
+        assertEquals("me", termIn(clauses.get(0), new HashMap<>()).get(ASSIGNEE_PATH));
+    }
+
+    @Test
+    void anHcrUserIsMatchedByAssignee() {
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(singleScope("COMPLAINANT", at("state", "S1")));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(),
+                actsOnAnything("COMPLAINANT"), true, "COMPLAINANT");
+
+        assertEquals("me", termIn(clauses.get(0), new HashMap<>()).get(ASSIGNEE_PATH));
+        assertNull(termsIn(clauses.get(0), new HashMap<>()).get(STATUS_PATH),
+                "a complainant is not matched by the statuses they can act on");
+    }
+
+    @Test
+    void aVendorIsMatchedByAssigneeWithNoStatusClamp() {
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(singleScope("COMPLAINT_RESOLVER", at("state", "S1")));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(),
+                actsOnAnything("COMPLAINT_RESOLVER"), true, "COMPLAINT_RESOLVER");
+
+        assertEquals("me", termIn(clauses.get(0), new HashMap<>()).get(ASSIGNEE_PATH));
+        assertNull(termsIn(clauses.get(0), new HashMap<>()).get(STATUS_PATH),
+                "no status clamp, so the vendor's own closed tickets stay visible");
+    }
+
+    @Test
+    void identitySurvivesAScopeThatFailedOpen() {
+        // HRMS unreachable: boundaries fail open, but a vendor must not thereby see every ticket
+        // in the tenant - the browser no longer sends an assignee of its own.
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any())).thenReturn(null);
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(),
+                actsOnAnything("COMPLAINT_RESOLVER"), true, "COMPLAINT_RESOLVER");
+
+        assertEquals(1, clauses.size(), "no scope clause, but the identity clause stands");
+        assertEquals("me", termIn(clauses.get(0), new HashMap<>()).get(ASSIGNEE_PATH));
     }
 
     @Test

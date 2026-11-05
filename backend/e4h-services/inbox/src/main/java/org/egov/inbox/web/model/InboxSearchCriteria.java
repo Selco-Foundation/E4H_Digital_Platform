@@ -48,6 +48,17 @@ public class InboxSearchCriteria {
     private java.util.Map<String, java.util.Set<String>> actionableStatusesByRole;
 
     /**
+     * Statuses a pooled role can act on but which are kept out of its default "mine" bucket.
+     *
+     * On Hold tickets are parked rather than waiting on anyone, so they do not belong in the
+     * default list - but they must still be counted, or the On Hold filter shows nothing until it
+     * is selected. The count query clears this for the duration of its build, exactly as it does
+     * the client's own status filter.
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private java.util.Set<String> mineExcludedStatuses;
+
+    /**
      * Asks for the tickets waiting on the caller rather than everything in their jurisdiction.
      * <p>
      * State SPOC and Tech POC tickets carry no assignee - im-services pools those states so that any

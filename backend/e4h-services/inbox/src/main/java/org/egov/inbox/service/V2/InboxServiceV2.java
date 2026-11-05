@@ -83,7 +83,7 @@ public class InboxServiceV2 {
 
         applyVendorTenantScope(inboxRequest);
 
-        List<String> heldBackOnHoldStatuses = applyActionableStatusScope(inboxRequest);
+        applyActionableStatusScope(inboxRequest);
 
         // Récupération de la configuration
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
@@ -108,17 +108,12 @@ public class InboxServiceV2 {
         Integer totalCount = getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
         log.info("📊 Total applications count={}", totalCount);
 
-        // On Hold tickets are left out of the default bucket but still counted, so the On Hold status
-        // filter shows how many are waiting before it is selected
-        List<String> scopedStatuses = inboxRequest.getInbox().getProcessSearchCriteria().getStatus();
-        if (!heldBackOnHoldStatuses.isEmpty()) {
-            List<String> countedStatuses = new ArrayList<>(scopedStatuses);
-            countedStatuses.addAll(heldBackOnHoldStatuses);
-            inboxRequest.getInbox().getProcessSearchCriteria().setStatus(countedStatuses);
-        }
+        // On Hold is counted even though it is kept out of the default bucket, so the filter shows
+        // how many are waiting before it is selected. getStatusCountQuery does the widening now -
+        // it already suppresses the client's status filter the same way, and doing it here would
+        // not reach the per-role clause that actually does the scoping.
         List<HashMap<String, Object>> statusCountMap =
                 getStatusCountMap(inboxRequest, inboxQueryConfiguration.getIndex());
-        inboxRequest.getInbox().getProcessSearchCriteria().setStatus(scopedStatuses);
         log.debug("📌 Status count map={}", statusCountMap);
 
         Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
@@ -362,39 +357,32 @@ public class InboxServiceV2 {
 
 
     /**
-     * Narrows the inbox to the statuses the caller's roles can actually act on, when the client asked
-     * for the tickets waiting on them.
+     * Resolves, per role, what the caller is entitled to see, and hands it to the query builder.
+     *
+     * This no longer narrows anything itself. It used to overwrite
+     * {@code processSearchCriteria.status} with the caller's actionable statuses, which meant the
+     * status filter the user had chosen in the UI and the statuses the backend derived were fighting
+     * over one field - and an empty overlap silently produced an empty inbox.
      * <p>
-     * A State SPOC or Tech POC ticket carries no assignee - im-services pools those states so that any
-     * holder of the role can pick the ticket up - so "assigned to me" cannot mean "assigned to my
-     * uuid". It means the ticket sits in a state one of my roles can act on. The roles on each state's
-     * actions are, by definition, the roles that state is waiting on, which is what
-     * {@link #enrichActionableStatusesFromRole} reads off the business service. The client therefore
-     * sends {@code assignedToMe} and the backend works out what that means for whoever is asking,
-     * rather than the client guessing a uuid that is not on the ticket.
+     * Instead the per-role map goes to {@code InboxQueryBuilder}, which pairs each role's own test
+     * with that role's own boundaries, and the user's chosen statuses stay a clause of their own.
+     * Elasticsearch intersects the two, exactly as it already does for the jurisdiction scope and the
+     * client's boundary narrowing.
      * <p>
-     * Without the flag the inbox is the "all tickets" view: jurisdiction alone decides what comes back,
-     * in whatever states the client asked for.
+     * Resolved on every request, not only for "waiting on me", because it also decides which of the
+     * caller's roles have any business in this inbox at all: a Facility Admin in one state who is a
+     * Complaint Assessor in another holds a jurisdiction in both, but only the assessor role acts on
+     * incidents, so only that state's tickets belong here.
      * <p>
-     * Jurisdiction applies either way - it is the {@code jurisdictionSearchCriteria} the client already
-     * sends, which this never touches.
-     * <p>
-     * Every count on the response (total, status map, nearing SLA) rebuilds its query from the same
-     * request, so narrowing it here covers them as well as the items.
-     * <p>
-     * Best-effort: a failure to reach the workflow engine leaves the request untouched, which is the
-     * behaviour that predates this scoping. An inbox must not fail to load because a lookup failed.
+     * Best-effort: a failure to reach the workflow engine leaves the request untouched. An inbox must
+     * not fail to load because a lookup failed.
      */
-    /**
-     * @return the actionable On Hold statuses held back from the default bucket, so the status
-     *         counts can still report them
-     */
-    private List<String> applyActionableStatusScope(InboxRequest inboxRequest) {
+    private void applyActionableStatusScope(InboxRequest inboxRequest) {
         try {
             List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
             if (CollectionUtils.isEmpty(businessServices)) {
                 log.warn("⚠️ No business services returned, leaving the requested statuses untouched");
-                return Collections.emptyList();
+                return;
             }
 
             // Resolved for every request, not only for "waiting on me", because it decides which of
@@ -405,57 +393,17 @@ public class InboxServiceV2 {
                     workflowService.getActionableStatusesByRole(inboxRequest.getRequestInfo(), businessServices,
                             inboxRequest.getInbox().getProcessSearchCriteria()));
 
-            if (!Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe())) {
-                log.debug("🗂️ assignedToMe not set, leaving the requested statuses untouched");
-                return Collections.emptyList();
+            // An On Hold ticket is parked rather than waiting on the role that could act on it, so
+            // it stays out of the default bucket - but only while the user has not asked for a
+            // status themselves. Asking for On Hold explicitly must still return them, which is why
+            // this is skipped the moment the client sends a status of its own.
+            if (CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus())) {
+                inboxRequest.getInbox().setMineExcludedStatuses(new HashSet<>(ON_HOLD_STATUSES));
             }
-            return enrichActionableStatusesFromRole(inboxRequest, businessServices);
         } catch (Exception e) {
             log.error("❌ Failed to scope the inbox to the caller's actionable statuses, "
                     + "leaving the requested statuses untouched", e);
-            return Collections.emptyList();
         }
-    }
-
-    /**
-     * @return the actionable On Hold statuses left out of the default bucket, so the status counts can
-     *         still report them
-     */
-    private List<String> enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
-        ProcessInstanceSearchCriteria processCriteria = inboxRequest.getInbox().getProcessSearchCriteria();
-        String tenantId = inboxRequest.getInbox().getTenantId();
-        processCriteria.setTenantId(tenantId);
-
-        log.debug("Retrieving actionable statuses for role");
-        HashMap<String, String> StatusIdNameMap = workflowService.getActionableStatusesForRole(inboxRequest.getRequestInfo(), businessServices,
-                inboxRequest.getInbox().getProcessSearchCriteria());
-        log.info(StatusIdNameMap.toString());
-        List<String> actionableStatusUuid = new ArrayList<>();
-        if (StatusIdNameMap.values().size() > 0) {
-            if (!CollectionUtils.isEmpty(processCriteria.getStatus())) {
-                processCriteria.getStatus().forEach(statusUuid -> {
-                    if(StatusIdNameMap.values().contains(statusUuid)){
-                        actionableStatusUuid.add(statusUuid);
-                    }
-                });
-                inboxRequest.getInbox().getProcessSearchCriteria().setStatus(actionableStatusUuid);
-            } else {
-                // On Hold tickets are parked, not waiting on the State SPOC: keep them out of the default
-                // bucket. They still come back when the On Hold status is asked for explicitly (branch above).
-                List<String> activeStatuses = StatusIdNameMap.values().stream()
-                        .filter(status -> !ON_HOLD_STATUSES.contains(status))
-                        .distinct()
-                        .collect(Collectors.toList());
-            	inboxRequest.getInbox().getProcessSearchCriteria().setStatus(activeStatuses);
-                return StatusIdNameMap.values().stream()
-                        .filter(ON_HOLD_STATUSES::contains)
-                        .distinct()
-                        .collect(Collectors.toList());
-            }
-        }else{
-            inboxRequest.getInbox().getProcessSearchCriteria().setStatus(new ArrayList<>());
-        }
-        return Collections.emptyList();
     }
 
     public Integer getTotalApplicationCount(InboxRequest inboxRequest, String indexName) {

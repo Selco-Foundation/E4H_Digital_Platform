@@ -218,25 +218,21 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                                                                Map<String, String> nameToPathMap) {
         List<Map<String, Object>> clauses = new ArrayList<>();
 
+        Map<String, Set<String>> statusesByRole = inboxRequest.getInbox().getActionableStatusesByRole();
+        boolean onlyWaitingOnMe = Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe());
+
         Map<String, Map<String, Set<String>>> scopeByRole =
                 roleJurisdictionScope.resolve(inboxRequest.getRequestInfo());
         if (scopeByRole == null) {
-            // Fail open: HRMS unreachable must not empty every inbox. The narrowing below still
-            // applies, so the caller keeps whatever filter they chose.
+            // Fail open on *boundaries*: HRMS unreachable must not empty every inbox. Identity is
+            // not part of that bargain - the "mine" clause below is emitted either way.
             log.warn("No resolvable jurisdiction scope; the inbox is not scoped for this request");
         } else if (scopeByRole.isEmpty()) {
             // A real answer, unlike null: the caller holds nothing, so they see nothing.
             log.info("Caller holds no jurisdiction for any role; returning an impossible clause");
-            clauses.add(Collections.singletonMap("bool",
-                    Collections.singletonMap("must_not", Collections.singletonMap("match_all",
-                            new HashMap<>()))));
+            clauses.add(impossibleClause());
             return clauses;
         } else {
-            Map<String, Set<String>> statusesByRole =
-                    inboxRequest.getInbox().getActionableStatusesByRole();
-            String statusPath = nameToPathMap.get("status");
-            boolean onlyWaitingOnMe = Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe());
-
             List<Object> perRoleClauses = new ArrayList<>();
             scopeByRole.forEach((roleCode, byLevel) -> {
                 /*
@@ -245,11 +241,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                  * Holding a jurisdiction is not the same as having business here. A Facility Admin
                  * in STATE_2 who is also a Complaint Assessor in STATE_1 holds a jurisdiction in
                  * both, but only the assessor role appears in the incident workflow - so only
-                 * STATE_1 belongs in this inbox. Letting the Facility Admin grant through would
-                 * list STATE_2 tickets the user can do nothing with.
-                 *
-                 * This is deliberately strict: a null map means the lookup failed, and the whole
-                 * scope is skipped rather than silently widened to every role that holds ground.
+                 * STATE_1 belongs in this inbox.
                  */
                 if (statusesByRole == null || CollectionUtils.isEmpty(statusesByRole.get(roleCode))) {
                     log.debug("Role {} acts on nothing in this workflow; it grants no inbox visibility",
@@ -265,15 +257,25 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 boundariesBool.put("should", levelClauses);
                 boundariesBool.put("minimum_should_match", 1);
 
-                // One pair per role: this role's boundaries and, when the caller asked for the work
-                // waiting on them, this role's own statuses too. Pairing is the point - a Tech POC
-                // in one state must not be offered Tech POC work in another, which is exactly what
-                // a flat union of statuses crossed with a flat union of boundaries allows.
                 List<Object> pair = new ArrayList<>();
                 pair.add(Collections.singletonMap("bool", boundariesBool));
-                if (onlyWaitingOnMe && statusPath != null) {
-                    pair.add(Collections.singletonMap("terms", Collections.singletonMap(statusPath,
-                            new ArrayList<>(statusesByRole.get(roleCode)))));
+
+                /*
+                 * Paired with this role's own "mine" test, never a bare boundary branch.
+                 *
+                 * The pairing is what stops a Tech POC in one state being offered Tech POC work in
+                 * another. The "never bare" part matters just as much: a CRM user holds
+                 * COMPLAINT_ASSESSOR and COMPLAINANT, and if the complainant role contributed
+                 * boundaries alone that branch would be unrestricted and would widen the whole
+                 * query back to their entire jurisdiction, undoing the assessor pairing.
+                 */
+                if (onlyWaitingOnMe) {
+                    Map<String, Object> mine = mineClauseForRole(roleCode, statusesByRole,
+                            nameToPathMap, inboxRequest);
+                    if (mine == null) {
+                        return;
+                    }
+                    pair.add(mine);
                 }
 
                 Map<String, Object> roleBool = new HashMap<>();
@@ -284,16 +286,30 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             if (perRoleClauses.isEmpty()) {
                 // Jurisdictions, but none of them for a role that works on this module.
                 log.info("No role of the caller's acts on this module; returning an impossible clause");
-                clauses.add(Collections.singletonMap("bool",
-                        Collections.singletonMap("must_not",
-                                Collections.singletonMap("match_all", new HashMap<>()))));
+                clauses.add(impossibleClause());
                 return clauses;
             }
-            if (!perRoleClauses.isEmpty()) {
-                Map<String, Object> anyRole = new HashMap<>();
-                anyRole.put("should", perRoleClauses);
-                anyRole.put("minimum_should_match", 1);
-                clauses.add(Collections.singletonMap("bool", anyRole));
+            Map<String, Object> anyRole = new HashMap<>();
+            anyRole.put("should", perRoleClauses);
+            anyRole.put("minimum_should_match", 1);
+            clauses.add(Collections.singletonMap("bool", anyRole));
+        }
+
+        /*
+         * "Mine", again, as a clause of its own - deliberately not only inside the scope branch.
+         *
+         * `RoleJurisdictionScope.resolve` fails open, and when it does the per-role branch above is
+         * skipped entirely. Since the browser no longer sends an assignee of its own, identity would
+         * vanish with it and a vendor would see every ticket in the tenant in a default-on "mine"
+         * view. Boundaries may fail open; identity may not.
+         */
+        if (onlyWaitingOnMe) {
+            List<Object> mineBranches = mineBranchesForCaller(statusesByRole, nameToPathMap, inboxRequest);
+            if (!mineBranches.isEmpty()) {
+                Map<String, Object> mine = new HashMap<>();
+                mine.put("should", mineBranches);
+                mine.put("minimum_should_match", 1);
+                clauses.add(Collections.singletonMap("bool", mine));
             }
         }
 
@@ -306,6 +322,87 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         }
 
         return clauses;
+    }
+
+    /** A clause that matches no document, for "the caller is entitled to nothing here". */
+    private Map<String, Object> impossibleClause() {
+        return Collections.singletonMap("bool",
+                Collections.singletonMap("must_not",
+                        Collections.singletonMap("match_all", new HashMap<>())));
+    }
+
+    /**
+     * What "mine" means for one role, or null when it cannot be expressed.
+     *
+     * Pooled roles - the ones whose tickets carry no assignee, because im-services leaves their
+     * states unassigned so any holder can pick the work up - are matched by the statuses that role
+     * can act on. Every other role is matched by the assignee being the caller: that is the literal
+     * reading of "assigned to me", and it is what a vendor and a complainant both expect.
+     */
+    private Map<String, Object> mineClauseForRole(String roleCode, Map<String, Set<String>> statusesByRole,
+                                                  Map<String, String> nameToPathMap, InboxRequest inboxRequest) {
+        if (POOLED_ROLES.contains(roleCode)) {
+            String statusPath = nameToPathMap.get("status");
+            if (statusPath == null || statusesByRole == null
+                    || CollectionUtils.isEmpty(statusesByRole.get(roleCode))) {
+                return null;
+            }
+            List<String> statuses = new ArrayList<String>(statusesByRole.get(roleCode));
+            // On Hold is actionable but parked: out of the default bucket, back in for the counts.
+            Set<String> excluded = inboxRequest.getInbox().getMineExcludedStatuses();
+            if (!CollectionUtils.isEmpty(excluded)) {
+                statuses.removeAll(excluded);
+                if (statuses.isEmpty()) {
+                    return null;
+                }
+            }
+            return Collections.singletonMap("terms", Collections.singletonMap(statusPath, statuses));
+        }
+        String assigneePath = nameToPathMap.get("assignee");
+        String userName = inboxRequest.getRequestInfo() == null
+                || inboxRequest.getRequestInfo().getUserInfo() == null
+                ? null : inboxRequest.getRequestInfo().getUserInfo().getUserName();
+        if (assigneePath == null || StringUtils.isEmpty(userName)) {
+            return null;
+        }
+        return Collections.singletonMap("term", Collections.singletonMap(assigneePath, userName));
+    }
+
+    /**
+     * The same test as {@link #mineClauseForRole}, unioned over every role the caller holds and
+     * detached from their boundaries, so it still applies when the boundary lookup failed open.
+     *
+     * Returns empty when the workflow lookup itself failed: without it a pooled role's statuses are
+     * unknown, and falling back to assignee alone would empty the inbox of every pooled user, whose
+     * tickets have no assignee by design.
+     */
+    private List<Object> mineBranchesForCaller(Map<String, Set<String>> statusesByRole,
+                                               Map<String, String> nameToPathMap, InboxRequest inboxRequest) {
+        List<Object> branches = new ArrayList<>();
+        if (statusesByRole == null || inboxRequest.getRequestInfo() == null
+                || inboxRequest.getRequestInfo().getUserInfo() == null
+                || CollectionUtils.isEmpty(inboxRequest.getRequestInfo().getUserInfo().getRoles())) {
+            return branches;
+        }
+        boolean assigneeAdded = false;
+        for (org.egov.common.contract.request.Role role : inboxRequest.getRequestInfo().getUserInfo().getRoles()) {
+            if (role == null || role.getCode() == null) {
+                continue;
+            }
+            if (!POOLED_ROLES.contains(role.getCode()) && assigneeAdded) {
+                continue;
+            }
+            Map<String, Object> clause = mineClauseForRole(role.getCode(), statusesByRole,
+                    nameToPathMap, inboxRequest);
+            if (clause == null) {
+                continue;
+            }
+            if (!POOLED_ROLES.contains(role.getCode())) {
+                assigneeAdded = true;
+            }
+            branches.add(clause);
+        }
+        return branches;
     }
 
     /** One {@code terms} clause per level, using the paths the inbox config already declares. */
@@ -590,10 +687,37 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
     @Override
     public Map<String, Object> getStatusCountQuery(InboxRequest inboxRequest) {
-        Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
-        appendStatusCountAggsNode(baseEsQuery);
-        log.info("status query====", baseEsQuery);
-        return baseEsQuery;
+        /*
+         * The counts are built without the status the user ticked.
+         *
+         * This query both filters by status and then aggregates on it, so including the user's
+         * selection makes every other checkbox in the sidebar read (0) the moment one is ticked -
+         * the counts would only ever describe the filter already applied. Everything else still
+         * applies, so the numbers remain the caller's own: their jurisdiction, and their "mine"
+         * clause, which lives in buildJurisdictionClauses rather than here.
+         *
+         * Suppressed by clearing the field for the duration of the build and putting it back
+         * afterwards: the alternative, matching the clause by its ES path once the query is built,
+         * would also strip the per-role status clause, which is nested but uses the same path.
+         */
+        ProcessInstanceSearchCriteria criteria = inboxRequest.getInbox().getProcessSearchCriteria();
+        List<String> chosenStatuses = criteria == null ? null : criteria.getStatus();
+        // Same trick for the On Hold carve-out: the counts report it, the default list does not.
+        Set<String> heldBack = inboxRequest.getInbox().getMineExcludedStatuses();
+        try {
+            if (criteria != null) {
+                criteria.setStatus(null);
+            }
+            inboxRequest.getInbox().setMineExcludedStatuses(null);
+            Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
+            appendStatusCountAggsNode(baseEsQuery);
+            return baseEsQuery;
+        } finally {
+            if (criteria != null) {
+                criteria.setStatus(chosenStatuses);
+            }
+            inboxRequest.getInbox().setMineExcludedStatuses(heldBack);
+        }
     }
 
     /**
