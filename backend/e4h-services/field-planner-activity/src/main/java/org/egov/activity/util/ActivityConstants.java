@@ -40,6 +40,8 @@ public class ActivityConstants {
     public static final String INSTALLATION_REPORT_APPROVER_QC_TEAM = "INSTALLATION_REPORT_APPROVER_QC_TEAM";
     public static final String INSTALLATION_REPORT_PART_B_EDITOR = "INSTALLATION_REPORT_PART_B_EDITOR";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
+    /** Activity facility status once QC SPOC has approved its installation report. */
+    public static final String APPROVED_BY_QC_SPOC = "APPROVED_BY_QC_SPOC";
 
     // User-analytics event (shared user-analytics-report index, see ActivityAnalyticsService)
     public static final String USER_ANALYTICS_MODULE = "USER_ANALYTICS";
