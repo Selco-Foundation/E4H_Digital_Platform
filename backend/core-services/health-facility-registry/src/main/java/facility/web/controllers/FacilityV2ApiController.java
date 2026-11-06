@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-14T17:15:00.238919256+05:30[Asia/Kolkata]")
@@ -288,10 +289,12 @@ public class FacilityV2ApiController {
             facilities = new ArrayList<>();
             totalCount = 0;
         } else {
+            // Resolved once, used by both the rows and the count, so the two cannot disagree.
+            Map<String, Set<String>> levelFilters = facilityService.resolveLevelFilters(searchRequest);
             facilities = resolveBoundaryPerRow
-                    ? facilityService.bulkSearchFacilitiesWithAddressAndBoundary(searchRequest, scope)
-                    : facilityService.bulkSearchFacilities(searchRequest, scope);
-            totalCount = facilityService.countFacilitiesForBulkSearch(searchRequest, scope);
+                    ? facilityService.bulkSearchFacilitiesWithAddressAndBoundary(searchRequest, scope, levelFilters)
+                    : facilityService.bulkSearchFacilities(searchRequest, scope, levelFilters);
+            totalCount = facilityService.countFacilitiesForBulkSearch(searchRequest, scope, levelFilters);
         }
 
         FacilitySearchResponse response = new FacilitySearchResponse(facilities, totalCount);

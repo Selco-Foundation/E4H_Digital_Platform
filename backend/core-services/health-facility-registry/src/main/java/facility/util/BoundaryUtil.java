@@ -281,76 +281,75 @@ public class BoundaryUtil {
 //        }
 //    }
 
+    /** The hierarchy levels a client may filter on, in the order they nest. */
+    public static final List<String> FILTERABLE_LEVELS =
+            Collections.unmodifiableList(Arrays.asList("state", "district", "block"));
+
     /**
-     * The facility-level boundary codes the client's filters select, as one intersected set.
+     * Each hierarchy level the client filtered on, resolved to the facility codes beneath it.
      *
-     * Returns null when no boundary filter was supplied at all, which means "do not filter by
-     * boundary" - distinct from an empty list, which means "filtered, and nothing matched".
+     * Only levels the client actually supplied appear in the result. Each becomes its own ANDed
+     * SQL clause, so a facility has to sit beneath one of the states <em>and</em> one of the
+     * districts <em>and</em> one of the blocks - the reading a cascading filter bar needs, and the
+     * one that guarantees a filter can only ever narrow. Doing it in SQL rather than intersecting
+     * in Java means an empty level simply matches nothing, with no special case to get wrong.
+     *
+     * {@code boundaryCodes} is deliberately absent: those are facility-level codes already and go
+     * straight to the column.
+     *
+     * A requested code stays in its own set alongside its descendants, because a facility row whose
+     * {@code boundary_code} was never migrated into the hierarchy has nothing to descend from -
+     * which is what {@code _backfill-boundary-relationships} exists to repair.
      */
-    public List<String> getFacilityCodesFromBoundary(FacilityBulkSearchCriteria criteria) {
-        if (!isNotNullOrEmpty(criteria.getBoundaryCodes()) && !isNotNullOrEmpty(criteria.getBlock())
-                && !isNotNullOrEmpty(criteria.getDistrict()) && !isNotNullOrEmpty(criteria.getState())) {
-            return null;
+    public Map<String, Set<String>> resolveLevelFilters(FacilityBulkSearchCriteria criteria) {
+        Map<String, List<String>> requested = new LinkedHashMap<>();
+        putIfPresent(requested, "state", criteria.getState());
+        putIfPresent(requested, "district", criteria.getDistrict());
+        putIfPresent(requested, "block", criteria.getBlock());
+        if (requested.isEmpty()) {
+            return Collections.emptyMap();
         }
+
+        List<String> everyCode = requested.values().stream()
+                .flatMap(List::stream)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, Set<String>> beneath;
         try {
-            return resolveFacilityCodes(criteria);
+            // One call for every level at once: boundary-service filters `codes` with a plain IN
+            // and no level constraint, so mixed-level codes come back as one tree.
+            beneath = facilityCodesBeneath(everyCode);
         } catch (Exception e) {
-            log.error("Failed to resolve facility codes from the boundary filters", e);
+            log.error("Failed to resolve the client's boundary filters", e);
             throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary " + e.getMessage());
         }
-    }
 
-    /**
-     * Resolves the client's boundary filters to facility codes, intersecting across levels.
-     *
-     * <h3>Levels AND, codes within a level OR</h3>
-     * A facility must sit under one of the states <em>and</em> one of the districts <em>and</em> one
-     * of the blocks. That is the reading a cascading filter bar needs: choosing district D and then
-     * block B inside it yields B, not all of D. It also means a filter can only ever narrow, which
-     * is the property the jurisdiction ceiling will rely on.
-     *
-     * <p>This replaces a precedence picker that kept only the lowest level supplied and silently
-     * discarded the rest - so sending a district and a block returned the block's facilities and
-     * ignored the district entirely.
-     *
-     * <h3>Why each level's set includes the code itself</h3>
-     * A facility row whose {@code boundary_code} was never migrated into the hierarchy has no
-     * boundary-relationship row to descend from (which is what {@code _backfill-boundary-relationships}
-     * exists to repair). Keeping the requested code in its own set preserves the exact-match
-     * behaviour those rows have always relied on.
-     */
-    public List<String> resolveFacilityCodes(FacilityBulkSearchCriteria criteria) throws JsonProcessingException {
-        List<List<String>> levels = new ArrayList<>();
-        addLevel(levels, criteria.getBoundaryCodes());
-        addLevel(levels, criteria.getBlock());
-        addLevel(levels, criteria.getDistrict());
-        addLevel(levels, criteria.getState());
-        if (levels.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        // One call for every level at once: boundary-service filters `codes` with a plain IN and no
-        // level constraint, so mixed-level codes come back as one tree holding every requested subtree.
-        List<String> everyCode = levels.stream().flatMap(List::stream).distinct().collect(Collectors.toList());
-        Map<String, Set<String>> beneath = facilityCodesBeneath(everyCode);
-
-        Set<String> intersection = null;
-        for (List<String> level : levels) {
+        Map<String, Set<String>> resolved = new LinkedHashMap<>();
+        for (Map.Entry<String, List<String>> level : requested.entrySet()) {
             Set<String> selected = new LinkedHashSet<>();
-            for (String code : level) {
+            for (String code : level.getValue()) {
                 selected.add(code);
                 selected.addAll(beneath.getOrDefault(code, Collections.emptySet()));
             }
-            if (intersection == null) {
-                intersection = selected;
-            } else {
-                intersection.retainAll(selected);
-            }
-            if (intersection.isEmpty()) {
-                break;
-            }
+            resolved.put(level.getKey(), selected);
         }
-        return new ArrayList<>(intersection);
+        return resolved;
+    }
+
+    private static void putIfPresent(Map<String, List<String>> target, String level, List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return;
+        }
+        List<String> cleaned = codes.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(code -> !code.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+        if (!cleaned.isEmpty()) {
+            target.put(level, cleaned);
+        }
     }
 
     /**
@@ -413,21 +412,6 @@ public class BoundaryUtil {
         Set<String> facilities = facilityCodesBeneath(Collections.singletonList(code))
                 .getOrDefault(code, Collections.emptySet());
         return new LinkedHashSet<>(facilities);
-    }
-
-    private static void addLevel(List<List<String>> levels, List<String> codes) {
-        if (codes == null || codes.isEmpty()) {
-            return;
-        }
-        List<String> cleaned = codes.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(code -> !code.isEmpty())
-                .distinct()
-                .collect(Collectors.toList());
-        if (!cleaned.isEmpty()) {
-            levels.add(cleaned);
-        }
     }
 
     /** Indexes every node in the subtree by its code, so a later lookup needs no second walk. */

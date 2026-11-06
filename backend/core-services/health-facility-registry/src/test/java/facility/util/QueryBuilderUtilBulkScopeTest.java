@@ -11,7 +11,10 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -50,7 +53,7 @@ class QueryBuilderUtilBulkScopeTest {
                 .build();
 
         QueryBuilderResult threeArg = QueryBuilderUtil.buildBulkWhereClause(criteria, caller("FACILITY_ADMIN"), ONM_ROLES);
-        QueryBuilderResult withNullScope = QueryBuilderUtil.buildBulkWhereClause(criteria, caller("FACILITY_ADMIN"), ONM_ROLES, null);
+        QueryBuilderResult withNullScope = QueryBuilderUtil.buildBulkWhereClause(criteria, caller("FACILITY_ADMIN"), ONM_ROLES, null, Collections.emptyMap());
 
         assertEquals(threeArg.getWhereClause(), withNullScope.getWhereClause(),
                 "a null scope must behave exactly like the pre-scoping overload");
@@ -64,8 +67,8 @@ class QueryBuilderUtilBulkScopeTest {
                 .tenantIds(Collections.singletonList("in"))
                 .build();
 
-        QueryBuilderResult unscoped = QueryBuilderUtil.buildBulkWhereClause(criteria, caller("FACILITY_ADMIN"), ONM_ROLES, null);
-        QueryBuilderResult scoped = QueryBuilderUtil.buildBulkWhereClause(criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf("F1", "F2"));
+        QueryBuilderResult unscoped = QueryBuilderUtil.buildBulkWhereClause(criteria, caller("FACILITY_ADMIN"), ONM_ROLES, null, Collections.emptyMap());
+        QueryBuilderResult scoped = QueryBuilderUtil.buildBulkWhereClause(criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf("F1", "F2"), Collections.emptyMap());
 
         assertTrue(scoped.getWhereClause().contains(CEILING_CLAUSE), "the ceiling clause must be present");
         assertEquals(unscoped.getParams().size() + 1, scoped.getParams().size(),
@@ -82,7 +85,7 @@ class QueryBuilderUtilBulkScopeTest {
                 .build();
 
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
-                criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf("F1", "F2"));
+                criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf("F1", "F2"), Collections.emptyMap());
 
         assertTrue(result.getWhereClause().contains("AND boundary_code in ("),
                 "the client's own filter must survive");
@@ -99,7 +102,7 @@ class QueryBuilderUtilBulkScopeTest {
                 .build();
 
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
-                criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf("F1"));
+                criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf("F1"), Collections.emptyMap());
 
         assertTrue(result.getWhereClause().contains("fac.id in ("), "the id filter must survive");
         assertTrue(result.getWhereClause().contains(CEILING_CLAUSE), "and the ceiling must still apply");
@@ -111,7 +114,7 @@ class QueryBuilderUtilBulkScopeTest {
         FacilityBulkSearchCriteria criteria = FacilityBulkSearchCriteria.builder().build();
 
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
-                criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf());
+                criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf(), Collections.emptyMap());
 
         assertTrue(result.getWhereClause().contains(CEILING_CLAUSE),
                 "an empty ceiling must still emit the clause; omitting it would widen to everything");
@@ -128,5 +131,41 @@ class QueryBuilderUtilBulkScopeTest {
                 QueryBuilderUtil.toPgTextArrayLiteral(Collections.singletonList("FAC/2025/0045")));
         assertEquals("{\"a\\\"b\"}", QueryBuilderUtil.toPgTextArrayLiteral(Collections.singletonList("a\"b")));
         assertEquals("{\"a\\\\b\"}", QueryBuilderUtil.toPgTextArrayLiteral(Collections.singletonList("a\\b")));
+    }
+
+    @Test
+    @DisplayName("each resolved level becomes its own ANDed clause, alongside the ceiling")
+    void everyLevelGetsItsOwnClause() {
+        FacilityBulkSearchCriteria criteria = FacilityBulkSearchCriteria.builder()
+                .boundaryCodes(Collections.singletonList("F1"))
+                .build();
+
+        Map<String, Set<String>> levels = new LinkedHashMap<>();
+        levels.put("state", new LinkedHashSet<>(Arrays.asList("F1", "F2", "F3")));
+        levels.put("district", new LinkedHashSet<>(Arrays.asList("F1", "F2")));
+        levels.put("block", new LinkedHashSet<>(Collections.singletonList("F1")));
+
+        QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
+                criteria, caller("FACILITY_ADMIN"), ONM_ROLES, ceilingOf("F1", "F9"), levels);
+
+        int ceilingClauses = result.getWhereClause().split(java.util.regex.Pattern.quote(CEILING_CLAUSE), -1).length - 1;
+        assertEquals(4, ceilingClauses,
+                "three levels plus the jurisdiction ceiling, each ANDed - the database does the intersecting");
+        assertTrue(result.getWhereClause().contains("AND boundary_code in ("),
+                "boundaryCodes are facility codes already and go straight to the column");
+    }
+
+    @Test
+    @DisplayName("a level that resolved to nothing matches nothing")
+    void anEmptyLevelMatchesNothing() {
+        Map<String, Set<String>> levels = new LinkedHashMap<>();
+        levels.put("state", new LinkedHashSet<>());
+
+        QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
+                FacilityBulkSearchCriteria.builder().build(), caller("FACILITY_ADMIN"), ONM_ROLES, null, levels);
+
+        assertTrue(result.getWhereClause().contains(CEILING_CLAUSE));
+        assertEquals("{}", result.getParams().get(result.getParams().size() - 1),
+                "an empty array is the whole special case - no early return needed anywhere");
     }
 }

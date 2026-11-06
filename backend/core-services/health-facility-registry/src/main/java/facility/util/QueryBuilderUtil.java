@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.stream.IntStream;
 @Slf4j
@@ -103,10 +105,10 @@ public class QueryBuilderUtil {
     }
 
     public static QueryBuilderResult buildBulkWhereClause(FacilityBulkSearchCriteria criteria, RequestInfo requestInfo, List<String> onmNonReadyAllowedRoles) {
-        return buildBulkWhereClause(criteria, requestInfo, onmNonReadyAllowedRoles, null);
+        return buildBulkWhereClause(criteria, requestInfo, onmNonReadyAllowedRoles, null, java.util.Collections.emptyMap());
     }
 
-    public static QueryBuilderResult buildBulkWhereClause(FacilityBulkSearchCriteria criteria, RequestInfo requestInfo, List<String> onmNonReadyAllowedRoles, FacilityScope scope) {
+    public static QueryBuilderResult buildBulkWhereClause(FacilityBulkSearchCriteria criteria, RequestInfo requestInfo, List<String> onmNonReadyAllowedRoles, FacilityScope scope, Map<String, Set<String>> levelFilters) {
         log.trace("Entering buildBulkWhereClause method");
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
@@ -199,10 +201,22 @@ public class QueryBuilderUtil {
             log.debug("Added is_onm_ready filter: {}", criteria.getIsOnmReady());
         }
 
-        // The jurisdiction ceiling. INTERSECT, never union: this is a SEPARATE clause ANDed with
-        // the client's own boundary_code filter above. Do not be tempted to merge it into
-        // criteria.boundaryCodes - FacilityService does an addAll on that list, which would OR the
-        // two together and let a crafted request widen its own scope. The wrong version still looks
+        // Each hierarchy level the client filtered on becomes its own ANDed clause, so a facility
+        // must sit beneath one of the states AND one of the districts AND one of the blocks. The
+        // intersection is the SQL's job: a level that resolved to nothing yields an empty array
+        // and matches nothing, with no special case to get wrong. boundaryCodes above is already
+        // facility-level, so it goes straight to the column.
+        if (levelFilters != null) {
+            for (Map.Entry<String, Set<String>> level : levelFilters.entrySet()) {
+                whereClause.append(" AND fac.boundary_code = ANY (?::text[])");
+                params.add(toPgTextArrayLiteral(level.getValue()));
+                log.debug("Applied {} filter resolving to {} facility codes", level.getKey(), level.getValue().size());
+            }
+        }
+
+        // The jurisdiction ceiling. INTERSECT, never union: a SEPARATE clause ANDed with everything
+        // above. Do not be tempted to merge it into criteria.boundaryCodes - that would OR the two
+        // together and let a crafted request widen its own scope, and the wrong version still looks
         // right in manual testing, because a scoped user sees their own facilities either way.
         if (scope != null && scope.isApplied()) {
             // One bind parameter whatever the ceiling size. A state expands to tens of thousands of

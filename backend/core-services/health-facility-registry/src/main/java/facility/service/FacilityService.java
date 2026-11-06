@@ -1341,9 +1341,9 @@ public class FacilityService {
      *
      * @return List of facilities matching the filter
      */
-    public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request, FacilityScope scope) {
+    public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request, FacilityScope scope, Map<String, Set<String>> levelFilters) {
         log.trace("Entering bulkSearchFacilities method");
-        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request, scope);
+        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request, scope, levelFilters);
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         enrichFacilitiesWithBoundaries(facilityList, listBlock);
         log.trace("Exiting bulkSearchFacilities method");
@@ -1356,9 +1356,9 @@ public class FacilityService {
      * via the boundary v2 API in batches — avoids loading the full boundary tree for large clients.
      * Request/response models are unchanged from bulk search.
      */
-    public List<Facility> bulkSearchFacilitiesWithAddressAndBoundary(FacilityBulkSearchRequest request, FacilityScope scope) {
+    public List<Facility> bulkSearchFacilitiesWithAddressAndBoundary(FacilityBulkSearchRequest request, FacilityScope scope, Map<String, Set<String>> levelFilters) {
         log.trace("Entering bulkSearchFacilitiesWithAddressAndBoundary method");
-        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request, scope);
+        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request, scope, levelFilters);
         Set<String> boundaryCodesOnRows = facilityList.stream()
                 .map(Facility::getBoundaryCode)
                 .filter(Objects::nonNull)
@@ -1375,38 +1375,19 @@ public class FacilityService {
      * Shared bulk SQL: facility rows with address fields from {@code facility_address}, POC phone decrypted.
      */
     /**
-     * Resolves the client's boundary filters into facility-level codes, once per request.
+     * Resolves the client's state/district/block filters to facility codes.
      *
-     * Idempotent, because the search and the count are two separate calls over the same criteria
-     * object. Until now the count saw the resolved codes only because the search happened to run
-     * first and mutate them in place - and in the branch where the search returned early it never
-     * did, so an empty result was reported alongside an unfiltered totalCount.
-     *
-     * @return false when the filters resolved to nothing, so the caller must return no rows
+     * Called once per request by the controller and handed to both the search and the count, so
+     * neither can be built from a different set than the other. Nothing is written back onto the
+     * request: the criteria object stays exactly what the client sent.
      */
-    private boolean expandClientBoundaryFilters(FacilityBulkSearchCriteria criteria) {
-        if (!criteria.isBoundaryFiltersResolved()) {
-            List<String> resolved = boundaryUtil.getFacilityCodesFromBoundary(criteria);
-            if (resolved != null) {
-                // Replace, never append. Appending would OR the client's original codes back in,
-                // turning the intersection across levels into a union.
-                criteria.setBoundaryCodes(new ArrayList<>(new LinkedHashSet<>(resolved)));
-                criteria.setBoundaryFiltersMatchNothing(resolved.isEmpty());
-            }
-            criteria.setBoundaryFiltersResolved(true);
-        }
-        return !criteria.isBoundaryFiltersMatchNothing();
+    public Map<String, Set<String>> resolveLevelFilters(FacilityBulkSearchRequest request) {
+        return boundaryUtil.resolveLevelFilters(request.getFacilityBulkSearchCriteria());
     }
 
-    private List<Facility> loadBulkFacilitiesWithAddressJoin(FacilityBulkSearchRequest request, FacilityScope scope) {
-        FacilityBulkSearchCriteria criteria = request.getFacilityBulkSearchCriteria();
-        if (!expandClientBoundaryFilters(criteria)) {
-            log.debug("Bulk search boundary filters matched no facilities; returning no rows");
-            return Collections.emptyList();
-        }
-
+    private List<Facility> loadBulkFacilitiesWithAddressJoin(FacilityBulkSearchRequest request, FacilityScope scope, Map<String, Set<String>> levelFilters) {
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
-                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles(), scope
+                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles(), scope, levelFilters
         );
 
         StringBuilder query = new StringBuilder(
@@ -1423,7 +1404,7 @@ public class FacilityService {
                         "FROM facility fac");
         query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
-        query.append(buildBulkSearchOrderBy(criteria));
+        query.append(buildBulkSearchOrderBy(request.getFacilityBulkSearchCriteria()));
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {
@@ -1504,14 +1485,10 @@ public class FacilityService {
         return count;
     }
 
-    public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request, FacilityScope scope) {
+    public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request, FacilityScope scope, Map<String, Set<String>> levelFilters) {
         log.trace("Entering countFacilitiesForBulkSearch method");
-        if (!expandClientBoundaryFilters(request.getFacilityBulkSearchCriteria())) {
-            log.debug("Bulk search boundary filters matched no facilities; count is 0");
-            return 0;
-        }
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
-                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles(), scope
+                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles(), scope, levelFilters
         );
         String query = "SELECT COUNT(*) FROM facility fac" + result.getWhereClause();
         int count = jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());

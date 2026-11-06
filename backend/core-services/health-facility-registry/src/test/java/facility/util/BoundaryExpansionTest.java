@@ -100,8 +100,8 @@ class BoundaryExpansionTest {
     }
 
     @Test
-    @DisplayName("levels intersect: a state and a district together give the district's facilities")
-    void levelsIntersectRatherThanTheLowestWinning() throws Exception {
+    @DisplayName("each level the client filtered on resolves to its own set")
+    void eachLevelResolvesSeparately() throws Exception {
         boundaryServiceReturns(HIERARCHY);
 
         FacilityBulkSearchCriteria criteria = FacilityBulkSearchCriteria.builder()
@@ -109,34 +109,37 @@ class BoundaryExpansionTest {
                 .district(Collections.singletonList("D1"))
                 .build();
 
-        assertEquals(setOf("F1", "F2", "F3", "F4"), setOf(boundaryUtil.resolveFacilityCodes(criteria)),
-                "the state must constrain the result, not be discarded in favour of the district");
+        Map<String, Set<String>> resolved = boundaryUtil.resolveLevelFilters(criteria);
+
+        assertEquals(setOf("S1", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"), resolved.get("state"));
+        assertEquals(setOf("D1", "F1", "F2", "F3", "F4"), resolved.get("district"));
+        assertTrue(!resolved.containsKey("block"), "a level the client did not filter on must not appear");
+        // The two sets are ANDed as separate SQL clauses, so the intersection - F1..F4 - is the
+        // database's job. Doing it here would mean an empty intersection needing a special case.
     }
 
     @Test
-    @DisplayName("levels that do not overlap resolve to nothing")
-    void nonOverlappingLevelsResolveToNothing() throws Exception {
-        boundaryServiceReturns(HIERARCHY);
-
+    @DisplayName("boundaryCodes are not resolved here; they are facility codes already")
+    void boundaryCodesAreNotALevel() throws Exception {
         FacilityBulkSearchCriteria criteria = FacilityBulkSearchCriteria.builder()
-                .state(Collections.singletonList("S1"))
-                .district(Collections.singletonList("D_ELSEWHERE"))
+                .boundaryCodes(Collections.singletonList("F1"))
                 .build();
 
-        assertTrue(boundaryUtil.resolveFacilityCodes(criteria).isEmpty(),
-                "a district outside the state must not widen the result back to the state");
+        assertTrue(boundaryUtil.resolveLevelFilters(criteria).isEmpty(),
+                "boundaryCodes go straight to the column, so no boundary call is needed");
+        verifyNoInteractions(restTemplate);
     }
 
     @Test
-    @DisplayName("a requested code stays in its own level's set, for rows never migrated into the hierarchy")
-    void aRequestedCodeSelectsItselfAsWellAsItsDescendants() throws Exception {
+    @DisplayName("a level keeps the requested code, for rows never migrated into the hierarchy")
+    void aLevelSelectsItsOwnCodeAsWellAsItsDescendants() throws Exception {
         boundaryServiceReturns(HIERARCHY);
 
         FacilityBulkSearchCriteria criteria = FacilityBulkSearchCriteria.builder()
-                .boundaryCodes(Collections.singletonList("B1"))
+                .block(Collections.singletonList("B1"))
                 .build();
 
-        assertEquals(setOf("B1", "F1", "F2"), setOf(boundaryUtil.resolveFacilityCodes(criteria)),
+        assertEquals(setOf("B1", "F1", "F2"), boundaryUtil.resolveLevelFilters(criteria).get("block"),
                 "dropping the requested code would hide facilities whose boundary_code has no "
                         + "boundary-relationship row - which is what _backfill-boundary-relationships repairs");
     }

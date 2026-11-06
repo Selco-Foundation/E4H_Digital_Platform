@@ -1,6 +1,5 @@
 package facility.web.models;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -41,24 +40,4 @@ public class FacilityBulkSearchCriteria {
     private String sortOrder;
     private Boolean isOnmReady;
 
-    /**
-     * Whether {@code boundaryCodes} already holds the resolved facility-level codes.
-     *
-     * The search and the count run as two separate calls over this same object, so resolution has
-     * to be idempotent: doing it twice would mean a second boundary-service round trip, and would
-     * let the count be built from a different set than the rows if the hierarchy changed between
-     * the two. Server-side only - never read from or written to the wire.
-     */
-    @JsonIgnore
-    private boolean boundaryFiltersResolved;
-
-    /**
-     * Set when the client's boundary filters resolved to nothing at all.
-     *
-     * Needed because an empty {@code boundaryCodes} list means "no boundary filter" to the query
-     * builder, which is the opposite of what an empty resolution means. Without this the search
-     * would silently widen to every facility in the tenant.
-     */
-    @JsonIgnore
-    private boolean boundaryFiltersMatchNothing;
 }
