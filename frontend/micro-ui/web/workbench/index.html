@@ -47,6 +47,68 @@
       .digit-employee-header img.state[src=""] {
         display: none;
       }
+      /* Manage Master Data (module and master cards). digit-ui-css gives the cards a fixed 22rem width with 8px margins,
+         so rows left a wide empty gap on the right and did not line up with the page title; the 36px card titles were cut
+         off with "..."; and the search box sat lower than the "Select a module" text. */
+      .workbench .module-cards-container,
+      .workbench .master-details-container {
+        width: 100%;
+      }
+      .workbench .module-cards-header,
+      .workbench .master-details-header {
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      .workbench .module-cards-header .mdms-search-bar-container,
+      .workbench .master-details-header .mdms-search-bar-container {
+        width: 20rem;
+        margin-bottom: 0;
+      }
+      /* the page passes an inline marginTop to the input, hence !important */
+      .workbench .mdms-search-bar-container input {
+        margin: 0 !important;
+        max-width: none;
+      }
+      .workbench .mdms-search-bar-container .text-input {
+        margin-bottom: 0;
+      }
+      .workbench .module-cards-grid,
+      .workbench .master-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+        gap: 1rem;
+      }
+      /* .employeeCard has margin-bottom: 16px !important, which doubled the row gap */
+      .workbench .module-cards-grid .employeeCard.module-card,
+      .workbench .master-cards-grid .employeeCard.master-card {
+        width: auto;
+        margin: 0 !important;
+      }
+      .workbench .module-cards-grid .module-card .employee-card-sub-header,
+      .workbench .master-cards-grid .master-card .employee-card-sub-header {
+        font-size: 1.5rem;
+        line-height: 2rem;
+        margin-bottom: 0.75rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      .workbench .module-cards-grid .module-card .employee-card-sub-header:hover,
+      .workbench .master-cards-grid .master-card .employee-card-sub-header:hover {
+        padding: 0;
+        margin: 0 0 0.75rem;
+      }
+      .workbench .module-cards-grid .card-text,
+      .workbench .master-cards-grid .card-text {
+        margin-bottom: 0;
+      }
+      /* the breadcrumb row's Help link sat 16px lower than the breadcrumb (its wrapper has a 16px top margin) */
+      .wbh-header-container {
+        align-items: center;
+      }
+      .wbh-header-container .wbh-header {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
       /* selco-css sets .digit-button-primary/-secondary to height: fit-content (for its older buttons), which overrides
          the component library's 2.5rem for the default "large" size, so e.g. "Back to modules" and the logout dialog's
          "Yes, Logout" collapsed to 22px and cut their labels off */
