@@ -110,6 +110,37 @@
         margin-top: 0;
         margin-bottom: 0;
       }
+      /* Add/View/Edit master forms (react-jsonschema-form). Each simple field is a flex row of label (200px),
+         description (as wide as its text) and input, so every input started at a different x; lay it out as
+         label | description above input instead. Object and array fields keep their own nested layout.
+         The selectors repeat digit-ui-css's own (which includes #digit_root) so they take precedence. */
+      .workbench .workbench-create-form form #digit_root .field-wrapper .form-group.field:not(.field-object):not(.field-array) {
+        display: grid;
+        grid-template-columns: 200px minmax(0, 1fr);
+        column-gap: 2.5rem;
+        align-items: start;
+      }
+      .workbench .workbench-create-form form #digit_root .field-wrapper .form-group.field:not(.field-object):not(.field-array) > * {
+        grid-column: 2;
+      }
+      .workbench .workbench-create-form form #digit_root .field-wrapper .form-group.field:not(.field-object):not(.field-array) > .control-label {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+      }
+      .workbench .workbench-create-form form #digit_root .field-wrapper .form-group.field:not(.field-object):not(.field-array) > .field-description {
+        margin: 0 0 0.5rem;
+      }
+      /* the label is an inline-flex row of [text, "*"] at 33% width with a 3rem line height, so a two-line label pushed
+         the "*" into its own column; make it plain text filling the 200px label column */
+      .workbench .workbench-create-form form #digit_root .field-wrapper .form-group.field .control-label {
+        display: block;
+        width: auto;
+        max-width: none;
+        line-height: 1.5rem;
+      }
+      .workbench .workbench-create-form form #digit_root .field-wrapper .form-group .control-label .tooltip {
+        display: inline;
+      }
       /* selco-css sets .digit-button-primary/-secondary to height: fit-content (for its older buttons), which overrides
          the component library's 2.5rem for the default "large" size, so e.g. "Back to modules" and the logout dialog's
          "Yes, Logout" collapsed to 22px and cut their labels off */
