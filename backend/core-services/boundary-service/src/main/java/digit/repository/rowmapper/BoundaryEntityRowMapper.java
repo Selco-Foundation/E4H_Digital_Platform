@@ -1,7 +1,6 @@
 package digit.repository.rowmapper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.web.models.Boundary;
 import org.egov.common.contract.models.AuditDetails;
@@ -24,17 +23,6 @@ public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary
         this.mapper = mapper;
     }
 
-    /**
-     * Helper method to safely parse JSON string to JsonNode
-     * Returns null if the input string is null or empty
-     */
-    private JsonNode parseJsonSafely(String jsonString) throws JsonProcessingException {
-        if (jsonString == null || jsonString.trim().isEmpty()) {
-            return null;
-        }
-        return mapper.readTree(jsonString);
-    }
-
     @Override
     public List<Boundary> extractData(ResultSet resultSet) throws SQLException , DataAccessException {
 
@@ -55,8 +43,8 @@ public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary
                         .id(resultSet.getString("id"))
                         .code(resultSet.getString("code"))
                         .auditDetails(auditDetails)
-                        .geometry(parseJsonSafely(resultSet.getString("geometry")))
-                        .additionalDetails(parseJsonSafely(resultSet.getString("additionaldetails")))
+                        .geometry(geometryStr != null ? mapper.readTree(geometryStr) : null)
+                        .additionalDetails(additionalDetailsStr != null ? mapper.readTree(additionalDetailsStr) : null)
                         .tenantId(resultSet.getString("tenantid"))
                         .lgdStateCode(resultSet.getString("lgd_state_code"))
                         .lgdDistrictCode(resultSet.getString("lgd_district_code"))

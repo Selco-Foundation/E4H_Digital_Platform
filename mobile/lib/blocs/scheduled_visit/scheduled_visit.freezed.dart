@@ -17,25 +17,45 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$ScheduledVisitEvent {
   List<String> get statuses => throw _privateConstructorUsedError;
+  String? get query => throw _privateConstructorUsedError;
+  String? get sortDirection => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(List<String> statuses) loadInitial,
-    required TResult Function(List<String> statuses) loadMore,
-    required TResult Function(List<String> statuses) refresh,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        loadInitial,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        loadMore,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        refresh,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(List<String> statuses)? loadInitial,
-    TResult? Function(List<String> statuses)? loadMore,
-    TResult? Function(List<String> statuses)? refresh,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadInitial,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadMore,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        refresh,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(List<String> statuses)? loadInitial,
-    TResult Function(List<String> statuses)? loadMore,
-    TResult Function(List<String> statuses)? refresh,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadInitial,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadMore,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        refresh,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -73,7 +93,7 @@ abstract class $ScheduledVisitEventCopyWith<$Res> {
           ScheduledVisitEvent value, $Res Function(ScheduledVisitEvent) then) =
       _$ScheduledVisitEventCopyWithImpl<$Res, ScheduledVisitEvent>;
   @useResult
-  $Res call({List<String> statuses});
+  $Res call({List<String> statuses, String? query, String? sortDirection});
 }
 
 /// @nodoc
@@ -90,12 +110,22 @@ class _$ScheduledVisitEventCopyWithImpl<$Res, $Val extends ScheduledVisitEvent>
   @override
   $Res call({
     Object? statuses = null,
+    Object? query = freezed,
+    Object? sortDirection = freezed,
   }) {
     return _then(_value.copyWith(
       statuses: null == statuses
           ? _value.statuses
           : statuses // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      query: freezed == query
+          ? _value.query
+          : query // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sortDirection: freezed == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -108,7 +138,7 @@ abstract class _$$LoadInitialImplCopyWith<$Res>
       __$$LoadInitialImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({List<String> statuses});
+  $Res call({List<String> statuses, String? query, String? sortDirection});
 }
 
 /// @nodoc
@@ -123,12 +153,22 @@ class __$$LoadInitialImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? statuses = null,
+    Object? query = freezed,
+    Object? sortDirection = freezed,
   }) {
     return _then(_$LoadInitialImpl(
       statuses: null == statuses
           ? _value._statuses
           : statuses // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      query: freezed == query
+          ? _value.query
+          : query // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sortDirection: freezed == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -136,7 +176,8 @@ class __$$LoadInitialImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LoadInitialImpl implements _LoadInitial {
-  const _$LoadInitialImpl({required final List<String> statuses})
+  const _$LoadInitialImpl(
+      {required final List<String> statuses, this.query, this.sortDirection})
       : _statuses = statuses;
 
   final List<String> _statuses;
@@ -148,8 +189,13 @@ class _$LoadInitialImpl implements _LoadInitial {
   }
 
   @override
+  final String? query;
+  @override
+  final String? sortDirection;
+
+  @override
   String toString() {
-    return 'ScheduledVisitEvent.loadInitial(statuses: $statuses)';
+    return 'ScheduledVisitEvent.loadInitial(statuses: $statuses, query: $query, sortDirection: $sortDirection)';
   }
 
   @override
@@ -157,12 +203,15 @@ class _$LoadInitialImpl implements _LoadInitial {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$LoadInitialImpl &&
-            const DeepCollectionEquality().equals(other._statuses, _statuses));
+            const DeepCollectionEquality().equals(other._statuses, _statuses) &&
+            (identical(other.query, query) || other.query == query) &&
+            (identical(other.sortDirection, sortDirection) ||
+                other.sortDirection == sortDirection));
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(_statuses));
+  int get hashCode => Object.hash(runtimeType,
+      const DeepCollectionEquality().hash(_statuses), query, sortDirection);
 
   @JsonKey(ignore: true)
   @override
@@ -173,33 +222,51 @@ class _$LoadInitialImpl implements _LoadInitial {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(List<String> statuses) loadInitial,
-    required TResult Function(List<String> statuses) loadMore,
-    required TResult Function(List<String> statuses) refresh,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        loadInitial,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        loadMore,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        refresh,
   }) {
-    return loadInitial(statuses);
+    return loadInitial(statuses, query, sortDirection);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(List<String> statuses)? loadInitial,
-    TResult? Function(List<String> statuses)? loadMore,
-    TResult? Function(List<String> statuses)? refresh,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadInitial,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadMore,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        refresh,
   }) {
-    return loadInitial?.call(statuses);
+    return loadInitial?.call(statuses, query, sortDirection);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(List<String> statuses)? loadInitial,
-    TResult Function(List<String> statuses)? loadMore,
-    TResult Function(List<String> statuses)? refresh,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadInitial,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadMore,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        refresh,
     required TResult orElse(),
   }) {
     if (loadInitial != null) {
-      return loadInitial(statuses);
+      return loadInitial(statuses, query, sortDirection);
     }
     return orElse();
   }
@@ -240,11 +307,17 @@ class _$LoadInitialImpl implements _LoadInitial {
 }
 
 abstract class _LoadInitial implements ScheduledVisitEvent {
-  const factory _LoadInitial({required final List<String> statuses}) =
-      _$LoadInitialImpl;
+  const factory _LoadInitial(
+      {required final List<String> statuses,
+      final String? query,
+      final String? sortDirection}) = _$LoadInitialImpl;
 
   @override
   List<String> get statuses;
+  @override
+  String? get query;
+  @override
+  String? get sortDirection;
   @override
   @JsonKey(ignore: true)
   _$$LoadInitialImplCopyWith<_$LoadInitialImpl> get copyWith =>
@@ -259,7 +332,7 @@ abstract class _$$LoadMoreImplCopyWith<$Res>
       __$$LoadMoreImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({List<String> statuses});
+  $Res call({List<String> statuses, String? query, String? sortDirection});
 }
 
 /// @nodoc
@@ -274,12 +347,22 @@ class __$$LoadMoreImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? statuses = null,
+    Object? query = freezed,
+    Object? sortDirection = freezed,
   }) {
     return _then(_$LoadMoreImpl(
       statuses: null == statuses
           ? _value._statuses
           : statuses // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      query: freezed == query
+          ? _value.query
+          : query // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sortDirection: freezed == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -287,7 +370,8 @@ class __$$LoadMoreImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LoadMoreImpl implements _LoadMore {
-  const _$LoadMoreImpl({required final List<String> statuses})
+  const _$LoadMoreImpl(
+      {required final List<String> statuses, this.query, this.sortDirection})
       : _statuses = statuses;
 
   final List<String> _statuses;
@@ -299,8 +383,13 @@ class _$LoadMoreImpl implements _LoadMore {
   }
 
   @override
+  final String? query;
+  @override
+  final String? sortDirection;
+
+  @override
   String toString() {
-    return 'ScheduledVisitEvent.loadMore(statuses: $statuses)';
+    return 'ScheduledVisitEvent.loadMore(statuses: $statuses, query: $query, sortDirection: $sortDirection)';
   }
 
   @override
@@ -308,12 +397,15 @@ class _$LoadMoreImpl implements _LoadMore {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$LoadMoreImpl &&
-            const DeepCollectionEquality().equals(other._statuses, _statuses));
+            const DeepCollectionEquality().equals(other._statuses, _statuses) &&
+            (identical(other.query, query) || other.query == query) &&
+            (identical(other.sortDirection, sortDirection) ||
+                other.sortDirection == sortDirection));
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(_statuses));
+  int get hashCode => Object.hash(runtimeType,
+      const DeepCollectionEquality().hash(_statuses), query, sortDirection);
 
   @JsonKey(ignore: true)
   @override
@@ -324,33 +416,51 @@ class _$LoadMoreImpl implements _LoadMore {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(List<String> statuses) loadInitial,
-    required TResult Function(List<String> statuses) loadMore,
-    required TResult Function(List<String> statuses) refresh,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        loadInitial,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        loadMore,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        refresh,
   }) {
-    return loadMore(statuses);
+    return loadMore(statuses, query, sortDirection);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(List<String> statuses)? loadInitial,
-    TResult? Function(List<String> statuses)? loadMore,
-    TResult? Function(List<String> statuses)? refresh,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadInitial,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadMore,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        refresh,
   }) {
-    return loadMore?.call(statuses);
+    return loadMore?.call(statuses, query, sortDirection);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(List<String> statuses)? loadInitial,
-    TResult Function(List<String> statuses)? loadMore,
-    TResult Function(List<String> statuses)? refresh,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadInitial,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadMore,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        refresh,
     required TResult orElse(),
   }) {
     if (loadMore != null) {
-      return loadMore(statuses);
+      return loadMore(statuses, query, sortDirection);
     }
     return orElse();
   }
@@ -391,11 +501,17 @@ class _$LoadMoreImpl implements _LoadMore {
 }
 
 abstract class _LoadMore implements ScheduledVisitEvent {
-  const factory _LoadMore({required final List<String> statuses}) =
-      _$LoadMoreImpl;
+  const factory _LoadMore(
+      {required final List<String> statuses,
+      final String? query,
+      final String? sortDirection}) = _$LoadMoreImpl;
 
   @override
   List<String> get statuses;
+  @override
+  String? get query;
+  @override
+  String? get sortDirection;
   @override
   @JsonKey(ignore: true)
   _$$LoadMoreImplCopyWith<_$LoadMoreImpl> get copyWith =>
@@ -410,7 +526,7 @@ abstract class _$$RefreshImplCopyWith<$Res>
       __$$RefreshImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({List<String> statuses});
+  $Res call({List<String> statuses, String? query, String? sortDirection});
 }
 
 /// @nodoc
@@ -425,12 +541,22 @@ class __$$RefreshImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? statuses = null,
+    Object? query = freezed,
+    Object? sortDirection = freezed,
   }) {
     return _then(_$RefreshImpl(
       statuses: null == statuses
           ? _value._statuses
           : statuses // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      query: freezed == query
+          ? _value.query
+          : query // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sortDirection: freezed == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -438,7 +564,8 @@ class __$$RefreshImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$RefreshImpl implements _Refresh {
-  const _$RefreshImpl({required final List<String> statuses})
+  const _$RefreshImpl(
+      {required final List<String> statuses, this.query, this.sortDirection})
       : _statuses = statuses;
 
   final List<String> _statuses;
@@ -450,8 +577,13 @@ class _$RefreshImpl implements _Refresh {
   }
 
   @override
+  final String? query;
+  @override
+  final String? sortDirection;
+
+  @override
   String toString() {
-    return 'ScheduledVisitEvent.refresh(statuses: $statuses)';
+    return 'ScheduledVisitEvent.refresh(statuses: $statuses, query: $query, sortDirection: $sortDirection)';
   }
 
   @override
@@ -459,12 +591,15 @@ class _$RefreshImpl implements _Refresh {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$RefreshImpl &&
-            const DeepCollectionEquality().equals(other._statuses, _statuses));
+            const DeepCollectionEquality().equals(other._statuses, _statuses) &&
+            (identical(other.query, query) || other.query == query) &&
+            (identical(other.sortDirection, sortDirection) ||
+                other.sortDirection == sortDirection));
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(_statuses));
+  int get hashCode => Object.hash(runtimeType,
+      const DeepCollectionEquality().hash(_statuses), query, sortDirection);
 
   @JsonKey(ignore: true)
   @override
@@ -475,33 +610,51 @@ class _$RefreshImpl implements _Refresh {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(List<String> statuses) loadInitial,
-    required TResult Function(List<String> statuses) loadMore,
-    required TResult Function(List<String> statuses) refresh,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        loadInitial,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        loadMore,
+    required TResult Function(
+            List<String> statuses, String? query, String? sortDirection)
+        refresh,
   }) {
-    return refresh(statuses);
+    return refresh(statuses, query, sortDirection);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(List<String> statuses)? loadInitial,
-    TResult? Function(List<String> statuses)? loadMore,
-    TResult? Function(List<String> statuses)? refresh,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadInitial,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadMore,
+    TResult? Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        refresh,
   }) {
-    return refresh?.call(statuses);
+    return refresh?.call(statuses, query, sortDirection);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(List<String> statuses)? loadInitial,
-    TResult Function(List<String> statuses)? loadMore,
-    TResult Function(List<String> statuses)? refresh,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadInitial,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        loadMore,
+    TResult Function(
+            List<String> statuses, String? query, String? sortDirection)?
+        refresh,
     required TResult orElse(),
   }) {
     if (refresh != null) {
-      return refresh(statuses);
+      return refresh(statuses, query, sortDirection);
     }
     return orElse();
   }
@@ -542,11 +695,17 @@ class _$RefreshImpl implements _Refresh {
 }
 
 abstract class _Refresh implements ScheduledVisitEvent {
-  const factory _Refresh({required final List<String> statuses}) =
-      _$RefreshImpl;
+  const factory _Refresh(
+      {required final List<String> statuses,
+      final String? query,
+      final String? sortDirection}) = _$RefreshImpl;
 
   @override
   List<String> get statuses;
+  @override
+  String? get query;
+  @override
+  String? get sortDirection;
   @override
   @JsonKey(ignore: true)
   _$$RefreshImplCopyWith<_$RefreshImpl> get copyWith =>

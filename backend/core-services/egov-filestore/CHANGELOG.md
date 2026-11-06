@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this module will be documented in this file.
 
+## 2.10.0 - 2025-08-11
+- Filestore HLS re-implementation
+- Add video supported format
+- Patch for filestore HLS directory, filestore and s3 path
+- Add ffmpeg POC implementation
+- Add filestore POC implementation
+- Fixes for video and image upload functionality
+
 ## 2.9.0 - 2024-02-29
 - Upgraded spring boot version from 2.2.13.RELEASE to 3.2.2
 - Upgraded java version from 1.8 to 17

@@ -1,8 +1,4 @@
 import requests
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 class IMServiceClient:
     def __init__(self, base_url):
@@ -16,24 +12,23 @@ class IMServiceClient:
         }
         payload = {"RequestInfo": request_info}
         try:
-            logger.info(
-                "Searching incident",
-                extra={"incident_id": incident_id, "tenant_id": tenant_id, "url": url},
-            )
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
-            logger.info(
-                "Incident search successful",
-                extra={"incident_id": incident_id, "tenant_id": tenant_id, "status_code": response.status_code},
-            )
+            print(f"Incident searched successfully: {result}")
             return result
-        except requests.exceptions.RequestException as err:
-            logger.error(
-                "Incident search failed",
-                extra={"incident_id": incident_id, "tenant_id": tenant_id, "error": str(err)},
-            )
-            raise
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
 
     def update_incident(self, payload: dict):
         url = f"{self.base_url}/im-services/v2/request/_update"
@@ -44,17 +39,20 @@ class IMServiceClient:
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
-            logger.info(
-                "Incident update successful",
-                extra={"status_code": response.status_code},
-            )
+            print(f"Incident updated successfully: {result}")
             return result
-        except requests.exceptions.RequestException as err:
-            logger.error(
-                "Incident update failed",
-                extra={"error": str(err)},
-            )
-            raise
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
 
     def update_incident_data(self, payload: dict):
         url = f"{self.base_url}/im-services/v2/request/migration/_update"
@@ -65,14 +63,17 @@ class IMServiceClient:
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
-            logger.info(
-                "Incident data update successful",
-                extra={"status_code": response.status_code},
-            )
+            print(f"Incident updated successfully: {result}")
             return result
-        except requests.exceptions.RequestException as err:
-            logger.error(
-                "Incident data update failed",
-                extra={"error": str(err)},
-            )
-            raise
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err

@@ -34,13 +34,30 @@ public class FacilityServiceClient {
             log.warn("HFR id is provided as null");
             return null;
         }
-        
+        return searchByIdentifier("hfrId", hfrId, tenantId);
+    }
+
+    /**
+     * Fetches facility details by ninId. RMS reports a single identifier in its HFRID field, and
+     * for some facilities that value is a NIN, so callers may need to retry an unmatched
+     * identifier as a NIN before concluding the facility is unknown.
+     */
+    public FacilityDetails getFacilityByNinId(String ninId, String tenantId) {
+        // Validate ninId
+        if (ninId == null || ninId.trim().isEmpty()) {
+            log.warn("NIN id is provided as null");
+            return null;
+        }
+        return searchByIdentifier("ninId", ninId, tenantId);
+    }
+
+    private FacilityDetails searchByIdentifier(String paramName, String identifier, String tenantId) {
         try {
             String url = config.getFacilityServiceBaseUrl() + config.getFacilityServiceSearchEndpoint();
-            
+
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
                     .queryParam("tenant_id", "in")
-                    .queryParam("hfrId", hfrId)
+                    .queryParam(paramName, identifier)
                     .queryParam("limit", 1)
                     .queryParam("offset", 0);
 
@@ -62,7 +79,7 @@ public class FacilityServiceClient {
                         String status = String.valueOf(facility.get("facility_status"));
 
                         if ("UNINSTALLED".equalsIgnoreCase(status)) {
-                            log.info("Facility {} is UNINSTALLED. Skipping ticket creation.", hfrId);
+                            log.info("Facility {}={} is UNINSTALLED. Skipping ticket creation.", paramName, identifier);
                             return null;
                         }
                     }
@@ -76,27 +93,27 @@ public class FacilityServiceClient {
                         rmsInactive = Boolean.parseBoolean(String.valueOf(rmsInactiveObj));
                     }
                     if (rmsInactive) {
-                        log.info("Facility {} is marked as rms_inactive=true. Skipping ticket creation.", hfrId);
+                        log.info("Facility {}={} is marked as rms_inactive=true. Skipping ticket creation.", paramName, identifier);
                         return null;
                     }
 
                     FacilityDetails details = mapToFacilityDetails(facility);
                     if (details != null) {
-                        log.debug("Successfully fetched facility for hfrId: {} - facilityId: {}, boundaryCode: {}", 
-                                hfrId, details.getFacilityId(), details.getBoundaryCode());
+                        log.debug("Successfully fetched facility for {}: {} - facilityId: {}, boundaryCode: {}",
+                                paramName, identifier, details.getFacilityId(), details.getBoundaryCode());
                     }
                     return details;
                 } else {
-                    log.warn("No facilities found in response for hfrId: {}", hfrId);
+                    log.warn("No facilities found in response for {}: {}", paramName, identifier);
                 }
             } else {
-                log.warn("Facility service returned non-2xx status or null body for hfrId: {} - Status: {}", 
-                        hfrId, response != null ? response.getStatusCode() : "null response");
+                log.warn("Facility service returned non-2xx status or null body for {}: {} - Status: {}",
+                        paramName, identifier, response != null ? response.getStatusCode() : "null response");
             }
 
             return null;
         } catch (Exception e) {
-            log.error("Error fetching facility by hfrId: {}", hfrId, e);
+            log.error("Error fetching facility by {}: {}", paramName, identifier, e);
             return null;
         }
     }

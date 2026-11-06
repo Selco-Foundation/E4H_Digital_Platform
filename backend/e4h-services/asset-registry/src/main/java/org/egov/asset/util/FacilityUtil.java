@@ -126,4 +126,13 @@ public class FacilityUtil {
         log.debug("Activity facility fetched successfully | tenantId={} activityFacilityId={}", tenantId, activityFacilityId);
         return Collections.singletonList(response.get("facility"));
     }
+
+    public List<Object> getActivityFacilityById(RequestInfo request, String activityFacilityId, String tenantId) {
+        ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder().ids(List.of(activityFacilityId)).tenantId(tenantId).build();
+        ActivityFacilitySearchRequest fieldPlanRequest = ActivityFacilitySearchRequest.builder().requestInfo(request).criteria(searchCriteria).build();
+        String url = configuration.getActivityFacilityHost() + configuration.getActivityFacilitySearchPath()+ "?tenantId="+tenantId+"&offset=0&limit=100";
+        Map<String,Object> response = serviceRequestRepository.fetchResult(new StringBuilder(url), fieldPlanRequest, Map.class);
+
+        return Collections.singletonList(response.get("facility"));
+    }
 }

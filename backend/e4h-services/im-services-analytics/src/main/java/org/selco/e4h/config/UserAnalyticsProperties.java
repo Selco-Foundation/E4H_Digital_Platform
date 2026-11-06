@@ -37,9 +37,17 @@ public class UserAnalyticsProperties {
     @Value("${user.analytics.field.role}")
     private String roleField;
 
+    /** The role the action itself was matched on, as opposed to the user's programme role. */
+    @Value("${user.analytics.field.system.role}")
+    private String systemRoleField;
+
     /** Field the distinct active-user count is taken over — the user's uuid. */
     @Value("${user.analytics.field.user}")
     private String userField;
+
+    /** Login id the Kibana login sheet groups on; Kibana accounts have no uuid to group by. */
+    @Value("${user.analytics.field.user.name}")
+    private String userNameField;
 
     /**
      * {@code cardinality} is approximate above this many distinct values and exact at or below it,

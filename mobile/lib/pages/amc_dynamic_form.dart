@@ -21,6 +21,9 @@ import '../model/scheduled_visit/scheduled_visit.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
+import '../utils/app_logger.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -103,14 +106,11 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
           const MdmsRequestModel(
             mdmsCriteria: MdmsCriteriaModel(
               tenantId: 'in',
-              moduleDetails: [
-                MdmsModuleDetailsModel(
-                  moduleName: 'SELCO',
-                  masterDetails: [MdmsMasterDetailsModel('FormConfig')],
-                ),
-              ],
+              schemaCode: "common-masters.AMCFormSchema",
+              moduleDetails: [],
             ),
           ),
+          useCacheRead: true,
         );
 
         Map<String, dynamic>? chosen;
@@ -137,7 +137,12 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
           _repo.upsertTransformedSchema(transformed);
           schemaJson = transformed;
         }
-      } catch (_) {
+      } catch (e, st) {
+        AppLogger.instance.error(
+          title: "Failed to load AMC form schema",
+          message: e.toString(),
+          stackTrace: st,
+        );
       }
     }
 
@@ -145,7 +150,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
 
     if (schemaJson == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Loading schema')),
+        SnackBar(content: Text(context.translate(i18.common.loadingSchema))),
       );
       return;
     }
@@ -343,7 +348,8 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
             }
             final schemaObject = state.cachedSchemas[currentKey];
             if (schemaObject == null) {
-              return const Center(child: Text('Form schema missing.'));
+              return Center(
+                  child: Text(context.translate(i18.common.formSchemaMissing)));
             }
             final pageSchema = schemaObject.pages[widget.pageName];
             if (pageSchema == null) {
@@ -427,8 +433,9 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                       builder: (context, form, child) => DigitButton(
                         isDisabled: _isNextLoading,
                         label: _isNextLoading || _isPreparingForm
-                            ? 'Loading...'
-                            : (pageSchema.actionLabel ?? 'Next'),
+                            ? context.translate(i18.amcDynamicForm.loading)
+                            : (pageSchema.actionLabel ??
+                                context.translate(i18.common.coreCommonNext)),
                         onPressed: () async {
                           if (_isNextLoading || _isPreparingForm) return;
                           setState(() => _isNextLoading = true);
@@ -454,7 +461,9 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                               final first = missing.first;
                               final label = labelForKey(pageSchema, first);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('$label is required')),
+                                SnackBar(
+                                    content: Text(
+                                        '$label ${context.translate(i18.common.isRequired)}')),
                               );
                               return;
                             }
@@ -467,25 +476,30 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                               final errors = c.errors;
                               if (errors
                                   .containsKey(ValidationMessage.required)) {
-                                reason = 'is required';
+                                reason =
+                                    context.translate(i18.common.isRequired);
                               } else if (errors
                                   .containsKey(ValidationMessage.pattern)) {
-                                reason = 'has an invalid format';
+                                reason = context
+                                    .translate(i18.common.hasInvalidFormat);
                               } else if (errors
                                   .containsKey(ValidationMessage.number)) {
-                                reason = 'must be a number';
+                                reason =
+                                    context.translate(i18.common.mustBeNumber);
                               } else if (errors
                                   .containsKey(ValidationMessage.min)) {
-                                reason = 'is below the minimum';
+                                reason =
+                                    context.translate(i18.common.belowMinimum);
                               } else if (errors
                                   .containsKey(ValidationMessage.max)) {
-                                reason = 'is above the maximum';
+                                reason =
+                                    context.translate(i18.common.aboveMaximum);
                               }
 
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                     content: Text(reason == null
-                                        ? 'Please correct: $label'
+                                        ? '${context.translate(i18.common.pleaseCorrect)}: $label'
                                         : '$label $reason')),
                               );
                               return;

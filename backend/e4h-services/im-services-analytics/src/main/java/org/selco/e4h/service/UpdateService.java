@@ -7,6 +7,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.selco.e4h.config.ConsumerConfiguration;
+import org.springframework.beans.factory.annotation.Value;
 import org.selco.e4h.util.UpdateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -23,6 +24,9 @@ import java.util.Optional;
 @Slf4j
 public class UpdateService {
 
+    @Value("${es.index.computed.sla.im.services}")
+    private String computedSlaImServicesIndex;
+
 	@Autowired
 	private UpdateUtils indexerUtils;
 
@@ -38,12 +42,8 @@ public class UpdateService {
 	}
 
 	public void updateEsDoc(String topic, String kafkaJson) {
-		log.trace("Updating Elasticsearch document for topic: {}", topic);
-		log.info("Processing Elasticsearch document update for topic: {}", topic);
 		try {
 			JSONArray kafkaJsonArray = indexerUtils.constructArrayForUpdate(kafkaJson, EMPLOYEE_PATH);
-			log.debug("Constructed JSON array with {} elements", kafkaJsonArray != null ? kafkaJsonArray.length() : 0);
-			int processedCount = 0;
 			for (int i = 0; i < kafkaJsonArray.length(); i++) {
 				if (kafkaJsonArray.get(i) != null) {
 					JSONObject jsonObject = kafkaJsonArray.getJSONObject(i);
@@ -56,40 +56,35 @@ public class UpdateService {
 					if (id.isPresent() && isActive.isPresent() && accountCreationTime.isPresent()) {
 						String jsonPayload = buildJsonPayload(isActive.get(), accountCreationTime.get());
 						String updateUrl = config.getEsHostUrl() + config.getUpdateIndexPath() + id.get();
-						log.debug("Updating document ID: {}, isActive: {}", id.get(), isActive.get());
 
 						try {
+							log.debug("Record being updated: {}", jsonPayload);
 							HttpEntity<String> entity = new HttpEntity<>(jsonPayload, buildHeaders());
 							String response = restTemplate.postForObject(updateUrl, entity, String.class);
 							processResponse(response, id.get());
-							processedCount++;
 						} catch (HttpClientErrorException | HttpServerErrorException e) {
-							log.error("HTTP error while updating ES document with ID {}: status={}, message={}", 
-								id.get(), e.getStatusCode(), e.getMessage());
+							log.error("HTTP error while updating the ES document with ID {}: {}", id, e.getMessage());
 						} catch (ResourceAccessException e) {
-							log.error("Elasticsearch is unreachable, pausing Kafka listener", e);
+							log.error("ES is DOWN, Pausing Kafka listener...", e);
 							indexerUtils.orchestrateListenerOnESHealth();
 						} catch (Exception e) {
-							log.error("Unexpected error while updating ES document with ID {}", id.get(), e);
+							log.error("Unexpected error while updating the ES document with ID {}: {}", id, e.getMessage(), e);
 						}
 					} else {
-						log.warn("Missing necessary fields for updating ES document: tenantId={}, isActive={}, createdDate={}", 
-							id.isPresent(), isActive.isPresent(), accountCreationTime.isPresent());
+						log.warn("Missing necessary fields for updating ES document: tenantId, isActive, or createdDate");
 					}
 				}
 			}
-			log.info("Completed processing {} documents for topic: {}", processedCount, topic);
 		} catch (JSONException e) {
-			log.error("JSON processing error while building update request for topic: {}", topic, e);
+			log.error("JSON processing error while building curl for updating", e);
 		} catch (Exception e) {
-			log.error("Unexpected error while processing Kafka JSON for update, topic: {}", topic, e);
+			log.error("Unexpected error while processing Kafka JSON for update", e);
 		}
 	}
 
 	private String buildJsonPayload(boolean isActive, long accountCreationTime) {
-		log.trace("Building JSON payload for update, isActive: {}", isActive);
 		String isLive = isActive ? "true" : "false";
-		String payload = new JSONObject()
+		return new JSONObject()
 				.put("script", new JSONObject()
 						.put("source", "if (ctx._source.Data.isLive.toString().equalsIgnoreCase('false')) { ctx._source.Data.isLive = params.newIsLive; ctx._source.Data.accountCreationTime = params.accountCreationTime; }")
 						.put("lang", "painless")
@@ -98,35 +93,28 @@ public class UpdateService {
 								.put("accountCreationTime", accountCreationTime)))
 				.put("doc_as_upsert", false)
 				.toString();
-		log.debug("JSON payload built, size: {} characters", payload.length());
-		return payload;
 	}
 
 	public HttpHeaders buildHeaders() {
-		log.trace("Building HTTP headers for Elasticsearch request");
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.add("Authorization", indexerUtils.getESEncodedCredentials());
-		log.debug("HTTP headers built with content type: APPLICATION_JSON");
 		return headers;
 	}
 
 	private void processResponse(String response, String id) {
-		log.trace("Processing Elasticsearch response for document ID: {}", id);
 		if (response.contains("\"result\":\"updated\"")) {
-			log.info("Document with ID {} successfully updated", id);
+			log.info("Document with ID {} successfully updated.", id);
 		} else if (response.contains("\"type\":\"document_missing_exception\"")) {
-			log.warn("Document with ID {} not found in Elasticsearch", id);
+			log.warn("Document with ID {} not found.", id);
 		} else if (response.contains("\"type\":\"version_conflict_engine_exception\"")) {
-			log.error("Version conflict for document with ID {}", id);
+			log.error("Version conflict for document with ID {}.", id);
 		} else if (response.contains("\"type\":\"shard_failed\"")) {
-			log.error("Shard failure while updating document with ID {}", id);
+			log.error("Shard failure while updating document with ID {}.", id);
 		} else if (response.contains("\"type\":\"illegal_argument_exception\"")) {
-			log.error("Illegal argument exception while updating document with ID {}", id);
-			log.debug("Response details: {}", response);
+			log.error("Illegal argument exception while updating document with ID {}: {}", id, response);
 		} else {
-			log.warn("Unexpected response format for document ID: {}", id);
-			log.debug("Response content: {}", response);
+			log.error("Unexpected response: {}", response);
 		}
 	}
 
@@ -151,8 +139,6 @@ public class UpdateService {
 	}
 
 	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService, Boolean isAClosedTicket, long definedTotalSla) {
-		log.trace("Updating SLA fields for incident ID: {}", incidentId);
-		log.info("Updating SLA fields for incident: {}, businessService: {}", incidentId, businessService);
 		Map<String, Object> dataMap = new HashMap<>();
 
         if(!isAClosedTicket) {
@@ -166,8 +152,6 @@ public class UpdateService {
 			currentProcessInstance.put("businessService", businessService);
 			dataMap.put("currentProcessInstance", currentProcessInstance);
 		}
-		log.debug("SLA data prepared: slaRemaining={}, totalSlaRemaining={}, stateSla={}, isClosed={}", 
-			slaRemaining, totalSlaRemaining, stateSla, isAClosedTicket);
 
 		Map<String, Object> doc = new HashMap<>();
 		doc.put("Data", dataMap);
@@ -175,42 +159,40 @@ public class UpdateService {
 		Map<String, Object> updateBody = new HashMap<>();
 		updateBody.put("doc", doc);
 
-		String url = config.getEsHostUrl() + "/computed-sla-im-services/_update/" + incidentId;
+
+		String url = config.getEsHostUrl() + "/" + computedSlaImServicesIndex + "/_update/" + incidentId;
 		HttpEntity<Map<String, Object>> entity = new HttpEntity<>(updateBody, buildHeaders());
 
 		try {
 			restTemplate.postForEntity(url, entity, String.class);
-			log.info("Successfully updated SLA fields for incident: {}", incidentId);
+			log.info("Updated SLA{} for ticket {}", businessService != null ? " + businessService" : "", incidentId);
 		} catch (Exception e) {
-			log.error("Failed to update SLA fields for incident: {}", incidentId, e);
+			log.error("Failed to update SLA fields for ticket {}: {}", incidentId, e.getMessage(), e);
 		}
 	}
 
 	public void upsertTransformedTicket(String documentId, Map<String, Object> dataMap) {
-		log.trace("Upserting transformed ticket for document ID: {}", documentId);
 		if (documentId == null || documentId.isEmpty()) {
-			log.warn("Document ID is missing for upsert operation");
+			log.warn("Document ID is missing for upsert.");
 			return;
 		}
 
-		log.info("Upserting transformed ticket for document ID: {}", documentId);
 		try {
 			Map<String, Object> finalPayload = new HashMap<>();
 			finalPayload.put("Data", dataMap);
-			log.debug("Prepared upsert payload with {} data keys", dataMap != null ? dataMap.size() : 0);
 
-			String indexUrl = config.getEsHostUrl() + "/computed-sla-im-services/_doc/" + documentId;
+			String indexUrl = config.getEsHostUrl() + "/computed-sla-im-services-write/_doc/" + documentId;
 			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(finalPayload, buildHeaders());
 
 			restTemplate.put(indexUrl, entity);
-			log.info("Successfully upserted transformed ticket for document ID: {}", documentId);
+			log.info("Upserted transformed ticket for document ID: {}", documentId);
 
 		} catch (HttpClientErrorException | HttpServerErrorException e) {
-			log.error("HTTP error during upsert of transformed ticket: {}, status: {}", documentId, e.getStatusCode(), e);
+			log.error("HTTP error during upsert of transformed ticket {}: {}", documentId, e.getMessage());
 		} catch (ResourceAccessException e) {
-			log.error("Elasticsearch is unreachable while upserting ticket: {}", documentId, e);
+			log.error("Elasticsearch is unreachable while upserting ticket {}: {}", documentId, e.getMessage());
 		} catch (Exception e) {
-			log.error("Unexpected error during upsert of transformed ticket: {}", documentId, e);
+			log.error("Unexpected error during upsert of transformed ticket {}: {}", documentId, e.getMessage(), e);
 		}
 	}
 

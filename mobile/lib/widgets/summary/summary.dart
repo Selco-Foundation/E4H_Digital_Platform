@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../model/appconfig/mdmsRequest.dart';
+import '../../model/document/document.dart';
 import '../../repositories/app_init_repo.dart';
 
 typedef FileTapCallback = void Function(String path);
@@ -10,16 +11,30 @@ typedef RemoveReportCallback = void Function(ExistingReport report);
 
 class ExistingReport {
   final int? isarId;
-  final String filePath;
+  final String source;
   final String fileName;
   final String fileType; // 'pdf' | 'image' | 'unknown'
+  final bool isRemote;
 
   ExistingReport({
     this.isarId,
-    required this.filePath,
+    required this.source,
     required this.fileName,
     required this.fileType,
+    this.isRemote = false,
   });
+
+  String get filePath => source;
+}
+
+bool isRemoteImageDocument(Document doc) {
+  final uid = (doc.documentUid ?? '').toLowerCase();
+  return uid.contains('-image-');
+}
+
+bool isRemotePdfDocument(Document doc) {
+  final uid = (doc.documentUid ?? '').toLowerCase();
+  return uid.contains('-pdf-');
 }
 
 String inferFileType(String path) {
@@ -112,22 +127,22 @@ Future<
       String pageName,
       String schemaCode,
       String uniqueIdentifier,
+      bool isSystemParameters,
     })> bomRouteAndLabel(String name) async {
   final r = AppInitRepo();
   final nameLower = name.toLowerCase();
 
   // 1) Load SELCO.FormConfig docs (raw)
-  final rawDocs = await r.searchFormConfigsRaw(const MdmsRequestModel(
-    mdmsCriteria: MdmsCriteriaModel(
-      tenantId: 'in',
-      moduleDetails: [
-        MdmsModuleDetailsModel(
-          moduleName: 'SELCO',
-          masterDetails: [MdmsMasterDetailsModel('FormConfig')],
-        ),
-      ],
+  final rawDocs = await r.searchFormConfigsRaw(
+    const MdmsRequestModel(
+      mdmsCriteria: MdmsCriteriaModel(
+        tenantId: 'in',
+        schemaCode: "common-masters.BOMFormSchema",
+        moduleDetails: [],
+      ),
     ),
-  ));
+    useCacheRead: true,
+  );
   if (rawDocs == null || rawDocs.isEmpty) {
     throw StateError('No SELCO.FormConfig documents available.');
   }
@@ -187,15 +202,17 @@ Future<
   final schemaCode = _str(best['schemaCode']).trim();
   final uniqueIdentifier = _str(best['uniqueIdentifier']).trim();
 
-  // 4) Build a human label from the token (you can tweak this mapping freely)
-  String labelFromName(String n) {
+  String tokenFromName(String n) {
     final lower = n.toLowerCase();
     final afterBom = RegExp(r'_bom_([a-z0-9]+)$').firstMatch(lower)?.group(1);
     final alreadyPrefixed =
         RegExp(r'\bbom[_\-\s]([a-z0-9]+)\b').firstMatch(lower)?.group(1);
-    final token =
-        (afterBom ?? alreadyPrefixed ?? lower.split('_').last).toLowerCase();
+    return (afterBom ?? alreadyPrefixed ?? lower.split('_').last).toLowerCase();
+  }
 
+  // 4) Build a human label from the token (you can tweak this mapping freely)
+  String labelFromName(String n) {
+    final token = tokenFromName(n);
     switch (token) {
       case 'solar':
       case 'solarsystem':
@@ -223,7 +240,19 @@ Future<
     }
   }
 
+  bool isSystemParametersName(String n) {
+    switch (tokenFromName(n)) {
+      case 'system':
+      case 'parameters':
+      case 'parameter':
+        return true;
+      default:
+        return false;
+    }
+  }
+
   final label = labelFromName(name);
+  final isSystemParameters = isSystemParametersName(name);
 
   return (
     label: label,
@@ -231,5 +260,6 @@ Future<
     pageName: pageName,
     schemaCode: schemaCode,
     uniqueIdentifier: uniqueIdentifier,
+    isSystemParameters: isSystemParameters,
   );
 }

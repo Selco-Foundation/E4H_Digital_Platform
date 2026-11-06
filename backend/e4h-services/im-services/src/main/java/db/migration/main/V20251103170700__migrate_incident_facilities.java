@@ -55,7 +55,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("Starting migration: migrating facilities from MDMS to facility table");
+        log.info("🚀 Starting migration: migrating facilities from MDMS to facility table");
 
         RestTemplate restTemplate = createRestTemplateWithTimeouts();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -267,10 +267,10 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
             migrationLogger.println("========================================\n");
 
             // Log facility mappings summary to console as well
-            log.info("Migration completed: Facilities migrated from MDMS to facility table");
+            log.info("✅ Migration completed: Facilities migrated from MDMS to facility table");
             log.info("Total facilities successfully migrated: {}", successfullyMigrated);
             log.info("Total facilities skipped: {}", skippedFacilities.size());
-            log.info("Migration log file: {}", absoluteLogPath);
+            log.info("📝 Migration log file: {}", absoluteLogPath);
 
             migrationLogger.flush();
         }
@@ -536,7 +536,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("Migration log file created: {}", absolutePath);
+        log.info("📝 Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 
@@ -606,7 +606,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
             );
 
             // Build URL with query parameters
-            String url = String.format("%s?roles=COMPLAINANT&tenantId=%s", hrmsUrl, facilityTenantId);
+            String url = String.format("%s?isActive=true&roles=COMPLAINANT&tenantId=%s", hrmsUrl, facilityTenantId);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -621,6 +621,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                     "fetch POC from HRMS for facility tenant ID '" + facilityTenantId + "'"
             );
 
+            boolean foundEmployee = false;
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 JsonNode root = objectMapper.readTree(response.getBody());
                 JsonNode employees = root.get("Employees");
@@ -639,11 +640,15 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                             log.debug("Found HCR username (HFR/NIN ID): {} for facility: {}", hcrUserName, facilityTenantId);
                             hcrDetails.put("hcrUserName", hcrUserName);
                         }
+                        foundEmployee = true;
                     }
                 }
             }
 
-            log.warn("No employee with COMPLAINANT role found for facility: {}", facilityTenantId);
+            if (!foundEmployee) {
+                log.warn("No employee with COMPLAINANT role found for facility: {}", facilityTenantId);
+            }
+
             return hcrDetails;
 
         } catch (Exception e) {

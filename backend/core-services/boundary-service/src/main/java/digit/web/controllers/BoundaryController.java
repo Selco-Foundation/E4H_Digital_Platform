@@ -93,6 +93,19 @@ public class BoundaryController {
     }
 
     /**
+     * Request handler for serving boundary entities search request.
+     * @param boundaryV2SearchRequest
+     * @return
+     */
+    @PostMapping(value = "/v2/_search")
+    public ResponseEntity<BoundaryResponse> searchWithRequestBody(@Valid @RequestBody BoundaryV2SearchRequest boundaryV2SearchRequest) {
+        BoundaryResponse boundaryResponse = boundaryService.searchBoundary(
+                boundaryV2SearchRequest.getBoundarySearchCriteria() , boundaryV2SearchRequest.getRequestInfo()
+        );
+        return new ResponseEntity<>(boundaryResponse, HttpStatus.OK);
+    }
+
+    /**
      * Request handler for serving boundary entities update request.
      * @param body
      * @return
@@ -108,6 +121,19 @@ public class BoundaryController {
         log.info("Boundary update request processed successfully, updated {} boundaries", 
                 boundaryResponse.getBoundary() != null ? boundaryResponse.getBoundary().size() : 0);
         return new ResponseEntity<>(boundaryResponse, HttpStatus.ACCEPTED);
+    }
+
+    @PostMapping(value = "/_delete")
+    public ResponseEntity<BoundaryResponse> delete(@Valid @RequestBody BoundaryRequest body) {
+        log.trace("delete method invoked");
+        log.info("Processing boundary delete request, boundary count={}",
+                body.getBoundary() != null ? body.getBoundary().size() : 0);
+
+        BoundaryResponse boundaryResponse = boundaryService.deleteBoundary(body);
+
+        log.info("Boundary delete request processed successfully, deleted {} boundaries",
+                boundaryResponse.getBoundary() != null ? boundaryResponse.getBoundary().size() : 0);
+        return new ResponseEntity<>(boundaryResponse, HttpStatus.OK);
     }
 
     @PostMapping(value = "/_delete")

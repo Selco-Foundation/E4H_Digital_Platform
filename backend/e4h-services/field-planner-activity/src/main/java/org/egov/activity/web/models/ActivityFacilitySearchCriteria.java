@@ -51,6 +51,13 @@ public class ActivityFacilitySearchCriteria {
     @JsonProperty("boundaryCodes")
     private @Valid List<String> boundaryCodes = null;
 
+    /**
+     * Sort direction for created_time: ASC (oldest first) or DESC (newest first).
+     * Defaults to DESC when not specified.
+     */
+    @JsonProperty("sort_direction")
+    private String sortDirection = null;
+
     private String tenantId;
 
     private boolean isActive;

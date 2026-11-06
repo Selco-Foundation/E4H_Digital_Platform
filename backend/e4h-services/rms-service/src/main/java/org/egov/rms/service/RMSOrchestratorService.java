@@ -10,7 +10,6 @@ import org.egov.rms.model.Alert;
 import org.egov.rms.model.EligibilitySnapshot;
 import org.egov.rms.model.IMServiceRequest;
 import org.egov.rms.model.RMSFacilityData;
-import org.egov.rms.repository.AlertRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -27,8 +26,8 @@ public class RMSOrchestratorService {
     private final PayloadGenerator payloadGenerator;
     private final SauraEmitraConnector sauraEmitraConnector;
     private final RMSConfiguration config;
-    private final AlertRepository alertRepository;
     private final TicketCreationGuardService ticketCreationGuardService;
+    private final OpenIncidentChecker openIncidentChecker;
     private final FacilityEligibilitySyncService facilityEligibilitySyncService;
     private final FacilityEligibilityService facilityEligibilityService;
 
@@ -242,12 +241,11 @@ public class RMSOrchestratorService {
                     continue;
                 }
 
-                // Check if there's an open ticket in eg_incident_v2
+                // Re-check for an open ticket from any source (RMS or HCR) raised since deduplication
                 // If ticket is closed or doesn't exist, we allow creating a new ticket
                 // Note: We don't skip alerts with ticket_id set because they might have closed tickets
-                boolean hasOpenTicket = alertRepository.hasOpenTicket(alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
-                if (hasOpenTicket) {
-                    log.warn("DUPLICATE PREVENTION: Skipping alert {} - open ticket already exists in eg_incident_v2 for facility: {}, type: {}, subType: {}", 
+                if (openIncidentChecker.hasOpenTicket(alert)) {
+                    log.warn("DUPLICATE PREVENTION: Skipping alert {} - open ticket already exists for facility: {}, type: {}, subType: {}", 
                             alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                     skippedCount++;
                     continue;

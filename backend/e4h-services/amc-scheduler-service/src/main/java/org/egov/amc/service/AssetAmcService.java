@@ -53,29 +53,22 @@ public class AssetAmcService {
     }
 
     public AssetAmcRequest createAssetAmc(AssetAmcRequest request) {
-        log.trace("Entering createAssetAmc method");
-        log.info("Creating {} asset AMC record(s)", request.getAssetAmcs().size());
         assetAmcValidator.validateCreateAssetAmcRequest(request);
         for (AssetAmc amcConfiguration : request.getAssetAmcs()) {
             assetAmcEnrichment.enrichAssetAmcOnCreate(amcConfiguration, request.getRequestInfo());
-            log.trace("Enriching asset AMC on create for assetId: {}, amcConfigurationId: {}", 
-                    amcConfiguration.getAssetId(), amcConfiguration.getAmcConfigurationId());
-            log.info("Asset AMC enriched with configuration ID: {}", amcConfiguration.getAmcConfigurationId());
-            log.debug("Enriched asset AMC details - assetId: {}, startDate: {}, endDate: {}", 
-                    amcConfiguration.getAssetId(), amcConfiguration.getAmcStartDate(), amcConfiguration.getAmcEndDate());
+            log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
+            log.info("Pushed to kafka");
         }
-        log.info("Pushing {} asset AMC record(s) to kafka", request.getAssetAmcs().size());
         producer.push(amcServiceConfiguration.getSaveAssetAmcTopic(), request);
         return request;
     }
 
     public AssetAmcRequest updateAssetAmc(AssetAmcRequest request) {
-        log.trace("Entering updateAssetAmc method");
         /*
          * Validate the update assetAmc request
          */
         assetAmcValidator.validateUpdateAssetAmcRequest(request);
-        log.info("Update asset AMC request validated, record count: {}", request.getAssetAmcs().size());
+        log.info("Update asset_amc request validated");
 
         /*
          * Search for asset_amc based on asset_amc IDs provided in the request
@@ -84,8 +77,7 @@ public class AssetAmcService {
                 getSearchAssetAmcRequest(request.getAssetAmcs(), request.getRequestInfo()),
                 amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(),
                 request.getAssetAmcs().get(0).getTenantId(), false, null);
-        log.debug("Fetched {} asset AMC record(s) from database for update request", amcConfigurationsFromDB.size());
-        log.info("Fetched asset AMC records for update request");
+        log.info("Fetched assetAmc for update request");
 
         /*
          * Validate the update asset_amc request against the asset_amcs fetched from the database
@@ -95,11 +87,9 @@ public class AssetAmcService {
         /*
          * Process each assetAmc in the update request
          */
-        log.debug("Processing {} asset AMC record(s) for update", request.getAssetAmcs().size());
         for (AssetAmc amcConfiguration : request.getAssetAmcs()) {
             processAssetAmcUpdate(request, amcConfiguration, amcConfigurationsFromDB);
         }
-        log.info("Successfully processed update for {} asset AMC record(s)", request.getAssetAmcs().size());
 
         return request;
     }
@@ -119,11 +109,8 @@ public class AssetAmcService {
     }
 
     public List<AssetAmc> searchAssetAmc(AssetAmcSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
-        log.trace("Entering searchAssetAmc method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         assetAmcValidator.validateSearchAssetAmcRequest(request, limit, offset, tenantId);
         List<AssetAmc> amcConfigurationList = assetAmcRepository.getAssetAmc(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
-        log.debug("Found {} asset AMC record(s) matching search criteria", amcConfigurationList.size());
-        log.info("Asset AMC search completed");
         return amcConfigurationList;
     }
 
@@ -189,10 +176,7 @@ public class AssetAmcService {
         /*
          * Check and enrich cascading assetAmc dates and push the update to the message broker
          */
-        log.debug("Pushing asset AMC update to kafka for assetId: {}, amcConfigurationId: {}", 
-                assetAmc.getAssetId(), assetAmc.getAmcConfigurationId());
         producer.push(amcServiceConfiguration.getUpdateAssetAmcTopic(), request);
-        log.info("Asset AMC update pushed to kafka for assetId: {}", assetAmc.getAssetId());
     }
 
     private boolean isValidCascadingUpdate(AssetAmc assetAmcFromDB, AssetAmc assetAmc) {
@@ -226,7 +210,7 @@ public class AssetAmcService {
             JsonNode originalState = originalNode.get("state");
             JsonNode newState = newNode.get("state");
             if (!Objects.equals(originalState, newState)) {
-                log.warn("State cannot be changed during cascading update - original: {}, new: {}", originalState, newState);
+                log.warn("State cannot be changed during cascading update");
                 return false;
             }
 

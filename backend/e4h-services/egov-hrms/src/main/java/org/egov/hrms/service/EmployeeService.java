@@ -41,6 +41,7 @@
 package org.egov.hrms.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -58,6 +59,7 @@ import org.egov.hrms.model.Assignment;
 import org.egov.hrms.model.AuditDetails;
 import org.egov.hrms.model.Employee;
 import org.egov.hrms.model.Jurisdiction;
+import org.egov.hrms.model.UpdateUsernameEvent;
 import org.egov.hrms.model.enums.UserType;
 import org.egov.hrms.producer.HRMSProducer;
 import org.egov.hrms.repository.EmployeeRepository;
@@ -68,6 +70,8 @@ import org.egov.hrms.utils.ResponseInfoFactory;
 import org.egov.hrms.web.contract.EmployeeRequest;
 import org.egov.hrms.web.contract.EmployeeResponse;
 import org.egov.hrms.web.contract.EmployeeSearchCriteria;
+import org.egov.hrms.web.contract.UpdateUsernameRequest;
+import org.egov.hrms.web.contract.UpdateUsernameResponse;
 import org.egov.hrms.web.contract.User;
 import org.egov.hrms.web.contract.UserRequest;
 import org.egov.hrms.web.contract.UserResponse;
@@ -90,6 +94,9 @@ public class EmployeeService {
 
 	@Autowired
 	private UserService userService;
+
+	@Autowired
+	private EncryptionService encryptionService;
 
 	@Autowired
 	private IdGenService idGenService;
@@ -132,14 +139,11 @@ public class EmployeeService {
 	 * @return
 	 */
 	public EmployeeResponse create(EmployeeRequest employeeRequest) {
-		log.trace("EmployeeService.create invoked");
+		
 		RequestInfo requestInfo = employeeRequest.getRequestInfo();
 		String tenantId = employeeRequest.getEmployees().get(0).getTenantId();
-		int employeeCount = employeeRequest.getEmployees().size();
-		log.info("Creating {} employee(s) for tenant {}", employeeCount, tenantId);
 		
 		Map<String, String> pwdMap = new HashMap<>();
-		log.debug("Generating IDs for employees");
 		idGenService.setIds(employeeRequest);
 		employeeRequest.getEmployees().stream().forEach(employee -> {
 			enrichCreateRequest(employee, requestInfo);
@@ -147,13 +151,9 @@ public class EmployeeService {
 			pwdMap.put(employee.getUuid(), employee.getUser().getPassword());
 			employee.getUser().setPassword(null);
 		});
-		log.debug("Enriched {} employee(s) and created user accounts", employeeCount);
 		String hrmsCreateTopic = propertiesManager.getSaveEmployeeTopic();
-		log.info("Pushing employee data to Kafka topic: {}", hrmsCreateTopic);
 		hrmsProducer.push(tenantId, hrmsCreateTopic, employeeRequest);
-		log.debug("Sending notifications to employees");
 		notificationService.sendNotification(employeeRequest, pwdMap);
-		log.info("Successfully created {} employee(s)", employeeCount);
 		return generateResponse(employeeRequest);
 	}
 
@@ -166,9 +166,6 @@ public class EmployeeService {
 	 * @return
 	 */
 	public EmployeeResponse search(EmployeeSearchCriteria criteria, RequestInfo requestInfo) {
-		log.trace("EmployeeService.search invoked");
-		String tenantId = criteria.getTenantId();
-		log.info("Searching employees for tenant {}", tenantId);
 		boolean  userChecked = false;
 		/*if(null == criteria.getIsActive() || criteria.getIsActive())
 			criteria.setIsActive(true);
@@ -231,10 +228,8 @@ public class EmployeeService {
 		}
 
 		List <Employee> employees = new ArrayList<>();
-        if(!((!CollectionUtils.isEmpty(criteria.getRoles()) || !CollectionUtils.isEmpty(criteria.getNames()) || !StringUtils.isEmpty(criteria.getPhone())) && CollectionUtils.isEmpty(criteria.getUuids()))) {
-            log.debug("Fetching employees from repository");
+        if(!((!CollectionUtils.isEmpty(criteria.getRoles()) || !CollectionUtils.isEmpty(criteria.getNames()) || !StringUtils.isEmpty(criteria.getPhone())) && CollectionUtils.isEmpty(criteria.getUuids())))
             employees = repository.fetchEmployees(criteria, requestInfo, stateLevelTenantId);
-        }
         
         // If both roles and boundaryCodes are provided, and no employees found in that boundary, return empty list
         if(!CollectionUtils.isEmpty(criteria.getRoles()) && !CollectionUtils.isEmpty(criteria.getBoundaryCodes()) 
@@ -273,7 +268,6 @@ public class EmployeeService {
                     .collect(Collectors.toList());
             }
 		}
-		log.info("Employee search completed, found {} employee(s)", employees.size());
 		return EmployeeResponse.builder().responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))
 				.employees(employees).build();
 	}
@@ -286,21 +280,18 @@ public class EmployeeService {
 	 * @param requestInfo
 	 */
 	private void createUser(Employee employee, RequestInfo requestInfo) {
-		log.trace("EmployeeService.createUser invoked for employee code: {}", employee.getCode());
 		enrichUser(employee);
 		UserRequest request = UserRequest.builder().requestInfo(requestInfo).user(employee.getUser()).build();
 		try {
-			log.debug("Creating user for employee code: {}, tenant: {}", employee.getCode(), employee.getTenantId());
 			UserResponse response = userService.createUser(request);
 			User user = response.getUser().get(0);
 			employee.setId(user.getId());
 			employee.setUuid(user.getUuid());
 			employee.getUser().setId(user.getId());
 			employee.getUser().setUuid(user.getUuid());
-			log.debug("User created successfully for employee code: {}, uuid: {}", employee.getCode(), user.getUuid());
 		}catch(Exception e) {
-			log.error("Exception while creating user for employee code: {}, tenant: {}", 
-					employee.getCode(), employee.getTenantId(), e);
+			log.error("Exception while creating user: ",e);
+			log.error("request: "+request);
 			throw new CustomException(ErrorConstants.HRMS_USER_CREATION_FAILED_CODE, ErrorConstants.HRMS_USER_CREATION_FAILED_MSG);
 		}
 
@@ -312,7 +303,6 @@ public class EmployeeService {
 	 * @param employee
 	 */
 	private void enrichUser(Employee employee) {
-		log.trace("EmployeeService.enrichUser invoked for employee code: {}", employee.getCode());
 		List<String> pwdParams = new ArrayList<>();
 		pwdParams.add(employee.getCode());
 		pwdParams.add(employee.getUser().getMobileNumber());
@@ -322,7 +312,6 @@ public class EmployeeService {
 		employee.getUser().setUserName(employee.getCode());
 		employee.getUser().setActive(true);
 		employee.getUser().setType(UserType.EMPLOYEE.toString());
-		log.debug("User enriched for employee code: {}, username: {}", employee.getCode(), employee.getUser().getUserName());
 	}
 
 	/**
@@ -332,7 +321,6 @@ public class EmployeeService {
 	 * @param requestInfo
 	 */
 	private void enrichCreateRequest(Employee employee, RequestInfo requestInfo) {
-		log.trace("EmployeeService.enrichCreateRequest invoked for employee code: {}", employee.getCode());
 
 		AuditDetails auditDetails = AuditDetails.builder()
 				.createdBy(requestInfo.getUserInfo().getUuid())
@@ -401,30 +389,23 @@ public class EmployeeService {
 	 * @return
 	 */
 	public EmployeeResponse update(EmployeeRequest employeeRequest) {
-		log.trace("EmployeeService.update invoked");
+		
 		RequestInfo requestInfo = employeeRequest.getRequestInfo();
 		String tenantId = employeeRequest.getEmployees().get(0).getTenantId();
-		int employeeCount = employeeRequest.getEmployees().size();
-		log.info("Updating {} employee(s) for tenant {}", employeeCount, tenantId);
 		
 		List <String> uuidList= new ArrayList<>();
 		for(Employee employee: employeeRequest.getEmployees()) {
 			uuidList.add(employee.getUuid());
 		}
-		log.debug("Fetching existing employee data for {} uuid(s)", uuidList.size());
 		EmployeeResponse existingEmployeeResponse = search(EmployeeSearchCriteria.builder().uuids(uuidList).tenantId(tenantId).build(),requestInfo);
 		List <Employee> existingEmployees = existingEmployeeResponse.getEmployees();
-		log.debug("Found {} existing employee(s)", existingEmployees.size());
 		employeeRequest.getEmployees().stream().forEach(employee -> {
 			enrichUpdateRequest(employee, requestInfo, existingEmployees);
 			updateUser(employee, requestInfo);
 		});
-		log.debug("Enriched {} employee(s) and updated user accounts", employeeCount);
 		String hrmsUpdateTopic = propertiesManager.getUpdateEmployeeTopic();
-		log.info("Pushing updated employee data to Kafka topic: {}", hrmsUpdateTopic);
 		hrmsProducer.push(tenantId, hrmsUpdateTopic, employeeRequest);
 		//notificationService.sendReactivationNotification(employeeRequest);
-		log.info("Successfully updated {} employee(s)", employeeCount);
 		return generateResponse(employeeRequest);
 	}
 	
@@ -435,15 +416,12 @@ public class EmployeeService {
 	 * @param requestInfo
 	 */
 	private void updateUser(Employee employee, RequestInfo requestInfo) {
-		log.trace("EmployeeService.updateUser invoked for employee uuid: {}", employee.getUuid());
 		UserRequest request = UserRequest.builder().requestInfo(requestInfo).user(employee.getUser()).build();
 		try {
-			log.debug("Updating user for employee uuid: {}, tenant: {}", employee.getUuid(), employee.getTenantId());
 			userService.updateUser(request);
-			log.debug("User updated successfully for employee uuid: {}", employee.getUuid());
 		}catch(Exception e) {
-			log.error("Exception while updating user for employee uuid: {}, tenant: {}", 
-					employee.getUuid(), employee.getTenantId(), e);
+			log.error("Exception while updating user: ",e);
+			log.error("request: "+request);
 			throw new CustomException(ErrorConstants.HRMS_USER_UPDATION_FAILED_CODE, ErrorConstants.HRMS_USER_UPDATION_FAILED_MSG);
 		}
 
@@ -457,7 +435,6 @@ public class EmployeeService {
 	 * @param existingEmployeesData
 	 */
 	private void enrichUpdateRequest(Employee employee, RequestInfo requestInfo, List<Employee> existingEmployeesData) {
-		log.trace("EmployeeService.enrichUpdateRequest invoked for employee uuid: {}", employee.getUuid());
 		AuditDetails auditDetails = AuditDetails.builder()
 				.createdBy(requestInfo.getUserInfo().getUserName())
 				.createdDate(new Date().getTime())
@@ -630,30 +607,70 @@ public class EmployeeService {
 	}
 
 	private EmployeeResponse generateResponse(EmployeeRequest employeeRequest) {
-		log.trace("EmployeeService.generateResponse invoked");
 		return EmployeeResponse.builder()
 				.responseInfo(factory.createResponseInfoFromRequestInfo(employeeRequest.getRequestInfo(), true))
 				.employees(employeeRequest.getEmployees()).build();
 	}
 
+	/**
+	 * Service method to update employee username. Does following:
+	 * 1. Validates that the employee exists for the given uuid and tenantId.
+	 * 2. Encrypts the new username by making a call to the encryption service.
+	 * 3. Pushes the update to Kafka for persisting the employee code and the encrypted username.
+	 *
+	 * @param request
+	 * @return
+	 */
+	public UpdateUsernameResponse updateUsername(UpdateUsernameRequest request) {
+		log.trace("EmployeeService.updateUsername invoked");
+		RequestInfo requestInfo = request.getRequestInfo();
+		String tenantId = request.getEmployee().getTenantId();
+		String uuid = request.getEmployee().getUuid();
+		String code = request.getEmployee().getCode();
+		log.info("Updating username for employee uuid: {}, tenant: {}", uuid, tenantId);
+
+		List<Employee> existingEmployees = repository.fetchEmployees(
+				EmployeeSearchCriteria.builder().uuids(Collections.singletonList(uuid)).tenantId(tenantId).build(),
+				requestInfo, propertiesManager.getStateLevelTenantId());
+		if (CollectionUtils.isEmpty(existingEmployees)) {
+			log.warn("No employee found for uuid: {}, tenant: {}", uuid, tenantId);
+			throw new CustomException(ErrorConstants.HRMS_UPDATE_EMPLOYEE_NOT_EXIST_CODE, ErrorConstants.HRMS_UPDATE_EMPLOYEE_NOT_EXIST_MSG);
+		}
+
+		log.debug("Encrypting new username for employee uuid: {}", uuid);
+		String encryptedUsername = encryptionService.encrypt(code);
+
+		UpdateUsernameEvent event = UpdateUsernameEvent.builder()
+				.tenantId(tenantId)
+				.uuid(uuid)
+				.code(code)
+				.username(encryptedUsername)
+				.build();
+
+		String topic = propertiesManager.getUpdateUsernameTopic();
+		log.info("Pushing username update to Kafka topic: {} for employee uuid: {}", topic, uuid);
+		hrmsProducer.push(tenantId, topic, event);
+		log.info("Successfully processed username update for employee uuid: {}", uuid);
+
+		return UpdateUsernameResponse.builder()
+				.responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))
+				.build();
+	}
+
 	public Map<String,Object> getEmployeeCountResponse(RequestInfo requestInfo, String tenantId){
-		log.trace("EmployeeService.getEmployeeCountResponse invoked for tenant: {}", tenantId);
 		Map<String,Object> response = new HashMap<>();
 		Map<String,String> results = new HashMap<>();
 		ResponseInfo responseInfo = factory.createResponseInfoFromRequestInfo(requestInfo, true);
 
 		response.put("ResponseInfo",responseInfo);
-		log.debug("Fetching employee count for tenant: {}", tenantId);
 		results	= repository.fetchEmployeeCount(tenantId);
 
 		if(CollectionUtils.isEmpty(results) || results.get("totalEmployee").equalsIgnoreCase("0")){
-			log.warn("No employee records found for tenant: {}", tenantId);
 			Map<String,String> error = new HashMap<>();
 			error.put("NO_RECORDS","No records found for the tenantId: "+tenantId);
 			throw new CustomException(error);
 		}
 
-		log.info("Employee count retrieved for tenant: {}, count: {}", tenantId, results.get("totalEmployee"));
 		response.put("EmployeCount",results);
 		return  response;
 	}

@@ -44,22 +44,18 @@ public class CommonUtility {
      * Get state display name from tenant ID
      */
     public String getStateDisplayName(String tenantId) {
-        log.trace("Getting state display name for tenantId: {}", tenantId);
         if (tenantId == null || tenantId.isEmpty()) {
-            log.debug("Tenant ID is null or empty, returning Unknown");
             return "Unknown";
         }
         
         String normalizedId = tenantId.toLowerCase().trim();
-        log.debug("Normalized tenant ID: {}", normalizedId);
-
+        
         // Handle state codes with underscores (e.g., "INDIA_KARNATAKA" -> "Karnataka")
         if (normalizedId.contains("_")) {
             String[] parts = normalizedId.split("_");
             if (parts.length > 1) {
                 // Extract the state part (last part after underscore)
                 String statePart = parts[parts.length - 1];
-                log.debug("Extracted state part from underscore format: {}", statePart);
                 return getStateNameFromCode(statePart);
             }
         }
@@ -70,13 +66,11 @@ public class CommonUtility {
             if (parts.length > 1) {
                 // Extract the state part (last part after dot)
                 String statePart = parts[parts.length - 1];
-                log.debug("Extracted state part from dot format: {}", statePart);
                 return getStateNameFromCode(statePart);
             }
         }
         
         // Direct state code lookup
-        log.debug("Performing direct state code lookup");
         return getStateNameFromCode(normalizedId);
     }
     
@@ -84,7 +78,6 @@ public class CommonUtility {
      * Get state name from state code
      */
     private String getStateNameFromCode(String stateCode) {
-        log.trace("Getting state name from code: {}", stateCode);
         switch (stateCode) {
             case "pg":
             case "karnataka":
@@ -135,7 +128,6 @@ public class CommonUtility {
      * Capitalize words in a string (e.g., "karnataka" -> "Karnataka")
      */
     private String capitalizeWords(String str) {
-        log.trace("Capitalizing words in string: {}", str);
         if (str == null || str.isEmpty()) {
             return str;
         }
@@ -159,7 +151,6 @@ public class CommonUtility {
      * Escape HTML special characters
      */
     public String escapeHtml(String text) {
-        log.trace("Escaping HTML characters in text, length: {}", text != null ? text.length() : 0);
         if (text == null) {
             return "";
         }
@@ -192,11 +183,8 @@ public class CommonUtility {
      * Convert RequestInfo object to JSON string for filestore service
      */
     public String convertRequestInfoToJson(RequestInfo requestInfo) {
-        log.trace("Converting RequestInfo to JSON string");
         try {
-            String json = objectMapper.writeValueAsString(requestInfo);
-            log.debug("Successfully converted RequestInfo to JSON, length: {}", json.length());
-            return json;
+            return objectMapper.writeValueAsString(requestInfo);
         } catch (Exception e) {
             log.warn("Failed to serialize RequestInfo to JSON, using default: {}", e.getMessage());
             // Return a default RequestInfo JSON if serialization fails
@@ -239,9 +227,7 @@ public class CommonUtility {
      * Format workflow state for display based on role and escalation level
      */
     public String formatWorkflowStateForDisplay(String workflowState, String escalationLevel, String recipientRole) {
-        log.trace("Formatting workflow state for display: state={}, level={}, role={}", workflowState, escalationLevel, recipientRole);
         if (workflowState == null) {
-            log.debug("Workflow state is null, returning Unknown");
             return "Unknown";
         }
         
@@ -267,7 +253,6 @@ public class CommonUtility {
 
             default:
                 // Don't show workflow states that are not configured in MDMS
-                log.debug("Workflow state {} not configured for display", workflowState);
                 return null;
         }
     }
@@ -282,20 +267,16 @@ public class CommonUtility {
      * @return ArrowData containing arrow HTML and CSS class
      */
     public ArrowData calculateArrow(double startPct, double endPct, boolean isFunctional) {
-        log.trace("Calculating arrow for percentage change: start={}, end={}, isFunctional={}", startPct, endPct, isFunctional);
         double change = endPct - startPct;
-        log.debug("Percentage change: {}", change);
-
+        
         // No arrow if change is less than 0.1%
         if (Math.abs(change) < 0.1) {
-            log.debug("Change is less than 0.1%, returning empty arrow");
             return ArrowData.builder().arrow("").arrowClass("").build();
         }
 
         boolean increase = change > 0;
         boolean isUpArrow = increase;
-        log.debug("Arrow direction: {}, isUpArrow: {}", increase ? "up" : "down", isUpArrow);
-
+        
         // Determine color based on whether change is good or bad
         // Functional: increase = good (green), decrease = bad (red)
         // Non-Functional: increase = bad (red), decrease = good (green)
@@ -305,8 +286,7 @@ public class CommonUtility {
         } else {
             color = increase ? "%23dc2626" : "%2316a34a"; // Red for increase, green for decrease
         }
-        log.debug("Arrow color determined: {}", color);
-
+        
         // Arrow class matches the actual arrow direction (up or down)
         String arrowClass = increase ? "up" : "down";
         
@@ -319,7 +299,6 @@ public class CommonUtility {
             "<img src=\"" + upArrowSvg + "\" alt=\"↑\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />" :
             "<img src=\"" + downArrowSvg + "\" alt=\"↓\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />";
 
-        log.debug("Generated arrow with class: {}", arrowClass);
         return ArrowData.builder().arrow(arrow).arrowClass(arrowClass).build();
     }
 }

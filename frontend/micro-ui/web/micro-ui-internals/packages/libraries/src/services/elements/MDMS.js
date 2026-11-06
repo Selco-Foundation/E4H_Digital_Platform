@@ -1503,11 +1503,14 @@ export const MdmsService = {
     const { MdmsRes } = await MdmsService.call(tenantId, mdmsDetails.details);
     const responseValue = transformResponse(mdmsDetails.type, MdmsRes, moduleCode.toUpperCase(), tenantId);
     const cacheSetting = getCacheSetting(mdmsDetails.details.moduleDetails[0].moduleName);
-    PersistantStorage.set(key, responseValue, cacheSetting.cacheTimeInSecs);
+    try {
+      PersistantStorage.set(key, responseValue, cacheSetting.cacheTimeInSecs);
+    } catch (e) {
+      console.error(e);
+    }
     return responseValue;
   },
   getServiceDefs: (tenantIdNew, moduleCode) => {
-    console.log("STEP 1getServiceDefsgetServiceDefs",  window.location.href,tenantIdNew)
     var tenantId
     if(window.location.href.includes("details"))
     {
@@ -1517,7 +1520,8 @@ export const MdmsService = {
     tenantId = tenantIdNew
    }
 
-    return MdmsService.getDataByCriteria(tenantId, getModuleServiceDefsCriteria(tenantId, moduleCode), moduleCode);
+    const stateTenantId = tenantId.split(".")[0];
+    return MdmsService.getDataByCriteria(stateTenantId, getModuleServiceDefsCriteria(stateTenantId, moduleCode), moduleCode);
   },
   getSanitationType: (tenantId, moduleCode) => {
     return MdmsService.getDataByCriteria(tenantId, getSanitationTypeCriteria(tenantId, moduleCode), moduleCode);

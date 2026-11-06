@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:isar/isar.dart';
@@ -9,6 +8,7 @@ import 'package:mime/mime.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
@@ -16,6 +16,7 @@ import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset/asset.dart';
 import '../model/document/document.dart';
 import '../model/transaction/transaction.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'activity_facility_repo.dart';
@@ -128,16 +129,10 @@ class AssetRepository {
         AppLogger.instance.info(
             "Fetching Duplicate isCreate: $isCreate isDuplicate: $isDuplicate");
 
-        final remoteBySerial = await _fetchAssetBySerialOrModel(
+        final remote = await _fetchAssetBySerial(
           activityFacilityId: asset.activityFacilityID ?? '',
           serialNumber: asset.serialNumber ?? '',
         );
-
-        final remote = remoteBySerial ??
-            await _fetchAssetBySerialOrModel(
-              activityFacilityId: asset.activityFacilityID ?? '',
-              modelNumber: asset.modelNumber ?? '',
-            );
 
         final remoteAssetId =
             (remote?['assetId'] ?? remote?['assetID'] ?? '').toString();
@@ -349,10 +344,34 @@ class AssetRepository {
           }
         }
 
+        final oldInstallationImages = await isar.cacheInstallationImages
+            .where()
+            .activityFacilityIdEqualTo(activityFacilityId)
+            .filter()
+            .userTypeEqualTo(userType)
+            .findAll();
+        for (var document in oldInstallationImages) {
+          await isar.cacheInstallationImages.delete(document.id);
+        }
+
         for (var doc in activityFacility.workflow?.documents ?? []) {
-          if (doc.documentType != 'ASSET' &&
-              !doc.documentType.contains('INSTALLATION_REPORT')) {
-            final parts = doc.documentType?.split('-') ?? [];
+          final docType = doc.documentType ?? '';
+          if (docType.contains('INSTALLATION_IMAGE')) {
+            final parts = docType.split('-');
+            if (parts.length != 2) continue;
+
+            final codeFromDoc = parts[1];
+            await isar.cacheInstallationImages.put(CacheInstallationImage(
+              activityFacilityId: activityFacilityId,
+              userType: userType,
+              code: codeFromDoc,
+              photoPath: doc.fileStore ?? '',
+              latitude: doc.geoLocation?.latitude?.toString() ?? '',
+              longitude: doc.geoLocation?.longitude?.toString() ?? '',
+            ));
+          } else if (docType != 'ASSET' &&
+              !docType.contains('INSTALLATION_REPORT')) {
+            final parts = docType.split('-');
             if (parts.length != 2) continue;
 
             final assetTypeFromDoc = parts[0];
@@ -411,15 +430,13 @@ class AssetRepository {
     }
   }
 
-  Future<Map<String, dynamic>?> _fetchAssetBySerialOrModel({
+  Future<Map<String, dynamic>?> _fetchAssetBySerial({
     required String activityFacilityId,
     String? serialNumber,
-    String? modelNumber,
   }) async {
     final sn = (serialNumber ?? '').trim();
-    final mn = (modelNumber ?? '').trim();
 
-    if (sn.isEmpty && mn.isEmpty) return null;
+    if (sn.isEmpty) return null;
 
     final criteria = <String, dynamic>{
       'tenantId': envConfig.variables.tenantId,
@@ -428,10 +445,6 @@ class AssetRepository {
 
     if (sn.isNotEmpty) {
       criteria['serialNumber'] = [sn];
-    }
-
-    if (mn.isNotEmpty) {
-      criteria['modelNumber'] = mn;
     }
 
     final resp = await _dio.post(
@@ -446,13 +459,6 @@ class AssetRepository {
         if (sn.isNotEmpty) {
           return data.cast<Map<String, dynamic>?>().firstWhere(
                 (m) => (m?['serialNumber'] ?? '').toString() == sn,
-                orElse: () => null,
-              );
-        }
-
-        if (mn.isNotEmpty) {
-          return data.cast<Map<String, dynamic>?>().firstWhere(
-                (m) => (m?['modelNumber'] ?? '').toString() == mn,
                 orElse: () => null,
               );
         }

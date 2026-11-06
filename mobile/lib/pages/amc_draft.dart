@@ -11,6 +11,8 @@ import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -25,7 +27,6 @@ class AmcDraftPage extends StatefulWidget {
 }
 
 class _AmcDraftPageState extends State<AmcDraftPage> {
-  final tabs = ['Pending Otp Approval', 'Pending Approval'];
   int _selectedTabIndex = 0;
 
   List<String> _statusesForTab(int tabIndex) {
@@ -62,6 +63,10 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
+    final tabs = [
+      context.translate(i18.amcDraft.pendingOtpApproval),
+      context.translate(i18.amcDraft.pendingApproval),
+    ];
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
@@ -103,7 +108,7 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pending Approval',
+                    context.translate(i18.amcDraft.pendingApproval),
                     style: textTheme.headingXl.copyWith(
                       color: theme.colorTheme.primary.primary2,
                     ),
@@ -141,7 +146,10 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                         ),
                         loaded: (items, hasMore, totalCount, fromCache,
                             isLoadingMore) {
-                          return _buildVisitList(items);
+                          return _buildVisitList(
+                            items,
+                            isLoadingMore: isLoadingMore,
+                          );
                         },
                         orElse: () => const SizedBox.shrink(),
                       );
@@ -156,10 +164,13 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
     );
   }
 
-  Widget _buildVisitList(List<ScheduledVisit> items) {
+  Widget _buildVisitList(
+    List<ScheduledVisit> items, {
+    bool isLoadingMore = false,
+  }) {
     if (items.isEmpty) {
-      return const Center(
-        child: Text('No AMC drafts to display'),
+      return Center(
+        child: Text(context.translate(i18.amcDraft.noDraftsToDisplay)),
       );
     }
 
@@ -168,31 +179,40 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
         for (final visit in items)
           Column(
             children: [
-              if (_selectedTabIndex == 0)
-                InboxReportCard(
-                    onPress: () {
-                      context
-                          .read<SelectedScheduledVisitBloc>()
-                          .add(SelectedScheduledVisitEvent.select(visit));
-                      visit.status !=
-                              WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
-                          ? context.router.push(const AmcOtpRoute())
-                          : context.router.push(
-                              AmcDynamicFormRoute(
-                                  pageName: "AMC_Report",
-                                  uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                                  schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                                  scheduledVisit: visit,
-                                  origin: FormOrigin.overallSummary),
-                            );
-                    },
-                    title: visit.facility?.facilityName ?? '',
-                    dateAssigned: visit.scheduledDate ?? DateTime.now(),
-                    status: visit.status ?? '---',
-                    isAmc: true,
-                    isOtp: true)
-              else
-                InboxReportCard(
+              Builder(builder: (context) {
+                final locality =
+                    parseBoundaryCodeLocality(visit.facility?.boundaryCode);
+                if (_selectedTabIndex == 0) {
+                  return InboxReportCard(
+                      onPress: () {
+                        context
+                            .read<SelectedScheduledVisitBloc>()
+                            .add(SelectedScheduledVisitEvent.select(visit));
+                        visit.status !=
+                                WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
+                            ? context.router.push(const AmcOtpRoute())
+                            : context.router.push(
+                                AmcDynamicFormRoute(
+                                    pageName: "AMC_Report",
+                                    uniqueIdentifier:
+                                        "AssetForm.AMC_SCHEDULED_MAINTENANCE",
+                                    schemaName:
+                                        "AssetForm.AMC_SCHEDULED_MAINTENANCE",
+                                    scheduledVisit: visit,
+                                    origin: FormOrigin.overallSummary),
+                              );
+                      },
+                      title: visit.facility?.facilityName ?? '',
+                      dateAssigned: visit.scheduledDate ?? DateTime.now(),
+                      status: visit.status ?? '---',
+                      state: locality.state,
+                      district: locality.district,
+                      block: locality.block,
+                      isAmc: true,
+                      isOtp: true);
+                }
+
+                return InboxReportCard(
                   onPress: () {
                     context
                         .read<SelectedScheduledVisitBloc>()
@@ -203,8 +223,8 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                     context.router.push(
                       AmcDynamicFormRoute(
                           pageName: "AMC_Report",
-                          uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                          schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                          uniqueIdentifier: "AssetForm.AMC_SCHEDULED_MAINTENANCE",
+                          schemaName: "AssetForm.AMC_SCHEDULED_MAINTENANCE",
                           scheduledVisit: visit,
                           origin: FormOrigin.submitted),
                     );
@@ -212,10 +232,21 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                   title: visit.facility?.facilityName ?? '',
                   dateAssigned: visit.scheduledDate ?? DateTime.now(),
                   status: visit.status ?? '---',
+                  state: locality.state,
+                  district: locality.district,
+                  block: locality.block,
                   isAmc: true,
-                ),
+                );
+              }),
               const SizedBox(height: spacer4),
             ],
+          ),
+        if (isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.only(bottom: spacer4),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
           ),
       ],
     );

@@ -7,7 +7,6 @@ import facility.util.FacilityMappedVendorHelper;
 import facility.web.models.Facility;
 import facility.web.models.FacilityAddress;
 import facility.web.models.HealthFacilityDetails;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,7 +22,6 @@ import java.util.Map;
  * Also fetches related address data from the facility_address table.
  */
 @Service
-@Slf4j
 public class FacilityRowMapper {
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -34,7 +32,6 @@ public class FacilityRowMapper {
     }
 
     public final RowMapper<Facility> rowMapper = (rs, rowNum) -> {
-        log.trace("Entering rowMapper for row {}", rowNum);
         Facility facility = new Facility();
 
         facility.setFacilityId(rs.getString("id"));
@@ -62,7 +59,6 @@ public class FacilityRowMapper {
         facility.setSolarSystemCapacityKwp(toDouble(rs.getObject("solar_system_capacity_kwp")));
 
         String addressId = rs.getString("addressid");
-        log.debug("Mapping facility row {} with facilityId: {}", rowNum, facility.getFacilityId());
 
         try {
             String detailsJson = rs.getString("facility_details");
@@ -83,11 +79,9 @@ public class FacilityRowMapper {
             }
 
         } catch (JsonProcessingException e) {
-            log.error("Error parsing JSON fields in facility record for row {}: {}", rowNum, e.getMessage(), e);
             throw new RuntimeException("Error parsing JSON fields in facility record", e);
         }
 
-        log.trace("Exiting rowMapper for row {}", rowNum);
         FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
         return facility;
     };
@@ -107,28 +101,23 @@ public class FacilityRowMapper {
     }
 
     private FacilityAddress fetchAddressById(String addressId) {
-        log.trace("Entering fetchAddressById method for addressId: {}", addressId);
         String sql = "SELECT * FROM facility_address WHERE id = ?";
 
         try {
-            FacilityAddress address = jdbcTemplate.queryForObject(sql, new Object[]{addressId}, (rs, rowNum) -> {
-                FacilityAddress addr = new FacilityAddress();
-                addr.setAddressId(rs.getString("id"));
-                addr.setTenantId(rs.getString("tenant_id"));
-                addr.setLatitude(rs.getDouble("latitude"));
-                addr.setLongitude(rs.getDouble("longitude"));
-                addr.setAddressLine1(rs.getString("addressLine1"));
-                addr.setAddressLine2(rs.getString("addressLine2"));
-                addr.setCity(rs.getString("city"));
-                addr.setPincode(rs.getString("pincode"));
-                addr.setLandmark(rs.getString("landmark"));
-                return addr;
+            return jdbcTemplate.queryForObject(sql, new Object[]{addressId}, (rs, rowNum) -> {
+                FacilityAddress address = new FacilityAddress();
+                address.setAddressId(rs.getString("id"));
+                address.setTenantId(rs.getString("tenant_id"));
+                address.setLatitude(rs.getDouble("latitude"));
+                address.setLongitude(rs.getDouble("longitude"));
+                address.setAddressLine1(rs.getString("addressLine1"));
+                address.setAddressLine2(rs.getString("addressLine2"));
+                address.setCity(rs.getString("city"));
+                address.setPincode(rs.getString("pincode"));
+                address.setLandmark(rs.getString("landmark"));
+                return address;
             });
-            log.debug("Successfully fetched address for addressId: {}", addressId);
-            log.trace("Exiting fetchAddressById method");
-            return address;
         } catch (EmptyResultDataAccessException e) {
-            log.error("Address not found for addressId: {}", addressId);
             throw new RuntimeException("Address not available");
         }
     }

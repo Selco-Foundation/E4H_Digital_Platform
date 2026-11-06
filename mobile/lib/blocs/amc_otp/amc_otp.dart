@@ -1,4 +1,3 @@
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
@@ -7,6 +6,7 @@ import '../../model/document/document.dart';
 import '../../model/scheduled_visit/scheduled_visit.dart';
 import '../../repositories/dynamic_form_repo.dart';
 import '../../repositories/scheduled_visit_repo.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/utils.dart';
 
 part 'amc_otp.freezed.dart';
@@ -32,12 +32,12 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
     emit(const AmcOtpState.resendLoading());
 
     try {
-      await scheduledVisitRepo.resendVisitOtp();
+      await scheduledVisitRepo.resendVisitOtp(visitId: event.visitId);
       emit(const AmcOtpState.resendSuccess());
     } catch (e) {
-      AppLogger.instance.error(title: "Resend OTP", message: e.toString());
+      AppLogger.instance.error(title: "Resend AMC Service completion code", message: e.toString());
       emit(
-        const AmcOtpState.failure('Failed to resend OTP. Please try again.'),
+        const AmcOtpState.failure('Failed to resend AMC Service completion code. Please try again.'),
       );
     }
   }
@@ -136,16 +136,18 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       }
       emit(const AmcOtpState.submitSuccess());
     } catch (e) {
-      AppLogger.instance.error(title: "AMC OTP Submit", message: e.toString());
+      AppLogger.instance.error(title: "AMC AMC Service completion code Submit", message: e.toString());
       emit(const AmcOtpState.failure(
-          'Invalid OTP or request failed. Please try again.'));
+          'Invalid AMC Service completion code or request failed. Please try again.'));
     }
   }
 }
 
 @freezed
 class AmcOtpEvent with _$AmcOtpEvent {
-  const factory AmcOtpEvent.resend() = AmcOtpEventResend;
+  const factory AmcOtpEvent.resend({
+    required String visitId,
+  }) = AmcOtpEventResend;
 
   const factory AmcOtpEvent.submit({
     required String visitId,

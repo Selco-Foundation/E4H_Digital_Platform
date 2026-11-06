@@ -18,6 +18,7 @@ from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
 from app.utils.excel_utils import (
     FACILITY_IDENTIFIER_COLUMNS,
     autofit_columns,
+    clean_excel_text_cells,
     normalize_excel_integer_columns,
     prepare_dataframe_for_excel_export,
 )
@@ -28,6 +29,8 @@ from app.utils.facility_validator import (
     assessment_plan_include_validation,
     collect_hfr_nin_errors_for_row,
     collect_anganwadi_poc_username_errors_for_row,
+    collect_coordinate_errors_for_row,
+    collect_identifier_conflicts,
 )
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
@@ -192,19 +195,28 @@ def _bulk_create_facilities_for_ingestion(
         facility_schema: List[Dict],
         are_facilities_onm_ready: bool,
         vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]],
-        hfr_nin_db_cache: Dict[str, bool],
 ) -> None:
     """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service)."""
     pending_creates: List[tuple] = []
 
-    for index, row in df[df['status'] != 'success'].iterrows():
+    rows_to_process = df[df['status'] != 'success']
+    # HFR ID / NIN ID / PoC Username duplicates (within the file, among existing facilities and
+    # HRMS usernames), so each offending row fails on its own instead of failing its whole chunk.
+    identifier_conflicts = collect_identifier_conflicts(
+        rows_to_process, facility_schema, facility_client, request_info,
+    )
+
+    for index, row in rows_to_process.iterrows():
         hfr_nin_errs = collect_hfr_nin_errors_for_row(
-            row, index, df, facility_client, hfr_nin_db_cache,
+            row, index, df, facility_client, {}, check_db=False,
         )
         anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
             row, index, df, facility_schema,
         )
-        pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
+        coordinate_errs = collect_coordinate_errors_for_row(row)
+        pre_errs = list(dict.fromkeys([
+            *hfr_nin_errs, *anganwadi_poc_errs, *identifier_conflicts.get(index, []), *coordinate_errs,
+        ]))
         if pre_errs:
             df.at[index, 'status'] = 'failed'
             df.at[index, 'error'] = '; '.join(pre_errs)
@@ -262,23 +274,80 @@ def _bulk_create_facilities_for_ingestion(
                 df.at[index, 'error'] = f'Exception during bulk create: {str(exc)}'
             continue
 
-        if create_resp.status_code in (200, 201):
-            for row_idx in creation_meta:
-                df.at[row_idx, 'status'] = 'success'
-                df.at[row_idx, 'error'] = ''
-        elif create_resp.status_code == 400:
-            try:
-                error_data = create_resp.json()
-                error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
-            except Exception:
-                error_message = create_resp.text
-            for index in creation_meta:
-                df.at[index, 'status'] = 'failed'
-                df.at[index, 'error'] = error_message
-        else:
-            for index in creation_meta:
-                df.at[index, 'status'] = 'failed'
-                df.at[index, 'error'] = f'{create_resp.status_code}: {create_resp.text}'
+        error_message = _bulk_create_error_message(create_resp)
+        if (
+            create_resp.status_code == 400
+            and len(creation_meta) > 1
+            and (
+                FACILITY_SERVICE_DESERIALIZE_ERROR in (error_message or '').lower()
+                or _bulk_create_error_code(create_resp) in FACILITY_SERVICE_RETRY_ROW_BY_ROW_ERROR_CODES
+            )
+        ):
+            # The request was rejected before any facility was persisted, so one bad row would
+            # fail the whole chunk. Retry row by row so only the bad rows fail.
+            logger.warning(
+                "Bulk facility create rejected as unparseable (%s); retrying %s rows individually",
+                error_message, len(creation_meta),
+            )
+            for index, facility in zip(creation_meta, bulk_payload["facilities"]):
+                single_payload = {**bulk_payload, "facilities": [facility]}
+                try:
+                    single_resp = facility_client.create_facility(single_payload)
+                except Exception as exc:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Exception during create: {str(exc)}'
+                    continue
+                _apply_facility_create_response(df, [index], single_resp)
+            continue
+
+        _apply_facility_create_response(df, creation_meta, create_resp, error_message)
+
+
+# Lowercased fragment of the facility-service error returned when the JSON body cannot be parsed
+# (e.g. a non-numeric latitude). Nothing has been persisted when this error is returned.
+FACILITY_SERVICE_DESERIALIZE_ERROR = 'failed to deserialize'
+
+# facility-service error codes raised during validation, before any facility of the request is
+# persisted, so a rejected chunk can safely be retried row by row. The identifier pre-check above
+# normally catches these; this covers values taken between that check and the create.
+FACILITY_SERVICE_RETRY_ROW_BY_ROW_ERROR_CODES = {'FACILITY_DUPLICATE_IDENTIFIER'}
+
+
+def _bulk_create_error_code(create_resp) -> Optional[str]:
+    try:
+        return (create_resp.json().get('Errors') or [{}])[0].get('code')
+    except Exception:
+        return None
+
+
+def _bulk_create_error_message(create_resp) -> Optional[str]:
+    if create_resp.status_code in (200, 201):
+        return None
+    if create_resp.status_code == 400:
+        try:
+            error_data = create_resp.json()
+            return error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
+        except Exception:
+            return create_resp.text
+    return f'{create_resp.status_code}: {create_resp.text}'
+
+
+def _apply_facility_create_response(
+        df: pd.DataFrame,
+        row_indexes: List[int],
+        create_resp,
+        error_message: Optional[str] = None,
+) -> None:
+    if create_resp.status_code in (200, 201):
+        for row_idx in row_indexes:
+            df.at[row_idx, 'status'] = 'success'
+            df.at[row_idx, 'error'] = ''
+        return
+    if error_message is None:
+        error_message = _bulk_create_error_message(create_resp)
+    for row_idx in row_indexes:
+        df.at[row_idx, 'status'] = 'failed'
+        df.at[row_idx, 'error'] = error_message
 
 
 @router.post('/vendors',
@@ -476,6 +545,7 @@ async def validate_facilities_excel_sheet(
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+        df = clean_excel_text_cells(df)
         df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         # ----------------- Read Facility Column ----------------- #
@@ -494,6 +564,9 @@ async def validate_facilities_excel_sheet(
             df['status'] = ''
         if 'error' not in df.columns:
             df['error'] = ''
+        # Re-uploaded sheets may carry empty status/error columns that pandas reads as float64
+        df['status'] = df['status'].astype(object)
+        df['error'] = df['error'].astype(object)
 
         # Resolve boundary codes from State/District/Block via localization
         df = resolve_boundary_codes_for_dataframe(
@@ -503,10 +576,11 @@ async def validate_facilities_excel_sheet(
         )
 
         # ----------------- Verify resolved codes via Boundary Service ----------------- #
-        resolved_codes = df.loc[
-            df['Boundary Code (Mandatory)'].astype(str).str.strip() != '',
-            'Boundary Code (Mandatory)'
-        ].unique().tolist()
+        boundary_codes = df['Boundary Code (Mandatory)']
+        resolved_codes = (
+            boundary_codes[boundary_codes.notna()].astype(str).str.strip()
+            .loc[lambda codes: codes != ''].unique().tolist()
+        )
 
         if resolved_codes and boundary_service_url:
             boundary_client = BoundaryServiceClient(boundary_service_url)
@@ -522,15 +596,17 @@ async def validate_facilities_excel_sheet(
                     )
                     if response_data and "Boundary" in response_data:
                         for b in response_data["Boundary"]:
-                            existing_codes.add(b["code"])
+                            existing_codes.add(str(b["code"]).casefold())
                 except Exception as e:
                     logger.error(f"Error verifying boundary codes: {e}", exc_info=True)
 
-            missing_codes = set(resolved_codes) - existing_codes
+            # Search is case-insensitive, so compare case-insensitively too
+            missing_codes = {c for c in resolved_codes if str(c).casefold() not in existing_codes}
             if missing_codes:
                 logger.warning(f"Boundary codes not found in boundary service: {missing_codes}")
                 for index, row in df.iterrows():
-                    code = str(row.get('Boundary Code (Mandatory)', '') or '').strip()
+                    raw_code = row.get('Boundary Code (Mandatory)')
+                    code = '' if pd.isna(raw_code) else str(raw_code).strip()
                     if code in missing_codes:
                         state_val = str(row.get('State (Mandatory)', '') or '').strip()
                         district_val = str(row.get('District (Mandatory)', '') or '').strip()
@@ -669,6 +745,7 @@ async def upload_facilities_excel_sheet(
         df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+        df = clean_excel_text_cells(df)
         df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         if 'status' not in df.columns:
@@ -690,7 +767,6 @@ async def upload_facilities_excel_sheet(
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
             org_client = OrganizationServiceClient(org_service_url) if org_service_url else None
             vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]] = {}
-            hfr_nin_db_cache: Dict[str, bool] = {}
 
             _bulk_create_facilities_for_ingestion(
                 df=df,
@@ -700,7 +776,6 @@ async def upload_facilities_excel_sheet(
                 facility_schema=facility_schema,
                 are_facilities_onm_ready=are_facilities_onm_ready,
                 vendor_mapping_cache=vendor_mapping_cache,
-                hfr_nin_db_cache=hfr_nin_db_cache,
             )
 
         writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)

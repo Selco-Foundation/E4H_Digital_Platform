@@ -20,6 +20,17 @@ public class ScheduledVisit {
     private String facilityId;
     private String facilityName;
     private Facility facility;
+    // Localized boundary display names, resolved from facility.additionalDetails.boundary
+    // before indexing - not persisted in the DB, populated only for the search index payload.
+    private String state;
+    private String district;
+    private String block;
+    // The AMC field staff mapped to this visit: the first active assignment whose HRMS user holds the
+    // role configured in `amc.mapped.vendor.role.code`. Like state/district/block above, these are
+    // resolved only for the search index payload and never persisted; both stay null when no assignee
+    // holds that role, so the index can distinguish "unmapped" from a real name.
+    private String mappedVendorName;
+    private String mappedVendorUserName;
     private Integer visitNumber;
     private Long scheduledDate;
     private Long actualVisitDate;

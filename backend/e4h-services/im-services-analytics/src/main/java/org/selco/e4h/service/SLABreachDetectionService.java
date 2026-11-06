@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.EscalationTicketUtil;
+import org.selco.e4h.util.SlaClock;
 import org.selco.e4h.web.models.EscalationLevel;
 import org.selco.e4h.web.models.EscalationTicket;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class SLABreachDetectionService {
     
     private final ElasticSearchClient elasticSearchClient;
     private final EscalationMasterDataService escalationMasterDataService;
+    private final SlaClock slaClock;
     
     // Cache for escalation level configurations from MDMS
     private Map<String, EscalationLevel> escalationLevelCache = new HashMap<>();
@@ -96,13 +98,10 @@ public class SLABreachDetectionService {
         }
 
         long l2Ms = (long) l2Hours * 60 * 60 * 1000L;
-        Map<String, Object> gtRange = new HashMap<>();
-        Map<String, Object> gtRangeBody = new HashMap<>();
-        gtRangeBody.put("gt", l2Ms);
-        gtRange.put("Data.slaRemaining", gtRangeBody);
-        Map<String, Object> range = new HashMap<>();
-        range.put("range", gtRange);
-        must.add(range);
+        // slaRemaining > l2Ms, i.e. the state deadline is still more than l2Ms of business time away
+        long cutoff = slaClock.addBusinessDuration(System.currentTimeMillis(), l2Ms);
+        must.add(anchoredOrLegacy(rangeFilter("Data." + SlaClock.STATE_SLA_DUE_AT, "gt", cutoff),
+                rangeFilter("Data.slaRemaining", "gt", l2Ms)));
         log.debug("Added anti-overlap filter for LEVEL_ONE: slaRemaining > {}ms ({} hours)", l2Ms, l2Hours);
     }
 
@@ -133,7 +132,8 @@ public class SLABreachDetectionService {
             log.debug("Final query prepared with size: 10000");
 
             // Execute query using ElasticsearchClient
-            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(finalQuery);
+            List<EscalationTicket> breachTickets = filterPercentageBreaches(
+                    elasticSearchClient.searchTickets(finalQuery), escalationLevel, requestInfo);
             log.debug("Elasticsearch returned {} breach tickets", breachTickets.size());
             
             // The Elasticsearch query already filters for SLA breach and escalation exclusions
@@ -185,7 +185,8 @@ public class SLABreachDetectionService {
             log.debug("Final query prepared with size: 10000");
 
             // Execute query using ElasticsearchClient
-            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(finalQuery);
+            List<EscalationTicket> breachTickets = filterPercentageBreaches(
+                    elasticSearchClient.searchTickets(finalQuery), escalationLevel, requestInfo);
             log.debug("Elasticsearch returned {} breach tickets for country level", breachTickets.size());
             
             log.info("Found {} tickets in SLA breach for country level with escalation level: {}", 
@@ -217,7 +218,8 @@ public class SLABreachDetectionService {
             finalQuery.put("size", 10000);
             finalQuery.put("track_total_hits", true);
 
-            List<EscalationTicket> tickets = elasticSearchClient.searchTickets(finalQuery);
+            List<EscalationTicket> tickets = filterPercentageBreaches(
+                    elasticSearchClient.searchTickets(finalQuery), escalationLevel, requestInfo);
             log.info("Found {} previously escalated still-open tickets for state: {} level: {}",
                     tickets.size(), state, escalationLevel);
             return tickets;
@@ -325,7 +327,7 @@ public class SLABreachDetectionService {
             finalQuery.put("size", 10000);
             finalQuery.put("track_total_hits", true);
 
-            return elasticSearchClient.searchTickets(finalQuery);
+            return filterPercentageBreaches(elasticSearchClient.searchTickets(finalQuery), escalationLevel, requestInfo);
         } catch (Exception e) {
             log.error("Error finding previously escalated still-open country tickets for level: {}", escalationLevel, e);
             return new ArrayList<>();
@@ -578,6 +580,63 @@ public class SLABreachDetectionService {
     }
     
     /**
+     * Matches {@code anchoredFilter} on documents carrying the SLA anchors im-services writes, and
+     * {@code legacyFilter} - on the stored, cron-refreshed values - on documents indexed before them.
+     */
+    private Map<String, Object> anchoredOrLegacy(Map<String, Object> anchoredFilter, Map<String, Object> legacyFilter) {
+        Map<String, Object> anchorExists = Map.of("exists", Map.of("field", "Data." + SlaClock.STATE_ENTERED_TIME));
+        Map<String, Object> anchored = Map.of("bool", Map.of("filter", List.of(anchorExists, anchoredFilter)));
+        Map<String, Object> legacy = Map.of("bool", Map.of("must_not", List.of(anchorExists), "filter", List.of(legacyFilter)));
+        return Map.of("bool", Map.of("should", List.of(anchored, legacy), "minimum_should_match", 1));
+    }
+
+    private Map<String, Object> rangeFilter(String field, String operator, long value) {
+        return Map.of("range", Map.of(field, Map.of(operator, value)));
+    }
+
+    private boolean isPercentageStrategy(String escalationLevel, EscalationLevel config) {
+        String strategy = config.getBreachCalculationStrategy();
+        if ("percentage".equalsIgnoreCase(strategy)) {
+            return true;
+        }
+        // Mirrors buildSLAFilter's fallback for unknown strategies
+        return !"number".equalsIgnoreCase(strategy) && "LEVEL_ZERO".equals(escalationLevel);
+    }
+
+    /**
+     * Second half of the percentage strategy for anchored tickets: keeps those whose live
+     * slaRemaining / totalSlaRemaining is within the threshold, the same expression the legacy script
+     * evaluates in ES. Tickets without anchors were already filtered by that script and pass through.
+     */
+    private List<EscalationTicket> filterPercentageBreaches(List<EscalationTicket> tickets, String escalationLevel,
+                                                            RequestInfo requestInfo) {
+        EscalationLevel config = getEscalationLevelConfig(escalationLevel, requestInfo);
+        if (config == null || !isPercentageStrategy(escalationLevel, config)) {
+            return tickets;
+        }
+        Integer percentage = config.getBreachThresholdInPercentage();
+        double remainingRatioThreshold = (100.0 - (percentage == null || percentage <= 0 ? 70 : percentage)) / 100.0;
+
+        List<EscalationTicket> filtered = new ArrayList<>();
+        for (EscalationTicket ticket : tickets) {
+            Map<String, Object> data = ticket.getAdditionalDetails();
+            if (data == null || data.get(SlaClock.STATE_ENTERED_TIME) == null) {
+                filtered.add(ticket);
+                continue;
+            }
+            Object slaRemaining = data.get(SlaClock.SLA_REMAINING);
+            Object totalSlaRemaining = data.get(SlaClock.TOTAL_SLA_REMAINING);
+            if (slaRemaining instanceof Number state && totalSlaRemaining instanceof Number total
+                    && state.longValue() > 0
+                    && state.doubleValue() / total.doubleValue() <= remainingRatioThreshold) {
+                filtered.add(ticket);
+            }
+        }
+        log.debug("Percentage post-filter for {} kept {} of {} tickets", escalationLevel, filtered.size(), tickets.size());
+        return filtered;
+    }
+
+    /**
      * Build SLA filter based on escalation level configuration
      * Supports both "percentage" and "number" strategies from LLD V2
      */
@@ -637,8 +696,14 @@ public class SLABreachDetectionService {
         script.put("lang", "painless");
         scriptFilter.put("script", script);
         
-        Map<String, Object> filter = new HashMap<>();
-        filter.put("script", scriptFilter);
+        Map<String, Object> legacyFilter = new HashMap<>();
+        legacyFilter.put("script", scriptFilter);
+
+        // The ratio of two live values cannot be expressed against stored fields, so for anchored tickets
+        // ES only narrows to those with state SLA left (slaRemaining > 0); filterPercentageBreaches applies
+        // the ratio on the live values afterwards.
+        Map<String, Object> filter = anchoredOrLegacy(
+                rangeFilter("Data." + SlaClock.STATE_SLA_DUE_AT, "gt", System.currentTimeMillis()), legacyFilter);
         
         log.debug("Built percentage-based SLA filter for {}: {}% elapsed ({}% remaining)", 
             escalationLevel, percentage, (100 - percentage));
@@ -661,13 +726,11 @@ public class SLABreachDetectionService {
         
         long thresholdMs = (long) (thresholdHours * 60 * 60 * 1000); // Convert to milliseconds
         
-        Map<String, Object> slaRemainingRange = new HashMap<>();
-        Map<String, Object> slaRemainingRangeQuery = new HashMap<>();
-        slaRemainingRangeQuery.put("lte", thresholdMs);
-        slaRemainingRange.put("Data.slaRemaining", slaRemainingRangeQuery);
-        
-        Map<String, Object> filter = new HashMap<>();
-        filter.put("range", slaRemainingRange);
+        // slaRemaining <= thresholdMs. Deadlines always fall inside a working window, so that is exactly
+        // "the state deadline is at most thresholdMs of business time from now".
+        long cutoff = slaClock.addBusinessDuration(System.currentTimeMillis(), thresholdMs);
+        Map<String, Object> filter = anchoredOrLegacy(rangeFilter("Data." + SlaClock.STATE_SLA_DUE_AT, "lte", cutoff),
+                rangeFilter("Data.slaRemaining", "lte", thresholdMs));
         
         log.debug("Built number-based SLA filter for {}: {} hours ({}ms)", 
             escalationLevel, thresholdHours, thresholdMs);

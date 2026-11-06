@@ -259,6 +259,10 @@ public class FieldPlannerValidator {
             errorMap.put("FIELDPLAN", "Installation Plan dates are not mandatory");
         }
 
+        if (projectStart == null || projectEnd == null || fieldStart == null || fieldEnd == null) {
+            return;
+        }
+
         if (fieldStart < projectStart) {
             log.error("The Installation Plan start date is earlier than the Project start date");
             errorMap.put("FIELDPLAN_STARTDATE", "The Installation Plan start date is earlier than the Project start date");

@@ -34,19 +34,15 @@ public class ServiceRequestRepository {
     private final RestTemplate restTemplate;
 
     public Object fetchResult(StringBuilder uri, Object request) {
-        log.trace("Fetching result from URI: {}", uri);
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         Object response = null;
         try {
-            log.debug("Sending POST request to: {}", uri);
             response = restTemplate.postForObject(uri.toString(), request, Map.class);
-            log.debug("Received response from external service");
-            log.info("Successfully fetched result from external service");
         } catch (HttpClientErrorException e) {
-            log.error("External service returned error, status: {}, message: {}", e.getStatusCode(), e.getMessage());
+            log.error("External Service threw an Exception: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Exception while fetching from external service, URI: {}", uri, e);
+            log.error("Exception while fetching from searcher: ", e);
         }
         return response;
     }
@@ -75,7 +71,7 @@ public class ServiceRequestRepository {
         body.add("tenantId", context.getTenantId());
         body.add("module", context.getModule());
         body.add("tag", context.getTag());
-        
+
         // Convert RequestInfo object to JSON string if it's not already a string
         String requestInfoJson = context.getRequestInfo();
         if (requestInfoJson == null || requestInfoJson.trim().isEmpty()) {
@@ -102,14 +98,12 @@ public class ServiceRequestRepository {
     }
 
     public ResponseEntity<Resource> fetchFile(String baseUrl, String tenantId, String fileStoreId) {
-        log.trace("Fetching file from file store, fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
         String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/id")
                 .queryParam("tenantId", tenantId)
                 .queryParam("fileStoreId", fileStoreId)
                 .toUriString();
 
-        log.info("Fetching file from file store, URL: {}", url);
-        log.debug("File store request parameters: tenantId={}, fileStoreId={}", tenantId, fileStoreId);
+        log.info("fetching file from {} ", url);
 
         return restTemplate.exchange(
                 url,
@@ -118,12 +112,12 @@ public class ServiceRequestRepository {
                 Resource.class
         );
     }
-    
+
     /**
      * Create a default RequestInfo JSON string
      */
     private String createDefaultRequestInfoJson() {
-        return "{\"apiId\":\"im-services-analytics\",\"ver\":\"1.0\",\"ts\":" + System.currentTimeMillis() + 
+        return "{\"apiId\":\"im-services-analytics\",\"ver\":\"1.0\",\"ts\":" + System.currentTimeMillis() +
                ",\"action\":\"_create\",\"did\":\"1\",\"key\":\"\",\"msgId\":\"20170310130900|en_IN\"," +
                "\"requesterId\":\"\",\"authToken\":\"\",\"userInfo\":{\"id\":1,\"uuid\":\"system\"," +
                "\"type\":\"SYSTEM\",\"tenantId\":\"in\",\"roles\":[{\"name\":\"System\",\"code\":\"SYSTEM\"," +

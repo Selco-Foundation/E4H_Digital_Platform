@@ -53,6 +53,9 @@ public class RMSConfiguration {
     @Value("${im.service.create.endpoint}")
     private String imServiceCreateEndpoint;
 
+    @Value("${im.service.count.endpoint:/im-services/v2/request/_count}")
+    private String imServiceCountEndpoint;
+
     @Value("${im.service.request.timeout:30000}")
     private Integer imServiceTimeout;
 
@@ -94,6 +97,10 @@ public class RMSConfiguration {
     /** When false, grid high voltage (&gt; threshold) facilities do not produce alerts or tickets. Reverse voltage is unaffected by this flag. */
     @Value("${rms.rule.grid.high.voltage.tickets.enabled:true}")
     private boolean gridHighVoltageTicketsEnabled;
+
+    /** When false, battery deep discharge facilities do not produce alerts or tickets. Overcharge is unaffected by this flag. */
+    @Value("${rms.rule.battery.deep.discharge.tickets.enabled:true}")
+    private boolean batteryDeepDischargeTicketsEnabled;
 
     // Deduplication Configuration
     @Value("${rms.deduplication.suppression.window.hours:24}")

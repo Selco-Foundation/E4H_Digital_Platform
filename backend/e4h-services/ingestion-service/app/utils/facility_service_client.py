@@ -3,9 +3,7 @@ from typing import Any, Dict, Optional, List, Sequence, Union
 
 import requests
 
-from app.core.logging import AppLogger
-
-logger = AppLogger().get_logger()
+logger = logging.getLogger(__name__)
 
 
 class FacilityServiceClient:
@@ -13,31 +11,40 @@ class FacilityServiceClient:
         self.facility_service_url = facility_service_url
 
     def create_facility(self, facility_payload: Dict[str, Any]):
-        logger.trace("Creating facility in facility service")
         url = f"{self.facility_service_url}/facility-service/v2/facility/create"
         headers = {"Content-Type": "application/json"}
         payload = facility_payload
         facility_count = len(payload.get("facilities") or [])
         timeout = 120 if facility_count > 1 else 30
-        facility_id = facility_payload.get("facility", {}).get("facility_id") or "unknown"
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=timeout)
-            logger.info(f"Facility created successfully: facility_id={facility_id}")
-            logger.debug(f"Create response status: {response.status_code}")
             return response
 
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error creating facility {facility_id}: {http_err}", exc_info=True)
+            logger.error(f"HTTP error occurred: {http_err}")
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error creating facility {facility_id}: {conn_err}", exc_info=True)
+            logger.error(f"Connection error occurred: {conn_err}")
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error creating facility {facility_id}: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error occurred: {timeout_err}")
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error creating facility {facility_id}: {req_err}", exc_info=True)
+            logger.error(f"An error occurred: {req_err}")
             raise req_err
+
+    def validate_identifiers(self, request_info_payload: Dict[str, Any], tenant_id: str,
+                             facilities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Check HFR ID, NIN ID and PoC Username of facilities before creating them.
+
+        facilities: [{"facilityName", "hfrId", "ninId", "facilityPocUsername"}, ...]
+        Returns facility-service's conflicts: [{"index": <position in facilities>, "errors": [...]}].
+        """
+        url = f"{self.facility_service_url}/facility-service/v2/facility/_validate-identifiers"
+        payload = {"RequestInfo": request_info_payload, "tenantId": tenant_id, "facilities": facilities}
+        response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=120)
+        response.raise_for_status()
+        return (response.json() or {}).get("conflicts", []) or []
 
     def search_facility(
         self,
@@ -55,7 +62,6 @@ class FacilityServiceClient:
         url = f"{self.facility_service_url}/facility-service/v2/facility/search"
         headers = {"Accept": "application/json"}
 
-        logger.trace(f"Searching facilities: tenant_id={tenant_id}, facility_id={facility_id}, boundary_code={boundary_code}")
         try:
             # Fast path for identifier-based lookups used by ingestion templates
             if facility_id or hfr_id or nin_id:
@@ -103,8 +109,6 @@ class FacilityServiceClient:
                 data = response.json()
                 all_facilities.extend(data.get("facilities", []) or [])
 
-            logger.info(f"Facility search completed: {total_count} facilities found")
-            logger.debug(f"Search parameters: tenant_id={tenant_id}, facility_id={facility_id}, boundary_code={boundary_code}")
             return {"totalCount": total_count, "facilities": all_facilities}
 
         except requests.exceptions.HTTPError as http_err:

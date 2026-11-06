@@ -67,6 +67,7 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                 String boundaryCode = rs.getString("boundarycode");
                 String warrantyStatusStr = rs.getString("warranty_status");
                 WarrantyStatus warrantyStatus = WarrantyStatus.fromValue(warrantyStatusStr);
+                String mappedVendorUuid = rs.getString("mapped_vendor_uuid");
                 User u=new User();
                 u.setTenantId(reporterTenant);
                 u.setUuid(accountId);
@@ -98,6 +99,7 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                         .facilityId(facilityId)
                         .boundaryCode(boundaryCode)
                         .warrantyStatus(warrantyStatus)
+                        .mappedVendorUuid(mappedVendorUuid)
                         .build();
 
                 JsonNode additionalDetails = getAdditionalDetail("ser_additionaldetails",rs);

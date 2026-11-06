@@ -94,6 +94,10 @@ public class StorageService {
 		return signedUrl;
 	}
 
+	public String retrieveSignedUrl(String fileStoreId, String tenantId) throws IOException {
+		return artifactRepository.findS3SignedUrl(fileStoreId, tenantId);
+	}
+
 	public Resource retrieve(String fileStoreId, String quality, String fileName, String tenantId)  {
 		log.trace("Entering retrieve method for HLS chunk with fileStoreId: {}, quality: {}, fileName: {}, tenantId: {}", 
 				fileStoreId, quality, fileName, tenantId);
