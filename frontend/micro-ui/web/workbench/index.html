@@ -32,6 +32,11 @@
         max-height: 100px;
         width: auto;
       }
+      /* login inputs had two borders (wrapper + input) with a gap between them, so the browser's autofill colour stopped short */
+      .login-form-container .input-container {
+        padding: 0;
+        border: 0;
+      }
     </style>
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
