@@ -95,6 +95,22 @@ const overrideInitData = (languages, tenantId) => {
   };
 };
 
+// The header logo after login is the current tenant's logoId (MDMS tenant.tenants), and DIGIT shows its eGov logo when
+// that is empty. Livelihood's tenant has none and its schema only allows null there, so replace DIGIT's fallback image
+// with LOGO_COLORED from the global config whenever the header renders it.
+const DIGIT_FALLBACK_LOGO = "egov-logo-2025.png";
+const replaceFallbackHeaderLogo = () => {
+  const logo = window.globalConfigs?.getConfig("LOGO_COLORED");
+  if (!logo) return;
+  const replace = () =>
+    document.querySelectorAll(".digit-header-logo-img").forEach((img) => {
+      if (img.getAttribute("src")?.endsWith(DIGIT_FALLBACK_LOGO)) img.setAttribute("src", logo);
+    });
+  new MutationObserver(replace).observe(document.body, { childList: true, subtree: true, attributeFilter: ["src"] });
+};
+
+replaceFallbackHeaderLogo();
+
 function App() {
   const [languagesReady, setLanguagesReady] = React.useState(false);
   React.useEffect(() => {
