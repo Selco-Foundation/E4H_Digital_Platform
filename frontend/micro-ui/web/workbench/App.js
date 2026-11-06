@@ -21,7 +21,33 @@ const moduleReducers = (initData) => ({
   initData,
 });
 
+// The sidebar's "Home" is a shared access-control action (ACCESSCONTROL-ACTIONS-TEST id 170) whose navigationURL is
+// /digit-ui/employee, the main DIGIT app, so clicking it left the workbench. Point top-level Home actions that belong to
+// another app at the workbench's own home instead.
+const keepHomeInWorkbench = () => {
+  const useAccessControl = window.Digit.Hooks.useAccessControl;
+  const home = `/${window.contextPath}/employee`;
+  const patchedData = new WeakMap();
+  const patch = (data) => ({
+    ...data,
+    actions: data.actions.map((action) =>
+      action.path === "Home" && !action.navigationURL?.startsWith(`/${window.contextPath}/`)
+        ? { ...action, navigationURL: home }
+        : action
+    ),
+  });
+  function useWorkbenchAccessControl(...args) {
+    const result = useAccessControl(...args);
+    const data = result?.data;
+    if (!data?.actions) return result;
+    if (!patchedData.has(data)) patchedData.set(data, patch(data));
+    return { ...result, data: patchedData.get(data) };
+  }
+  window.Digit.Hooks.useAccessControl = useWorkbenchAccessControl;
+};
+
 const initDigitUI = () => {
+  keepHomeInWorkbench();
   window.Digit.ComponentRegistryService.setupRegistry({});
   window.Digit.Customizations = {
     PGR: {},
