@@ -42,6 +42,11 @@
         width: auto;
         max-width: none;
       }
+      /* the header's second logo slot is stateInfo.logoUrlWhite, which Livelihood doesn't set: hide it instead of a broken image */
+      .digit-employee-header img.state:not([src]),
+      .digit-employee-header img.state[src=""] {
+        display: none;
+      }
       /* login inputs had two borders (wrapper + input) with a gap between them, so the browser's autofill colour stopped short */
       .login-form-container .input-container {
         padding: 0;
