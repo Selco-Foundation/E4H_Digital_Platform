@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from "react-query";
 import { BoundaryService } from "../services/Boundary";
 import { boundariesForRole } from "../utilities/jurisdictionScope";
-
-/** The role this module gates on - see Module.js. The module's scope is this role's jurisdictions. */
-const FACILITY_ADMIN_ROLE = "FACILITY_ADMIN";
+import { MODULE_ROLE } from "../constants/Roles";
 
 const fetchBoundaries = async (queryFilter) => {
 
@@ -60,7 +58,7 @@ const fetchBoundaries = async (queryFilter) => {
  */
 const useBoundary = (codes) => {
 
-  const scopedCodes = codes || boundariesForRole(FACILITY_ADMIN_ROLE);
+  const scopedCodes = codes || boundariesForRole(MODULE_ROLE);
 
   const queryFilter = {
     tenantId: Digit.ULBService.getCurrentTenantId(),

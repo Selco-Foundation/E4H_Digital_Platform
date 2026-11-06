@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "react-query";
 import { FacilityService } from "../services/Facility";
-import useBoundary from "./useBoundary";
+import { boundariesByLevelForRole } from "../utilities/jurisdictionScope";
+import { MODULE_ROLE } from "../constants/Roles";
 
 const fetchFacilities = async (queryFilter) => {
 
@@ -20,23 +21,34 @@ const fetchFacilities = async (queryFilter) => {
   };
 };
 
+/**
+ * Sets one filter, preferring the user's own choice over their jurisdiction at that level.
+ *
+ * The pickers only offer values already inside the user's scope, so a chosen value narrows the
+ * scope rather than escaping it - which is why the choice replaces the scope outright instead of
+ * being combined with it. Nothing is set when neither is present, so an unscoped user with no
+ * filters sends no boundary criteria at all.
+ */
+const applyFilter = (queryFilter, key, chosen, scoped) => {
+  const value = chosen?.length ? chosen : scoped;
+  if (value?.length) queryFilter[key] = value;
+};
+
 const useFacility = (filter, limit = 10, offset = 0) => {
 
   const { facilityFilterQuery } = filter;
 
   /*
-   * The facilities this user may see, resolved to one level.
+   * The facilities this user may see, as the levels their jurisdictions were granted at.
    *
-   * `useBoundary` is already scoped to the module's role, so its `facilities` are exactly the
-   * leaves of the user's jurisdictions - whether they were granted a state, a block or a single
-   * facility. Resolving to facility codes avoids sending several level filters at once: a user
-   * holding a state in one place and a block in another would otherwise produce `state=S AND
-   * block=B`, which matches nothing.
+   * Sent per level rather than resolved down to facility codes: facility search already expands
+   * `state`, `district` and `block` through boundary-service, so one state code does the work of
+   * every facility code beneath it, and the lower levels stay free for the user's own filters.
    *
-   * react-query serves this from the same cache entry the pickers use, so it costs no extra call.
+   * Null means the user holds no grant for this role, or holds the whole country - either way,
+   * nothing is narrowed.
    */
-  const { data: scope } = useBoundary();
-  const scopedFacilityCodes = scope?.facilities?.map((facility) => facility.code);
+  const scope = boundariesByLevelForRole(MODULE_ROLE);
 
   const queryFilter = {
     tenantId: [Digit.ULBService.getCurrentTenantId()],
@@ -44,25 +56,10 @@ const useFacility = (filter, limit = 10, offset = 0) => {
     offset,
   };
 
-  if (facilityFilterQuery?.state?.length) {
-    queryFilter.state = facilityFilterQuery.state;
-  }
-
-  if (facilityFilterQuery?.district?.length) {
-    queryFilter.district = facilityFilterQuery.district;
-  }
-
-  if (facilityFilterQuery?.block?.length) {
-    queryFilter.block = facilityFilterQuery.block;
-  }
-
-  if (facilityFilterQuery?.facility?.length) {
-    // The picker only offers facilities already inside the user's scope, so their choice is a
-    // narrowing of it rather than a way out of it.
-    queryFilter.boundaryCodes = facilityFilterQuery.facility;
-  } else if (scopedFacilityCodes?.length) {
-    queryFilter.boundaryCodes = scopedFacilityCodes;
-  }
+  applyFilter(queryFilter, "state", facilityFilterQuery?.state, scope?.State);
+  applyFilter(queryFilter, "district", facilityFilterQuery?.district, scope?.District);
+  applyFilter(queryFilter, "block", facilityFilterQuery?.block, scope?.Block);
+  applyFilter(queryFilter, "boundaryCodes", facilityFilterQuery?.facility, scope?.Facility);
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
