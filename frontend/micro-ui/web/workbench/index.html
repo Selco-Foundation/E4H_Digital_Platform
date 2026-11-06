@@ -141,6 +141,31 @@
       .workbench .workbench-create-form form #digit_root .field-wrapper .form-group .control-label .tooltip {
         display: inline;
       }
+      /* Search screens (master records, localisation): the Search button's wrapper had a 32px margin + 8px padding on
+         top, so the button sat lower than the inputs (whose labels take ~30px); line it up and keep both the button and
+         "Clear Search" at the right edge of the card */
+      /* margin-top and align-items are inline styles from the search component, hence !important */
+      .workbench .search-field-wrapper .search-button-wrapper {
+        margin-top: 1.9rem !important;
+        padding-top: 0;
+        align-items: flex-end !important;
+      }
+      .workbench .search-field-wrapper .search-button-wrapper .link-label {
+        width: 240px;
+        text-align: center;
+      }
+      /* the results' filter box: selco-css caps .input-container at 540px inside its 600px box, so the box ended 60px
+         before its right-aligned title, and two 24px bottom margins left a gap above the table */
+      .workbench .global-search-results-table .input-container {
+        max-width: none;
+        margin-bottom: 0;
+      }
+      .workbench .global-search-results-table {
+        margin-bottom: 1rem;
+      }
+      .workbench .global-search-results-table-header {
+        margin-bottom: 0.25rem;
+      }
       /* selco-css sets .digit-button-primary/-secondary to height: fit-content (for its older buttons), which overrides
          the component library's 2.5rem for the default "large" size, so e.g. "Back to modules" and the logout dialog's
          "Yes, Logout" collapsed to 22px and cut their labels off */
