@@ -71,7 +71,8 @@ const languagesLoaded = fetchLanguages();
 // Fix up what Digit.Hooks.useStore.getInitData() returns. Done once, before DigitUI mounts, and the patched copy is
 // memoised so consumers keep a stable reference between renders. Besides the languages, stateInfo.code also comes from
 // StateInfo[0] (Lakshadweep), and the dropdown loads the new language's messages for that tenant, so use the state
-// tenant instead.
+// tenant instead. logoUrl is the login page's header logo; Livelihood's StateInfo has none, so take it from the global
+// config's LOGO_COLORED (same key livelihood-ui uses).
 const overrideInitData = (languages, tenantId) => {
   const useStore = window.Digit.Hooks.useStore;
   const getInitData = useStore.getInitData;
@@ -85,7 +86,9 @@ const overrideInitData = (languages, tenantId) => {
       patched = {
         ...result.data,
         ...(languages && { languages }),
-        ...(tenantId && { stateInfo: { ...result.data.stateInfo, code: tenantId } }),
+        ...(tenantId && {
+          stateInfo: { ...result.data.stateInfo, code: tenantId, logoUrl: window.globalConfigs?.getConfig("LOGO_COLORED") },
+        }),
       };
     }
     return { ...result, data: patched };
