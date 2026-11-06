@@ -37,6 +37,7 @@ export const Employee = {
   ComplaintDetails: PGR_EMPLOYEE_COMPLAINT_DETAILS,
   ComplaintFeedback: PGR_EMPLOYEE_COMPLAINT_FEEDBACK,
   CreateComplaint: PGR_EMPLOYEE_CREATE_COMPLAINT,
+  ReportSolarIssue: "/report-solar-issue",
   PauseRMS: PGR_EMPLOYEE_PAUSE_RMS,
   PausedRMSFacilities: PGR_EMPLOYEE_PAUSED_RMS_FACILITIES,
   Response: "/incident/response",

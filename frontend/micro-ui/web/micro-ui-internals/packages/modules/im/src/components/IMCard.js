@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { EmployeeModuleCard } from "@selco/digit-ui-react-components";
+import { Employee } from "../constants/Routes";
+import { isFacilityUser } from "../utilities/facilityUser";
 
 
 const IMCard = () => {
@@ -9,6 +11,7 @@ const IMCard = () => {
   const { t } = useTranslation();
   const [total, setTotal] = useState("-");
   const { userName, roles } = Digit.UserService.getUser().info;
+  const canReportSolarIssue = isFacilityUser(roles);
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
   const isTechPocUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
 
@@ -121,6 +124,18 @@ console.log("propsForCSR",propsForCSR,Digit.Utils.didEmployeeHasRole("COMPLAINT"
     ...propsForCSR
     ]
 }
+
+  if (canReportSolarIssue) {
+    propsForModuleCard.links = [
+      {
+        label: t("IM_REPORT_SOLAR_ISSUE_PROMPT", {
+          defaultValue: "To report an issue with your solar, click here.",
+        }),
+        link: `/${window.contextPath}/employee/im${Employee.ReportSolarIssue}`,
+      },
+      ...propsForModuleCard.links.filter(({ link }) => link !== `/${window.contextPath}/employee/im${Employee.CreateComplaint}`),
+    ];
+  }
 
   return <EmployeeModuleCard {...propsForModuleCard} />
 };

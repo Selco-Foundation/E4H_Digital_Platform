@@ -24,6 +24,7 @@ import ResponseCitizen from "./pages/citizen/Response";
 import {PauseRMS} from "./pages/employee/PauseRMS";
 import RMSPausedFacilities from "./pages/employee/RMSPausedFacilities";
 import RMSResponse from "./pages/employee/RMSResponse";
+import ReportSolarIssue from "./pages/employee/ReportSolarIssue";
 
 
 export const IMReducers = getRootReducer;
@@ -71,6 +72,7 @@ const componentsToRegister = {
   IMModule,
   IMLinks,
   IMCard,
+  IMReportSolarIssue: ReportSolarIssue,
   PGRComplaintDetails : ComplaintDetails,
   PGRComplaintFeedback : ComplaintFeedback,
   PGRCreateComplaintEmp : CreateComplaintEmp,
