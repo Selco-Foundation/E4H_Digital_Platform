@@ -166,6 +166,12 @@
       .workbench .global-search-results-table-header {
         margin-bottom: 0.25rem;
       }
+      /* the sidebar keeps its last item (Home) marked "selected" on every page, which painted it orange permanently;
+         keep the orange for hover only */
+      .digit-sidebar .digit-sidebar-item.selected:not(:hover),
+      .digit-sidebar.collapsed .digit-sidebar-items-container .item-child-wrapper .digit-sidebar-item.selected:not(:hover) {
+        background: transparent;
+      }
       /* selco-css sets .digit-button-primary/-secondary to height: fit-content (for its older buttons), which overrides
          the component library's 2.5rem for the default "large" size, so e.g. "Back to modules" and the logout dialog's
          "Yes, Logout" collapsed to 22px and cut their labels off */
