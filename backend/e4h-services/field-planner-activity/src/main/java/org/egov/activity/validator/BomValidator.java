@@ -343,8 +343,10 @@ public class BomValidator {
                 .requestInfo(requestInfo)
                 .build();
 
+        // Existence validation, not a listing - unscoped, so a missing assignment row cannot
+        // reject a BOM for a facility that plainly exists.
         List<ActivityFacility> activityFacilities = activityService.searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
-                activityConfiguration.getTenantId(), false, null);
+                activityConfiguration.getTenantId(), false, null, false);
 
         return activityFacilities;
 
