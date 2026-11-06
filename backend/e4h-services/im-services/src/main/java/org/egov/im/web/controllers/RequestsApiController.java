@@ -130,15 +130,6 @@ public class RequestsApiController{
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @RequestMapping(value="/request/migration/_update", method = RequestMethod.POST)
-    public ResponseEntity<IncidentResponse> requestsUpdatePostMigration(@Valid @RequestBody IncidentRequest request) throws IOException {
-        IncidentRequest enrichedReq = imService.migrationUpdate(request);
-        IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(enrichedReq.getIncident()).workflow(enrichedReq.getWorkflow()).build();
-        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
-        IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.singletonList(incidentWrapper)).build();
-        return new ResponseEntity<>(response, HttpStatus.OK);
-    }
-
     @RequestMapping(value="/request/migration/v2/_update", method = RequestMethod.POST)
     public ResponseEntity<IncidentResponse> migrationV2UpdateTheftStatus(@Valid @RequestBody MigrationV2Request request) {
         log.trace("RequestsApiController::migrationV2UpdateTheftStatus method invoked");

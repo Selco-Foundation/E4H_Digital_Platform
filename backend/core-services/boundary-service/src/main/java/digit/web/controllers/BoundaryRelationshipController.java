@@ -1,6 +1,5 @@
 package digit.web.controllers;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import digit.service.BoundaryRelationshipService;
@@ -93,20 +92,6 @@ public class BoundaryRelationshipController {
         
         log.info("Boundary relationship v2 search request completed, tenantBoundary count={}", 
                 boundarySearchResponse.getTenantBoundary() != null ? boundarySearchResponse.getTenantBoundary().size() : 0);
-        return new ResponseEntity<>(boundarySearchResponse, HttpStatus.OK);
-    }
-
-    /**
-     * Request handler for serving boundary relationships search request.
-     * @param boundaryRelationshipV2SearchRequest
-     * @return
-     */
-    @RequestMapping(value = "/v2/_search", method = RequestMethod.POST)
-    public ResponseEntity<BoundarySearchResponse> searchWithRequestBody(@Valid @RequestBody BoundaryRelationshipV2SearchRequest boundaryRelationshipV2SearchRequest) {
-        BoundarySearchResponse boundarySearchResponse = boundaryRelationshipService.getBoundaryRelationships(
-                boundaryRelationshipV2SearchRequest.getBoundaryRelationshipSearchCriteria(),
-                boundaryRelationshipV2SearchRequest.getRequestInfo()
-        );
         return new ResponseEntity<>(boundarySearchResponse, HttpStatus.OK);
     }
 
