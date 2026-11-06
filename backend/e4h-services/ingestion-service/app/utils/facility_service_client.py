@@ -151,7 +151,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -170,7 +170,7 @@ class FacilityServiceClient:
           "Facility": {
             "tenantIds": [...],
             "facilityIds": [...],
-            "boundaryCodes": [...],
+            "block": [...],
             ...
           }
         }
@@ -180,7 +180,7 @@ class FacilityServiceClient:
             request_info=request_info,
             tenant_ids=tenant_ids,
             facility_ids=facility_ids,
-            boundary_codes=boundary_codes,
+            block_codes=block_codes,
             hfr_ids=hfr_ids,
             nin_ids=nin_ids,
             limit=limit,
@@ -195,7 +195,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -213,7 +213,7 @@ class FacilityServiceClient:
             request_info=request_info,
             tenant_ids=tenant_ids,
             facility_ids=facility_ids,
-            boundary_codes=boundary_codes,
+            block_codes=block_codes,
             hfr_ids=hfr_ids,
             nin_ids=nin_ids,
             limit=limit,
@@ -229,7 +229,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -264,10 +264,14 @@ class FacilityServiceClient:
                 "facilityPocEmails": [],
                 "facilityStatus": [],
                 "userIds": [],
-                "boundaryCodes": list(boundary_codes) if boundary_codes else [],
+                "boundaryCodes": [],
                 "state": [],
                 "district": [],
-                "block": [],
+                # These are block codes - flatten_boundaries only ever emits block nodes - so they
+                # go in `block`, which facility-service resolves through the hierarchy into the
+                # facilities beneath them. `boundaryCodes` is matched against facility.boundary_code
+                # directly, so a block code sent there would match nothing.
+                "block": list(block_codes) if block_codes else [],
                 "sendNonPaginatedResponse": send_non_paginated_response,
                 "limit": limit,
                 "offset": offset,
