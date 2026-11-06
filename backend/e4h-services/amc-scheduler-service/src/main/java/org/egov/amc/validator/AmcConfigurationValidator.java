@@ -175,7 +175,7 @@ public class AmcConfigurationValidator {
         Map<String, String> errorMap = new HashMap<>();
 
         if (request.getAmcConfigurations() == null || request.getAmcConfigurations().size() == 0) {
-            log.error("AMC configuration list is empty. AMC configurations are mandatory");
+            log.error("Field Plans list is empty. Field Plans is mandatory");
             throw new CustomException("AmcConfiguration", "Field Plans are mandatory");
         }
 
@@ -198,7 +198,7 @@ public class AmcConfigurationValidator {
             Project existingProject = projectByTenantAndId.computeIfAbsent(projectKey, k ->
                     getProjectById(request.getRequestInfo(), amcConfiguration.getProjectId(), amcConfiguration.getTenantId()));
             if (existingProject == null) {
-                log.error("Project ID {} does not exist for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
+                log.error("Project ID do not exist");
                 throw new CustomException("AmcConfiguration", "Project ID do not exist");
             }
 
@@ -214,7 +214,7 @@ public class AmcConfigurationValidator {
             log.debug("Validating facility ID: {}", amcConfiguration.getFacilityId());
             Facility existingFacility = prefetchedFacilities.get(amcConfiguration.getFacilityId());
             if (existingFacility == null) {
-                log.error("Facility ID {} does not exist", amcConfiguration.getFacilityId());
+                log.error("Facility ID do not exist");
                 throw new CustomException("AMC Configuration", "Facility ID do not exist");
             }
 
@@ -490,7 +490,7 @@ public class AmcConfigurationValidator {
         //Verify if AmcConfiguration id is present
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             if (StringUtils.isBlank(amcConfiguration.getId())) {
-                log.error("AMC configuration ID is mandatory for update");
+                log.error("AMC_Id is mandatory");
                 throw new CustomException("UPDATE_AMC_Configuration", "Amc Configuration Id is mandatory");
             }
         }
@@ -658,8 +658,7 @@ public class AmcConfigurationValidator {
                 amcConfigurationsFromRequest != null ? amcConfigurationsFromRequest.size() : 0,
                 amcConfigurationsFromDB != null ? amcConfigurationsFromDB.size() : 0);
         if (CollectionUtils.isEmpty(amcConfigurationsFromDB)) {
-            log.error("The AMC configuration records that you are trying to update do not exist in the system, request count: {}", 
-                    amcConfigurationsFromRequest != null ? amcConfigurationsFromRequest.size() : 0);
+            log.error("The amcConfiguration records that you are trying to update does not exists in the system");
             throw new CustomException("INVALID_AmcConfiguration_MODIFY", "The records that you are trying to update does not exists in the system");
         }
         Long currentTimestamp = Instant.now().toEpochMilli();
@@ -677,7 +676,7 @@ public class AmcConfigurationValidator {
             AmcConfiguration amcConfigurationFromDB = amcConfigurationsFromDB.stream().filter(p -> p.getId().equals(amcConfiguration.getId())).findFirst().orElse(null);
 
             if (amcConfigurationFromDB == null) {
-                log.error("AMC configuration ID {} does not exist in the system", amcConfiguration.getId());
+                log.error("The amcConfiguration id " + amcConfiguration.getId() + " that you are trying to update does not exists for the amcConfiguration");
                 throw new CustomException("INVALID_AmcConfiguration_MODIFY", "The amcConfiguration id " + amcConfiguration.getId() + " that you are trying to update does not exists for the amcConfiguration");
             }
         log.debug("Update against DB validation completed successfully for {} AMC configuration(s)", amcConfigurationsFromRequest.size());

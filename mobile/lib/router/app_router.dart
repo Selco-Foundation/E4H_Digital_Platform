@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:digit_scanner/blocs/app_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../model/scheduled_visit/scheduled_visit.dart';
@@ -25,11 +26,13 @@ import '../pages/home.dart';
 import '../pages/image_viewer.dart';
 import '../pages/inbox.dart';
 import '../pages/inbox_asset_summary.dart';
+import '../pages/installation_images.dart';
 import '../pages/installation_report_home.dart';
 import '../pages/login.dart';
 import '../pages/media_upload.dart';
 import '../pages/overall_asset_summary.dart';
 import '../pages/pdf_viewer.dart';
+import '../pages/role_selection.dart';
 import '../pages/select_asset_type.dart';
 import '../pages/select_health_facility.dart';
 import '../pages/setup_new_password.dart';
@@ -42,6 +45,7 @@ import '../pages/video_player.dart';
 import '../pages/welcome.dart';
 import '../router/routes.dart';
 import '../utils/utils.dart';
+import '../widgets/customized_digit_widget/qr_scanner.dart';
 
 export 'package:auto_route/auto_route.dart';
 
@@ -122,6 +126,10 @@ class AppRouter extends _$AppRouter {
           AutoRoute(
               page: AmcRejctionReasonsRoute.page,
               path: Routes.amcRejectionReasons),
+          AutoRoute(
+              page: InstallationImagesRoute.page,
+              path: Routes.installationCompletionImages),
+          AutoRoute(page: RoleSelectionRoute.page, path: Routes.roleSelection),
         ])
       ];
 }

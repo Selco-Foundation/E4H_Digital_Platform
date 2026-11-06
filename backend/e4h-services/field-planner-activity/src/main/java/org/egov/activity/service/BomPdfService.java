@@ -186,7 +186,7 @@ public class BomPdfService {
 
     /**
      * The report's centered heading, e.g. {@code Chingkhu_Sambei_KA-2525-10-00049}: the health
-     * facility name followed by the project number, both underscore-joined and with any inner
+     * facility name followed by the project name, both underscore-joined and with any inner
      * whitespace turned into underscores.
      * <p>
      * Never null - a missing part is simply left out, and with neither part the template renders an

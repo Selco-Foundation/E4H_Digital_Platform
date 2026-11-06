@@ -42,8 +42,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     public void validateCreate(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateCreate method invoked");
-        log.info("Validating incident create request");
+        log.info("serviceRequestValidator::Validating incident create request");
         Map<String,String> errorMap = new HashMap<>();
         validateUserData(request,errorMap);
         //validateSource(request.getService().getSource());
@@ -61,8 +60,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     public void validateUpdate(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateUpdate method invoked");
-        log.info("Validating incident update request");
+        log.info("serviceRequestValidator::Validating incident update request");
         String id = request.getIncident().getId();
         String tenantId = request.getIncident().getTenantId();
         //validateSource(request.getService().getSource());
@@ -77,7 +75,15 @@ public class ServiceRequestValidator {
         if(CollectionUtils.isEmpty(incidentWrappers))
             throw new CustomException("INVALID_UPDATE","The record that you are trying to update does not exists");
 
-        // TO DO
+        /*
+         * Preserve existing warrantyStatus for updates when it is not explicitly
+         * provided in the incoming request. This avoids resetting OUT_OF_WARRANTY
+         * tickets back to WITHIN_WARRANTY on subsequent workflow actions.
+         */
+        Incident existingIncident = incidentWrappers.get(0).getIncident();
+        if (request.getIncident().getWarrantyStatus() == null && existingIncident != null) {
+            request.getIncident().setWarrantyStatus(existingIncident.getWarrantyStatus());
+        }
 
     }
 
@@ -87,8 +93,7 @@ public class ServiceRequestValidator {
      * @param errorMap HashMap to capture any errors
      */
     private void validateUserData(IncidentRequest request,Map<String, String> errorMap){
-        log.trace("ServiceRequestValidator::validateUserData method invoked");
-        log.debug("Validating user data");
+        log.info("serviceRequestValidator::Validating user data");
         RequestInfo requestInfo = request.getRequestInfo();
         String accountId = request.getIncident().getAccountId();
 
@@ -119,8 +124,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     private void validateMDMS(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateMDMS method invoked");
-        log.debug("Validating MDMS data");
+        log.info("serviceRequestValidator::Validating mdms data");
         String serviceCode = request.getIncident().getIncidentSubType();
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}",serviceCode);
 
@@ -193,8 +197,7 @@ public class ServiceRequestValidator {
      * @param request
      */
     private void validateReOpen(IncidentRequest request){
-        log.trace("ServiceRequestValidator::validateReOpen method invoked");
-        log.debug("Validating incident reopen request");
+        log.info("serviceRequestValidator::Validating incident reopen request");
         if(!request.getWorkflow().getAction().equalsIgnoreCase(IM_WF_REOPEN))
             return;
 
@@ -253,8 +256,7 @@ public class ServiceRequestValidator {
      * @param criteria
      */
     public void validateSearch(RequestInfo requestInfo, RequestSearchCriteria criteria){
-        log.trace("ServiceRequestValidator::validateSearch method invoked");
-        log.info("Validating incident search criteria");
+        log.info("serviceRequestValidator::Validating incident search criteria");
         /*
         * Checks if tenatId is provided with the search params
         * */
@@ -275,8 +277,7 @@ public class ServiceRequestValidator {
      * @param criteria
      */
     private void validateSearchParam(RequestInfo requestInfo, RequestSearchCriteria criteria){
-        log.trace("ServiceRequestValidator::validateSearchParam method invoked");
-        log.debug("Validating incident search parameters");
+        log.info("serviceRequestValidator::Validating incident search param");
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase("EMPLOYEE" ) && criteria.isEmpty())
             throw new CustomException("INVALID_SEARCH","Search without params is not allowed");
 
@@ -312,10 +313,10 @@ public class ServiceRequestValidator {
 
     }
 
-//    /**
-//     * Validates if the source is in the given list configures in application properties
-//     * @param source
-//     */
+    /**
+     * Validates if the source is in the given list configures in application properties
+     * @param source
+     */
 //    private void validateSource(String source){
 //
 //        List<String> allowedSourceStr = Arrays.asList(config.getAllowedSource().split(","));
@@ -327,8 +328,7 @@ public class ServiceRequestValidator {
 
 
     public void validatePlainSearch(RequestSearchCriteria criteria) {
-        log.trace("ServiceRequestValidator::validatePlainSearch method invoked");
-        log.info("Validating incident plain search criteria");
+        log.info("serviceRequestValidator::Validating incident plain search criteria");
         if(CollectionUtils.isEmpty(criteria.getTenantIds())){
             throw new CustomException("TENANT_ID_LIST_EMPTY", "Tenant ids not provided for searching.");
         }

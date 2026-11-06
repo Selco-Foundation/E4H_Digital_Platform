@@ -174,6 +174,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
       let redirectPath = `/${window.contextPath}/employee`;
 
+      // Audit the successful login; failures here must never block the redirect below.
       try {
         await UserAccessReportService.userLoginReport({
           User: user.info,
@@ -249,6 +250,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         setHasStoredConsent(true);
       }
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
+
       setUser({ info, ...tokens });
 
       try {

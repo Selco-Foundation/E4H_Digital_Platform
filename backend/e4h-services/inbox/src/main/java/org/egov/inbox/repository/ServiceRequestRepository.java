@@ -39,20 +39,16 @@ public class ServiceRequestRepository {
 	 * @return
 	 */
 	public Object fetchResult(StringBuilder uri, Object request) {
-		log.trace("Method invoked: fetchResult");
 		Object response = null;
-		log.debug("Calling external service - URI: {}", uri.toString());
+		//log.debug("URI: " + uri.toString());
 		try {
-			if (log.isDebugEnabled()) {
-				log.debug("Request payload prepared");
-			}
+			log.info("Request: " + mapper.writeValueAsString(request));
 			response = restTemplate.postForObject(uri.toString(), request, Map.class);
-			log.debug("External service call completed successfully");
 		} catch (HttpClientErrorException e) {
-			log.error("External service threw an exception - statusCode: {}, URI: {}", e.getStatusCode(), uri.toString(), e);
+			//log.error("External Service threw an Exception: ", e);
 			throw new ServiceCallException(e.getResponseBodyAsString());
 		} catch (Exception e) {
-			log.error("Exception while fetching from external service - URI: {}", uri.toString(), e);
+			//log.error("Exception while fetching from searcher: ", e);
 			throw new ServiceCallException(e.getMessage());
 		}
 
@@ -61,23 +57,21 @@ public class ServiceRequestRepository {
 	
 
 	public Object fetchESResult(StringBuilder uri, Object request) {
-		log.trace("Method invoked: fetchESResult");
 		Object response = null;
-		log.debug("Calling ElasticSearch - URI: {}", uri.toString());
+		log.debug("URI: " + uri.toString());
 		try {
 			final HttpHeaders headers = new HttpHeaders();
 			headers.add("Authorization", esAuthUtil.getESEncodedCredentials());
 			final HttpEntity<Object> entity = new HttpEntity<>(request, headers);
-			if (log.isDebugEnabled()) {
-				log.debug("ElasticSearch request prepared with authentication");
-			}
+			log.info("Request: " + mapper.writeValueAsString(request));
+			log.info("Entity: " + mapper.writeValueAsString(entity));
 			response = restTemplate.postForObject(uri.toString(), entity, Map.class);
-			log.debug("ElasticSearch call completed successfully");
 		} catch (HttpClientErrorException e) {
-			log.error("ElasticSearch service threw an exception - statusCode: {}, URI: {}", e.getStatusCode(), uri.toString(), e);
+			log.error("External Service threw an Exception: ", e);
+//			e.printStackTrace();
 			throw new ServiceCallException(e.getResponseBodyAsString());
 		} catch (Exception e) {
-			log.error("Exception while fetching from ElasticSearch - URI: {}", uri.toString(), e);
+			log.debug("Exception while fetching from searcher: ", e);
 			throw new ServiceCallException(e.getMessage());
 		}
 

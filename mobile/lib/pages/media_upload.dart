@@ -5,7 +5,6 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
-import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' show basename;
@@ -24,7 +23,8 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
-import '../widgets/customized_digit_widget/file_uploader.dart';
+import '../widgets/customized_digit_widget/image_uploader.dart';
+import '../widgets/customized_digit_widget/video_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -37,8 +37,8 @@ class MediaUploadPage extends StatefulWidget {
 
 class _MediaUploadPageState extends State<MediaUploadPage> {
   String? _currentActivityFacilityId;
-  List<PlatformFile> _selectedImages = [];
-  List<PlatformFile> _selectedVideos = [];
+  List<File> _selectedImages = [];
+  List<File> _selectedVideos = [];
   bool _isImagesInitLoading = false;
   bool _isVideosInitLoading = false;
   double? _latitude;
@@ -133,31 +133,25 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
       final file = await getCachedFile(e.filePath);
       if (file == null) return null;
 
-      final size = await file.length();
-
       return (
         entry: e,
-        platformFile: PlatformFile(
-          name: basename(file.path),
-          path: file.path,
-          size: size,
-        ),
+        file: file,
       );
     }).toList();
 
     final results = await Future.wait(futures);
-    final images = <PlatformFile>[];
-    final videos = <PlatformFile>[];
+    final images = <File>[];
+    final videos = <File>[];
 
     for (final res in results) {
       if (res == null) continue;
       final e = res.entry;
-      final pf = res.platformFile;
+      final file = res.file;
 
       if (e.itemType == 'image') {
-        images.add(pf);
+        images.add(file);
       } else if (e.itemType == 'video') {
-        videos.add(pf);
+        videos.add(file);
       }
     }
     if (mounted) {
@@ -186,7 +180,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
         builder: (ctx, state) {
           assetType = assetType.titleCase;
 
-          final isDisabled = _selectedImages.isEmpty && _selectedVideos.isEmpty;
+          final isDisabled = _selectedImages.isEmpty;
 
           return Scaffold(
             body: ScrollableContent(
@@ -218,11 +212,11 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       );
 
                   for (final file in _selectedImages) {
-                    final copied = await copyFileToLocalDir(File(file.path!));
+                    final copied = await copyFileToLocalDir(file);
                     final entry = CacheMediaUpload(
                       activityFacilityId: _currentActivityFacilityId!,
                       assetType: assetType.toLowerCase(),
-                      itemNumber: file.name,
+                      itemNumber: basename(file.path),
                       itemType: 'image',
                       userType: userType,
                       filePath: copied,
@@ -234,11 +228,11 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         .add(CacheMediaUploadEvent.add(entry));
                   }
                   for (final file in _selectedVideos) {
-                    final copied = await copyFileToLocalDir(File(file.path!));
+                    final copied = await copyFileToLocalDir(file);
                     final entry = CacheMediaUpload(
                       activityFacilityId: _currentActivityFacilityId!,
                       assetType: assetType.toLowerCase(),
-                      itemNumber: file.name,
+                      itemNumber: basename(file.path),
                       itemType: 'video',
                       filePath: copied,
                       userType: userType,
@@ -268,35 +262,31 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       const SizedBox(height: spacer4),
                       DigitCard(children: [
                         Text(
-                          '$assetType Images',
+                          '$assetType ${context.translate(i18.common.images)}',
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
+                        Text(
+                          '${context.translate(i18.mediaUpload.addAllImages)} $assetType',
+                          style: textTheme.bodyL.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
                         const SizedBox(height: spacer2),
-                        FileUploadWidget(
-                          allowedExtensions: const [
-                            "jpg",
-                            'jpeg',
-                            "png",
-                            'JPG',
-                            'JPEG',
-                            'PNG'
-                          ],
-                          label: 'Upload Images',
+                        ImageUploader(
+                          label: context.translate(i18.common.uploadImages),
                           allowMultiples: true,
-                          showPreview: true,
-                          initialFiles: _selectedImages,
-                          onFilesSelected: (files) {
+                          initialImages: _selectedImages,
+                          onImagesSelected: (files) {
                             setState(() {
                               _selectedImages = files;
                             });
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
-                                context.showSnackBar(const SnackBar(
-                                    content: Text('Could not fetch location')));
+                                context.showSnackBar(SnackBar(
+                                    content: Text(context.translate(
+                                        i18.common.couldNotFetchLocation))));
                               }
                             });
-                            return <PlatformFile, String?>{};
                           },
                         ),
                         if (_isImagesInitLoading)
@@ -304,39 +294,37 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       ]),
                       const SizedBox(height: spacer4),
                       DigitCard(children: [
-                        Text(
-                          '$assetType Videos',
-                          style: textTheme.headingXl.copyWith(
-                              color: theme.colorTheme.primary.primary2),
+                        Row(
+                          children: [
+                            Text(
+                              '$assetType ${context.translate(i18.common.videos)}',
+                              style: textTheme.headingXl.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                            const SizedBox(width: spacer1),
+                            Text(
+                              context.translate(i18.common.optional),
+                              style: textTheme.bodyL.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: spacer2),
-                        FileUploadWidget(
-                          label: 'Upload Videos',
+                        VideoUploader(
+                          label: context.translate(i18.common.uploadVideos),
                           allowMultiples: true,
-                          showPreview: false,
-                          allowedExtensions: const [
-                            'mp4',
-                            'mov',
-                            'mkv',
-                            'avi',
-                            'webm',
-                            'flv',
-                            'vob',
-                            'ts',
-                            'm2ts'
-                          ],
-                          initialFiles: _selectedVideos,
-                          onFilesSelected: (files) {
+                          initialVideos: _selectedVideos,
+                          onVideosSelected: (files) {
                             setState(() {
                               _selectedVideos = files;
                             });
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
-                                context.showSnackBar(const SnackBar(
-                                    content: Text('Could not fetch location')));
+                                context.showSnackBar(SnackBar(
+                                    content: Text(context.translate(
+                                        i18.common.couldNotFetchLocation))));
                               }
                             });
-                            return <PlatformFile, String?>{};
                           },
                         ),
                         if (_isVideosInitLoading)

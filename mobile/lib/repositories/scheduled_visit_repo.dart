@@ -1,14 +1,16 @@
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
+import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
 import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_prefilled_scheduled_visit.dart';
 import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/remote_client.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/document/document.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 
@@ -55,8 +57,6 @@ class ScheduledVisitRemoteRepository {
         Map<String, dynamic>.from(response.data as Map),
       );
     } on DioError catch (err) {
-      AppLogger.instance
-          .info('ScheduledVisitRemoteRepository.search error: $err');
       rethrow;
     }
   }
@@ -100,11 +100,7 @@ class ScheduledVisitRemoteRepository {
         },
       };
 
-      final resp = await dio.post(path, data: body);
-
-      AppLogger.instance.info(
-        'ScheduledVisitRemoteRepository.updateVisitWorkflow status=${resp.statusCode}',
-      );
+      await dio.post(path, data: body);
     } on DioError catch (e) {
       AppLogger.instance.info(
         'ScheduledVisitRemoteRepository.updateVisitWorkflow DioError=$e',
@@ -118,14 +114,17 @@ class ScheduledVisitRemoteRepository {
     }
   }
 
-  Future<void> resendVisitOtp() async {
+  Future<void> resendVisitOtp({
+    required String visitId,
+  }) async {
     const path = 'asset-amc/v1/visit/_resend_otp';
 
     try {
-      final resp = await dio.post(path, data: <String, dynamic>{});
-
-      AppLogger.instance.info(
-        'ScheduledVisitRemoteRepository.resendVisitOtp status=${resp.statusCode} ${resp.data}',
+      await dio.post(
+        path,
+        data: <String, dynamic>{
+          'visitId': visitId,
+        },
       );
     } on DioError catch (e) {
       AppLogger.instance.info(
@@ -153,12 +152,19 @@ class ScheduledVisitRepository {
 
   Future<PaginatedScheduledVisits> fetchByWorkflowStatus({
     required List<String> statuses,
+    String? facilityName,
+    String? sortDirection,
     int limit = defaultPageSize,
     int offset = 0,
   }) async {
+    final accessInfo = await SecureStore().getAccessInfo();
+    final assignedUserUuid = accessInfo?.userRequest?.uuid;
     final criteria = ScheduledVisitSearchCriteria(
       tenantId: envConfig.variables.tenantId,
+      facilityName: facilityName,
+      assignedUsers: assignedUserUuid == null ? null : [assignedUserUuid],
       statuses: statuses,
+      sortDirection: sortDirection,
     );
 
     try {
@@ -202,7 +208,6 @@ class ScheduledVisitRepository {
       AppLogger.instance.info(
         'Failed to fetch scheduled visits remotely, falling back to cache: $e',
       );
-      AppLogger.instance.debug(st.toString());
 
       final cachedItems = await _readCache(
         statuses: statuses,
@@ -338,6 +343,54 @@ class ScheduledVisitRepository {
           await col.where().scheduledVisitIdEqualTo(scheduledVisitId).findAll();
       for (final r in rec) {
         await col.delete(r.id);
+      }
+    });
+  }
+
+  Future<void> addFailedScheduledVisitToCache({
+    required String scheduledVisitId,
+  }) async {
+    if (scheduledVisitId.trim().isEmpty) return;
+
+    final col = _isar.cacheAmcFailedScheduledVisits;
+    await _isar.writeTxn(() async {
+      final existing = await col
+          .where()
+          .scheduledVisitIdEqualTo(scheduledVisitId)
+          .findFirst();
+
+      if (existing != null) return;
+      await col.put(
+        CacheAmcFailedScheduledVisit(scheduledVisitId: scheduledVisitId),
+      );
+    });
+  }
+
+  Future<bool> isFailedScheduledVisitInCache({
+    required String scheduledVisitId,
+  }) async {
+    if (scheduledVisitId.trim().isEmpty) return false;
+
+    final row = await _isar.cacheAmcFailedScheduledVisits
+        .where()
+        .scheduledVisitIdEqualTo(scheduledVisitId)
+        .findFirst();
+    return row != null;
+  }
+
+  Future<void> removeFailedScheduledVisitFromCache({
+    required String scheduledVisitId,
+  }) async {
+    if (scheduledVisitId.trim().isEmpty) return;
+
+    final col = _isar.cacheAmcFailedScheduledVisits;
+    await _isar.writeTxn(() async {
+      final row = await col
+          .where()
+          .scheduledVisitIdEqualTo(scheduledVisitId)
+          .findFirst();
+      if (row != null) {
+        await col.delete(row.id);
       }
     });
   }

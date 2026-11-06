@@ -52,9 +52,12 @@ dependencies:
   video_player: ^2.9.5
   flutter_pdfview: ^1.4.1+1
   internet_connection_checker_plus: ^2.7.2
+  image_picker: ^1.1.2
   digit_scanner: ^1.0.6+4
   digit_forms_engine: 0.0.9-dev
   flutter_local_notifications: ^19.5.0
+  firebase_core: ^2.32.0
+  firebase_analytics: ^10.10.7
 
 dependency_overrides:
   camera_android_camerax: ^0.5.0
@@ -85,7 +88,6 @@ flutter:
     - assets/icons/svg/
     - assets/animated_json/
     - assets/images/
-    - assets/mocks/
 
   fonts:
     - family: Roboto

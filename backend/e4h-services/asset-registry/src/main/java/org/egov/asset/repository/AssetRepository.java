@@ -53,4 +53,12 @@ public class AssetRepository {
             throw new CustomException(ErrorConstants.UPDATE_ASSET_ERROR_CODE, ErrorConstants.UPDATE_ASSET_ERROR_MSG);
         }
     }
+
+    public void pushUpdateAsset(Asset asset) {
+        try {
+            producer.push(configuration.getUpdateAssetTopic(), asset);
+        } catch (Exception e) {
+            throw new CustomException(ErrorConstants.UPDATE_ASSET_ERROR_CODE, ErrorConstants.UPDATE_ASSET_ERROR_MSG);
+        }
+    }
 }

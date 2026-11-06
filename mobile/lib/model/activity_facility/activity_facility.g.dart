@@ -13273,31 +13273,36 @@ const AdditionalDetailsSchema = Schema(
       type: IsarType.object,
       target: r'AssetTypeAdditionalDetails',
     ),
-    r'facility': PropertySchema(
+    r'bomJson': PropertySchema(
       id: 1,
+      name: r'bomJson',
+      type: IsarType.string,
+    ),
+    r'facility': PropertySchema(
+      id: 2,
       name: r'facility',
       type: IsarType.object,
       target: r'Facility',
     ),
     r'inverter': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'inverter',
       type: IsarType.object,
       target: r'AssetTypeAdditionalDetails',
     ),
     r'panel': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'panel',
       type: IsarType.object,
       target: r'AssetTypeAdditionalDetails',
     ),
     r'status': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'status',
       type: IsarType.string,
     ),
     r'systemCode': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'systemCode',
       type: IsarType.string,
     )
@@ -13320,6 +13325,12 @@ int _additionalDetailsEstimateSize(
       bytesCount += 3 +
           AssetTypeAdditionalDetailsSchema.estimateSize(
               value, allOffsets[AssetTypeAdditionalDetails]!, allOffsets);
+    }
+  }
+  {
+    final value = object.bomJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
     }
   }
   {
@@ -13372,26 +13383,27 @@ void _additionalDetailsSerialize(
     AssetTypeAdditionalDetailsSchema.serialize,
     object.battery,
   );
+  writer.writeString(offsets[1], object.bomJson);
   writer.writeObject<Facility>(
-    offsets[1],
+    offsets[2],
     allOffsets,
     FacilitySchema.serialize,
     object.facility,
   );
   writer.writeObject<AssetTypeAdditionalDetails>(
-    offsets[2],
+    offsets[3],
     allOffsets,
     AssetTypeAdditionalDetailsSchema.serialize,
     object.inverter,
   );
   writer.writeObject<AssetTypeAdditionalDetails>(
-    offsets[3],
+    offsets[4],
     allOffsets,
     AssetTypeAdditionalDetailsSchema.serialize,
     object.panel,
   );
-  writer.writeString(offsets[4], object.status);
-  writer.writeString(offsets[5], object.systemCode);
+  writer.writeString(offsets[5], object.status);
+  writer.writeString(offsets[6], object.systemCode);
 }
 
 AdditionalDetails _additionalDetailsDeserialize(
@@ -13406,23 +13418,24 @@ AdditionalDetails _additionalDetailsDeserialize(
     AssetTypeAdditionalDetailsSchema.deserialize,
     allOffsets,
   );
+  object.bomJson = reader.readStringOrNull(offsets[1]);
   object.facility = reader.readObjectOrNull<Facility>(
-    offsets[1],
+    offsets[2],
     FacilitySchema.deserialize,
     allOffsets,
   );
   object.inverter = reader.readObjectOrNull<AssetTypeAdditionalDetails>(
-    offsets[2],
-    AssetTypeAdditionalDetailsSchema.deserialize,
-    allOffsets,
-  );
-  object.panel = reader.readObjectOrNull<AssetTypeAdditionalDetails>(
     offsets[3],
     AssetTypeAdditionalDetailsSchema.deserialize,
     allOffsets,
   );
-  object.status = reader.readStringOrNull(offsets[4]);
-  object.systemCode = reader.readStringOrNull(offsets[5]);
+  object.panel = reader.readObjectOrNull<AssetTypeAdditionalDetails>(
+    offsets[4],
+    AssetTypeAdditionalDetailsSchema.deserialize,
+    allOffsets,
+  );
+  object.status = reader.readStringOrNull(offsets[5]);
+  object.systemCode = reader.readStringOrNull(offsets[6]);
   return object;
 }
 
@@ -13440,15 +13453,11 @@ P _additionalDetailsDeserializeProp<P>(
         allOffsets,
       )) as P;
     case 1:
+      return (reader.readStringOrNull(offset)) as P;
+    case 2:
       return (reader.readObjectOrNull<Facility>(
         offset,
         FacilitySchema.deserialize,
-        allOffsets,
-      )) as P;
-    case 2:
-      return (reader.readObjectOrNull<AssetTypeAdditionalDetails>(
-        offset,
-        AssetTypeAdditionalDetailsSchema.deserialize,
         allOffsets,
       )) as P;
     case 3:
@@ -13458,8 +13467,14 @@ P _additionalDetailsDeserializeProp<P>(
         allOffsets,
       )) as P;
     case 4:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readObjectOrNull<AssetTypeAdditionalDetails>(
+        offset,
+        AssetTypeAdditionalDetailsSchema.deserialize,
+        allOffsets,
+      )) as P;
     case 5:
+      return (reader.readStringOrNull(offset)) as P;
+    case 6:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -13482,6 +13497,160 @@ extension AdditionalDetailsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
         property: r'battery',
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'bomJson',
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'bomJson',
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'bomJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'bomJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'bomJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'bomJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'bomJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'bomJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'bomJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'bomJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'bomJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AdditionalDetails, AdditionalDetails, QAfterFilterCondition>
+      bomJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'bomJson',
+        value: '',
       ));
     });
   }

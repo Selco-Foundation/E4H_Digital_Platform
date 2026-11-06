@@ -3,7 +3,6 @@ package org.selco.e4h.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
-import org.apache.kafka.common.protocol.types.Field;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.IMConstants;
@@ -91,15 +90,12 @@ public class PrioritySLAService {
         Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
         Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
 
-//        String tenantId = (String) data.get("tenantId");
-        String tenantId = (String) boundary.get("stateCode");
+        String tenantId = (String) data.get("tenantId");
         String IncidentId = (String) incident.get("incidentId");
         log.debug("Processing ticket: incidentId={}, tenantId={}", IncidentId, tenantId);
 
         //get process instances
         List<ProcessInstance> processInstances = workflowService.getAllProcessInstances(tenantId,IncidentId, requestInfo);
-        Collections.reverse(processInstances);
-        log.debug("Retrieved {} process instances for incident: {}", processInstances.size(), IncidentId);
         processInstances = getCurrentSlaCycle(processInstances);
 
         if (tenantId.contains(".")) tenantId = tenantId.split("\\.")[0];
@@ -109,10 +105,9 @@ public class PrioritySLAService {
         long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
         long now = Instant.now().toEpochMilli();
 
-        long businessElapsedFromCreated = calculateBusinessDurationForAllStates(processInstances, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
-        log.debug("Business elapsed time - from created: {}ms, from modified: {}ms", 
-            businessElapsedFromCreated, businessElapsedFromModified);
+
+
 
         String businessService;
         String priority;
@@ -134,7 +129,7 @@ public class PrioritySLAService {
         Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap, processInstances);
         long definedTotalSla = totalSla.toMillis();
 
-        long totalSlaRemaining = definedTotalSla - businessElapsedFromCreated;
+        long totalSlaRemaining = computeTotalSlaRemaining(tenantId,priority,processInstances,slaMap,bh);
         long slaRemaining = stateSla - businessElapsedFromModified;
         if (OUT_OF_WARRANTY_ON_HOLD.equals(state)) {
             // SLA is paused while on hold: write neutral values so the ticket is neither breached nor nearing SLA
@@ -148,7 +143,7 @@ public class PrioritySLAService {
 
         Object incidentIdObj = incident.get("incidentId");
         if (incidentIdObj == null) {
-            log.warn("Incident ID is null, skipping ticket update");
+            log.warn("Incident ID is null for ticket: {}", ticket);
             return;
         }
         boolean isAClosedTicket = state.equals(CLOSED_AFTER_REJECTION) || state.equals(CLOSED_AFTER_RESOLUTION)
@@ -307,7 +302,7 @@ public class PrioritySLAService {
      * hold resets its SLA, so everything up to and including the most recent
      * {@code OUT_OF_WARRANTY_ON_HOLD} instance is dropped. Mirrors im-services SLAService.
      *
-     * @param processInstances workflow history, oldest first
+     * @param processInstances workflow history, oldest first (as returned by WorkflowService.getAllProcessInstances)
      */
     private List<ProcessInstance> getCurrentSlaCycle(List<ProcessInstance> processInstances) {
         for (int i = processInstances.size() - 1; i >= 0; i--) {
@@ -318,39 +313,9 @@ public class PrioritySLAService {
         return processInstances;
     }
 
-    public long calculateBusinessDurationForAllStates(List<ProcessInstance> processInstances, BusinessHours businessHours) {
-        log.trace("Calculating business duration for all states, processInstances count: {}", 
-            processInstances != null ? processInstances.size() : 0);
-        if (processInstances == null || processInstances.isEmpty()) {
-            log.debug("No process instances provided, returning 0");
-            return 0;
-        }
-        long totalBusinessDuration = 0;
-
-        for (int i = 0; i < processInstances.size(); i++) {
-            ProcessInstance current = processInstances.get(i);
-            String state = current.getState().getApplicationStatus();
-
-            if (isSlaBearingState(state)) {
-
-                long prevStateTime = current.getAuditDetails().getCreatedTime();
-                long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
-                        : Instant.now().toEpochMilli();
-
-                long stateDuration = calculateBusinessMillis(prevStateTime, nextStateTime, businessHours);
-                totalBusinessDuration += stateDuration;
-                log.debug("State: {}, duration: {}ms", state, stateDuration);
-            }
-        }
-
-        log.debug("Total business duration for all states: {}ms", totalBusinessDuration);
-        return totalBusinessDuration;
-    }
-
     public record TenantServiceStateKey(String tenantId, String businessService, String state) {}
 
     private Map<TenantServiceStateKey, Duration> loadSLADurationsFromBusinessService() {
-        log.trace("Loading SLA durations from business service database");
         try {
             String sql = """
                 SELECT s.tenantid, b.businessservice, s.applicationstatus, s.sla
@@ -360,8 +325,8 @@ public class PrioritySLAService {
             """;
             log.debug("Executing SQL query to load SLA durations");
 
-            Map<TenantServiceStateKey, Duration> result = jdbcTemplate.query(sql, rs -> {
-                Map<TenantServiceStateKey, Duration> slaMap = new HashMap<>();
+            return jdbcTemplate.query(sql, rs -> {
+                Map<TenantServiceStateKey, Duration> result = new HashMap<>();
                 while (rs.next()) {
                     String tenantId = rs.getString("tenantid");
                     String businessService = rs.getString("businessservice");
@@ -369,16 +334,72 @@ public class PrioritySLAService {
                     long slaMillis = rs.getLong("sla");
 
                     TenantServiceStateKey key = new TenantServiceStateKey(tenantId, businessService, state);
-                    slaMap.put(key, Duration.ofMillis(slaMillis));
+                    result.put(key, Duration.ofMillis(slaMillis));
                 }
-                return slaMap;
+                return result;
             });
-            log.info("Loaded {} SLA duration mappings from database", result.size());
-            return result;
         } catch (Exception e) {
             log.error("Failed to load SLA durations from database", e);
             return Collections.emptyMap();
         }
+    }
+
+
+    public long computeTotalSlaRemaining( String tenantId, String priority, List<ProcessInstance> processInstances, Map<TenantServiceStateKey, Duration> slaMap, BusinessHours businessHours) {
+        if (processInstances == null || processInstances.isEmpty()) {
+            return 0;
+        }
+        String businessService = INCIDENT_UNDERSCORE + capitalize(priority);
+        long remainingTotalSla = 0;
+
+        for (int i = 0; i < processInstances.size(); i++) {
+            ProcessInstance current = processInstances.get(i);
+            String status = current.getState().getApplicationStatus();
+
+            if (isSlaBearingState(status)) {
+
+                long prevStateTime = current.getAuditDetails().getCreatedTime();
+                long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
+                        : Instant.now().toEpochMilli();
+
+                long currentStateTimeSpent = calculateBusinessMillis(prevStateTime, nextStateTime, businessHours);
+                long currentStateDefinedSla = getDurationFromMap(slaMap, tenantId, businessService, status).toMillis();
+                if ((i + 1) >= processInstances.size() || currentStateDefinedSla - currentStateTimeSpent < 0) {
+                    remainingTotalSla += currentStateDefinedSla - currentStateTimeSpent;
+                }
+            }
+        }
+        String currentState = processInstances.get(processInstances.size() - 1).getState().getApplicationStatus();
+        if (PENDING_FOR_ASSIGNMENT.equals(currentState) || PENDINGFORASSIGNMENT_THEFT.equals(currentState)) {
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION).toMillis();
+        } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
+            String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
+            String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, resolutionState).toMillis();
+        } else if (PENDINGFORASSIGNMENT_RMS_DEVICE.equals(currentState)) {
+            long techPoc = getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDING_TECH_POC).toMillis();
+            long rmsResolution = getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDINGRESOLUTION).toMillis();
+            remainingTotalSla += techPoc + rmsResolution;
+        } else if (RMS_DEVICE_PENDING_TECH_POC.equals(currentState)) {
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDINGRESOLUTION).toMillis();
+        } else if (OUT_OF_SCOPE.equals(currentState)) {
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_SCOPE).toMillis();
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC.equals(currentState)) {
+            long pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY).toMillis();
+            long pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY).toMillis();
+            remainingTotalSla += pendingAssignmentOow + pendingResolutionOow;
+        } else if (PENDING_REVISION.equals(currentState)) {
+            long roundTwoTechPoc = getDurationFromMap(slaMap, tenantId, businessService, OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2).toMillis();
+            long pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY).toMillis();
+            long pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY).toMillis();
+            remainingTotalSla += roundTwoTechPoc + pendingAssignmentOow + pendingResolutionOow;
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(currentState)) {
+            long pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY).toMillis();
+            long pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY).toMillis();
+            remainingTotalSla += pendingAssignmentOow + pendingResolutionOow;
+        }
+
+        return remainingTotalSla;
     }
 
     private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap, List<ProcessInstance> processInstances) {

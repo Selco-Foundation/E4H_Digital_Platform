@@ -30,22 +30,38 @@ public class IncidentRepository {
     }
 
     public List<IncidentStatusAgregation> getStatusIncidentsAgregation(String boundaryCode) {
-        log.trace("Fetching incident status aggregation for boundary code: {}", boundaryCode);
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getStatusIncidentOccurence(boundaryCode, preparedStmtList);
-        log.debug("Executing query for status aggregation with {} parameters", preparedStmtList.size());
         List<IncidentStatusAgregation> statusAgregations = jdbcTemplate.query(query, incidentStatusRowMapper, preparedStmtList.toArray());
-        log.info("Fetched {} incident status aggregations for boundary code: {}", statusAgregations.size(), boundaryCode);
+        log.info("Fetched incident status agregation list based on given tenant Id");
         return statusAgregations;
     }
 
     public List<IncidentStatusAgregation> getStatusSystemFunctional(String boundaryCode) {
-        log.trace("Fetching system functional status for boundary code: {}", boundaryCode);
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getStatusSystemFunctionalIncident(boundaryCode, preparedStmtList);
-        log.debug("Executing query for system functional status with {} parameters", preparedStmtList.size());
         List<IncidentStatusAgregation> systemFunctionalList = jdbcTemplate.query(query, incidentSystemFunctionalRowMapper, preparedStmtList.toArray());
-        log.info("Fetched {} system functional status records for boundary code: {}", systemFunctionalList.size(), boundaryCode);
+        log.info("Fetched system functional list based on given tenant Id");
         return systemFunctionalList;
+    }
+
+    /**
+     * Creation time of the oldest still-open non-functional ticket for the facility - i.e. when the
+     * facility went non-functional.
+     *
+     * @return epoch millis, or {@code null} when the facility has no open non-functional ticket
+     *         (it is functional) or the lookup fails. Null is a meaningful value here and is
+     *         published to the index as-is to clear any stale timestamp.
+     */
+    public Long getOldestOpenNonFunctionalCreatedTime(String boundaryCode) {
+        List<Object> preparedStmtList = new ArrayList<>();
+        String query = queryBuilder.getOldestOpenNonFunctionalCreatedTime(boundaryCode, preparedStmtList);
+        try {
+            return jdbcTemplate.queryForObject(query, Long.class, preparedStmtList.toArray());
+        } catch (Exception e) {
+            log.warn("Unable to derive non-functional timestamp for boundaryCode={}: {}",
+                    boundaryCode, e.getMessage());
+            return null;
+        }
     }
 }

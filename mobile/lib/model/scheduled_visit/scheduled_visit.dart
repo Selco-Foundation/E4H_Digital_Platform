@@ -140,27 +140,39 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
   const factory ScheduledVisitSearchCriteria({
     String? tenantId,
     String? facilityId,
+    String? facilityName,
+    List<String>? assignedUsers,
     String? amcConfigurationId,
     @Default(<String>[]) List<String> statuses,
     int? visitNumber,
     @EpochDateTimeConverter() DateTime? scheduledFrom,
     @EpochDateTimeConverter() DateTime? scheduledTo,
+    String? sortDirection,
   }) = _ScheduledVisitSearchCriteria;
 
   const ScheduledVisitSearchCriteria._();
 
   static const String TENANT_ID = 'tenantId';
   static const String FACILITY_ID = 'facilityId';
+  static const String FACILITY_NAME = 'facilityName';
+  static const String ASSIGNED_USERS = 'assignedUsers';
   static const String AMC_CONFIGURATION_ID = 'amcConfigurationId';
   static const String STATUSES = 'statuses';
   static const String VISIT_NUMBER = 'visitNumber';
   static const String SCHEDULED_FROM = 'scheduledFrom';
   static const String SCHEDULED_TO = 'scheduledTo';
+  static const String SORT_DIRECTION = 'sort_direction';
 
   Map<String, dynamic> toApiMap() {
     final out = <String, dynamic>{};
     if (tenantId != null) out[TENANT_ID] = tenantId;
     if (facilityId != null) out[FACILITY_ID] = facilityId;
+    if (facilityName != null && facilityName!.trim().isNotEmpty) {
+      out[FACILITY_NAME] = facilityName!.trim();
+    }
+    if (assignedUsers != null && assignedUsers!.isNotEmpty) {
+      out[ASSIGNED_USERS] = assignedUsers;
+    }
     if (amcConfigurationId != null) {
       out[AMC_CONFIGURATION_ID] = amcConfigurationId;
     }
@@ -171,6 +183,9 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
     }
     if (scheduledTo != null) {
       out[SCHEDULED_TO] = scheduledTo!.millisecondsSinceEpoch;
+    }
+    if (sortDirection != null && sortDirection!.trim().isNotEmpty) {
+      out[SORT_DIRECTION] = sortDirection!.trim();
     }
     return out;
   }

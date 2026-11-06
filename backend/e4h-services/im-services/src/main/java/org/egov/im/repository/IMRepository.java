@@ -13,6 +13,7 @@ import org.egov.tracer.model.CustomException;
 import org.egov.common.exception.InvalidTenantIdException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -52,9 +53,7 @@ public class IMRepository {
      * @return
      */
     public List<IncidentWrapper> getIncidentWrappers(RequestSearchCriteria criteria){
-        log.trace("IMRepository::getIncidentWrappers method invoked");
         List<Incident> incidents = getIncidents(criteria);
-        log.debug("Found {} incidents from repository", incidents.size());
         List<String> serviceRequestids = incidents.stream().map(Incident::getIncidentId).collect(Collectors.toList());
         Map<String, Workflow> idToWorkflowMap = new HashMap<>();
         List<IncidentWrapper> serviceWrappers = new ArrayList<>();
@@ -72,21 +71,18 @@ public class IMRepository {
      * @return
      */
     public List<Incident> getIncidents(RequestSearchCriteria criteria) {
-        log.trace("IMRepository::getIncidents method invoked");
+
         String tenantId = criteria.getTenantId();
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getPGRSearchQuery(criteria, preparedStmtList);
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
         } catch (Exception e) {
-            log.error("Failed to replace schema placeholder for tenantId: {}", tenantId, e);
             throw new CustomException("PGR_UPDATE_ERROR",
                     "TenantId length is not sufficient to replace query schema in a multi state instance");
         }
         
-        log.debug("Executing search query for tenantId: {}", tenantId);
         List<Incident> services =  jdbcTemplate.query(query, preparedStmtList.toArray(), rowMapper);
-        log.debug("Query executed successfully, returned {} incidents", services.size());
         return services;
     }
 
@@ -96,37 +92,30 @@ public class IMRepository {
      * @return
      */
     public Integer getCount(RequestSearchCriteria criteria) {
-        log.trace("IMRepository::getCount method invoked");
+
         String tenantId = criteria.getTenantId();
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getCountQuery(criteria, preparedStmtList);
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
         } catch (Exception e) {
-            log.error("Failed to replace schema placeholder for count query, tenantId: {}", tenantId, e);
             throw new CustomException("PGR_REQUEST_COUNT_ERROR",
                     "TenantId length is not sufficient to replace query schema in a multi state instance");
         }
-        log.debug("Executing count query for tenantId: {}", tenantId);
         Integer count =  jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
-        log.debug("Count query executed successfully, result: {}", count);
         return count;
     }
 
 
 	public Map<String, Integer> fetchDynamicData(String tenantId) {
-		log.trace("IMRepository::fetchDynamicData method invoked");
-		log.debug("Fetching dynamic data for tenantId: {}", tenantId);
 		List<Object> preparedStmtListCompalintsResolved = new ArrayList<>();
 		String query = queryBuilder.getResolvedComplaints(tenantId,preparedStmtListCompalintsResolved );
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
         } catch (Exception e) {
-            log.error("Failed to replace schema placeholder for dynamic data query, tenantId: {}", tenantId, e);
             throw new CustomException("PGR_SEARCH_ERROR",
                     "TenantId length is not sufficient to replace query schema in a multi state instance");
         }
-		log.trace("Executing resolved complaints query");
 		int complaintsResolved = jdbcTemplate.queryForObject(query,preparedStmtListCompalintsResolved.toArray(),Integer.class);
 
 		List<Object> preparedStmtListAverageResolutionTime = new ArrayList<>();
@@ -134,18 +123,14 @@ public class IMRepository {
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
         } catch (Exception e) {
-            log.error("Failed to replace schema placeholder for average resolution time query, tenantId: {}", tenantId, e);
             throw new CustomException("PGR_SEARCH_ERROR",
                     "TenantId length is not sufficient to replace query schema in a multi state instance");
         }
-		log.trace("Executing average resolution time query");
 		int averageResolutionTime = jdbcTemplate.queryForObject(query, preparedStmtListAverageResolutionTime.toArray(),Integer.class);
 
 		Map<String, Integer> dynamicData = new HashMap<String,Integer>();
 		dynamicData.put(IMConstants.COMPLAINTS_RESOLVED, complaintsResolved);
 		dynamicData.put(IMConstants.AVERAGE_RESOLUTION_TIME, averageResolutionTime);
-		log.debug("Dynamic data fetched successfully - complaintsResolved: {}, averageResolutionTime: {}", 
-				complaintsResolved, averageResolutionTime);
 
 		return dynamicData;
 	}
@@ -173,6 +158,40 @@ public class IMRepository {
 		int updated = jdbcTemplate.update(query, newBoundaryCode, newBlockCode, now, lastModifiedBy, facilityId, tenantId);
 		log.info("Updated boundarycode/block on {} incident row(s) for facilityId={}", updated, facilityId);
 		return updated;
+	}
+
+	/**
+	 * Returns the uuid of the mapped vendor persisted against an incident, or null if the ticket has
+	 * never been handed to a resolver.
+	 *
+	 * <p>Only the one column is selected: this sits on the ticket-update request path and the caller
+	 * has no use for the rest of the row. A null column and an unknown incident are indistinguishable
+	 * here, and both send the caller on to its next fallback.
+	 */
+	public String fetchMappedVendorUuid(String tenantId, String id) {
+		log.trace("IMRepository::fetchMappedVendorUuid method invoked");
+		if (id == null || id.isEmpty()) {
+			return null;
+		}
+
+		String query = "SELECT mapped_vendor_uuid FROM {schema}.eg_incident_v2 WHERE id = ?";
+		try {
+			query = utils.replaceSchemaPlaceholder(query, tenantId);
+		} catch (Exception e) {
+			log.error("Failed to replace schema placeholder for mapped vendor lookup, tenantId: {}", tenantId, e);
+			throw new CustomException("PGR_SEARCH_ERROR",
+					"TenantId length is not sufficient to replace query schema in a multi state instance");
+		}
+
+		ResultSetExtractor<String> extractor = rs -> {
+			if (!rs.next()) {
+				log.info("No incident row found for id={}, mapped vendor cannot be carried forward from db", id);
+				return null;
+			}
+			String uuid = rs.getString("mapped_vendor_uuid");
+			return uuid == null || uuid.isEmpty() ? null : uuid;
+		};
+		return jdbcTemplate.query(query, extractor, id);
 	}
 
 

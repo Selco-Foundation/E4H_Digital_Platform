@@ -1,19 +1,25 @@
+import 'dart:io';
+
 import 'package:digit_forms_engine/blocs/app_localization.dart'
     as forms_localization;
 import 'package:digit_scanner/blocs/app_localization.dart'
     as scanner_localization;
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
 
 import '../blocs/cache_amc_media_upload/cache_amc_media_upload.dart';
+import '../blocs/cache_installation_image/cache_installation_image.dart';
+import '../blocs/installation_images/installation_images.dart';
 import '../blocs/scheduled_visit/scheduled_visit.dart';
+import 'blocs/send_back/send_back.dart';
 import 'blocs/activity_facility/activity_facility.dart';
 import 'blocs/activity_facility_bom/activity_facility_bom.dart';
 import 'blocs/amc_otp/amc_otp.dart';
@@ -46,6 +52,7 @@ import 'repositories/app_init_repo.dart';
 import 'router/app_router.dart';
 import 'utils/background_service.dart';
 import 'utils/constants.dart';
+import 'utils/app_logger.dart';
 
 late Isar _isar;
 late Dio _dio;
@@ -62,6 +69,11 @@ void main() async {
   await ensureAndroidNotificationPermission();
 
   await AppSharedPreferences().init();
+
+  if (!kIsWeb && Platform.isAndroid) {
+    await Firebase.initializeApp();
+    await AppLogger.initAnalytics();
+  }
 
   if (AppSharedPreferences().isFirstLaunch) {
     AppLogger.instance.info('App Launched First Time', title: 'main');
@@ -125,11 +137,17 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) => ActivityFacilityBomBloc(widget.isar)),
             BlocProvider(create: (context) => RejectionBloc(widget.isar)),
+            BlocProvider(create: (context) => SendBackBloc(widget.isar)),
             BlocProvider(create: (context) => ScheduledVisitBloc(widget.isar)),
             BlocProvider(
-                lazy: true, create: (context) => ScheduleVisitSubmitBloc()),
+                lazy: true,
+                create: (context) => ScheduleVisitSubmitBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheAmcMediaUploadBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => CacheInstallationImageBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => InstallationImagesBloc(widget.isar)),
             BlocProvider(create: (context) => AmcOtpBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
@@ -191,11 +209,17 @@ class _MainAppState extends State<MainApp> {
                     }));
               }
 
+              final cachedAppConfig =
+                  context.read<AppInitialization>().cachedAppConfig;
+
               return state.maybeWhen(
                 orElse: () =>
                     const Scaffold(body: Center(child: Text('loading...'))),
                 loadingMdms: (appConfig) => buildShell(appConfig),
                 defaulted: (appConfig) => buildShell(appConfig),
+                error: (_) => cachedAppConfig != null
+                    ? buildShell(cachedAppConfig)
+                    : const Scaffold(body: Center(child: Text('loading...'))),
                 initialized: (
                   appConfig,
                   assetCount,

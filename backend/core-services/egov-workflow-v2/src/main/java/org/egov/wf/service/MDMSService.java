@@ -15,12 +15,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import lombok.extern.slf4j.Slf4j;
 
 import static org.egov.wf.util.WorkflowConstants.*;
 
 @Service
-@Slf4j
 public class MDMSService {
 
    private WorkflowConfig config;
@@ -46,13 +44,11 @@ public class MDMSService {
 
     @Bean
     public void stateLevelMapping(){
-        log.trace("Entering stateLevelMapping bean method");
-        log.info("Initializing state level mapping from MDMS");
         Map<String, Boolean> stateLevelMapping = new HashMap<>();
 
         Object mdmsData = getBusinessServiceMDMS();
         List<HashMap<String, Object>> configs = JsonPath.read(mdmsData,JSONPATH_BUSINESSSERVICE_STATELEVEL);
-        log.debug("Retrieved {} business service state level configuration(s)", configs != null ? configs.size() : 0);
+//        List<HashMap<String, Object>> configs = new ArrayList<>();
 
         for (Map map : configs){
 
@@ -63,8 +59,6 @@ public class MDMSService {
         }
 
         this.stateLevelMapping = stateLevelMapping;
-        log.info("State level mapping initialized with {} business service(s)", stateLevelMapping.size());
-        log.trace("Exiting stateLevelMapping bean method");
     }
 
 
@@ -74,15 +68,11 @@ public class MDMSService {
      * @return
      */
     public Object mDMSCall(RequestInfo requestInfo) {
-        log.trace("Entering mDMSCall method");
         String tenantId = (requestInfo != null && requestInfo.getUserInfo() != null)
                 ? requestInfo.getUserInfo().getTenantId()
                 : workflowConfig.getStateLevelTenantId();
-        log.debug("Fetching MDMS data for tenantId: {}", tenantId);
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
         Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
-        log.debug("Successfully retrieved MDMS data");
-        log.trace("Exiting mDMSCall method");
         return result;
     }
 
@@ -91,12 +81,8 @@ public class MDMSService {
      * @return
      */
     public Object getBusinessServiceMDMS(){
-        log.trace("Entering getBusinessServiceMDMS method");
-        String tenantId = workflowConfig.getStateLevelTenantId();
-        log.debug("Fetching business service MDMS data for state level tenantId: {}", tenantId);
-        MdmsCriteriaReq mdmsCriteriaReq = getBusinessServiceMDMSRequest(new RequestInfo(), tenantId);
+        MdmsCriteriaReq mdmsCriteriaReq = getBusinessServiceMDMSRequest(new RequestInfo(), workflowConfig.getStateLevelTenantId());
         Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
-        log.trace("Exiting getBusinessServiceMDMS method");
         return result;
     }
 
@@ -206,7 +192,6 @@ public class MDMSService {
     }
     
     public Integer fetchSlotPercentageForNearingSla(RequestInfo requestInfo) {
-        log.trace("Entering fetchSlotPercentageForNearingSla method");
         // master details for WF SLA module
         List<MasterDetail> masterDetails = new ArrayList<>();
 
@@ -222,12 +207,8 @@ public class MDMSService {
         MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder().mdmsCriteria(mdmsCriteria)
                 .requestInfo(requestInfo).build();
 
-        log.debug("Fetching slot percentage for nearing SLA from MDMS");
         Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
-        Integer slotPercentage = JsonPath.read(result, SLOT_PERCENTAGE_PATH);
-        log.debug("Retrieved slot percentage for nearing SLA: {}", slotPercentage);
-        log.trace("Exiting fetchSlotPercentageForNearingSla method");
-        return slotPercentage;
+        return JsonPath.read(result, SLOT_PERCENTAGE_PATH);
 
     }
 

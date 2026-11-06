@@ -45,9 +45,6 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
         translate: false,
       });
       setFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   }
 

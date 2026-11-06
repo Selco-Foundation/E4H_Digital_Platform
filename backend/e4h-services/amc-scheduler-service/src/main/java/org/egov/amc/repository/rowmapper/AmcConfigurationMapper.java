@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.web.models.AmcConfiguration;
 import org.egov.amc.web.models.AmcConfigurationAssignment;
 import org.egov.amc.web.models.Facility;
@@ -25,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 @Repository
-@Slf4j
 public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
 
     @Autowired
@@ -33,7 +31,6 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
 
     @Override
     public AmcConfiguration mapRow(ResultSet rs, int rowNum) throws SQLException {
-        log.trace("Entering mapRow method for AMC configuration, rowNum: {}", rowNum);
 
         Facility facility = getFacilityObjFromResultSet(rs);
         Project project = getProjectObjFromResultSet(rs);
@@ -42,7 +39,6 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
         amcConfiguration.setFacility(facility);
         amcConfiguration.setProject(project);
 
-        log.trace("Completed mapping AMC configuration row, configurationId: {}", amcConfiguration.getId());
         return amcConfiguration;
     }
 
@@ -62,14 +58,12 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
         try {
             String json = rs.getString("facility_details");
             if (json != null) {
-                log.debug("Parsing facility details JSON for facilityId: {}", facility.getFacilityId());
                 Map<String, Object> details =
                         objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
                 facility.setFacilityDetails(details);
             }
         }
         catch (JsonProcessingException e) {
-            log.error("Error parsing JSON fields in facility record for facilityId: {}", facility.getFacilityId(), e);
             throw new RuntimeException("Error parsing JSON fields in facility record", e);
         }
 
@@ -109,15 +103,13 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
         List<AmcConfigurationAssignment> assignments = new ArrayList<>();
         if (assignmentsJson != null && !assignmentsJson.equals("[]")) {
             try {
-                log.debug("Parsing assignments JSON for AMC configuration");
                 assignments =
                         objectMapper.readValue(
                                 assignmentsJson,
                                 new TypeReference<List<AmcConfigurationAssignment>>() {}
                         );
-                log.debug("Parsed {} assignment(s) for AMC configuration", assignments.size());
+
             } catch (Exception e) {
-                log.error("Error parsing assignments JSONB array for AMC configuration", e);
                 throw new SQLException("Error parsing assignments JSONB array", e);
             }
         }
@@ -150,7 +142,6 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
                 return objectMapper.readTree(obj.getValue());
             }
         } catch (IOException e) {
-            log.error("Failed to parse JSON object for column: {}", columnName, e);
             throw new CustomException("PARSING ERROR", "Failed to parse JSON object for column: " + columnName);
         }
         return null;
@@ -160,24 +151,17 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
      * Convert JSONB column into List<Map<String,Object>>
      */
     public List<Map<String, Object>> getAssetTypes(String columnName, ResultSet rs) throws SQLException {
-        log.trace("Entering getAssetTypes method for column: {}", columnName);
         try {
             Object obj = rs.getObject(columnName);
-            if (obj == null) {
-                log.debug("Asset types column {} is null", columnName);
-                return null;
-            }
+            if (obj == null) return null;
 
             String json = (obj instanceof PGobject)
                     ? ((PGobject) obj).getValue()
                     : obj.toString();
 
-            List<Map<String, Object>> assetTypes = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>(){});
-            log.debug("Parsed {} asset type(s) from column: {}", assetTypes != null ? assetTypes.size() : 0, columnName);
-            return assetTypes;
+            return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>(){});
         }
         catch (IOException e) {
-            log.error("Failed to parse assetTypes JSON for column: {}", columnName, e);
             throw new CustomException("PARSING ERROR", "Failed to parse assetTypes");
         }
     }

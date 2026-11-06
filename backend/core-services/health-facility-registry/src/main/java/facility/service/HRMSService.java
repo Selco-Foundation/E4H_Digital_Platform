@@ -1,10 +1,13 @@
 package facility.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.util.MdmsUtil;
 import facility.web.models.Facility;
 import facility.web.models.HealthFacilityDetails;
+import facility.web.models.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
@@ -29,6 +32,7 @@ public class HRMSService {
     private final ServiceRequestRepository serviceRequestRepository;
     private final Configuration configs;
     private final MdmsUtil mdmsUtil;
+    private final ObjectMapper mapper;
 
     /**
      * Searches for an employee by mobile number (phone number) in HRMS.
@@ -132,6 +136,55 @@ public class HRMSService {
         }
     }
 
+    /** Codes per HRMS search call, kept well under HRMS's default page size of 200. */
+    private static final int HRMS_CODE_SEARCH_CHUNK_SIZE = 50;
+
+    /**
+     * Returns the subset of {@code codes} already taken by an HRMS employee (active or inactive)
+     * in the tenant. A facility POC user is created with one of these codes as its username, and
+     * HRMS rejects a username that another employee already has.
+     * <p>
+     * Fails open like {@link #employeeExistsByUsername}: if HRMS cannot be reached the codes are
+     * treated as free, so an HRMS outage does not block facility creation.
+     */
+    public Set<String> findExistingEmployeeCodes(Collection<String> codes, String tenantId, RequestInfo requestInfo) {
+        Set<String> existing = new HashSet<>();
+        if (codes == null || codes.isEmpty()) {
+            return existing;
+        }
+        List<String> codeList = new ArrayList<>(new LinkedHashSet<>(codes));
+        for (int start = 0; start < codeList.size(); start += HRMS_CODE_SEARCH_CHUNK_SIZE) {
+            List<String> chunk = codeList.subList(start, Math.min(start + HRMS_CODE_SEARCH_CHUNK_SIZE, codeList.size()));
+            try {
+                String uri = UriComponentsBuilder
+                        .fromUriString(configs.getHrmsHost())
+                        .path(configs.getHrmsSearchEndPoint())
+                        .queryParam("codes", String.join(",", chunk))
+                        .queryParam("tenantId", tenantId)
+                        .queryParam("limit", chunk.size())
+                        .toUriString();
+                Map<String, Object> searchRequest = new HashMap<>();
+                searchRequest.put("RequestInfo", requestInfo);
+
+                Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchResult(
+                        new StringBuilder(uri), searchRequest
+                );
+                if (response == null || !(response.get("Employees") instanceof List<?> employees)) {
+                    continue;
+                }
+                for (Object employee : employees) {
+                    if (employee instanceof Map<?, ?> employeeMap && employeeMap.get("code") != null) {
+                        existing.add(employeeMap.get("code").toString().trim());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Error checking {} employee codes in HRMS for tenant {}; treating them as unused: {}",
+                        chunk.size(), tenantId, e.getMessage(), e);
+            }
+        }
+        return existing;
+    }
+
     /**
      * Creates an HRMS employee for the facility POC user with HCR role.
      * 
@@ -165,15 +218,19 @@ public class HRMSService {
             }
             employeeCode = pocUsername.trim();
         } else {
-            if (facilityDetails == null || facilityDetails.getHfrId() == null
-                    || facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null
+            if (facilityDetails == null || facilityDetails.getPocContact() == null
                     || facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null
                     || facilityDetails.getPocName().isBlank()) {
-                log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name",
+                log.warn("Cannot create POC employee for facility {}: missing POC contact or name",
                         sanitizeForLog(facility.getFacilityId()));
                 return false;
             }
-            employeeCode = facilityDetails.getHfrId().trim();
+            employeeCode = resolveFacilityEmployeeCode(facility);
+            if (employeeCode == null || employeeCode.isBlank()) {
+                log.warn("Cannot create POC employee for facility {}: missing HFR or NIN ID",
+                        sanitizeForLog(facility.getFacilityId()));
+                return false;
+            }
         }
 
         log.info("Creating POC employee for facility {} with employee code {}",
@@ -360,6 +417,42 @@ public class HRMSService {
             log.trace("Exiting updateUserPassword method");
         } catch (Exception e) {
             log.error("Error updating user password: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Resets the password of an existing user to the configured default password.
+     * Used when a facility is marked ONM ready and a POC user with the given HFR/NIN
+     * already exists, so the POC always lands on the known default credentials.
+     *
+     * @param user        The existing user (must carry uuid or id) to reset
+     * @param requestInfo RequestInfo for the API call
+     */
+    public void resetUserPasswordToDefault(User user, RequestInfo requestInfo) {
+        log.trace("Entering resetUserPasswordToDefault method");
+        if (user == null || (user.getUuid() == null && user.getId() == null)) {
+            log.warn("Cannot reset password to default: user is null or missing uuid/id");
+            return;
+        }
+        try {
+            // Preserve all existing user fields and only override the password to avoid wiping data
+            Map<String, Object> userMap = mapper.convertValue(user, new TypeReference<Map<String, Object>>() {});
+            userMap.put("password", configs.getDefaultUserPassword());
+
+            Map<String, Object> userUpdateRequest = new HashMap<>();
+            userUpdateRequest.put("RequestInfo", requestInfo);
+            userUpdateRequest.put("user", userMap);
+
+            String updateUri = configs.getUserHost() + configs.getUserContextPath() + configs.getUserUpdateEndpoint();
+
+            log.debug("Resetting password to default for user: {}", sanitizeForLog(user.getUserName()));
+            serviceRequestRepository.fetchResult(new StringBuilder(updateUri), userUpdateRequest);
+
+            log.info("Successfully reset password to default for user: {}", sanitizeForLog(user.getUserName()));
+            log.trace("Exiting resetUserPasswordToDefault method");
+        } catch (Exception e) {
+            log.error("Error resetting password to default for user {}: {}",
+                    sanitizeForLog(user.getUserName()), e.getMessage(), e);
         }
     }
 
