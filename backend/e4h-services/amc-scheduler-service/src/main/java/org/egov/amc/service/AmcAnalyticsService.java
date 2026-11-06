@@ -55,6 +55,7 @@ import static org.egov.amc.util.AmcConstants.LOCALIZATION_TENANT_ID;
 import static org.egov.amc.util.AmcConstants.MDMS_MASTER_AMC;
 import static org.egov.amc.util.AmcConstants.MDMS_MASTER_USER_TYPE;
 import static org.egov.amc.util.AmcConstants.TENANTID;
+import org.egov.amc.util.SystemRequestInfo;
 
 /**
  * Builds and publishes {@link UserAnalyticsEvent}s to the shared {@code user-analytics-event}
@@ -388,7 +389,10 @@ public class AmcAnalyticsService {
             for (int i = 0; i < idList.size(); i += FACILITY_BULK_CHUNK_SIZE) {
                 int end = Math.min(i + FACILITY_BULK_CHUNK_SIZE, idList.size());
                 FacilityBulkSearchApiRequest body = FacilityBulkSearchApiRequest.builder()
-                        .requestInfo(requestInfo)
+                        // Validation and enrichment, not the user browsing: run it as the service so the
+                        // jurisdiction ceiling on facility search does not turn a legitimate facility into
+                        // a "Facility ID do not exist" that aborts the caller's whole batch.
+                        .requestInfo(SystemRequestInfo.of(requestInfo))
                         .facility(FacilityBulkSearchCriteria.forTenantAndFacilityIds(
                                 tenantList, new ArrayList<>(idList.subList(i, end))))
                         .build();
