@@ -1374,23 +1374,35 @@ public class FacilityService {
     /**
      * Shared bulk SQL: facility rows with address fields from {@code facility_address}, POC phone decrypted.
      */
+    /**
+     * Resolves the client's boundary filters into facility-level codes, once per request.
+     *
+     * Idempotent, because the search and the count are two separate calls over the same criteria
+     * object. Until now the count saw the resolved codes only because the search happened to run
+     * first and mutate them in place - and in the branch where the search returned early it never
+     * did, so an empty result was reported alongside an unfiltered totalCount.
+     *
+     * @return false when the filters resolved to nothing, so the caller must return no rows
+     */
+    private boolean expandClientBoundaryFilters(FacilityBulkSearchCriteria criteria) {
+        if (!criteria.isBoundaryFiltersResolved()) {
+            List<String> resolved = boundaryUtil.getFacilityCodesFromBoundary(criteria);
+            if (resolved != null) {
+                // Replace, never append. Appending would OR the client's original codes back in,
+                // turning the intersection across levels into a union.
+                criteria.setBoundaryCodes(new ArrayList<>(new LinkedHashSet<>(resolved)));
+                criteria.setBoundaryFiltersMatchNothing(resolved.isEmpty());
+            }
+            criteria.setBoundaryFiltersResolved(true);
+        }
+        return !criteria.isBoundaryFiltersMatchNothing();
+    }
+
     private List<Facility> loadBulkFacilitiesWithAddressJoin(FacilityBulkSearchRequest request) {
         FacilityBulkSearchCriteria criteria = request.getFacilityBulkSearchCriteria();
-        List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(criteria);
-        // When searching by state, district, or block with no facilities in that boundary, return empty list
-        boolean isBoundarySearch = (criteria.getState() != null && !criteria.getState().isEmpty())
-                || (criteria.getDistrict() != null && !criteria.getDistrict().isEmpty())
-                || (criteria.getBlock() != null && !criteria.getBlock().isEmpty());
-        if (isBoundarySearch && (listFacilityCodes == null || listFacilityCodes.isEmpty())) {
+        if (!expandClientBoundaryFilters(criteria)) {
+            log.debug("Bulk search boundary filters matched no facilities; returning no rows");
             return Collections.emptyList();
-        }
-        if(listFacilityCodes !=null && !listFacilityCodes.isEmpty()){
-            if(request.getFacilityBulkSearchCriteria().getBoundaryCodes()==null)
-                request.getFacilityBulkSearchCriteria().setBoundaryCodes(new ArrayList<>());
-
-            // Remove any facility code duplicates
-            List<String> uniqueListFacilityCodes = new ArrayList<>(new LinkedHashSet<>(listFacilityCodes));
-            request.getFacilityBulkSearchCriteria().getBoundaryCodes().addAll(uniqueListFacilityCodes);
         }
 
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
@@ -1494,6 +1506,10 @@ public class FacilityService {
 
     public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request) {
         log.trace("Entering countFacilitiesForBulkSearch method");
+        if (!expandClientBoundaryFilters(request.getFacilityBulkSearchCriteria())) {
+            log.debug("Bulk search boundary filters matched no facilities; count is 0");
+            return 0;
+        }
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
