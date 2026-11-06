@@ -2,6 +2,7 @@ package facility.util;
 
 import facility.service.FacilityService;
 import facility.web.models.FacilityBulkSearchCriteria;
+import facility.web.models.FacilityScope;
 import facility.web.models.FacilitySearchRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -101,6 +103,10 @@ public class QueryBuilderUtil {
     }
 
     public static QueryBuilderResult buildBulkWhereClause(FacilityBulkSearchCriteria criteria, RequestInfo requestInfo, List<String> onmNonReadyAllowedRoles) {
+        return buildBulkWhereClause(criteria, requestInfo, onmNonReadyAllowedRoles, null);
+    }
+
+    public static QueryBuilderResult buildBulkWhereClause(FacilityBulkSearchCriteria criteria, RequestInfo requestInfo, List<String> onmNonReadyAllowedRoles, FacilityScope scope) {
         log.trace("Entering buildBulkWhereClause method");
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
@@ -193,9 +199,47 @@ public class QueryBuilderUtil {
             log.debug("Added is_onm_ready filter: {}", criteria.getIsOnmReady());
         }
 
+        // The jurisdiction ceiling. INTERSECT, never union: this is a SEPARATE clause ANDed with
+        // the client's own boundary_code filter above. Do not be tempted to merge it into
+        // criteria.boundaryCodes - FacilityService does an addAll on that list, which would OR the
+        // two together and let a crafted request widen its own scope. The wrong version still looks
+        // right in manual testing, because a scoped user sees their own facilities either way.
+        if (scope != null && scope.isApplied()) {
+            // One bind parameter whatever the ceiling size. A state expands to tens of thousands of
+            // facility codes; as placeholders that would approach Postgres' 65535 parameter cap and
+            // would print in full on the query log line below.
+            whereClause.append(" AND fac.boundary_code = ANY (?::text[])");
+            params.add(toPgTextArrayLiteral(scope.ceiling()));
+            log.debug("Applied jurisdiction ceiling of {} facility codes", scope.ceiling().size());
+        }
+
         log.debug("Built bulk WHERE clause with {} parameters", params.size());
         log.trace("Exiting buildBulkWhereClause method");
         return new QueryBuilderResult(whereClause.toString(), params);
+    }
+
+    /**
+     * Renders codes as a Postgres text array literal: {@code {"a","b"}}.
+     *
+     * An empty collection gives {@code {}}, which matches nothing - which is the correct reading of
+     * a ceiling that resolved to nothing, and needs no special case at the call site.
+     */
+    static String toPgTextArrayLiteral(Collection<String> values) {
+        StringBuilder literal = new StringBuilder("{");
+        boolean first = true;
+        if (values != null) {
+            for (String value : values) {
+                if (value == null) {
+                    continue;
+                }
+                if (!first) {
+                    literal.append(',');
+                }
+                first = false;
+                literal.append('"').append(value.replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
+            }
+        }
+        return literal.append('}').toString();
     }
 
     /**

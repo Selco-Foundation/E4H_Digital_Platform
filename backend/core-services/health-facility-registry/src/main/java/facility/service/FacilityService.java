@@ -1341,9 +1341,9 @@ public class FacilityService {
      *
      * @return List of facilities matching the filter
      */
-    public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
+    public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request, FacilityScope scope) {
         log.trace("Entering bulkSearchFacilities method");
-        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request);
+        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request, scope);
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         enrichFacilitiesWithBoundaries(facilityList, listBlock);
         log.trace("Exiting bulkSearchFacilities method");
@@ -1356,9 +1356,9 @@ public class FacilityService {
      * via the boundary v2 API in batches — avoids loading the full boundary tree for large clients.
      * Request/response models are unchanged from bulk search.
      */
-    public List<Facility> bulkSearchFacilitiesWithAddressAndBoundary(FacilityBulkSearchRequest request) {
+    public List<Facility> bulkSearchFacilitiesWithAddressAndBoundary(FacilityBulkSearchRequest request, FacilityScope scope) {
         log.trace("Entering bulkSearchFacilitiesWithAddressAndBoundary method");
-        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request);
+        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request, scope);
         Set<String> boundaryCodesOnRows = facilityList.stream()
                 .map(Facility::getBoundaryCode)
                 .filter(Objects::nonNull)
@@ -1398,7 +1398,7 @@ public class FacilityService {
         return !criteria.isBoundaryFiltersMatchNothing();
     }
 
-    private List<Facility> loadBulkFacilitiesWithAddressJoin(FacilityBulkSearchRequest request) {
+    private List<Facility> loadBulkFacilitiesWithAddressJoin(FacilityBulkSearchRequest request, FacilityScope scope) {
         FacilityBulkSearchCriteria criteria = request.getFacilityBulkSearchCriteria();
         if (!expandClientBoundaryFilters(criteria)) {
             log.debug("Bulk search boundary filters matched no facilities; returning no rows");
@@ -1406,7 +1406,7 @@ public class FacilityService {
         }
 
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
-                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
+                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles(), scope
         );
 
         StringBuilder query = new StringBuilder(
@@ -1504,14 +1504,14 @@ public class FacilityService {
         return count;
     }
 
-    public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request) {
+    public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request, FacilityScope scope) {
         log.trace("Entering countFacilitiesForBulkSearch method");
         if (!expandClientBoundaryFilters(request.getFacilityBulkSearchCriteria())) {
             log.debug("Bulk search boundary filters matched no facilities; count is 0");
             return 0;
         }
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
-                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
+                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles(), scope
         );
         String query = "SELECT COUNT(*) FROM facility fac" + result.getWhereClause();
         int count = jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
