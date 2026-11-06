@@ -1,17 +1,16 @@
 export const getAvailableReportingIssues = (issues = [], facilityStatus) =>
-  facilityStatus === "UNINSTALLED"
-    ? issues.filter((issue) => getReportingObservations(issue, facilityStatus).length > 0)
-    : issues;
+  facilityStatus === "UNINSTALLED" ? issues.filter(({ key }) => key === "ADDITIONAL_SUPPORT") : issues;
 
-export const getReportingObservations = (issue, facilityStatus) => {
-  const observations = issue?.subtypes || [];
-  return facilityStatus === "UNINSTALLED"
-    ? observations.filter(({ key }) => key === "ADDITIONAL_SUPPORT_REINSTALLATION_REQUIRED")
-    : observations;
-};
+export const getReportingObservations = (issue) => issue?.subtypes || [];
 
-export const isReportingSelectionValid = ({ issue, observation, complaintType, subType, hasError }) => Boolean(
-  !hasError && issue && observation && complaintType.key === issue.key && subType.key === observation.key
+export const isReportingObservationOptional = (issue) => Boolean(issue && issue.key !== "THEFT");
+
+export const isReportingDescriptionValid = (description = "") => description.trim().length > 0 && description.length <= 500;
+
+export const isReportingSelectionValid = ({ issue, observation, complaintType, subType, hasError, description }) => Boolean(
+  !hasError && issue && complaintType.key === issue.key &&
+  (observation ? subType.key === observation.key : isReportingObservationOptional(issue) && !subType.key &&
+    (issue.key !== "ADDITIONAL_SUPPORT" || isReportingDescriptionValid(description)))
 );
 
 export const getReportingInstallationAction = (observation) => {
@@ -19,3 +18,5 @@ export const getReportingInstallationAction = (observation) => {
   if (observation?.key === "ADDITIONAL_SUPPORT_REINSTALLATION_REQUIRED") return "REINSTALL";
   return null;
 };
+
+export const isReportingSystemStatusValid = (status) => ["FUNCTIONAL", "NON_FUNCTIONAL"].includes(status);

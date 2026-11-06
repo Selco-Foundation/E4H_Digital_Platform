@@ -1,12 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-const ReportingStepper = ({ currentStep, showFacility = false }) => {
+const ReportingStepper = ({ currentStep, showFacility = false, showTheft = false, showDescription = false }) => {
   const { t } = useTranslation();
   const steps = [
     ...(showFacility ? [{ key: "facility", label: t("IM_REPORT_STEP_FACILITY", { defaultValue: "Facility" }) }] : []),
     { key: "issue", label: t("IM_REPORT_STEP_COMPONENT", { defaultValue: "Component/Issue" }) },
-    { key: "observation", label: t("IM_REPORT_STEP_OBSERVATION", { defaultValue: "Observation" }) },
+    { key: "observation", label: showTheft ? t("IM_REPORT_STEP_STOLEN_COMPONENT", { defaultValue: "Stolen component" }) : t("IM_REPORT_STEP_OBSERVATION", { defaultValue: "Observation" }) },
+    ...(showDescription ? [{ key: "description", label: t("IM_REPORT_STEP_DESCRIPTION", { defaultValue: "Description" }) }] : []),
+    { key: "status", label: t("IM_REPORT_STEP_STATUS", { defaultValue: "System status" }) },
+    ...(showTheft ? [{ key: "fir", label: t("IM_REPORT_STEP_FIR", { defaultValue: "FIR/Complaint letter" }) }] : []),
     { key: "details", label: t("IM_REPORT_STEP_DETAILS", { defaultValue: "Ticket details" }) },
   ];
   const currentIndex = steps.findIndex(({ key }) => key === currentStep);

@@ -11,9 +11,12 @@ import { getMappedFacilityCodes } from "../../../services/ReportingFacilities";
 import { isFacilityUser } from "../../../utilities/facilityUser";
 import { Employee } from "../../../constants/Routes";
 import useReportingIssues from "../../../hooks/useReportingIssues";
-import { getAvailableReportingIssues, getReportingObservations, getReportingInstallationAction, isReportingSelectionValid } from "../../../utilities/reportingIssues";
+import { getAvailableReportingIssues, getReportingObservations, getReportingInstallationAction, isReportingSelectionValid, isReportingObservationOptional, isReportingSystemStatusValid } from "../../../utilities/reportingIssues";
 import CommonUtils from "../../../utilities/CommonUtils";
-import ReportingStepper from "../../../components/ReportSolarIssue/ReportingStepper";
+import ReportingDetails from "../../../components/ReportSolarIssue/ReportingDetails";
+import { ReportingDetailsDraft } from "../../../services/ReportingDetailsDraft";
+import { ReportingFirDraft } from "../../../services/ReportingFirDraft";
+import { ReportingSupportDraft } from "../../../services/ReportingSupportDraft";
 
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
@@ -21,10 +24,23 @@ export const CreateComplaint = ({ parentUrl }) => {
   const reportParams = new URLSearchParams(location.search);
   const requestedReportFacility = reportParams.get("reportFacility");
   const requestedReportIssue = reportParams.get("reportIssue");
+  const requestedReportStatus = reportParams.get("reportStatus");
   const requestedReportObservation = reportParams.get("reportObservation");
   const isFacilityReporter = isFacilityUser(Digit.UserService.getUser().info.roles);
   const reportFacility = isFacilityReporter
     && getMappedFacilityCodes().includes(requestedReportFacility) ? requestedReportFacility : null;
+  const [detailsDraft] = useState(() => reportFacility ? ReportingDetailsDraft.read(reportFacility, requestedReportIssue) : { description: "", images: [], videos: [] });
+  const [description, setDescription] = useState(detailsDraft.description);
+  const changeDescription = (value) => {
+    setDescription(value);
+    ReportingDetailsDraft.save(reportFacility, requestedReportIssue, { description: value });
+  };
+  const isGuidedSupport = Boolean(reportFacility) && requestedReportIssue === "ADDITIONAL_SUPPORT";
+  const [supportDescription, setSupportDescription] = useState(() => isGuidedSupport ? ReportingSupportDraft.read(reportFacility) : "");
+  const changeSupportDescription = (value) => {
+    setSupportDescription(value);
+    ReportingSupportDraft.save(reportFacility, value);
+  };
   const [healthcentre, setHealthCentre] = useState();
   const [districtMenu, setDistrictMenu] = useState([]);
   const [sortedDistrictMenu, setSortedDistrictMenu] = useState([]);
@@ -42,9 +58,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
   const [isFirUploading, setIsFirUploading] = useState(false);
-  const [imageState, setImageState] = useState({ newArr: [], mappedArray: [] });
-  const [videoState, setVideoState] = useState({ newArr: [], mappedArray: [] });
-  const [firState, setFirState] = useState({ newArr: [], mappedArray: [] });
+  const [imageState, setImageState] = useState(() => ({ newArr: detailsDraft.images.map(([, entry]) => entry), mappedArray: detailsDraft.images.map(([, entry]) => entry) }));
+  const [videoState, setVideoState] = useState(() => ({ newArr: detailsDraft.videos.map(([, entry]) => entry), mappedArray: detailsDraft.videos.map(([, entry]) => entry) }));
+  const [firState, setFirState] = useState(() => {
+    const files = reportFacility && requestedReportIssue === "THEFT" ? ReportingFirDraft.read(reportFacility, requestedReportObservation) : [];
+    return { newArr: files.map(([, entry]) => entry), mappedArray: files.map(([, entry]) => entry) };
+  });
   const specificFileConstraint = [
     { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
@@ -87,11 +106,13 @@ export const CreateComplaint = ({ parentUrl }) => {
   const guidedIssue = getAvailableReportingIssues(reportIssuesQuery.data, healthcentre?.status)
     .find(({ key }) => key === requestedReportIssue);
   const guidedObservation = getReportingObservations(guidedIssue, healthcentre?.status).find(({ key }) => key === requestedReportObservation);
+  const observationOptional = Boolean(reportFacility) && isReportingObservationOptional(guidedIssue);
   const isGuidedSelectionValid = !reportFacility || isReportingSelectionValid({
-    issue: guidedIssue, observation: guidedObservation, complaintType, subType, hasError: reportIssuesQuery.isError,
+    description: supportDescription, issue: guidedIssue, observation: guidedObservation, complaintType, subType, hasError: (isGuidedSupport ? supportDescription : description).length > 500 || !isReportingSystemStatusValid(requestedReportStatus) || systemFunctionality.key !== requestedReportStatus || reportIssuesQuery.isError || Boolean(requestedReportObservation && !guidedObservation),
   });
   const reportingPageUrl = `${parentUrl}${Employee.ReportSolarIssue}?${new URLSearchParams({
-    facility: reportFacility || "", step: requestedReportIssue ? "observation" : "issue",
+    facility: reportFacility || "", step: requestedReportIssue ? "status" : "issue",
+    ...(isReportingSystemStatusValid(requestedReportStatus) ? { status: requestedReportStatus } : {}),
     ...(requestedReportIssue ? { issue: requestedReportIssue } : {}),
     ...(requestedReportObservation ? { observation: requestedReportObservation } : {}),
   }).toString()}`;
@@ -106,11 +127,11 @@ export const CreateComplaint = ({ parentUrl }) => {
       : {});
     const installationAction = getReportingInstallationAction(guidedObservation);
     setIsInstallationTicket(Boolean(installationAction));
-    setSystemFunctionality(installationAction === "UNINSTALL"
-      ? { key: "FUNCTIONAL", name: t("Yes") }
-      : installationAction === "REINSTALL" ? { key: "NON_FUNCTIONAL", name: t("No") } : {});
+    setSystemFunctionality(isReportingSystemStatusValid(requestedReportStatus)
+      ? { key: requestedReportStatus, name: t(requestedReportStatus === "FUNCTIONAL" ? "Yes" : "No") }
+      : {});
     setDisableUpload(false);
-  }, [reportFacility, guidedIssue, guidedObservation, healthcentre?.status, t]);
+  }, [reportFacility, guidedIssue, guidedObservation, requestedReportStatus, healthcentre?.status, t]);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
@@ -190,10 +211,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, [t, facilityMenu]);
 
   useEffect(() => {
-    if (!isTheftIssue) {
+    if (!isTheftIssue && !reportFacility) {
       setFirState({ newArr: [], mappedArray: [] });
     }
-  }, [isTheftIssue]);
+  }, [isTheftIssue, reportFacility]);
 
   useEffect(() => {
     if (creationError) {
@@ -375,12 +396,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   useEffect(() => {
     const isAnyUploading = isImageUploading || isVideoUploading || isFirUploading;
     const hasMandatoryTheftUpload = !isTheftIssue || uploadedFile?.some((doc) => doc?.documentType === "FIR_DOCUMENT");
-    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading && hasMandatoryTheftUpload) {
+    if (complaintType?.key && (observationOptional || subType?.key) && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading && hasMandatoryTheftUpload) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, systemFunctionality, healthcentre, district, block, isImageUploading, isVideoUploading, isFirUploading, isTheftIssue, uploadedFile]);
+  }, [observationOptional, complaintType, subType, systemFunctionality, healthcentre, district, block, isImageUploading, isVideoUploading, isFirUploading, isTheftIssue, uploadedFile]);
 
   useEffect(() => {
     const handleDuplicateCheck = async () => {
@@ -496,6 +517,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       Digit.Utils.analytics.trackSubmitTicket({ page_name: "new_ticket_page" });
       const formData = {
         ...data,
+        ...(reportFacility ? { comments: (isGuidedSupport ? supportDescription : description).trim() } : {}),
         complaintType,
         subType,
         systemFunctionality,
@@ -522,6 +544,7 @@ export const CreateComplaint = ({ parentUrl }) => {
         return;
       }
 
+      if (reportFacility) { ReportingFirDraft.clear(); ReportingSupportDraft.clear(); ReportingDetailsDraft.clear(); }
       dispatch(populateCreateResponse(response));
       // A refresh failure must not turn an already-created ticket into a retry.
       client.refetchQueries(["fetchInboxData"]).catch((error) => console.error("Could not refresh ticket inbox", error));
@@ -544,7 +567,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     { field: block, ref: blockRef },
     { field: healthcentre, ref: healthCareRef },
     { field: complaintType, ref: ticketTypeRef },
-    { field: subType, ref: ticketSubTypeRef },
+    ...(!observationOptional ? [{ field: subType, ref: ticketSubTypeRef }] : []),
     { field: systemFunctionality, ref: systemFunctionalityRef },
   ];
   const getData = (state) => {
@@ -558,6 +581,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   };
 
   const getImageData = (state) => {
+    if (reportFacility) ReportingDetailsDraft.saveFiles(reportFacility, requestedReportIssue, "images", state);
     let data = Object.fromEntries(state);
     const mappedArray = state.map((item) => {
       return item[1];
@@ -568,6 +592,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   };
 
   const getVideoData = (state) => {
+    if (reportFacility) ReportingDetailsDraft.saveFiles(reportFacility, requestedReportIssue, "videos", state);
     let data = Object.fromEntries(state);
     const mappedArray = state.map((item) => {
       return item[1];
@@ -577,6 +602,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     setVideoState({ newArr, mappedArray });
   };
   const getFirData = (state) => {
+    if (reportFacility) ReportingFirDraft.save(reportFacility, requestedReportObservation, state);
     let data = Object.fromEntries(state);
     const mappedArray = state.map((item) => {
       return item[1];
@@ -756,7 +782,7 @@ export const CreateComplaint = ({ parentUrl }) => {
         {
           label: t("TICKET_SUBTYPE"),
           type: "dropdown",
-          isMandatory: true,
+          isMandatory: !observationOptional,
           menu: { ...subTypeMenu },
           populators: (
             <Dropdown
@@ -766,12 +792,12 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="complaintSubType"
               selected={subType}
               select={selectedSubType}
-              required={true}
+              required={!observationOptional}
               disable={isUninstalledFacility || isInstallationTicket || Boolean(reportFacility)}
             />
           ),
         },
-        {
+        ...(reportFacility ? [] : [{
           label: t("SYSTEM_FUNCTIONAL"),
           type: "dropdown",
           isMandatory: true,
@@ -789,7 +815,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               />
             </div>
           ),
-        }
+        }])
       ],
     },
     {
@@ -801,7 +827,7 @@ export const CreateComplaint = ({ parentUrl }) => {
           isMandatory: false,
           populators: {
             name: "comments",
-            // maxLength: 256,
+            maxLength: 256,
             validation: {
               minLength: 0,
               maxLength: 256,
@@ -861,7 +887,7 @@ export const CreateComplaint = ({ parentUrl }) => {
             </div>
           ),
         },
-        ...(isTheftIssue
+        ...(isTheftIssue && !reportFacility
           ? [
               {
                 label: t("INCIDENT_UPLOAD_FIR_POLICE_LETTER"),
@@ -899,6 +925,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   if ((isFacilityReporter || requestedReportFacility) && !reportFacility) {
     return <Redirect to={parentUrl + Employee.ReportSolarIssue} />;
   }
+  if (reportFacility && !isReportingSystemStatusValid(requestedReportStatus)) return <Redirect to={reportingPageUrl} />;
   if (reportFacility && !requestedReportIssue) return <Redirect to={reportingPageUrl} />;
   if (reportFacility && reportIssuesQuery.isLoading) return <Loader />;
   if (reportFacility && reportIssuesQuery.isError) {
@@ -908,7 +935,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       <Link to={reportingPageUrl}>{t("CS_COMMON_BACK")}</Link>
     </div>;
   }
-  if (reportFacility && reportIssuesQuery.data && healthcentre && (!guidedIssue || !guidedObservation)) return <Redirect to={reportingPageUrl} />;
+  if (reportFacility && reportIssuesQuery.data && healthcentre && (!guidedIssue || ((!observationOptional || requestedReportObservation) && !guidedObservation))) return <Redirect to={reportingPageUrl} />;
   return (
     <div>
       <style>
@@ -938,16 +965,24 @@ export const CreateComplaint = ({ parentUrl }) => {
           <Loader />
         </div>
       )}
-      <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "0px" }}>
-        <div style={{ marginRight: "15px" }}>
-          <Link to={reportFacility
-            ? reportingPageUrl
-            : `/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
+      {reportFacility ? <ReportingDetails
+        facility={healthcentre} issue={complaintType} observation={subType?.key ? subType : null} status={systemFunctionality}
+        description={isGuidedSupport ? supportDescription : description}
+        onDescriptionChange={isGuidedSupport ? changeSupportDescription : changeDescription}
+        images={imageState.mappedArray.map((entry) => [entry.file.name, entry])}
+        videos={videoState.mappedArray.map((entry) => [entry.file.name, entry])}
+        fir={firState.mappedArray.map((entry) => [entry.file.name, entry])}
+        onImagesChange={getImageData} onVideosChange={getVideoData} onFirChange={getFirData}
+        onImageUploading={setIsImageUploading} onVideoUploading={setIsVideoUploading} onFirUploading={setIsFirUploading}
+        uploading={isImageUploading || isVideoUploading || isFirUploading} submitting={isSubmitting}
+        canSubmit={canSubmit && isGuidedSelectionValid} onSubmit={wrapperSubmit} backUrl={reportingPageUrl}
+        tenantId={tenantId} showFacility={getMappedFacilityCodes().length > 1}
+      /> : <React.Fragment>
+        <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right" }}>
+          <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>
-      </div>
-      {reportFacility && healthcentre && <p style={{ fontSize: "20px" }}>{t("IM_REPORT_STEP_FACILITY", { defaultValue: "Facility" })}: {healthcentre.name}</p>}
-      {reportFacility && <ReportingStepper currentStep="details" showFacility={getMappedFacilityCodes().length > 1} />}
-      <FormComposer heading={t("")} config={reportFacility ? config.slice(1) : config} onSubmit={wrapperSubmit} isDisabled={!canSubmit || !isGuidedSelectionValid || isSubmitting} label={t("FILE_INCIDENT")} />
+        <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit || isSubmitting} label={t("FILE_INCIDENT")} />
+      </React.Fragment>}
       {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  
