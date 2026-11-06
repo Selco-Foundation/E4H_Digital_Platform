@@ -172,6 +172,15 @@
       .digit-sidebar.collapsed .digit-sidebar-items-container .item-child-wrapper .digit-sidebar-item.selected:not(:hover) {
         background: transparent;
       }
+      /* Add Localisation: the hidden file input behind "Bulk Upload" is wider than the button and stuck out past the
+         page edge, giving the page a horizontal scrollbar */
+      .workbench div:has(> .hide-input-type-file) {
+        position: relative;
+      }
+      .workbench .hide-input-type-file {
+        left: 0;
+        width: 100%;
+      }
       /* selco-css sets .digit-button-primary/-secondary to height: fit-content (for its older buttons), which overrides
          the component library's 2.5rem for the default "large" size, so e.g. "Back to modules" and the logout dialog's
          "Yes, Logout" collapsed to 22px and cut their labels off */
