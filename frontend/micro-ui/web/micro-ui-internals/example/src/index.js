@@ -10,10 +10,12 @@ import { initHRMSComponents } from "@selco/digit-ui-module-hrms";
 // import { initUtilitiesComponents } from  "@egovernments/digit-ui-module-utilities";
 import {initWorkbenchComponents} from "@egovernments/digit-ui-module-workbench";
 import { initIMComponents,IMReducers } from "@selco/digit-ui-module-pgr";
-import "@selco/selco-css/dist/index.css";
+import "@selco/selco-css/example/index.css";
 
 import { pgrCustomizations } from "./pgr";
 import { UICustomizations } from "./UICustomizations";
+
+import { LoginTollFreeHelp } from "./components/TollFreeHelp";
 
 var Digit = window.Digit || {};
 
@@ -75,6 +77,7 @@ const initDigitUI = () => {
     // PaymentModule,
     // ...paymentConfigs,
     // PaymentLinks,
+    LoginTollFreeHelp,
   });
   initIMComponents();
   initDSSComponents();

@@ -165,8 +165,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     (async () => {
       Digit.SessionStorage.set("citizen.userRequestObject", user);
 
-      const filteredRoles =
-        user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
+      const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
       if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
 
       Digit.UserService.setUser(user);
@@ -200,7 +199,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           jurisdictionBoundaries = {
             ...jurisdictionBoundaries,
             [key]: [...(jurisdictionBoundaries[key] || []), jurisdiction.boundary],
-          }
+          };
         }
       }
 
@@ -260,7 +259,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         const facilityTranslated = facilityKey ? t(facilityKey) : "";
         const facility = facilityFromUser || facilityTranslated || "unknown";
         Digit?.Utils?.analytics?.setFacilityName(facility);
-        const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
+        const rolesCsv = (info?.roles || []).map((r) => r.code).join(",") || "unknown";
         Digit?.Utils?.analytics?.trackLogin(rolesCsv, getSelectedLanguage());
       } catch (e) {
         console.warn("analytics: user_login failed", e);
@@ -318,6 +317,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     setActivePolicyModal(null);
   };
 
+  // Optional extension slot: the app (example / web) can register "LoginTollFreeHelp" in the
+  // Component Registry. If nothing is registered this is undefined and nothing is rendered.
+  const LoginTollFreeHelp = Digit.ComponentRegistryService.getComponent("LoginTollFreeHelp");
+
   const [userId, password, city] = propsConfig.inputs;
   const config = [
     {
@@ -328,7 +331,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           populators: {
             name: userId.name,
             style: {
-              marginBottom: "5px"
+              marginBottom: "5px",
             },
           },
           isMandatory: true,
@@ -339,7 +342,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           populators: {
             name: password.name,
             style: {
-              marginBottom: "25px"
+              marginBottom: "25px",
             },
           },
           isMandatory: true,
@@ -402,6 +405,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           </button>
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
+
+        {LoginTollFreeHelp && <LoginTollFreeHelp t={t} />}
+
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
           {logos.map((logo, index) => (
             <img
