@@ -47,6 +47,13 @@
       .digit-employee-header img.state[src=""] {
         display: none;
       }
+      /* selco-css sets .digit-button-primary/-secondary to height: fit-content (for its older buttons), which overrides
+         the component library's 2.5rem for the default "large" size, so e.g. "Back to modules" and the logout dialog's
+         "Yes, Logout" collapsed to 22px and cut their labels off */
+      .digit-button-primary.large,
+      .digit-button-secondary.large {
+        height: 2.5rem;
+      }
       /* selco-css gives every .input-container a border and side padding (for the old search screens, whose input has no
          border). The DIGIT component library's text inputs use the same class around an input that has its own border,
          so they showed two borders with a gap. Keep only the input's own border. */
