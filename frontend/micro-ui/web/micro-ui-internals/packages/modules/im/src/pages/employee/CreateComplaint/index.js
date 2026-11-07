@@ -59,13 +59,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
-  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [isInstallationTicket, setIsInstallationTicket] = useState(false);
   const [isUninstalledFacility, setIsUninstalledFacility] = useState(false);
   const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
-  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(jurisdictionCurrentBoundary);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
@@ -74,7 +73,6 @@ export const CreateComplaint = ({ parentUrl }) => {
       setDistrictMenu(boundaryData.districts || []);
       setBlockOptions(boundaryData.blocks);
       setFacilityBoundaries(boundaryData.facilities);
-      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
     }
   }, [boundaryData, t]);
 

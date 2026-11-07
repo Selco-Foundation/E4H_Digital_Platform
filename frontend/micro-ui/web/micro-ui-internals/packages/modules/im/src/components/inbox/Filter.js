@@ -18,7 +18,6 @@ const Filter = (props) => {
   const [facilityMenu, setFacilityMenu] = useState([]);
   const [facilityOptions, setFacilityOptions] = useState([]);
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
-  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const isCRMUser = roles?.some((role) => role.code === "COMPLAINT_ASSESSOR");
   const isStateProgramManagerUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_1");
@@ -38,12 +37,11 @@ const Filter = (props) => {
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
-  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(jurisdictionCurrentBoundary);
 
   useEffect(() => {
     if (boundaryData) {
       setFacilityBoundaries(boundaryData.facilities);
-      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
     }
   }, [boundaryData]);
 

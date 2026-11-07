@@ -34,7 +34,6 @@ export const PauseRMS = ({ parentUrl }) => {
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
-  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [disableGeographySelection, setDisableGeographySelection] = useState(false);
   const [isPausedFacility, setIsPausedFacility] = useState(false);
   const { facilityId } = Digit.Hooks.useQueryParams();
@@ -48,7 +47,7 @@ export const PauseRMS = ({ parentUrl }) => {
   const [alert, setAlert] = useState(null);
 
   const { data: boundaryData, isLoading: boundaryDataLoading } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
-  const { data: facilityData, isLoading: facilityDataLoading } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+  const { data: facilityData, isLoading: facilityDataLoading } = Digit.Hooks.im.useFacility(jurisdictionCurrentBoundary);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
@@ -57,7 +56,6 @@ export const PauseRMS = ({ parentUrl }) => {
       setDistrictMenu(boundaryData.districts || []);
       setBlockOptions(boundaryData.blocks);
       setFacilityBoundaries(boundaryData.facilities);
-      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
     }
   }, [boundaryData, t]);
 
