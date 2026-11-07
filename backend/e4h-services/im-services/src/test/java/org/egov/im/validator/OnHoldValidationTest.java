@@ -24,7 +24,10 @@ class OnHoldValidationTest {
 
     private static final List<Document> LETTER = List.of(Document.builder().fileStoreId("fs-1").documentType("application/pdf").build());
 
-    private final ServiceRequestValidator validator = new ServiceRequestValidator(null, null, null);
+    // Only validateOnHold is exercised here; the collaborators the jurisdiction check needs are not
+    // reached by these cases.
+    private final ServiceRequestValidator validator =
+            new ServiceRequestValidator(null, null, null, null, null, null);
 
     @Test
     void fundUnavailableWithDocumentAndNoCommentPasses() {
