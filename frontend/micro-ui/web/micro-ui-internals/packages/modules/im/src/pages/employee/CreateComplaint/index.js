@@ -209,7 +209,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       page_path: window.location?.pathname || "/new-ticket",
       page_title: "New Ticket",
     });
-    if (selectBoundaryCode !== stateBoundaryCode) {
+    if (!Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode)) {
       ticketTypeRef?.current?.validate();
       ticketSubTypeRef?.current?.validate();
     } else {
@@ -219,7 +219,7 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   useEffect(async () => {
     if (
-      selectBoundaryCode && stateBoundaryCode && selectBoundaryCode !== stateBoundaryCode
+      selectBoundaryCode && stateBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode)
       && districtMenu?.length && blockOptions?.length && facilityOptions?.length
     ) {
       const selectedHealthCentre = facilityOptions.find((facility) => facility?.code === selectBoundaryCode)
@@ -628,7 +628,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="name"
               selected={district}
               select={handleDistrictChange}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
               required={true}
             />
           ),
@@ -646,7 +646,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="name"
               selected={block}
               select={handleBlockChange}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
               required={true}
             />
           ),
@@ -664,7 +664,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="healthCentre"
               selected={healthcentre}
               select={selectedHealthCentre}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
               required={true}
             />
           ),

@@ -164,7 +164,7 @@ export const PauseRMS = ({ parentUrl }) => {
     if (
       selectBoundaryCode &&
       stateBoundaryCode &&
-      selectBoundaryCode !== stateBoundaryCode &&
+      !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode) &&
       districtMenu?.length &&
       blockOptions?.length &&
       facilityOptions?.length
@@ -368,7 +368,7 @@ export const PauseRMS = ({ parentUrl }) => {
               id="name"
               selected={district}
               select={handleDistrictChange}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode) || disableGeographySelection}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode)) || disableGeographySelection}
               required={true}
             />
           ),
@@ -386,7 +386,7 @@ export const PauseRMS = ({ parentUrl }) => {
               id="name"
               selected={block}
               select={handleBlockChange}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode) || disableGeographySelection}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode)) || disableGeographySelection}
               required={true}
             />
           ),
@@ -404,7 +404,7 @@ export const PauseRMS = ({ parentUrl }) => {
               id="healthCentre"
               selected={healthcentre}
               select={selectedHealthCentre}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode) || disableGeographySelection}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode)) || disableGeographySelection}
               required={true}
             />
           ),

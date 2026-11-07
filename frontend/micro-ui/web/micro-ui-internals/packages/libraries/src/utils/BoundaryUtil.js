@@ -81,6 +81,27 @@ export const BoundaryUtil = {
     return Object.keys(filters).length ? filters : { boundaryCodes: ["-"] };
   },
 
+  /**
+   * Whether two comma-joined boundary-code strings name the same set of boundaries.
+   *
+   * The two sides come from different places and are ordered differently: one is the user's
+   * jurisdiction as HRMS returns it, the other the same boundaries as they appear in the
+   * boundary tree. Comparing the joined strings makes "Karnataka,Meghalaya" look different from
+   * "Meghalaya,Karnataka", so a user holding more than one state reads as having narrowed their
+   * selection when they have not - which silently disables the location pickers that depend on
+   * this test. Order is not information here; the set is.
+   */
+  sameBoundarySelection: (a, b) => {
+    const normalize = (value) =>
+      (value || "")
+        .split(",")
+        .map((code) => code.trim())
+        .filter(Boolean)
+        .sort()
+        .join(",");
+    return normalize(a) === normalize(b);
+  },
+
   aggregateBoundaryTypes: (boundaries) => {
     const boundaryTypes = [];
     if (boundaries) {
