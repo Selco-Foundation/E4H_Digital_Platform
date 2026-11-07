@@ -44,8 +44,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -60,6 +62,8 @@ import org.egov.hrms.model.AuditDetails;
 import org.egov.hrms.model.Employee;
 import org.egov.hrms.model.Jurisdiction;
 import org.egov.hrms.model.UpdateUsernameEvent;
+import org.egov.hrms.model.JurisdictionRole;
+import org.egov.hrms.model.Role;
 import org.egov.hrms.model.enums.UserType;
 import org.egov.hrms.producer.HRMSProducer;
 import org.egov.hrms.repository.EmployeeRepository;
@@ -252,6 +256,10 @@ public class EmployeeService {
             for(Employee employee: employees){
                 employee.setUser(mapOfUsers.get(employee.getUuid()));
             }
+
+            if(Boolean.TRUE.equals(criteria.getIncludeJurisdictionRoles()))
+                fillJurisdictionRoleNames(employees);
+
             
             // Filter employees to ensure they have the requested roles
             if(!CollectionUtils.isEmpty(criteria.getRoles()) && !CollectionUtils.isEmpty(employees)) {
@@ -332,6 +340,7 @@ public class EmployeeService {
 			jurisdiction.setAuditDetails(auditDetails);
 			if(null == jurisdiction.getIsActive())
 				jurisdiction.setIsActive(true);
+			enrichJurisdictionRoles(jurisdiction, auditDetails, employee.getTenantId());
 		});
 		employee.getAssignments().stream().forEach(assignment -> {
 			assignment.setId(UUID.randomUUID().toString());
@@ -397,7 +406,11 @@ public class EmployeeService {
 		for(Employee employee: employeeRequest.getEmployees()) {
 			uuidList.add(employee.getUuid());
 		}
-		EmployeeResponse existingEmployeeResponse = search(EmployeeSearchCriteria.builder().uuids(uuidList).tenantId(tenantId).build(),requestInfo);
+		log.debug("Fetching existing employee data for {} uuid(s)", uuidList.size());
+		// includeJurisdictionRoles is not optional here: enrichUpdateRequest preserves roles by
+		// copying them off this record, so without it the merge would find none and every update
+		// would wipe the scoping it is meant to protect.
+		EmployeeResponse existingEmployeeResponse = search(EmployeeSearchCriteria.builder().uuids(uuidList).tenantId(tenantId).includeJurisdictionRoles(true).build(),requestInfo);
 		List <Employee> existingEmployees = existingEmployeeResponse.getEmployees();
 		employeeRequest.getEmployees().stream().forEach(employee -> {
 			enrichUpdateRequest(employee, requestInfo, existingEmployees);
@@ -428,8 +441,70 @@ public class EmployeeService {
 	}
 
 	/**
+	 * Fills in the server-set fields on each role of a jurisdiction and drops duplicates.
+	 *
+	 * Deduplication is by code, not by id: two entries carrying the same code with different ids
+	 * would breach uk_eghrms_jurisdiction_role on insert and fail the whole transaction, which is
+	 * a harsh outcome for what is only a careless payload.
+	 *
+	 * @param jurisdiction
+	 * @param auditDetails
+	 * @param employeeTenantId fallback when neither the role nor the jurisdiction names a tenant
+	 */
+	/**
+	 * Fills the display name on each jurisdiction role from the employee's own user.roles entry
+	 * with the same code. Only the code is persisted, so the name has to come from somewhere else.
+	 *
+	 * This runs here rather than in the repository because the user is attached to the employee
+	 * only after the repository has returned; reading user.roles any earlier finds nothing.
+	 *
+	 * A code with no matching user role keeps a null name rather than being dropped - the scope
+	 * it grants is real whether or not a label can be found for it.
+	 *
+	 * @param employees
+	 */
+	private void fillJurisdictionRoleNames(List<Employee> employees) {
+		for(Employee employee : employees) {
+			if(CollectionUtils.isEmpty(employee.getJurisdictions()) || null == employee.getUser()
+					|| CollectionUtils.isEmpty(employee.getUser().getRoles()))
+				continue;
+			Map<String, String> namesByCode = employee.getUser().getRoles().stream()
+					.filter(role -> null != role.getCode() && null != role.getName())
+					.collect(Collectors.toMap(Role::getCode, Role::getName, (first, second) -> first));
+			for(Jurisdiction jurisdiction : employee.getJurisdictions()) {
+				if(CollectionUtils.isEmpty(jurisdiction.getRoles()))
+					continue;
+				jurisdiction.getRoles().forEach(role -> role.setName(namesByCode.get(role.getCode())));
+			}
+		}
+	}
+
+	private void enrichJurisdictionRoles(Jurisdiction jurisdiction, AuditDetails auditDetails, String employeeTenantId) {
+		if(CollectionUtils.isEmpty(jurisdiction.getRoles()))
+			return;
+
+		String tenantId = null != jurisdiction.getTenantId() ? jurisdiction.getTenantId() : employeeTenantId;
+		Set<String> seenCodes = new HashSet<>();
+		List<JurisdictionRole> roles = new ArrayList<>();
+
+		for(JurisdictionRole role : jurisdiction.getRoles()) {
+			if(StringUtils.isBlank(role.getCode()) || !seenCodes.add(role.getCode()))
+				continue;
+			if(null == role.getId())
+				role.setId(UUID.randomUUID().toString());
+			role.setJurisdictionId(jurisdiction.getId());
+			if(null == role.getTenantId())
+				role.setTenantId(tenantId);
+			if(null == role.getAuditDetails())
+				role.setAuditDetails(auditDetails);
+			roles.add(role);
+		}
+		jurisdiction.setRoles(roles);
+	}
+
+	/**
 	 * Enriches update request with required parameters.
-	 * 
+	 *
 	 * @param employee
 	 * @param requestInfo
 	 * @param existingEmployeesData
@@ -458,12 +533,24 @@ public class EmployeeService {
 				Jurisdiction existingJurisdiction = existingEmpData.getJurisdictions().stream()
 						.filter(jurisdictionData -> jurisdictionData.getId().equals(jurisdiction.getId()))
 						.findFirst().orElse(null);
+
+				// Absent roles mean "unchanged", not "cleared". An update deletes the employee and
+				// re-inserts whatever the payload carries, so a caller that round-trips a jurisdiction
+				// without ever seeing its roles - every caller of the v1 API, which does not expose
+				// them - would otherwise wipe the employee's scoping on an unrelated save. Only an
+				// explicit empty list clears. This is load-bearing and permanent: v1 is not being
+				// retired, so there is no point at which it stops being needed.
+				if (null == jurisdiction.getRoles() && existingJurisdiction != null) {
+					jurisdiction.setRoles(existingJurisdiction.getRoles());
+				}
+
 				if (existingJurisdiction != null && !existingJurisdiction.equals(jurisdiction)
 						&& jurisdiction.getAuditDetails() != null) {
 					jurisdiction.getAuditDetails().setLastModifiedBy(requestInfo.getUserInfo().getUserName());
 					jurisdiction.getAuditDetails().setLastModifiedDate(new Date().getTime());
 				}
 			}
+			enrichJurisdictionRoles(jurisdiction, auditDetails, employee.getTenantId());
 		});
 		employee.getAssignments().stream().forEach(assignment -> {
 			if(assignment.getId()==null) {

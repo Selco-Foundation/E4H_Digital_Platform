@@ -206,7 +206,7 @@ async def get_facility_ingestion_template_with_data(
                     bulk_result = facility_client.bulk_search_facility_with_boundary(
                         request_info=request_info,
                         tenant_ids=["in"],
-                        boundary_codes=boundary_codes,
+                        block_codes=boundary_codes,
                         limit=max(len(boundary_codes) * 50, 50),
                         send_non_paginated_response=True,
                         # Newest centres first. facility-service otherwise sorts by `updated_at
@@ -464,7 +464,7 @@ async def get_facility_ingestion_template_with_data(
                 boundary_bulk_result = facility_client.bulk_search_facility_with_boundary(
                     request_info=request_info,
                     tenant_ids=["in"],
-                    boundary_codes=boundary_codes,
+                    block_codes=boundary_codes,
                     limit=max(len(boundary_codes) * 50, 50),
                     send_non_paginated_response=True,
                 )
@@ -1125,7 +1125,7 @@ async def get_amc_configuration_template(
                 bulk_result = facility_client.bulk_search_facility_with_boundary(
                     request_info=request_info,
                     tenant_ids=["in"],
-                    boundary_codes=boundary_codes,
+                    block_codes=boundary_codes,
                     limit=max(len(boundary_codes) * 50, 50),
                     send_non_paginated_response=True,
                 )

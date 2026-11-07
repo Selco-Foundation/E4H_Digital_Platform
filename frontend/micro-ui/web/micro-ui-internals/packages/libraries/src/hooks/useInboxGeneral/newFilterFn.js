@@ -14,29 +14,20 @@ export const filterFunctions = {
       applicationNumber, mobileNumber, limit,
       offset, sortBy, sortOrder, total,
       applicationStatus, services, incidentType,
-      facility, assignee, nearingSLA, state, district, block, isSystemFunctional, wfStatus, mappedVendorName
+      facility, assignee, nearingSLA, state, district, block, isSystemFunctional, mappedVendorName
     } = filtersArg || {};
 
     if (filtersArg?.IncidentWrappers) {
       searchFilters.applicationNumber = filtersArg?.incidentId;
     }
 
-    if (wfStatus) {
-      let convertStatus = [wfStatus];
-      if (wfStatus.includes(",")) {
-        convertStatus = wfStatus.split(",");
-      }
-      if (applicationStatus) {
-        const applicationStatuses = applicationStatus.split(",");
-        const intersectionStatuses = convertStatus.filter((status) => applicationStatuses.includes(status));
-        convertStatus = intersectionStatuses.length ? intersectionStatuses : [""];
-      }
-      workflowFilters.status = convertStatus;
-
-    } else if (applicationStatus) {
-      let convertStatus=[applicationStatus];
-      if(applicationStatus.includes(",")){
-        convertStatus=applicationStatus.split(',')
+    // Only what the user ticked. The statuses a role can act on used to be merged in here from
+    // `wfStatus`, and an empty overlap between the two produced `[""]` - a status that matches
+    // nothing, so the inbox silently came back empty. The backend derives that set per role now.
+    if (applicationStatus) {
+      let convertStatus = [applicationStatus];
+      if (applicationStatus.includes(",")) {
+        convertStatus = applicationStatus.split(",");
       }
       workflowFilters.status = convertStatus;
     }
@@ -91,12 +82,11 @@ export const filterFunctions = {
       searchFilters.mappedVendorName = mappedVendorName;
     }
 
-    if (assignee && !wfStatus) {
+    // Only reaches here in the all-tickets view: useNewInbox drops it when assignedToMe is on,
+    // because the backend decides what "mine" means and a client-sent assignee would be a second,
+    // weaker opinion about the same thing.
+    if (assignee) {
       searchFilters.assignee = assignee;
-    }
-
-    if (filtersArg?.uuid && filtersArg?.uuid.code === "ASSIGNED_TO_ME") {
-      workflowFilters.assignee = uuid;
     }
     if (mobileNumber) {
       searchFilters.mobileNumber = mobileNumber;

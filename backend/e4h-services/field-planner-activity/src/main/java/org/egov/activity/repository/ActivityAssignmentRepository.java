@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +41,38 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
         this.queryBuilder = queryBuilder;
         this.jdbcTemplate = jdbcTemplate;
         this.activityRowMapper = activityRowMapper;
+    }
+
+    /**
+     * Role codes a user still holds on a plan, ignoring the assignments being changed right now.
+     *
+     * Used before revoking a user's per-facility rows: one person can be both supervisor and
+     * reviewer on the same plan, and dropping one of those must not take away the visibility the
+     * other still needs.
+     *
+     * Deliberately not {@code getActivitiesAssignment}: its query builder scopes every caller who
+     * is not a project manager to their own {@code assigned_to}, so the answer would depend on who
+     * asked rather than on what is stored.
+     */
+    public List<String> findActiveRoleCodesForPlanUser(String fieldPlanId, String assignedTo, String tenantId,
+                                                       Collection<String> excludeAssignmentIds) {
+        StringBuilder query = new StringBuilder(
+                "SELECT role ->> 'code' FROM activity_assignments " +
+                        "WHERE isdeleted = false AND field_plan_id = ? AND assigned_to = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(fieldPlanId);
+        params.add(assignedTo);
+        if (tenantId != null && !tenantId.isBlank()) {
+            query.append(" AND tenant_id like ?");
+            params.add(tenantId + "%");
+        }
+        if (excludeAssignmentIds != null && !excludeAssignmentIds.isEmpty()) {
+            query.append(" AND id NOT IN (")
+                    .append(String.join(",", Collections.nCopies(excludeAssignmentIds.size(), "?")))
+                    .append(")");
+            params.addAll(excludeAssignmentIds);
+        }
+        return jdbcTemplate.queryForList(query.toString(), String.class, params.toArray());
     }
 
     public List<ActivityAssignment> getActivitiesAssignment(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {

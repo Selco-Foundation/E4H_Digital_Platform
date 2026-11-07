@@ -54,4 +54,14 @@ public class EmployeeQueries {
 	public static final String HRMS_GET_JURISDICTION = "select distinct(employeeid) from {schema}.eg_hrms_jurisdiction jurisdiction where jurisdiction.tenantid notnull ";
 
 	public static final String HRMS_COUNT_EMP_QUERY = "SELECT active, count(*) FROM {schema}.eg_hrms_employee WHERE tenantid ";
+
+	/**
+	 * Run separately from HRMS_GET_EMPLOYEES rather than joined into it. That query already
+	 * LEFT JOINs eight one-to-many tables, so every row it returns is a product of them; adding a
+	 * ninth would multiply the result set again for no benefit, since the roles are keyed by
+	 * jurisdiction and can be stitched back on in memory.
+	 */
+	public static final String HRMS_GET_JURISDICTION_ROLES = "SELECT uuid, jurisdictionid, rolecode, tenantid, "
+			+ "createdby, createddate, lastmodifiedby, lastmodifieddate "
+			+ "FROM {schema}.eg_hrms_jurisdiction_role WHERE jurisdictionid IN (";
 }

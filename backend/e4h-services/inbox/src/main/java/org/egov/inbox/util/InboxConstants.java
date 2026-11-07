@@ -144,7 +144,15 @@ public class InboxConstants {
      */
     public static final List<String> POOLED_ROLES = Collections.unmodifiableList(Arrays.asList(
             "COMPLAINT_FACILITATOR_1",   // State SPOC
-            "COMPLAINT_FACILITATOR_2")); // Tech POC
+            "COMPLAINT_FACILITATOR_2",   // Tech POC
+            "COMPLAINT_ASSESSOR"));      // CRM - added 2026-11-05
+
+    /*
+     * Pooled is also how "assigned to me" is decided: a pooled role matches the statuses it can act
+     * on, and every other role matches on the assignee being the caller. Nothing else needs listing
+     * - a role absent from here simply takes the assignee branch, which is the literal reading of
+     * "mine" and the right answer for a vendor (COMPLAINT_RESOLVER) and a complainant alike.
+     */
 
     /**
      * Statuses left out of the "assigned to me" inbox unless the client filters on them: the ticket is

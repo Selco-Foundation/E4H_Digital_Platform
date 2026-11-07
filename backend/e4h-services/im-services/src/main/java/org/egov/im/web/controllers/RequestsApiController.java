@@ -19,6 +19,9 @@ import java.io.IOException;
 import java.util.*;
 
 import jakarta.validation.Valid;
+import org.egov.im.service.WorkflowActionFilterService;
+import org.springframework.web.bind.annotation.RequestParam;
+import java.util.Map;
 
 @jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2020-07-15T11:35:33.568+05:30")
 
@@ -26,6 +29,9 @@ import jakarta.validation.Valid;
 @RequestMapping("/v2")
 @Slf4j
 public class RequestsApiController{
+
+    @Autowired
+    private WorkflowActionFilterService workflowActionFilterService;
 
     private final ObjectMapper objectMapper;
 
@@ -107,6 +113,23 @@ public class RequestsApiController{
                 .build();
         log.info("Incident boundary-by-facility update completed, updatedIncidents={}", updated);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    /**
+     * Workflow's process search, minus the actions the caller may not take where this ticket is.
+     *
+     * Same request and response shapes as {@code /egov-workflow-v2/egov-wf/process/_search} - the
+     * ticket details page points here instead, because workflow sees only a businessId and so
+     * cannot know a ticket's boundary. Every query parameter is forwarded untouched.
+     *
+     * Presentation only: {@code ServiceRequestValidator} refuses the transition regardless.
+     */
+    @RequestMapping(value = "/process/_search", method = RequestMethod.POST)
+    public ResponseEntity<Object> processSearchPost(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
+                                                    @RequestParam Map<String, String> queryParams) {
+        return new ResponseEntity<>(
+                workflowActionFilterService.searchAndFilter(requestInfoWrapper.getRequestInfo(), queryParams),
+                HttpStatus.OK);
     }
 
     @RequestMapping(value="/request/_update", method = RequestMethod.POST)

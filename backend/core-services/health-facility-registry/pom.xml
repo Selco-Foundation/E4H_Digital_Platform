@@ -114,6 +114,12 @@
             <version>2.9.0-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
+        <!-- Per-caller jurisdiction and boundary-expansion caches in RoleScopeResolver.
+             Version is managed by spring-boot-starter-parent. -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
