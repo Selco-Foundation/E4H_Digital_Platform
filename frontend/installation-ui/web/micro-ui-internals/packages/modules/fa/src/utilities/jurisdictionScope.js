@@ -1,7 +1,7 @@
 /**
  * The signed-in user's jurisdictions, and what they mean for one module.
  *
- * Identical copies live in core and fa — keep them in sync. (Modules may not import from each
+ * Identical copies live in core, fa and pm — keep them in sync. (Modules may not import from each
  * other; the DIGIT convention here is a copy per module, as with CustomRequest and CommonUtils.)
  *
  * Written once at login from HRMS v2 and read from session storage thereafter. The stored shape is

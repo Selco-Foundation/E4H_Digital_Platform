@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from "react-query";
 import { BoundaryService } from "../services/Boundary";
+import { boundariesForRole } from "../utilities/jurisdictionScope";
+import { MODULE_ROLE } from "../constants/Roles";
 
 const fetchBoundaries = async (queryFilter) => {
 
@@ -42,7 +44,22 @@ const fetchBoundaries = async (queryFilter) => {
   };
 };
 
+/**
+ * The boundaries behind the facility filter bar.
+ *
+ * With no codes it no longer means "the whole country": it means the jurisdictions the signed-in
+ * user holds as a Project Manager. This has to match what `useFacility` asks the backend for -
+ * a filter bar wider than the list behind it offers states that return nothing, which reads as a
+ * broken screen rather than as a boundary the user has no claim to.
+ *
+ * An explicit `codes` argument still wins, and `boundariesForRole` answers null when the user's
+ * grants are unknown (an older session, or HRMS was down at login), in which case nothing is
+ * narrowed. Showing everything is the right failure here; showing nothing would look like data
+ * loss.
+ */
 const useFacilityBoundary = (codes) => {
+
+  const scopedCodes = codes || boundariesForRole(MODULE_ROLE);
 
   const queryFilter = {
     tenantId: Digit.ULBService.getCurrentTenantId(),
@@ -51,8 +68,8 @@ const useFacilityBoundary = (codes) => {
     hierarchyType: "SELCO",
   };
 
-  if (codes) {
-    queryFilter.codes = codes;
+  if (scopedCodes) {
+    queryFilter.codes = scopedCodes;
   }
 
   const queryClient = useQueryClient();
