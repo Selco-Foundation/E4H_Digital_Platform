@@ -86,9 +86,8 @@ export const boundariesForRole = (roleCode) => {
  * no list filter is that coarse, so sending only the finer levels would narrow a user who should
  * see all of it.
  *
- * Known gap: a user holding two different levels — a state here, a block there — gets both keys
- * sent, and facility search currently keeps only the lowest one (`BoundaryUtil.detectLowestLevel`)
- * and silently drops the state. Closed when that backend intersects levels instead of picking one.
+ * Mixed levels — a state here, a block there — send both keys, and facility search composes
+ * them rather than keeping only the lowest, so neither grant is silently dropped.
  */
 export const boundariesByLevelForRole = (roleCode) => {
   const jurisdictions = getJurisdictions();
