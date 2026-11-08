@@ -4,6 +4,7 @@ import { useHistory } from "react-router-dom";
 import { ListAlt, AdminPanelSettings } from "@egovernments/digit-ui-svg-components";
 import { Loader, Toast } from "@egovernments/digit-ui-react-components";
 import { OrganizationService } from "../services/Organization";
+import { ORG_PLATFORM_ADMIN, VENDOR_ADMIN } from "../constants/Roles";
 
 
 const ORGCard = () => {
@@ -16,7 +17,10 @@ const ORGCard = () => {
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(null);
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
-  const isVendorAdminUser = currentUserRoles.map((role) => role.name)?.includes("Vendor Administrator");
+  // Matched on code, not on name: two MDMS roles are both named "Vendor Administrator" -
+  // VENDOR_ADMIN, which is current, and AMC_VENDOR_ADMIN, which is not. Matching the name
+  // admitted the dead one as well.
+  const isVendorAdminUser = currentUserRoles.some((role) => role?.code === VENDOR_ADMIN);
 
   useEffect(() => {
     if (toast) {
@@ -32,7 +36,7 @@ const ORGCard = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  if (!currentUserRoleCodes?.includes("ORG_PLATFORM_ADMIN") && !isVendorAdminUser) {
+  if (!currentUserRoleCodes?.includes(ORG_PLATFORM_ADMIN) && !isVendorAdminUser) {
     return null;
   }
 
