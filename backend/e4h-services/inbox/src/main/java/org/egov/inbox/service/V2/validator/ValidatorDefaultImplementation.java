@@ -30,13 +30,10 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
 
     @Override
     public void validateSearchCriteria(InboxRequest inboxRequest) {
-        log.trace("Method invoked: validateSearchCriteria");
-        String tenantId = inboxRequest.getInbox().getTenantId();
-        String moduleName = inboxRequest.getInbox().getProcessSearchCriteria().getModuleName();
-        
-        log.info("Validating search criteria - tenantId: {}, module: {}", tenantId, moduleName);
+        log.info("➡️ Validating search criteria for tenantId={} and module={}",
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
 
-        log.debug("Fetching inbox query configuration from MDMS");
         InboxQueryConfiguration config = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
                 inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
@@ -49,7 +46,7 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
                             ObjectUtils.isEmpty(searchParam.getIsMandatory()) ? Boolean.FALSE : searchParam.getIsMandatory());
                 }
         );
-        log.debug("Allowed search criteria with mandatory flags - totalCriteria: {}", isMandatoryMap.size());
+        log.debug("📄 Allowed search criteria with mandatory flags: {}", isMandatoryMap);
 
         HashMap<String, Object> moduleSearchCriteria = inboxRequest.getInbox().getModuleSearchCriteria();
 
@@ -58,11 +55,11 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
                 .filter(entry -> Boolean.TRUE.equals(entry.getValue()))
                 .map(Entry::getKey)
                 .collect(Collectors.toSet());
-        log.debug("Mandatory fields identified - count: {}", mandatoryTrueFields.size());
+        log.debug("✅ Mandatory fields required: {}", mandatoryTrueFields);
 
         if (!mandatoryTrueFields.isEmpty() && !moduleSearchCriteria.keySet().containsAll(mandatoryTrueFields)) {
-            log.error("Missing mandatory fields in moduleSearchCriteria - provided: {}, required: {}",
-                    moduleSearchCriteria.keySet().size(), mandatoryTrueFields.size());
+            log.error("❌ Missing mandatory fields in moduleSearchCriteria. Provided={}, Required={}",
+                    moduleSearchCriteria.keySet(), mandatoryTrueFields);
             throw new CustomException("INVALID_SEARCH_CRITERIA",
                     "Mandatory fields are missing in the moduleSearchCriteria");
         }
@@ -75,7 +72,7 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
             if (!(key.equals(SORT_ORDER_CONSTANT) || key.equals(SORT_BY_CONSTANT))) {
                 if (isMandatoryMap.get(key)) {
                     if (ObjectUtils.isEmpty(value)) {
-                        log.warn("Field is mandatory but value is null or empty - field: {}", key);
+                        log.warn("⚠️ Field {} is mandatory but value is null/empty", key);
                         errorMap.put("INVALID_SEARCH_CRITERIA", "Field cannot be null or empty: " + key);
                     }
                 }
@@ -83,31 +80,26 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
         }
 
         if (!CollectionUtils.isEmpty(errorMap)) {
-            log.error("Validation failed - errorCount: {}", errorMap.size());
+            log.error("❌ Validation failed with errorMap={}", errorMap);
             throw new CustomException(errorMap);
         }
 
-        log.info("Validation successful for search criteria");
+        log.info("✅ Validation successful for search criteria");
     }
 
 
     public void validateSearchCriteria(String tenantId, String moduleName, Map<String, Object> moduleSearchCriteria) {
-        log.trace("Method invoked: validateSearchCriteria - tenantId: {}, module: {}", tenantId, moduleName);
-        log.info("Validating search criteria - tenantId: {}, module: {}", tenantId, moduleName);
+        log.info("➡️ Validating search criteria for tenantId={} and module={}", tenantId, moduleName);
 
-        log.debug("Fetching inbox query configuration from MDMS");
         InboxQueryConfiguration config = mdmsUtil.getConfigFromMDMS(tenantId, moduleName);
-        log.debug("InboxQueryConfiguration retrieved - allowedCriteria: {}", 
-                config != null ? config.getAllowedSearchCriteria().size() : 0);
+        log.debug("📄 Retrieved search configuration: {}", config);
 
         Map<String, Boolean> isMandatoryMap = new HashMap<>();
         config.getAllowedSearchCriteria().forEach(searchParam -> {
             isMandatoryMap.put(searchParam.getName(),
                     ObjectUtils.isEmpty(searchParam.getIsMandatory()) ? Boolean.FALSE : searchParam.getIsMandatory());
         });
-        log.debug("Mandatory fields map built - totalFields: {}, mandatoryCount: {}", 
-                isMandatoryMap.size(), 
-                isMandatoryMap.values().stream().filter(Boolean::booleanValue).count());
+        log.debug("✅ Mandatory fields map: {}", isMandatoryMap);
 
         Map<String, String> errorMap = new HashMap<>();
         for (Map.Entry<String, Object> entry : moduleSearchCriteria.entrySet()) {
@@ -117,7 +109,7 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
             if (!(key.equals(SORT_ORDER_CONSTANT) || key.equals(SORT_BY_CONSTANT))) {
                 if (Boolean.TRUE.equals(isMandatoryMap.get(key))) {
                     if (ObjectUtils.isEmpty(value)) {
-                        log.warn("Field is mandatory but value is null or empty - field: {}", key);
+                        log.warn("⚠️ Field '{}' is mandatory but value is null or empty", key);
                         errorMap.put("INVALID_SEARCH_CRITERIA", "Field cannot be null or empty: " + key);
                     }
                 }
@@ -125,11 +117,11 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
         }
 
         if (!CollectionUtils.isEmpty(errorMap)) {
-            log.error("Validation failed - errorCount: {}", errorMap.size());
+            log.error("❌ Validation failed with errors: {}", errorMap);
             throw new CustomException(errorMap);
         }
 
-        log.info("Validation successful for moduleSearchCriteria");
+        log.info("✅ Validation successful for moduleSearchCriteria");
     }
 
 

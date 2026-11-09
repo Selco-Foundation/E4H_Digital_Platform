@@ -47,7 +47,6 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
         key: "error",
         message: CommonUtils.getApiErrorMessage(error) || t("QC_FACILITY_APPROVE_FAILURE"),
       });
-
     } finally {
       setUpdatingWorkflow(false);
     }
@@ -104,7 +103,6 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
         key: "error",
         message: CommonUtils.getApiErrorMessage(error) || t("QC_FACILITY_REJECT_FAILURE"),
       });
-
     } finally {
       setUpdatingWorkflow(false);
     }

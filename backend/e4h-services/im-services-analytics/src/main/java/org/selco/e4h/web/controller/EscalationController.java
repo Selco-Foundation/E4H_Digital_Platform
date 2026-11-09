@@ -70,7 +70,7 @@ public class EscalationController {
     private final WeeklySeniorProgramManagerEmailService weeklySeniorProgramManagerEmailService;
     private final WeeklyProcurementEmailService weeklyProcurementEmailService;
     private final WeeklyLeadershipEmailService weeklyLeadershipEmailService;
-    
+
     /**
      * Daily escalation endpoint
      */
@@ -127,13 +127,13 @@ public class EscalationController {
         log.trace("Received request to send weekly escalation email");
         try {
             log.info("Starting weekly escalation processing");
-            
+
             RequestInfo requestInfo = request.getRequestInfo();
-            
+
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
             List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
             Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
-            
+
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("weekly", "No escalation recipients found in MDMS");

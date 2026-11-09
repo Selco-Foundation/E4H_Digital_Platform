@@ -27,7 +27,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
@@ -51,6 +50,8 @@ public class WorkflowService {
 
     private VendorOrganisationUtil vendorOrganisationUtil;
 
+    private CurrentOwnerService currentOwnerService;
+
     private static final Map<Priority, String> PRIORITY_BUSINESS_SERVICE_MAP = Map.of(
             Priority.HIGH, IM_BUSINESSSERVICE_HIGH,
             Priority.MEDIUM, IM_BUSINESSSERVICE_MEDIUM,
@@ -64,13 +65,14 @@ public class WorkflowService {
     public WorkflowService(IMConfiguration imConfiguration,
                            ServiceRequestRepository repository,
                            ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils, SLAService slaService,
-                           IMUtils imUtils, VendorOrganisationUtil vendorOrganisationUtil) {
+                           CurrentOwnerService currentOwnerService, IMUtils imUtils, VendorOrganisationUtil vendorOrganisationUtil) {
         this.imConfiguration = imConfiguration;
         this.repository = repository;
         this.mapper = mapper;
         this.notificationService = notificationService;
         this.mdmsUtils = mdmsUtils;
         this.slaService = slaService;
+        this.currentOwnerService = currentOwnerService;
         this.imUtils = imUtils;
         this.vendorOrganisationUtil = vendorOrganisationUtil;
     }
@@ -86,10 +88,20 @@ public class WorkflowService {
         String businessService = PRIORITY_BUSINESS_SERVICE_MAP.getOrDefault(priority, IM_BUSINESSSERVICE);
         log.info("Fetching business service for tenant: {}, priority: {}, businessService: {}",
                 tenantId, priority, businessService);
-        log.trace("Building search URL and fetching business service");
+        return getBusinessServiceByName(incidentRequest.getRequestInfo(), tenantId, businessService);
+    }
+
+    /**
+     * Fetches a BusinessService definition (states, their actions and the roles on them) by name.
+     * <p>
+     * Unlike {@link #getBusinessService(IncidentRequest, Priority)} this needs no incident, so a
+     * batch caller can load each of the incident business services once instead of per ticket.
+     * Leaves {@link #states} alone: only a real transition should publish that.
+     */
+    public BusinessService getBusinessServiceByName(RequestInfo requestInfo, String tenantId, String businessService) {
+        log.trace("WorkflowService::getBusinessServiceByName method invoked");
         StringBuilder url = getSearchURLWithParams(tenantId, businessService);
-        RequestInfoWrapper requestInfoWrapper
-                = RequestInfoWrapper.builder().requestInfo(incidentRequest.getRequestInfo()).build();
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
         Object result = repository.fetchResult(url, requestInfoWrapper);
         BusinessServiceResponse response = null;
         try {
@@ -100,8 +112,8 @@ public class WorkflowService {
         }
 
         if (CollectionUtils.isEmpty(response.getBusinessServices())) {
-            log.error("Business service not found for tenant: {}, businessService: {}", tenantId, IM_BUSINESSSERVICE);
-            throw new CustomException("BUSINESSSERVICE_NOT_FOUND", "The businessService " + IM_BUSINESSSERVICE + " is not found");
+            log.error("Business service not found for tenant: {}, businessService: {}", tenantId, businessService);
+            throw new CustomException("BUSINESSSERVICE_NOT_FOUND", "The businessService " + businessService + " is not found");
         }
 
         log.debug("Business service fetched successfully");
@@ -151,6 +163,8 @@ public class WorkflowService {
         log.info("Workflow status updated for incident: {}. New status: {}", incidentRequest.getIncident().getIncidentId(), newStatus);
         log.trace("Enriching total SLA");
         enrichTotalSla(wrapper, updatedProcessInstance);
+        log.trace("Enriching current owner");
+        currentOwnerService.enrichCurrentOwner(wrapper, updatedProcessInstance, this.states);
         return updatedProcessInstance;
     }
 
@@ -158,22 +172,104 @@ public class WorkflowService {
         log.trace("WorkflowService::enrichTotalSla method invoked");
         IncidentRequest request = wrapper.getIncidentRequest();
         log.debug("Enriching SLA for incident: {}", request.getIncident().getIncidentId());
-        String applicationStatus = request.getIncident().getApplicationStatus();
         RequestInfo requestInfo= request.getRequestInfo();
         String tenantId = request.getIncident().getTenantId();
         String IncidentId = request.getIncident().getIncidentId();
 
-        // Step 1: Fetch MDMS BusinessHours data
         log.trace("Fetching BusinessHours from MDMS");
-        Object mdmsData = mdmsUtils.fetchMDMSData(
-                request.getRequestInfo(),
-                request.getIncident().getTenantId(),
-                "common-masters",
-                List.of("BusinessHours"),
-                null
-        );
+        List<Map<String, Object>> businessHourList = fetchBusinessHours(requestInfo, tenantId);
 
-        // Step 2: Parse BusinessHours config
+        //get all process instances
+        log.trace("Fetching all process instances for SLA and lifecycle calculation");
+        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
+
+        // Compute first-round resolved / declined timestamps (before any reordering)
+        enrichResolvedAndDeclinedTimestamps(wrapper, processInstances);
+
+        // SLA calculation requires oldest-first ordering
+        Collections.reverse(processInstances);
+        SlaSnapshot sla = computeSla(processInstances, processInstance, this.getStates(), businessHourList);
+
+        IndexView indexView = wrapper.getIndexView();
+        indexView.setDefinedTotalSla(sla.definedTotalSla());
+        indexView.setStateEnteredTime(sla.stateEnteredTime());
+        indexView.setTotalSlaBase(sla.totalSlaBase());
+        indexView.setStateSlaDueAt(sla.stateSlaDueAt());
+        indexView.setStateSlaWarnAt(sla.stateSlaWarnAt());
+        indexView.setTotalSlaDueAt(sla.totalSlaDueAt());
+        processInstance.getState().setTotalSlaRemaining(sla.totalSlaRemaining());
+    }
+
+    /**
+     * SLA values of a ticket at the current instant, plus the fixed anchors readers derive the live
+     * remaining values from. The deadlines and {@code totalSlaBase} are null while the matching clock is
+     * not running: a closed ticket, or a state without an SLA of its own, keeps its values as written.
+     */
+    public record SlaSnapshot(long definedTotalSla, Long stateSla, long slaRemaining, long totalSlaRemaining,
+                              long stateEnteredTime, Long totalSlaBase,
+                              Long stateSlaDueAt, Long stateSlaWarnAt, Long totalSlaDueAt) {
+    }
+
+    /**
+     * @param processInstances the ticket's workflow history, oldest first. The current instance is
+     *                         appended when the history does not end with it yet.
+     * @param current          the ticket's current process instance
+     */
+    public SlaSnapshot computeSla(List<ProcessInstance> processInstances, ProcessInstance current,
+                                  List<State> states, List<Map<String, Object>> businessHourList) {
+        // Leaving On Hold restarts the SLA, so only the history after the most recent hold counts
+        processInstances = slaService.getCurrentSlaCycle(processInstances);
+        if (processInstances.isEmpty()) {
+            processInstances.add(current);
+        }
+        BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
+        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
+        long definedTotalSla = slaService.computeTotalSla(current.getState().getApplicationStatus(), states, processInstances);
+        long totalSlaBase = slaService.computeTotalSlaBase(states, processInstances, businessHourList, current);
+
+        ProcessInstance latestInstance = processInstances.get(processInstances.size() - 1);
+        long stateEnteredTime = latestInstance.getAuditDetails().getCreatedTime();
+        long elapsedInState = util.calculateBusinessDuration(stateEnteredTime, System.currentTimeMillis());
+        boolean totalClockRunning = slaService.isSlaBearingState(latestInstance.getState().getApplicationStatus());
+        long totalSlaRemaining = totalClockRunning ? totalSlaBase - elapsedInState : totalSlaBase;
+
+        boolean clockStopped = slaService.isSlaClockStopped(current);
+        Long stateSla = current.getState().getSla();
+        boolean stateClockRunning = !clockStopped && stateSla != null && stateSla > 0;
+        long slaRemaining = (stateSla == null ? 0L : stateSla) - (stateClockRunning ? elapsedInState : 0L);
+
+        Long stateSlaDueAt = null;
+        Long stateSlaWarnAt = null;
+        if (stateClockRunning) {
+            stateSlaDueAt = util.addBusinessDuration(stateEnteredTime, stateSla);
+            stateSlaWarnAt = util.addBusinessDuration(stateEnteredTime, Math.round(stateSla * (1 - NEARING_SLA_REMAINING_RATIO)));
+        }
+        boolean totalAnchored = !clockStopped && totalClockRunning;
+
+        SlaSnapshot snapshot = new SlaSnapshot(definedTotalSla, stateSla, slaRemaining, totalSlaRemaining, stateEnteredTime,
+                totalAnchored ? totalSlaBase : null, stateSlaDueAt, stateSlaWarnAt,
+                totalAnchored ? util.addBusinessDuration(stateEnteredTime, totalSlaBase) : null);
+        log.debug("SLA calculation completed: businessHoursElapsed={}, {}", businessHoursElapsed, snapshot);
+        return snapshot;
+    }
+
+    /**
+     * Fetches a ticket's workflow history and computes its SLA snapshot. Used by the SLA backfill, which
+     * walks already indexed tickets without performing a transition.
+     */
+    public SlaSnapshot computeSla(String tenantId, String incidentId, RequestInfo requestInfo,
+                                  List<State> states, List<Map<String, Object>> businessHourList) {
+        List<ProcessInstance> processInstances = new ArrayList<>(getAllProcessInstances(tenantId, incidentId, requestInfo));
+        if (processInstances.isEmpty()) {
+            throw new CustomException("PROCESS_INSTANCE_NOT_FOUND", "No workflow history found for incident " + incidentId);
+        }
+        Collections.reverse(processInstances);
+        return computeSla(processInstances, processInstances.get(processInstances.size() - 1), states, businessHourList);
+    }
+
+    public List<Map<String, Object>> fetchBusinessHours(RequestInfo requestInfo, String tenantId) {
+        Object mdmsData = mdmsUtils.fetchMDMSData(requestInfo, tenantId, "common-masters", List.of("BusinessHours"), null);
+
         List<Map<String, Object>> businessHourList;
         try {
             businessHourList = JsonPath.read(
@@ -189,27 +285,7 @@ public class WorkflowService {
             log.error("BusinessHours config missing from MDMS for tenant: {}", tenantId);
             throw new CustomException("MDMS_MISSING", "BusinessHours config missing from MDMS");
         }
-
-        //get all process instances
-        log.trace("Fetching all process instances for SLA and lifecycle calculation");
-        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
-
-        // Compute first-round resolved / declined timestamps (before any reordering)
-        enrichResolvedAndDeclinedTimestamps(wrapper, processInstances);
-
-        // Step 3: Use BusinessHoursUtil (requires latest cycle ordering)
-        Collections.reverse(processInstances);
-        log.trace("Calculating business hours elapsed and total SLA");
-        BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
-        List<ProcessInstance> slaCycle = slaService.getCurrentSlaCycle(processInstances);
-        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(slaCycle);
-        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), slaCycle);
-        long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
-        log.debug("SLA calculation completed: definedTotalSla={}, businessHoursElapsed={}, totalSlaRemaining={}", 
-                definedTotalSla, businessHoursElapsed, totalSlaRemaining);
-
-        wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
-        processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
+        return businessHourList;
     }
 
     /**
@@ -373,6 +449,13 @@ public class WorkflowService {
         if (action.equalsIgnoreCase("RESOLVE") || action.equalsIgnoreCase("REJECT")) {
             reassignWorkflow(workflow, request, "COMPLAINANT");
         }
+//        else if (action.equalsIgnoreCase("OUT_OF_WARRANTY")) {
+//            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
+//        }
+//        else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
+//                request.getIncident().getApplicationStatus().trim().equals("PENDING_REVISION") && action.equalsIgnoreCase("SUBMIT")) {
+//            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
+//        }
         // State SPOC and Tech POC are pooled roles: the states they own are deliberately left
         // unassigned by clearAssigneesForPooledState below, so nothing is reassigned to a named
         // facilitator here any more.
@@ -404,7 +487,7 @@ public class WorkflowService {
             processInstance.setRating(workflow.getRating());
         }
 
-        clearAssigneesForPooledState(request, action, this.states);
+        clearAssigneesForPooledState(request, effectiveAction, this.states);
 
         if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
             List<User> users = new ArrayList<>();
@@ -432,22 +515,25 @@ public class WorkflowService {
      * assignee, so leaving the assignee empty is what opens the ticket up to the whole role.
      * <p>
      * The decision is read off the workflow config rather than a hardcoded list of transitions: the
-     * roles on the resultant state's actions are exactly the roles that state waits on, and if all of
-     * the human ones are in {@link IMConstants#POOLED_ROLES} the ticket is pooled. Whatever the caller
-     * sent as {@code assignes} is discarded for those states - a client pinning the ticket to one
-     * facilitator is precisely what this removes.
+     * roles on the resultant state's state-changing actions are exactly the roles that state waits on,
+     * and if all of the human ones are in {@link IMConstants#POOLED_ROLES} the ticket is pooled.
+     * Whatever the caller sent as {@code assignes} is discarded for those states - a client pinning the
+     * ticket to one facilitator is precisely what this removes.
      * <p>
      * Best-effort: any failure to resolve the resultant state leaves the assignees untouched, which is
      * the behaviour that predates this rule. An assignment must never fail because a lookup failed.
+     *
+     * @param effectiveAction the action actually sent to the workflow engine, which for an out-of-scope
+     *                        reassignment is not the action on the request
      */
-    void clearAssigneesForPooledState(IncidentRequest request, String action, List<State> states) {
+    void clearAssigneesForPooledState(IncidentRequest request, String effectiveAction, List<State> states) {
         Workflow workflow = request.getWorkflow();
         String incidentId = request.getIncident().getIncidentId();
         try {
-            State resultantState = findResultantState(request.getIncident().getApplicationStatus(), action, states);
+            State resultantState = findResultantState(request.getIncident().getApplicationStatus(), effectiveAction, states);
             if (resultantState == null) {
                 log.debug("Pooling: resultant state of action {} on incident {} could not be resolved, "
-                        + "leaving assignees untouched", action, incidentId);
+                        + "leaving assignees untouched", effectiveAction, incidentId);
                 return;
             }
             if (!isPooledState(resultantState)) {
@@ -464,6 +550,52 @@ public class WorkflowService {
             log.error("Pooling: failed to decide on assignees for incident {}, leaving them untouched",
                     incidentId, e);
         }
+    }
+
+    /**
+     * The state the ticket is about to land in, resolved from the business service definition the same
+     * way egov-workflow-v2's TransitionService resolves it: the action on the current state names its
+     * next state by uuid.
+     *
+     * @return null when the current state, the action or the next state is not in the definition
+     */
+    private State findResultantState(String currentApplicationStatus, String effectiveAction, List<State> states) {
+        if (CollectionUtils.isEmpty(states) || StringUtils.isBlank(currentApplicationStatus)
+                || StringUtils.isBlank(effectiveAction)) {
+            return null;
+        }
+        String status = currentApplicationStatus.trim();
+        State currentState = states.stream()
+                // The config may expose the status either as the state name or as applicationStatus.
+                .filter(state -> status.equalsIgnoreCase(state.getState())
+                        || status.equalsIgnoreCase(state.getApplicationStatus()))
+                .findFirst()
+                .orElse(null);
+        if (currentState == null || CollectionUtils.isEmpty(currentState.getActions())) {
+            return null;
+        }
+        String nextStateUuid = currentState.getActions().stream()
+                .filter(a -> a != null && effectiveAction.equalsIgnoreCase(a.getAction()))
+                .map(Action::getNextState)
+                .findFirst()
+                .orElse(null);
+        if (StringUtils.isBlank(nextStateUuid)) {
+            return null;
+        }
+        return currentOwnerService.findState(nextStateUuid, null, states);
+    }
+
+    /**
+     * True when every human role that can move the ticket on from this state is a pooled one. A state
+     * that also waits on a vendor or a health staff member is not pooled - those are real individuals
+     * and the ticket has to reach the right one.
+     */
+    private boolean isPooledState(State state) {
+        List<String> humanRoles = currentOwnerService.resolveOwningSystemRoles(state).stream()
+                .filter(role -> MACHINE_ROLES.stream().noneMatch(role::equalsIgnoreCase))
+                .collect(Collectors.toList());
+        return !humanRoles.isEmpty()
+                && humanRoles.stream().allMatch(role -> POOLED_ROLES.stream().anyMatch(role::equalsIgnoreCase));
     }
 
     /**
@@ -523,65 +655,6 @@ public class WorkflowService {
             log.error("Out-of-scope vendor comparison failed for incident: {}, keeping ASSIGN", incidentId, e);
             return ASSIGN;
         }
-    }
-
-    /**
-     * The state the ticket is about to land in, resolved from the business service definition the same
-     * way egov-workflow-v2's TransitionService resolves it: the action on the current state names its
-     * next state by uuid.
-     *
-     * @return null when the current state, the action or the next state is not in the definition
-     */
-    private State findResultantState(String currentApplicationStatus, String action, List<State> states) {
-        if (CollectionUtils.isEmpty(states) || StringUtils.isBlank(currentApplicationStatus)
-                || StringUtils.isBlank(action)) {
-            return null;
-        }
-        String status = currentApplicationStatus.trim();
-        State currentState = states.stream()
-                // The config may expose the status either as the state name or as applicationStatus.
-                .filter(state -> status.equalsIgnoreCase(state.getState())
-                        || status.equalsIgnoreCase(state.getApplicationStatus()))
-                .findFirst()
-                .orElse(null);
-        if (currentState == null || CollectionUtils.isEmpty(currentState.getActions())) {
-            return null;
-        }
-        String nextStateUuid = currentState.getActions().stream()
-                .filter(a -> a != null && action.equalsIgnoreCase(a.getAction()))
-                .map(Action::getNextState)
-                .findFirst()
-                .orElse(null);
-        if (StringUtils.isBlank(nextStateUuid)) {
-            return null;
-        }
-        return states.stream()
-                .filter(state -> nextStateUuid.equals(state.getUuid()))
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
-     * True when every human role that can move the ticket on from this state is a pooled one. A state
-     * that also waits on a vendor or a health staff member is not pooled - those are real individuals
-     * and the ticket has to reach the right one.
-     * <p>
-     * Terminal states are excluded: the ticket has finished its lifecycle, so it waits on nobody and
-     * the actions it still carries (RATE on CLOSEDAFTERRESOLUTION) are after-the-fact ones.
-     */
-    private boolean isPooledState(State state) {
-        if (Boolean.TRUE.equals(state.getIsTerminateState()) || CollectionUtils.isEmpty(state.getActions())) {
-            return false;
-        }
-        List<String> humanRoles = state.getActions().stream()
-                .filter(a -> a != null && !CollectionUtils.isEmpty(a.getRoles()))
-                .flatMap(a -> a.getRoles().stream())
-                .filter(Objects::nonNull)
-                .distinct()
-                .filter(role -> MACHINE_ROLES.stream().noneMatch(role::equalsIgnoreCase))
-                .collect(Collectors.toList());
-        return !humanRoles.isEmpty()
-                && humanRoles.stream().allMatch(role -> POOLED_ROLES.stream().anyMatch(role::equalsIgnoreCase));
     }
 
     /**
@@ -674,6 +747,54 @@ public class WorkflowService {
         return businessIdToWorkflow;
     }
 
+    /**
+     * Computes and sets the workflow-derived index fields (SLA remaining, current owner) for a
+     * recovery/resync path (e.g. reindex) that already has the incident's current ProcessInstance
+     * but never went through updateWorkflowStatus(). Both depend on this.states being populated,
+     * which normally only happens as a side effect of getBusinessService() inside
+     * getProcessInstanceForIM() during a real transition; this wrapper performs that
+     * same lookup first so they have valid state definitions to work with.
+     */
+    public void enrichTotalSlaForResync(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+        log.trace("WorkflowService::enrichTotalSlaForResync method invoked");
+        IncidentRequest request = wrapper.getIncidentRequest();
+        Priority priority = slaService.getPriorityFromIMPriorityTable(request.getIncident());
+        BusinessService businessService = getBusinessService(request, priority);
+        this.states = businessService.getStates();
+        enrichTotalSla(wrapper, processInstance);
+        log.trace("Enriching current owner for resync");
+        currentOwnerService.enrichCurrentOwner(wrapper, processInstance, this.states);
+    }
+
+    /**
+     * Fetches the CURRENT ProcessInstance for an incident directly from the workflow
+     * engine (read-only search, no transition), preserving full fidelity (state,
+     * assignes as full User objects) unlike {@link #getWorkflow(List)}'s lossy
+     * Workflow conversion. Used by recovery/resync paths (e.g. reindex) that need to
+     * republish an incident's current workflow snapshot without performing an action.
+     */
+    public ProcessInstance getLatestProcessInstance(String tenantId, String incidentId, RequestInfo requestInfo) {
+        log.trace("WorkflowService::getLatestProcessInstance method invoked");
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
+        StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, incidentId);
+        Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
+
+        ProcessInstanceResponse processInstanceResponse;
+        try {
+            processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
+        } catch (IllegalArgumentException e) {
+            log.error("Failed to parse process instance response", e);
+            throw new CustomException("PARSING_ERROR", "Failed to parse response of workflow processInstance search");
+        }
+
+        if (processInstanceResponse == null || CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
+            log.error("No process instance found for incidentId: {}", incidentId);
+            throw new CustomException("WORKFLOW_NOT_FOUND", "The workflow object is not found for incidentId " + incidentId);
+        }
+
+        return processInstanceResponse.getProcessInstances().get(0);
+    }
+
     private List<ProcessInstance> getAllProcessInstances(String tenantId, String IncidentId, RequestInfo requestInfo){
         log.trace("WorkflowService::getAllProcessInstances method invoked");
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
@@ -695,8 +816,22 @@ public class WorkflowService {
             return Collections.emptyList();
         }
 
-        log.debug("Found {} process instances in history", processInstanceResponse.getProcessInstances().size());
-        return processInstanceResponse.getProcessInstances();
+        List<ProcessInstance> processInstances =  processInstanceResponse.getProcessInstances();
+
+        // Get latest cycle of the ticket
+        Collections.reverse(processInstances);
+        int lastIndex = -1;
+        for (int i = processInstances.size() - 1; i >= 0; i--) {
+            if (PENDINGFORASSIGNMENT.equals(processInstances.get(i).getState().getState())) {
+                lastIndex = i;
+                break;
+            }
+        }
+        if (lastIndex != -1) {
+            return new ArrayList<>(processInstances.subList(lastIndex, processInstances.size()));
+        } else {
+            return new ArrayList<>(processInstances);
+        }
     }
 
 

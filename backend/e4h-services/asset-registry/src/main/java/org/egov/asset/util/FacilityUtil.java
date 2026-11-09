@@ -126,4 +126,5 @@ public class FacilityUtil {
         log.debug("Activity facility fetched successfully | tenantId={} activityFacilityId={}", tenantId, activityFacilityId);
         return Collections.singletonList(response.get("facility"));
     }
+
 }

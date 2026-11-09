@@ -321,6 +321,7 @@ public class AssetValidator {
         log.debug("Validating warranty | assetId={} warrantyDuration={}",
                 asset.getAssetId(), asset.getWarrantyDuration());
 
+        // Skip validation if warranty duration is 0
         if (asset.getWarrantyDuration() == null || asset.getWarrantyDuration() == 0) {
             log.debug("Skipping warranty validation: duration is 0 or null");
             return;

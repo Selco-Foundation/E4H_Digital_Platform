@@ -25,10 +25,10 @@ public class UserAnalyticsAggregation {
     /** Counts across every document in the week, ignoring state and role. */
     private UserAnalyticsMetrics overall;
 
-    /** Localized state name -> counts. Documents with a null state fall under {@code UNKNOWN}. */
+    /** Localized state name -> counts. Documents with a null state are left out entirely. */
     private Map<String, UserAnalyticsMetrics> byState;
 
-    /** {@code primary_role} -> counts. Documents with a null role fall under {@code UNKNOWN}. */
+    /** {@code primary_role} -> counts. Documents with a null role are left out entirely. */
     private Map<String, UserAnalyticsMetrics> byRole;
 
     /**
@@ -40,6 +40,12 @@ public class UserAnalyticsAggregation {
     /** Application -> its most active users, highest activity first. */
     private Map<String, List<ChampionUser>> championsByApplication;
 
+    /**
+     * Kibana login id -> how many times it signed in, busiest first. Iteration order is the ranking,
+     * so this is a {@code LinkedHashMap}. Reported week only, like the champions.
+     */
+    private Map<String, Long> kibanaLoginsByUser;
+
     public static UserAnalyticsAggregation empty() {
         return UserAnalyticsAggregation.builder()
                 .overall(UserAnalyticsMetrics.empty())
@@ -47,6 +53,7 @@ public class UserAnalyticsAggregation {
                 .byRole(Collections.emptyMap())
                 .championsByRole(Collections.emptyMap())
                 .championsByApplication(Collections.emptyMap())
+                .kibanaLoginsByUser(Collections.emptyMap())
                 .build();
     }
 

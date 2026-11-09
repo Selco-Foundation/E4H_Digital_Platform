@@ -8,6 +8,7 @@ import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.Alert;
 import org.egov.rms.model.FacilityDetails;
 import org.egov.rms.model.IMServiceRequest;
+import org.egov.rms.util.IncidentTypeMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -46,24 +47,14 @@ public class PayloadGenerator {
             }
 
             // Map alert type/subtype to IM service incident type/subtype
-            String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
-            String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
+            String incidentType = IncidentTypeMapper.toIncidentType(alert.getAlertType());
+            String incidentSubType = IncidentTypeMapper.toIncidentSubType(alert.getAlertSubType());
 
             // Extract boundaryCode from facility details
             String boundaryCode = facilityDetails.getBoundaryCode();
             if (boundaryCode == null || boundaryCode.trim().isEmpty()) {
-                log.warn("SKIPPING TICKET CREATION: Alert {} has null/empty boundaryCode (facility: {}, hfrId: {}). " +
-                        "Only Karnataka boundary tickets are allowed for production release.",
+                log.warn("SKIPPING TICKET CREATION: Alert {} has null/empty boundaryCode (facility: {}, hfrId: {}).",
                         alert.getId(), alert.getFacilityId(), alert.getHfrId());
-                return null;
-            }
-            
-            // PROD RELEASE: Validate that boundaryCode is for Karnataka
-            // Format: India_Karnataka_...
-            if (!boundaryCode.startsWith("India_Karnataka")) {
-                log.warn("SKIPPING TICKET CREATION: Alert {} has non-Karnataka boundary code: {} (facility: {}, hfrId: {}). " +
-                        "Only Karnataka boundary tickets are allowed for production release.",
-                        alert.getId(), boundaryCode, alert.getFacilityId(), alert.getHfrId());
                 return null;
             }
 
@@ -98,71 +89,6 @@ public class PayloadGenerator {
             e.printStackTrace();
             log.error("Error generating ticket payload for alert: {}", alert.getId(), e);
             return null;
-        }
-    }
-
-    /**
-     * Maps RMS alert type to IM service incident type
-     */
-    private String mapAlertTypeToIncidentType(Alert.AlertType alertType) {
-        switch (alertType) {
-            case PANEL:
-                return "PANEL";
-            case INVERTER:
-                return "INVERTER";
-            case BATTERY:
-                return "BATTERY";
-            case GRID:
-                return "GRID";
-            default:
-                return "GIPB";
-        }
-    }
-
-    /**
-     * Maps RMS alert type to the MDMS Incident.Component of the equipment it is about, so an RMS
-     * ticket is caught as a duplicate of a ticket the facility reported on the same equipment.
-     * GRID alerts have no component: those tickets keep im-services' incidentType/subType check.
-     */
-    String mapAlertTypeToComponent(Alert.AlertType alertType) {
-        if (alertType == null) {
-            return null;
-        }
-        switch (alertType) {
-            case PANEL:
-                return "SOLAR_PANEL";
-            case INVERTER:
-                return "INVERTER";
-            case BATTERY:
-                return "BATTERY";
-            default:
-                return null;
-        }
-    }
-
-    /**
-     * Maps RMS alert sub-type to IM service incident sub-type
-     */
-    private String mapAlertSubTypeToIncidentSubType(Alert.AlertSubType alertSubType, Alert.AlertType alertType) {
-        switch (alertSubType) {
-            case LOW_GENERATION:
-                return "RunningOnGrid";
-            case SHUTDOWN:
-                return "ShutdownInverter";
-            case HIGH_VOLTAGE:
-                return "VoltageInverter";
-            case BURNT_DISCONNECTED:
-                return "BatteryDisconnected";
-            case DEEP_DISCHARGING:
-                return "DeepDischarge";
-            case OVERCHARGING:
-                return "Overcharge";
-            case VOLTAGE_VARIATION_REVERSE:
-                return "ReverseVoltage";
-            case VOLTAGE_VARIATION_HIGH:
-                return "HighVoltage";
-            default:
-                return "RMS Data Alert";
         }
     }
 

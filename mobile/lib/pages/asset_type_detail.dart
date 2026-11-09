@@ -13,6 +13,7 @@ import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';
 import '../model/warranty/warranty.dart';
@@ -34,6 +35,7 @@ class AssetTypeDetailPage extends StatefulWidget {
 
 class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? _currentProjectId;
+  ActivityFacilityWorkflow? projectWorkflow;
   String assetTypeTitle = "";
   late List<Warranty> assetWarranties = [];
   final List<Mdms<AssetType>> assetTypeList = [];
@@ -42,7 +44,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? selectedBrandCode;
   String? selectedBrandName;
 
-  final TextEditingController modelController = TextEditingController();
   final TextEditingController brandController = TextEditingController();
 
   @override
@@ -69,6 +70,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
 
     final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (project) {
+      projectWorkflow = project;
       _currentProjectId = project.activityFacility.id;
 
       final ad = project.activityFacility.additionalDetails;
@@ -97,7 +99,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
 
   @override
   void dispose() {
-    modelController.dispose();
     brandController.dispose();
     super.dispose();
   }
@@ -138,7 +139,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                 }
                 brandController.text = selectedBrandName ?? '';
                 selectedWarranty = entry.warranty;
-                modelController.text = entry.model ?? '';
               });
             }
           },
@@ -154,9 +154,8 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
             panel: () => 'Panel Details',
           );
 
-          final bool isEnabledSupervisor = selectedWarranty != null &&
-              selectedBrandCode != null &&
-              modelController.text.trim().isNotEmpty;
+          final bool isEnabledSupervisor =
+              selectedWarranty != null && selectedBrandCode != null;
 
           final bool isEnabledFieldUser = selectedBrandCode != null;
 
@@ -189,12 +188,17 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                             assetType: assetTypeTitle,
                             warranty: selectedWarranty,
                             brand: selectedBrandCode!,
-                            model: modelController.text.trim(),
                           );
 
                           context
                               .read<CacheAssetDetailBloc>()
                               .add(CacheAssetDetailEvent.add(newDetail));
+                          saveCacheSpecification(
+                            context,
+                            activityFacilityId: _currentProjectId!,
+                            project: projectWorkflow,
+                            selectedAssetType: assetTypeTitle,
+                          );
                           context.router.push(const AddNewAssetRoute());
                         },
                       ),
@@ -219,19 +223,22 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   color: theme.colorTheme.primary.primary2),
                             ),
                             LabeledField(
-                              label: 'Warranty Start Date',
+                              label: context
+                                  .translate(i18.assetSummary.warrantyStartDate),
                               labelStyle: textTheme.headingS.copyWith(
                                   color: theme.colorTheme.text.primary),
                               capitalizedFirstLetter: false,
                               child: DigitDateFormInput(
                                 controller: TextEditingController(),
-                                initialValue: 'Default Today Date',
+                                initialValue: context
+                                    .translate(i18.assetTypeDetail.defaultTodayDate),
                                 isDisabled: true,
                                 readOnly: true,
                               ),
                             ),
                             LabeledField(
-                                label: 'Warranty Duration',
+                                label: context.translate(
+                                    i18.assetSummary.warrantyDuration),
                                 labelStyle: textTheme.headingS.copyWith(
                                     color: theme.colorTheme.text.primary),
                                 capitalizedFirstLetter: false,
@@ -261,7 +268,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   },
                                 )),
                             LabeledField(
-                              label: 'Brand',
+                              label: context.translate(i18.assetSummary.brand),
                               labelStyle: textTheme.headingS.copyWith(
                                   color: theme.colorTheme.text.primary),
                               capitalizedFirstLetter: false,
@@ -270,20 +277,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                 isDisabled: true,
                                 readOnly: true,
                                 keyboardType: TextInputType.none,
-                              ),
-                            ),
-                            LabeledField(
-                              label: 'Model Number',
-                              labelStyle: textTheme.headingS.copyWith(
-                                  color: theme.colorTheme.text.primary),
-                              capitalizedFirstLetter: false,
-                              child: DigitTextFormInput(
-                                controller: modelController,
-                                innerLabel: 'SR45934295',
-                                keyboardType: TextInputType.text,
-                                onChange: (value) {
-                                  setState(() {});
-                                },
                               ),
                             ),
                           ])

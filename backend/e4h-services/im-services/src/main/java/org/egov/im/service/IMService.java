@@ -221,7 +221,7 @@ public class IMService {
         producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
         log.trace("Enriching fields for indexing");
-        enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+        enrichmentService.enrichFieldsForIndexing(wrapper, boundary, true);
         log.trace("Publishing incident to indexer topic");
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         log.trace("Enriching fields for audit indexing");
@@ -339,7 +339,6 @@ public class IMService {
                 && request.getWorkflow().getAction().equalsIgnoreCase("OUT_OF_WARRANTY")) {
             request.getIncident().setWarrantyStatus(WarrantyStatus.OUT_OF_WARRANTY);
         }
-
         log.trace("Enriching update request");
         enrichmentService.enrichUpdateRequest(request);
         String startingStatus = request.getIncident().getApplicationStatus();
@@ -408,7 +407,6 @@ public class IMService {
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
         log.trace("Publishing incident to audit indexer topic");
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
-        log.info("Incident updated successfully with incidentId={}", request.getIncident().getIncidentId());
 
         // Notify RMS when ticket status is moved to a closed state.
         rmsStatusUpdateService.notifyRmsOnStatusUpdate(request);
@@ -437,27 +435,27 @@ public class IMService {
         return request;
     }
 
-//    public MigrationV2Request migrationV2Update(MigrationV2Request request){
-//        String tenantId = request.getTenantId();
-//        RequestSearchCriteria criteria = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDINGFORASSIGNMENT")).incidentType(Set.of("RMS Device")).build();
-//        List<IncidentWrapper> response = search(request.getRequestInfo(), criteria);
-//        if(response !=null && !response.isEmpty()){
-//            for (IncidentWrapper wrapper: response){
-//                wrapper.getIncident().setApplicationStatus("PENDINGFORASSIGNMENT_RMS_DEVICE");
+    public MigrationV2Request migrationV2Update(MigrationV2Request request){
+        String tenantId = request.getTenantId();
+        RequestSearchCriteria criteria = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDINGFORASSIGNMENT")).incidentType(Set.of("RMS Device")).build();
+        List<IncidentWrapper> response = search(request.getRequestInfo(), criteria);
+        if(response !=null && !response.isEmpty()){
+            for (IncidentWrapper wrapper: response){
+                wrapper.getIncident().setApplicationStatus("PENDINGFORASSIGNMENT_RMS_DEVICE");
+                producer.push(tenantId,config.getUpdateMigrationTopic(),wrapper);
+            }
+        }
+
+//        RequestSearchCriteria criteriaSparePart = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDING_ASSIGNMENT_SPARE_PART_NEEDED")).build();
+//        List<IncidentWrapper> responseSparePart = search(request.getRequestInfo(), criteriaSparePart);
+//        if(responseSparePart !=null && !responseSparePart.isEmpty()){
+//            for (IncidentWrapper wrapper: responseSparePart){
+//                wrapper.getIncident().setApplicationStatus("PENDING_RESOLUTION_SPARE_PART_NEEDED");
 //                producer.push(tenantId,config.getUpdateMigrationTopic(),wrapper);
 //            }
 //        }
-//
-////        RequestSearchCriteria criteriaSparePart = RequestSearchCriteria.builder().tenantId("in").applicationStatus(Set.of("PENDING_ASSIGNMENT_SPARE_PART_NEEDED")).build();
-////        List<IncidentWrapper> responseSparePart = search(request.getRequestInfo(), criteriaSparePart);
-////        if(responseSparePart !=null && !responseSparePart.isEmpty()){
-////            for (IncidentWrapper wrapper: responseSparePart){
-////                wrapper.getIncident().setApplicationStatus("PENDING_RESOLUTION_SPARE_PART_NEEDED");
-////                producer.push(tenantId,config.getUpdateMigrationTopic(),wrapper);
-////            }
-////        }
-//        return request;
-//    }
+        return request;
+    }
 
     /**
      * Returns the total number of comaplaints matching the given criteria
@@ -589,14 +587,38 @@ public class IMService {
 				.workflow(incidentWrapper.getWorkflow())
 				.build();
 
+		log.trace("Fetching MDMS data for reindex");
+		Object mdmsData = mdmsUtils.mDMSCall(incidentRequest);
+
+		String boundaryCode = incident.getBoundaryCode();
+		if (boundaryCode != null && !boundaryCode.isEmpty()) {
+			Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(incidentRequest);
+			if (facilityDetails != null && !facilityDetails.isEmpty()) {
+				String facilityCategory = (String) facilityDetails.get("facility_category");
+				if (facilityCategory != null) {
+					incident.setFacilityCategory(facilityCategory);
+				}
+			}
+		}
+
 		IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
 				.incidentRequest(incidentRequest)
 				.indexView(new IndexView())
 				.build();
 
+		log.trace("Fetching current process instance for reindex");
+		ProcessInstance currentProcessInstance = workflowService.getLatestProcessInstance(tenantId, incidentId, requestInfo);
+		wrapper.setProcessInstance(imUtils.trimRolesFromProcessInstance(currentProcessInstance));
+
+		log.trace("Enriching total SLA for reindex");
+		workflowService.enrichTotalSlaForResync(wrapper, currentProcessInstance);
+
 		Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(requestInfo, incident.getBoundaryCode(), tenantId);
 		log.trace("Enriching fields for indexing (reindex)");
 		enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+
+		log.trace("Updating business service (reindex)");
+		imUtils.updateBusinessService(wrapper, mdmsData);
 
 		log.trace("Publishing incident to indexer topic only (reindex)");
 		producer.push(tenantId, config.getUpdateTopicIndexer(), wrapper);

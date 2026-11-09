@@ -40,10 +40,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.egov.amc.util.AmcConstants.ANALYTICS_APPLICATION;
+import static org.egov.amc.util.AmcConstants.ANALYTICS_APPLICATION_FIELD_ASSIST;
+import static org.egov.amc.util.AmcConstants.ANALYTICS_APPLICATION_MANAGEMENT_HUB;
 import static org.egov.amc.util.AmcConstants.ANALYTICS_ENTITY_TYPE_AMC_CONFIGURATION;
 import static org.egov.amc.util.AmcConstants.ANALYTICS_ENTITY_TYPE_AMC_VISIT;
 import static org.egov.amc.util.AmcConstants.ANALYTICS_EVENT_AMC_SCHEDULED;
+import static org.egov.amc.util.AmcConstants.ANALYTICS_EVENT_AMC_VISIT_OTP_VERIFIED;
+import static org.egov.amc.util.AmcConstants.ANALYTICS_EVENT_AMC_VISIT_RESUBMITTED;
+import static org.egov.amc.util.AmcConstants.ANALYTICS_EVENT_AMC_VISIT_SUBMITTED;
 import static org.egov.amc.util.AmcConstants.ANALYTICS_MODULE_AMC;
 import static org.egov.amc.util.AmcConstants.BOUNDARY_LOCALIZATION_MODULE;
 import static org.egov.amc.util.AmcConstants.LOCALIZATION_LOCALE;
@@ -160,7 +164,7 @@ public class AmcAnalyticsService {
                         .eventId(UUID.randomUUID().toString())
                         .eventType(ANALYTICS_EVENT_AMC_SCHEDULED)
                         .eventTime(Instant.now().toString())
-                        .application(ANALYTICS_APPLICATION)
+                        .application(ANALYTICS_APPLICATION_MANAGEMENT_HUB)
                         .user(user)
                         .systemRole(userType.systemRole)
                         .primaryRole(userType.primaryRole)
@@ -228,11 +232,13 @@ public class AmcAnalyticsService {
             Facility facility = visit.getFacility();
             String boundaryCode = (facility != null) ? facility.getBoundaryCode() : null;
 
+            String application = resolveApplicationForEventType(match.eventType);
+
             UserAnalyticsEvent event = UserAnalyticsEvent.builder()
                     .eventId(UUID.randomUUID().toString())
                     .eventType(match.eventType)
                     .eventTime(Instant.now().toString())
-                    .application(ANALYTICS_APPLICATION)
+                    .application(application)
                     .user(user)
                     .systemRole(systemRole)
                     .primaryRole(userType.primaryRole)
@@ -580,6 +586,18 @@ public class AmcAnalyticsService {
     private boolean isActive(Map<String, Object> record) {
         Object active = record.get("active");
         return active == null || Boolean.parseBoolean(active.toString());
+    }
+
+    private String resolveApplicationForEventType(String eventType) {
+        if (eventType == null) {
+            return ANALYTICS_APPLICATION_MANAGEMENT_HUB;
+        }
+        return switch (eventType) {
+            case ANALYTICS_EVENT_AMC_VISIT_SUBMITTED,
+                 ANALYTICS_EVENT_AMC_VISIT_RESUBMITTED,
+                 ANALYTICS_EVENT_AMC_VISIT_OTP_VERIFIED -> ANALYTICS_APPLICATION_FIELD_ASSIST;
+            default -> ANALYTICS_APPLICATION_MANAGEMENT_HUB;
+        };
     }
 
     /** The USER_ANALYTICS.AMC record matched for a workflow action. */

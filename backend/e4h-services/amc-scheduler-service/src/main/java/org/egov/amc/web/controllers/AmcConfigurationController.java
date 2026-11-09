@@ -7,10 +7,13 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.service.AmcConfigurationService;
+import org.egov.amc.service.FacilityAmcIndexSyncService;
 import org.egov.amc.web.models.AmcConfiguration;
 import org.egov.amc.web.models.AmcConfigurationRequest;
 import org.egov.amc.web.models.AmcConfigurationResponse;
 import org.egov.amc.web.models.AmcConfigurationSearchRequest;
+import org.egov.amc.web.models.FacilityAmcBackfillResponse;
+import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.utils.ResponseInfoFactory;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -33,18 +37,38 @@ import java.util.List;
 @Slf4j
 public class AmcConfigurationController {
     private final AmcConfigurationService amcConfigurationService;
+    private final FacilityAmcIndexSyncService facilityAmcIndexSyncService;
 
     @Autowired
-    public AmcConfigurationController(AmcConfigurationService amcConfigurationService) {
+    public AmcConfigurationController(AmcConfigurationService amcConfigurationService,
+                                      FacilityAmcIndexSyncService facilityAmcIndexSyncService) {
         this.amcConfigurationService = amcConfigurationService;
+        this.facilityAmcIndexSyncService = facilityAmcIndexSyncService;
+    }
+
+    /**
+     * Script endpoint: rewrites the AMC snapshot on the health facility index for every facility in
+     * the tenant. Runs synchronously and can take a while on a large registry - it is a one-off
+     * maintenance call, not something the UI issues.
+     *
+     * <p>Idempotent: each facility's snapshot is recomputed from the database and overwrites whatever
+     * the index held, so re-running after a partial or failed run is how it gets repaired.
+     */
+    @RequestMapping(value = "/facility-index/_backfill", method = RequestMethod.POST)
+    public ResponseEntity<FacilityAmcBackfillResponse> backfillFacilityAmcIndex(
+            @ApiParam(value = "RequestInfo for the backfill trigger.", required = true)
+            @Valid @RequestBody RequestInfoWrapper request,
+            @RequestParam(name = "tenantId") String tenantId) {
+        log.info("Received request to backfill the AMC facility index for tenantId={}", tenantId);
+        FacilityAmcBackfillResponse response =
+                facilityAmcIndexSyncService.backfillFacilityAmcIndex(request.getRequestInfo(), tenantId);
+        response.setResponseInfo(ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true));
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST)
     public ResponseEntity<AmcConfigurationResponse> createAmcConfiguration(@ApiParam(value = "Capture details of benificiary type.", required = true) @Valid @RequestBody AmcConfigurationRequest request) {
-        log.trace("Entering createAmcConfiguration controller method");
-        log.info("Received request to create {} AMC configuration(s)", request.getAmcConfigurations().size());
         AmcConfigurationRequest enrichedamcConfigurationRequest = amcConfigurationService.createAmcConfiguration(request);
-        log.info("Successfully created {} AMC configuration(s)", enrichedamcConfigurationRequest.getAmcConfigurations().size());
         AmcConfigurationResponse response = AmcConfigurationResponse.builder()
                 .amcConfigurations(enrichedamcConfigurationRequest.getAmcConfigurations())
                 .responseInfo(ResponseInfoFactory
@@ -55,10 +79,7 @@ public class AmcConfigurationController {
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
     public ResponseEntity<AmcConfigurationResponse> updateAmcConfiguration(@ApiParam(value = "Details for the updated Field Plan.", required = true) @Valid @RequestBody AmcConfigurationRequest request) {
-        log.trace("Entering updateAmcConfiguration controller method");
-        log.info("Received request to update {} AMC configuration(s)", request.getAmcConfigurations().size());
         AmcConfigurationRequest enrichedAmcConfigurationRequest = amcConfigurationService.updateAmcConfiguration(request);
-        log.info("Successfully updated {} AMC configuration(s)", enrichedAmcConfigurationRequest.getAmcConfigurations().size());
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         AmcConfigurationResponse amcConfigurationResponse = AmcConfigurationResponse.builder().responseInfo(responseInfo).amcConfigurations(enrichedAmcConfigurationRequest.getAmcConfigurations()).build();
@@ -82,8 +103,6 @@ public class AmcConfigurationController {
             @ApiParam(value = "Details for the amcConfiguration.", required = true) @Valid @RequestBody AmcConfigurationSearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
-        log.trace("Entering searchAmcConfiguration controller method");
-        log.info("Received search request for AMC configurations, tenantId: {}", urlParams.getTenantId());
         List<AmcConfiguration> amcConfigurations = amcConfigurationService.searchAmcConfiguration(
                 request,
                 urlParams.getLimit(),
@@ -95,7 +114,6 @@ public class AmcConfigurationController {
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         Integer count = amcConfigurationService.countAllAmcConfiguration(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
         AmcConfigurationResponse amcConfigurationResponse = AmcConfigurationResponse.builder().responseInfo(responseInfo).amcConfigurations(amcConfigurations).totalCount(count).build();
-        log.info("AMC configuration search completed, found {} configuration(s), total count: {}", amcConfigurations.size(), count);
         return new ResponseEntity<AmcConfigurationResponse>(amcConfigurationResponse, HttpStatus.OK);
     }
 }

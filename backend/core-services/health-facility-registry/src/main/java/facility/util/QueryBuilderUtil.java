@@ -85,8 +85,9 @@ public class QueryBuilderUtil {
         }
 
         if (request.getBoundaryCode() != null && !request.getBoundaryCode().isBlank()) {
-            whereClause.append(" AND boundary_code ILIKE ?");
-            params.add(request.getBoundaryCode()+ "%");
+            whereClause.append(" AND (boundary_code = ? OR boundary_code ILIKE ? ESCAPE '\\')");
+            params.add(request.getBoundaryCode());
+            params.add(request.getBoundaryCode() + "\\_%");
         }
 
         if (request.getIsOnmReady() != null) {
@@ -103,6 +104,10 @@ public class QueryBuilderUtil {
         log.trace("Entering buildBulkWhereClause method");
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
+
+        whereClause.append(" AND fac.is_active = ?");
+        params.add(true);
+        log.debug("Added is_active filter (true) to bulk WHERE clause");
 
         if (!CollectionUtils.isEmpty(criteria.getTenantIds())) {
             whereClause.append(" AND fac.tenant_id in ( ").append(createQuery(criteria.getTenantIds().size())).append(" )");

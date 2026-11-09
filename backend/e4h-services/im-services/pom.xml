@@ -4,7 +4,7 @@
     <artifactId>im-services</artifactId>
     <packaging>jar</packaging>
     <name>im-services</name>
-    <version>2.9.0</version>
+    <version>1.2.0</version>
     <properties>
         <log4j2.version>2.17.1</log4j2.version>
         <java.version>17</java.version>

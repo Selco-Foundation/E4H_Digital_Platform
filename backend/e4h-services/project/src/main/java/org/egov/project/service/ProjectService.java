@@ -916,7 +916,7 @@ public class ProjectService {
             // STATUS CHECK: Only allow facility unlinking for Draft projects (status = null or missing)
             String projectStatus = getProjectStatus(project);
             if (!isDraftProject(projectStatus)) {
-                log.info("Project {} has status '{}' - facility unlinking not allowed. Only Draft projects (status=null or missing) can unlink facilities.", 
+                log.info("Project {} has status '{}' - facility unlinking not allowed. Only Draft projects (status=null or missing) can unlink facilities.",
                         project.getId(), projectStatus);
                 return;
             }
@@ -1375,16 +1375,6 @@ public class ProjectService {
                 "status",
                 updatedWorkflow.getState().getState()
         );
-
-        existingProject.setAdditionalDetails(enrichedAdditionalDetails);
-        Object bom = request.getWorkflow().getAdditionalDetails();
-        if(bom != null) {
-            enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                    existingProject.getAdditionalDetails(),
-                    "bom",
-                    bom
-            );
-        }
 
         // 4. Create a new Project instance with enriched additionalDetails
         Project updatedProject = Project.builder()

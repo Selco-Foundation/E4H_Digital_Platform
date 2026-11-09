@@ -199,4 +199,7 @@ public class ErrorConstants {
 	public static final String HRMS_INVALID_SEARCH_CITIZEN_CODE = "ERR_HRMS_INVALID_SEARCH_CITIZEN";
 	public static final String HRMS_INVALID_SEARCH_CITIZEN_MSG = "Citizen are not allowed to access employee search with Ids.";
 
+	public static final String HRMS_ENCRYPTION_FAILED_CODE = "ERR_HRMS_ENCRYPTION_FAILED";
+	public static final String HRMS_ENCRYPTION_FAILED_MSG = "Failed to encrypt username via the encryption service.";
+
 }
