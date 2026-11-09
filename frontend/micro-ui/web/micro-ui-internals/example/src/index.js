@@ -14,6 +14,7 @@ import "@selco/selco-css/dist/index.css";
 
 import { pgrCustomizations } from "./pgr";
 import { UICustomizations } from "./UICustomizations";
+
 var Digit = window.Digit || {};
 
 const enabledModules = ["IM", "DSS", "HRMS","PGR"];
