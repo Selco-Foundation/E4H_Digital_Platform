@@ -753,12 +753,14 @@ public class WorkflowService {
      * but never went through updateWorkflowStatus(). Both depend on this.states being populated,
      * which normally only happens as a side effect of getBusinessService() inside
      * getProcessInstanceForIM() during a real transition; this wrapper performs that
-     * same lookup first so they have valid state definitions to work with.
+     * same lookup first so they have valid state definitions to work with. The priority is resolved
+     * the same way as on a real transition, so a ticket with observations resolves the same business
+     * service it was created with.
      */
-    public void enrichTotalSlaForResync(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+    public void enrichTotalSlaForResync(IncidentRequestWrapper wrapper, ProcessInstance processInstance, Object mdmsData) {
         log.trace("WorkflowService::enrichTotalSlaForResync method invoked");
         IncidentRequest request = wrapper.getIncidentRequest();
-        Priority priority = slaService.getPriorityFromIMPriorityTable(request.getIncident());
+        Priority priority = slaService.resolvePriority(request.getIncident(), mdmsData);
         BusinessService businessService = getBusinessService(request, priority);
         this.states = businessService.getStates();
         enrichTotalSla(wrapper, processInstance);

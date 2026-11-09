@@ -611,7 +611,7 @@ public class IMService {
 		wrapper.setProcessInstance(imUtils.trimRolesFromProcessInstance(currentProcessInstance));
 
 		log.trace("Enriching total SLA for reindex");
-		workflowService.enrichTotalSlaForResync(wrapper, currentProcessInstance);
+		workflowService.enrichTotalSlaForResync(wrapper, currentProcessInstance, mdmsData);
 
 		Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(requestInfo, incident.getBoundaryCode(), tenantId);
 		log.trace("Enriching fields for indexing (reindex)");
