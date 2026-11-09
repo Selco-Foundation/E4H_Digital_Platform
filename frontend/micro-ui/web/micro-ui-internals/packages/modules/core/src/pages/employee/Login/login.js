@@ -8,6 +8,7 @@ import PolicyConsentModal from "../../../components/PolicyConsentModal";
 import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
+import { LoginTollFreeHelp } from "../../../components/TollFreeHelp";
 
 const setEmployeeDetail = (userObject, token) => {
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || "en_IN";
@@ -317,10 +318,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     setActivePolicyModal(null);
   };
 
-  // Optional extension slot: the app (example / web) can register "LoginTollFreeHelp" in the
-  // Component Registry. If nothing is registered this is undefined and nothing is rendered.
-  const LoginTollFreeHelp = Digit.ComponentRegistryService.getComponent("LoginTollFreeHelp");
-
   const [userId, password, city] = propsConfig.inputs;
   const config = [
     {
@@ -406,7 +403,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
 
-        {LoginTollFreeHelp && <LoginTollFreeHelp t={t} />}
+        {/* "Unable to log in? Call toll-free" link + state-wise CRM numbers popup (shown before login). */}
+        <LoginTollFreeHelp t={t} />
 
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
           {logos.map((logo, index) => (

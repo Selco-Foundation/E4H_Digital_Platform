@@ -14,9 +14,6 @@ import "@selco/selco-css/dist/index.css";
 
 import { pgrCustomizations } from "./pgr";
 import { UICustomizations } from "./UICustomizations";
-
-import { LoginTollFreeHelp } from "./components/TollFreeHelp";
-
 var Digit = window.Digit || {};
 
 const enabledModules = ["IM", "DSS", "HRMS","PGR"];
@@ -77,7 +74,6 @@ const initDigitUI = () => {
     // PaymentModule,
     // ...paymentConfigs,
     // PaymentLinks,
-    LoginTollFreeHelp,
   });
   initIMComponents();
   initDSSComponents();
