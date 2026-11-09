@@ -224,14 +224,6 @@ public class Configuration {
     @Value("${vendor.jurisdiction.unscoped.roles:ORG_PLATFORM_ADMIN}")
     private List<String> jurisdictionUnscopedRoles;
 
-    /** How long a caller's resolved scope is reused. Search and count resolve it separately. */
-    @Value("${vendor.jurisdiction.scope.cache.seconds:120}")
-    private Long jurisdictionScopeCacheSeconds;
-
-    /** How long one boundary's descendant expansion is reused. Boundaries change rarely. */
-    @Value("${vendor.jurisdiction.boundary.cache.seconds:300}")
-    private Long jurisdictionBoundaryCacheSeconds;
-
     //Notification
     @Value("${notification.sms.enabled}")
     private Boolean isSMSEnabled;

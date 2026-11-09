@@ -52,8 +52,6 @@ class JurisdictionScopeResolverTest {
 
     @BeforeEach
     void setUp() {
-        when(config.getJurisdictionScopeCacheSeconds()).thenReturn(120L);
-        when(config.getJurisdictionBoundaryCacheSeconds()).thenReturn(300L);
         when(config.getJurisdictionUnscopedRoles()).thenReturn(List.of("ORG_PLATFORM_ADMIN"));
         resolver = new JurisdictionScopeResolver(hrmsUtils, boundaryUtil, config);
     }
@@ -85,16 +83,20 @@ class JurisdictionScopeResolverTest {
         when(hrmsUtils.getUserById(any(), anyString())).thenReturn(employee);
     }
 
+    /**
+     * Stubs the expansion of one grant. Matched on the grant being present rather than on an exact
+     * collection, because the resolver expands every grant in a single call.
+     */
     private void beneath(String boundary, String... descendants) {
         Set<String> all = new java.util.LinkedHashSet<>();
         all.add(boundary);
         all.addAll(List.of(descendants));
-        when(boundaryUtil.codesBeneath(any(), anyString(), eqList(boundary))).thenReturn(all);
+        when(boundaryUtil.codesBeneath(any(), anyString(), containing(boundary))).thenReturn(all);
     }
 
-    private static List<String> eqList(String single) {
+    private static Collection<String> containing(String code) {
         return org.mockito.ArgumentMatchers.argThat(argument ->
-                argument != null && argument.size() == 1 && argument.contains(single));
+                argument != null && argument.contains(code));
     }
 
     @Test
@@ -262,16 +264,16 @@ class JurisdictionScopeResolverTest {
     }
 
     @Test
-    void theBoundaryServiceIsAskedOncePerGrantAndThenCached() {
-        callerHolds(jurisdiction("India_Telangana", "VENDOR_ADMIN"));
-        beneath("India_Telangana", "India_Telangana_Hyderabad");
+    void everyGrantIsExpandedInASingleBoundaryCall() {
+        callerHolds(
+                jurisdiction("India_Telangana", "VENDOR_ADMIN"),
+                jurisdiction("India_Karnataka", "VENDOR_ADMIN"));
+        when(boundaryUtil.codesBeneath(any(), anyString(), any(Collection.class)))
+                .thenReturn(Set.of("India_Telangana", "India_Karnataka", "India_Telangana_Hyderabad"));
 
-        resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
-        resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
+        JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
 
-        // Search and count resolve the scope separately on every request; without the cache that
-        // is two HRMS calls and two boundary expansions per page view.
-        org.mockito.Mockito.verify(hrmsUtils, org.mockito.Mockito.times(1)).getUserById(any(), anyString());
+        assertTrue(scope.covers("India_Telangana_Hyderabad"));
         org.mockito.Mockito.verify(boundaryUtil, org.mockito.Mockito.times(1))
                 .codesBeneath(any(), anyString(), any(Collection.class));
     }

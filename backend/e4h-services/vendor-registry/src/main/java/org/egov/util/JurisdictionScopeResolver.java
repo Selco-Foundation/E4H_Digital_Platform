@@ -1,7 +1,5 @@
 package org.egov.util;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.RequestInfoWrapper;
@@ -14,7 +12,6 @@ import org.egov.web.models.Jurisdiction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -49,25 +46,11 @@ public class JurisdictionScopeResolver {
     private final BoundaryUtil boundaryUtil;
     private final Configuration config;
 
-    /** Boundaries a caller holds VENDOR_ADMIN at, before expansion. Keyed by caller uuid. */
-    private final Cache<String, Set<String>> grantsByCaller;
-
-    /** One boundary's descendants. Boundaries change far more slowly than assignments do. */
-    private final Cache<String, Set<String>> codesBeneath;
-
     @Autowired
     public JurisdictionScopeResolver(HRMSUtils hrmsUtils, BoundaryUtil boundaryUtil, Configuration config) {
         this.hrmsUtils = hrmsUtils;
         this.boundaryUtil = boundaryUtil;
         this.config = config;
-        this.grantsByCaller = Caffeine.newBuilder()
-                .expireAfterWrite(Duration.ofSeconds(config.getJurisdictionScopeCacheSeconds()))
-                .maximumSize(10_000)
-                .build();
-        this.codesBeneath = Caffeine.newBuilder()
-                .expireAfterWrite(Duration.ofSeconds(config.getJurisdictionBoundaryCacheSeconds()))
-                .maximumSize(10_000)
-                .build();
     }
 
     /**
@@ -122,8 +105,7 @@ public class JurisdictionScopeResolver {
             throw new CustomException("INVALID_USER", "User UUID is required to administer organisation users");
         }
 
-        Set<String> grants = grantsByCaller.get(callerUuid,
-                uuid -> fetchVendorAdminBoundaries(requestInfo, uuid));
+        Set<String> grants = fetchVendorAdminBoundaries(requestInfo, callerUuid);
 
         if (grants.isEmpty()) {
             // Every vendor administrator is expected to hold at least one jurisdiction, so this is
@@ -133,11 +115,7 @@ public class JurisdictionScopeResolver {
             return Scope.nothing();
         }
 
-        Set<String> scope = new LinkedHashSet<>();
-        for (String boundary : grants) {
-            scope.addAll(codesBeneath.get(cacheKey(tenantId, boundary),
-                    key -> boundaryUtil.codesBeneath(requestInfo, tenantId, List.of(boundary))));
-        }
+        Set<String> scope = new LinkedHashSet<>(boundaryUtil.codesBeneath(requestInfo, tenantId, grants));
 
         log.debug("Caller {} administers {} boundaries, expanded from {} jurisdictions",
                 callerUuid, scope.size(), grants.size());
@@ -217,9 +195,5 @@ public class JurisdictionScopeResolver {
                 .map(org.egov.web.models.Role::getCode)
                 .filter(Objects::nonNull)
                 .anyMatch(VENDOR_ADMIN::equalsIgnoreCase);
-    }
-
-    private String cacheKey(String tenantId, String boundary) {
-        return tenantId + "|" + boundary;
     }
 }

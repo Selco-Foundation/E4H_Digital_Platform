@@ -144,12 +144,6 @@
             </exclusions>
         </dependency>
         <!-- Bean Validation API support -->
-        <!-- Short-lived caches for the caller's jurisdiction scope and boundary expansion.
-             Version is managed by spring-boot-starter-parent. -->
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
     </dependencies>
     <repositories>
         <repository>
