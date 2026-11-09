@@ -69,6 +69,13 @@ public class UserServiceConstants {
     public static final String TENANTID_MDC_STRING = "TENANTID";
     
     public static final String CITIZEN_ROLE_CODE = "CITIZEN";
+
+    // OTP login (registered phone number + OTP) for facility users and CRM
+    public static final String OTP_LOGIN_SMS_CODE = "USER_OTP_LOGIN_SMS";
+    public static final String DEFAULT_OTP_LOGIN_SMS_MESSAGE =
+            "{otp} is your OTP to log in. It is valid for {validity} minutes. Do not share it with anyone.";
+    public static final String LOGIN_METHOD_PARAM = "loginMethod";
+    public static final String LOGIN_METHOD_OTP = "OTP";
     
 }
 
