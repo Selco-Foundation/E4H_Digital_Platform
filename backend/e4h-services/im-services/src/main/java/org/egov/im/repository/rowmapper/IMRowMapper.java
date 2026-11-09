@@ -67,6 +67,8 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                 String boundaryCode = rs.getString("boundarycode");
                 String warrantyStatusStr = rs.getString("warranty_status");
                 WarrantyStatus warrantyStatus = WarrantyStatus.fromValue(warrantyStatusStr);
+                String component = rs.getString("component");
+                List<String> observations = getObservations(rs);
                 User u=new User();
                 u.setTenantId(reporterTenant);
                 u.setUuid(accountId);
@@ -98,6 +100,8 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                         .facilityId(facilityId)
                         .boundaryCode(boundaryCode)
                         .warrantyStatus(warrantyStatus)
+                        .component(component)
+                        .observations(observations)
                         .build();
 
                 JsonNode additionalDetails = getAdditionalDetail("ser_additionaldetails",rs);
@@ -115,6 +119,16 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
         return new ArrayList<>(serviceMap.values());
 
 
+    }
+
+    private List<String> getObservations(ResultSet rs) throws SQLException {
+        JsonNode observations = getAdditionalDetail("observations", rs);
+        if (observations == null || !observations.isArray()) {
+            return null;
+        }
+        List<String> codes = new ArrayList<>();
+        observations.forEach(node -> codes.add(node.asText()));
+        return codes;
     }
 
 //    private void addChildrenToProperty(ResultSet rs, Incident incident) throws SQLException {

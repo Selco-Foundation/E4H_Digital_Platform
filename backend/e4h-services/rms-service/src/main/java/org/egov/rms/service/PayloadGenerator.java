@@ -75,6 +75,7 @@ public class PayloadGenerator {
                     .comments(buildComments(alert, facilityDetails))
                     .systemFunctional("FUNCTIONAL")
                     .boundaryCode(boundaryCode)
+                    .component(config.isTicketComponentEnabled() ? mapAlertTypeToComponent(alert.getAlertType()) : null)
                     .source("RMS")
                     .reporterType("RMS")
                     .additionalDetail(buildAdditionalDetail(alert, facilityDetails))
@@ -115,6 +116,27 @@ public class PayloadGenerator {
                 return "GRID";
             default:
                 return "GIPB";
+        }
+    }
+
+    /**
+     * Maps RMS alert type to the MDMS Incident.Component of the equipment it is about, so an RMS
+     * ticket is caught as a duplicate of a ticket the facility reported on the same equipment.
+     * GRID alerts have no component: those tickets keep im-services' incidentType/subType check.
+     */
+    String mapAlertTypeToComponent(Alert.AlertType alertType) {
+        if (alertType == null) {
+            return null;
+        }
+        switch (alertType) {
+            case PANEL:
+                return "SOLAR_PANEL";
+            case INVERTER:
+                return "INVERTER";
+            case BATTERY:
+                return "BATTERY";
+            default:
+                return null;
         }
     }
 

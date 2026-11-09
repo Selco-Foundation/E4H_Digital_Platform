@@ -61,6 +61,14 @@ public class IMConstants {
 
     public static final String MDMS_SERVICEDEF_SEARCH = "$.MdmsRes.Incident.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')]";
 
+    // SEM 4.0 Ticket Reporting masters (module Incident)
+    public static final String MDMS_COMPONENT = "Component";
+    public static final String MDMS_OBSERVATION = "Observation";
+    public static final String COMPONENT_CATEGORY_THEFT = "THEFT";
+    public static final String COMPONENT_CATEGORY_SUPPORT_REQUEST = "SUPPORT_REQUEST";
+    public static final String MDMS_COMPONENT_SEARCH = "$.MdmsRes.Incident.Component[?(@.code=='{CODE}')]";
+    public static final String MDMS_OBSERVATION_SEARCH = "$.MdmsRes.Incident.Observation[?(@.componentCode=='{COMPONENT}')]";
+
     public static final String MDMS_DEPARTMENT_SEARCH = "$.MdmsRes.RAINMAKER-im.ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')].department";
 
     public static final String HRMS_DEPARTMENT_JSONPATH = "$.Employees.*.assignments.*.department";
@@ -232,6 +240,8 @@ public class IMConstants {
     public static final String USREVENTS_EVENT_POSTEDBY = "SYSTEM-im";
 
     public static final String IMAGE_DOCUMENT_TYPE = "PHOTO";
+    // Workflow document type of the FIR / complaint letter mandatory on a theft ticket
+    public static final String FIR_DOCUMENT_TYPE = "FIR";
 
     public static final String MDMS_DATA_JSONPATH = "$.MdmsRes.RAINMAKER-im.ServiceDefs";
 

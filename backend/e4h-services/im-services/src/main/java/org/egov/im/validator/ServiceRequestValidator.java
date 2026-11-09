@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
@@ -50,8 +51,71 @@ public class ServiceRequestValidator {
         validateMDMS(request, mdmsData);
         //validateDepartment(request, mdmsData);
         validateBoundary(request, errorMap);
+        validateComponentAndObservations(request, mdmsData, errorMap);
         if(!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    /**
+     * The component must be an active MDMS Incident.Component and every observation an active
+     * Incident.Observation of that component - their priorities set the ticket priority. A component
+     * of category THEFT needs at least one observation and the FIR document.
+     */
+    void validateComponentAndObservations(IncidentRequest request, Object mdmsData, Map<String, String> errorMap) {
+        String component = request.getIncident().getComponent();
+        List<String> observations = request.getIncident().getObservations();
+        if (StringUtils.isEmpty(component)) {
+            if (!CollectionUtils.isEmpty(observations)) {
+                errorMap.put("INVALID_OBSERVATIONS", "Observations require a component");
+            }
+            return;
+        }
+        try {
+            List<Object> components = JsonPath.read(mdmsData, MDMS_COMPONENT_SEARCH.replace("{CODE}", component));
+            if (CollectionUtils.isEmpty(components)) {
+                errorMap.put("INVALID_COMPONENT", "The component: " + component + " is not present in MDMS");
+                return;
+            }
+            Object category = components.get(0) instanceof Map ? ((Map<?, ?>) components.get(0)).get("category") : null;
+            if (COMPONENT_CATEGORY_THEFT.equals(category)) {
+                validateTheftReport(request, component, observations, errorMap);
+            }
+            if (CollectionUtils.isEmpty(observations)) {
+                return;
+            }
+            List<String> componentObservationCodes = JsonPath.read(mdmsData,
+                    MDMS_OBSERVATION_SEARCH.replace("{COMPONENT}", component) + ".code");
+            List<String> invalid = observations.stream()
+                    .filter(code -> !componentObservationCodes.contains(code))
+                    .collect(Collectors.toList());
+            if (!invalid.isEmpty()) {
+                errorMap.put("INVALID_OBSERVATIONS",
+                        "Observations " + invalid + " are not present in MDMS for component: " + component);
+            }
+        } catch (Exception e) {
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+        }
+    }
+
+    /**
+     * A theft report must say what was stolen (at least one observation) and carry the FIR or
+     * complaint letter, attached as a workflow document of type FIR - photos may be attached too,
+     * so any other document does not count.
+     */
+    private void validateTheftReport(IncidentRequest request, String component, List<String> observations,
+                                     Map<String, String> errorMap) {
+        if (CollectionUtils.isEmpty(observations)) {
+            errorMap.put("OBSERVATION_REQUIRED", "At least one observation is required for component: " + component);
+        }
+        List<Document> documents = request.getWorkflow() == null ? null : request.getWorkflow().getVerificationDocuments();
+        boolean hasFir = !CollectionUtils.isEmpty(documents)
+                && documents.stream().anyMatch(document -> document != null
+                        && FIR_DOCUMENT_TYPE.equalsIgnoreCase(StringUtils.trim(document.getDocumentType()))
+                        && StringUtils.isNotBlank(document.getFileStoreId()));
+        if (!hasFir) {
+            errorMap.put("FIR_DOCUMENT_MANDATORY",
+                    "The FIR or complaint letter (document of type " + FIR_DOCUMENT_TYPE + ") is mandatory for component: " + component);
+        }
     }
 
 

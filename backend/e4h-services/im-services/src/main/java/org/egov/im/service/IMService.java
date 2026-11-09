@@ -1,6 +1,7 @@
 package org.egov.im.service;
 
 
+import org.apache.commons.lang.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
 
@@ -54,6 +55,8 @@ public class IMService {
 
     private SemAnalyticsService semAnalyticsService;
 
+    private DuplicateCheckService duplicateCheckService;
+
     @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
     private Set<String> openTicketStatuses;
 
@@ -70,7 +73,7 @@ public class IMService {
             IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils,
             LocalizationService localizationService, BoundaryService boundaryService,
             RmsStatusUpdateService rmsStatusUpdateService, RmsInactiveIncidentService rmsInactiveIncidentService,
-            SemAnalyticsService semAnalyticsService
+            SemAnalyticsService semAnalyticsService, DuplicateCheckService duplicateCheckService
     ) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
@@ -87,6 +90,29 @@ public class IMService {
         this.rmsStatusUpdateService = rmsStatusUpdateService;
         this.rmsInactiveIncidentService = rmsInactiveIncidentService;
         this.semAnalyticsService = semAnalyticsService;
+        this.duplicateCheckService = duplicateCheckService;
+    }
+
+    /**
+     * Open tickets of a facility for a component, checked right after the reporter picks the
+     * component - none for a support request component.
+     */
+    public DuplicateCheckResponse checkDuplicates(DuplicateCheckRequest request) {
+        log.trace("IMService::checkDuplicates method invoked");
+        IncidentRequest mdmsRequest = IncidentRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .incident(Incident.builder().tenantId(request.getTenantId()).build())
+                .build();
+        Object mdmsData = mdmsUtils.mDMSCall(mdmsRequest);
+        boolean applicable = duplicateCheckService.isApplicable(request.getComponent(), mdmsData);
+        List<DuplicateTicket> duplicates = applicable
+                ? duplicateCheckService.toDuplicateTickets(duplicateCheckService.findOpenTickets(
+                        request.getTenantId(), request.getBoundaryCode(), request.getComponent()))
+                : Collections.emptyList();
+        return DuplicateCheckResponse.builder()
+                .duplicateCheckApplicable(applicable)
+                .duplicates(duplicates)
+                .build();
     }
 
 
@@ -152,14 +178,22 @@ public class IMService {
 
         }
 
-        RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
-                .tenantId(request.getIncident().getTenantId())
-                .boundaryCode(request.getIncident().getBoundaryCode())
-                .applicationStatus(openTicketStatuses)
-                .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
-                .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
-                .build();
-        List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+        // A ticket reported with a component is checked by facility + component (SEM 4.0 Ticket
+        // Reporting); any other ticket keeps the facility + incidentType + incidentSubType check.
+        boolean componentReported = StringUtils.isNotBlank(request.getIncident().getComponent());
+        List<IncidentWrapper> incidentWrappers = null;
+        if (componentReported) {
+            duplicateCheckService.checkOnCreate(request, mdmsData);
+        } else {
+            RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
+                    .tenantId(request.getIncident().getTenantId())
+                    .boundaryCode(request.getIncident().getBoundaryCode())
+                    .applicationStatus(openTicketStatuses)
+                    .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
+                    .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
+                    .build();
+            incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+        }
         Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId());
         if (boundary == null) {
             log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
@@ -169,9 +203,11 @@ public class IMService {
         enrichmentService.enrichCreateRequest(request, boundary);
         log.trace("Checking for potential duplicates");
 
-        boolean isDuplicate = incidentWrappers != null && !incidentWrappers.isEmpty();
-        request.getIncident().setPotentialDuplicate(isDuplicate);
-        log.debug("Potential duplicate check completed, isDuplicate={}", isDuplicate);
+        if (!componentReported) {
+            boolean isDuplicate = incidentWrappers != null && !incidentWrappers.isEmpty();
+            request.getIncident().setPotentialDuplicate(isDuplicate);
+        }
+        log.debug("Potential duplicate check completed, isDuplicate={}", request.getIncident().isPotentialDuplicate());
 
         String startingStatus = request.getIncident().getApplicationStatus();
         log.info("Updating workflow status for incident creation");

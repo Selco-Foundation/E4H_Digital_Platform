@@ -117,8 +117,8 @@ public class WorkflowService {
     public ProcessInstance updateWorkflowStatus(IncidentRequestWrapper wrapper, Object mdmsData) {
         log.trace("WorkflowService::updateWorkflowStatus method invoked");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
-        log.trace("Fetching priority from IM priority table");
-        Priority priority = slaService.getPriorityFromIMPriorityTable(incidentRequest.getIncident());
+        log.trace("Resolving incident priority");
+        Priority priority = slaService.resolvePriority(incidentRequest.getIncident(), mdmsData);
         log.trace("Creating process instance for workflow");
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest, priority);
         log.info("Updating workflow status for incident: {}, tenant: {}",

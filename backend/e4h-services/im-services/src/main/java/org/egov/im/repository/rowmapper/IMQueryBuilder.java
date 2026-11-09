@@ -107,6 +107,13 @@ public class IMQueryBuilder {
             addToPreparedStatement(preparedStmtList, incidentSubType);
         }
 
+        Set<String> component = criteria.getComponent();
+        if (!CollectionUtils.isEmpty(component)){
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.component IN (").append(createQuery(component)).append(")");
+            addToPreparedStatement(preparedStmtList, component);
+        }
+
         Set<String> phcType = criteria.getPhcType();
          if (!CollectionUtils.isEmpty(phcType)){
             addClauseIfRequired(preparedStmtList, builder);

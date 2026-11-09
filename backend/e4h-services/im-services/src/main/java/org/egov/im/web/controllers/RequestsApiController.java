@@ -58,6 +58,20 @@ public class RequestsApiController{
 
     }
 
+    /**
+     * Open tickets of a facility for a component (SEM 4.0 Ticket Reporting duplicate check), called
+     * right after the component is chosen. A facility user may still go on - the ticket is then
+     * created as a potential duplicate - while a CRM is refused on create.
+     */
+    @RequestMapping(value="/request/_duplicateCheck", method = RequestMethod.POST)
+    public ResponseEntity<DuplicateCheckResponse> requestsDuplicateCheckPost(@Valid @RequestBody DuplicateCheckRequest request) {
+        log.trace("RequestsApiController::requestsDuplicateCheckPost method invoked");
+        log.info("Received duplicate check for boundaryCode={} component={}", request.getBoundaryCode(), request.getComponent());
+        DuplicateCheckResponse response = imService.checkDuplicates(request);
+        response.setResponseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true));
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @RequestMapping(value="/request/_search", method = RequestMethod.POST)
     public ResponseEntity<IncidentResponse> requestsSearchPost(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                                               @Valid @ModelAttribute RequestSearchCriteria criteria) {

@@ -166,6 +166,48 @@ public class SLAService {
         return value != null ? String.valueOf(value) : null;
     }
 
+    /**
+     * Ticket priority. A ticket reported with a component (SEM 4.0 Ticket Reporting) takes the
+     * highest priority among its observations, read from MDMS Incident.Observation; a ticket with
+     * no component, or with no observation selected (observations are optional), keeps the
+     * im_services_priority table lookup on incidentType/incidentSubType/systemFunctional.
+     */
+    public Priority resolvePriority(Incident incident, Object mdmsData) {
+        log.trace("SLAService::resolvePriority method invoked");
+        Priority observationPriority = getPriorityFromObservations(incident, mdmsData);
+        if (observationPriority != null) {
+            return observationPriority;
+        }
+        return getPriorityFromIMPriorityTable(incident);
+    }
+
+    private Priority getPriorityFromObservations(Incident incident, Object mdmsData) {
+        String component = incident.getComponent();
+        List<String> observations = incident.getObservations();
+        if (component == null || component.isBlank() || CollectionUtils.isEmpty(observations) || mdmsData == null) {
+            return null;
+        }
+        List<Map<String, Object>> componentObservations;
+        try {
+            componentObservations = JsonPath.read(mdmsData, MDMS_OBSERVATION_SEARCH.replace("{COMPONENT}", component));
+        } catch (Exception e) {
+            throw new CustomException("JSONPATH_ERROR",
+                    "Failed to parse MDMS observations for component: " + component + ". Error: " + e.getMessage());
+        }
+        List<Priority> priorities = componentObservations.stream()
+                .filter(observation -> observations.contains(getStringValue(observation, "code")))
+                .map(observation -> Priority.fromString(getStringValue(observation, "priority")))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+        if (priorities.isEmpty()) {
+            log.warn("No MDMS priority found for component: {} and observations: {}", component, observations);
+            return null;
+        }
+        Priority priority = imPriorityRepository.getMaxPriority(priorities);
+        log.debug("Priority {} resolved from observations {} of component {}", priority, observations, component);
+        return priority;
+    }
+
     public Priority getPriorityFromIMPriorityTable(Incident incident) {
         log.trace("SLAService::getPriorityFromIMPriorityTable method invoked");
         String stateTenantId = incident.getTenantId().split("\\.")[0];
