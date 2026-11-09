@@ -83,6 +83,70 @@ public class BoundaryUtil {
         log.info("Boundary validation completed successfully for tenant: {}", tenantId);
     }
 
+    /**
+     * The given boundaries and everything beneath them, as a flat set.
+     *
+     * This is what turns "is this jurisdiction inside the admin's area?" into a set membership
+     * test. Resolved through boundary-service rather than by comparing boundary codes as strings:
+     * the codes look hierarchical (`India_Telangana_Hyderabad`), but a prefix match confuses
+     * `India_Telangana_Hyderabad` with `India_Telangana_Hyderabad2`, and the level separator is a
+     * literal underscore that pattern matching treats as a wildcard.
+     *
+     * Returns an empty set when the boundary service answers nothing. The caller decides what that
+     * means; for authorisation it has to mean "refuse", never "allow everything".
+     */
+    public Set<String> codesBeneath(RequestInfo requestInfo, String tenantId, Collection<String> codes) {
+        Set<String> wanted = new LinkedHashSet<>();
+        if (codes != null) {
+            codes.stream().filter(StringUtils::isNotBlank).forEach(wanted::add);
+        }
+        if (wanted.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        StringBuilder uri = new StringBuilder(config.getLocationHost())
+                .append(config.getLocationContextPath())
+                .append(config.getLocationBoundaryRelationshipEndpoint())
+                .append("?tenantId=").append(tenantId)
+                .append("&hierarchyType=").append(config.getLocationJurisdictionHierarchyType())
+                .append("&includeChildren=true")
+                .append("&codes=").append(StringUtils.join(wanted, ','));
+
+        Object response;
+        try {
+            response = serviceRequestRepository.fetchResult(uri,
+                    RequestInfoWrapper.builder().requestInfo(requestInfo).build());
+        } catch (Exception exception) {
+            log.error("Boundary service call failed while expanding {}", wanted, exception);
+            throw new CustomException("BOUNDARY_EXPANSION_FAILED",
+                    "Could not resolve the boundaries beneath " + wanted);
+        }
+
+        Set<String> found = new LinkedHashSet<>(wanted);
+        collectCodes(response, found);
+        log.debug("Expanded {} boundaries to {} codes", wanted.size(), found.size());
+        return found;
+    }
+
+    /**
+     * Walks whatever shape the relationship search returned, collecting every `code`.
+     *
+     * Deliberately structure-agnostic: the response nests boundaries under `TenantBoundary[].boundary[]`
+     * and then under `children[]`, and asking for codes wherever they appear costs nothing while
+     * surviving a change in how deeply they are wrapped.
+     */
+    private void collectCodes(Object node, Set<String> found) {
+        if (node instanceof Map<?, ?> map) {
+            Object code = map.get("code");
+            if (code instanceof String value && StringUtils.isNotBlank(value)) {
+                found.add(value);
+            }
+            map.values().forEach(child -> collectCodes(child, found));
+        } else if (node instanceof Iterable<?> iterable) {
+            iterable.forEach(child -> collectCodes(child, found));
+        }
+    }
+
     private StringBuilder getUri(String tenantId, String hierarchyTypeCode, String boundaryType, List<String> boundaries) {
         StringBuilder uri = new StringBuilder(config.getLocationHost());
         uri.append(config.getLocationContextPath()).append(config.getLocationEndpoint());

@@ -10,12 +10,18 @@ import org.egov.kafka.OrganizationProducer;
 import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.HRMSUtils;
+import org.egov.util.JurisdictionScopeResolver;
 import org.egov.validator.OrganisationUserServiceValidator;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -38,8 +44,10 @@ public class OrganisationUserService {
 
     private final ObjectMapper mapper;
 
+    private final JurisdictionScopeResolver jurisdictionScopeResolver;
+
     @Autowired
-    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper) {
+    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper, JurisdictionScopeResolver jurisdictionScopeResolver) {
         this.validator = validator;
         this.userRepository = userRepository;
         this.organisationEnrichmentService = organisationEnrichmentService;
@@ -48,6 +56,7 @@ public class OrganisationUserService {
         this.notificationService = notificationService;
         this.hrmsUtils = hrmsUtils;
         this.mapper = mapper;
+        this.jurisdictionScopeResolver = jurisdictionScopeResolver;
     }
 
 
@@ -82,12 +91,69 @@ public class OrganisationUserService {
         validator.validateSearchOrgUsersRequest(request, urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
         log.debug("Search request validation completed");
 
-        List<OrgUser> orgUserList = userRepository.getOrgUsers(request, urlParams);
-        return orgUserList;
+        JurisdictionScopeResolver.Scope scope =
+                jurisdictionScopeResolver.resolve(request.getRequestInfo(), urlParams.getTenantId());
+
+        if (scope.unscoped()) {
+            return userRepository.getOrgUsers(request, urlParams);
+        }
+
+        Map<String, Employee> inScope = resolveUsersInScope(request, urlParams, scope);
+        if (inScope.isEmpty()) {
+            return Collections.emptyList();
+        }
+        narrowToUsers(request, inScope.keySet());
+
+        return userRepository.getOrgUsers(request, urlParams, inScope, scope);
     }
 
     public Integer countOrganisationUsers(OrgUserSearchRequest request) {
+        URLParams urlParams = URLParams.builder().build();
+        JurisdictionScopeResolver.Scope scope =
+                jurisdictionScopeResolver.resolve(request.getRequestInfo(), request.getCriteria().getTenantId());
+
+        if (scope.unscoped()) {
+            return userRepository.getOrganisationsCount(request);
+        }
+
+        Map<String, Employee> inScope = resolveUsersInScope(request, urlParams, scope);
+        if (inScope.isEmpty()) {
+            return 0;
+        }
+        narrowToUsers(request, inScope.keySet());
+
         return userRepository.getOrganisationsCount(request);
+    }
+
+    /**
+     * The users this search matches that the caller may actually administer, keyed by uuid.
+     *
+     * Asked of HRMS in one call for the whole matching set rather than per row, because the
+     * answer has to be known *before* paging: filtering afterwards would return short pages
+     * beneath a total that counted users the caller cannot see.
+     */
+    private Map<String, Employee> resolveUsersInScope(OrgUserSearchRequest request, URLParams urlParams,
+                                                      JurisdictionScopeResolver.Scope scope) {
+        List<String> candidateIds = userRepository.getOrgUserIds(request, urlParams);
+        if (candidateIds.isEmpty() || scope.codes().isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Employee> employees = hrmsUtils.getUsersInBoundaries(request, candidateIds, scope.codes());
+        return employees.stream()
+                .filter(employee -> employee != null && employee.getUser() != null
+                        && employee.getUser().getUuid() != null)
+                .collect(Collectors.toMap(employee -> employee.getUser().getUuid(),
+                        Function.identity(), (first, second) -> first, LinkedHashMap::new));
+    }
+
+    /** Intersects any caller-supplied userIds filter with the set they are allowed to see. */
+    private void narrowToUsers(OrgUserSearchRequest request, java.util.Set<String> allowed) {
+        List<String> requested = request.getCriteria().getUserId();
+        List<String> narrowed = (requested == null || requested.isEmpty())
+                ? List.copyOf(allowed)
+                : requested.stream().filter(allowed::contains).toList();
+        request.getCriteria().setUserId(narrowed);
     }
 
     public OrgUserRequest updateOrgUser(OrgUserRequest request) {

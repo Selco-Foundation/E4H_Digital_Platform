@@ -88,6 +88,52 @@ public class HRMSUtils {
         return employeeResponse.getEmployees().get(0);
     }
 
+    /**
+     * The employees among `uuids` that hold a jurisdiction in `boundaryCodes`.
+     *
+     * One call for the whole page rather than one per user, which is also what makes jurisdiction
+     * filtering possible at all: the uuids that come back are the ones the caller may administer,
+     * so they can be handed to the org-user query as an ordinary filter and let SQL do the paging
+     * and the count. Filtering after pagination would return short pages under a total that
+     * disagreed with them.
+     *
+     * `searchOnlyInBoundary=true` is load-bearing. Without it HRMS expands the given codes to
+     * their **ancestors**, answering "who could act on something here" - the opposite of the
+     * question being asked. The descendants are already in `boundaryCodes`, so ancestor expansion
+     * would quietly widen the result upward past the caller's own area.
+     */
+    public List<Employee> getUsersInBoundaries(Object request, Collection<String> uuids, Collection<String> boundaryCodes) {
+        if (uuids == null || uuids.isEmpty() || boundaryCodes == null || boundaryCodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in"
+                + "&uuids=" + String.join(",", uuids)
+                + "&boundaryCodes=" + String.join(",", boundaryCodes)
+                + "&searchOnlyInBoundary=true";
+        return searchEmployees(request, url);
+    }
+
+    /** The employees for these uuids, in one call. */
+    public List<Employee> getUsersByIds(Object request, Collection<String> uuids) {
+        if (uuids == null || uuids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in&uuids=" + String.join(",", uuids);
+        return searchEmployees(request, url);
+    }
+
+    private List<Employee> searchEmployees(Object request, String url) {
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null) {
+            return Collections.emptyList();
+        }
+        return employeeResponse.getEmployees();
+    }
+
     public List<Employee> getUserByPhoneNumber(Object request, String phoneNumber) {
         String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()+ "?tenantId=in&phone="+phoneNumber;
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);

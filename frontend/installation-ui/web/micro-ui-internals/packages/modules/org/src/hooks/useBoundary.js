@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from "react-query";
 import { BoundaryService } from "../services/Boundary";
+import { boundariesForRole } from "../utilities/jurisdictionScope";
+import { VENDOR_ADMIN } from "../constants/Roles";
 
 const fetchBoundaries = async (queryFilter) => {
 
@@ -42,7 +44,25 @@ const fetchBoundaries = async (queryFilter) => {
   };
 };
 
+/**
+ * The boundaries the org user form may assign.
+ *
+ * Its only caller is the jurisdiction picker, so narrowing here narrows exactly the thing that
+ * should be narrowed: a vendor administrator can only give someone an area they administer
+ * themselves. `includeChildren` means their own boundaries and everything beneath them, which is
+ * the whole allowed set - a district administrator can still assign the blocks in their district.
+ *
+ * A platform administrator holds no VENDOR_ADMIN grants, so `boundariesForRole` answers null and
+ * nothing is narrowed. That is the right outcome for them, and it is the same null that means
+ * "we do not know this user's jurisdictions" for an older session - so do not turn null into an
+ * empty list here, which would leave both of them unable to assign anything.
+ *
+ * The backend rejects an out-of-scope jurisdiction regardless. This only keeps the form from
+ * offering one.
+ */
 const useBoundary = (codes) => {
+
+  const scopedCodes = codes || boundariesForRole(VENDOR_ADMIN);
 
   const queryFilter = {
     tenantId: Digit.ULBService.getCurrentTenantId(),
@@ -51,8 +71,8 @@ const useBoundary = (codes) => {
     hierarchyType: "SELCO",
   };
 
-  if (codes) {
-    queryFilter.codes = codes;
+  if (scopedCodes) {
+    queryFilter.codes = scopedCodes;
   }
 
   const queryClient = useQueryClient();

@@ -12,6 +12,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
+import java.util.List;
 import java.util.TimeZone;
 
 @Component
@@ -198,6 +199,38 @@ public class Configuration {
 
     @Value("${egov.location.hierarchy.type}")
     private String locationHierarchyType;
+
+    @Value("${egov.location.boundary.relationship.endpoint:/boundary-relationships/_search}")
+    private String locationBoundaryRelationshipEndpoint;
+
+    /**
+     * The hierarchy jurisdictions are authored in, which is not the one `egov.location.hierarchy.type`
+     * names. That property is ADMIN and is used for boundary validation; the boundary pickers in both
+     * frontends write SELCO codes, so expanding a jurisdiction against ADMIN finds nothing - quietly,
+     * as an empty scope rather than an error.
+     */
+    @Value("${egov.location.jurisdiction.hierarchy.type:SELCO}")
+    private String locationJurisdictionHierarchyType;
+
+    //Jurisdiction scope
+
+    /**
+     * Roles that administer org users without a jurisdiction restriction.
+     *
+     * Configuration rather than a constant because the set is a policy decision that an
+     * environment may need to change without a release - and because getting it wrong in either
+     * direction is visible immediately (a locked-out admin, or an unscoped one).
+     */
+    @Value("${vendor.jurisdiction.unscoped.roles:ORG_PLATFORM_ADMIN}")
+    private List<String> jurisdictionUnscopedRoles;
+
+    /** How long a caller's resolved scope is reused. Search and count resolve it separately. */
+    @Value("${vendor.jurisdiction.scope.cache.seconds:120}")
+    private Long jurisdictionScopeCacheSeconds;
+
+    /** How long one boundary's descendant expansion is reused. Boundaries change rarely. */
+    @Value("${vendor.jurisdiction.boundary.cache.seconds:300}")
+    private Long jurisdictionBoundaryCacheSeconds;
 
     //Notification
     @Value("${notification.sms.enabled}")
