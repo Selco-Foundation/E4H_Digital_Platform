@@ -14,9 +14,9 @@ const getEmployeeKey = (event) => {
   const employeeId = userInfo?.uuid || userInfo?.id || userInfo?.userId || userInfo?.userName || userInfo?.mobileNumber;
   return employeeId ? `selco.pwaInstallPromptCount.${encodeURIComponent(String(employeeId))}` : null;
 };
-const getPromptCount = (key) => {
-  const cookie = document.cookie.split("; ").find((value) => value.startsWith(`${key}=`));
-  return Number(cookie?.slice(key.length + 1) ?? 0);
+const getPromptCount = key => {
+  const cookie = document.cookie.split("; ").find(value => value.startsWith(`${key}=`));
+  return Number(cookie ? cookie.slice(key.length + 1) : 0);
 };
 const setPromptCount = (key, count) => {
   // The cookie keeps this employee's count across logout, which clears localStorage.
