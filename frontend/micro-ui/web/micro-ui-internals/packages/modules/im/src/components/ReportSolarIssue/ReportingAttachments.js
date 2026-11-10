@@ -20,8 +20,8 @@ const ReportingAttachments = ({ images, videos, onImagesChange, onVideosChange, 
     onImagesChange(files.filter(([, entry]) => !entry.file.type.startsWith("video/")));
     onVideosChange(files.filter(([, entry]) => entry.file.type.startsWith("video/")));
   };
-  return <React.Fragment>
-    <h2>{t("IM_REPORT_ATTACHMENTS_QUESTION", { defaultValue: "Please attach a photo or video of the issue, if available." })}</h2>
+  return <div className="im-report-upload">
+    <h2 className="im-report-question">{t("IM_REPORT_ATTACHMENTS_QUESTION", { defaultValue: "Please attach a photo or video of the issue, if available." })}</h2>
     <CardText>{t("IM_REPORT_OPTIONAL", { defaultValue: "Optional" })}</CardText>
     <CardText>{t("IM_REPORT_ATTACHMENTS_HELP", { defaultValue: "This will help our CRM support team and technicians understand the problem better and troubleshoot it faster." })}</CardText>
     {controls.restoring && <CardText>{t("IM_REPORT_RESTORING_UPLOADS", { defaultValue: "Restoring your selected files…" })}</CardText>}
@@ -37,7 +37,7 @@ const ReportingAttachments = ({ images, videos, onImagesChange, onVideosChange, 
       multiple={true} analyticsPage="new_ticket_page" mediaIntent="attachment" />
     <ul style={{ listStyle: "none", padding: 0 }}>
       {fileStatuses.map((entry) => (
-        <li key={entry.id} style={{ margin: "12px 0", overflowWrap: "anywhere" }}>
+        <li key={entry.id} style={{ margin: "12px 0", padding: "12px", border: "1px solid #d6d6d6", borderRadius: "4px", overflowWrap: "anywhere" }}>
           <div>{entry.name}</div>
           <div role="status">{statusLabels[entry.status]}{entry.progress !== null && entry.status === "uploading" ? ` (${entry.progress}%)` : ""}</div>
           {entry.status === "failed" && <div style={{ display: "flex", gap: "16px", margin: "8px 0" }}>
@@ -50,7 +50,7 @@ const ReportingAttachments = ({ images, videos, onImagesChange, onVideosChange, 
       ))}
     </ul>
     <CardText>{t("IM_REPORT_ATTACHMENTS_LIMITS", { defaultValue: "Up to 5 photos (10 MB each) and 2 videos (50 MB each)." })}</CardText>
-  </React.Fragment>;
+  </div>;
 };
 
 export default ReportingAttachments;

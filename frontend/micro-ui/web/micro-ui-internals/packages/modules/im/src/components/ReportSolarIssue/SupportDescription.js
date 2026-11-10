@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 
 const SupportDescription = ({ value, onChange, required = true }) => {
   const { t } = useTranslation();
-  return <div style={{ margin: "16px 0" }}>
-    <label htmlFor="reportSupportDescription">
+  return <div className="im-report-input">
+    <label className="im-report-question" htmlFor="reportSupportDescription">
       {t("IM_REPORT_DESCRIPTION_QUESTION", { defaultValue: "Please explain the issue in your own words" })}
       {required ? " *" : ` (${t("IM_REPORT_OPTIONAL", { defaultValue: "Optional" })})`}
     </label>

@@ -1,7 +1,9 @@
+import ReportingActions from "./ReportingActions";
 import React from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Card, CardHeader, CardText, SubmitBar } from "@selco/digit-ui-react-components";
+import { Card, CardText, SubmitBar } from "@selco/digit-ui-react-components";
+import ReportingLayout from "./ReportingLayout";
 import ReportingStepper from "./ReportingStepper";
 import SupportDescription from "./SupportDescription";
 import ReportingAttachments from "./ReportingAttachments";
@@ -57,15 +59,13 @@ const ReportingDetails = ({ draftId, facility, issue, observation, status, descr
   };
   const media = step === "attachments";
   const optional = (step === "description" && !requiredDescription) || media;
-  return <React.Fragment>
+  return <ReportingLayout facilityName={facility?.name}>
     <ReportingStepper currentStep={step === "fir" ? "fir" : "details"}
       showTheft={theft} showDescription={requiredDescription} showFacility={showFacility} />
-    <Card style={{ maxWidth: "720px", width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
-      <CardHeader>{t("IM_REPORT_SOLAR_ISSUE_TITLE", { defaultValue: "Report an issue with your solar" })}</CardHeader>
-      <CardText style={{ fontSize: "20px" }}>{t("IM_REPORT_STEP_FACILITY", { defaultValue: "Facility" })}: {facility?.name}</CardText>
+    <Card style={{ width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
       {step === "description" && <SupportDescription value={description} onChange={onDescriptionChange} required={requiredDescription} />}
       {step === "fir" && <React.Fragment>
-        <h2>{t("IM_REPORT_FIR_QUESTION", { defaultValue: "Please upload the FIR/Complaint letter" })} *</h2>
+        <h2 className="im-report-question">{t("IM_REPORT_FIR_QUESTION", { defaultValue: "Please upload the FIR/Complaint letter" })} *</h2>
         <CardText>{t("IM_REPORT_FIR_LIMITS", { defaultValue: "PDF, JPG, JPEG or PNG. Maximum 5 MB per file, up to 5 files." })}</CardText>
         <FirUpload files={fir} onChange={onFirChange} onUploading={onFirUploading} tenantId={tenantId} />
       </React.Fragment>}
@@ -75,17 +75,7 @@ const ReportingDetails = ({ draftId, facility, issue, observation, status, descr
         onUploading={(value) => { onImageUploading(value); onVideoUploading(value); }} tenantId={tenantId} />
       </div>
       {step === "review" && <React.Fragment>
-        <h2>{t("IM_REPORT_REVIEW", { defaultValue: "Review your ticket" })}</h2>
-        <style>{`
-          .im-report-review {
-            display: grid;
-            grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
-            gap: 12px 16px;
-            margin: 16px 0;
-          }
-          .im-report-review dt { font-weight: 600; overflow-wrap: anywhere; }
-          .im-report-review dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-        `}</style>
+        <h2 className="im-report-question">{t("IM_REPORT_REVIEW", { defaultValue: "Review your ticket" })}</h2>
         <dl className="im-report-review">
           <dt>{t("IM_REPORT_STEP_COMPONENT", { defaultValue: "Component/Issue" })}:</dt><dd>{issue?.name}</dd>
           <dt>{t("IM_REPORT_STEP_OBSERVATION", { defaultValue: "Observation" })}:</dt><dd>{observation?.name || t("IM_REPORT_SKIPPED", { defaultValue: "Skipped" })}</dd>
@@ -96,16 +86,16 @@ const ReportingDetails = ({ draftId, facility, issue, observation, status, descr
           {theft && <React.Fragment><dt>{t("IM_REPORT_STEP_FIR", { defaultValue: "FIR/Complaint letter" })}:</dt><dd>{fir.map(([name]) => name).join(", ")}</dd></React.Fragment>}
         </dl>
       </React.Fragment>}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", alignItems: "center", marginTop: "24px" }}>
-        <SubmitBar label={step === "review" ? t("FILE_INCIDENT") : t("CS_COMMON_NEXT", { defaultValue: "Next" })}
+      <ReportingActions
+        back={<SubmitBar className="im-report-back" label={t("CORE_COMMON_BACK", { defaultValue: "Back" })} disabled={busy}
+          onSubmit={() => index > 0 ? navigate(steps[index - 1]) : history.push(backUrl)} />}
+        skip={optional && <SubmitBar className="im-report-skip" label={t("CS_COMMON_SKIP", { defaultValue: "Skip" })} disabled={busy} onSubmit={skip} />}
+        next={<SubmitBar label={step === "review" ? t("FILE_INCIDENT") : t("CS_COMMON_NEXT", { defaultValue: "Next" })}
           disabled={busy || !valid || (step === "review" && !canSubmit)}
-          onSubmit={step === "review" ? () => { if (!busy && canSubmit) onSubmit({}); } : next} />
-        {optional && <SubmitBar label={t("CS_COMMON_SKIP", { defaultValue: "Skip" })} disabled={busy} onSubmit={skip} />}
-        <SubmitBar label={t("CORE_COMMON_BACK", { defaultValue: "Back" })} disabled={busy}
-          onSubmit={() => index > 0 ? navigate(steps[index - 1]) : history.push(backUrl)} />
-      </div>
+          onSubmit={step === "review" ? () => { if (!busy && canSubmit) onSubmit({}); } : next} />}
+      />
     </Card>
-  </React.Fragment>;
+  </ReportingLayout>;
 };
 
 export default ReportingDetails;

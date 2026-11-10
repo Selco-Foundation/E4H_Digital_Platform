@@ -1,12 +1,14 @@
+import ReportingActions from "../../../components/ReportSolarIssue/ReportingActions";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory, useLocation } from "react-router-dom";
-import { Card, CardHeader, CardText, SubmitBar, Loader } from "@selco/digit-ui-react-components";
+import { Card, CardText, SubmitBar, Loader } from "@selco/digit-ui-react-components";
 import { Employee } from "../../../constants/Routes";
 import useReportingFacilities from "../../../hooks/useReportingFacilities";
 import FacilitySelection from "../../../components/ReportSolarIssue/FacilitySelection";
 import ReportingSelection from "../../../components/ReportSolarIssue/ReportingSelection";
 import ReportingDuplicateGuard from "../../../components/ReportSolarIssue/ReportingDuplicateGuard";
+import ReportingLayout from "../../../components/ReportSolarIssue/ReportingLayout";
 import ReportingStepper from "../../../components/ReportSolarIssue/ReportingStepper";
 import { ReportingFirDraft } from "../../../services/ReportingFirDraft";
 import { ReportingSupportDraft } from "../../../services/ReportingSupportDraft";
@@ -147,19 +149,14 @@ const ReportSolarIssue = ({ parentUrl }) => {
   };
 
   return (
-    <React.Fragment>
+    <ReportingLayout facilityName={selectedFacility?.name}>
     {facilities.length > 0 && !isLoading && !isError && <ReportingStepper
       currentStep={choosingFacility ? "facility" : choosingDescription ? "description" : choosingStatus ? "status" : choosingObservation ? "observation" : "issue"}
       showFacility={codes.length > 1}
       showTheft={selectedIssue?.key === "THEFT"}
       showDescription={isSupport && !selectedObservation && (choosingDescription || choosingStatus)}
     />}
-    <Card style={{ maxWidth: "720px", width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
-      <CardHeader>
-        <h1 style={{ margin: 0, fontSize: "inherit" }}>
-          {t("IM_REPORT_SOLAR_ISSUE_TITLE", { defaultValue: "Report an issue with your solar" })}
-        </h1>
-      </CardHeader>
+    <Card style={{ width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
       {isLoading && codes.length > 0 ? <Loader /> : isError ? (
         <div role="alert">
           <CardText>{t("IM_REPORT_FACILITY_LOAD_ERROR", { defaultValue: "We could not load your facilities. Please try again." })}</CardText>
@@ -171,34 +168,33 @@ const ReportSolarIssue = ({ parentUrl }) => {
         <React.Fragment>
           <FacilitySelection facilities={facilities} selectedCode={selectedCode}
             onSelect={updateSelection} showSearch={codes.length > 4} />
-          <SubmitBar label={t("CS_COMMON_NEXT", { defaultValue: "Next" })} disabled={!selectedFacility}
-            onSubmit={() => selectedFacility && updateSelection(selectedFacility.code, "issue", true)} />
+          <ReportingActions next={<SubmitBar label={t("CS_COMMON_NEXT", { defaultValue: "Next" })} disabled={!selectedFacility}
+            onSubmit={() => selectedFacility && updateSelection(selectedFacility.code, "issue", true)} />} />
         </React.Fragment>
       ) : <React.Fragment>
-        <CardText style={{ fontSize: "20px" }}>{t("IM_REPORT_STEP_FACILITY", { defaultValue: "Facility" })}: {selectedFacility?.name}</CardText>
         {choosingObservation && <CardText>{selectedIssue.name}</CardText>}
         <ReportingDuplicateGuard facility={selectedFacility?.code} component={selectedIssue?.key}
           enabled={Boolean(selectedIssue && (choosingObservation || choosingDescription || choosingStatus))}
           parentUrl={parentUrl} onBack={() => updateSelection(selectedFacility.code, "issue")}>
         {renderIssueSelection()}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "24px" }}>
-        <SubmitBar
-          label={t("CS_COMMON_NEXT", { defaultValue: "Next" })}
-          disabled={!selectedIssue || (choosingObservation && !selectedObservation) || (choosingStatus && !selectedStatus) || (choosingDescription && !isReportingDescriptionValid(description)) || issueQuery.isLoading || issueQuery.isError}
-          onSubmit={() => continueToDetails()}
-        />
-        {choosingObservation && observationOptional && <SubmitBar
+      <ReportingActions
+        back={(choosingDescription || choosingStatus || choosingObservation || codes.length > 1) && <SubmitBar className="im-report-back" label={t("CORE_COMMON_BACK", { defaultValue: "Back" })}
+          onSubmit={() => updateSelection(selectedFacility.code, choosingDescription ? "observation" : choosingStatus ? (isSupport && !selectedObservation ? "description" : "observation") : choosingObservation ? "issue" : "facility")} />}
+        skip={choosingObservation && observationOptional && <SubmitBar className="im-report-skip"
           label={t("CS_COMMON_SKIP", { defaultValue: "Skip" })}
           disabled={issueQuery.isLoading || issueQuery.isError}
           onSubmit={() => continueToDetails(true)}
         />}
-        {(choosingDescription || choosingStatus || choosingObservation || codes.length > 1) && <SubmitBar label={t("CORE_COMMON_BACK", { defaultValue: "Back" })}
-          onSubmit={() => updateSelection(selectedFacility.code, choosingDescription ? "observation" : choosingStatus ? (isSupport && !selectedObservation ? "description" : "observation") : choosingObservation ? "issue" : "facility")} />}
-      </div>
+        next={<SubmitBar
+          label={t("CS_COMMON_NEXT", { defaultValue: "Next" })}
+          disabled={!selectedIssue || (choosingObservation && !selectedObservation) || (choosingStatus && !selectedStatus) || (choosingDescription && !isReportingDescriptionValid(description)) || issueQuery.isLoading || issueQuery.isError}
+          onSubmit={() => continueToDetails()}
+        />}
+      />
       </ReportingDuplicateGuard>
       </React.Fragment>}
     </Card>
-    </React.Fragment>
+    </ReportingLayout>
   );
 };
 

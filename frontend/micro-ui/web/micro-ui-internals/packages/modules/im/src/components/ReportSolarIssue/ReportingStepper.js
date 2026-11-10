@@ -16,7 +16,7 @@ const ReportingStepper = ({ currentStep, showFacility = false, showTheft = false
 
   return (
     <ol aria-label={t("IM_REPORT_PROGRESS", { defaultValue: "Reporting progress" })}
-      style={{ display: "flex", listStyle: "none", padding: 0, margin: "0 auto 24px", width: "100%", maxWidth: "720px" }}>
+      style={{ display: "flex", listStyle: "none", padding: 0, margin: "0 auto 24px", width: "100%" }}>
       {steps.map(({ key, label }, index) => {
         const active = index === currentIndex;
         const complete = index < currentIndex;
