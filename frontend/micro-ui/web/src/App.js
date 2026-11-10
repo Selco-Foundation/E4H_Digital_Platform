@@ -16,7 +16,6 @@ import { initHRMSComponents } from "@selco/digit-ui-module-hrms";
 import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities";
 import { UICustomizations } from "./Customisations/UICustomizations";
 import { initWorkbenchComponents } from "@egovernments/digit-ui-module-workbench";
-import PwaShell from "./PwaShell";
 
 
 window.contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH");
@@ -70,16 +69,13 @@ function App() {
     return <h1>stateCode is not defined</h1>;
   }
   return (
-    <>
-      <DigitUI
-        stateCode={stateCode}
-        enabledModules={enabledModules}
-        moduleReducers={moduleReducers}
-        defaultLanding="employee"
-        allowedUserTypes={["employee"]}
-      />
-      <PwaShell />
-    </>
+    <DigitUI
+      stateCode={stateCode}
+      enabledModules={enabledModules}
+      moduleReducers={moduleReducers}
+      defaultLanding="employee"
+      allowedUserTypes={["employee"]}
+    />
   );
 }
 

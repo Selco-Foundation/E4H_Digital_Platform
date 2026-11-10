@@ -7,6 +7,7 @@ import Header from "../../../components/Header";
 import PolicyConsentModal from "../../../components/PolicyConsentModal";
 import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
+import { showPwaInstallPromptIfEligible } from "../../../utilities/pwaInstallPrompt";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
 
 const setEmployeeDetail = (userObject, token) => {
@@ -250,7 +251,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       }
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
       setUser({ info, ...tokens });
-      window.dispatchEvent(new CustomEvent("selco:successful-login", { detail: { ...info, userName: info?.userName || requestData.username } }));
+      showPwaInstallPromptIfEligible({ ...info, userName: info?.userName || requestData.username });
 
       try {
         const tenantIdForLabel = info?.tenantId || requestData.tenantId;

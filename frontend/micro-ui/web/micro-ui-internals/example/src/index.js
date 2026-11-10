@@ -14,7 +14,6 @@ import "@selco/selco-css/example/index.css";
 
 import { pgrCustomizations } from "./pgr";
 import { UICustomizations } from "./UICustomizations";
-import PwaShell from "./PwaShell";
 
 var Digit = window.Digit || {};
 
@@ -94,10 +93,7 @@ const initDigitUI = () => {
   initTokens(stateCode);
 
   ReactDOM.render(
-    <>
-      <DigitUI stateCode={stateCode} enabledModules={enabledModules} defaultLanding="employee" moduleReducers={moduleReducers} />
-      <PwaShell />
-    </>,
+    <DigitUI stateCode={stateCode} enabledModules={enabledModules} defaultLanding="employee" moduleReducers={moduleReducers} />,
     document.getElementById("root")
   );
 };
