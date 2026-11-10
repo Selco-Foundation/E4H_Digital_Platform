@@ -8,6 +8,11 @@ import PolicyConsentModal from "../../../components/PolicyConsentModal";
 import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
+import OtpLogin from "./OtpLogin";
+import { isOtpLoginEnabled } from "./otpLoginUtils";
+
+const LOGIN_MODE_PASSWORD = "password";
+const LOGIN_MODE_OTP = "otp";
 
 const setEmployeeDetail = (userObject, token) => {
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || "en_IN";
@@ -120,6 +125,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [activePolicyModal, setActivePolicyModal] = useState(null);
+  const [loginMode, setLoginMode] = useState(LOGIN_MODE_PASSWORD);
+  const otpLoginEnabled = isOtpLoginEnabled();
 
   const history = useHistory();
   const location = useLocation();
@@ -244,37 +251,55 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     };
     delete requestData.city;
     try {
-      const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
-      if (shouldShowConsent) {
-        rememberRequiredConsents();
-        setHasStoredConsent(true);
-      }
-      Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
-
-      setUser({ info, ...tokens });
-
-      try {
-        const tenantIdForLabel = info?.tenantId || requestData.tenantId;
-        const facilityKey = tenantIdForLabel ? `TENANT_TENANTS_${tenantIdForLabel.replace(".", "_").toUpperCase()}` : null;
-        const facilityFromUser = info?.facilityName?.trim?.();
-        const facilityTranslated = facilityKey ? t(facilityKey) : "";
-        const facility = facilityFromUser || facilityTranslated || "unknown";
-        Digit?.Utils?.analytics?.setFacilityName(facility);
-        const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
-        Digit?.Utils?.analytics?.trackLogin(rolesCsv, getSelectedLanguage());
-      } catch (e) {
-        console.warn("analytics: user_login failed", e);
-      }
-
-      try {
-        sessionStorage.removeItem("prelogin_language");
-      } catch {}
+      const authResponse = await Digit.UserService.authenticate(requestData);
+      completeLogin(authResponse, requestData.tenantId);
     } catch (err) {
       setShowToast(err?.response?.data?.error_description || "Invalid login credentials!");
       setTimeout(closeToast, 5000);
     }
     setDisable(false);
   };
+
+  const showConsentRequiredToast = () => {
+    setShowToast("CORE_ACCEPT_PRIVACY_TERMS");
+    setTimeout(closeToast, 5000);
+  };
+
+  /*
+   * Runs after ANY successful authentication (password or OTP), so both login
+   * methods store consent, the session, and analytics the same way. setUser
+   * triggers the effect above, which does the HRMS lookup and the redirect.
+   */
+  const completeLogin = (authResponse, requestTenantId) => {
+    const { UserRequest: info, ...tokens } = authResponse;
+    if (shouldShowConsent) {
+      rememberRequiredConsents();
+      setHasStoredConsent(true);
+    }
+    Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
+
+    setUser({ info, ...tokens });
+
+    try {
+      const tenantIdForLabel = info?.tenantId || requestTenantId;
+      const facilityKey = tenantIdForLabel ? `TENANT_TENANTS_${tenantIdForLabel.replace(".", "_").toUpperCase()}` : null;
+      const facilityFromUser = info?.facilityName?.trim?.();
+      const facilityTranslated = facilityKey ? t(facilityKey) : "";
+      const facility = facilityFromUser || facilityTranslated || "unknown";
+      Digit?.Utils?.analytics?.setFacilityName(facility);
+      const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
+      Digit?.Utils?.analytics?.trackLogin(rolesCsv, getSelectedLanguage());
+    } catch (e) {
+      console.warn("analytics: user_login failed", e);
+    }
+
+    try {
+      sessionStorage.removeItem("prelogin_language");
+    } catch {}
+  };
+
+  // OTP login signs in to the tenant of the account the user picked (e.g. "rj"), not the state tenant.
+  const onOtpAuthenticated = (authResponse, account) => completeLogin(authResponse, account?.tenantId || "in");
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
@@ -318,6 +343,17 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     setActivePolicyModal(null);
   };
 
+  // One consent state for both login modes: accepting it in one mode counts for the other.
+  const consentProps = {
+    shouldShowConsent,
+    privacyAccepted,
+    termsAccepted,
+    setPrivacyAccepted,
+    setTermsAccepted,
+    translateWithFallback,
+    openPolicyModal: setActivePolicyModal,
+  };
+
   const [userId, password, city] = propsConfig.inputs;
   const config = [
     {
@@ -349,15 +385,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           component: ConsentAcceptance,
           withoutLabel: true,
           key: "consentAcceptance",
-          consentProps: {
-            shouldShowConsent,
-            privacyAccepted,
-            termsAccepted,
-            setPrivacyAccepted,
-            setTermsAccepted,
-            translateWithFallback,
-            openPolicyModal: setActivePolicyModal,
-          },
+          consentProps,
         },
       ],
     },
@@ -371,6 +399,19 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         <BackButton variant="white" style={{ borderBottom: "none" }} />
       </div>
       <div style={{ backgroundColor: "white" }}>
+        {loginMode === LOGIN_MODE_OTP ? (
+          <OtpLogin
+            tf={translateWithFallback}
+            canProceed={!shouldShowConsent || isConsentAccepted}
+            onBlocked={showConsentRequiredToast}
+            onAuthenticated={onOtpAuthenticated}
+            header={<Header />}
+            consent={<ConsentAcceptance config={{ consentProps }} />}
+            className="loginFormStyleEmployee"
+            cardStyle={{ ...(isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }), boxShadow: "none" }}
+            buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
+          />
+        ) : (
         <FormComposer
           onSubmit={onLogin}
           isDisabled={isDisabled || disable || (shouldShowConsent && !isConsentAccepted)}
@@ -389,17 +430,49 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         >
           <Header />
         </FormComposer>
+        )}
         <div style={{ textAlign: "center", marginTop: "1rem" }}>
-          <button
-            onClick={onForgotPassword}
-            style={{
-              color: "blue",
-              textDecoration: "underline",
-              cursor: "pointer",
-            }}
-          >
-            {t("CORE_COMMON_FORGOT_PASSWORD")}
-          </button>
+          {loginMode === LOGIN_MODE_OTP ? (
+            <button
+              type="button"
+              onClick={() => setLoginMode(LOGIN_MODE_PASSWORD)}
+              style={{
+                color: "blue",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              {translateWithFallback("CORE_LOGIN_WITH_PASSWORD", "Login with username & password")}
+            </button>
+          ) : (
+            <React.Fragment>
+              <button
+                onClick={onForgotPassword}
+                style={{
+                  color: "blue",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }}
+              >
+                {t("CORE_COMMON_FORGOT_PASSWORD")}
+              </button>
+              {otpLoginEnabled && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setLoginMode(LOGIN_MODE_OTP)}
+                    style={{
+                      color: "blue",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {translateWithFallback("CORE_LOGIN_WITH_MOBILE_OTP", "Login with mobile number & OTP")}
+                  </button>
+                </div>
+              )}
+            </React.Fragment>
+          )}
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
