@@ -250,6 +250,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       }
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
       setUser({ info, ...tokens });
+      window.dispatchEvent(new CustomEvent("selco:successful-login", { detail: { ...info, userName: info?.userName || requestData.username } }));
 
       try {
         const tenantIdForLabel = info?.tenantId || requestData.tenantId;

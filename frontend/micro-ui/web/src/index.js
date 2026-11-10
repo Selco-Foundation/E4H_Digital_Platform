@@ -12,8 +12,18 @@ initLibraries();
 window.Digit.Customizations = { PGR: {} ,TL:TLCustomisations};
 
 const user = window.Digit.SessionStorage.get("User");
+const isExpiredToken = (accessToken) => {
+  const payload = accessToken?.split(".")?.[1];
+  if (!payload) return false;
+  try {
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return Boolean(decoded?.exp && decoded.exp * 1000 <= Date.now());
+  } catch (e) {
+    return true;
+  }
+};
 
-if (!user || !user.access_token || !user.info) {
+if (!user || !user.access_token || !user.info || isExpiredToken(user.access_token)) {
   // login detection
 
   const parseValue = (value) => {
@@ -74,10 +84,21 @@ ReactDOM.render(
 
 if ('serviceWorker' in navigator && process.env.PUBLIC_PATH) {
   window.addEventListener('load', () => {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let hasReloadedForUpdate = false;
+    if (hadController) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (hasReloadedForUpdate) return;
+        hasReloadedForUpdate = true;
+        window.location.reload();
+      });
+    }
+
     navigator.serviceWorker
       .register(`${process.env.PUBLIC_PATH}service-worker.js`)
       .then(registration => {
         console.log('Service Worker registered with scope:', registration.scope);
+        if (navigator.onLine) registration.update().catch(() => {});
       })
       .catch(error => {
         console.error('Service Worker registration failed:', error);

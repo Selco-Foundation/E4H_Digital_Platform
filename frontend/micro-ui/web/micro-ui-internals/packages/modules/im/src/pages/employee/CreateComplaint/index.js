@@ -8,9 +8,51 @@ import { FormComposer } from "../../../components/FormComposer";
 import { populateCreateResponse } from "../../../redux/actions/index";
 import { Link } from "react-router-dom";
 
+const readComplaintDraft = (key) => {
+  if (!key) return null;
+  try {
+    return JSON.parse(window.sessionStorage.getItem(key) || "null");
+  } catch (error) {
+    return null;
+  }
+};
+
+const restoreUploadState = (uploadState) => ({
+  newArr: uploadState?.newArr || [],
+  mappedArray: uploadState?.mappedArray || [],
+});
+
+const restoreUploadEntries = (uploadState) =>
+  (uploadState?.newArr || []).map((entry, index) => [entry?.file?.name || `saved-upload-${index}`, entry]);
+
+const serializeUploadState = (uploadState) => ({
+  newArr: (uploadState?.newArr || []).map(({ file, fileStoreId }) => ({
+    file: file ? { name: file.name, type: file.type } : null,
+    fileStoreId,
+  })),
+  mappedArray: (uploadState?.mappedArray || []).map(({ file, fileStoreId }) => ({
+    file: file ? { name: file.name, type: file.type } : null,
+    fileStoreId,
+  })),
+});
+
+const toDraftOption = (option) => {
+  if (!option) return option;
+  const { key, code, id, name, status, parentCode } = option;
+  return { key, code, id, name, status, parentCode };
+};
+
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
-  const [healthcentre, setHealthCentre] = useState();
+  const currentUser = Digit.UserService.getUser()?.info || {};
+  const employeeId = currentUser.uuid || currentUser.userName;
+  const draftKey = employeeId ? `selco.employeeComplaintDraft.${encodeURIComponent(String(employeeId))}` : null;
+  const [initialDraft] = useState(() => readComplaintDraft(draftKey));
+  const [formAnswers, setFormAnswers] = useState(() => initialDraft?.answers || {});
+  const draftCleared = useRef(false);
+  const skipInitialComplaintTypeRule = useRef(Boolean(initialDraft?.complaintType?.key));
+  const skipInitialHealthCentreRule = useRef(Boolean(initialDraft?.healthcentre));
+  const [healthcentre, setHealthCentre] = useState(() => initialDraft?.healthcentre || undefined);
   const [districtMenu, setDistrictMenu] = useState([]);
   const [sortedDistrictMenu, setSortedDistrictMenu] = useState([]);
   const [blockOptions, setBlockOptions] = useState([]);
@@ -21,33 +63,33 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [sortedFacilityMenu, setSortedFacilityMenu] = useState([]);
   const [file, setFile] = useState(null);
   const [showToast, setShowToast] = useState(null);
-  const [uploadedFile, setUploadedFile] = useState([]);
+  const [uploadedFile, setUploadedFile] = useState(() => initialDraft?.uploadedFile || []);
   const [uploadedImages, setUploadedImagesIds] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
   const [isFirUploading, setIsFirUploading] = useState(false);
-  const [imageState, setImageState] = useState({ newArr: [], mappedArray: [] });
-  const [videoState, setVideoState] = useState({ newArr: [], mappedArray: [] });
-  const [firState, setFirState] = useState({ newArr: [], mappedArray: [] });
+  const [imageState, setImageState] = useState(() => restoreUploadState(initialDraft?.uploads?.images));
+  const [videoState, setVideoState] = useState(() => restoreUploadState(initialDraft?.uploads?.videos));
+  const [firState, setFirState] = useState(() => restoreUploadState(initialDraft?.uploads?.fir));
   const specificFileConstraint = [
     { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
     { type: "fir", maxSize: 5, maxFiles: 5 },
   ];
-  const [district, setDistrict] = useState(null);
-  const [block, setBlock] = useState(null);
+  const [district, setDistrict] = useState(() => initialDraft?.district || null);
+  const [block, setBlock] = useState(() => initialDraft?.block || null);
   const [error, setError] = useState(null);
   const [creationError, setCreationError] = useState(null);
   const [canSubmit, setSubmitValve] = useState(false);
   const tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
-  const [complaintType, setComplaintType] = useState({});
-  const [subTypeMenu, setSubTypeMenu] = useState([]);
-  const [disbaled, setDisable] = useState(true);
-  const [disbaledUpload, setDisableUpload] = useState(true);
+  const [complaintType, setComplaintType] = useState(() => initialDraft?.complaintType || {});
+  const [subTypeMenu, setSubTypeMenu] = useState(() => initialDraft?.subTypeMenu || []);
+  const [disbaled, setDisable] = useState(() => !initialDraft?.healthcentre);
+  const [disbaledUpload, setDisableUpload] = useState(() => !initialDraft?.healthcentre);
   const [phcMenuNew, setPhcMenu] = useState([]);
-  const [subType, setSubType] = useState({});
-  const [systemFunctionality, setSystemFunctionality] = useState({});
+  const [subType, setSubType] = useState(() => initialDraft?.subType || {});
+  const [systemFunctionality, setSystemFunctionality] = useState(() => initialDraft?.systemFunctionality || {});
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
@@ -220,6 +262,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, []);
 
   useEffect(async () => {
+    if (initialDraft?.healthcentre) return;
     if (
       selectBoundaryCode && stateBoundaryCode && selectBoundaryCode !== stateBoundaryCode
       && districtMenu?.length && blockOptions?.length && facilityOptions?.length
@@ -251,6 +294,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, [t, districtMenu, blockOptions, facilityOptions, selectBoundaryCode, stateBoundaryCode]);
 
   useEffect(() => {
+    if (skipInitialComplaintTypeRule.current) {
+      skipInitialComplaintTypeRule.current = false;
+      return;
+    }
     if (complaintType?.key?.toUpperCase() === "UNINSTALL") {
       setIsInstallationTicket(true);
       setSystemFunctionality({
@@ -281,6 +328,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, [complaintType, t]);
 
   useEffect(() => {
+    if (skipInitialHealthCentreRule.current) {
+      skipInitialHealthCentreRule.current = false;
+      return;
+    }
     if (healthcentre?.status === "UNINSTALLED") {
       setIsUninstalledFacility(true);
       setComplaintType({
@@ -321,6 +372,48 @@ export const CreateComplaint = ({ parentUrl }) => {
   const history = useHistory();
   const serviceDefinitions = Digit.GetServiceDefinitions;
   const client = useQueryClient();
+
+  useEffect(() => {
+    const restoreSubTypeOptions = async () => {
+      if (!initialDraft || !complaintType?.key || initialDraft.subTypeMenu?.length) return;
+      if (complaintType.key === "Others") {
+        setSubTypeMenu([{ key: "Others", name: t("SERVICEDEFS.OTHERS") }]);
+      } else if (!["UNINSTALL", "REINSTALL"].includes(complaintType.key.toUpperCase())) {
+        try {
+          const options = await serviceDefinitions.getSubMenu(tenantId, complaintType, t);
+          setSubTypeMenu(options || []);
+        } catch (error) {
+          // The saved selection remains in the draft if the network is still unavailable.
+        }
+      }
+    };
+    restoreSubTypeOptions();
+  }, []);
+
+  useEffect(() => {
+    if (!draftKey || draftCleared.current) return;
+    const draft = {
+      answers: formAnswers,
+      district: toDraftOption(district),
+      block: toDraftOption(block),
+      healthcentre: toDraftOption(healthcentre),
+      complaintType: toDraftOption(complaintType),
+      subTypeMenu,
+      subType: toDraftOption(subType),
+      systemFunctionality: toDraftOption(systemFunctionality),
+      uploadedFile,
+      uploads: {
+        images: serializeUploadState(imageState),
+        videos: serializeUploadState(videoState),
+        fir: serializeUploadState(firState),
+      },
+    };
+    try {
+      window.sessionStorage.setItem(draftKey, JSON.stringify(draft));
+    } catch (error) {
+      console.warn("Could not save the complaint draft", error);
+    }
+  }, [draftKey, formAnswers, district, block, healthcentre, complaintType, subType, systemFunctionality, uploadedFile, imageState, videoState, firState, subTypeMenu]);
 
   useEffect(() => {
     const isAnyUploading = isImageUploading || isVideoUploading || isFirUploading;
@@ -459,7 +552,15 @@ export const CreateComplaint = ({ parentUrl }) => {
     };
 
     setBlockUI(true);
-    const response = await Digit.Complaint.create(formData);
+    let response;
+    try {
+      response = await Digit.Complaint.create(formData);
+    } catch (requestError) {
+      console.warn("Could not submit the complaint; the draft has been retained", requestError);
+      setBlockUI(false);
+      setCreationError(t("CS_COMMON_SOMETHING_WENT_WRONG"));
+      return;
+    }
 
     if (!response?.IncidentWrappers) {
       setBlockUI(false);
@@ -469,6 +570,8 @@ export const CreateComplaint = ({ parentUrl }) => {
     }
 
     setBlockUI(false);
+    draftCleared.current = true;
+    if (draftKey) window.sessionStorage.removeItem(draftKey);
     dispatch(populateCreateResponse(response));
     await client.refetchQueries(["fetchInboxData"]);
     history.push(parentUrl + "/incident/response");
@@ -758,6 +861,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 module="Incident"
                 tenantId={tenantId}
                 getFormState={(state, loading) => getImageData(state, loading)}
+                setuploadedstate={restoreUploadEntries(initialDraft?.uploads?.images)}
                 onUploadStatusChange={setIsImageUploading}
                 allowedFileTypesRegex={/(jpg|jpeg|png|image)$/i}
                 allowedMaxSizeInMB={50}
@@ -784,6 +888,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 module="Incident"
                 tenantId={tenantId}
                 getFormState={(state, loading) => getVideoData(state, loading)}
+                setuploadedstate={restoreUploadEntries(initialDraft?.uploads?.videos)}
                 onUploadStatusChange={setIsVideoUploading}
                 allowedFileTypesRegex={/(mp4|mov|avi|wmv|video)$/i}
                 allowedMaxSizeInMB={50}
@@ -813,6 +918,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                       module="Incident"
                       tenantId={tenantId}
                       getFormState={(state) => getFirData(state)}
+                      setuploadedstate={restoreUploadEntries(initialDraft?.uploads?.fir)}
                       onUploadStatusChange={setIsFirUploading}
                       allowedFileTypesRegex={/(pdf|jpg|jpeg|png|image)$/i}
                       allowedMaxSizeInMB={5}
@@ -870,7 +976,15 @@ export const CreateComplaint = ({ parentUrl }) => {
           <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>
       </div>
-      <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit} label={t("FILE_INCIDENT")} />
+      <FormComposer
+        heading={t("")}
+        config={config}
+        onSubmit={wrapperSubmit}
+        onFormValueChange={setFormAnswers}
+        defaultValues={formAnswers}
+        isDisabled={!canSubmit}
+        label={t("FILE_INCIDENT")}
+      />
       {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  

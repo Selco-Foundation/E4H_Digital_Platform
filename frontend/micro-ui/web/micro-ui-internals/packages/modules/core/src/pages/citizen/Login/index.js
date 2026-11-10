@@ -184,6 +184,7 @@ const Login = ({ stateCode, isUserRegistered = true }) => {
         }
 
         setUser({ info, ...tokens });
+        window.dispatchEvent(new CustomEvent("selco:successful-login", { detail: info }));
       } else if (!isUserRegistered) {
         const requestData = {
           name,
@@ -199,6 +200,7 @@ const Login = ({ stateCode, isUserRegistered = true }) => {
         }
 
         setUser({ info, ...tokens });
+        window.dispatchEvent(new CustomEvent("selco:successful-login", { detail: info }));
       }
     } catch (err) {
       setCanSubmitOtp(true);
