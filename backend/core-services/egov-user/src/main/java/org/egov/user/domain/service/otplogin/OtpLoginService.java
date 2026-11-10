@@ -59,6 +59,7 @@ public class OtpLoginService {
     private final int maxWrongAttempts;
     private final int blockSeconds;
     private final int ticketValiditySeconds;
+    private final boolean logOtp;
 
     public OtpLoginService(OtpLoginStore store, UserService userService, NotificationUtil notificationUtil,
                            @Value("${employee.otp.login.enabled:false}") boolean enabled,
@@ -68,7 +69,8 @@ public class OtpLoginService {
                            @Value("${employee.otp.login.max.resends:3}") int maxResends,
                            @Value("${employee.otp.login.max.wrong.attempts:5}") int maxWrongAttempts,
                            @Value("${employee.otp.login.block.minutes:15}") int blockMinutes,
-                           @Value("${employee.otp.login.ticket.validity.seconds:120}") int ticketValiditySeconds) {
+                           @Value("${employee.otp.login.ticket.validity.seconds:120}") int ticketValiditySeconds,
+                           @Value("${employee.otp.login.log.otp.enabled:false}") boolean logOtp) {
         this.store = store;
         this.userService = userService;
         this.notificationUtil = notificationUtil;
@@ -80,6 +82,11 @@ public class OtpLoginService {
         this.maxWrongAttempts = maxWrongAttempts;
         this.blockSeconds = blockMinutes * 60;
         this.ticketValiditySeconds = ticketValiditySeconds;
+        this.logOtp = logOtp;
+        if (logOtp) {
+            log.info("employee.otp.login.log.otp.enabled=true: OTP login codes will be written to the logs. "
+                    + "Use only in environments without SMS, never in production");
+        }
     }
 
     public int getOtpValiditySeconds() {
@@ -119,6 +126,10 @@ public class OtpLoginService {
 
         String otp = generateOtp();
         store.put(key("otp", subject), hashOtp(otp, subject), otpValiditySeconds);
+        if (logOtp) {
+            log.info("[OTP LOGIN - DEV ONLY] tenant={} mobile={} otp={} (valid {}s)",
+                    tenantId, mobileNumber, otp, otpValiditySeconds);
+        }
         notificationUtil.sendOtpLoginSms(mobileNumber, otp, otpValiditySeconds, users.get(0).getLocale(), requestInfo);
     }
 

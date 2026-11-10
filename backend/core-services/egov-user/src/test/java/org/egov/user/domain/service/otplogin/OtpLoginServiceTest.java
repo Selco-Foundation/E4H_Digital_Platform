@@ -50,7 +50,7 @@ public class OtpLoginServiceTest {
         userService = mock(UserService.class);
         notificationUtil = mock(NotificationUtil.class);
         service = new OtpLoginService(store, userService, notificationUtil,
-                true, 6, 300, 30, 3, 5, 15, 120);
+                true, 6, 300, 30, 3, 5, 15, 120, false);
     }
 
     @Test
@@ -159,7 +159,7 @@ public class OtpLoginServiceTest {
 
     @Test
     public void disabledFeatureRejectsEverything() {
-        service = new OtpLoginService(store, userService, notificationUtil, false, 6, 300, 30, 3, 5, 15, 120);
+        service = new OtpLoginService(store, userService, notificationUtil, false, 6, 300, 30, 3, 5, 15, 120, false);
 
         expectError("OTP_LOGIN_DISABLED", () -> service.sendOtp(TENANT, MOBILE, null));
         assertFalse(service.consumeLoginTicket("anything", facilityA, TENANT));
