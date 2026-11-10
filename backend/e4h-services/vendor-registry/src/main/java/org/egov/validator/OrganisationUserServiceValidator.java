@@ -108,13 +108,16 @@ public class OrganisationUserServiceValidator {
         }
         JurisdictionScopeResolver.Scope scope =
                 jurisdictionScopeResolver.resolve(request.getRequestInfo(), configuration.getGlobalTenantId());
-        if (jurisdictionScopeResolver.coversAll(scope, orgUser.getJurisdictions())) {
+        if (jurisdictionScopeResolver.coversAll(scope, orgUser.getJurisdictions(),
+                request.getRequestInfo(), configuration.getGlobalTenantId())) {
             return;
         }
+        List<Jurisdiction> allowed = jurisdictionScopeResolver.within(scope, orgUser.getJurisdictions(),
+                request.getRequestInfo(), configuration.getGlobalTenantId());
         List<String> refused = orgUser.getJurisdictions().stream()
                 .filter(Objects::nonNull)
+                .filter(jurisdiction -> !allowed.contains(jurisdiction))
                 .map(Jurisdiction::getBoundary)
-                .filter(boundary -> !scope.covers(boundary))
                 .toList();
         log.error("Caller attempted to grant jurisdictions outside their own scope: {}", refused);
         throw new CustomException("JURISDICTION_OUT_OF_SCOPE",
@@ -444,14 +447,17 @@ public class OrganisationUserServiceValidator {
         // stored rather than what was submitted, since the payload is the thing being validated.
         JurisdictionScopeResolver.Scope callerScope =
                 jurisdictionScopeResolver.resolve(request.getRequestInfo(), configuration.getGlobalTenantId());
-        if (!callerScope.unscoped() && callerScope.within(employee.getJurisdictions()).isEmpty()) {
+        if (!callerScope.unscoped() && jurisdictionScopeResolver.within(callerScope,
+                employee.getJurisdictions(), request.getRequestInfo(),
+                configuration.getGlobalTenantId()).isEmpty()) {
             log.error("Caller attempted to update user {} who holds no jurisdiction in their scope", orgUser.getUserName());
             throw new CustomException("USER_OUT_OF_SCOPE",
                     "This user does not work in any jurisdiction you administer");
         }
 
         // Everything this caller cannot see, and therefore could not have sent back.
-        List<Jurisdiction> outsideCallerScope = outsideScope(callerScope, employee.getJurisdictions());
+        List<Jurisdiction> outsideCallerScope = jurisdictionScopeResolver.outside(callerScope,
+                employee.getJurisdictions(), request.getRequestInfo(), configuration.getGlobalTenantId());
 
         // -----------------------------------------
         // Detect Changes
@@ -764,17 +770,6 @@ public class OrganisationUserServiceValidator {
             throw new CustomException("INVALID_ROLES", "No roles are configured for organisation type " + orgType);
         }
         return roles;
-    }
-
-    /** The jurisdictions of this list that the given scope does not reach. */
-    private List<Jurisdiction> outsideScope(JurisdictionScopeResolver.Scope scope, List<Jurisdiction> jurisdictions) {
-        if (scope.unscoped() || jurisdictions == null) {
-            return new ArrayList<>();
-        }
-        return jurisdictions.stream()
-                .filter(Objects::nonNull)
-                .filter(jurisdiction -> !scope.covers(jurisdiction.getBoundary()))
-                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private void validateOrgRoles(Set<String> orgRolesReqSet, List<String> orgRolesCodesMDMS) {

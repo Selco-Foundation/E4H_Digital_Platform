@@ -84,24 +84,33 @@ public class BoundaryUtil {
     }
 
     /**
-     * The given boundaries and everything beneath them, as a flat set.
+     * Each of the given boundaries mapped to itself plus every boundary above it.
      *
-     * This is what turns "is this jurisdiction inside the admin's area?" into a set membership
-     * test. Resolved through boundary-service rather than by comparing boundary codes as strings:
-     * the codes look hierarchical (`India_Telangana_Hyderabad`), but a prefix match confuses
+     * This is the direction that scales. The question being answered is "is this user's
+     * jurisdiction inside the administrator's area?", and it can be asked either way round - but
+     * expanding the *administrator* downwards means listing every descendant of, say, a whole
+     * state, which runs to thousands of facility-level codes. Asking instead for the ancestors of
+     * the handful of boundaries actually being tested keeps the request small no matter how senior
+     * the administrator is.
+     *
+     * Resolved through boundary-service rather than by comparing codes as strings: they look
+     * hierarchical (`India_Telangana_Hyderabad`), but a prefix match confuses
      * `India_Telangana_Hyderabad` with `India_Telangana_Hyderabad2`, and the level separator is a
      * literal underscore that pattern matching treats as a wildcard.
      *
-     * Returns an empty set when the boundary service answers nothing. The caller decides what that
-     * means; for authorisation it has to mean "refuse", never "allow everything".
+     * A boundary the service knows nothing about maps to just itself, so an exact match still
+     * works and nothing is granted by accident.
      */
-    public Set<String> codesBeneath(RequestInfo requestInfo, String tenantId, Collection<String> codes) {
+    public Map<String, Set<String>> ancestorsOf(RequestInfo requestInfo, String tenantId, Collection<String> codes) {
         Set<String> wanted = new LinkedHashSet<>();
         if (codes != null) {
             codes.stream().filter(StringUtils::isNotBlank).forEach(wanted::add);
         }
+
+        Map<String, Set<String>> chains = new LinkedHashMap<>();
+        wanted.forEach(code -> chains.put(code, new LinkedHashSet<>(List.of(code))));
         if (wanted.isEmpty()) {
-            return Collections.emptySet();
+            return chains;
         }
 
         StringBuilder uri = new StringBuilder(config.getLocationHost())
@@ -109,7 +118,7 @@ public class BoundaryUtil {
                 .append(config.getLocationBoundaryRelationshipEndpoint())
                 .append("?tenantId=").append(tenantId)
                 .append("&hierarchyType=").append(config.getLocationJurisdictionHierarchyType())
-                .append("&includeChildren=true")
+                .append("&includeParents=true")
                 .append("&codes=").append(StringUtils.join(wanted, ','));
 
         Object response;
@@ -117,35 +126,51 @@ public class BoundaryUtil {
             response = serviceRequestRepository.fetchResult(uri,
                     RequestInfoWrapper.builder().requestInfo(requestInfo).build());
         } catch (Exception exception) {
-            log.error("Boundary service call failed while expanding {}", wanted, exception);
-            throw new CustomException("BOUNDARY_EXPANSION_FAILED",
-                    "Could not resolve the boundaries beneath " + wanted);
+            log.error("Boundary service call failed while resolving ancestors of {}", wanted, exception);
+            throw new CustomException("BOUNDARY_ANCESTOR_LOOKUP_FAILED",
+                    "Could not resolve the boundaries above " + wanted);
         }
 
-        Set<String> found = new LinkedHashSet<>(wanted);
-        collectCodes(response, found);
-        log.debug("Expanded {} boundaries to {} codes", wanted.size(), found.size());
-        return found;
+        collectChains(response, new ArrayList<>(), wanted, chains);
+        return chains;
     }
 
     /**
-     * Walks whatever shape the relationship search returned, collecting every `code`.
+     * Walks the returned tree, remembering the path taken, and records that path for every
+     * boundary that was asked about.
      *
-     * Deliberately structure-agnostic: the response nests boundaries under `TenantBoundary[].boundary[]`
-     * and then under `children[]`, and asking for codes wherever they appear costs nothing while
-     * surviving a change in how deeply they are wrapped.
+     * The path is what carries the answer: a node's ancestors are exactly the codes above it in
+     * the walk, so no second lookup is needed and the shape of the wrapper does not matter.
      */
-    private void collectCodes(Object node, Set<String> found) {
+    private void collectChains(Object node, List<String> path, Set<String> wanted,
+                               Map<String, Set<String>> chains) {
         if (node instanceof Map<?, ?> map) {
-            Object code = map.get("code");
-            if (code instanceof String value && StringUtils.isNotBlank(value)) {
-                found.add(value);
+            Object rawCode = map.get("code");
+            boolean isBoundary = rawCode instanceof String value && StringUtils.isNotBlank(value);
+
+            if (isBoundary) {
+                String code = (String) rawCode;
+                path.add(code);
+                if (wanted.contains(code)) {
+                    chains.get(code).addAll(path);
+                }
             }
-            map.values().forEach(child -> collectCodes(child, found));
+
+            map.forEach((key, child) -> {
+                // Only descend through nesting, never back through the node's own scalar fields.
+                if (child instanceof Map || child instanceof Iterable) {
+                    collectChains(child, path, wanted, chains);
+                }
+            });
+
+            if (isBoundary) {
+                path.remove(path.size() - 1);
+            }
         } else if (node instanceof Iterable<?> iterable) {
-            iterable.forEach(child -> collectCodes(child, found));
+            iterable.forEach(child -> collectChains(child, path, wanted, chains));
         }
     }
+
 
     private StringBuilder getUri(String tenantId, String hierarchyTypeCode, String boundaryType, List<String> boundaries) {
         StringBuilder uri = new StringBuilder(config.getLocationHost());

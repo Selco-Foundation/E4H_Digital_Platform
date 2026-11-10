@@ -84,19 +84,29 @@ class JurisdictionScopeResolverTest {
     }
 
     /**
-     * Stubs the expansion of one grant. Matched on the grant being present rather than on an exact
-     * collection, because the resolver expands every grant in a single call.
+     * Declares the hierarchy under test, as each boundary's chain from itself upwards.
+     *
+     * The resolver asks for ancestors of the boundaries being *tested*, never for descendants of
+     * the caller's grants, so the stub is keyed that way too.
      */
-    private void beneath(String boundary, String... descendants) {
-        Set<String> all = new java.util.LinkedHashSet<>();
-        all.add(boundary);
-        all.addAll(List.of(descendants));
-        when(boundaryUtil.codesBeneath(any(), anyString(), containing(boundary))).thenReturn(all);
+    private final java.util.Map<String, Set<String>> hierarchy = new java.util.LinkedHashMap<>();
+
+    private void chain(String... fromLeafUpwards) {
+        hierarchy.put(fromLeafUpwards[0], new java.util.LinkedHashSet<>(List.of(fromLeafUpwards)));
     }
 
-    private static Collection<String> containing(String code) {
-        return org.mockito.ArgumentMatchers.argThat(argument ->
-                argument != null && argument.contains(code));
+    private void wireBoundaryService() {
+        when(boundaryUtil.ancestorsOf(any(), anyString(), any(Collection.class))).thenAnswer(call -> {
+            Collection<String> asked = call.getArgument(2);
+            java.util.Map<String, Set<String>> answer = new java.util.LinkedHashMap<>();
+            asked.forEach(code -> answer.put(code,
+                    hierarchy.getOrDefault(code, new java.util.LinkedHashSet<>(List.of(code)))));
+            return answer;
+        });
+    }
+
+    private List<Jurisdiction> held(String... boundaries) {
+        return java.util.Arrays.stream(boundaries).map(this::jurisdiction).toList();
     }
 
     @Test
@@ -104,54 +114,62 @@ class JurisdictionScopeResolverTest {
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("ORG_PLATFORM_ADMIN"), TENANT);
 
         assertTrue(scope.unscoped());
-        assertTrue(scope.covers("anything-at-all"));
+        assertTrue(scope.covers("anything-at-all", java.util.Set.of()));
     }
 
     @Test
     void aGrantCoversItselfAndItsDescendants() {
         callerHolds(jurisdiction("India_Telangana", "VENDOR_ADMIN"));
-        beneath("India_Telangana", "India_Telangana_Hyderabad", "India_Telangana_Hyderabad_Block1");
+        chain("India_Telangana", "India");
+        chain("India_Telangana_Hyderabad", "India_Telangana", "India");
+        chain("India_Telangana_Hyderabad_Block1", "India_Telangana_Hyderabad", "India_Telangana", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
+        List<Jurisdiction> visible = resolver.within(scope,
+                held("India_Telangana", "India_Telangana_Hyderabad", "India_Telangana_Hyderabad_Block1"),
+                caller("VENDOR_ADMIN"), TENANT);
 
         assertFalse(scope.unscoped());
-        assertTrue(scope.covers("India_Telangana"));
-        assertTrue(scope.covers("India_Telangana_Hyderabad"));
-        assertTrue(scope.covers("India_Telangana_Hyderabad_Block1"));
+        assertEquals(3, visible.size());
     }
 
     @Test
     void anAncestorOfAGrantIsNotCovered() {
         callerHolds(jurisdiction("India_Telangana_Hyderabad", "VENDOR_ADMIN"));
-        beneath("India_Telangana_Hyderabad", "India_Telangana_Hyderabad_Block1");
+        chain("India_Telangana", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
 
         // The state containing the caller's district is above them, not inside them. Were this to
         // pass, a district administrator would reach the whole state.
-        assertFalse(scope.covers("India_Telangana"));
+        assertTrue(resolver.within(scope, held("India_Telangana"), caller("VENDOR_ADMIN"), TENANT).isEmpty());
     }
 
     @Test
     void aSiblingIsNotCovered() {
         callerHolds(jurisdiction("India_Telangana", "VENDOR_ADMIN"));
-        beneath("India_Telangana", "India_Telangana_Hyderabad");
+        chain("India_Karnataka", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
 
-        assertFalse(scope.covers("India_Karnataka"));
+        assertTrue(resolver.within(scope, held("India_Karnataka"), caller("VENDOR_ADMIN"), TENANT).isEmpty());
     }
 
     @Test
     void aPrefixOfAGrantIsNotMistakenForADescendant() {
         callerHolds(jurisdiction("India_Telangana_Hyderabad", "VENDOR_ADMIN"));
-        beneath("India_Telangana_Hyderabad");
+        chain("India_Telangana_Hyderabad2", "India_Telangana", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
 
         // Resolution goes through the boundary service, so a code that merely starts with the
         // same text is unrelated. A prefix match would wrongly include this.
-        assertFalse(scope.covers("India_Telangana_Hyderabad2"));
+        assertTrue(resolver.within(scope, held("India_Telangana_Hyderabad2"),
+                caller("VENDOR_ADMIN"), TENANT).isEmpty());
     }
 
     @Test
@@ -159,26 +177,30 @@ class JurisdictionScopeResolverTest {
         callerHolds(
                 jurisdiction("India_Telangana", "VENDOR_ADMIN"),
                 jurisdiction("India_Karnataka", "AMC_FIELD_STAFF"));
-        beneath("India_Telangana", "India_Telangana_Hyderabad");
-        beneath("India_Karnataka", "India_Karnataka_Bengaluru");
+        chain("India_Telangana_Hyderabad", "India_Telangana", "India");
+        chain("India_Karnataka", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
 
-        assertTrue(scope.covers("India_Telangana_Hyderabad"));
-        assertFalse(scope.covers("India_Karnataka"));
+        assertEquals(1, resolver.within(scope, held("India_Telangana_Hyderabad"),
+                caller("VENDOR_ADMIN"), TENANT).size());
+        assertTrue(resolver.within(scope, held("India_Karnataka"), caller("VENDOR_ADMIN"), TENANT).isEmpty());
     }
 
     @Test
     void aJurisdictionWithNoRolesAppliesToEveryRole() {
         callerHolds(jurisdiction("India_Telangana"));
-        beneath("India_Telangana", "India_Telangana_Hyderabad");
+        chain("India_Telangana_Hyderabad", "India_Telangana", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
 
         // Predates role scoping, so it applies to whatever the holder does - the same rule HRMS
         // search uses. Reading it as "no roles, therefore no scope" would lock out every account
         // created before role authoring existed.
-        assertTrue(scope.covers("India_Telangana_Hyderabad"));
+        assertEquals(1, resolver.within(scope, held("India_Telangana_Hyderabad"),
+                caller("VENDOR_ADMIN"), TENANT).size());
     }
 
     @Test
@@ -191,7 +213,6 @@ class JurisdictionScopeResolverTest {
 
         assertFalse(scope.unscoped());
         assertTrue(scope.codes().isEmpty());
-        assertFalse(scope.covers("India_Telangana"));
     }
 
     @Test
@@ -204,7 +225,6 @@ class JurisdictionScopeResolverTest {
 
         assertFalse(scope.unscoped());
         assertTrue(scope.codes().isEmpty());
-        assertFalse(scope.covers("India_Telangana"));
     }
 
     @Test
@@ -226,55 +246,89 @@ class JurisdictionScopeResolverTest {
     @Test
     void withinKeepsOnlyTheJurisdictionsInsideTheScope() {
         callerHolds(jurisdiction("India_Telangana", "VENDOR_ADMIN"));
-        beneath("India_Telangana", "India_Telangana_Hyderabad");
+        chain("India_Telangana_Hyderabad", "India_Telangana", "India");
+        chain("India_Karnataka", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
 
-        List<Jurisdiction> target = List.of(
-                jurisdiction("India_Telangana_Hyderabad"),
-                jurisdiction("India_Karnataka"));
+        List<Jurisdiction> target = held("India_Telangana_Hyderabad", "India_Karnataka");
+        List<Jurisdiction> visible = resolver.within(scope, target, caller("VENDOR_ADMIN"), TENANT);
 
-        List<Jurisdiction> visible = scope.within(target);
-
-        // The user works in both places; the caller administers one of them.
+        // The user works in both places; the caller administers one of them. This is the case the
+        // whole design turns on - the user stays visible, trimmed to the slice in reach.
         assertEquals(1, visible.size());
         assertEquals("India_Telangana_Hyderabad", visible.get(0).getBoundary());
+
+        List<Jurisdiction> preserved = resolver.outside(scope, target, caller("VENDOR_ADMIN"), TENANT);
+        assertEquals(1, preserved.size());
+        assertEquals("India_Karnataka", preserved.get(0).getBoundary());
     }
 
     @Test
     void coversAllRejectsAListWithAnythingOutside() {
         callerHolds(jurisdiction("India_Telangana", "VENDOR_ADMIN"));
-        beneath("India_Telangana", "India_Telangana_Hyderabad");
+        chain("India_Telangana_Hyderabad", "India_Telangana", "India");
+        chain("India_Karnataka", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
 
-        assertTrue(resolver.coversAll(scope, List.of(jurisdiction("India_Telangana_Hyderabad"))));
-        assertFalse(resolver.coversAll(scope,
-                List.of(jurisdiction("India_Telangana_Hyderabad"), jurisdiction("India_Karnataka"))));
+        assertTrue(resolver.coversAll(scope, held("India_Telangana_Hyderabad"),
+                caller("VENDOR_ADMIN"), TENANT));
+        assertFalse(resolver.coversAll(scope, held("India_Telangana_Hyderabad", "India_Karnataka"),
+                caller("VENDOR_ADMIN"), TENANT));
     }
 
     @Test
     void anUnscopedCallerCoversEverything() {
         JurisdictionScopeResolver.Scope scope = JurisdictionScopeResolver.Scope.everything();
+        List<Jurisdiction> target = held("India_Karnataka", "India_Telangana");
 
-        List<Jurisdiction> target = List.of(jurisdiction("India_Karnataka"), jurisdiction("India_Telangana"));
-
-        assertEquals(2, scope.within(target).size());
-        assertTrue(resolver.coversAll(scope, target));
+        assertEquals(2, resolver.within(scope, target, caller("ORG_PLATFORM_ADMIN"), TENANT).size());
+        assertTrue(resolver.coversAll(scope, target, caller("ORG_PLATFORM_ADMIN"), TENANT));
+        // An unscoped caller must not trigger a boundary lookup at all.
+        org.mockito.Mockito.verifyNoInteractions(boundaryUtil);
     }
 
     @Test
-    void everyGrantIsExpandedInASingleBoundaryCall() {
-        callerHolds(
-                jurisdiction("India_Telangana", "VENDOR_ADMIN"),
-                jurisdiction("India_Karnataka", "VENDOR_ADMIN"));
-        when(boundaryUtil.codesBeneath(any(), anyString(), any(Collection.class)))
-                .thenReturn(Set.of("India_Telangana", "India_Karnataka", "India_Telangana_Hyderabad"));
+    void aWholePageOfJurisdictionsCostsOneBoundaryCall() {
+        callerHolds(jurisdiction("India_Telangana", "VENDOR_ADMIN"));
+        chain("India_Telangana_Hyderabad", "India_Telangana", "India");
+        chain("India_Telangana_Warangal", "India_Telangana", "India");
+        chain("India_Karnataka", "India");
+        wireBoundaryService();
 
         JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
+        List<Jurisdiction> visible = resolver.within(scope,
+                held("India_Telangana_Hyderabad", "India_Telangana_Warangal", "India_Karnataka"),
+                caller("VENDOR_ADMIN"), TENANT);
 
-        assertTrue(scope.covers("India_Telangana_Hyderabad"));
+        assertEquals(2, visible.size());
+        // Batched: resolving per jurisdiction would be a network round trip per row of the table.
         org.mockito.Mockito.verify(boundaryUtil, org.mockito.Mockito.times(1))
-                .codesBeneath(any(), anyString(), any(Collection.class));
+                .ancestorsOf(any(), anyString(), any(Collection.class));
+    }
+
+    @Test
+    void theCallerSGrantsAreNeverExpandedDownwards() {
+        callerHolds(jurisdiction("India_Karnataka", "VENDOR_ADMIN"));
+        chain("India_Karnataka_Koppal", "India_Karnataka", "India");
+        wireBoundaryService();
+
+        resolver.resolve(caller("VENDOR_ADMIN"), TENANT);
+        resolver.within(scopeOf("India_Karnataka"), held("India_Karnataka_Koppal"),
+                caller("VENDOR_ADMIN"), TENANT);
+
+        // Regression guard. Expanding a state downwards lists every facility beneath it, which
+        // produced an HRMS request line past the servlet's limit and a 400 before the app ran.
+        org.mockito.ArgumentCaptor<Collection<String>> asked =
+                org.mockito.ArgumentCaptor.forClass(Collection.class);
+        org.mockito.Mockito.verify(boundaryUtil).ancestorsOf(any(), anyString(), asked.capture());
+        assertEquals(List.of("India_Karnataka_Koppal"), List.copyOf(asked.getValue()));
+    }
+
+    private JurisdictionScopeResolver.Scope scopeOf(String... grants) {
+        return new JurisdictionScopeResolver.Scope(false, new java.util.LinkedHashSet<>(List.of(grants)));
     }
 }

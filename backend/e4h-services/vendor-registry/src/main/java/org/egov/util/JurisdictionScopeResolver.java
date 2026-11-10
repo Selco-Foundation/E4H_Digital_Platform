@@ -12,7 +12,10 @@ import org.egov.web.models.Jurisdiction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -71,22 +74,21 @@ public class JurisdictionScopeResolver {
             return new Scope(false, Collections.emptySet());
         }
 
-        public boolean covers(String boundaryCode) {
-            return unscoped || (StringUtils.isNotBlank(boundaryCode) && codes.contains(boundaryCode));
-        }
-
-        /** The jurisdictions of this list that the holder of this scope may see or change. */
-        public List<Jurisdiction> within(List<Jurisdiction> jurisdictions) {
-            if (jurisdictions == null) {
-                return Collections.emptyList();
-            }
+        /**
+         * Whether this scope reaches `boundaryCode`, given that boundary's own ancestor chain.
+         *
+         * The chain has to be supplied rather than looked up here, because resolving it is a
+         * network call and the callers batch it across every boundary they are testing.
+         */
+        public boolean covers(String boundaryCode, Set<String> ancestorsIncludingSelf) {
             if (unscoped) {
-                return jurisdictions;
+                return true;
             }
-            return jurisdictions.stream()
-                    .filter(Objects::nonNull)
-                    .filter(jurisdiction -> covers(jurisdiction.getBoundary()))
-                    .toList();
+            if (StringUtils.isBlank(boundaryCode) || ancestorsIncludingSelf == null) {
+                return false;
+            }
+            // In scope when the boundary is one of the grants, or sits anywhere beneath one.
+            return ancestorsIncludingSelf.stream().anyMatch(codes::contains);
         }
     }
 
@@ -115,24 +117,70 @@ public class JurisdictionScopeResolver {
             return Scope.nothing();
         }
 
-        Set<String> scope = new LinkedHashSet<>(boundaryUtil.codesBeneath(requestInfo, tenantId, grants));
+        log.debug("Caller {} administers {} jurisdictions", callerUuid, grants.size());
+        return new Scope(false, grants);
+    }
 
-        log.debug("Caller {} administers {} boundaries, expanded from {} jurisdictions",
-                callerUuid, scope.size(), grants.size());
-        return new Scope(false, scope);
+    /**
+     * The jurisdictions of this list that the scope reaches.
+     *
+     * Resolves the ancestors of every boundary in the list in **one** call, then filters. Batching
+     * is the point: this is called per user on a page of results, and a lookup each would be a
+     * network round trip per row.
+     */
+    public List<Jurisdiction> within(Scope scope, List<Jurisdiction> jurisdictions,
+                                     RequestInfo requestInfo, String tenantId) {
+        if (jurisdictions == null || jurisdictions.isEmpty()) {
+            return Collections.emptyList();
+        }
+        if (scope.unscoped()) {
+            return jurisdictions;
+        }
+        Map<String, Set<String>> chains = chainsFor(jurisdictions, requestInfo, tenantId);
+        return jurisdictions.stream()
+                .filter(Objects::nonNull)
+                .filter(jurisdiction -> scope.covers(jurisdiction.getBoundary(),
+                        chains.get(jurisdiction.getBoundary())))
+                .toList();
     }
 
     /** True when every jurisdiction in the list is one this caller may act on. */
-    public boolean coversAll(Scope scope, Collection<Jurisdiction> jurisdictions) {
+    public boolean coversAll(Scope scope, Collection<Jurisdiction> jurisdictions,
+                             RequestInfo requestInfo, String tenantId) {
         if (scope.unscoped()) {
             return true;
         }
         if (jurisdictions == null || jurisdictions.isEmpty()) {
             return true;
         }
+        Map<String, Set<String>> chains = chainsFor(jurisdictions, requestInfo, tenantId);
         return jurisdictions.stream()
                 .filter(Objects::nonNull)
-                .allMatch(jurisdiction -> scope.covers(jurisdiction.getBoundary()));
+                .allMatch(jurisdiction -> scope.covers(jurisdiction.getBoundary(),
+                        chains.get(jurisdiction.getBoundary())));
+    }
+
+    /** The jurisdictions of this list the scope does NOT reach - what an edit must preserve. */
+    public List<Jurisdiction> outside(Scope scope, List<Jurisdiction> jurisdictions,
+                                      RequestInfo requestInfo, String tenantId) {
+        if (scope.unscoped() || jurisdictions == null || jurisdictions.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Jurisdiction> inScope = within(scope, jurisdictions, requestInfo, tenantId);
+        return jurisdictions.stream()
+                .filter(Objects::nonNull)
+                .filter(jurisdiction -> !inScope.contains(jurisdiction))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private Map<String, Set<String>> chainsFor(Collection<Jurisdiction> jurisdictions,
+                                               RequestInfo requestInfo, String tenantId) {
+        Set<String> boundaries = jurisdictions.stream()
+                .filter(Objects::nonNull)
+                .map(Jurisdiction::getBoundary)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return boundaryUtil.ancestorsOf(requestInfo, tenantId, boundaries);
     }
 
     private boolean isUnscoped(RequestInfo requestInfo) {
