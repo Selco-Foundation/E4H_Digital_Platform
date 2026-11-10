@@ -23,6 +23,7 @@ import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/app_logger.dart';
 import '../utils/extensions.dart';
+import '../utils/form_date_value.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -247,7 +248,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     final Map<String, dynamic> flatValues = {};
     schema.pages.forEach((_, pageSchema) {
       pageSchema.properties?.forEach((propKey, propSchema) {
-        flatValues[propKey] = propSchema.value;
+        flatValues[propKey] = formValueForStorage(propSchema, propSchema.value);
       });
     });
 

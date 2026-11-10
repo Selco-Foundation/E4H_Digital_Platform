@@ -3,6 +3,7 @@ import 'package:digit_forms_engine/models/property_schema/property_schema.dart';
 import 'package:digit_forms_engine/utils/utils.dart' as forms_utils;
 
 import '../model/assessment/assessment_form.dart';
+import 'form_date_value.dart';
 import '../model/assessment/assessment_queue.dart';
 
 Map<String, dynamic> buildAssessmentDraftDefaults({
@@ -194,7 +195,7 @@ Map<String, dynamic> buildAssessmentSubmissionData(SchemaObject schema) {
             .where((entry) => entry.isNotEmpty)
             .toList(growable: false);
       }
-      output[propertyEntry.key] = value;
+      output[propertyEntry.key] = formValueForStorage(property, value);
     }
   }
   return output;

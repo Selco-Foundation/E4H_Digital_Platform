@@ -20,6 +20,7 @@ import '../repositories/app_init_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/form_date_value.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -50,6 +51,9 @@ class DynamicFormsPage extends StatefulWidget {
 class _DynamicFormsPageState extends State<DynamicFormsPage> {
   final _repo = AppInitRepo();
   bool _loadedOnce = false;
+  FormGroup? _activeForm;
+  bool get _hasFormInteraction =>
+      (_activeForm?.dirty ?? false) || (_activeForm?.touched ?? false);
 
   String? _lastActivityFacilityId;
   Map<String, dynamic> _activityFacilityInitialKV = const {};
@@ -63,7 +67,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   late FormsBloc _formsBloc;
   bool _isPreparingForm = false;
 
-  Future<void> _loadInitialKVForActivityFacility() async {
+  Future<bool> _loadInitialKVForActivityFacility(
+      {bool preserveEdits = false}) async {
     final isar = context.read<ActivityFacilityBloc>().isar;
     final schemaKey = _baseSchemaKey;
     final kv = schemaKey == null
@@ -84,11 +89,12 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 activityFacilityId: widget.activityFacilityId,
                 userType: widget.userType,
               );
-    if (!mounted) return;
+    if (!mounted || (preserveEdits && _hasFormInteraction)) return false;
     setState(() {
       _activityFacilityInitialKV = kv;
       _formSeed++;
     });
+    return true;
   }
 
   Future<void> _ensureSchemaLoaded() async {
@@ -281,7 +287,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     final Map<String, dynamic> flatValues = {};
     schema.pages.forEach((_, pageSchema) {
       pageSchema.properties?.forEach((propKey, propSchema) {
-        flatValues[propKey] = propSchema.value;
+        flatValues[propKey] = formValueForStorage(propSchema, propSchema.value);
       });
     });
 
@@ -355,9 +361,13 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     return BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
       listener: (context, state) async {
         state.maybeWhen(
-          success: (_) async {
-            await _loadInitialKVForActivityFacility();
-            if (!mounted) return;
+          success: (savedBomValues) async {
+            // A late sync must not replace a vendor's unsaved corrections.
+            // Date pickers mark controls touched without marking them dirty.
+            if (!savedBomValues || _hasFormInteraction) return;
+            final applied =
+                await _loadInitialKVForActivityFacility(preserveEdits: true);
+            if (!mounted || !applied) return;
             final formsBloc = context.read<FormsBloc>();
             final currentKey = currentSchemaKey(
                 state: formsBloc.state,
@@ -412,6 +422,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 final controls = JsonForms.getFormControls(pageSchema,
                     defaultValues: const {});
                 final form = fb.group(controls);
+                _activeForm = form;
 
                 final propertyKeys =
                     (pageSchema.properties?.keys.toList() ?? const <String>[]);
