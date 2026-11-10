@@ -50,7 +50,7 @@ public class OtpLoginServiceTest {
         userService = mock(UserService.class);
         notificationUtil = mock(NotificationUtil.class);
         service = new OtpLoginService(store, userService, notificationUtil,
-                true, 6, 300, 30, 3, 5, 15, 120, false);
+                true, 6, 300, 30, 3, 5, 15, 120, false, false, "123456");
     }
 
     @Test
@@ -159,10 +159,27 @@ public class OtpLoginServiceTest {
 
     @Test
     public void disabledFeatureRejectsEverything() {
-        service = new OtpLoginService(store, userService, notificationUtil, false, 6, 300, 30, 3, 5, 15, 120, false);
+        service = new OtpLoginService(store, userService, notificationUtil, false, 6, 300, 30, 3, 5, 15, 120, false, false, "123456");
 
         expectError("OTP_LOGIN_DISABLED", () -> service.sendOtp(TENANT, MOBILE, null));
         assertFalse(service.consumeLoginTicket("anything", facilityA, TENANT));
+    }
+
+    @Test
+    public void fixedOtpIsUsedWhenEnabled() {
+        service = new OtpLoginService(store, userService, notificationUtil, true, 6, 300, 30, 3, 5, 15, 120,
+                false, true, "123456");
+        mapNumberTo(facilityA);
+
+        assertEquals("123456", sendAndCaptureOtp());
+        assertNotNull(service.verifyOtp(TENANT, MOBILE, "123456").getLoginTicket());
+        expectError("OTP_LOGIN_OTP_EXPIRED", () -> service.verifyOtp(TENANT, MOBILE, "123456"));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void fixedOtpMustMatchLength() {
+        new OtpLoginService(store, userService, notificationUtil, true, 6, 300, 30, 3, 5, 15, 120,
+                false, true, "1234");
     }
 
     @Test

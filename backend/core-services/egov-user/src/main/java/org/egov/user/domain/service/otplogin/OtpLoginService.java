@@ -60,6 +60,7 @@ public class OtpLoginService {
     private final int blockSeconds;
     private final int ticketValiditySeconds;
     private final boolean logOtp;
+    private final String fixedOtp;
 
     public OtpLoginService(OtpLoginStore store, UserService userService, NotificationUtil notificationUtil,
                            @Value("${employee.otp.login.enabled:false}") boolean enabled,
@@ -70,7 +71,9 @@ public class OtpLoginService {
                            @Value("${employee.otp.login.max.wrong.attempts:5}") int maxWrongAttempts,
                            @Value("${employee.otp.login.block.minutes:15}") int blockMinutes,
                            @Value("${employee.otp.login.ticket.validity.seconds:120}") int ticketValiditySeconds,
-                           @Value("${employee.otp.login.log.otp.enabled:false}") boolean logOtp) {
+                           @Value("${employee.otp.login.log.otp.enabled:false}") boolean logOtp,
+                           @Value("${employee.otp.login.fixed.otp.enabled:false}") boolean fixedOtpEnabled,
+                           @Value("${employee.otp.login.fixed.otp.value:123456}") String fixedOtpValue) {
         this.store = store;
         this.userService = userService;
         this.notificationUtil = notificationUtil;
@@ -86,6 +89,16 @@ public class OtpLoginService {
         if (logOtp) {
             log.info("employee.otp.login.log.otp.enabled=true: OTP login codes will be written to the logs. "
                     + "Use only in environments without SMS, never in production");
+        }
+        if (fixedOtpEnabled) {
+            if (fixedOtpValue == null || !fixedOtpValue.matches("^[0-9]{" + otpLength + "}$")) {
+                throw new IllegalStateException("employee.otp.login.fixed.otp.value must be " + otpLength + " digits");
+            }
+            this.fixedOtp = fixedOtpValue;
+            log.warn("employee.otp.login.fixed.otp.enabled=true: every OTP login code is the fixed value. "
+                    + "Use only in dev/test environments, never in production");
+        } else {
+            this.fixedOtp = null;
         }
     }
 
@@ -252,6 +265,10 @@ public class OtpLoginService {
     }
 
     private String generateOtp() {
+        // Dev/test only: same code every time, all other rules (expiry, single use, limits) still apply.
+        if (fixedOtp != null) {
+            return fixedOtp;
+        }
         StringBuilder otp = new StringBuilder(otpLength);
         for (int i = 0; i < otpLength; i++) {
             otp.append(random.nextInt(10));
