@@ -13,6 +13,7 @@ import { Employee } from "../../../constants/Routes";
 import useReportingIssues from "../../../hooks/useReportingIssues";
 import { getAvailableReportingIssues, getReportingObservations, getReportingInstallationAction, isReportingSelectionValid, isReportingObservationOptional, isReportingSystemStatusValid } from "../../../utilities/reportingIssues";
 import CommonUtils from "../../../utilities/CommonUtils";
+import ReportingDuplicateGuard from "../../../components/ReportSolarIssue/ReportingDuplicateGuard";
 import ReportingDetails from "../../../components/ReportSolarIssue/ReportingDetails";
 import { ReportingDetailsDraft } from "../../../services/ReportingDetailsDraft";
 import { ReportingFirDraft } from "../../../services/ReportingFirDraft";
@@ -405,6 +406,7 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   useEffect(() => {
     const handleDuplicateCheck = async () => {
+      if (reportFacility) return;
       if (healthcentre?.code && complaintType?.key && subType?.key) {
         setBlockUI(true);
         try {
@@ -461,7 +463,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     }
 
     handleDuplicateCheck();
-  }, [healthcentre, complaintType, subType]);
+  }, [healthcentre, complaintType, subType, reportFacility]);
 
   async function selectedType(value) {
     setDisableUpload(false);
@@ -965,7 +967,9 @@ export const CreateComplaint = ({ parentUrl }) => {
           <Loader />
         </div>
       )}
-      {reportFacility ? <ReportingDetails
+      {reportFacility ? <ReportingDuplicateGuard facility={reportFacility} component={requestedReportIssue}
+        parentUrl={parentUrl} onBack={() => history.push(`${parentUrl}${Employee.ReportSolarIssue}?${new URLSearchParams({ facility: reportFacility, step: "issue", issue: requestedReportIssue })}`)}>
+      <ReportingDetails draftId={detailsDraft.draftId}
         facility={healthcentre} issue={complaintType} observation={subType?.key ? subType : null} status={systemFunctionality}
         description={isGuidedSupport ? supportDescription : description}
         onDescriptionChange={isGuidedSupport ? changeSupportDescription : changeDescription}
@@ -977,7 +981,8 @@ export const CreateComplaint = ({ parentUrl }) => {
         uploading={isImageUploading || isVideoUploading || isFirUploading} submitting={isSubmitting}
         canSubmit={canSubmit && isGuidedSelectionValid} onSubmit={wrapperSubmit} backUrl={reportingPageUrl}
         tenantId={tenantId} showFacility={getMappedFacilityCodes().length > 1}
-      /> : <React.Fragment>
+      />
+      </ReportingDuplicateGuard> : <React.Fragment>
         <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right" }}>
           <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>

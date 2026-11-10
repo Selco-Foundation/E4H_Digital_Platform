@@ -1,11 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useHistory, useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { Card, CardHeader, CardText, SubmitBar, Loader } from "@selco/digit-ui-react-components";
 import { Employee } from "../../../constants/Routes";
 import useReportingFacilities from "../../../hooks/useReportingFacilities";
 import FacilitySelection from "../../../components/ReportSolarIssue/FacilitySelection";
 import ReportingSelection from "../../../components/ReportSolarIssue/ReportingSelection";
+import ReportingDuplicateGuard from "../../../components/ReportSolarIssue/ReportingDuplicateGuard";
 import ReportingStepper from "../../../components/ReportSolarIssue/ReportingStepper";
 import { ReportingFirDraft } from "../../../services/ReportingFirDraft";
 import { ReportingSupportDraft } from "../../../services/ReportingSupportDraft";
@@ -176,6 +177,9 @@ const ReportSolarIssue = ({ parentUrl }) => {
       ) : <React.Fragment>
         <CardText style={{ fontSize: "20px" }}>{t("IM_REPORT_STEP_FACILITY", { defaultValue: "Facility" })}: {selectedFacility?.name}</CardText>
         {choosingObservation && <CardText>{selectedIssue.name}</CardText>}
+        <ReportingDuplicateGuard facility={selectedFacility?.code} component={selectedIssue?.key}
+          enabled={Boolean(selectedIssue && (choosingObservation || choosingDescription || choosingStatus))}
+          parentUrl={parentUrl} onBack={() => updateSelection(selectedFacility.code, "issue")}>
         {renderIssueSelection()}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "24px" }}>
         <SubmitBar
@@ -184,17 +188,15 @@ const ReportSolarIssue = ({ parentUrl }) => {
           onSubmit={() => continueToDetails()}
         />
         {choosingObservation && observationOptional && <SubmitBar
-          label={t("IM_REPORT_SKIP", { defaultValue: "Skip" })}
+          label={t("CS_COMMON_SKIP", { defaultValue: "Skip" })}
           disabled={issueQuery.isLoading || issueQuery.isError}
           onSubmit={() => continueToDetails(true)}
         />}
         {(choosingDescription || choosingStatus || choosingObservation || codes.length > 1) && <SubmitBar label={t("CORE_COMMON_BACK", { defaultValue: "Back" })}
           onSubmit={() => updateSelection(selectedFacility.code, choosingDescription ? "observation" : choosingStatus ? (isSupport && !selectedObservation ? "description" : "observation") : choosingObservation ? "issue" : "facility")} />}
       </div>
+      </ReportingDuplicateGuard>
       </React.Fragment>}
-      <div style={{ marginTop: "24px" }}>
-        <Link to={Employee.Home} onClick={() => { ReportingFirDraft.clear(); ReportingSupportDraft.clear(); ReportingDetailsDraft.clear(); }}>{t("CORE_COMMON_GO_TO_HOME", { defaultValue: "Go to home" })}</Link>
-      </div>
     </Card>
     </React.Fragment>
   );

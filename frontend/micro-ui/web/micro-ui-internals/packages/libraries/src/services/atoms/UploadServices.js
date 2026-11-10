@@ -18,7 +18,7 @@ export const UploadServices = {
     return Axios(config);
   },
 
-  MultipleFilesStorage: async (module, filesData, tenantId, isVideo = false) => {
+  MultipleFilesStorage: async (module, filesData, tenantId, isVideo = false, onUploadProgress) => {
     const formData = new FormData();
     const filesArray = Array.from(filesData);
     filesArray?.forEach((fileData, index) => (fileData ? formData.append("file", fileData, fileData.name) : null));
@@ -32,6 +32,7 @@ export const UploadServices = {
       url: url,
       data: formData,
       timeout: 600000,
+      ...(onUploadProgress ? { onUploadProgress } : {}),
       headers: { "Content-Type": "multipart/form-data", "auth-token": token },
     };
 

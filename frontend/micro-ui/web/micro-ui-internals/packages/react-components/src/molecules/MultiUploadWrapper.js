@@ -1,4 +1,5 @@
 import React, { useEffect, useReducer, useState } from "react";
+import useIndividualUploads from "../hooks/useIndividualUploads";
 import UploadFile from "../atoms/UploadFile";
 
 const fileValidationStatus = (file, regex, maxSize, t, specificFileConstraint) => {
@@ -113,13 +114,15 @@ const MultiUploadWrapper = ({
                               // NEW: page + intent come from parent (e.g., "new_ticket_page", "image"|"video")
                               analyticsPage,
                               mediaIntent,
+                              individualUploadProgress = false,
+                              onFileStatusChange,
+                              uploadQueueKey,
                             }) => {
   const FILES_UPLOADED = "FILES_UPLOADED";
   const TARGET_FILE_REMOVAL = "TARGET_FILE_REMOVAL";
   const [isUploading, setIsUploading] = useState(false);
   const [fileErrors, setFileErrors] = useState([]);
   const [enableButton, setEnableButton] = useState(true);
-
   const uploadMultipleFiles = (state, payload) => {
     const { files, fileStoreIds } = payload;
     const filesData = Array.from(files);
@@ -150,6 +153,31 @@ const MultiUploadWrapper = ({
   };
 
   const [state, dispatch] = useReducer(uploadReducer, [...setuploadedstate]);
+  const individual = useIndividualUploads({ enabled: individualUploadProgress, queueKey: uploadQueueKey,
+    module, tenantId: ulb || Digit.SessionStorage.get("Employee.tenantId"),
+    onResult: (file, status) => sendAnalytics("upload_media", { page: analyticsPage || "unknown_page",
+      intent: file.type.startsWith("video/") ? "video" : "image", status, fileCount: 1 }),
+  });
+  useEffect(() => {
+    if (!individualUploadProgress) return;
+    const existing = new Set(state.map(([, entry]) => entry.fileStoreId.fileStoreId));
+    const uploaded = individual.entries.filter((entry) => entry.status === "uploaded");
+    const completed = uploaded.filter((entry) => !existing.has(entry.fileStoreId));
+    if (completed.length) {
+      getFormState([...state, ...completed.map((entry) => [entry.file.name, { file: entry.file, fileStoreId: entry.reference }])]);
+      dispatch({ type: FILES_UPLOADED, payload: {
+        files: completed.map((entry) => entry.file), fileStoreIds: completed.map((entry) => entry.reference),
+      } });
+    }
+    if (uploaded.length) individual.acknowledgeUploads();
+  }, [individualUploadProgress, individual.entries, state]);
+  useEffect(() => {
+    if (individualUploadProgress && onFileStatusChange) onFileStatusChange([
+      ...individual.entries.filter((entry) => entry.status !== "uploaded"),
+      ...state.map(([name, entry]) => ({ id: `uploaded-${entry.fileStoreId.fileStoreId}`, name, status: "uploaded", progress: 100, fileStoreId: entry.fileStoreId.fileStoreId })),
+    ], { retry: individual.retry, remove: individual.remove, restoring: individual.restoring, recoveryUnavailable: individual.recoveryUnavailable });
+  }, [individualUploadProgress, individual.entries, individual.restoring, individual.recoveryUnavailable, state, onFileStatusChange]);
+
 
   const onUploadMultipleFiles = async (e) => {
     e.preventDefault();
@@ -180,7 +208,7 @@ const MultiUploadWrapper = ({
       allowedMaxSizeInMB,
       t,
       maxFilesAllowed,
-      state,
+      individualUploadProgress ? [...state, ...individual.entries.filter((entry) => entry.status !== "uploaded").map((entry) => [entry.name, { file: entry.file }])] : state,
       specificFileConstraint
     );
 
@@ -191,6 +219,15 @@ const MultiUploadWrapper = ({
     }
 
     setIsUploading(true);
+    if (individualUploadProgress) {
+      try {
+        await individual.add(files);
+      } finally {
+        setIsUploading(false);
+        setEnableButton(true);
+      }
+      return;
+    }
     try {
       const tenant = ulb || Digit.SessionStorage.get("Employee.tenantId");
       const uploadPromises = [];
@@ -305,8 +342,8 @@ const MultiUploadWrapper = ({
   useEffect(() => getFormState(state), [state]);
 
   useEffect(() => {
-    if (onUploadStatusChange) onUploadStatusChange(isUploading);
-  }, [isUploading]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (onUploadStatusChange) onUploadStatusChange(isUploading || (individualUploadProgress && individual.unresolved));
+  }, [isUploading, individualUploadProgress, individual.unresolved]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (requestSpecifcFileRemoval) {
@@ -334,7 +371,7 @@ const MultiUploadWrapper = ({
         accept={acceptFiles}
         message={t(`ACTION_NO_FILE_SELECTED`)}
         customClass={customClass}
-        disabled={disabled}
+        disabled={disabled || (individualUploadProgress && individual.restoring)}
         enableButton={enableButton}
         ulb={ulb}
         analyticsPage={analyticsPage}
