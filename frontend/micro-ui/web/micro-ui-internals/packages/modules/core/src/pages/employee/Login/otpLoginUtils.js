@@ -196,6 +196,32 @@ export const getInvalidRoles = () => {
   return Array.isArray(roles) ? roles : [];
 };
 
+/**
+ * Readable fallback for a role code that has no translation yet.
+ * Short words (3 letters or fewer) are treated as acronyms.
+ *   "AMC_REVIEWER"       -> "AMC Reviewer"
+ *   "ORG_PLATFORM_ADMIN" -> "ORG Platform Admin"
+ *   "EMPLOYEE"           -> "Employee"
+ */
+export const formatRoleCode = (code) =>
+  String(code || "")
+    .split("_")
+    .filter(Boolean)
+    .map((word) => (word.length <= 3 ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()))
+    .join(" ");
+
+/**
+ * Short role summary for one account row: the first `max` labels, then "+N more".
+ * Keeps every row to one line however many roles an account has.
+ *   (["A", "B", "C", "D"], 2) -> "A, B +2 more"
+ */
+export const summarizeRoles = (labels, max) => {
+  if (!Array.isArray(labels) || labels.length === 0) return "";
+  const shown = labels.slice(0, max).join(", ");
+  const hidden = labels.length - max;
+  return hidden > 0 ? `${shown} +${hidden} more` : shown;
+};
+
 /** Removes accounts holding any role in `invalidRoles`. */
 export const filterPermittedAccounts = (accounts, invalidRoles) => {
   if (!Array.isArray(invalidRoles) || invalidRoles.length === 0) return accounts;

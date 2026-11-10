@@ -6,6 +6,7 @@ import { loginWithTicket, sendLoginOtp, verifyLoginOtp } from "./otpLoginService
 import {
   MOBILE_INPUT_MAX_LENGTH,
   formatCountdown,
+  formatRoleCode,
   getOtpLength,
   isCompleteOtp,
   isValidMobile,
@@ -13,6 +14,7 @@ import {
   normalizeMobile,
   sanitizeMobileInput,
   sanitizeOtp,
+  summarizeRoles,
 } from "./otpLoginUtils";
 
 const STEP_MOBILE = "mobile";
@@ -22,7 +24,17 @@ const STEP_ACCOUNT = "account";
 // Below this many seconds the account-selection countdown turns red.
 const TICKET_WARNING_SECONDS = 20;
 
+// Role labels shown per account row before "+N more" (the full list is in the hover tooltip).
+const MAX_ROLES_SHOWN = 2;
+
 const BRAND_COLOR = "#7a2829";
+const BRAND_TINT = "rgba(122, 40, 41, 0.06)"; // BRAND_COLOR at 6%: selected-row background
+const TEXT_SECONDARY = "#505a5f";
+const BORDER_COLOR = "#d6d5d4";
+const ERROR_COLOR = "#d4351c";
+
+// One line that ends in "…" instead of widening the card.
+const singleLine = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 // Matches the look of the existing "Forgot Password?" link on the login page.
 const linkButtonStyle = {
@@ -352,9 +364,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
   const showTenant = new Set(accounts.map((account) => account.tenantId)).size > 1;
 
   const formatValidity = (seconds) =>
-    seconds >= 60
-      ? `${Math.ceil(seconds / 60)} ${tf("CORE_COMMON_MINUTES", "minutes")}`
-      : `${seconds} ${tf("CORE_COMMON_SECONDS", "seconds")}`;
+    seconds >= 60 ? `${Math.ceil(seconds / 60)} ${tf("CORE_COMMON_MINUTES", "minutes")}` : `${seconds} ${tf("CORE_COMMON_SECONDS", "seconds")}`;
 
   const submitConfig = {
     [STEP_MOBILE]: {
@@ -365,9 +375,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
     [STEP_OTP]: {
       onSubmit: handleVerifyOtp,
       label:
-        pending === "verify" || pending === "login"
-          ? tf("CORE_LOGIN_VERIFYING_OTP", "Verifying...")
-          : tf("CORE_LOGIN_VERIFY_OTP", "Verify & Login"),
+        pending === "verify" || pending === "login" ? tf("CORE_LOGIN_VERIFYING_OTP", "Verifying...") : tf("CORE_LOGIN_VERIFY_OTP", "Verify & Login"),
       disabled: !isCompleteOtp(otp, otpLength),
     },
     [STEP_ACCOUNT]: {
@@ -381,9 +389,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
 
   const renderMobileStep = () => (
     <Fragment>
-      <CardLabel>
-        {tf("CORE_LOGIN_MOBILE_NUMBER", "Mobile Number")} *
-      </CardLabel>
+      <CardLabel>{tf("CORE_LOGIN_MOBILE_NUMBER", "Mobile Number")} *</CardLabel>
       <TextInput
         id="employee-otp-mobile"
         name="mobileNumber"
@@ -409,9 +415,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
           </Fragment>
         )}
       </CardText>
-      <CardLabel>
-        {tf("CORE_LOGIN_ENTER_OTP", "Enter OTP")} *
-      </CardLabel>
+      <CardLabel>{tf("CORE_LOGIN_ENTER_OTP", "Enter OTP")} *</CardLabel>
       <OTPInput length={otpLength} value={otp} onChange={handleOtpChange} />
 
       <div style={{ margin: "12px 0" }}>
@@ -430,29 +434,38 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
 
   const renderAccountStep = () => (
     <Fragment>
-      <CardText>
+      {/* Short, small and centred under the heading, like the other steps' helper text. */}
+      <p style={{ color: TEXT_SECONDARY, fontSize: "14px", lineHeight: "20px", margin: "0 0 12px", textAlign: "center" }}>
         {accounts.length > 1
-          ? tf("CORE_LOGIN_MULTIPLE_ACCOUNTS", "This mobile number is linked to more than one account. Choose the one to log in with.")
+          ? tf("CORE_LOGIN_MULTIPLE_ACCOUNTS", "Choose the account to log in with.")
           : tf("CORE_LOGIN_CONFIRM_ACCOUNT", "Log in with this account.")}
-      </CardText>
+      </p>
 
       {/* A real radio group: arrow keys move between accounts and screen readers announce "1 of 3". */}
-      <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={Boolean(pending)}>
+      <fieldset style={{ border: "none", margin: 0, padding: 0, minWidth: 0 }} disabled={Boolean(pending)}>
         <legend style={{ position: "absolute", left: "-9999px" }}>{tf("CORE_LOGIN_SELECT_ACCOUNT", "Select account")}</legend>
         {accounts.map((account) => {
           const isSelected = account.key === selectedKey;
+          // Translation when one exists, otherwise "AMC_REVIEWER" -> "AMC Reviewer".
+          const roleLabels = account.roleCodes.map((code) => tf(`ACCESSCONTROL_ROLES_ROLES_${code}`, formatRoleCode(code)));
+          const tenantLabel = showTenant ? tf(tenantI18nKey(account.tenantId), account.tenantId) : "";
+          const details = [summarizeRoles(roleLabels, MAX_ROLES_SHOWN), tenantLabel].filter(Boolean).join(" · ");
+          const allDetails = [roleLabels.join(", "), tenantLabel].filter(Boolean).join(" · ");
+
           return (
             <label
               key={account.key}
+              title={allDetails} // full role list on hover; the row itself stays one line
               style={{
                 alignItems: "flex-start",
-                border: `${isSelected ? 2 : 1}px solid ${isSelected ? BRAND_COLOR : "#b1b4b6"}`,
+                background: isSelected ? BRAND_TINT : "transparent",
+                border: `1px solid ${isSelected ? BRAND_COLOR : BORDER_COLOR}`,
                 borderRadius: "4px",
                 cursor: pending ? "default" : "pointer",
                 display: "flex",
-                gap: "12px",
+                gap: "10px",
                 marginBottom: "8px",
-                padding: isSelected ? "9px 11px" : "10px 12px", // keeps size constant when the border thickens
+                padding: "8px 12px",
               }}
             >
               <input
@@ -464,34 +477,47 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
                   setSelectedKey(account.key);
                   if (error) setError(null);
                 }}
-                style={{ accentColor: BRAND_COLOR, marginTop: "4px" }}
+                style={{ accentColor: BRAND_COLOR, flexShrink: 0, margin: "3px 0 0" }}
               />
-              <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
-                {/* Names can repeat across accounts, so the username is the main label. */}
-                <strong style={{ wordBreak: "break-all" }}>{account.userName}</strong>
-                {account.name && <span>{account.name}</span>}
-                {(account.roleCodes.length > 0 || showTenant) && (
-                  <span style={{ color: "#505a5f", fontSize: "14px" }}>
-                    {account.roleCodes.map((code) => tf(`ACCESSCONTROL_ROLES_ROLES_${code}`, code)).join(", ")}
-                    {showTenant && `${account.roleCodes.length > 0 ? " · " : ""}${tf(tenantI18nKey(account.tenantId), account.tenantId)}`}
-                  </span>
-                )}
+              {/* minWidth 0 lets the text shrink and end in "…" instead of widening the card. */}
+              <span style={{ display: "flex", flex: 1, flexDirection: "column", gap: "2px", minWidth: 0 }}>
+                {/* Names can repeat across accounts, so the username leads; the name follows in grey. */}
+                <span style={{ ...singleLine, fontSize: "15px", lineHeight: "20px" }}>
+                  <strong>{account.userName}</strong>
+                  {account.name && <span style={{ color: TEXT_SECONDARY }}> · {account.name}</span>}
+                </span>
+                {details && <span style={{ ...singleLine, color: TEXT_SECONDARY, fontSize: "13px", lineHeight: "18px" }}>{details}</span>}
               </span>
             </label>
           );
         })}
       </fieldset>
 
-      <CardText style={{ color: ticketSecondsLeft <= TICKET_WARNING_SECONDS ? "#d4351c" : "#505a5f", margin: "8px 0 12px" }}>
-        {tf("CORE_LOGIN_CHOOSE_WITHIN", "Choose within")} {formatCountdown(ticketSecondsLeft)}
-      </CardText>
+      {/* Quiet until the last 20 seconds, then red. */}
+      <p
+        style={{
+          color: ticketSecondsLeft <= TICKET_WARNING_SECONDS ? ERROR_COLOR : TEXT_SECONDARY,
+          fontSize: "13px",
+          margin: "0 0 12px",
+          textAlign: "right",
+        }}
+      >
+        {tf("CORE_LOGIN_CHOOSE_WITHIN", "Expires in")} {formatCountdown(ticketSecondsLeft)}
+      </p>
     </Fragment>
   );
+
+  /*
+   * The card never grows past the password card's width (its minWidth): long
+   * content wraps or ends in "…" instead, so the page doesn't jump between steps.
+   */
+  // Same box model as minWidth, so the cap equals the password card's width exactly.
+  const fixedWidthCardStyle = { ...cardStyle, maxWidth: (cardStyle && cardStyle.minWidth) || "100%" };
 
   return (
     // noValidate: our own validation shows translated messages instead of browser pop-ups.
     <form onSubmit={submitConfig.onSubmit} className={className} noValidate>
-      <Card style={cardStyle}>
+      <Card style={fixedWidthCardStyle}>
         {header}
         <CardSubHeader style={{ textAlign: "center" }}>{tf("CORE_LOGIN_WITH_OTP_HEADER", "Login with OTP")}</CardSubHeader>
 
