@@ -92,7 +92,7 @@ public class OrganisationUserService {
         log.debug("Search request validation completed");
 
         JurisdictionScopeResolver.Scope scope =
-                jurisdictionScopeResolver.resolve(request.getRequestInfo(), urlParams.getTenantId());
+                jurisdictionScopeResolver.resolve(request.getRequestInfo());
 
         if (scope.unscoped()) {
             return userRepository.getOrgUsers(request, urlParams);
@@ -110,7 +110,7 @@ public class OrganisationUserService {
     public Integer countOrganisationUsers(OrgUserSearchRequest request) {
         URLParams urlParams = URLParams.builder().build();
         JurisdictionScopeResolver.Scope scope =
-                jurisdictionScopeResolver.resolve(request.getRequestInfo(), request.getCriteria().getTenantId());
+                jurisdictionScopeResolver.resolve(request.getRequestInfo());
 
         if (scope.unscoped()) {
             return userRepository.getOrganisationsCount(request);
@@ -145,17 +145,15 @@ public class OrganisationUserService {
          * The boundary filter is deliberately NOT pushed into the HRMS query. Doing that meant
          * listing every descendant of the caller's jurisdictions, and a state-level administrator
          * expands to thousands of facility codes - a request line far past what the servlet will
-         * accept, rejected before HRMS ever sees it. Here the only boundaries resolved are the
-         * ones these users actually hold, which is a small set however senior the caller is.
+         * accept, rejected before HRMS ever sees it. Containment is decided here instead, from
+         * the boundary codes themselves, which costs nothing.
          */
         List<Employee> employees = hrmsUtils.getUsersByIds(request, candidateIds);
-        String tenantId = request.getCriteria() != null ? request.getCriteria().getTenantId() : null;
 
         return employees.stream()
                 .filter(employee -> employee != null && employee.getUser() != null
                         && employee.getUser().getUuid() != null)
-                .filter(employee -> !jurisdictionScopeResolver.within(scope, employee.getJurisdictions(),
-                        request.getRequestInfo(), tenantId).isEmpty())
+                .filter(employee -> !scope.within(employee.getJurisdictions()).isEmpty())
                 .collect(Collectors.toMap(employee -> employee.getUser().getUuid(),
                         Function.identity(), (first, second) -> first, LinkedHashMap::new));
     }

@@ -106,17 +106,11 @@ public class OrganisationUserServiceValidator {
         if (orgUser == null) {
             return;
         }
-        JurisdictionScopeResolver.Scope scope =
-                jurisdictionScopeResolver.resolve(request.getRequestInfo(), configuration.getGlobalTenantId());
-        if (jurisdictionScopeResolver.coversAll(scope, orgUser.getJurisdictions(),
-                request.getRequestInfo(), configuration.getGlobalTenantId())) {
+        JurisdictionScopeResolver.Scope scope = jurisdictionScopeResolver.resolve(request.getRequestInfo());
+        if (scope.coversAll(orgUser.getJurisdictions())) {
             return;
         }
-        List<Jurisdiction> allowed = jurisdictionScopeResolver.within(scope, orgUser.getJurisdictions(),
-                request.getRequestInfo(), configuration.getGlobalTenantId());
-        List<String> refused = orgUser.getJurisdictions().stream()
-                .filter(Objects::nonNull)
-                .filter(jurisdiction -> !allowed.contains(jurisdiction))
+        List<String> refused = scope.outside(orgUser.getJurisdictions()).stream()
                 .map(Jurisdiction::getBoundary)
                 .toList();
         log.error("Caller attempted to grant jurisdictions outside their own scope: {}", refused);
@@ -445,19 +439,15 @@ public class OrganisationUserServiceValidator {
 
         // The caller must administer somewhere this user actually works. Checked against what is
         // stored rather than what was submitted, since the payload is the thing being validated.
-        JurisdictionScopeResolver.Scope callerScope =
-                jurisdictionScopeResolver.resolve(request.getRequestInfo(), configuration.getGlobalTenantId());
-        if (!callerScope.unscoped() && jurisdictionScopeResolver.within(callerScope,
-                employee.getJurisdictions(), request.getRequestInfo(),
-                configuration.getGlobalTenantId()).isEmpty()) {
+        JurisdictionScopeResolver.Scope callerScope = jurisdictionScopeResolver.resolve(request.getRequestInfo());
+        if (!callerScope.unscoped() && callerScope.within(employee.getJurisdictions()).isEmpty()) {
             log.error("Caller attempted to update user {} who holds no jurisdiction in their scope", orgUser.getUserName());
             throw new CustomException("USER_OUT_OF_SCOPE",
                     "This user does not work in any jurisdiction you administer");
         }
 
         // Everything this caller cannot see, and therefore could not have sent back.
-        List<Jurisdiction> outsideCallerScope = jurisdictionScopeResolver.outside(callerScope,
-                employee.getJurisdictions(), request.getRequestInfo(), configuration.getGlobalTenantId());
+        List<Jurisdiction> outsideCallerScope = callerScope.outside(employee.getJurisdictions());
 
         // -----------------------------------------
         // Detect Changes

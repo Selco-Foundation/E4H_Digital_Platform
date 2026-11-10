@@ -200,18 +200,6 @@ public class Configuration {
     @Value("${egov.location.hierarchy.type}")
     private String locationHierarchyType;
 
-    @Value("${egov.location.boundary.relationship.endpoint:/boundary-relationships/_search}")
-    private String locationBoundaryRelationshipEndpoint;
-
-    /**
-     * The hierarchy jurisdictions are authored in, which is not the one `egov.location.hierarchy.type`
-     * names. That property is ADMIN and is used for boundary validation; the boundary pickers in both
-     * frontends write SELCO codes, so expanding a jurisdiction against ADMIN finds nothing - quietly,
-     * as an empty scope rather than an error.
-     */
-    @Value("${egov.location.jurisdiction.hierarchy.type:SELCO}")
-    private String locationJurisdictionHierarchyType;
-
     //Jurisdiction scope
 
     /**

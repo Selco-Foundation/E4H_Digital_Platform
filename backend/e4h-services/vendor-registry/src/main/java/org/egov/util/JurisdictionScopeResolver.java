@@ -14,8 +14,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,14 +43,15 @@ import static org.egov.util.OrganisationConstant.VENDOR_ADMIN;
 @Slf4j
 public class JurisdictionScopeResolver {
 
+    /** Separates one level of a boundary code from the next. See {@link Scope#covers}. */
+    private static final String LEVEL_SEPARATOR = "_";
+
     private final HRMSUtils hrmsUtils;
-    private final BoundaryUtil boundaryUtil;
     private final Configuration config;
 
     @Autowired
-    public JurisdictionScopeResolver(HRMSUtils hrmsUtils, BoundaryUtil boundaryUtil, Configuration config) {
+    public JurisdictionScopeResolver(HRMSUtils hrmsUtils, Configuration config) {
         this.hrmsUtils = hrmsUtils;
-        this.boundaryUtil = boundaryUtil;
         this.config = config;
     }
 
@@ -75,24 +74,75 @@ public class JurisdictionScopeResolver {
         }
 
         /**
-         * Whether this scope reaches `boundaryCode`, given that boundary's own ancestor chain.
+         * Whether this scope reaches `boundaryCode`.
          *
-         * The chain has to be supplied rather than looked up here, because resolving it is a
-         * network call and the callers batch it across every boundary they are testing.
+         * Decided from the code itself, with no lookup. Boundary codes are built by appending
+         * `_` and the child's name to the parent's code - `India`, `India_Karnataka`,
+         * `India_Karnataka_Koppal` - everywhere they are created, so a boundary sits beneath a
+         * grant exactly when its code starts with that grant followed by the separator.
+         *
+         * Requiring the separator is what makes it exact: `India_Telangana_Hyderabad2` does not
+         * start with `India_Telangana_Hyderabad_`, so it is correctly excluded.
+         *
+         * This is not the string surgery the jurisdiction work has been removing elsewhere. That
+         * was `IMUtils.extractStateBoundaryCode`, which *truncated* a code at the second
+         * underscore to invent a state - brittle, because it assumed how deep the hierarchy is.
+         * Asking whether one code sits under another assumes nothing about depth.
+         *
+         * The one thing it does assume is that a boundary's code reflects its real parent. That
+         * holds for every boundary this system creates; it would not survive a boundary being
+         * re-parented without its code changing.
          */
-        public boolean covers(String boundaryCode, Set<String> ancestorsIncludingSelf) {
+        public boolean covers(String boundaryCode) {
             if (unscoped) {
                 return true;
             }
-            if (StringUtils.isBlank(boundaryCode) || ancestorsIncludingSelf == null) {
+            if (StringUtils.isBlank(boundaryCode)) {
                 return false;
             }
-            // In scope when the boundary is one of the grants, or sits anywhere beneath one.
-            return ancestorsIncludingSelf.stream().anyMatch(codes::contains);
+            return codes.stream().anyMatch(grant ->
+                    boundaryCode.equals(grant) || boundaryCode.startsWith(grant + LEVEL_SEPARATOR));
+        }
+
+        /** The jurisdictions of this list that the holder of this scope may see or change. */
+        public List<Jurisdiction> within(List<Jurisdiction> jurisdictions) {
+            if (jurisdictions == null) {
+                return Collections.emptyList();
+            }
+            if (unscoped) {
+                return jurisdictions;
+            }
+            return jurisdictions.stream()
+                    .filter(Objects::nonNull)
+                    .filter(jurisdiction -> covers(jurisdiction.getBoundary()))
+                    .toList();
+        }
+
+        /** The jurisdictions of this list the scope does NOT reach - what an edit must preserve. */
+        public List<Jurisdiction> outside(List<Jurisdiction> jurisdictions) {
+            if (unscoped || jurisdictions == null) {
+                return new ArrayList<>();
+            }
+            List<Jurisdiction> preserved = new ArrayList<>();
+            jurisdictions.stream()
+                    .filter(Objects::nonNull)
+                    .filter(jurisdiction -> !covers(jurisdiction.getBoundary()))
+                    .forEach(preserved::add);
+            return preserved;
+        }
+
+        /** True when every jurisdiction in the list is one this caller may act on. */
+        public boolean coversAll(Collection<Jurisdiction> jurisdictions) {
+            if (unscoped || jurisdictions == null || jurisdictions.isEmpty()) {
+                return true;
+            }
+            return jurisdictions.stream()
+                    .filter(Objects::nonNull)
+                    .allMatch(jurisdiction -> covers(jurisdiction.getBoundary()));
         }
     }
 
-    public Scope resolve(RequestInfo requestInfo, String tenantId) {
+    public Scope resolve(RequestInfo requestInfo) {
         if (requestInfo == null || requestInfo.getUserInfo() == null) {
             throw new CustomException("INVALID_USER", "A caller is required to administer organisation users");
         }
@@ -119,68 +169,6 @@ public class JurisdictionScopeResolver {
 
         log.debug("Caller {} administers {} jurisdictions", callerUuid, grants.size());
         return new Scope(false, grants);
-    }
-
-    /**
-     * The jurisdictions of this list that the scope reaches.
-     *
-     * Resolves the ancestors of every boundary in the list in **one** call, then filters. Batching
-     * is the point: this is called per user on a page of results, and a lookup each would be a
-     * network round trip per row.
-     */
-    public List<Jurisdiction> within(Scope scope, List<Jurisdiction> jurisdictions,
-                                     RequestInfo requestInfo, String tenantId) {
-        if (jurisdictions == null || jurisdictions.isEmpty()) {
-            return Collections.emptyList();
-        }
-        if (scope.unscoped()) {
-            return jurisdictions;
-        }
-        Map<String, Set<String>> chains = chainsFor(jurisdictions, requestInfo, tenantId);
-        return jurisdictions.stream()
-                .filter(Objects::nonNull)
-                .filter(jurisdiction -> scope.covers(jurisdiction.getBoundary(),
-                        chains.get(jurisdiction.getBoundary())))
-                .toList();
-    }
-
-    /** True when every jurisdiction in the list is one this caller may act on. */
-    public boolean coversAll(Scope scope, Collection<Jurisdiction> jurisdictions,
-                             RequestInfo requestInfo, String tenantId) {
-        if (scope.unscoped()) {
-            return true;
-        }
-        if (jurisdictions == null || jurisdictions.isEmpty()) {
-            return true;
-        }
-        Map<String, Set<String>> chains = chainsFor(jurisdictions, requestInfo, tenantId);
-        return jurisdictions.stream()
-                .filter(Objects::nonNull)
-                .allMatch(jurisdiction -> scope.covers(jurisdiction.getBoundary(),
-                        chains.get(jurisdiction.getBoundary())));
-    }
-
-    /** The jurisdictions of this list the scope does NOT reach - what an edit must preserve. */
-    public List<Jurisdiction> outside(Scope scope, List<Jurisdiction> jurisdictions,
-                                      RequestInfo requestInfo, String tenantId) {
-        if (scope.unscoped() || jurisdictions == null || jurisdictions.isEmpty()) {
-            return new ArrayList<>();
-        }
-        List<Jurisdiction> inScope = within(scope, jurisdictions, requestInfo, tenantId);
-        return jurisdictions.stream()
-                .filter(Objects::nonNull)
-                .filter(jurisdiction -> !inScope.contains(jurisdiction))
-                .collect(Collectors.toCollection(ArrayList::new));
-    }
-
-    private Map<String, Set<String>> chainsFor(Collection<Jurisdiction> jurisdictions,
-                                               RequestInfo requestInfo, String tenantId) {
-        Set<String> boundaries = jurisdictions.stream()
-                .filter(Objects::nonNull)
-                .map(Jurisdiction::getBoundary)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        return boundaryUtil.ancestorsOf(requestInfo, tenantId, boundaries);
     }
 
     private boolean isUnscoped(RequestInfo requestInfo) {

@@ -28,15 +28,12 @@ public class OrganisationUserRepository {
 
     private final HRMSUtils hrmsUtils;
 
-    private final JurisdictionScopeResolver jurisdictionScopeResolver;
-
     @Autowired
-    public OrganisationUserRepository(OrganisationUserQueryBuilder queryBuilder, OrgUserRowMapper orgUserRowMapper, JdbcTemplate jdbcTemplate, HRMSUtils hrmsUtils, JurisdictionScopeResolver jurisdictionScopeResolver) {
+    public OrganisationUserRepository(OrganisationUserQueryBuilder queryBuilder, OrgUserRowMapper orgUserRowMapper, JdbcTemplate jdbcTemplate, HRMSUtils hrmsUtils) {
         this.queryBuilder = queryBuilder;
         this.orgUserRowMapper = orgUserRowMapper;
         this.jdbcTemplate = jdbcTemplate;
         this.hrmsUtils = hrmsUtils;
-        this.jurisdictionScopeResolver = jurisdictionScopeResolver;
     }
 
     /** The user uuids this search matches, unpaged. See the query builder for why. */
@@ -88,9 +85,7 @@ public class OrganisationUserRepository {
             }
             if(employee != null){
                 enriched.setUser(employee.getUser());
-                enriched.getUser().setJurisdictions(
-                        jurisdictionScopeResolver.within(scope, employee.getJurisdictions(),
-                                orgSearchRequest.getRequestInfo(), orgSearchRequest.getCriteria().getTenantId()));
+                enriched.getUser().setJurisdictions(scope.within(employee.getJurisdictions()));
             }
             orgUserEnricheds.add(enriched);
         }
