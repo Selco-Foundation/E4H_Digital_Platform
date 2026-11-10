@@ -8,6 +8,7 @@ import PolicyConsentModal from "../../../components/PolicyConsentModal";
 import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
+import { LoginTollFreeHelp } from "../../../components/TollFreeHelp";
 
 const setEmployeeDetail = (userObject, token) => {
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || "en_IN";
@@ -165,8 +166,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     (async () => {
       Digit.SessionStorage.set("citizen.userRequestObject", user);
 
-      const filteredRoles =
-        user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
+      const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
       if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
 
       Digit.UserService.setUser(user);
@@ -200,7 +200,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           jurisdictionBoundaries = {
             ...jurisdictionBoundaries,
             [key]: [...(jurisdictionBoundaries[key] || []), jurisdiction.boundary],
-          }
+          };
         }
       }
 
@@ -260,7 +260,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         const facilityTranslated = facilityKey ? t(facilityKey) : "";
         const facility = facilityFromUser || facilityTranslated || "unknown";
         Digit?.Utils?.analytics?.setFacilityName(facility);
-        const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
+        const rolesCsv = (info?.roles || []).map((r) => r.code).join(",") || "unknown";
         Digit?.Utils?.analytics?.trackLogin(rolesCsv, getSelectedLanguage());
       } catch (e) {
         console.warn("analytics: user_login failed", e);
@@ -328,7 +328,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           populators: {
             name: userId.name,
             style: {
-              marginBottom: "5px"
+              marginBottom: "5px",
             },
           },
           isMandatory: true,
@@ -339,7 +339,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           populators: {
             name: password.name,
             style: {
-              marginBottom: "25px"
+              marginBottom: "25px",
             },
           },
           isMandatory: true,
@@ -402,6 +402,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           </button>
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
+
+        {/* "Unable to log in? Call toll-free" link + state-wise CRM numbers popup (shown before login). */}
+        <LoginTollFreeHelp t={t} />
+
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
           {logos.map((logo, index) => (
             <img
