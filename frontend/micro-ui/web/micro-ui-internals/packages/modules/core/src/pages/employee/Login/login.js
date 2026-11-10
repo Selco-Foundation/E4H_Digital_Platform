@@ -8,6 +8,7 @@ import PolicyConsentModal from "../../../components/PolicyConsentModal";
 import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
+import { LoginTollFreeHelp } from "../../../components/TollFreeHelp";
 import OtpLogin from "./OtpLogin";
 import { isOtpLoginEnabled } from "./otpLoginUtils";
 
@@ -75,15 +76,8 @@ const ConsentCheckbox = ({ id, checked, onChange, modalType, linkText, translate
 );
 
 const ConsentAcceptance = ({ config }) => {
-  const {
-    shouldShowConsent,
-    privacyAccepted,
-    termsAccepted,
-    setPrivacyAccepted,
-    setTermsAccepted,
-    translateWithFallback,
-    openPolicyModal,
-  } = config?.consentProps || {};
+  const { shouldShowConsent, privacyAccepted, termsAccepted, setPrivacyAccepted, setTermsAccepted, translateWithFallback, openPolicyModal } =
+    config?.consentProps || {};
 
   return shouldShowConsent ? (
     <div style={{ marginBottom: "6px" }}>
@@ -172,8 +166,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     (async () => {
       Digit.SessionStorage.set("citizen.userRequestObject", user);
 
-      const filteredRoles =
-        user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
+      const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
       if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
 
       Digit.UserService.setUser(user);
@@ -207,7 +200,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           jurisdictionBoundaries = {
             ...jurisdictionBoundaries,
             [key]: [...(jurisdictionBoundaries[key] || []), jurisdiction.boundary],
-          }
+          };
         }
       }
 
@@ -287,7 +280,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       const facilityTranslated = facilityKey ? t(facilityKey) : "";
       const facility = facilityFromUser || facilityTranslated || "unknown";
       Digit?.Utils?.analytics?.setFacilityName(facility);
-      const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
+      const rolesCsv = (info?.roles || []).map((r) => r.code).join(",") || "unknown";
       Digit?.Utils?.analytics?.trackLogin(rolesCsv, getSelectedLanguage());
     } catch (e) {
       console.warn("analytics: user_login failed", e);
@@ -364,7 +357,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           populators: {
             name: userId.name,
             style: {
-              marginBottom: "5px"
+              marginBottom: "5px",
             },
           },
           isMandatory: true,
@@ -375,7 +368,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           populators: {
             name: password.name,
             style: {
-              marginBottom: "25px"
+              marginBottom: "25px",
             },
           },
           isMandatory: true,
@@ -412,24 +405,24 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
             buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
           />
         ) : (
-        <FormComposer
-          onSubmit={onLogin}
-          isDisabled={isDisabled || disable || (shouldShowConsent && !isConsentAccepted)}
-          noBoxShadow
-          inline
-          submitInForm
-          config={config}
-          label={propsConfig.texts.submitButtonLabel}
-          secondaryActionLabel={propsConfig.texts.secondaryButtonLabel}
-          heading={propsConfig.texts.header}
-          onSecondayActionClick={onForgotPassword}
-          headingStyle={{ textAlign: "center" }}
-          cardStyle={isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }}
-          className="loginFormStyleEmployee"
-          buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
-        >
-          <Header />
-        </FormComposer>
+          <FormComposer
+            onSubmit={onLogin}
+            isDisabled={isDisabled || disable || (shouldShowConsent && !isConsentAccepted)}
+            noBoxShadow
+            inline
+            submitInForm
+            config={config}
+            label={propsConfig.texts.submitButtonLabel}
+            secondaryActionLabel={propsConfig.texts.secondaryButtonLabel}
+            heading={propsConfig.texts.header}
+            onSecondayActionClick={onForgotPassword}
+            headingStyle={{ textAlign: "center" }}
+            cardStyle={isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }}
+            className="loginFormStyleEmployee"
+            buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
+          >
+            <Header />
+          </FormComposer>
         )}
         <div style={{ textAlign: "center", marginTop: "1rem" }}>
           {loginMode === LOGIN_MODE_OTP ? (
@@ -475,6 +468,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           )}
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
+
+        {/* "Unable to log in? Call toll-free" link + state-wise CRM numbers popup (shown before login). */}
+        <LoginTollFreeHelp t={t} />
+
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
           {logos.map((logo, index) => (
             <img
