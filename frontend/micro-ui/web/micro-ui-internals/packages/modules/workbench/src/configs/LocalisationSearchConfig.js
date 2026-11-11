@@ -2,7 +2,8 @@ export const Config = {
   label: "WBH_LOCALISATION_SEARCH_HEADER",
   type: "search",
   actionLabel: "WBH_ADD_LOCALISATION",
-  actionRoles: ["LOC_ADMIN"],
+  // Selco: MDMS_ADMIN (the workbench admin) also gets the Add Localisation button
+  actionRoles: ["LOC_ADMIN", "MDMS_ADMIN"],
   actionLink: "workbench/localisation-add",
   apiDetails: {
     serviceName: "/localization/messages/v1/_search",
