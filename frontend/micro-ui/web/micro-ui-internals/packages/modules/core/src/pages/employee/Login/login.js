@@ -221,7 +221,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         redirectPath = `/${window.contextPath}/employee/dss/landing/home`;
       }
 
-      if (!cancelled) history.replace(redirectPath);
+    //  if (!cancelled) history.replace(redirectPath);
     })().catch((e) => console.error("login effect failed", e));
 
     return () => {
