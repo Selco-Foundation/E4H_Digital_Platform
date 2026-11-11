@@ -39,6 +39,8 @@ const isInstalled = () =>
  * Opens the browser's native PWA install dialog after a successful login, at most MAX_PROMPTS times per user.
  * Must be called soon after the login click: the browser only allows prompt() within a few seconds of a user action.
  * The event itself is captured by the listener above and stored on window.deferredPwaInstallPrompt.
+ * Resolves once the user has answered the dialog (immediately when it is not shown) and never rejects,
+ * so callers can await it before navigating: on Android any navigation closes the install sheet.
  */
 export const showPwaInstallPromptIfEligible = async (userInfo) => {
   const installEvent = window.deferredPwaInstallPrompt;

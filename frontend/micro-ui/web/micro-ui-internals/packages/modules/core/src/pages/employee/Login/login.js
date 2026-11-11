@@ -1,6 +1,6 @@
 import { BackButton, Dropdown, FormComposer, Loader, Toast } from "@selco/digit-ui-react-components";
 import PropTypes from "prop-types";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import Background from "../../../components/Background";
 import Header from "../../../components/Header";
@@ -114,6 +114,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const { data: storeData, isLoading: isStoreLoading } = Digit.Hooks.useStore.getInitData();
   const { stateInfo } = storeData || {};
   const [user, setUser] = useState(null);
+  // Settles once the PWA install sheet (if shown) has been answered.
+  const installPromptDone = useRef(Promise.resolve());
   const [showToast, setShowToast] = useState(null);
   const [popup, setPopup] = useState(false);
   const [disable, setDisable] = useState(false);
@@ -221,7 +223,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         redirectPath = `/${window.contextPath}/employee/dss/landing/home`;
       }
 
-    //  if (!cancelled) history.replace(redirectPath);
+      // On Android the install sheet is closed by any navigation, so wait until the user has answered it.
+      await installPromptDone.current;
+      if (!cancelled) history.replace(redirectPath);
     })().catch((e) => console.error("login effect failed", e));
 
     return () => {
@@ -250,8 +254,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         setHasStoredConsent(true);
       }
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
+      // Opened here, still within the login click's user activation; the redirect effect awaits it.
+      installPromptDone.current = showPwaInstallPromptIfEligible({ ...info, userName: info?.userName || requestData.username });
       setUser({ info, ...tokens });
-      showPwaInstallPromptIfEligible({ ...info, userName: info?.userName || requestData.username });
 
       try {
         const tenantIdForLabel = info?.tenantId || requestData.tenantId;
