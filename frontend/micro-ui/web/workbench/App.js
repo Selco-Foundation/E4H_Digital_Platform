@@ -1,4 +1,6 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
+import { Button, CheckBox, PopUp } from "@egovernments/digit-ui-components";
 import { initLibraries } from "@egovernments/digit-ui-libraries";
 import { DigitUI } from "@egovernments/digit-ui-module-core";
 // import { initHRMSComponents } from "@egovernments/digit-ui-module-hrms";
@@ -46,9 +48,76 @@ const keepHomeInWorkbench = () => {
   window.Digit.Hooks.useAccessControl = useWorkbenchAccessControl;
 };
 
+// E4H's login config (commonUiConfig.LoginConfig, shared with the main E4H app) has a "TOUComponent" terms-of-use field.
+// E4H's own core registers it, DIGIT's core used here doesn't, and the login page crashed on the missing component.
+// Same as DIGIT's PrivacyComponent, but for commonUiConfig.TermsOfUse and the "touCheck" form value.
+const policyText = (t, items = []) =>
+  items.map((item, index) => (
+    <div key={index} style={{ marginBottom: "0.5rem", fontWeight: item?.isBold ? 700 : 400 }}>
+      {item?.type === "points" && "• "}
+      {item?.type === "step" && `${index + 1}. `}
+      {t(item?.text)}
+      {item?.subDescriptions?.length > 0 && <div style={{ paddingLeft: "1rem" }}>{policyText(t, item.subDescriptions)}</div>}
+    </div>
+  ));
+
+function TOUComponent({ onSelect, ...props }) {
+  const { t } = useTranslation();
+  const tenantId = window.Digit.ULBService.getCurrentTenantId();
+  const moduleName = window.Digit.Utils.getConfigModuleName();
+  const [checked, setChecked] = React.useState(false);
+  const [showPopUp, setShowPopUp] = React.useState(false);
+  const { data: terms } = window.Digit.Hooks.useCustomMDMS(tenantId, moduleName, [{ name: "TermsOfUse" }], {
+    select: (data) => {
+      const docs = data?.[moduleName]?.TermsOfUse || [];
+      return docs.find((doc) => doc.module === props?.props?.module) || docs[0];
+    },
+  });
+  React.useEffect(() => {
+    onSelect("touCheck", checked);
+  }, [checked]);
+  const decide = (accepted) => () => {
+    setChecked(accepted);
+    setShowPopUp(false);
+  };
+  return (
+    <React.Fragment>
+      <div className="digit-privacy-checkbox digit-privacy-checkbox-align">
+        <CheckBox label={t("ES_BY_CLICKING")} checked={checked} onChange={(e) => setChecked(e.target.checked)} id="tou-component-check" />
+        <Button label={t("ES_TERMS_OF_USE")} variation="link" size="small" onClick={() => setShowPopUp(true)} style={{ marginBottom: "1rem", paddingLeft: "0.2rem" }} />
+      </div>
+      {showPopUp && (
+        <PopUp
+          type="default"
+          className="privacy-popUpClass"
+          footerclassName="popUpFooter"
+          heading={t(terms?.header)}
+          onOverlayClick={() => setShowPopUp(false)}
+          onClose={() => setShowPopUp(false)}
+          sortFooterChildren={true}
+          footerChildren={[
+            <Button key="reject" type="button" size="large" variation="secondary" label={t("DIGIT_I_DO_NOT_ACCEPT")} onClick={decide(false)} />,
+            <Button key="accept" type="button" size="large" variation="primary" label={t("DIGIT_I_ACCEPT")} className="accept-class" onClick={decide(true)} />,
+          ]}
+        >
+          {terms?.contents?.map((section, index) => (
+            <div key={index}>
+              <div style={{ fontWeight: "bold" }}>{t(section?.header)}</div>
+              {policyText(t, section?.descriptions)}
+            </div>
+          ))}
+        </PopUp>
+      )}
+    </React.Fragment>
+  );
+}
+
 const initDigitUI = () => {
   keepHomeInWorkbench();
   window.Digit.ComponentRegistryService.setupRegistry({});
+  if (!window.Digit.ComponentRegistryService.getComponent("TOUComponent")) {
+    window.Digit.ComponentRegistryService.setComponent("TOUComponent", TOUComponent);
+  }
   window.Digit.Customizations = {
     PGR: {},
     commonUiConfig: UICustomizations,
