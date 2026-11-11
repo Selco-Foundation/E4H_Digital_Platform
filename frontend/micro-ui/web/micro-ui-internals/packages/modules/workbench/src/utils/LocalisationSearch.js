@@ -4,7 +4,6 @@ const manageLocParams = ({searchForm,params}) => {
     ...params,
     codes:searchForm?.codes,
     module:searchForm?.module?.value,
-    locale:searchForm?.locale?.value
   }
   for (const key in updatedParams) {
     if (updatedParams.hasOwnProperty(key) && !updatedParams[key]) {
@@ -14,28 +13,27 @@ const manageLocParams = ({searchForm,params}) => {
   return updatedParams
 }
 
-const LocalisationSearchUtil = async ({ url, params, body, plainAccessRequest,state } ) => {
-  
-  
+// Selco: search every language (one result column each) instead of one selected locale. A language whose search fails
+// just shows an empty column.
+const LocalisationSearchUtil = async ({ url, params, body, plainAccessRequest,state,languages = [] } ) => {
   const CustomService = Digit.CustomService
   const updatedParams = manageLocParams({...state,params})
-  const data = await CustomService.getResponse({ url, params:updatedParams, body, plainAccessRequest })
+  const responses = await Promise.all(
+    languages.map((locale) =>
+      CustomService.getResponse({ url, params: { ...updatedParams, locale }, body, plainAccessRequest })
+        .then((data) => ({ locale, messages: data?.messages || [] }))
+        .catch(() => ({ locale, messages: [] }))
+    )
+  )
 
-  const defaultData = await CustomService.getResponse({ url, params:{...updatedParams,locale:"default"}, body, plainAccessRequest })
-
-  const updatedData = Digit?.Customizations?.['commonUiConfig']?.['SearchLocalisationConfig']?.combineData({
-    data,
-    defaultData,
-  })
-
-  return updatedData
+  return Digit?.Customizations?.['commonUiConfig']?.['SearchLocalisationConfig']?.combineData({ responses })
 }
 
 export const LocalisationSearch = {
-  fetchResults : async ({ url, params, body, plainAccessRequest,state }) => {
+  fetchResults : async ({ url, params, body, plainAccessRequest,state,languages }) => {
 
     try {
-      const response = await LocalisationSearchUtil({ url, params, body, plainAccessRequest,state })
+      const response = await LocalisationSearchUtil({ url, params, body, plainAccessRequest,state,languages })
       return response
     } catch (error) {
       throw new Error(error?.response?.data?.Errors[0].message);

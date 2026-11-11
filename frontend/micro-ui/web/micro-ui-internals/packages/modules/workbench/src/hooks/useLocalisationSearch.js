@@ -1,12 +1,12 @@
 import { useQuery, useQueryClient } from "react-query";
 import { LocalisationSearch } from "../utils/LocalisationSearch";
 
-const useLocalisationSearch = ({url, params, body, config = {}, plainAccessRequest,changeQueryName="Random",state }) => {
+const useLocalisationSearch = ({url, params, body, config = {}, plainAccessRequest,changeQueryName="Random",state,languages }) => {
   const client = useQueryClient();
   const CustomService = Digit.CustomService
   const { isLoading, data, isFetching,refetch,error } = useQuery(
     [url,changeQueryName].filter((e) => e),
-    () => LocalisationSearch.fetchResults({ url, params, body, plainAccessRequest,state }),
+    () => LocalisationSearch.fetchResults({ url, params, body, plainAccessRequest,state,languages }),
     {
       cacheTime:0,
       ...config,

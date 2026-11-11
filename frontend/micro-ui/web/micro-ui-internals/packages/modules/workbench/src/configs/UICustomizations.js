@@ -728,12 +728,10 @@ export const UICustomizations = {
     }
   },
   SearchLocalisationConfig: {
+    // Selco: there is no language filter (every language is a column), so require a module instead; without one the
+    // search would pull every message of every language
     customValidationCheck: (data) => {
-      //checking locale must be present 
-      const { locale } = data;
-      if (locale === "")
-        return { type:"warning", label: "WBH_LOC_WARNING_LOCALE_MUST_BE_PRESENT" };
-
+      if (!data?.module) return { type: "warning", label: "WBH_LOC_WARNING_MODULE_MUST_BE_PRESENT" };
       return false;
     },
     preProcess: (data, additionalDetails) => {
@@ -741,7 +739,7 @@ export const UICustomizations = {
       delete data.body.custom
       const tenant = Digit.ULBService.getStateId();
 
-      const { locale = undefined, module: modulee = undefined, codes = undefined, message = undefined } = data.params
+      const { module: modulee = undefined, codes = undefined } = data.params
 
       delete data.params.locale
       delete data.params.module
@@ -749,9 +747,8 @@ export const UICustomizations = {
       delete data.params.message
 
       data.params.tenantId = tenant
-      if (locale) {
-        data.params.locale = locale.value
-      }
+      // the language codes to search, one result column each (set by LocalisationSearch.js)
+      data.languages = additionalDetails?.languages || []
       if (modulee) {
         data.params.module = modulee.value
       }
@@ -812,23 +809,18 @@ export const UICustomizations = {
         return data[keys.start] && data[keys.end] ? () => new Date(data[keys.start]).getTime() <= new Date(data[keys.end]).getTime() : true;
       }
     },
-    combineData: ({ isLoading, isFetching, data, defaultData, refetch, refetchDefault }) => {
-      // Selco: rows used to come only from the "default" locale, which the Selco tenants never seed, so every search showed
-      // an empty table. Show each module+code from either response: message is the default-locale text (blank when
-      // there is none) and defaultMessage the selected locale's text, as the result columns expect.
+    combineData: ({ responses }) => {
+      // Selco: one row per module+code with the text of every language, for the per-language result columns.
+      // responses is [{ locale, messages }] with one entry per language searched.
       const rows = {};
-      defaultData?.messages?.forEach((message) => {
-        rows[`${message.module}|${message.code}`] = { ...message, defaultMessage: "" };
+      responses?.forEach(({ locale, messages }) => {
+        messages?.forEach((message) => {
+          const key = `${message.module}|${message.code}`;
+          rows[key] = rows[key] || { code: message.code, module: message.module, messagesByLocale: {} };
+          rows[key].messagesByLocale[locale] = message.message;
+        });
       });
-      data?.messages?.forEach((message) => {
-        const key = `${message.module}|${message.code}`;
-        rows[key] = {
-          ...(rows[key] || { code: message.code, module: message.module, message: "" }),
-          defaultMessage: message.message,
-          originalLocale: message.locale,
-        };
-      });
-      return { ...(defaultData || data), messages: Object.values(rows) };
+      return { messages: Object.values(rows) };
     }
   },
   ViewMdmsConfig: {

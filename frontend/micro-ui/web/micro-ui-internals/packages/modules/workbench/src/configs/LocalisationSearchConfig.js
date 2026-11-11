@@ -33,30 +33,12 @@ export const Config = {
         primaryLabel: "ES_COMMON_SEARCH",
         secondaryLabel: "ES_COMMON_CLEAR_SEARCH",
         minReqFields: 1,
+        // Selco: no language filter; every language is shown as its own result column (see LocalisationSearch.js)
         defaultValues: {
-          locale: "",
           module: "",
           codes: ""
         },
         fields: [
-          {
-            label: "WBH_LOC_LANG",
-            type: "dropdown",
-            isMandatory: false,
-            disable: false,
-            populators: {
-              name: "locale",
-              optionsKey: "label",
-              optionsCustomStyle: { top: "2.3rem" },
-              mdmsConfig: {
-                masterName: "Languages",
-                moduleName: "common-masters",
-                // Selco: StateInfo in the Selco tenants is a list of states without languages; use the Languages master
-                select:
-                    "(data)=>{ return data['common-masters'].Languages?.map((language) => ({ label: language.label, value: language.code })) }"
-                } 
-            },
-          },
           {
             label: "WBH_LOC_MODULE",
             type: "dropdown",
@@ -104,18 +86,11 @@ export const Config = {
       uiConfig: {
         tableClassName:"table-fixed-last-column table",
         resultsWrapperClassName:"localization-search-table",
+        // Selco: LocalisationSearch.js inserts one column per language (common-masters.Languages) after the module name
         columns: [
           {
             label: "WBH_LOC_HEADER_CODE",
             jsonPath: "code",
-          },
-          {
-            label: "WBH_LOC_HEADER_DEFAULT",
-            jsonPath: "message",
-          },
-          {
-            label: "WBH_LOC_HEADER_MESSAGE",
-            jsonPath: "defaultMessage",
           },
           {
             label: "WBH_LOC_HEADER_MODULENAME",

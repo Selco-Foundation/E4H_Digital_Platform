@@ -20,6 +20,26 @@ const LocalisationSearch = () => {
   const [editRow,setEditRow] = useState(null)
   const [formData,setFormData] = useState(null)
   const [callRefetch,setCallRefetch] = useState(false)
+
+  // Selco: every language in common-masters.Languages gets its own result column (English first), instead of a
+  // language filter on the search form
+  const { data: languages } = Digit.Hooks.useCustomMDMS(Digit.ULBService.getStateId(), "common-masters", [{ name: "Languages" }], {
+    select: (data) => {
+      const list = (data?.["common-masters"]?.Languages || []).filter((language) => language?.code);
+      return [...list.filter((language) => language.code === "en_IN"), ...list.filter((language) => language.code !== "en_IN")];
+    },
+  });
+  const searchConfig = useMemo(() => {
+    if (!languages) return null;
+    const config = _.cloneDeep(Config);
+    const columns = config.sections.searchResult.uiConfig.columns;
+    const languageColumns = languages.map((language) => ({ label: language.label, jsonPath: `messagesByLocale.${language.code}` }));
+    // after Keycode and Module Name, so the language columns are the part that scrolls sideways
+    columns.splice(2, 0, ...languageColumns);
+    config.additionalDetails = { ...config.additionalDetails, languages: languages.map((language) => language.code) };
+    return config;
+  }, [languages]);
+
   const reqCriteriaAdd = {
     url: `/localization/messages/v1/_upsert`,
     params: {},
@@ -138,8 +158,8 @@ const LocalisationSearch = () => {
       }
       </div>
       <AlertCard additionalElements={[]} label={t("WBH_INFO")} text={t("WBH_INFO_MESSAGE")} variant="default" style={{marginBottom:"1.5rem",maxWidth:"100%"}}/>
-      {Config && <div className="inbox-search-wrapper">
-        <InboxSearchComposer onFormValueChange={formUpdate} configs={Config} additionalConfig = {{
+      {searchConfig && <div className="inbox-search-wrapper">
+        <InboxSearchComposer onFormValueChange={formUpdate} configs={searchConfig} additionalConfig = {{
           resultsTable:{
             onClickSvg
           },
