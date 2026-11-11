@@ -194,6 +194,22 @@
         padding: 0;
         border: 0;
       }
+      /* the localisation edit dialog has a text box per language and grew taller than the screen, hiding its heading
+         under the app header and its buttons below the fold: scroll the fields instead */
+      .popup-module .popup-module-main {
+        max-height: calc(100vh - 14rem);
+        overflow-y: auto;
+      }
+      /* the Cancel/Submit bar is inside that scrolling area: keep it visible at its bottom */
+      .popup-module .popup-module-main .popup-module-action-bar {
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+        padding: 0.5rem 0;
+        z-index: 1;
+        /* also cover the dialog's bottom padding, so scrolled fields don't show below the buttons */
+        box-shadow: 0 1.5rem 0 #fff;
+      }
     </style>
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />

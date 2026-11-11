@@ -64,7 +64,12 @@ const LocalisationSearch = () => {
   }
 
   const onModalSubmit = async (payload) => {
-    if(!payload?.message){
+    // Selco: the dialog has one text box per language; save every language whose text was filled in or changed
+    const messages = (languages || [])
+      .map((language) => ({ locale: language.code, message: payload?.[`message_${language.code}`]?.trim() }))
+      .filter(({ locale, message }) => message && message !== editRow?.messagesByLocale?.[locale])
+      .map(({ locale, message }) => ({ code: editRow.code, module: editRow.module, locale, message }));
+    if(!messages.length){
       setShowToast({ label: `${t("WBH_LOC_ENTER_VALID_MESSAGE")}`,type:"error",style:{
         zIndex:"10000"
       } });
@@ -104,7 +109,7 @@ const LocalisationSearch = () => {
         params: {},
         body: {
           tenantId,
-          messages: [payload],
+          messages,
         },
       },
       {
@@ -126,7 +131,7 @@ const LocalisationSearch = () => {
         getEditModalConfig({
           t,
           editRow,
-          formData
+          languages
         })
       );
     }

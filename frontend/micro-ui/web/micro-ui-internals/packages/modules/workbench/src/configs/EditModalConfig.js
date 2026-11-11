@@ -1,12 +1,11 @@
-import { Dropdown, Loader } from '@egovernments/digit-ui-react-components';
-import React, { useState } from 'react'
-
+// Selco: edit a key's text in every language at once (the search shows one column per language). Module and keycode
+// are read-only; each language gets a text box prefilled with its current text, named message_<locale code>.
 const getEditModalConfig = ({
     t,
     editRow,
-    formData
+    languages = []
 }) => {
-  
+
     return {
         label: {
             heading: `WBH_LOC_EDIT_LOCALISATION`,
@@ -26,15 +25,6 @@ const getEditModalConfig = ({
                     },
                   },
                   {
-                    label: t("WBH_LOC_LOCALE"),
-                    type: "text",
-                    disable:true,
-                    populators: {
-                        name: "locale",
-                        defaultValue:editRow.originalLocale || formData?.searchForm?.locale?.value,
-                    },
-                  },
-                  {
                     label: t("WBH_LOC_CODE"),
                     type: "text",
                     disable:true,
@@ -43,15 +33,15 @@ const getEditModalConfig = ({
                         defaultValue:editRow.code,
                     },
                   },
-                  {
-                    label: t("WBH_LOC_MESSAGE_VALUE"),
+                  ...languages.map((language) => ({
+                    label: language.label,
                     type: "text",
                     disable:false,
                     populators: {
-                        name: "message",
-                        // defaultValue:editRow.defaultMessage,
+                        name: `message_${language.code}`,
+                        defaultValue: editRow.messagesByLocale?.[language.code] || "",
                     },
-                  }
+                  })),
                 ]
             }
         ]
