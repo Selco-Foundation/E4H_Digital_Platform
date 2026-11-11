@@ -76,15 +76,8 @@ const ConsentCheckbox = ({ id, checked, onChange, modalType, linkText, translate
 );
 
 const ConsentAcceptance = ({ config }) => {
-  const {
-    shouldShowConsent,
-    privacyAccepted,
-    termsAccepted,
-    setPrivacyAccepted,
-    setTermsAccepted,
-    translateWithFallback,
-    openPolicyModal,
-  } = config?.consentProps || {};
+  const { shouldShowConsent, privacyAccepted, termsAccepted, setPrivacyAccepted, setTermsAccepted, translateWithFallback, openPolicyModal } =
+    config?.consentProps || {};
 
   return shouldShowConsent ? (
     <div style={{ marginBottom: "6px" }}>
@@ -252,7 +245,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     delete requestData.city;
     try {
       // OTP login has already authenticated (see onOtpAuthenticated); password login authenticates here.
-      const { UserRequest: info, ...tokens } = data?.otpAuthResponse || (await Digit.UserService.authenticate(requestData));
+      // Two statements on purpose: the core build (babel async-to-promises) crashes on
+      // `await` inside `||` combined with destructuring.
+      const authResponse = data?.otpAuthResponse ? data.otpAuthResponse : await Digit.UserService.authenticate(requestData);
+      const { UserRequest: info, ...tokens } = authResponse;
       if (shouldShowConsent) {
         rememberRequiredConsents();
         setHasStoredConsent(true);
@@ -401,37 +397,37 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           />
         )}
         {loginMode === LOGIN_MODE_PASSWORD && (
-        <FormComposer
-          onSubmit={onLogin}
-          isDisabled={isDisabled || disable || (shouldShowConsent && !isConsentAccepted)}
-          noBoxShadow
-          inline
-          submitInForm
-          config={config}
-          label={propsConfig.texts.submitButtonLabel}
-          secondaryActionLabel={propsConfig.texts.secondaryButtonLabel}
-          heading={propsConfig.texts.header}
-          onSecondayActionClick={onForgotPassword}
-          headingStyle={{ textAlign: "center" }}
-          cardStyle={isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }}
-          className="loginFormStyleEmployee"
-          buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
-        >
-          <Header />
-        </FormComposer>
+          <FormComposer
+            onSubmit={onLogin}
+            isDisabled={isDisabled || disable || (shouldShowConsent && !isConsentAccepted)}
+            noBoxShadow
+            inline
+            submitInForm
+            config={config}
+            label={propsConfig.texts.submitButtonLabel}
+            secondaryActionLabel={propsConfig.texts.secondaryButtonLabel}
+            heading={propsConfig.texts.header}
+            onSecondayActionClick={onForgotPassword}
+            headingStyle={{ textAlign: "center" }}
+            cardStyle={isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }}
+            className="loginFormStyleEmployee"
+            buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
+          >
+            <Header />
+          </FormComposer>
         )}
         <div style={{ textAlign: "center", marginTop: "1rem" }}>
           {loginMode === LOGIN_MODE_PASSWORD && (
-          <button
-            onClick={onForgotPassword}
-            style={{
-              color: "blue",
-              textDecoration: "underline",
-              cursor: "pointer",
-            }}
-          >
-            {t("CORE_COMMON_FORGOT_PASSWORD")}
-          </button>
+            <button
+              onClick={onForgotPassword}
+              style={{
+                color: "blue",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              {t("CORE_COMMON_FORGOT_PASSWORD")}
+            </button>
           )}
           {otpLoginEnabled && loginMode === LOGIN_MODE_PASSWORD && (
             <div style={{ marginTop: "0.75rem" }}>
