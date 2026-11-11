@@ -62,8 +62,8 @@ initLibraries().then(() => {
 });
 
 // DIGIT core builds the language dropdown from common-masters.StateInfo[0] (hasLocalisation + languages). In
-// Livelihood that master is a list of Indian states, so only English was offered. Read common-masters.Languages
-// instead, the same master livelihood-ui uses. Never rejects: on any failure the default dropdown is kept.
+// the Selco tenants that master is a list of Indian states, so only English was offered. Read common-masters.Languages
+// instead. Never rejects: on any failure the default dropdown is kept.
 const fetchLanguages = () => {
   const tenantId = window.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID");
   const mdmsContext = window.globalConfigs?.getConfig("MDMS_CONTEXT_PATH") || "egov-mdms-service";
@@ -97,8 +97,8 @@ const languagesLoaded = fetchLanguages();
 // Fix up what Digit.Hooks.useStore.getInitData() returns. Done once, before DigitUI mounts, and the patched copy is
 // memoised so consumers keep a stable reference between renders. Besides the languages, stateInfo.code also comes from
 // StateInfo[0] (Lakshadweep), and the dropdown loads the new language's messages for that tenant, so use the state
-// tenant instead. logoUrl is the login page's header logo; Livelihood's StateInfo has none, so take it from the global
-// config's LOGO_COLORED (same key livelihood-ui uses).
+// tenant instead. logoUrl is the login page's header logo; the StateInfo rows have none, so take it from the global
+// config's LOGO_COLORED.
 const overrideInitData = (languages, tenantId) => {
   const useStore = window.Digit.Hooks.useStore;
   const getInitData = useStore.getInitData;
@@ -122,7 +122,7 @@ const overrideInitData = (languages, tenantId) => {
 };
 
 // The header logo after login is the current tenant's logoId (MDMS tenant.tenants), and DIGIT shows its eGov logo when
-// that is empty. Livelihood's tenant has none and its schema only allows null there, so replace DIGIT's fallback image
+// that is empty. The Selco state tenant has none and the schema only allows null there, so replace DIGIT's fallback image
 // with LOGO_COLORED from the global config whenever the header renders it.
 const DIGIT_FALLBACK_LOGO = "egov-logo-2025.png";
 const replaceFallbackHeaderLogo = () => {

@@ -813,7 +813,7 @@ export const UICustomizations = {
       }
     },
     combineData: ({ isLoading, isFetching, data, defaultData, refetch, refetchDefault }) => {
-      // Selco: rows used to come only from the "default" locale, which Livelihood never seeds, so every search showed
+      // Selco: rows used to come only from the "default" locale, which the Selco tenants never seed, so every search showed
       // an empty table. Show each module+code from either response: message is the default-locale text (blank when
       // there is none) and defaultMessage the selected locale's text, as the result columns expect.
       const rows = {};

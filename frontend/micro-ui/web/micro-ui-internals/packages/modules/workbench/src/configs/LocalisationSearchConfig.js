@@ -51,7 +51,7 @@ export const Config = {
               mdmsConfig: {
                 masterName: "Languages",
                 moduleName: "common-masters",
-                // Selco: StateInfo in Livelihood is a list of states without languages; use the Languages master
+                // Selco: StateInfo in the Selco tenants is a list of states without languages; use the Languages master
                 select:
                     "(data)=>{ return data['common-masters'].Languages?.map((language) => ({ label: language.label, value: language.code })) }"
                 } 
@@ -69,7 +69,7 @@ export const Config = {
               mdmsConfig: {
                 masterName: "LocalizationModules",
                 moduleName: "common-masters",
-                // Selco: StateInfo in Livelihood has no localizationModules; use the LocalizationModules master
+                // Selco: StateInfo in the Selco tenants has no localizationModules; use the LocalizationModules master
                 select:
                     "(data)=>{ return data['common-masters'].LocalizationModules }"
                 } 

@@ -26,12 +26,12 @@
       .digit-bread-crumb--item:not(:last-child):after {
         content: none;
       }
-      /* the Setu logo is a large square, keep the login header compact */
+      /* the state logo (LOGO_COLORED) can be large, keep the login header compact */
       .bannerHeader .bannerLogo {
         max-height: 100px;
         width: auto;
       }
-      /* the header logo box is 2rem x 1.291rem (sized for the eGov logo), too small for the Setu logo with its name underneath */
+      /* the header logo box is 2rem x 1.291rem (sized for the eGov logo), too small for the state logo */
       .digit-topbar .digit-logo-ulb-wrapper .digit-topbar-logo {
         height: 56px;
         width: auto;
@@ -41,7 +41,7 @@
         width: auto;
         max-width: none;
       }
-      /* the header's second logo slot is stateInfo.logoUrlWhite, which Livelihood doesn't set: hide it instead of a broken image */
+      /* the header's second logo slot is stateInfo.logoUrlWhite, which the state tenant doesn't set: hide it instead of a broken image */
       .digit-employee-header img.state:not([src]),
       .digit-employee-header img.state[src=""] {
         display: none;

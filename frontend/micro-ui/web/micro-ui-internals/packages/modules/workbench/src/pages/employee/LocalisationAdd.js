@@ -39,7 +39,7 @@ const langDropdownConfig = {
     mdmsConfig: {
       masterName: "Languages",
       moduleName: "common-masters",
-      // Selco: StateInfo in Livelihood is a list of states without languages; use the Languages master
+      // Selco: StateInfo in the Selco tenants is a list of states without languages; use the Languages master
       select: "(data)=>{ return data['common-masters'].Languages?.map((language) => ({ label: language.label, value: language.code })) }",
     },
     styles: { width: "50%" },
@@ -58,7 +58,7 @@ const localeDropdownConfig = {
     mdmsConfig: {
       masterName: "LocalizationModules",
       moduleName: "common-masters",
-      // Selco: StateInfo in Livelihood has no localizationModules; use the LocalizationModules master
+      // Selco: StateInfo in the Selco tenants has no localizationModules; use the LocalizationModules master
       select: "(data)=>{ return data['common-masters'].LocalizationModules }",
     },
     styles: { width: "50%" },
@@ -171,7 +171,7 @@ const LocalisationAdd = () => {
   const [isDownloadDisabled, setIsDownloadDisabled] = useState(true);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
 
-  // Selco: Livelihood's StateInfo has no languages; read the Languages master instead
+  // Selco: the Selco tenants' StateInfo has no languages; read the Languages master instead
   const { data: localeData } = Digit.Hooks.useCustomMDMS(stateId, "common-masters", [{ name: "Languages" }], {
     select: (data) => {
       const languages = (data["common-masters"].Languages || []).map((language) => ({ label: language.label, value: language.code }));
