@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 
 const ROLES = {
   LOCALISATION: ["EMPLOYEE", "SUPERUSER","EMPLOYEE_COMMON","LOC_ADMIN"],
-  MDMS: ["MDMS_ADMIN", "EMPLOYEE", "SUPERUSER"],
+  // Selco: not EMPLOYEE, which every user has; master data is only for the MDMS admin (the API refuses everyone else)
+  MDMS: ["MDMS_ADMIN", "SUPERUSER"],
   DSS: ["STADMIN"],
 };
 
