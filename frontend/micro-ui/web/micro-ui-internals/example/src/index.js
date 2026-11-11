@@ -10,7 +10,7 @@ import { initHRMSComponents } from "@selco/digit-ui-module-hrms";
 // import { initUtilitiesComponents } from  "@egovernments/digit-ui-module-utilities";
 import {initWorkbenchComponents} from "@egovernments/digit-ui-module-workbench";
 import { initIMComponents,IMReducers } from "@selco/digit-ui-module-pgr";
-import "@selco/selco-css/dist/index.css";
+import "@selco/selco-css/example/index.css";
 
 import { pgrCustomizations } from "./pgr";
 import { UICustomizations } from "./UICustomizations";
@@ -92,7 +92,10 @@ const initDigitUI = () => {
   const stateCode = window?.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID") || "pb";
   initTokens(stateCode);
 
-  ReactDOM.render(<DigitUI stateCode={stateCode} enabledModules={enabledModules}       defaultLanding="employee"  moduleReducers={moduleReducers} />, document.getElementById("root"));
+  ReactDOM.render(
+    <DigitUI stateCode={stateCode} enabledModules={enabledModules} defaultLanding="employee" moduleReducers={moduleReducers} />,
+    document.getElementById("root")
+  );
 };
 
 initLibraries().then(() => {
@@ -101,10 +104,21 @@ initLibraries().then(() => {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let hasReloadedForUpdate = false;
+    if (hadController) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (hasReloadedForUpdate) return;
+        hasReloadedForUpdate = true;
+        window.location.reload();
+      });
+    }
+
     navigator.serviceWorker
       .register(`${process.env.PUBLIC_URL}/service-worker.js`)
       .then(registration => {
         console.log('Service Worker registered with scope:', registration.scope);
+        if (navigator.onLine) registration.update().catch(() => {});
       })
       .catch(error => {
         console.error('Service Worker registration failed:', error);

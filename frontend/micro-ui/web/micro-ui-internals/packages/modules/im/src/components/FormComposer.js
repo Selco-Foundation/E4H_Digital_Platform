@@ -44,7 +44,7 @@ export const FormComposer = (props) => {
     };
   });
   console.log("isMobileView", isMobileView)
-  const { register, handleSubmit, errors, watch } = useForm();
+  const { register, handleSubmit, errors, watch } = useForm({ defaultValues: props.defaultValues || {} });
   const formData = watch();
   const { t } = useTranslation();
 

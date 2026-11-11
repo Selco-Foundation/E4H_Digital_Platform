@@ -7,6 +7,7 @@ import Header from "../../../components/Header";
 import PolicyConsentModal from "../../../components/PolicyConsentModal";
 import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
+import { showPwaInstallPromptIfEligible } from "../../../utilities/pwaInstallPrompt";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
 import { LoginTollFreeHelp } from "../../../components/TollFreeHelp";
 
@@ -221,7 +222,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         redirectPath = `/${window.contextPath}/employee/dss/landing/home`;
       }
 
-      if (!cancelled) history.replace(redirectPath);
+    //  if (!cancelled) history.replace(redirectPath);
     })().catch((e) => console.error("login effect failed", e));
 
     return () => {
@@ -252,6 +253,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
 
       setUser({ info, ...tokens });
+      showPwaInstallPromptIfEligible({ ...info, userName: info?.userName || requestData.username });
 
       try {
         const tenantIdForLabel = info?.tenantId || requestData.tenantId;
