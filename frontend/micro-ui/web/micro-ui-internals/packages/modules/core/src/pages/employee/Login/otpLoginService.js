@@ -252,4 +252,4 @@ export const verifyLoginOtp = (mobileNumber, otp) =>
 
 /** Step 3. Logs in as the chosen account. Resolves with the OAuth response used by login.js. */
 export const loginWithTicket = (account, loginTicket) =>
-  USE_STUB ? stubLoginWithTicket(account, loginTicket) : realLoginWithTicket(account, loginTicket);
+  USE_STUB ? stubLoginWithTicket() : realLoginWithTicket(account, loginTicket);
