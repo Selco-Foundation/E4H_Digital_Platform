@@ -8,6 +8,7 @@ import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.producer.Producer;
 import org.egov.im.repository.IMRepository;
+import org.egov.im.util.HfServiceDefs;
 import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
@@ -117,6 +118,25 @@ public class IMService {
 
 
     /**
+     * A facility user ticket (SEM 4.0 Ticket Reporting) sends a component and observations: its
+     * incidentType and incidentSubType are those of the observation of highest priority (menuPath and
+     * serviceCode of its Incident.ServiceDefs entry), whatever the payload says. Invalid observations
+     * are left to the validator.
+     */
+    private void applyPrimaryObservation(IncidentRequest request, Object mdmsData) {
+        Incident incident = request.getIncident();
+        if (StringUtils.isBlank(incident.getComponent())) {
+            return;
+        }
+        HfServiceDefs.primaryObservation(mdmsData, incident).ifPresent(entry -> {
+            incident.setIncidentType(String.valueOf(entry.get(HfServiceDefs.MENU_PATH)));
+            incident.setIncidentSubType(String.valueOf(entry.get(HfServiceDefs.SERVICE_CODE)));
+            log.info("Ticket type set from component {}: incidentType={} incidentSubType={}",
+                    incident.getComponent(), incident.getIncidentType(), incident.getIncidentSubType());
+        });
+    }
+
+    /**
      * Creates a complaint in the system
      * @param request The service request containg the complaint information
      * @return
@@ -127,6 +147,7 @@ public class IMService {
         String tenantId = request.getIncident().getTenantId();
         log.trace("Fetching MDMS data for create request");
         Object mdmsData = mdmsUtils.mDMSCall(request);
+        applyPrimaryObservation(request, mdmsData);
         log.trace("Validating create request");
         validator.validateCreate(request, mdmsData);
         log.trace("Fetching boundary from boundaryCode");

@@ -60,8 +60,7 @@ public class RequestsApiController{
 
     /**
      * Open tickets of a facility for a component (SEM 4.0 Ticket Reporting duplicate check), called
-     * right after the component is chosen. A facility user may still go on - the ticket is then
-     * created as a potential duplicate - while a CRM is refused on create.
+     * right after the component is chosen - creating a ticket while one is open is refused.
      */
     @RequestMapping(value="/request/_duplicateCheck", method = RequestMethod.POST)
     public ResponseEntity<DuplicateCheckResponse> requestsDuplicateCheckPost(@Valid @RequestBody DuplicateCheckRequest request) {

@@ -29,12 +29,12 @@ import java.util.List;
 @Builder
 public class Incident   {
 	
-	    @NotNull
+        // Mandatory unless a component is sent: a facility user ticket gets incidentType/incidentSubType
+        // from its primary observation (SEM 4.0 Ticket Reporting) - see ServiceRequestValidator
         @SafeHtml
         @JsonProperty("incidentType")
         private String incidentType = null;
-		
-		@NotNull
+
         @SafeHtml
         @JsonProperty("incidentSubType")
         private String incidentSubType = null;
@@ -152,7 +152,8 @@ public class Incident   {
         @JsonProperty("component")
         private String component = null;
 
-        // MDMS Incident.Observation codes chosen by the reporter; the highest of their priorities is the ticket priority
+        // serviceCodes of the MDMS Incident.ServiceDefs entries (channel HF) of the component chosen by the
+        // reporter; the highest of their priorities is the ticket priority
         @JsonProperty("observations")
         private List<String> observations = null;
 }

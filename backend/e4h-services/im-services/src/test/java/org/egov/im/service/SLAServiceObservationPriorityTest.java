@@ -1,6 +1,7 @@
 package org.egov.im.service;
 
 import org.egov.im.repository.IMPriorityRepository;
+import org.egov.im.util.HfServiceDefsFixture;
 import org.egov.im.web.models.IMPrioritySearchCriteria;
 import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.Priority;
@@ -12,7 +13,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Covers the ticket priority taken from the observations' MDMS priorities (SEM 4.0 Ticket Reporting).
+ * Covers the ticket priority taken from the HF Incident.ServiceDefs priorities of the observations
+ * (SEM 4.0 Ticket Reporting).
  */
 class SLAServiceObservationPriorityTest {
 
@@ -26,11 +28,7 @@ class SLAServiceObservationPriorityTest {
         }
     });
 
-    private final Map<String, Object> mdmsData = Map.of("MdmsRes", Map.of("Incident", Map.of(
-            "Observation", List.of(
-                    observation("INVERTER_NOT_WORKING", "INVERTER", "HIGH"),
-                    observation("INVERTER_OTHER_ISSUE", "INVERTER", "MEDIUM"),
-                    observation("BATTERY_OTHER_ISSUE", "BATTERY", "MEDIUM")))));
+    private final Map<String, Object> mdmsData = HfServiceDefsFixture.mdmsData();
 
     @Test
     void highestObservationPriorityWins() {
@@ -48,6 +46,11 @@ class SLAServiceObservationPriorityTest {
     }
 
     @Test
+    void crmServiceDefIsNotAnObservation() {
+        assertEquals(TABLE_PRIORITY, resolve("INVERTER", List.of("ShutdownInverter")));
+    }
+
+    @Test
     void noObservationFallsBackToPriorityTable() {
         assertEquals(TABLE_PRIORITY, resolve("INVERTER", List.of()));
     }
@@ -60,15 +63,11 @@ class SLAServiceObservationPriorityTest {
     private Priority resolve(String component, List<String> observations) {
         Incident incident = Incident.builder()
                 .tenantId("in")
-                .incidentType("Inverter")
-                .incidentSubType("NotWorking")
+                .incidentType("INVERTER")
+                .incidentSubType("INVERTER_NOT_WORKING")
                 .component(component)
                 .observations(observations)
                 .build();
         return slaService.resolvePriority(incident, mdmsData);
-    }
-
-    private static Map<String, Object> observation(String code, String componentCode, String priority) {
-        return Map.of("code", code, "componentCode", componentCode, "priority", priority, "active", true);
     }
 }
