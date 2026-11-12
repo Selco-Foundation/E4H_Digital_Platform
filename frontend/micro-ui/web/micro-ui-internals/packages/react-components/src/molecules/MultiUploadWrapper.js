@@ -354,6 +354,8 @@ const MultiUploadWrapper = ({
   return (
     <div style={containerStyles}>
       <UploadFile
+        restoreUploadedPreviews={individualUploadProgress}
+        tenantId={tenantId}
         isUploading={isUploading}
         onUpload={(e) => onUploadMultipleFiles(e)}
         removeTargetedFile={(fileDetailsData) => {

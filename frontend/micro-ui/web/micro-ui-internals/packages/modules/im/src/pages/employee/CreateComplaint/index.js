@@ -546,7 +546,10 @@ export const CreateComplaint = ({ parentUrl }) => {
         return;
       }
 
-      if (reportFacility) { ReportingFirDraft.clear(); ReportingSupportDraft.clear(); ReportingDetailsDraft.clear(); }
+      if (reportFacility) {
+        client.removeQueries(["IM_REPORTING_DUPLICATES"]);
+        ReportingFirDraft.clear(); ReportingSupportDraft.clear(); ReportingDetailsDraft.clear();
+      }
       dispatch(populateCreateResponse(response));
       // A refresh failure must not turn an already-created ticket into a retry.
       client.refetchQueries(["fetchInboxData"]).catch((error) => console.error("Could not refresh ticket inbox", error));

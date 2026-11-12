@@ -13,7 +13,6 @@ const ReportingAttachments = ({ images, videos, onImagesChange, onVideosChange, 
     queued: t("IM_REPORT_UPLOAD_QUEUED", { defaultValue: "Queued" }),
     uploading: t("IM_REPORT_UPLOAD_UPLOADING", { defaultValue: "Uploading" }),
     processing: t("IM_REPORT_UPLOAD_PROCESSING", { defaultValue: "Processing" }),
-    uploaded: t("IM_REPORT_UPLOAD_UPLOADED", { defaultValue: "Uploaded" }),
     failed: t("IM_REPORT_UPLOAD_FAILED", { defaultValue: "Upload failed" }),
   };
   const onChange = (files) => {
@@ -36,7 +35,7 @@ const ReportingAttachments = ({ images, videos, onImagesChange, onVideosChange, 
       individualUploadProgress={true} onFileStatusChange={onFileStatusChange} uploadQueueKey={queueKey}
       multiple={true} analyticsPage="new_ticket_page" mediaIntent="attachment" />
     <ul style={{ listStyle: "none", padding: 0 }}>
-      {fileStatuses.map((entry) => (
+      {fileStatuses.filter((entry) => entry.status !== "uploaded").map((entry) => (
         <li key={entry.id} style={{ margin: "12px 0", padding: "12px", border: "1px solid #d6d6d6", borderRadius: "4px", overflowWrap: "anywhere" }}>
           <div>{entry.name}</div>
           <div role="status">{statusLabels[entry.status]}{entry.progress !== null && entry.status === "uploading" ? ` (${entry.progress}%)` : ""}</div>

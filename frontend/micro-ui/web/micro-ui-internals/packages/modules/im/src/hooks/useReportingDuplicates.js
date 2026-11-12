@@ -9,6 +9,8 @@ const useReportingDuplicates = (boundaryCode, component, enabled) => {
       enabled: Boolean(enabled && tenantId && boundaryCode && component),
       retry: false,
       staleTime: 0,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
       refetchOnWindowFocus: false,
     });
   return { ...query, tenantId };
