@@ -1,0 +1,494 @@
+[
+  {
+    "issueType": "Array Junction Box",
+    "subType": "Burnt",
+    "action": "reuse",
+    "id": 300
+  },
+  {
+    "issueType": "Array Junction Box",
+    "subType": "Mcb Failure",
+    "action": "reuse",
+    "id": 301
+  },
+  {
+    "issueType": "Array Junction Box",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 303
+  },
+  {
+    "issueType": "Array Junction Box",
+    "subType": "SPD Burnt",
+    "action": "reuse",
+    "id": 361
+  },
+  {
+    "issueType": "Battery",
+    "subType": "Burnt",
+    "action": "reuse",
+    "id": 293
+  },
+  {
+    "issueType": "Battery",
+    "subType": "Mcb Failure",
+    "action": "create",
+    "serviceCode": "McbFailureBattery",
+    "menuPath": "BATTERY",
+    "name": "Mcb Failure",
+    "priority": "High"
+  },
+  {
+    "issueType": "Battery",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 297
+  },
+  {
+    "issueType": "Battery",
+    "subType": "SPD Burnt",
+    "action": "create",
+    "serviceCode": "SpdBurntBattery",
+    "menuPath": "BATTERY",
+    "name": "SPD Burnt",
+    "priority": "High"
+  },
+  {
+    "issueType": "Cables",
+    "subType": "Damaged",
+    "action": "reuse",
+    "id": 322
+  },
+  {
+    "issueType": "Cables",
+    "subType": "Load Wiring Issues",
+    "action": "reuse",
+    "id": 390
+  },
+  {
+    "issueType": "Cables",
+    "subType": "Loose/ Disconnected",
+    "action": "create",
+    "serviceCode": "CableLooseDisconnected",
+    "menuPath": "CABLES",
+    "name": "Loose/ Disconnected",
+    "priority": "High",
+    "note": "seule entree proche: 273 Disconnected, deprecated et en Medium"
+  },
+  {
+    "issueType": "Change Over Switch",
+    "subType": "Damaged",
+    "action": "reuse",
+    "id": 387
+  },
+  {
+    "issueType": "Change Over Switch",
+    "subType": "Not Working",
+    "action": "reuse",
+    "id": 383
+  },
+  {
+    "issueType": "Change Over Switch",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 386
+  },
+  {
+    "issueType": "Charge Controller",
+    "subType": "Burnt/ Damaged",
+    "action": "reuse",
+    "id": 409
+  },
+  {
+    "issueType": "Charge Controller",
+    "subType": "Continuous buzzer",
+    "action": "reuse",
+    "id": 404
+  },
+  {
+    "issueType": "Charge Controller",
+    "subType": "Disconnected by Facility",
+    "action": "reuse",
+    "id": 406
+  },
+  {
+    "issueType": "Charge Controller",
+    "subType": "Display broken",
+    "action": "reuse",
+    "id": 403
+  },
+  {
+    "issueType": "Charge Controller",
+    "subType": "Error code on display",
+    "action": "reuse",
+    "id": 401
+  },
+  {
+    "issueType": "Charge Controller",
+    "subType": "Error Light Indicators (Red & Orange)",
+    "action": "reuse",
+    "id": 402
+  },
+  {
+    "issueType": "Charge Controller",
+    "subType": "Damaged Cables",
+    "action": "reuse",
+    "id": 407,
+    "note": "Input & Output Cable Damage"
+  },
+  {
+    "issueType": "Charge Controller",
+    "subType": "Loose/ Disconnected Cables",
+    "action": "reuse",
+    "id": 408,
+    "note": "Input & Output Cable disconnected or loose cables"
+  },
+  {
+    "issueType": "Earthing Connection",
+    "subType": "Burnt/ Damaged",
+    "action": "reuse",
+    "id": 317,
+    "note": "burned (Burnt); 204 Broken reste hors liste"
+  },
+  {
+    "issueType": "Earthing Connection",
+    "subType": "Disconnected Cable",
+    "action": "reuse",
+    "id": 319
+  },
+  {
+    "issueType": "Earthing Pit",
+    "subType": "Burnt/ Damaged",
+    "action": "reuse",
+    "id": 312,
+    "note": "burned (Burnt); 313 broken (Damaged) reste hors liste"
+  },
+  {
+    "issueType": "Earthing Pit",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 315
+  },
+  {
+    "issueType": "GIPB",
+    "subType": "Burnt/ Disconnected Cable",
+    "action": "reuse",
+    "id": 363,
+    "note": "Burnt; 308 CableDisconnected reste hors liste"
+  },
+  {
+    "issueType": "GIPB",
+    "subType": "Mcb Failure",
+    "action": "reuse",
+    "id": 310
+  },
+  {
+    "issueType": "GIPB",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 309
+  },
+  {
+    "issueType": "GIPB",
+    "subType": "Tripped",
+    "action": "reuse",
+    "id": 364
+  },
+  {
+    "issueType": "Grid",
+    "subType": "High Voltage",
+    "action": "reuse",
+    "id": 415
+  },
+  {
+    "issueType": "Grid",
+    "subType": "Reverse Voltage",
+    "action": "create",
+    "serviceCode": "ReverseVoltage",
+    "menuPath": "GRID",
+    "name": "Reverse Voltage",
+    "priority": "High",
+    "note": "sous-type deja envoye par rms-service (GRID/ReverseVoltage)"
+  },
+  {
+    "issueType": "I Cannot Identify The Issue",
+    "subType": "Technician Visit Needed",
+    "action": "reuse",
+    "id": 393
+  },
+  {
+    "issueType": "Inverter",
+    "subType": "Abnormal Sound",
+    "action": "reuse",
+    "id": 122
+  },
+  {
+    "issueType": "Inverter",
+    "subType": "Disconnected Cable",
+    "action": "reuse",
+    "id": 359
+  },
+  {
+    "issueType": "Inverter",
+    "subType": "Disconnected By Facility",
+    "action": "reuse",
+    "id": 352,
+    "note": "DisconnectedHealthCentre (Disconnected By HC), actuellement deprecated"
+  },
+  {
+    "issueType": "Inverter",
+    "subType": "Error Code On Display",
+    "action": "reuse",
+    "id": 388
+  },
+  {
+    "issueType": "Inverter",
+    "subType": "High Voltage",
+    "action": "reuse",
+    "id": 292
+  },
+  {
+    "issueType": "Inverter",
+    "subType": "Shutdown",
+    "action": "reuse",
+    "id": 285
+  },
+  {
+    "issueType": "Inverter",
+    "subType": "Tripped",
+    "action": "reuse",
+    "id": 286
+  },
+  {
+    "issueType": "Inverter",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 358,
+    "note": "Other en Medium; doublon 291 Other en High reste hors liste"
+  },
+  {
+    "issueType": "Lightning Arrestor",
+    "subType": "Burnt/ Damaged",
+    "action": "reuse",
+    "id": 305
+  },
+  {
+    "issueType": "Lightning Arrestor",
+    "subType": "Disconnected Cable",
+    "action": "reuse",
+    "id": 365
+  },
+  {
+    "issueType": "Lightning Arrestor",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 306
+  },
+  {
+    "issueType": "Panel",
+    "subType": "Crack",
+    "action": "reuse",
+    "id": 281
+  },
+  {
+    "issueType": "Panel",
+    "subType": "Disconnected Cable",
+    "action": "reuse",
+    "id": 354
+  },
+  {
+    "issueType": "Panel",
+    "subType": "Disconnected By Facility",
+    "action": "reuse",
+    "id": 284,
+    "note": "DisplacedPanelHealthCentre (Dismantled By HC)"
+  },
+  {
+    "issueType": "Panel",
+    "subType": "Dust",
+    "action": "reuse",
+    "id": 104
+  },
+  {
+    "issueType": "Panel",
+    "subType": "Hotspot",
+    "action": "reuse",
+    "id": 102
+  },
+  {
+    "issueType": "Panel",
+    "subType": "Low Generation",
+    "action": "reuse",
+    "id": 413
+  },
+  {
+    "issueType": "Panel",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 345
+  },
+  {
+    "issueType": "Panel",
+    "subType": "Running on Grid",
+    "action": "create",
+    "serviceCode": "RunningOnGrid",
+    "menuPath": "PANEL",
+    "name": "Running on Grid",
+    "priority": "High",
+    "note": "sous-type deja envoye par rms-service (PANEL/RunningOnGrid)"
+  },
+  {
+    "issueType": "Reinstall",
+    "subType": "Solar System",
+    "action": "reuse",
+    "id": 424
+  },
+  {
+    "issueType": "RMS Device",
+    "subType": "Disconnected Cable",
+    "action": "reuse",
+    "id": 336
+  },
+  {
+    "issueType": "RMS Device",
+    "subType": "Display Issue",
+    "action": "reuse",
+    "id": 417,
+    "note": "DisplayOff (Display OFF)"
+  },
+  {
+    "issueType": "RMS Device",
+    "subType": "Physical Damage",
+    "action": "reuse",
+    "id": 337
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "AJB",
+    "action": "reuse",
+    "id": 372
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Battery",
+    "action": "reuse",
+    "id": 348
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Change Over Switch",
+    "action": "reuse",
+    "id": 381
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Charge Controller",
+    "action": "reuse",
+    "id": 412
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Earthing Connections",
+    "action": "reuse",
+    "id": 375
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Earthing Pit",
+    "action": "reuse",
+    "id": 374
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "GIPB",
+    "action": "reuse",
+    "id": 373
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Inverter",
+    "action": "reuse",
+    "id": 349
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Lightning Arrestor",
+    "action": "reuse",
+    "id": 350
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Load Wiring",
+    "action": "reuse",
+    "id": 376
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Other",
+    "action": "reuse",
+    "id": 378
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Panel",
+    "action": "reuse",
+    "id": 347
+  },
+  {
+    "issueType": "Shifting",
+    "subType": "Solar System",
+    "action": "reuse",
+    "id": 377
+  },
+  {
+    "issueType": "Theft",
+    "subType": "Entire Solar System",
+    "action": "create",
+    "serviceCode": "TheftEntireSolarSystem",
+    "menuPath": "Theft",
+    "name": "Entire Solar System",
+    "priority": "High"
+  },
+  {
+    "issueType": "Theft",
+    "subType": "Inverter",
+    "action": "reuse",
+    "id": 420
+  },
+  {
+    "issueType": "Theft",
+    "subType": "Battery",
+    "action": "reuse",
+    "id": 419
+  },
+  {
+    "issueType": "Theft",
+    "subType": "Solar Panel",
+    "action": "reuse",
+    "id": 418
+  },
+  {
+    "issueType": "Theft",
+    "subType": "Cable",
+    "action": "create",
+    "serviceCode": "TheftCable",
+    "menuPath": "Theft",
+    "name": "Cable",
+    "priority": "High"
+  },
+  {
+    "issueType": "Theft",
+    "subType": "Other",
+    "action": "create",
+    "serviceCode": "TheftOther",
+    "menuPath": "Theft",
+    "name": "Other",
+    "priority": "High"
+  },
+  {
+    "issueType": "Uninstall",
+    "subType": "Solar System",
+    "action": "reuse",
+    "id": 423
+  }
+]
