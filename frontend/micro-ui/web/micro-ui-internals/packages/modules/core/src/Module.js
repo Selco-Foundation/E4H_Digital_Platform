@@ -12,6 +12,7 @@ import ErrorBoundary from "./components/ErrorBoundaries";
 import OfflineBanner from "./components/OfflineBanner";
 // Registers the beforeinstallprompt/appinstalled listeners at startup; the employee login opens the saved prompt.
 import "./utilities/pwaInstallPrompt";
+export { validateStoredSession } from "./utilities/validateStoredSession";
 import getStore from "./redux/store";
 
 const DigitUIWrapper = ({ stateCode, enabledModules, moduleReducers,defaultLanding }) => {

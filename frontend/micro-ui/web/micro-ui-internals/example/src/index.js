@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 
 import { initLibraries } from "@egovernments/digit-ui-libraries";
 // import { paymentConfigs, PaymentLinks, PaymentModule } from "@egovernments/digit-ui-module-common";
-import { DigitUI } from "@selco/digit-ui-module-core";
+import { DigitUI, validateStoredSession } from "@selco/digit-ui-module-core";
 import { initDSSComponents } from "@selco/digit-ui-module-dss";
 import { initEngagementComponents } from "@egovernments/digit-ui-module-engagement";
 import { initHRMSComponents } from "@selco/digit-ui-module-hrms";
@@ -92,10 +92,13 @@ const initDigitUI = () => {
   const stateCode = window?.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID") || "pb";
   initTokens(stateCode);
 
-  ReactDOM.render(
-    <DigitUI stateCode={stateCode} enabledModules={enabledModules} defaultLanding="employee" moduleReducers={moduleReducers} />,
-    document.getElementById("root")
-  );
+  // Expired or invalid sessions are cleared before the first render, so the user goes straight to login.
+  validateStoredSession().then(() => {
+    ReactDOM.render(
+      <DigitUI stateCode={stateCode} enabledModules={enabledModules} defaultLanding="employee" moduleReducers={moduleReducers} />,
+      document.getElementById("root")
+    );
+  });
 };
 
 initLibraries().then(() => {

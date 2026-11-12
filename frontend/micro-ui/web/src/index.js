@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { initLibraries } from "@egovernments/digit-ui-libraries";
 import "./index.css";
 import App from './App';
+import { validateStoredSession } from "@selco/digit-ui-module-core";
 import { TLCustomisations } from './Customisations/tl/TLCustomisation';
 
 
@@ -74,12 +75,15 @@ if (!user || !user.access_token || !user.info || isExpiredToken(user.access_toke
   // end
 }
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+// Expired or invalid sessions are cleared before the first render, so the user goes straight to login.
+validateStoredSession().then(() => {
+  ReactDOM.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+    document.getElementById('root')
+  );
+});
 
 
 if ('serviceWorker' in navigator && process.env.PUBLIC_PATH) {
