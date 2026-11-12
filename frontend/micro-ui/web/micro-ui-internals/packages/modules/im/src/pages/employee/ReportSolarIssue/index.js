@@ -79,7 +79,7 @@ const ReportSolarIssue = ({ parentUrl }) => {
     history.replace({ pathname: location.pathname, search: next.toString() });
   };
   const continueToDetails = (skipObservation = false) => {
-    if (!selectedFacility || !selectedIssue || issueQuery.isLoading || issueQuery.isError) return;
+    if (!selectedFacility || !selectedIssue || issueQuery.isLoading || issueQuery.isError || (choosingObservation && !issueQuery.observations.isSuccess)) return;
     if (choosingStatus) {
       if (!selectedStatus) return;
       const next = new URLSearchParams({ reportFacility: selectedFacility.code, reportIssue: selectedIssue.key, reportStatus: selectedStatus });
@@ -102,7 +102,14 @@ const ReportSolarIssue = ({ parentUrl }) => {
     history.push({ pathname: location.pathname, search: next.toString() });
   };
 
+  const observationBlocked = choosingObservation && !issueQuery.observations.isSuccess;
+
   const renderIssueSelection = () => {
+    if (choosingObservation && issueQuery.observations.isLoading) return <Loader />;
+    if (choosingObservation && issueQuery.observations.isError) return <div role="alert">
+      <CardText>{t("IM_REPORT_NO_OBSERVATIONS", { defaultValue: "No observations are available for this component/issue. Please go back and choose another option, or contact your administrator." })}</CardText>
+      <SubmitBar label={t("IM_REPORT_RETRY", { defaultValue: "Try again" })} onSubmit={() => issueQuery.observations.refetch()} />
+    </div>;
     if (issueQuery.isLoading) return <Loader />;
     if (issueQuery.isError) {
       return <div role="alert">
@@ -182,12 +189,12 @@ const ReportSolarIssue = ({ parentUrl }) => {
           onSubmit={() => updateSelection(selectedFacility.code, choosingDescription ? "observation" : choosingStatus ? (isSupport && !selectedObservation ? "description" : "observation") : choosingObservation ? "issue" : "facility")} />}
         skip={choosingObservation && observationOptional && <SubmitBar className="im-report-skip"
           label={t("CS_COMMON_SKIP", { defaultValue: "Skip" })}
-          disabled={issueQuery.isLoading || issueQuery.isError}
+          disabled={issueQuery.isLoading || issueQuery.isError || observationBlocked}
           onSubmit={() => continueToDetails(true)}
         />}
         next={<SubmitBar
           label={t("CS_COMMON_NEXT", { defaultValue: "Next" })}
-          disabled={!selectedIssue || (choosingObservation && !selectedObservation) || (choosingStatus && !selectedStatus) || (choosingDescription && !isReportingDescriptionValid(description)) || issueQuery.isLoading || issueQuery.isError}
+          disabled={!selectedIssue || (choosingObservation && !selectedObservation) || (choosingStatus && !selectedStatus) || (choosingDescription && !isReportingDescriptionValid(description)) || issueQuery.isLoading || issueQuery.isError || observationBlocked}
           onSubmit={() => continueToDetails()}
         />}
       />

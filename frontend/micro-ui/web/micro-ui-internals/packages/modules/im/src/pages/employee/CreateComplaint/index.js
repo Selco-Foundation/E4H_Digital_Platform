@@ -109,7 +109,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const guidedObservation = getReportingObservations(guidedIssue, healthcentre?.status).find(({ key }) => key === requestedReportObservation);
   const observationOptional = Boolean(reportFacility) && isReportingObservationOptional(guidedIssue);
   const isGuidedSelectionValid = !reportFacility || isReportingSelectionValid({
-    description: supportDescription, issue: guidedIssue, observation: guidedObservation, complaintType, subType, hasError: (isGuidedSupport ? supportDescription : description).length > 500 || !isReportingSystemStatusValid(requestedReportStatus) || systemFunctionality.key !== requestedReportStatus || reportIssuesQuery.isError || Boolean(requestedReportObservation && !guidedObservation),
+    description: supportDescription, issue: guidedIssue, observation: guidedObservation, complaintType, subType, hasError: (isGuidedSupport ? supportDescription : description).length > 500 || !isReportingSystemStatusValid(requestedReportStatus) || systemFunctionality.key !== requestedReportStatus || reportIssuesQuery.isError || !reportIssuesQuery.observations.isSuccess || Boolean(requestedReportObservation && !guidedObservation),
   });
   const reportingPageUrl = `${parentUrl}${Employee.ReportSolarIssue}?${new URLSearchParams({
     facility: reportFacility || "", step: requestedReportIssue ? "status" : "issue",
@@ -929,7 +929,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   }
   if (reportFacility && !isReportingSystemStatusValid(requestedReportStatus)) return <Redirect to={reportingPageUrl} />;
   if (reportFacility && !requestedReportIssue) return <Redirect to={reportingPageUrl} />;
-  if (reportFacility && reportIssuesQuery.isLoading) return <Loader />;
+  if (reportFacility && (reportIssuesQuery.isLoading || reportIssuesQuery.observations.isLoading)) return <Loader />;
+  if (reportFacility && reportIssuesQuery.observations.isError) return <div role="alert">
+    <p>{t("IM_REPORT_NO_OBSERVATIONS", { defaultValue: "No observations are available for this component/issue. Please go back and choose another option, or contact your administrator." })}</p>
+    <SubmitBar label={t("IM_REPORT_RETRY", { defaultValue: "Try again" })} onSubmit={() => reportIssuesQuery.observations.refetch()} />
+    <Link to={reportingPageUrl}>{t("CS_COMMON_BACK")}</Link>
+  </div>;
   if (reportFacility && reportIssuesQuery.isError) {
     return <div role="alert">
       <p>{t("IM_REPORT_ISSUES_LOAD_ERROR", { defaultValue: "We could not load the components/issues. Please try again." })}</p>
