@@ -1,0 +1,51 @@
+[
+  {
+    "code": "INVERTER",
+    "name": "Inverter",
+    "category": "FAULT",
+    "order": 1,
+    "active": true
+  },
+  {
+    "code": "BATTERY",
+    "name": "Battery",
+    "category": "FAULT",
+    "order": 2,
+    "active": true
+  },
+  {
+    "code": "SOLAR_PANEL",
+    "name": "Solar Panel",
+    "category": "FAULT",
+    "order": 3,
+    "active": true
+  },
+  {
+    "code": "RMS_DEVICE",
+    "name": "RMS Device",
+    "category": "FAULT",
+    "order": 4,
+    "active": true
+  },
+  {
+    "code": "CABLE",
+    "name": "Cable",
+    "category": "FAULT",
+    "order": 5,
+    "active": true
+  },
+  {
+    "code": "THEFT",
+    "name": "Theft",
+    "category": "THEFT",
+    "order": 6,
+    "active": true
+  },
+  {
+    "code": "ADDITIONAL_SUPPORT",
+    "name": "Additional Support Required",
+    "category": "SUPPORT_REQUEST",
+    "order": 7,
+    "active": true
+  }
+]
