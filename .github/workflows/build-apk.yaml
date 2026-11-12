@@ -1,0 +1,110 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - staging
+      - develop
+    tags:
+      - "v*"               # tag pushes ignore the paths filter and always build
+    paths:
+      - "mobile/**"
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build type"
+        type: choice
+        options: [release, debug]
+        default: release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.22.2"    # match `flutter --version` on your machine
+  JAVA_VERSION: "17"
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write          # needed for the GitHub Release step on tags
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+          cache-dependency-path: |
+            mobile/android/**/*.gradle*
+            mobile/android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Set up release signing
+        if: env.HAS_SIGNING_KEY == 'true'
+        env:
+          EXTRA_ENV_BASE64: ${{ secrets.ANDROID_EXTRA_ENV_UAT_BASE64 }}
+          GOOGLE_SERVICE_JSON_BASE64: ${{ secrets.ANDROID_GOOGLE_SERVICE_JSON_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          mkdir android/signing
+          echo "$GOOGLE_SERVICE_JSON_BASE64" | base64 --decode > android/app/google-services.json
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/signing/upload-keystore.jks
+          echo "$EXTRA_ENV_BASE64" | base64 --decode > .env
+          cat > android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Build APK
+        run: |
+          BUILD_TYPE="${{ inputs.build_type || 'release' }}"
+          flutter build apk --"$BUILD_TYPE"
+          # Smaller per-architecture APKs instead of one universal APK:
+          # flutter build apk --"$BUILD_TYPE" --split-per-abi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: selco-apk-${{ github.run_number }}
+          path: mobile/build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mobile/build/app/outputs/flutter-apk/*.apk
+          generate_release_notes: true
+
+      - name: Clean up signing files
+        if: always()
+        run: rm -f android/app/upload-keystore.jks android/app/google-services.json android/key.properties .env
