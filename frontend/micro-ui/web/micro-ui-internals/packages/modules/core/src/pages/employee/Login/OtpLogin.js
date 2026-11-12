@@ -1,13 +1,13 @@
 import { Card, CardLabel, CardLabelError, CardSubHeader, CardText, OTPInput, SubmitBar, TextInput } from "@selco/digit-ui-react-components";
 import PropTypes from "prop-types";
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useEffect, useRef, useState } from "react";
 import useInterval from "../../../hooks/useInterval";
 import { OtpLoginService } from "../../../services/OtpLoginService";
 import {
   MOBILE_INPUT_MAX_LENGTH,
+  OTP_LENGTH,
   formatCountdown,
   formatRoleCode,
-  getOtpLength,
   isCompleteOtp,
   isValidMobile,
   maskMobile,
@@ -73,8 +73,6 @@ const tenantI18nKey = (tenantId) => `TENANT_TENANTS_${String(tenantId).replace(/
  *    so password and OTP login share one post-login path.
  */
 const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent, className, cardStyle, buttonStyle }) => {
-  const otpLength = useMemo(getOtpLength, []);
-
   const [step, setStep] = useState(STEP_MOBILE);
   const [mobileInput, setMobileInput] = useState("");
   const [sentTo, setSentTo] = useState(""); // normalized number the current OTP was sent to
@@ -117,7 +115,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
 
   const resendSecondsLeft = secondsUntil(resendAvailableAt, now);
   const ticketSecondsLeft = secondsUntil(ticketExpiresAt, now);
-  const timerRunning = resendSecondsLeft > 0 || step === STEP_ACCOUNT;
+  const timerRunning = resendSecondsLeft > 0 || (step === STEP_ACCOUNT && ticketExpiresAt > 0);
 
   useInterval(() => setNow(Date.now()), timerRunning ? 1000 : null);
 
@@ -203,7 +201,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
   /* ----------------------------- Step 2: OTP ------------------------------ */
 
   const handleOtpChange = (value) => {
-    setOtp(sanitizeOtp(value, otpLength));
+    setOtp(sanitizeOtp(value, OTP_LENGTH));
     if (error) setError(null);
   };
 
@@ -229,8 +227,8 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
     event?.preventDefault?.();
     if (pending) return;
 
-    if (!isCompleteOtp(otp, otpLength)) {
-      setError({ key: "ERR_ENTER_COMPLETE_OTP", fallback: `Enter the ${otpLength}-digit OTP.` });
+    if (!isCompleteOtp(otp, OTP_LENGTH)) {
+      setError({ key: "ERR_ENTER_COMPLETE_OTP", fallback: `Enter the ${OTP_LENGTH}-digit OTP.` });
       return;
     }
 
@@ -249,14 +247,16 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
 
     loginTicketRef.current = result.loginTicket;
     const current = Date.now();
+    // 0 = the backend sent no validity: no countdown here, the backend still rejects an expired ticket.
+    const expiresAt = result.ticketValiditySeconds > 0 ? current + result.ticketValiditySeconds * 1000 : 0;
     setNow(current);
-    setTicketExpiresAt(current + result.ticketValiditySeconds * 1000);
+    setTicketExpiresAt(expiresAt);
     setAccounts(result.accounts);
 
     if (result.accounts.length === 1) {
       // Nothing to choose: log in straight away.
       setSelectedKey(result.accounts[0].key);
-      await performLogin(result.accounts[0], current + result.ticketValiditySeconds * 1000);
+      await performLogin(result.accounts[0], expiresAt);
       return;
     }
 
@@ -274,7 +274,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
    */
   const performLogin = async (account, expiresAt = ticketExpiresAt) => {
     const ticket = loginTicketRef.current;
-    if (!ticket || Date.now() >= expiresAt) {
+    if (!ticket || (expiresAt > 0 && Date.now() >= expiresAt)) {
       restartFromOtp({
         key: "ERR_OTP_LOGIN_TICKET_EXPIRED",
         fallback: "Time to choose an account ran out. Please request a new OTP.",
@@ -367,7 +367,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
         pending === "verify" || pending === "login"
           ? tf("CORE_LOGIN_VERIFYING_OTP", "Verifying...")
           : tf("CORE_LOGIN_VERIFY_OTP", "Verify & Login"),
-      disabled: !isCompleteOtp(otp, otpLength),
+      disabled: !isCompleteOtp(otp, OTP_LENGTH),
     },
     [STEP_ACCOUNT]: {
       onSubmit: handleAccountLogin,
@@ -411,7 +411,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
       <CardLabel>
         {tf("CORE_LOGIN_ENTER_OTP", "Enter OTP")} *
       </CardLabel>
-      <OTPInput length={otpLength} value={otp} onChange={handleOtpChange} />
+      <OTPInput length={OTP_LENGTH} value={otp} onChange={handleOtpChange} />
 
       <div style={{ margin: "12px 0" }}>
         {resendSecondsLeft > 0 ? (
@@ -488,17 +488,19 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
         })}
       </fieldset>
 
-      {/* Quiet until the last 20 seconds, then red. */}
-      <p
-        style={{
-          color: ticketSecondsLeft <= TICKET_WARNING_SECONDS ? ERROR_COLOR : TEXT_SECONDARY,
-          fontSize: "13px",
-          margin: "0 0 12px",
-          textAlign: "right",
-        }}
-      >
-        {tf("CORE_LOGIN_CHOOSE_WITHIN", "Expires in")} {formatCountdown(ticketSecondsLeft)}
-      </p>
+      {/* Quiet until the last 20 seconds, then red. Shown only when the backend sent a validity. */}
+      {ticketExpiresAt > 0 && (
+        <p
+          style={{
+            color: ticketSecondsLeft <= TICKET_WARNING_SECONDS ? ERROR_COLOR : TEXT_SECONDARY,
+            fontSize: "13px",
+            margin: "0 0 12px",
+            textAlign: "right",
+          }}
+        >
+          {tf("CORE_LOGIN_CHOOSE_WITHIN", "Expires in")} {formatCountdown(ticketSecondsLeft)}
+        </p>
+      )}
     </Fragment>
   );
 

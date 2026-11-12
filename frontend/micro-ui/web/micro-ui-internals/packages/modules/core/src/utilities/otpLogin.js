@@ -5,19 +5,9 @@
  * unit tested on its own and reused by both the component and the service.
  */
 
-// Fallbacks used only when the backend response leaves these values out
-// (_send normally returns resendAfterSeconds / otpValiditySeconds and
-// _verify returns loginTicketValiditySeconds).
-export const RESEND_SECONDS = 30;
-export const OTP_VALIDITY_SECONDS = 300;
-export const LOGIN_TICKET_VALIDITY_SECONDS = 120;
-
-// Number of OTP boxes; an environment can override it (see getOtpLength).
-const DEFAULT_OTP_LENGTH = 6;
-
-// Bounds that keep a mistyped config value from rendering 0 or 50 OTP boxes.
-const MIN_OTP_LENGTH = 4;
-const MAX_OTP_LENGTH = 8;
+// Number of OTP boxes on screen. The backend sends a 6-digit OTP and does not
+// return its length in the _send response, so the UI needs to know it here.
+export const OTP_LENGTH = 6;
 
 // Indian mobile number: exactly 10 digits, first digit 6-9.
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
@@ -36,16 +26,6 @@ const readGlobalConfig = (key) => {
   } catch (e) {
     return undefined;
   }
-};
-
-/**
- * OTP length shown in the OTP boxes.
- * Can be changed per environment with globalConfigs key EMPLOYEE_OTP_LENGTH.
- */
-export const getOtpLength = () => {
-  const configured = Number(readGlobalConfig("EMPLOYEE_OTP_LENGTH"));
-  const isValid = Number.isInteger(configured) && configured >= MIN_OTP_LENGTH && configured <= MAX_OTP_LENGTH;
-  return isValid ? configured : DEFAULT_OTP_LENGTH;
 };
 
 /**
@@ -119,11 +99,10 @@ export const sanitizeOtp = (raw, length) =>
 export const isCompleteOtp = (otp, length) => typeof otp === "string" && otp.length === length && /^\d+$/.test(otp);
 
 /**
- * The timer value sent by the backend, or `fallback` when the field is missing.
- *   toTimerSeconds(30, 99)        -> 30
- *   toTimerSeconds(undefined, 99) -> 99
+ * A timer value from the backend, in seconds. 0 when the field is not sent,
+ * which the UI treats as "no timer" (nothing to wait for or count down).
  */
-export const toTimerSeconds = (value, fallback) => (typeof value === "number" && value >= 0 ? value : fallback);
+export const toTimerSeconds = (value) => (typeof value === "number" && value > 0 ? value : 0);
 
 /** 105 -> "1:45", 9 -> "0:09". Used for the account-selection countdown. */
 export const formatCountdown = (totalSeconds) => {

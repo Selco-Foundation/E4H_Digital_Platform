@@ -1,13 +1,5 @@
 import { Request } from "@egovernments/digit-ui-libraries";
-import {
-  LOGIN_TICKET_VALIDITY_SECONDS,
-  OTP_VALIDITY_SECONDS,
-  RESEND_SECONDS,
-  filterPermittedAccounts,
-  getInvalidRoles,
-  normalizeAccounts,
-  toTimerSeconds,
-} from "../utilities/otpLogin";
+import { filterPermittedAccounts, getInvalidRoles, normalizeAccounts, toTimerSeconds } from "../utilities/otpLogin";
 
 /**
  * The ONLY file that knows the backend contract for employee OTP login.
@@ -28,8 +20,9 @@ import {
  * through and never stored or logged here.
  */
 
-// State-level tenant; the frontend does not know the employee's tenant until _verify answers.
-const STATE_TENANT_ID = "in";
+// State-level tenant (STATE_LEVEL_TENANT_ID in each environment's globalConfigs);
+// the frontend does not know the employee's own tenant until _verify answers.
+const getStateTenantId = () => Digit.ULBService.getStateId();
 
 const SEND_OTP_URL = "/user/otp-login/v1/_send";
 const VERIFY_OTP_URL = "/user/otp-login/v1/_verify";
@@ -93,14 +86,14 @@ const toLoginError = (err, defaultKey, defaultFallback) => {
 /* ------------------------------------------------------------------ */
 
 const parseSendResponse = (data) => ({
-  resendAfterSeconds: toTimerSeconds(data?.resendAfterSeconds, RESEND_SECONDS),
-  otpValiditySeconds: toTimerSeconds(data?.otpValiditySeconds, OTP_VALIDITY_SECONDS),
+  resendAfterSeconds: toTimerSeconds(data?.resendAfterSeconds),
+  otpValiditySeconds: toTimerSeconds(data?.otpValiditySeconds),
 });
 
 /**
  * Checks the _verify response and returns
  *   { loginTicket, ticketValiditySeconds, accounts }
- * accounts are cleaned and exclude roles this portal blocks.
+ * accounts are shaped for the UI and exclude roles this portal blocks.
  */
 const parseVerifyResponse = (data) => {
   const loginTicket = typeof data?.loginTicket === "string" ? data.loginTicket.trim() : "";
@@ -120,7 +113,7 @@ const parseVerifyResponse = (data) => {
 
   return {
     loginTicket,
-    ticketValiditySeconds: toTimerSeconds(data?.loginTicketValiditySeconds, LOGIN_TICKET_VALIDITY_SECONDS),
+    ticketValiditySeconds: toTimerSeconds(data?.loginTicketValiditySeconds),
     accounts,
   };
 };
@@ -140,7 +133,7 @@ const postOtpLogin = (url, body) =>
     url,
     method: "POST",
     data: body,
-    params: { tenantId: STATE_TENANT_ID },
+    params: { tenantId: getStateTenantId() },
     auth: false,
     userService: false,
     useCache: false,
@@ -150,7 +143,7 @@ const postOtpLogin = (url, body) =>
 const sendLoginOtp = async (mobileNumber) => {
   let data;
   try {
-    data = await postOtpLogin(SEND_OTP_URL, { tenantId: STATE_TENANT_ID, mobileNumber });
+    data = await postOtpLogin(SEND_OTP_URL, { tenantId: getStateTenantId(), mobileNumber });
   } catch (err) {
     throw toLoginError(err, "ERR_OTP_SEND_FAILED", "Could not send the OTP. Please check the number and try again.");
   }
@@ -160,7 +153,7 @@ const sendLoginOtp = async (mobileNumber) => {
 const verifyLoginOtp = async (mobileNumber, otp) => {
   let data;
   try {
-    data = await postOtpLogin(VERIFY_OTP_URL, { tenantId: STATE_TENANT_ID, mobileNumber, otp });
+    data = await postOtpLogin(VERIFY_OTP_URL, { tenantId: getStateTenantId(), mobileNumber, otp });
   } catch (err) {
     throw toLoginError(err, "ERR_INVALID_OTP", "The OTP is incorrect or has expired.");
   }
