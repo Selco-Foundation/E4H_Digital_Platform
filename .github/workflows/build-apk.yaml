@@ -9,7 +9,6 @@ on:
       - "v*"               # tag pushes ignore the paths filter and always build
     paths:
       - "mobile/**"
-      - ".github/workflows/build-apk.yaml"
   workflow_dispatch:
     inputs:
       build_type:
