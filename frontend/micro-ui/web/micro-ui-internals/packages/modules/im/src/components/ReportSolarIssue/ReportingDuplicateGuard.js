@@ -1,15 +1,14 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { useSelector } from "react-redux";
 import { useHistory } from "react-router-dom";
 import { CardText, Loader, SubmitBar } from "@selco/digit-ui-react-components";
+import ReportingActions from "./ReportingActions";
 import useReportingDuplicates from "../../hooks/useReportingDuplicates";
 
 const ReportingDuplicateGuard = ({ facility, component, enabled = true, parentUrl, onBack, children }) => {
   const { t, i18n } = useTranslation();
   const history = useHistory();
   const query = useReportingDuplicates(facility, component, enabled);
-  const helpline = useSelector((state) => state.common?.crmHelplineNumber);
   if (!enabled) return children;
   if (query.isLoading || query.isFetching) return <Loader />;
   if (query.isError || !query.data) return <div role="alert">
@@ -23,7 +22,7 @@ const ReportingDuplicateGuard = ({ facility, component, enabled = true, parentUr
   return <section aria-label={t("IM_REPORT_EXISTING_TICKETS", { defaultValue: "Existing tickets" })}>
     <h2>{t("IM_REPORT_DUPLICATE_FOUND", { defaultValue: "A ticket for this issue is already in progress" })}</h2>
     {query.data.duplicates.map((ticket) => (
-      <div key={ticket.incidentId} style={{ borderBottom: "1px solid #d6d6d6", padding: "16px 0" }}>
+      <div key={ticket.incidentId} style={{ paddingTop: "16px" }}>
         <CardText>{t("CS_COMMON_TICKET_NO", { defaultValue: "Ticket number" })}: {ticket.incidentId}</CardText>
         <CardText>{t("IM_REPORT_DATE_RAISED", { defaultValue: "Date raised" })}: {new Date(ticket.createdTime).toLocaleDateString(i18n.language?.replace("_", "-") || "en-IN")}</CardText>
         <CardText>{t("CS_TICKET_DETAILS_CURRENT_STATUS", { defaultValue: "Current status" })}: {t(`CS_COMMON_${ticket.applicationStatus}`, { defaultValue: ticket.applicationStatus })}</CardText>
@@ -31,10 +30,7 @@ const ReportingDuplicateGuard = ({ facility, component, enabled = true, parentUr
           onSubmit={() => history.push(`${parentUrl}/complaint/details/${encodeURIComponent(ticket.incidentId)}/${encodeURIComponent(query.tenantId)}`)} />
       </div>
     ))}
-    <CardText>{t("IM_REPORT_CRM_TOLL_FREE", { defaultValue: "CRM toll-free number" })}: {helpline
-      ? <a href={`tel:${helpline}`}>{helpline}</a>
-      : t("IM_REPORT_CRM_NUMBER_UNAVAILABLE", { defaultValue: "Not configured" })}</CardText>
-    <SubmitBar label={t("CORE_COMMON_BACK", { defaultValue: "Back" })} onSubmit={onBack} />
+    <ReportingActions back={<SubmitBar style={{ marginLeft: "auto", marginRight: 0, flex: "0 1 auto" }} className="im-report-back" label={t("CORE_COMMON_BACK", { defaultValue: "Back" })} onSubmit={onBack} />} />
   </section>;
 };
 
