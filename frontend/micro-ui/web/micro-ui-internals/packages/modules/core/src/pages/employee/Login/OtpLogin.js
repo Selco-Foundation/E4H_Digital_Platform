@@ -233,10 +233,6 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
       setError({ key: "ERR_ENTER_COMPLETE_OTP", fallback: `Enter the ${otpLength}-digit OTP.` });
       return;
     }
-    if (!canProceed) {
-      onBlocked?.();
-      return;
-    }
 
     const requestId = startRequest("verify");
     let result;
@@ -290,15 +286,6 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
     try {
       const authResponse = await OtpLoginService.loginWithTicket(account, ticket);
       if (!isCurrentRequest(requestId)) return;
-
-      if (authResponse?.isStub) {
-        setNotice({
-          key: "CORE_LOGIN_OTP_STUB_SUCCESS",
-          fallback: `Test mode: would log in as ${account.userName}. Real login needs USE_STUB = false.`,
-        });
-        setPending(null);
-        return;
-      }
 
       loginTicketRef.current = ""; // used; never keep it after a successful login
       // login.js stores the session and redirects; this component then unmounts.

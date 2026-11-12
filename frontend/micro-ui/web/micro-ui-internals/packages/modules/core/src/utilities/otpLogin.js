@@ -12,11 +12,7 @@ export const RESEND_SECONDS = 30;
 export const OTP_VALIDITY_SECONDS = 300;
 export const LOGIN_TICKET_VALIDITY_SECONDS = 120;
 
-// Upper bound for any timer value from the backend, so a typo such as 30000
-// can never lock the resend button for hours.
-const MAX_TIMER_SECONDS = 3600;
-
-// Used until the backend confirms the real OTP length (see getOtpLength).
+// Number of OTP boxes; an environment can override it (see getOtpLength).
 const DEFAULT_OTP_LENGTH = 6;
 
 // Bounds that keep a mistyped config value from rendering 0 or 50 OTP boxes.
@@ -44,8 +40,7 @@ const readGlobalConfig = (key) => {
 
 /**
  * OTP length shown in the OTP boxes.
- * Can be changed per environment with globalConfigs key EMPLOYEE_OTP_LENGTH
- * (no code change needed once the backend confirms 4 or 6).
+ * Can be changed per environment with globalConfigs key EMPLOYEE_OTP_LENGTH.
  */
 export const getOtpLength = () => {
   const configured = Number(readGlobalConfig("EMPLOYEE_OTP_LENGTH"));
@@ -56,8 +51,7 @@ export const getOtpLength = () => {
 /**
  * Whether the "Login with mobile number & OTP" link is shown.
  * Visible by default; an environment hides it by setting globalConfigs key
- * EMPLOYEE_OTP_LOGIN_ENABLED to false (boolean) or "false" (string), which lets
- * this PR merge before the backend is live without showing a broken option.
+ * EMPLOYEE_OTP_LOGIN_ENABLED to false (boolean) or "false" (string).
  */
 export const isOtpLoginEnabled = () => {
   const flag = readGlobalConfig("EMPLOYEE_OTP_LOGIN_ENABLED");
@@ -125,20 +119,11 @@ export const sanitizeOtp = (raw, length) =>
 export const isCompleteOtp = (otp, length) => typeof otp === "string" && otp.length === length && /^\d+$/.test(otp);
 
 /**
- * Returns a whole number of seconds between 0 and MAX_TIMER_SECONDS,
- * or `fallback` when the value is missing, negative or not a number.
- *   toTimerSeconds(30, 99)    -> 30
- *   toTimerSeconds("45", 99)  -> 45
- *   toTimerSeconds(null, 99)  -> 99
- *   toTimerSeconds(-5, 99)    -> 99
- *   toTimerSeconds(99999, 99) -> 3600
+ * The timer value sent by the backend, or `fallback` when the field is missing.
+ *   toTimerSeconds(30, 99)        -> 30
+ *   toTimerSeconds(undefined, 99) -> 99
  */
-export const toTimerSeconds = (value, fallback) => {
-  if (value === null || value === undefined || value === "") return fallback;
-  const seconds = Math.floor(Number(value));
-  if (!Number.isFinite(seconds) || seconds < 0) return fallback;
-  return Math.min(seconds, MAX_TIMER_SECONDS);
-};
+export const toTimerSeconds = (value, fallback) => (typeof value === "number" && value >= 0 ? value : fallback);
 
 /** 105 -> "1:45", 9 -> "0:09". Used for the account-selection countdown. */
 export const formatCountdown = (totalSeconds) => {
@@ -148,46 +133,19 @@ export const formatCountdown = (totalSeconds) => {
   return `${minutes}:${seconds}`;
 };
 
-const cleanString = (value) => (typeof value === "string" || typeof value === "number" ? String(value).trim() : "");
-
 /**
- * Cleans the `accounts` array returned by /user/otp-login/v1/_verify into
+ * Shapes the `accounts` array returned by /user/otp-login/v1/_verify for the UI:
  *   [{ key, userName, name, tenantId, roleCodes }]
- *
- *  - Entries without a userName are dropped: /user/oauth/token needs it.
- *  - Missing tenantId falls back to `fallbackTenantId` (the state tenant).
- *  - roleCodes is always an array of non-empty strings.
- *  - The same userName + tenant listed twice is shown once.
- *  - Backend order is kept, so the backend decides which account comes first.
+ * `key` identifies a row in the account picker. Backend order is kept.
  */
-export const normalizeAccounts = (rawAccounts, fallbackTenantId) => {
-  if (!Array.isArray(rawAccounts)) return [];
-
-  const seen = new Set();
-  const accounts = [];
-
-  rawAccounts.forEach((raw) => {
-    if (!raw || typeof raw !== "object") return;
-
-    const userName = cleanString(raw.userName);
-    if (!userName) return;
-
-    const tenantId = cleanString(raw.tenantId) || fallbackTenantId;
-    const key = `${tenantId}:${userName}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-
-    accounts.push({
-      key,
-      userName,
-      name: cleanString(raw.name),
-      tenantId,
-      roleCodes: (Array.isArray(raw.roleCodes) ? raw.roleCodes : []).map(cleanString).filter(Boolean),
-    });
-  });
-
-  return accounts;
-};
+export const normalizeAccounts = (rawAccounts) =>
+  (Array.isArray(rawAccounts) ? rawAccounts : []).map((account) => ({
+    key: `${account.tenantId}:${account.userName}`,
+    userName: account.userName,
+    name: account.name || "",
+    tenantId: account.tenantId,
+    roleCodes: Array.isArray(account.roleCodes) ? account.roleCodes : [],
+  }));
 
 /**
  * Role codes this portal refuses to log in (globalConfigs INVALIDROLES).

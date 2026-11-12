@@ -28,10 +28,6 @@ import {
  * through and never stored or logged here.
  */
 
-// Set to true ONLY to demo the UI while the APIs are not on your environment.
-// It must be false in any commit you push.
-export const USE_STUB = false;
-
 // State-level tenant; the frontend does not know the employee's tenant until _verify answers.
 const STATE_TENANT_ID = "in";
 
@@ -93,7 +89,7 @@ const toLoginError = (err, defaultKey, defaultFallback) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* Response parsing (shared by real calls and the stub)                */
+/* Response parsing                                                    */
 /* ------------------------------------------------------------------ */
 
 const parseSendResponse = (data) => ({
@@ -112,7 +108,7 @@ const parseVerifyResponse = (data) => {
     throw createLoginError("ERR_OTP_LOGIN_FAILED", "Login could not be completed. Please request a new OTP.");
   }
 
-  const allAccounts = normalizeAccounts(data?.accounts, STATE_TENANT_ID);
+  const allAccounts = normalizeAccounts(data?.accounts);
   if (allAccounts.length === 0) {
     throw createLoginError("ERR_NO_EMPLOYEE_ACCOUNT", "No employee account is linked to this mobile number.");
   }
@@ -130,7 +126,7 @@ const parseVerifyResponse = (data) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* Real API calls                                                      */
+/* API calls                                                           */
 /* ------------------------------------------------------------------ */
 
 /*
@@ -151,7 +147,7 @@ const postOtpLogin = (url, body) =>
     setTimeParam: false,
   });
 
-const realSendLoginOtp = async (mobileNumber) => {
+const sendLoginOtp = async (mobileNumber) => {
   let data;
   try {
     data = await postOtpLogin(SEND_OTP_URL, { tenantId: STATE_TENANT_ID, mobileNumber });
@@ -161,11 +157,9 @@ const realSendLoginOtp = async (mobileNumber) => {
   return parseSendResponse(data);
 };
 
-const realVerifyLoginOtp = async (mobileNumber, otp) => {
+const verifyLoginOtp = async (mobileNumber, otp) => {
   let data;
   try {
-    // TODO(OTP-LOGIN-BE-CONFIRM): the backend sample used tenantId "rj" here and "in" for _send.
-    // We send the state tenant for both; change only if the backend confirms otherwise.
     data = await postOtpLogin(VERIFY_OTP_URL, { tenantId: STATE_TENANT_ID, mobileNumber, otp });
   } catch (err) {
     throw toLoginError(err, "ERR_INVALID_OTP", "The OTP is incorrect or has expired.");
@@ -173,7 +167,7 @@ const realVerifyLoginOtp = async (mobileNumber, otp) => {
   return parseVerifyResponse(data);
 };
 
-const realLoginWithTicket = async (account, loginTicket) => {
+const loginWithTicket = async (account, loginTicket) => {
   try {
     // authenticate() adds grant_type=password, scope=read and the Basic auth header,
     // and posts every key below as a form field. Matches the backend's curl exactly.
@@ -190,67 +184,17 @@ const realLoginWithTicket = async (account, loginTicket) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* Stub (only when USE_STUB = true)                                    */
-/* ------------------------------------------------------------------ */
-/*
- * Test inputs:
- *   Send OTP   number ending 0000 -> "not registered" error
- *              number ending 9999 -> server error
- *              any other valid    -> OTP "sent"
- *   Verify     111111 -> success (number ending 2222 returns 3 accounts, others 1)
- *              000000 -> "expired" error
- *              other  -> "incorrect OTP" error
- *   Login      always shows a "test mode" notice; no real session is created.
- */
-const STUB_DELAY_MS = 800;
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const stubSendLoginOtp = async (mobileNumber) => {
-  await wait(STUB_DELAY_MS);
-  if (mobileNumber.endsWith("0000")) {
-    throw createLoginError("ERR_MOBILE_NOT_REGISTERED", "This mobile number is not registered with any employee account.");
-  }
-  if (mobileNumber.endsWith("9999")) {
-    throw toLoginError({ response: { status: 503 } });
-  }
-  return parseSendResponse({ resendAfterSeconds: 30, otpValiditySeconds: 300 });
-};
-
-const stubVerifyLoginOtp = async (mobileNumber, otp) => {
-  await wait(STUB_DELAY_MS);
-  if (/^0+$/.test(otp)) {
-    throw createLoginError("ERR_OTP_EXPIRED", "This OTP has expired. Please request a new one.");
-  }
-  if (!/^1+$/.test(otp)) {
-    throw createLoginError("ERR_INVALID_OTP", "The OTP is incorrect or has expired.");
-  }
-  const accounts = [{ userName: "FAC_JAIPUR_PHC_01", name: "Ramesh Kumar", tenantId: "rj", roleCodes: ["FACILITY_USER"] }];
-  if (mobileNumber.endsWith("2222")) {
-    accounts.push(
-      { userName: "FAC_JAIPUR_CHC_07", name: "Ramesh Kumar", tenantId: "rj", roleCodes: ["FACILITY_USER"] },
-      { userName: "CRM_JAIPUR_02", name: "Ramesh Kumar", tenantId: "rj", roleCodes: ["CRM_AGENT", "EMPLOYEE"] }
-    );
-  }
-  return parseVerifyResponse({ loginTicket: "stub-ticket", loginTicketValiditySeconds: 120, accounts });
-};
-
-const stubLoginWithTicket = async () => {
-  await wait(STUB_DELAY_MS);
-  return { isStub: true };
-};
-
-/* ------------------------------------------------------------------ */
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
 // Same shape as UserAccessReportService: one object holding the API calls.
 export const OtpLoginService = {
   /** Step 1. Sends an OTP. Resolves with { resendAfterSeconds, otpValiditySeconds }. */
-  sendLoginOtp: (mobileNumber) => (USE_STUB ? stubSendLoginOtp(mobileNumber) : realSendLoginOtp(mobileNumber)),
+  sendLoginOtp,
 
   /** Step 2. Verifies the OTP. Resolves with { loginTicket, ticketValiditySeconds, accounts }. */
-  verifyLoginOtp: (mobileNumber, otp) => (USE_STUB ? stubVerifyLoginOtp(mobileNumber, otp) : realVerifyLoginOtp(mobileNumber, otp)),
+  verifyLoginOtp,
 
   /** Step 3. Logs in as the chosen account. Resolves with the OAuth response used by login.js. */
-  loginWithTicket: (account, loginTicket) => (USE_STUB ? stubLoginWithTicket() : realLoginWithTicket(account, loginTicket)),
+  loginWithTicket,
 };
