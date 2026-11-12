@@ -2,7 +2,7 @@ import { Card, CardLabel, CardLabelError, CardSubHeader, CardText, OTPInput, Sub
 import PropTypes from "prop-types";
 import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import useInterval from "../../../hooks/useInterval";
-import { loginWithTicket, sendLoginOtp, verifyLoginOtp } from "./otpLoginService";
+import { OtpLoginService } from "../../../services/OtpLoginService";
 import {
   MOBILE_INPUT_MAX_LENGTH,
   formatCountdown,
@@ -15,7 +15,7 @@ import {
   sanitizeMobileInput,
   sanitizeOtp,
   summarizeRoles,
-} from "./otpLoginUtils";
+} from "../../../utilities/otpLogin";
 
 const STEP_MOBILE = "mobile";
 const STEP_OTP = "otp";
@@ -46,7 +46,7 @@ const linkButtonStyle = {
   textDecoration: "underline",
 };
 
-/** Converts a thrown LoginError (see otpLoginService.js) into { key, fallback } for rendering. */
+/** Converts a thrown LoginError (see services/OtpLoginService.js) into { key, fallback } for rendering. */
 const messageFromError = (err) => ({
   key: err?.i18nKey || "ERR_SOMETHING_WENT_WRONG",
   fallback: err?.fallback || "Something went wrong. Please try again.",
@@ -68,7 +68,7 @@ const tenantI18nKey = (tenantId) => `TENANT_TENANTS_${String(tenantId).replace(/
  *   Then        -> POST /user/oauth/token with the chosen account and the ticket.
  *
  * Kept OUT of this component:
- *  - API details -> otpLoginService.js
+ *  - API details -> services/OtpLoginService.js
  *  - what happens after login (session, HRMS lookup, redirect) -> login.js via onAuthenticated,
  *    so password and OTP login share one post-login path.
  */
@@ -186,7 +186,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
 
     const requestId = startRequest("send");
     try {
-      const result = await sendLoginOtp(mobile);
+      const result = await OtpLoginService.sendLoginOtp(mobile);
       if (!isCurrentRequest(requestId)) return;
       setSentTo(mobile);
       setOtp("");
@@ -212,7 +212,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
 
     const requestId = startRequest("resend");
     try {
-      const result = await sendLoginOtp(sentTo);
+      const result = await OtpLoginService.sendLoginOtp(sentTo);
       if (!isCurrentRequest(requestId)) return;
       setOtp(""); // the old OTP is no longer valid
       applySendResult(result);
@@ -241,7 +241,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
     const requestId = startRequest("verify");
     let result;
     try {
-      result = await verifyLoginOtp(sentTo, otp);
+      result = await OtpLoginService.verifyLoginOtp(sentTo, otp);
     } catch (err) {
       if (!isCurrentRequest(requestId)) return;
       setError(messageFromError(err));
@@ -288,7 +288,7 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
 
     const requestId = startRequest("login");
     try {
-      const authResponse = await loginWithTicket(account, ticket);
+      const authResponse = await OtpLoginService.loginWithTicket(account, ticket);
       if (!isCurrentRequest(requestId)) return;
 
       if (authResponse?.isStub) {
@@ -364,7 +364,9 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
   const showTenant = new Set(accounts.map((account) => account.tenantId)).size > 1;
 
   const formatValidity = (seconds) =>
-    seconds >= 60 ? `${Math.ceil(seconds / 60)} ${tf("CORE_COMMON_MINUTES", "minutes")}` : `${seconds} ${tf("CORE_COMMON_SECONDS", "seconds")}`;
+    seconds >= 60
+      ? `${Math.ceil(seconds / 60)} ${tf("CORE_COMMON_MINUTES", "minutes")}`
+      : `${seconds} ${tf("CORE_COMMON_SECONDS", "seconds")}`;
 
   const submitConfig = {
     [STEP_MOBILE]: {
@@ -375,7 +377,9 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
     [STEP_OTP]: {
       onSubmit: handleVerifyOtp,
       label:
-        pending === "verify" || pending === "login" ? tf("CORE_LOGIN_VERIFYING_OTP", "Verifying...") : tf("CORE_LOGIN_VERIFY_OTP", "Verify & Login"),
+        pending === "verify" || pending === "login"
+          ? tf("CORE_LOGIN_VERIFYING_OTP", "Verifying...")
+          : tf("CORE_LOGIN_VERIFY_OTP", "Verify & Login"),
       disabled: !isCompleteOtp(otp, otpLength),
     },
     [STEP_ACCOUNT]: {
@@ -389,7 +393,9 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
 
   const renderMobileStep = () => (
     <Fragment>
-      <CardLabel>{tf("CORE_LOGIN_MOBILE_NUMBER", "Mobile Number")} *</CardLabel>
+      <CardLabel>
+        {tf("CORE_LOGIN_MOBILE_NUMBER", "Mobile Number")} *
+      </CardLabel>
       <TextInput
         id="employee-otp-mobile"
         name="mobileNumber"
@@ -415,7 +421,9 @@ const OtpLogin = ({ tf, canProceed, onBlocked, onAuthenticated, header, consent,
           </Fragment>
         )}
       </CardText>
-      <CardLabel>{tf("CORE_LOGIN_ENTER_OTP", "Enter OTP")} *</CardLabel>
+      <CardLabel>
+        {tf("CORE_LOGIN_ENTER_OTP", "Enter OTP")} *
+      </CardLabel>
       <OTPInput length={otpLength} value={otp} onChange={handleOtpChange} />
 
       <div style={{ margin: "12px 0" }}>

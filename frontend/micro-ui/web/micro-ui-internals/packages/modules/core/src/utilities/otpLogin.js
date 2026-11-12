@@ -116,7 +116,10 @@ export const maskMobile = (raw) => {
 };
 
 /** Digits only, never longer than the OTP length. */
-export const sanitizeOtp = (raw, length) => toText(raw).replace(/\D/g, "").slice(0, length);
+export const sanitizeOtp = (raw, length) =>
+  toText(raw)
+    .replace(/\D/g, "")
+    .slice(0, length);
 
 /** True only when the OTP has exactly `length` digits. */
 export const isCompleteOtp = (otp, length) => typeof otp === "string" && otp.length === length && /^\d+$/.test(otp);

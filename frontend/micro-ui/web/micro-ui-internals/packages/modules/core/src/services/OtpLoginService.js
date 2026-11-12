@@ -7,7 +7,7 @@ import {
   getInvalidRoles,
   normalizeAccounts,
   toTimerSeconds,
-} from "./otpLoginUtils";
+} from "../utilities/otpLogin";
 
 /**
  * The ONLY file that knows the backend contract for employee OTP login.
@@ -243,13 +243,14 @@ const stubLoginWithTicket = async () => {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Step 1. Sends an OTP. Resolves with { resendAfterSeconds, otpValiditySeconds }. */
-export const sendLoginOtp = (mobileNumber) => (USE_STUB ? stubSendLoginOtp(mobileNumber) : realSendLoginOtp(mobileNumber));
+// Same shape as UserAccessReportService: one object holding the API calls.
+export const OtpLoginService = {
+  /** Step 1. Sends an OTP. Resolves with { resendAfterSeconds, otpValiditySeconds }. */
+  sendLoginOtp: (mobileNumber) => (USE_STUB ? stubSendLoginOtp(mobileNumber) : realSendLoginOtp(mobileNumber)),
 
-/** Step 2. Verifies the OTP. Resolves with { loginTicket, ticketValiditySeconds, accounts }. */
-export const verifyLoginOtp = (mobileNumber, otp) =>
-  USE_STUB ? stubVerifyLoginOtp(mobileNumber, otp) : realVerifyLoginOtp(mobileNumber, otp);
+  /** Step 2. Verifies the OTP. Resolves with { loginTicket, ticketValiditySeconds, accounts }. */
+  verifyLoginOtp: (mobileNumber, otp) => (USE_STUB ? stubVerifyLoginOtp(mobileNumber, otp) : realVerifyLoginOtp(mobileNumber, otp)),
 
-/** Step 3. Logs in as the chosen account. Resolves with the OAuth response used by login.js. */
-export const loginWithTicket = (account, loginTicket) =>
-  USE_STUB ? stubLoginWithTicket() : realLoginWithTicket(account, loginTicket);
+  /** Step 3. Logs in as the chosen account. Resolves with the OAuth response used by login.js. */
+  loginWithTicket: (account, loginTicket) => (USE_STUB ? stubLoginWithTicket() : realLoginWithTicket(account, loginTicket)),
+};
