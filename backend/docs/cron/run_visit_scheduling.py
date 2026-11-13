@@ -45,7 +45,10 @@ base_request_info = {
 }
 
 # Roles template
+# PROJECT_MANAGER is required: visit _search restricts any caller without it to visits assigned to
+# the caller's own uuid (sva.assigned_user = userInfo.uuid), which for this cron user is none.
 role_templates = [
+    {"name": "Project Manager", "code": "PROJECT_MANAGER", "tenantId": ""},
     {"name": "Employee", "code": "EMPLOYEE", "tenantId": ""},
     {"name": "System User", "code": "SYSTEM_USER", "tenantId": ""},
     {"name": "AMC Field Staff", "code": "AMC_FIELD_STAFF", "tenantId": ""},
