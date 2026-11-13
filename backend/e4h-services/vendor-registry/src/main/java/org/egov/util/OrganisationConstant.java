@@ -2,6 +2,17 @@ package org.egov.util;
 
 public class OrganisationConstant {
 
+    //Roles
+
+    /**
+     * The role an org administrator acts as when they are not a platform admin.
+     *
+     * Their jurisdictions under this role - not the union across every role they hold - are what
+     * scopes the users they can see and manage. A constant rather than configuration because the
+     * code is structural: it is the role the org screens are built around.
+     */
+    public static final String VENDOR_ADMIN = "VENDOR_ADMIN";
+
     //Modules
     public static final String MDMS_TENANT_MODULE_NAME = "tenant";
     public static final String MDMS_COMMON_MASTERS_MODULE_NAME = "common-masters";

@@ -114,6 +114,35 @@ public class Configuration {
     @Value("${onm-non-ready.allowed.roles}")
     private List<String> onmNonReadyAllowedRoles;
 
+    // Jurisdiction scoping of facility search. See RoleScopeResolver.
+
+    /**
+     * off | warn | enforce. Validated at startup, so a typo cannot silently mean "off".
+     * Not refreshable - changing it needs a pod restart.
+     */
+    @Value("${facility.jurisdiction.scope.mode:off}")
+    private String jurisdictionScopeMode;
+
+    /**
+     * Role codes that identify a service rather than a person, and so are never scoped.
+     *
+     * Deliberately its own property rather than reusing {@code onm-non-ready.allowed.roles}, which
+     * happens to end in SYSTEM: that list is about O&M readiness, and borrowing it would quietly
+     * make every role on it a jurisdiction bypass.
+     */
+    @Value("${facility.jurisdiction.system.roles:INTERNAL_MICROSERVICE_ROLE,SYSTEM_USER,SYSTEM}")
+    private List<String> jurisdictionSystemRoles;
+
+    /** Blank when not configured, in which case the uuid check is skipped. */
+    @Value("${egov.internal.microservice.user.uuid:}")
+    private String internalMicroserviceUserUuid;
+
+    @Value("${facility.jurisdiction.hrms.cache.ttl.seconds:120}")
+    private Integer jurisdictionHrmsCacheTtlSeconds;
+
+    @Value("${facility.jurisdiction.boundary.cache.ttl.seconds:300}")
+    private Integer jurisdictionBoundaryCacheTtlSeconds;
+
     //Localization
     @Value("${egov.localization.host}")
     private String localizationHost;

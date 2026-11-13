@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.*;
+import org.egov.amc.util.SystemRequestInfo;
 
 @Component
 @Slf4j
@@ -397,7 +398,10 @@ public class AmcConfigurationValidator {
         FacilityBulkSearchCriteria facilityCriteria =
                 FacilityBulkSearchCriteria.forTenantAndFacilityIds(tenantIds, facilityIdsChunk);
         FacilityBulkSearchApiRequest body = FacilityBulkSearchApiRequest.builder()
-                .requestInfo(requestInfo)
+                // Validation and enrichment, not the user browsing: run it as the service so the
+                // jurisdiction ceiling on facility search does not turn a legitimate facility into
+                // a "Facility ID do not exist" that aborts the caller's whole batch.
+                .requestInfo(SystemRequestInfo.of(requestInfo))
                 .facility(facilityCriteria)
                 .build();
         log.debug("Calling facility bulk search at URL: {}, facility id count: {}", url, facilityIdsChunk.size());

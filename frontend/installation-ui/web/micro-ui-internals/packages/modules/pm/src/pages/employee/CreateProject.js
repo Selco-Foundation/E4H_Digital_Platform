@@ -3,7 +3,7 @@ import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-comp
 import {Stepper} from "@egovernments/digit-ui-components";
 import useMDMS from "../../hooks/useMDMS";
 import {useTranslation} from "react-i18next";
-import useBoundary from "../../hooks/useBoundary";
+import { useJurisdictionBoundary } from "../../hooks/useBoundary";
 import {ProjectService} from "../../services/Project";
 import useProject from "../../hooks/useProject";
 import {useHistory, useLocation} from "react-router-dom";
@@ -40,7 +40,7 @@ const CreateProject = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const { data: boundaryData } = useBoundary("State");
+  const { data: boundaryData } = useJurisdictionBoundary();
 
   const { data : projectTypeData } = useMDMS(
     tenantId, "common-masters", ["ProjectType"],

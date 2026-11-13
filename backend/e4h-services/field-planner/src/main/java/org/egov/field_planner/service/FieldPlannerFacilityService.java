@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 import static org.egov.common.utils.CommonUtils.*;
 import static org.egov.field_planner.Constants.GET_FIELDPLAN_ID;
+import org.egov.field_planner.util.SystemRequestInfo;
 
 @Service
 @Slf4j
@@ -532,7 +533,10 @@ public class FieldPlannerFacilityService {
         String url = fieldPlannerConfiguration.getFacilityServiceHost() + fieldPlannerConfiguration.getFacilityBulkSearchUrl();
         FacilityBulkSearchCriteria facilityCriteria = FacilityBulkSearchCriteria.forTenantAndFacilityIds(List.of("in"), facilityIdsChunk);
         FacilityBulkSearchApiRequest body = FacilityBulkSearchApiRequest.builder()
-                .requestInfo(requestInfo)
+                // Validation and enrichment, not the user browsing: run it as the service so the
+                // jurisdiction ceiling on facility search does not turn a legitimate facility into
+                // a "Facility ID do not exist" that aborts the caller's whole batch.
+                .requestInfo(SystemRequestInfo.of(requestInfo))
                 .facility(facilityCriteria)
                 .build();
         log.debug("Calling facility bulk search at URL: {}, facility id count: {}", url, facilityIdsChunk.size());

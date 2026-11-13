@@ -2,6 +2,7 @@ package facility.util;
 
 import facility.service.FacilityService;
 import facility.web.models.FacilityBulkSearchCriteria;
+import facility.web.models.FacilityScope;
 import facility.web.models.FacilitySearchRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
@@ -12,8 +13,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.stream.IntStream;
 @Slf4j
@@ -101,6 +105,10 @@ public class QueryBuilderUtil {
     }
 
     public static QueryBuilderResult buildBulkWhereClause(FacilityBulkSearchCriteria criteria, RequestInfo requestInfo, List<String> onmNonReadyAllowedRoles) {
+        return buildBulkWhereClause(criteria, requestInfo, onmNonReadyAllowedRoles, null, java.util.Collections.emptyMap());
+    }
+
+    public static QueryBuilderResult buildBulkWhereClause(FacilityBulkSearchCriteria criteria, RequestInfo requestInfo, List<String> onmNonReadyAllowedRoles, FacilityScope scope, Map<String, Set<String>> levelFilters) {
         log.trace("Entering buildBulkWhereClause method");
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
@@ -193,9 +201,59 @@ public class QueryBuilderUtil {
             log.debug("Added is_onm_ready filter: {}", criteria.getIsOnmReady());
         }
 
+        // Each hierarchy level the client filtered on becomes its own ANDed clause, so a facility
+        // must sit beneath one of the states AND one of the districts AND one of the blocks. The
+        // intersection is the SQL's job: a level that resolved to nothing yields an empty array
+        // and matches nothing, with no special case to get wrong. boundaryCodes above is already
+        // facility-level, so it goes straight to the column.
+        if (levelFilters != null) {
+            for (Map.Entry<String, Set<String>> level : levelFilters.entrySet()) {
+                whereClause.append(" AND fac.boundary_code = ANY (?::text[])");
+                params.add(toPgTextArrayLiteral(level.getValue()));
+                log.debug("Applied {} filter resolving to {} facility codes", level.getKey(), level.getValue().size());
+            }
+        }
+
+        // The jurisdiction ceiling. INTERSECT, never union: a SEPARATE clause ANDed with everything
+        // above. Do not be tempted to merge it into criteria.boundaryCodes - that would OR the two
+        // together and let a crafted request widen its own scope, and the wrong version still looks
+        // right in manual testing, because a scoped user sees their own facilities either way.
+        if (scope != null && scope.isApplied()) {
+            // One bind parameter whatever the ceiling size. A state expands to tens of thousands of
+            // facility codes; as placeholders that would approach Postgres' 65535 parameter cap and
+            // would print in full on the query log line below.
+            whereClause.append(" AND fac.boundary_code = ANY (?::text[])");
+            params.add(toPgTextArrayLiteral(scope.ceiling()));
+            log.debug("Applied jurisdiction ceiling of {} facility codes", scope.ceiling().size());
+        }
+
         log.debug("Built bulk WHERE clause with {} parameters", params.size());
         log.trace("Exiting buildBulkWhereClause method");
         return new QueryBuilderResult(whereClause.toString(), params);
+    }
+
+    /**
+     * Renders codes as a Postgres text array literal: {@code {"a","b"}}.
+     *
+     * An empty collection gives {@code {}}, which matches nothing - which is the correct reading of
+     * a ceiling that resolved to nothing, and needs no special case at the call site.
+     */
+    static String toPgTextArrayLiteral(Collection<String> values) {
+        StringBuilder literal = new StringBuilder("{");
+        boolean first = true;
+        if (values != null) {
+            for (String value : values) {
+                if (value == null) {
+                    continue;
+                }
+                if (!first) {
+                    literal.append(',');
+                }
+                first = false;
+                literal.append('"').append(value.replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
+            }
+        }
+        return literal.append('}').toString();
     }
 
     /**

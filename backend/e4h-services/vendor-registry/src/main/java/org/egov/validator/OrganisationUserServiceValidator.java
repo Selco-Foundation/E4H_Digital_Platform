@@ -13,6 +13,7 @@ import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.FacilityUtil;
 import org.egov.util.HRMSUtils;
+import org.egov.util.JurisdictionScopeResolver;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.util.UserUtil;
@@ -52,6 +53,7 @@ public class OrganisationUserServiceValidator {
     private final FacilityUtil facilityUtil;
 
     private final ObjectMapper mapper;
+    private final JurisdictionScopeResolver jurisdictionScopeResolver;
     private static final String MDMS_RES = "$.MdmsRes.";
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
@@ -65,7 +67,8 @@ public class OrganisationUserServiceValidator {
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
                                             OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil,
-                                            OrganisationUserRepository userRepository, FacilityUtil facilityUtil, ObjectMapper mapper) {
+                                            OrganisationUserRepository userRepository, FacilityUtil facilityUtil, ObjectMapper mapper,
+                                            JurisdictionScopeResolver jurisdictionScopeResolver) {
         this.mdmsUtil = mdmsUtil;
         this.configuration = configuration;
         this.organisationRepository = organisationRepository;
@@ -75,6 +78,7 @@ public class OrganisationUserServiceValidator {
         this.userRepository = userRepository;
         this.facilityUtil = facilityUtil;
         this.mapper = mapper;
+        this.jurisdictionScopeResolver = jurisdictionScopeResolver;
 
     }
 
@@ -83,8 +87,35 @@ public class OrganisationUserServiceValidator {
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
+        //Verify every jurisdiction being granted is one the caller holds
+        validateGrantedJurisdictions(request);
         //Verify if org users request and mandatory fields are present
         validateUserOrgCreation(request);
+    }
+
+    /**
+     * Refuses to grant a jurisdiction the caller does not hold themselves.
+     *
+     * This is the anti-escalation check. Without it an administrator scoped to one state can
+     * create a user in another and then act through them, which is a wider reach than anything
+     * else on these screens can be used for. The picker will not offer an out-of-scope boundary,
+     * but the picker is not what makes it safe - this is.
+     */
+    private void validateGrantedJurisdictions(OrgUserRequest request) {
+        User orgUser = request.getUser();
+        if (orgUser == null) {
+            return;
+        }
+        JurisdictionScopeResolver.Scope scope = jurisdictionScopeResolver.resolve(request.getRequestInfo());
+        if (scope.coversAll(orgUser.getJurisdictions())) {
+            return;
+        }
+        List<String> refused = scope.outside(orgUser.getJurisdictions()).stream()
+                .map(Jurisdiction::getBoundary)
+                .toList();
+        log.error("Caller attempted to grant jurisdictions outside their own scope: {}", refused);
+        throw new CustomException("JURISDICTION_OUT_OF_SCOPE",
+                "You can only assign jurisdictions you administer. Not allowed: " + refused);
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {
@@ -130,6 +161,9 @@ public class OrganisationUserServiceValidator {
         }
         // Validate user object fields
         validateUserRequest(orgUser);
+        // A user with no jurisdiction can see nothing, so creation must supply one rather than
+        // fall back to a country-wide grant.
+        requireAtLeastOneActiveJurisdiction(orgUser.getJurisdictions(), true);
 
         // Get existing user with mobile number from hrms service
         List<Employee> employee = hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber());
@@ -137,8 +171,8 @@ public class OrganisationUserServiceValidator {
             Organisation organisation = organisations.get(0);
             String orgType = organisation.getOrgType();
             Map<String, List<Role>> rolesMap =  getOrgRoles(request.getRequestInfo());
-            if (rolesMap !=null && !rolesMap.isEmpty() && orgType !=null && !orgType.isBlank()){
-                List<Role> roles = rolesMap.get(orgType);
+            {
+                List<Role> roles = rolesForOrgType(rolesMap, orgType);
                 List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
                 List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
                 Set<String> orgRolesReqSet = new HashSet<>();
@@ -171,6 +205,7 @@ public class OrganisationUserServiceValidator {
                 ensureDefaultEmployeeRoleForOrgUser(user);
 
                 Employee employee1 = hrmsUtils.buildEmployee(user, orgType);
+                pruneJurisdictionRoles(employee1.getJurisdictions(), employee1.getUser().getRoles());
                 EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(request.getRequestInfo()).employees(List.of(employee1)).build();
                 List<Employee> employees = hrmsUtils.createHRMSUser(employeeRequest);
                 if (employees != null && !employees.isEmpty()) {
@@ -222,14 +257,12 @@ public class OrganisationUserServiceValidator {
                     String orgType = organisation.getOrgType();
 
                     Map<String, List<Role>> rolesMap = getOrgRoles(request.getRequestInfo());
-                    if (rolesMap != null && !rolesMap.isEmpty() && orgType != null && !orgType.isBlank()) {
-                        List<Role> roles = rolesMap.get(orgType);
-                        if (roles != null) {
-                            List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
-                            List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
-                            Set<String> orgRolesReqSet = new HashSet<>(requestRoleCodes);
-                            validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
-                        }
+                    {
+                        List<Role> roles = rolesForOrgType(rolesMap, orgType);
+                        List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
+                        List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
+                        Set<String> orgRolesReqSet = new HashSet<>(requestRoleCodes);
+                        validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
                     }
 
                     existingEmployee.getUser().setName(orgUser.getName());
@@ -249,6 +282,8 @@ public class OrganisationUserServiceValidator {
                             mergeJurisdictionsForRecreateUser(
                                     existingEmployee.getJurisdictions(),
                                     orgUser.getJurisdictions()));
+                    pruneJurisdictionRoles(existingEmployee.getJurisdictions(),
+                            existingEmployee.getUser().getRoles());
 
                     EmployeeRequest employeeRequest = EmployeeRequest.builder()
                             .requestInfo(request.getRequestInfo())
@@ -330,6 +365,8 @@ public class OrganisationUserServiceValidator {
         RequestInfo requestInfo = request.getRequestInfo();
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
+        //Verify every jurisdiction being granted is one the caller holds
+        validateGrantedJurisdictions(request);
         //Verify if org users request and mandatory fields are present
         validateUserOrgUpdate(request);
     }
@@ -400,6 +437,18 @@ public class OrganisationUserServiceValidator {
         // Get employee details fetched from HRMS
         Employee employee = employees.get(0);
 
+        // The caller must administer somewhere this user actually works. Checked against what is
+        // stored rather than what was submitted, since the payload is the thing being validated.
+        JurisdictionScopeResolver.Scope callerScope = jurisdictionScopeResolver.resolve(request.getRequestInfo());
+        if (!callerScope.unscoped() && callerScope.within(employee.getJurisdictions()).isEmpty()) {
+            log.error("Caller attempted to update user {} who holds no jurisdiction in their scope", orgUser.getUserName());
+            throw new CustomException("USER_OUT_OF_SCOPE",
+                    "This user does not work in any jurisdiction you administer");
+        }
+
+        // Everything this caller cannot see, and therefore could not have sent back.
+        List<Jurisdiction> outsideCallerScope = callerScope.outside(employee.getJurisdictions());
+
         // -----------------------------------------
         // Detect Changes
         // -----------------------------------------
@@ -467,8 +516,8 @@ public class OrganisationUserServiceValidator {
                 Organisation organisation = organisations.get(0);
                 String orgType = organisation.getOrgType();
                 Map<String, List<Role>> rolesMap =  getOrgRoles(request.getRequestInfo());
-                if (rolesMap !=null && !rolesMap.isEmpty() && orgType !=null && !orgType.isBlank()){
-                    List<Role> roles = rolesMap.get(orgType);
+                {
+                    List<Role> roles = rolesForOrgType(rolesMap, orgType);
                     List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
                     List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
                     Set<String> orgRolesReqSet = new HashSet<>();
@@ -481,10 +530,26 @@ public class OrganisationUserServiceValidator {
             }
 
             if (changes.isJurisdictionChanged()) {
-                employee.setJurisdictions(
-                        hrmsUtils.buildJurisdictions(orgUser.getJurisdictions())
-                );
+                /*
+                 * Replace only the slice this caller can see.
+                 *
+                 * They were shown their own jurisdictions and no others, so the payload cannot
+                 * carry the rest - and HRMS _update deletes the employee's jurisdictions and
+                 * re-inserts whatever it is given. Submitting the visible slice alone would
+                 * therefore erase every jurisdiction outside the caller's area, silently, with
+                 * nothing on screen to suggest it had happened.
+                 */
+                List<Jurisdiction> merged = new ArrayList<>(hrmsUtils.buildJurisdictions(orgUser.getJurisdictions()));
+                merged.addAll(outsideCallerScope);
+                // Checked on the merged list: a caller may legitimately remove their whole slice
+                // from someone who still works elsewhere, but nobody may be left with none.
+                requireAtLeastOneActiveJurisdiction(merged, false);
+                employee.setJurisdictions(merged);
             }
+
+            // After both branches above: roles may have been trimmed without the jurisdiction
+            // branch running at all, so this cannot live inside either one.
+            pruneJurisdictionRoles(employee.getJurisdictions(), employee.getUser().getRoles());
 
             EmployeeRequest employeeRequest = EmployeeRequest.builder()
                     .requestInfo(request.getRequestInfo())
@@ -540,6 +605,34 @@ public class OrganisationUserServiceValidator {
             throw new CustomException(errorMap);
         }
         log.debug("Organisation user request validation completed");
+    }
+
+    /**
+     * A user must always hold at least one active jurisdiction: with none, every scoped search
+     * returns nothing and the account is silently useless.
+     *
+     * The invariant used to be kept by {@link HRMSUtils#buildJurisdictions(List)} quietly
+     * substituting a country-wide `India` grant for an empty list. That keeps the user working
+     * but gives them the whole country, which is the opposite of what an admin who removed
+     * every assignment intended. Requiring one here means the fallback is no longer reached
+     * from the API, and an admin is told instead of over-granted.
+     *
+     * `listIsAuthoritative` distinguishes the two callers. On create the list is the whole
+     * truth, so absent means none. On update a null list means "jurisdictions unchanged" - the
+     * stored user already satisfies the invariant - while an explicitly supplied list that
+     * activates nothing is an attempt to remove the last assignment, and is refused.
+     */
+    private void requireAtLeastOneActiveJurisdiction(List<Jurisdiction> jurisdictions, boolean listIsAuthoritative) {
+        if (jurisdictions == null && !listIsAuthoritative) {
+            return;
+        }
+        boolean anyActive = jurisdictions != null && jurisdictions.stream()
+                .anyMatch(j -> j != null && !Boolean.FALSE.equals(j.getIsActive()));
+        if (!anyActive) {
+            log.error("Org user has no active jurisdiction; refusing to save");
+            throw new CustomException("ORG_USER_JURISDICTION_REQUIRED",
+                    "At least one active assignment is required");
+        }
     }
 
     private List<Jurisdiction> copyJurisdictions(List<Jurisdiction> jurisdictions) {
@@ -644,6 +737,31 @@ public class OrganisationUserServiceValidator {
         }
     }
 
+    /**
+     * The roles MDMS allows for this organisation type, or a refusal.
+     *
+     * Both role checks used to sit inside a guard that skipped them when MDMS answered nothing or
+     * the organisation had no type - so a blip, a cache miss, or a tenant without the master
+     * meant whatever roles the payload carried were accepted. That chain is what keeps a vendor
+     * user from being given platform roles, so it has to fail closed.
+     */
+    private List<Role> rolesForOrgType(Map<String, List<Role>> rolesMap, String orgType) {
+        if (rolesMap == null || rolesMap.isEmpty()) {
+            log.error("Org roles master is empty; refusing to validate roles against nothing");
+            throw new CustomException("INVALID_ROLES", "Org Roles is not configured in MDMS");
+        }
+        if (StringUtils.isBlank(orgType)) {
+            log.error("Organisation has no orgType; roles cannot be validated");
+            throw new CustomException("INVALID_ORG_TYPE", "Organisation type is required to validate roles");
+        }
+        List<Role> roles = rolesMap.get(orgType);
+        if (CollectionUtils.isEmpty(roles)) {
+            log.error("No roles configured in MDMS for orgType {}", orgType);
+            throw new CustomException("INVALID_ROLES", "No roles are configured for organisation type " + orgType);
+        }
+        return roles;
+    }
+
     private void validateOrgRoles(Set<String> orgRolesReqSet, List<String> orgRolesCodesMDMS) {
         if (CollectionUtils.isEmpty(orgRolesCodesMDMS)) {
             log.error("Org Roles is not configured in MDMS");
@@ -704,7 +822,8 @@ public class OrganisationUserServiceValidator {
         changes.setJurisdictionChanged(
                 !safeJurisSet(existing.getJurisdictions())
                         .equals(safeJurisSet(incoming.getJurisdictions())) || !safeJurisSetActive(existing.getJurisdictions())
-                        .equals(safeJurisSetActive(incoming.getJurisdictions()))
+                        .equals(safeJurisSetActive(incoming.getJurisdictions())) || !safeJurisRoleSet(existing.getJurisdictions())
+                        .equals(safeJurisRoleSet(incoming.getJurisdictions()))
         );
 
         return changes;
@@ -724,6 +843,68 @@ public class OrganisationUserServiceValidator {
                 .map(Jurisdiction::getBoundary)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * The (boundary, role) pairs a jurisdiction list scopes to, for change detection.
+     *
+     * Boundary alone is not enough once jurisdictions carry roles: narrowing Kerala from
+     * "every role" to "PROJECT_MANAGER only" changes no boundary and no active flag, so
+     * without this the edit is read as no change and never reaches HRMS. A jurisdiction with
+     * no roles contributes the boundary on its own, which is what "applies to every role the
+     * user holds" looks like.
+     */
+    private Set<String> safeJurisRoleSet(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null) return Set.of();
+        Set<String> pairs = new HashSet<>();
+        for (Jurisdiction jurisdiction : jurisdictions) {
+            if (jurisdiction == null || jurisdiction.getBoundary() == null) {
+                continue;
+            }
+            if (CollectionUtils.isEmpty(jurisdiction.getRoles())) {
+                pairs.add(jurisdiction.getBoundary());
+                continue;
+            }
+            for (Role role : jurisdiction.getRoles()) {
+                if (role != null && role.getCode() != null) {
+                    pairs.add(jurisdiction.getBoundary() + "::" + role.getCode());
+                }
+            }
+        }
+        return pairs;
+    }
+
+    /**
+     * Drop jurisdiction roles the user no longer holds.
+     *
+     * Role scoping is a narrowing of the roles on the user, so a jurisdiction can only name a
+     * role the user actually has. Take `PROJECT_MANAGER` away and any jurisdiction scoped to it
+     * is left pointing at nothing. egov-hrms rejects that outright
+     * (`ERR_HRMS_JURISDICTION_ROLE_NOT_HELD`), so without this an unrelated edit to a user whose
+     * roles were trimmed fails the whole save rather than tidying up after itself.
+     *
+     * A jurisdiction whose every role is pruned becomes unscoped — it applies to all the user's
+     * remaining roles — rather than being deleted. Removing it would revoke access at that
+     * boundary, which is a bigger decision than the admin made by unticking a role.
+     */
+    private void pruneJurisdictionRoles(List<Jurisdiction> jurisdictions, List<Role> heldRoles) {
+        if (CollectionUtils.isEmpty(jurisdictions)) {
+            return;
+        }
+        Set<String> heldRoleCodes = safeRoleSet(heldRoles);
+        for (Jurisdiction jurisdiction : jurisdictions) {
+            if (jurisdiction == null || CollectionUtils.isEmpty(jurisdiction.getRoles())) {
+                continue;
+            }
+            List<Role> retained = jurisdiction.getRoles().stream()
+                    .filter(role -> role != null && heldRoleCodes.contains(role.getCode()))
+                    .collect(Collectors.toList());
+            if (retained.size() != jurisdiction.getRoles().size()) {
+                log.info("Pruning jurisdiction roles at boundary {}: {} of {} retained",
+                        jurisdiction.getBoundary(), retained.size(), jurisdiction.getRoles().size());
+            }
+            jurisdiction.setRoles(retained);
+        }
     }
 
     private Set<Boolean> safeJurisSetActive(List<Jurisdiction> jurisdictions) {
@@ -778,6 +959,10 @@ public class OrganisationUserServiceValidator {
                 if (j.getId() != null) {
                     target.setId(j.getId());
                 }
+                // Roles come from the request even when absent there: an empty list is the
+                // explicit "applies to every role" and must overwrite the stored scoping,
+                // or re-adding a user silently keeps scoping the admin never saw.
+                target.setRoles(j.getRoles() == null ? new ArrayList<>() : j.getRoles());
                 target.setIsActive(j.getIsActive() != null ? j.getIsActive() : Boolean.TRUE);
             } else {
                 if (j.getIsActive() == null) {

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.models.core.ProjectSearchURLParams;
+import org.egov.tracer.model.CustomException;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectSearch;
 import org.egov.common.models.project.ProjectSearchRequest;
@@ -21,7 +22,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.egov.project.util.ProjectConstants.DOT;
-import static org.egov.project.util.ProjectConstants.PROJECT_MANAGER;
 
 @Component
 @Slf4j
@@ -256,21 +256,29 @@ public class ProjectAddressQueryBuilder {
         // Get user info
         var userInfo = projectSearchRequest.getRequestInfo().getUserInfo();
         String userUuid = userInfo.getUuid();
-        boolean isProjectManager = false;
-        if (userInfo.getRoles() != null) {
-            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
-        }
 
-        if (!isProjectManager) {
-            queryBuilder.append("JOIN project_staff ps ON ps.projectid = prj.id ");
-        }
+        /*
+         * Everyone sees the projects they are staffed on, with no exception for PROJECT_MANAGER.
+         *
+         * The bypass this replaces showed a project manager every project in the tenant. Scoping
+         * them by the boundary on the project's address was considered and rejected: a project's
+         * geography is a list of districts and blocks inside additionalDetails, while addr.boundary
+         * holds a single code, so that test would have hidden a project from a manager working in
+         * one of the districts it actually covers.
+         *
+         * Soft-deleted rows are excluded here rather than in the where clause, so that unstaffing
+         * someone removes their access. Leaving them in meant a deletion was recorded but had no
+         * effect - which was true for every other role before this change too.
+         */
+        queryBuilder.append("JOIN project_staff ps ON ps.projectid = prj.id " +
+                "AND (ps.isdeleted IS NULL OR ps.isdeleted = false) ");
 
         ProjectSearch projectSearch = projectSearchRequest.getProject();
         // Check if tenant ID is provided in URL parameters
         addClause(urlParams.getTenantId(), preparedStmtList, queryBuilder);
 
         // Check if project IDs are provided
-        addClauseOnProjects(projectSearch, preparedStmtList, queryBuilder, userUuid, isProjectManager);
+        addClauseOnProjects(projectSearch, preparedStmtList, queryBuilder, userUuid);
 
         // Check if boundary code is provided
         if (projectSearch.getBoundaryCode() != null && StringUtils.isNotBlank(projectSearch.getBoundaryCode())) {
@@ -358,7 +366,7 @@ public class ProjectAddressQueryBuilder {
     }
 
     private void addClauseOnProjects(ProjectSearch projectSearch, List<Object> preparedStmtList,
-                                     StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
+                                     StringBuilder queryBuilder, String userUuid) {
         if (!CollectionUtils.isEmpty(projectSearch.getId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.id IN (").append(createQuery(projectSearch.getId())).append(")");
@@ -386,12 +394,23 @@ public class ProjectAddressQueryBuilder {
             preparedStmtList.add(projectSearch.getProjectTypeId());
         }
 
-        // Check if not project manager role
-        if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ps.staffid = ? ");
-            preparedStmtList.add(userUuid);
+        /*
+         * Restrict to the caller's own projects.
+         *
+         * A blank uuid is refused rather than skipped. While project managers bypassed the join,
+         * dropping the predicate only widened a search that was already unrestricted for them;
+         * now it would hand back every project in the tenant to a caller we could not identify.
+         */
+        if (StringUtils.isBlank(userUuid)) {
+            throw new CustomException(
+                    "INVALID_USER",
+                    "User UUID is required to search projects"
+            );
         }
+
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" ps.staffid = ? ");
+        preparedStmtList.add(userUuid);
     }
 
     /* Constructs project search query based on Project Ids */

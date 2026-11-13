@@ -19,11 +19,9 @@ public class ServiceConstants {
 
     public static final String ERROR_WHILE_FETCHING_FROM_MDMS = "Exception occurred while fetching category lists from mdms: ";
 
-    public static final String BOUNDARY_CODE = "boundaryCodes";
-    public static final String BLOCK_CODE = "block";
-    public static final String STATE_CODE = "state";
+    /** The hierarchy level a facility sits at, as boundary-service spells it. */
+    public static final String FACILITY_BOUNDARY_TYPE = "Facility";
 
-    public static final String DISTRICT_CODE = "url";
     public static final String URL_SHORTENING_ERROR_CODE = "URL_SHORTENING_ERROR";
     public static final String URL_SHORTENING_ERROR_MESSAGE = "Unable to shorten url: ";
 

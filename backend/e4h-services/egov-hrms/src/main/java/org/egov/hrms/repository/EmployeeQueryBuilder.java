@@ -184,6 +184,39 @@ public class EmployeeQueryBuilder {
 		// Only consider active jurisdictions
 		builder.append(" and jurisdiction.isactive = ?");
 		preparedStmtList.add(true);
+
+		addRoleScopeClause(criteria, builder, preparedStmtList);
+	}
+
+	/**
+	 * Narrows the boundary match to jurisdictions the requested roles are actually held at.
+	 *
+	 * Without this, "who is a PROJECT_MANAGER in Bihar?" is answered by anyone who is a project
+	 * manager somewhere and has any jurisdiction in Bihar - which is a different question, and
+	 * the wrong one once a user can hold different roles in different places.
+	 *
+	 * The NOT EXISTS arm is what makes this safe to switch on with no data migration: a
+	 * jurisdiction with no mapping rows applies to every role the employee holds, which is every
+	 * jurisdiction in the system today. Only once rows exist does the clause start excluding
+	 * anything.
+	 *
+	 * Applies only when roles are part of the search. With no roles asked for there is nothing to
+	 * scope by, and the boundary filter alone is the existing behaviour.
+	 *
+	 * @param criteria
+	 * @param builder
+	 * @param preparedStmtList
+	 */
+	private void addRoleScopeClause(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList) {
+		if(CollectionUtils.isEmpty(criteria.getRoles()))
+			return;
+
+		builder.append(" and (not exists (select 1 from {schema}.eg_hrms_jurisdiction_role jurisdictionrole")
+				.append(" where jurisdictionrole.jurisdictionid = jurisdiction.uuid)")
+				.append(" or exists (select 1 from {schema}.eg_hrms_jurisdiction_role jurisdictionrole")
+				.append(" where jurisdictionrole.jurisdictionid = jurisdiction.uuid")
+				.append(" and jurisdictionrole.rolecode IN (").append(createQuery(criteria.getRoles())).append(")))");
+		addToPreparedStatement(preparedStmtList, criteria.getRoles());
 	}
 
 
