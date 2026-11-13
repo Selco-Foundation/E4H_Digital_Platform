@@ -218,7 +218,7 @@ public class WorkflowService {
     public SlaSnapshot computeSla(List<ProcessInstance> processInstances, ProcessInstance current,
                                   List<State> states, List<Map<String, Object>> businessHourList) {
         // Leaving On Hold restarts the SLA, so only the history after the most recent hold counts
-        processInstances = slaService.getCurrentSlaCycle(processInstances);
+        processInstances = new ArrayList<>(slaService.getCurrentSlaCycle(processInstances));
         if (processInstances.isEmpty()) {
             processInstances.add(current);
         }
@@ -815,7 +815,7 @@ public class WorkflowService {
         }
         if (processInstanceResponse == null || CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
             log.debug("No process instances found in history for incident: {}", IncidentId);
-            return Collections.emptyList();
+            return new ArrayList<>();
         }
 
         List<ProcessInstance> processInstances =  processInstanceResponse.getProcessInstances();
