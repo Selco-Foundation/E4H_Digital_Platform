@@ -71,9 +71,7 @@ class OperationProgressOverlay extends StatelessWidget {
                 const SizedBox(height: spacer1),
                 Text(
                   model.isFailure
-                      ? (model.errorMessage ??
-                          context
-                              .translate(i18.progressOverlay.somethingWentWrong))
+                      ? context.localizeError(model.errorMessage)
                       : context.translate(i18.progressOverlay.pleaseWait),
                   textAlign: TextAlign.center,
                   style: textTheme.bodyS.copyWith(

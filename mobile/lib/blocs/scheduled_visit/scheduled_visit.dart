@@ -4,6 +4,7 @@ import 'package:isar_community/isar.dart';
 
 import '../../model/scheduled_visit/scheduled_visit.dart';
 import '../../repositories/scheduled_visit_repo.dart';
+import '../../utils/error_localization.dart';
 
 part 'scheduled_visit.freezed.dart';
 
@@ -48,7 +49,7 @@ class ScheduledVisitBloc
       );
     } catch (e) {
       if (generation != _requestGeneration) return;
-      emit(ScheduledVisitState.failure(e.toString()));
+      emit(ScheduledVisitState.failure(errorMessageKey(e)));
     }
   }
 

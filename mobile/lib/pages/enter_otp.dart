@@ -51,7 +51,7 @@ class _EnterOtpPageState extends State<EnterOtpPage> {
                   state.whenOrNull(
                       error: (message) {
                         context.showSnackBar(SnackBar(
-                          content: Text(message),
+                          content: Text(context.localizeError(message)),
                           backgroundColor: const Light().alertError,
                         ));
                       },

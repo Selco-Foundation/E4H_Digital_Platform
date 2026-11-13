@@ -13,6 +13,7 @@ import '../model/response/responsemodel.dart';
 import '../model/role_actions/role_actions_model.dart';
 import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
+import '../utils/error_localization.dart';
 
 class MissingRefreshCredentials implements Exception {
   const MissingRefreshCredentials();
@@ -163,27 +164,7 @@ class AuthRepository {
       return responseBody;
     } catch (err) {
       if (err is DioException) {
-        final data = err.response?.data;
-        String errorMessage = 'Unknown error';
-        if (data is Map<String, dynamic>) {
-          if (data.containsKey('error') &&
-              data['error'] is Map<String, dynamic>) {
-            final errObj = data['error'] as Map<String, dynamic>;
-            errorMessage = errObj['message']?.toString() ??
-                errObj['description']?.toString() ??
-                errorMessage;
-          } else if (data.containsKey('Errors') && data['Errors'] is List) {
-            final errors = data['Errors'] as List;
-            if (errors.isNotEmpty && errors.first is Map<String, dynamic>) {
-              final first = errors.first as Map<String, dynamic>;
-              errorMessage =
-                  (first['code'] ?? "") + " " + first['message']?.toString() ??
-                      first['description']?.toString() ??
-                      errorMessage;
-            }
-          }
-        }
-        throw Exception(errorMessage);
+        throw Exception(dioErrorKey(err));
       }
       rethrow;
     }

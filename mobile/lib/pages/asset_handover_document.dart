@@ -633,7 +633,8 @@ class _AssetHandoverDocumentPageState extends State<AssetHandoverDocumentPage> {
               _isSaving = false;
               _isInitialHandoverDocumentLoading = false;
             });
-            context.showSnackBar(SnackBar(content: Text(message)));
+            context.showSnackBar(
+                SnackBar(content: Text(context.localizeError(message))));
           },
         );
       },

@@ -641,7 +641,8 @@ class _InstallationCompletionCertificatePageState
               _isSaving = false;
               _isInitialCertificateLoading = false;
             });
-            context.showSnackBar(SnackBar(content: Text(message)));
+            context.showSnackBar(
+                SnackBar(content: Text(context.localizeError(message))));
           },
         );
       },

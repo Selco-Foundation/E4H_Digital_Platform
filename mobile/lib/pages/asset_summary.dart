@@ -40,6 +40,7 @@ import '../widgets/files/video_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/images/cached_image.dart';
 import '../widgets/progress_indicator/operation_progress_overlay.dart';
+import '../utils/error_localization.dart';
 
 class _ReasonEntry {
   String? selectedCode;
@@ -171,7 +172,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             Navigator.of(context).maybePop();
           },
           failure: (progress) {
-            final message = progress.errorMessage ?? 'Failed.';
+            final message = progress.errorMessage ?? ErrorKeys.generic;
             if (isSessionExpiredMessage(message)) {
               handleSessionExpired(context);
             }
@@ -226,7 +227,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                                 ),
                                 error: (msg) => Center(
                                   child: Text(
-                                      '${context.translate(i18.assetSummary.errorLoadingSummary)}:\n$msg'),
+                                      '${context.translate(i18.assetSummary.errorLoadingSummary)}:\n${context.localizeError(msg)}'),
                                 ),
                                 loaded: (summary) {
                                   return _buildSummaryCards(summary, heading);
@@ -455,8 +456,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                                     (e.selectedName?.isNotEmpty ?? false) ||
                                     e.controller.text.trim().isNotEmpty)
                                 .map((e) => {
-                                      'reason':
-                                          (e.selectedName ?? '').trim(),
+                                      'reason': (e.selectedName ?? '').trim(),
                                       'comment': e.controller.text.trim(),
                                     })
                                 .toList();

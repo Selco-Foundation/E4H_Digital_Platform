@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_asset_detail.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_asset_detail.freezed.dart';
 
@@ -37,7 +38,7 @@ class CacheAssetDetailBloc
         emit(CacheAssetDetailState.loaded(entries));
       }
     } catch (e) {
-      emit(CacheAssetDetailState.error(e.toString()));
+      emit(CacheAssetDetailState.error(errorMessageKey(e)));
     }
   }
 
@@ -67,7 +68,7 @@ class CacheAssetDetailBloc
 
       emit(CacheAssetDetailState.added(event.entry));
     } catch (e) {
-      emit(CacheAssetDetailState.error(e.toString()));
+      emit(CacheAssetDetailState.error(errorMessageKey(e)));
     }
   }
 
@@ -106,7 +107,7 @@ class CacheAssetDetailBloc
         emit(CacheAssetDetailState.updated(updatedEntry));
       }
     } catch (e) {
-      emit(CacheAssetDetailState.error(e.toString()));
+      emit(CacheAssetDetailState.error(errorMessageKey(e)));
     }
   }
 
@@ -120,7 +121,7 @@ class CacheAssetDetailBloc
       });
       emit(const CacheAssetDetailState.deleted());
     } catch (e) {
-      emit(CacheAssetDetailState.error(e.toString()));
+      emit(CacheAssetDetailState.error(errorMessageKey(e)));
     }
   }
 }

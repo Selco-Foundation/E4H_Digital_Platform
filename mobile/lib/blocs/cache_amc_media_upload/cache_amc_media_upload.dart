@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_amc_media_upload.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_amc_media_upload.freezed.dart';
 
@@ -38,7 +39,7 @@ class CacheAmcMediaUploadBloc
         emit(CacheAmcMediaUploadState.loaded(entries));
       }
     } catch (e) {
-      emit(CacheAmcMediaUploadState.error(e.toString()));
+      emit(CacheAmcMediaUploadState.error(errorMessageKey(e)));
     }
   }
 
@@ -71,7 +72,7 @@ class CacheAmcMediaUploadBloc
 
       emit(CacheAmcMediaUploadState.added(event.entry));
     } catch (e) {
-      emit(CacheAmcMediaUploadState.error(e.toString()));
+      emit(CacheAmcMediaUploadState.error(errorMessageKey(e)));
     }
   }
 
@@ -117,11 +118,10 @@ class CacheAmcMediaUploadBloc
       if (updatedEntry != null) {
         emit(CacheAmcMediaUploadState.updated(updatedEntry));
       } else {
-        emit(const CacheAmcMediaUploadState.error(
-            'Entry not found after update.'));
+        emit(const CacheAmcMediaUploadState.error(ErrorKeys.savedEntryMissing));
       }
     } catch (e) {
-      emit(CacheAmcMediaUploadState.error(e.toString()));
+      emit(CacheAmcMediaUploadState.error(errorMessageKey(e)));
     }
   }
 
@@ -135,7 +135,7 @@ class CacheAmcMediaUploadBloc
       });
       emit(const CacheAmcMediaUploadState.deleted());
     } catch (e) {
-      emit(CacheAmcMediaUploadState.error(e.toString()));
+      emit(CacheAmcMediaUploadState.error(errorMessageKey(e)));
     }
   }
 
@@ -158,7 +158,7 @@ class CacheAmcMediaUploadBloc
       });
       emit(const CacheAmcMediaUploadState.deleted());
     } catch (e) {
-      emit(CacheAmcMediaUploadState.error(e.toString()));
+      emit(CacheAmcMediaUploadState.error(errorMessageKey(e)));
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_media_upload.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_media_upload.freezed.dart';
 
@@ -38,7 +39,7 @@ class CacheMediaUploadBloc
         emit(CacheMediaUploadState.loaded(entries));
       }
     } catch (e) {
-      emit(CacheMediaUploadState.error(e.toString()));
+      emit(CacheMediaUploadState.error(errorMessageKey(e)));
     }
   }
 
@@ -71,7 +72,7 @@ class CacheMediaUploadBloc
 
       emit(CacheMediaUploadState.added(event.entry));
     } catch (e) {
-      emit(CacheMediaUploadState.error(e.toString()));
+      emit(CacheMediaUploadState.error(errorMessageKey(e)));
     }
   }
 
@@ -118,7 +119,7 @@ class CacheMediaUploadBloc
         emit(CacheMediaUploadState.updated(updatedEntry));
       }
     } catch (e) {
-      emit(CacheMediaUploadState.error(e.toString()));
+      emit(CacheMediaUploadState.error(errorMessageKey(e)));
     }
   }
 
@@ -132,7 +133,7 @@ class CacheMediaUploadBloc
       });
       emit(const CacheMediaUploadState.deleted());
     } catch (e) {
-      emit(CacheMediaUploadState.error(e.toString()));
+      emit(CacheMediaUploadState.error(errorMessageKey(e)));
     }
   }
 
@@ -155,7 +156,7 @@ class CacheMediaUploadBloc
       });
       emit(const CacheMediaUploadState.deleted());
     } catch (e) {
-      emit(CacheMediaUploadState.error(e.toString()));
+      emit(CacheMediaUploadState.error(errorMessageKey(e)));
     }
   }
 }

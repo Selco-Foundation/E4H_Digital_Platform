@@ -43,6 +43,7 @@ import '../utils/operation_progress.dart';
 import '../utils/utils.dart';
 import 'app_logger.dart';
 import 'constants.dart';
+import 'error_localization.dart';
 
 const String kMethodSubmit = 'submit_project';
 const String kEvtProgress = 'submission_progress';
@@ -470,7 +471,7 @@ class BackgroundServiceController {
 
 String _pretty(Object? e) {
   final s = (e is DioException ? DioErrorParser.parse(e) : e)?.toString() ??
-      'Failed.';
+      ErrorKeys.generic;
   final lower = s.toLowerCase();
 
   if (lower.contains('session_expired') ||
@@ -778,11 +779,11 @@ void onStart(ServiceInstance service) async {
 
       String msg;
       final str = e.toString();
-      if (str.contains('FORM_NOT_FILLED')) {
-        msg =
-            'Visit form is not filled yet. Please fill the AMC form before submitting.';
+      if (str.contains('FORM_NOT_FILLED') ||
+          str.contains(ErrorKeys.formIncomplete)) {
+        msg = ErrorKeys.visitFormIncomplete;
       } else {
-        msg = 'Something went wrong while submitting the visit report.';
+        msg = errorMessageKey(e, fallback: ErrorKeys.visitSubmission);
       }
 
       await writeJobStatus(
@@ -1051,6 +1052,7 @@ Future<void> _performSubmissionForActivityFacility({
   required String userType,
   required ServiceInstance service,
 }) async {
+  var savedLocally = false;
   try {
     final repo = AssetRepository();
     final now = DateTime.now().toUtc();
@@ -1078,7 +1080,7 @@ Future<void> _performSubmissionForActivityFacility({
             true;
     if (!await eligibility.hasReadyAssets(activityFacilityId,
         allowZeroAssets: isRectification)) {
-      throw Exception('No completed asset type is available for submission.');
+      throw Exception(ErrorKeys.completedAssetRequired);
     }
     final assetsByType =
         await eligibility.savedAssetsByType(activityFacilityId);
@@ -1100,7 +1102,7 @@ Future<void> _performSubmissionForActivityFacility({
           .assetTypeEqualTo(type)
           .findFirst();
       if (spec == null || detail == null) {
-        throw Exception("Missing specification or detail for type $type.");
+        throw Exception(ErrorKeys.assetDetailsMissing);
       }
 
       specByType[type] = spec;
@@ -1124,6 +1126,8 @@ Future<void> _performSubmissionForActivityFacility({
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
         .findAll();
+
+    savedLocally = true;
 
     final workflowMediaItems =
         workflowMedia.where((item) => item.filePath.isNotEmpty).toList();
@@ -1734,6 +1738,7 @@ Future<void> _performSubmissionForActivityFacility({
       itemKey: activityFacilityId,
     );
     if (cleanupCheckpoint?.status != OperationCheckpointStatuses.success) {
+      savedLocally = false;
       await UnsubmittedActivityFacilityRepository(isar)
           .delete(activityFacilityId, userType);
       await UnsubmittedActivityFacilityRepository(isar)
@@ -1770,7 +1775,7 @@ Future<void> _performSubmissionForActivityFacility({
     }
   } catch (e) {
     AppLogger.instance.info("e ${e.toString()}");
-    throw PlainError(_pretty(e));
+    throw PlainError(reportErrorKey(_pretty(e), savedLocally: savedLocally));
   }
 }
 
@@ -1941,7 +1946,7 @@ Future<void> _performSendBackForActivityFacility({
         .activityFacilityIdEqualTo(activityFacilityId)
         .findFirst();
     if (workflowRow == null) {
-      throw Exception('No workflow found for send back.');
+      throw Exception(ErrorKeys.sendBackUnavailable);
     }
 
     await _saveCheckpoint(
@@ -2025,7 +2030,7 @@ Future<void> _performScheduleVisitSubmission({
       .findFirst();
 
   if (form == null || form.dataJson.trim().isEmpty) {
-    throw Exception('Form not filled');
+    throw Exception(ErrorKeys.formIncomplete);
   }
 
   final responses = jsonDecode(form.dataJson) as Map<String, dynamic>;

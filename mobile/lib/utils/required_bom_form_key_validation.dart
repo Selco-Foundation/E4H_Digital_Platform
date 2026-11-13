@@ -8,6 +8,7 @@ import '../repositories/app_init_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import 'app_logger.dart';
 import 'envConfig.dart';
+import 'error_localization.dart';
 
 class MissingRequiredBomFormKeysMessage {
   const MissingRequiredBomFormKeysMessage({
@@ -52,7 +53,7 @@ Future<MissingRequiredBomFormKeysMessage?> missingRequiredBomFormKeysMessage({
     if (_isMissingBomValue(value)) {
       missingMessages.add(rule.message.trim().isNotEmpty
           ? rule.message.trim()
-          : 'Please fill ${rule.label}.');
+          : ErrorKeys.bomIncomplete);
     }
   }
 

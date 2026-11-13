@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../lib/repositories/activity_facility_repo.dart';
 import '../../lib/utils/utils.dart';
+import '../../lib/utils/error_localization.dart';
 
 const message =
     'Failed to transition workflow for facility: 8f267afc-f270-4c77-97d1-2999dbffdd97';
@@ -49,12 +50,11 @@ void main() {
     utf8.encode(jsonEncode(serverBody)),
     Uint8List.fromList(utf8.encode(jsonEncode(serverBody)))
   ]) {
-    test('extracts workflow message from ${body.runtimeType}', () {
-      expect(readable(failure(body)), message);
+    test('maps workflow code from ${body.runtimeType}', () {
+      expect(readable(failure(body)), ErrorKeys.workflowUpdate);
     });
   }
-  test('uses first non-empty server message and supported alternative formats',
-      () {
+  test('does not display server message text from alternative formats', () {
     for (final body in [
       {
         'Errors': [
@@ -73,7 +73,7 @@ void main() {
       {'message': 'Readable'},
       {'Errors': 'invalid', 'message': 'Readable'},
     ]) {
-      expect(readable(failure(body)), 'Readable');
+      expect(readable(failure(body)), ErrorKeys.requestFailed);
     }
   });
   test('malformed or empty bodies use a short fallback', () {
@@ -91,7 +91,7 @@ void main() {
         ]
       }
     ]) {
-      expect(readable(failure(body)), 'Request failed. Please try again.');
+      expect(readable(failure(body)), ErrorKeys.requestFailed);
     }
   });
   test('session expiry takes precedence over server messages', () {
@@ -103,14 +103,14 @@ void main() {
     expect(
         readable(failure(null,
             text: 'No internet access', type: DioExceptionType.unknown)),
-        "You're offline. Please reconnect to the internet and try again.");
+        ErrorKeys.noInternet);
     expect(
         readable(failure(null,
             text: 'Failed host lookup',
             type: DioExceptionType.connectionError)),
-        'We could not submit because the internet connection was interrupted. Please try again.');
+        ErrorKeys.connectionInterrupted);
     expect(readable(failure(null, type: DioExceptionType.receiveTimeout)),
-        'The request timed out. Please try again.');
+        ErrorKeys.requestTimeout);
   });
   test(
       'workflow repository byte response reaches submission display without Dio text',
@@ -123,7 +123,8 @@ void main() {
           activityFacilityId: 'facility', action: 'SUBMIT_REPORT_B');
       fail('Expected workflow failure');
     } catch (error) {
-      expect(normalizeFriendlyNetworkErrorMessage(error.toString()), message);
+      expect(normalizeFriendlyNetworkErrorMessage(error.toString()),
+          ErrorKeys.workflowUpdate);
     } finally {
       dio.close();
     }

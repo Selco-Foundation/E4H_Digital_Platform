@@ -4,7 +4,6 @@ import 'dart:ui';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/ComponentTheme/pop_up_card_theme.dart';
-import 'package:digit_ui_components/utils/utils.dart';
 import 'package:digit_ui_components/utils/validators/file_validator.dart'
     as file_validator;
 import 'package:digit_ui_components/utils/validators/file_validator.dart'
@@ -18,6 +17,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' show basename;
 
 import '../../utils/app_logger.dart';
+import '../../utils/error_localization.dart';
+import '../../utils/extensions.dart';
 
 enum _VideoPickerSessionPhase { idle, launching, awaitingResult, recovering }
 
@@ -138,7 +139,7 @@ class _VideoUploaderState extends State<VideoUploader>
     if (!mounted) return;
     if (_hasActivePickerSession) {
       setState(() {
-        fileError = 'Camera is still opening, please wait';
+        fileError = ErrorKeys.cameraOpening;
       });
       AppLogger.instance.info(
         'VideoUploader ignored duplicate launch phase=${_pickerPhase.name} session=${_activeSessionToken ?? -1}',
@@ -193,8 +194,8 @@ class _VideoUploaderState extends State<VideoUploader>
       if (mounted) {
         setState(() {
           fileError = recoverableCodes.contains(e.code)
-              ? 'Camera is busy, please try again'
-              : (e.message ?? 'Failed to open camera/gallery');
+              ? ErrorKeys.cameraBusy
+              : ErrorKeys.cameraGalleryOpen;
         });
       }
       _completeSession(sessionToken);
@@ -202,7 +203,7 @@ class _VideoUploaderState extends State<VideoUploader>
       AppLogger.instance.info('Error picking video: $e');
       if (mounted) {
         setState(() {
-          fileError = 'Failed to pick video';
+          fileError = ErrorKeys.videoPick;
         });
       }
       _completeSession(sessionToken);
@@ -310,7 +311,7 @@ class _VideoUploaderState extends State<VideoUploader>
       if (x == null) {
         if (mounted) {
           setState(() {
-            fileError = 'Camera result was lost, please try again';
+            fileError = ErrorKeys.cameraResultLost;
           });
         }
         _completeSession(sessionToken);
@@ -326,7 +327,7 @@ class _VideoUploaderState extends State<VideoUploader>
       AppLogger.instance.info('Error recovering lost video data: $e');
       if (mounted) {
         setState(() {
-          fileError = 'Failed to restore camera result';
+          fileError = ErrorKeys.cameraResultRestore;
         });
       }
       _completeSession(sessionToken);
@@ -350,7 +351,9 @@ class _VideoUploaderState extends State<VideoUploader>
     currentTypography = getTypography(context, false);
     isMobile = AppView.isMobileView(MediaQuery.of(context).size);
     isTab = AppView.isTabletView(MediaQuery.of(context).size);
-    capitalizedErrorMessage = convertInToSentenceCase(widget.errorMessage);
+    capitalizedErrorMessage = widget.errorMessage == null
+        ? null
+        : context.translate(widget.errorMessage!);
 
     return InkWell(
       hoverColor: const DigitColors().transparent,
@@ -359,7 +362,7 @@ class _VideoUploaderState extends State<VideoUploader>
       onTap: () {
         if (_hasActivePickerSession) {
           setState(() {
-            fileError = 'Camera is still opening, please wait';
+            fileError = ErrorKeys.cameraOpening;
           });
           return;
         }
@@ -541,9 +544,7 @@ class _VideoUploaderState extends State<VideoUploader>
                 fit: FlexFit.tight,
                 child: fileError != ''
                     ? Text(
-                        fileError.length > 256
-                            ? '${fileError.substring(0, 256)}...'
-                            : fileError,
+                        context.translate(fileError),
                         style: currentTypography.bodyS.copyWith(
                           color: const DigitColors().light.alertError,
                         ),

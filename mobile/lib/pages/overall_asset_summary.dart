@@ -47,6 +47,7 @@ import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
 import '../widgets/rectification_badge.dart';
+import '../utils/error_localization.dart';
 
 @RoutePage()
 class OverallAssetSummaryPage extends StatefulWidget {
@@ -369,12 +370,12 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         type: PopUpType.alert,
         onCrossTap: () => Navigator.of(ctx).pop(),
         onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: message.title,
+        title: context.translate(message.title),
         actionAlignment: MainAxisAlignment.center,
         actions: const [],
         additionalWidgets: [
           Text(
-            message.message,
+            context.translate(message.message),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -386,7 +387,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
             (missingMessage) => Padding(
               padding: const EdgeInsets.only(bottom: spacer2),
               child: Text(
-                missingMessage,
+                context.translate(missingMessage),
                 textAlign: TextAlign.center,
                 style: textTheme.bodyL.copyWith(
                   color: theme.colorTheme.text.primary,
@@ -463,7 +464,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                 context.showSnackBar(
                   SnackBar(
                       content: Text(
-                          '${context.translate(i18.common.syncFailed)}: $error')),
+                          '${context.translate(i18.common.syncFailed)}: ${context.localizeError(error)}')),
                 );
               },
             );
@@ -519,14 +520,15 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                           });
                         },
                         failure: (progress) {
-                          final error = progress.errorMessage ?? 'Failed.';
+                          final error =
+                              progress.errorMessage ?? ErrorKeys.generic;
                           ScaffoldMessenger.of(context).clearSnackBars();
                           if (isSessionExpiredMessage(error)) {
                             handleSessionExpired(context);
                             return;
                           }
-                          context
-                              .showSnackBar(SnackBar(content: Text("$error")));
+                          context.showSnackBar(SnackBar(
+                              content: Text(context.localizeError(error))));
                           _didNavigateAfterSubmit = false;
                         },
                         initial: () {},
@@ -844,7 +846,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               children: [
                                                 Center(
                                                   child: Text(
-                                                    '${context.translate(i18.overallAssetSummary.errorLoadingCounts)}:\n$message',
+                                                    '${context.translate(i18.overallAssetSummary.errorLoadingCounts)}:\n${context.localizeError(message)}',
                                                     style: textTheme.bodyL
                                                         .copyWith(
                                                             color: theme

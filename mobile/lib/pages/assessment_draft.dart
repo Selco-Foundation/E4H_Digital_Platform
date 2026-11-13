@@ -21,6 +21,7 @@ import '../utils/envConfig.dart';
 import '../router/app_router.dart';
 import '../utils/constants.dart';
 import '../utils/extensions.dart';
+import '../utils/error_localization.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/role_login_resolver.dart';
 import '../widgets/button/footer_button.dart';
@@ -192,7 +193,7 @@ class _AssessmentDraftPageState extends State<AssessmentDraftPage> {
         }
       } catch (error) {
         failed++;
-        await drafts.markPendingFailure(draft, error.toString());
+        await drafts.markPendingFailure(draft, errorMessageKey(error));
       }
     }
     await _load();

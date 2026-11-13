@@ -6,6 +6,7 @@ import '../../repositories/dynamic_form_repo.dart';
 import '../../repositories/scheduled_visit_repo.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/utils.dart';
+import '../../utils/error_localization.dart';
 
 part 'amc_otp.freezed.dart';
 
@@ -36,8 +37,7 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       AppLogger.instance.error(
           title: "Resend AMC Service completion code", message: e.toString());
       emit(
-        const AmcOtpState.failure(
-            'Failed to resend AMC Service completion code. Please try again.'),
+        const AmcOtpState.failure(ErrorKeys.amcCodeResend),
       );
     }
   }
@@ -93,8 +93,7 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       AppLogger.instance.error(
           title: "AMC AMC Service completion code Submit",
           message: e.toString());
-      emit(const AmcOtpState.failure(
-          'Invalid AMC Service completion code or request failed. Please try again.'));
+      emit(const AmcOtpState.failure(ErrorKeys.amcCodeVerification));
     }
   }
 }

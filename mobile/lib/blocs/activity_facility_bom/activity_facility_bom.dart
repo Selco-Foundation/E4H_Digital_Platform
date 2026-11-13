@@ -8,6 +8,7 @@ import '../../model/document/document.dart';
 import '../../repositories/activity_facility_repo.dart';
 import '../../repositories/dynamic_form_repo.dart';
 import '../../utils/utils.dart';
+import '../../utils/error_localization.dart';
 
 part 'activity_facility_bom.freezed.dart';
 
@@ -86,7 +87,7 @@ class ActivityFacilityBomBloc
         savedBomValues: r.savedBomValues,
       ));
     } catch (e) {
-      emit(ActivityFacilityBomState.failure('$e'));
+      emit(ActivityFacilityBomState.failure(errorMessageKey(e)));
     }
   }
 
@@ -106,7 +107,7 @@ class ActivityFacilityBomBloc
         savedBomValues: r.savedBomValues,
       ));
     } catch (e) {
-      emit(ActivityFacilityBomState.failure('$e'));
+      emit(ActivityFacilityBomState.failure(errorMessageKey(e)));
     }
   }
 
@@ -134,7 +135,8 @@ class ActivityFacilityBomBloc
       }
       emit(ActivityFacilityBomState.documentDownloadSuccess(file));
     } catch (e, st) {
-      emit(ActivityFacilityBomState.documentDownloadFailure(e.toString()));
+      emit(
+          ActivityFacilityBomState.documentDownloadFailure(errorMessageKey(e)));
     }
   }
 

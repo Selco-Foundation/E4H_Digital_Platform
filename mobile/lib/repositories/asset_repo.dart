@@ -22,6 +22,7 @@ import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'activity_facility_repo.dart';
+import '../utils/error_localization.dart';
 
 class FileStoreResponse {
   final String fileStoreId;
@@ -210,7 +211,7 @@ class AssetRepository {
         },
       );
       if (resp.statusCode != 200 && resp.statusCode != 201) {
-        throw Exception('Failed to fetch assets');
+        throw Exception(ErrorKeys.assetsLoad);
       }
       final List<dynamic> rawList = resp.data as List<dynamic>;
 
@@ -326,8 +327,7 @@ class AssetRepository {
                     longitude: doc.geoLocation?.longitude?.toString() ?? '',
                     capacityUnit: asset.assetDetails?.capacityUnit ?? '',
                     panelCapacity: asset.assetDetails?.panelCapacity ?? '',
-                    batteryCapacity:
-                        asset.assetDetails?.batteryCapacity ?? '',
+                    batteryCapacity: asset.assetDetails?.batteryCapacity ?? '',
                     batteryVoltage:
                         asset.assetDetails?.batteryVoltage?.toString() ?? '',
                     batteryType: asset.assetDetails?.batteryType ?? '',
@@ -387,8 +387,7 @@ class AssetRepository {
 
             final codeFromDoc = parts[1];
             final uidParts = (doc.documentUid ?? '').split('-');
-            final orderFromDoc =
-                uidParts.length == 5 ? uidParts[3] : '';
+            final orderFromDoc = uidParts.length == 5 ? uidParts[3] : '';
             await isar.cacheInstallationImages.put(CacheInstallationImage(
               activityFacilityId: activityFacilityId,
               userType: userType,
@@ -490,7 +489,7 @@ class AssetRepository {
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
           resp.statusCode != 204) {
-        throw Exception('Rejection Failed with ${resp.statusCode}');
+        throw Exception(ErrorKeys.assetRejection);
       }
     } on DioError catch (dioErr) {
       throw DioErrorParser.parse(dioErr);

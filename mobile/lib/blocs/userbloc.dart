@@ -7,6 +7,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../model/dataModel.dart';
 import '../model/user/userModel.dart';
 import '../repositories/user_repository.dart';
+import '../utils/error_localization.dart';
 
 part 'userbloc.freezed.dart';
 
@@ -59,8 +60,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
 
       emit(UserState.user(userModel: results.first));
     } on DioError catch (error) {
-      final String errorCode = error.response?.data['Errors'][0]['code'];
-      emit(UserState.error(errorCode));
+      emit(UserState.error(dioErrorKey(error)));
 
       emit(UserState.user(userModel: event.olduser));
 

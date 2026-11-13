@@ -20,6 +20,7 @@ import 'dynamic_form_repo.dart';
 
 import 'report_bookmark_repo.dart';
 import 'cache_fallback.dart';
+import '../utils/error_localization.dart';
 
 class PaginatedActivityFacilities {
   final List<ActivityFacilityWorkflow> items;
@@ -152,7 +153,7 @@ class ActivityFacilityRemoteRepository {
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
           resp.statusCode != 204) {
-        throw Exception('Workflow update failed (${resp.statusCode})');
+        throw Exception(ErrorKeys.workflowUpdate);
       }
       await invalidateSubmittedReportBookmark(
           id: activityFacilityId,

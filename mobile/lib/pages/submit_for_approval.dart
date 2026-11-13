@@ -45,6 +45,7 @@ import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
 import '../widgets/rectification_badge.dart';
+import '../utils/error_localization.dart';
 
 @RoutePage()
 class SubmitForApprovalPage extends StatefulWidget {
@@ -279,8 +280,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
 
   // Installation images, completion certificate and handover document are
   // optional on rectification sites.
-  bool get _isRectification =>
-      isRectificationSite(project);
+  bool get _isRectification => isRectificationSite(project);
 
   Future<bool> _hasInstallationImages() async {
     if (activityFacilityId.isEmpty) return false;
@@ -405,12 +405,12 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
         type: PopUpType.alert,
         onCrossTap: () => Navigator.of(ctx).pop(),
         onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: message.title,
+        title: context.translate(message.title),
         actionAlignment: MainAxisAlignment.center,
         actions: const [],
         additionalWidgets: [
           Text(
-            message.message,
+            context.translate(message.message),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -422,7 +422,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
             (missingMessage) => Padding(
               padding: const EdgeInsets.only(bottom: spacer2),
               child: Text(
-                missingMessage,
+                context.translate(missingMessage),
                 textAlign: TextAlign.center,
                 style: textTheme.bodyL.copyWith(
                   color: theme.colorTheme.text.primary,
@@ -454,7 +454,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
               failure: (msg) {
                 context.showSnackBar(SnackBar(
                     content: Text(
-                        '${context.translate(i18.submitForApproval.bomSyncFailed)}: $msg')));
+                        '${context.translate(i18.submitForApproval.bomSyncFailed)}: ${context.localizeError(msg)}')));
               },
               orElse: () {},
             );
@@ -476,7 +476,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   context.showSnackBar(
                     SnackBar(
                         content: Text(
-                            '${context.translate(i18.common.syncFailed)}: $error')),
+                            '${context.translate(i18.common.syncFailed)}: ${context.localizeError(error)}')),
                   );
                 },
               );
@@ -489,7 +489,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   context.router.replace(const InboxRoute());
                 },
                 failure: (progress) {
-                  final message = progress.errorMessage ?? 'Failed.';
+                  final message = progress.errorMessage ?? ErrorKeys.generic;
                   if (isSessionExpiredMessage(message)) {
                     handleSessionExpired(context);
                   }
@@ -888,7 +888,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
             children: [
               Center(
                 child: Text(
-                  '${context.translate(i18.submitForApproval.errorLoadingCounts)}:\n$error',
+                  '${context.translate(i18.submitForApproval.errorLoadingCounts)}:\n${context.localizeError(error)}',
                   style: textTheme.bodyL
                       .copyWith(color: theme.colorTheme.alert.error),
                   textAlign: TextAlign.center,
@@ -939,7 +939,8 @@ class RejectedEditAssetSummary extends StatelessWidget {
         Align(
             alignment: Alignment.centerLeft,
             child: Text(
-                assetType.toLowerCase() == ASSET_TYPES.BATTERY.name.toLowerCase()
+                assetType.toLowerCase() ==
+                        ASSET_TYPES.BATTERY.name.toLowerCase()
                     ? ctx.translate(i18.assetCount.batteries)
                     : assetType.toLowerCase() ==
                             ASSET_TYPES.INVERTER.name.toLowerCase()

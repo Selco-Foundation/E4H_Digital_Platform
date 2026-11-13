@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_asset_count.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_asset_count.freezed.dart';
 
@@ -66,7 +67,7 @@ class CacheAssetCountBloc
         emit(CacheAssetCountState.loaded(filtered));
       }
     } catch (e) {
-      emit(CacheAssetCountState.error(e.toString()));
+      emit(CacheAssetCountState.error(errorMessageKey(e)));
     }
   }
 
@@ -87,7 +88,7 @@ class CacheAssetCountBloc
         emit(CacheAssetCountState.loaded(entries));
       }
     } catch (e) {
-      emit(CacheAssetCountState.error(e.toString()));
+      emit(CacheAssetCountState.error(errorMessageKey(e)));
     }
   }
 
@@ -136,7 +137,7 @@ class CacheAssetCountBloc
         emit(CacheAssetCountState.added(addedEntry));
       }
     } catch (e) {
-      emit(CacheAssetCountState.error(e.toString()));
+      emit(CacheAssetCountState.error(errorMessageKey(e)));
     }
   }
 
@@ -181,7 +182,7 @@ class CacheAssetCountBloc
         emit(CacheAssetCountState.updated(updatedEntry));
       }
     } catch (e) {
-      emit(CacheAssetCountState.error(e.toString()));
+      emit(CacheAssetCountState.error(errorMessageKey(e)));
     }
   }
 
@@ -195,7 +196,7 @@ class CacheAssetCountBloc
       });
       emit(const CacheAssetCountState.deleted());
     } catch (e) {
-      emit(CacheAssetCountState.error(e.toString()));
+      emit(CacheAssetCountState.error(errorMessageKey(e)));
     }
   }
 }

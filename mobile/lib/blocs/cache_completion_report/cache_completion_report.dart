@@ -5,6 +5,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_completion_report.dart';
+import '../../utils/error_localization.dart';
+import '../../utils/app_logger.dart';
 
 part 'cache_completion_report.freezed.dart';
 
@@ -127,7 +129,8 @@ class CacheCompletionReportBloc
     try {
       await _emitLoadedForProject(event.projectId, emit);
     } catch (e) {
-      emit(CacheCompletionReportState.failure('Load failed: $e'));
+      AppLogger.instance.info(e, title: 'Completion report cache error');
+      emit(const CacheCompletionReportState.failure(ErrorKeys.reportLoad));
     }
   }
 
@@ -174,7 +177,8 @@ class CacheCompletionReportBloc
 
       await _emitLoadedForProject(event.projectId, emit);
     } catch (e) {
-      emit(CacheCompletionReportState.failure('Save failed: $e'));
+      AppLogger.instance.info(e, title: 'Completion report cache error');
+      emit(const CacheCompletionReportState.failure(ErrorKeys.reportSave));
     }
   }
 
@@ -234,7 +238,8 @@ class CacheCompletionReportBloc
         await _emitLoadedForProject(pid, emit);
       }
     } catch (e) {
-      emit(CacheCompletionReportState.failure('Bulk save failed: $e'));
+      AppLogger.instance.info(e, title: 'Completion report cache error');
+      emit(const CacheCompletionReportState.failure(ErrorKeys.reportsSave));
     }
   }
 
@@ -254,7 +259,8 @@ class CacheCompletionReportBloc
         await _emitLoadedForProject(projectId, emit);
       }
     } catch (e) {
-      emit(CacheCompletionReportState.failure('Delete failed: $e'));
+      AppLogger.instance.info(e, title: 'Completion report cache error');
+      emit(const CacheCompletionReportState.failure(ErrorKeys.reportDelete));
     }
   }
 
@@ -278,7 +284,8 @@ class CacheCompletionReportBloc
 
       await _emitLoadedForProject(event.projectId, emit);
     } catch (e) {
-      emit(CacheCompletionReportState.failure('Delete failed: $e'));
+      AppLogger.instance.info(e, title: 'Completion report cache error');
+      emit(const CacheCompletionReportState.failure(ErrorKeys.reportDelete));
     }
   }
 
@@ -314,7 +321,8 @@ class CacheCompletionReportBloc
         await _emitLoadedForProject(pid, emit);
       }
     } catch (e) {
-      emit(CacheCompletionReportState.failure('Bulk delete failed: $e'));
+      AppLogger.instance.info(e, title: 'Completion report cache error');
+      emit(const CacheCompletionReportState.failure(ErrorKeys.reportsDelete));
     }
   }
 
@@ -336,7 +344,8 @@ class CacheCompletionReportBloc
 
       await _emitLoadedForProject(event.projectId, emit);
     } catch (e) {
-      emit(CacheCompletionReportState.failure('Clear failed: $e'));
+      AppLogger.instance.info(e, title: 'Completion report cache error');
+      emit(const CacheCompletionReportState.failure(ErrorKeys.reportsClear));
     }
   }
 
@@ -376,7 +385,8 @@ class CacheCompletionReportBloc
 
       await _emitLoadedForProject(event.projectId, emit);
     } catch (e) {
-      emit(CacheCompletionReportState.failure('Replace-all failed: $e'));
+      AppLogger.instance.info(e, title: 'Completion report cache error');
+      emit(const CacheCompletionReportState.failure(ErrorKeys.reportsReplace));
     }
   }
 }

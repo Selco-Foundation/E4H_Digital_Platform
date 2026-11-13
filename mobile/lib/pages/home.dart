@@ -112,7 +112,9 @@ class _HomePageState extends State<HomePage>
         actions: const [],
         additionalWidgets: [
           Text(
-            error ?? context.translate(i18.home.somethingWentWrong),
+            error == null
+                ? context.translate(i18.home.somethingWentWrong)
+                : context.localizeError(error),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,

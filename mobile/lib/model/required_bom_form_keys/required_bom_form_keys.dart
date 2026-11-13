@@ -1,3 +1,5 @@
+import '../../utils/error_localization.dart';
+
 class RequiredBomFormKeyRule {
   const RequiredBomFormKeyRule({
     required this.schemaName,
@@ -60,9 +62,10 @@ class RequiredBomFormKeysData {
       module: json['module']?.toString() ?? '',
       systemCode: json['systemCode']?.toString() ?? '',
       active: json['active'] is bool ? json['active'] as bool : true,
-      dialogTitle: json['dialogTitle']?.toString() ?? 'Required BOM Details',
-      dialogMessage: json['dialogMessage']?.toString() ??
-          'Please fill the required BOM details before submitting.',
+      dialogTitle:
+          json['dialogTitle']?.toString() ?? ErrorKeys.bomRequiredTitle,
+      dialogMessage:
+          json['dialogMessage']?.toString() ?? ErrorKeys.bomIncomplete,
       rules: rawRules is List
           ? rawRules
               .whereType<Map>()

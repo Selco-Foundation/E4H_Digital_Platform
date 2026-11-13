@@ -14,6 +14,7 @@ import '../utils/app_logger.dart';
 import '../utils/envConfig.dart' as env;
 import '../utils/utils.dart';
 import 'activity_facility_repo.dart';
+import '../utils/error_localization.dart';
 
 final envConfigs = env.EnvironmentConfiguration.instance;
 
@@ -359,7 +360,7 @@ class BomRepository {
           title: "syncBomForProject ERROR:",
           message: e.toString(),
           stackTrace: stack);
-      throw Exception("Error syncing bom");
+      throw Exception(ErrorKeys.bomSync);
     }
   }
 

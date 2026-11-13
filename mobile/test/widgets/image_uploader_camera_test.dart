@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../lib/widgets/customized_digit_widget/image_uploader.dart';
+import '../../lib/utils/error_localization.dart';
 
 void main() {
   late Directory temporaryDirectory;
@@ -59,6 +60,17 @@ void main() {
     await tester.tap(find.text('Camera'));
     await tester.pump(const Duration(milliseconds: 350));
   }
+
+  testWidgets('camera plugin failures display a key without plugin details', (tester) async {
+    await pumpUploader(tester,
+      launcher: (_) async => throw PlatformException(code: 'camera_unavailable', message: 'Private platform details'),
+      onImagesSelected: (_) {},
+    );
+    await openCamera(tester);
+    await tester.pumpAndSettle();
+    expect(find.text(ErrorKeys.cameraGalleryOpen), findsOneWidget);
+    expect(find.textContaining('Private platform details'), findsNothing);
+  });
 
   testWidgets('delivers one confirmed camera photo exactly once',
       (tester) async {
@@ -127,7 +139,7 @@ void main() {
     await openCamera(tester);
     await tester.pumpAndSettle();
 
-    expect(find.text('Failed to process selected image'), findsOneWidget);
+    expect(find.text(ErrorKeys.imageProcess), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -148,7 +160,7 @@ void main() {
     expect(launches, 1);
     await tester.tap(find.text('Click to add photo'));
     await tester.pump();
-    expect(find.text('Camera is still opening, please wait'), findsOneWidget);
+    expect(find.text(ErrorKeys.cameraOpening), findsOneWidget);
 
     result.complete(XFile(capturedImage.path));
     await tester.pumpAndSettle();

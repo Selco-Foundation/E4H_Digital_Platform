@@ -4,6 +4,7 @@ import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_activity_facility.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_sync_record.freezed.dart';
 
@@ -43,7 +44,7 @@ class CacheSyncRecordBloc
         ));
       }
     } catch (e) {
-      emit(CacheSyncRecordState.failure(e.toString()));
+      emit(CacheSyncRecordState.failure(errorMessageKey(e)));
     }
   }
 }

@@ -278,7 +278,7 @@ class _AmcDraftPageState extends State<AmcDraftPage>
                               failure: (message) => Center(
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: spacer4),
-                                  child: Text(message),
+                                  child: Text(context.localizeError(message)),
                                 ),
                               ),
                               loaded: (items, hasMore, totalCount, fromCache,

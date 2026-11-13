@@ -8,6 +8,7 @@ import '../../data/nosql/cache_asset_detail.dart';
 import '../../data/nosql/cache_media_upload.dart';
 import '../../data/nosql/cache_specification.dart';
 import '../../model/asset_summary/asset_summary.dart';
+import '../../utils/error_localization.dart';
 
 part 'asset_summary.freezed.dart';
 
@@ -89,7 +90,7 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
 
       emit(AssetSummaryState.loaded(summary));
     } catch (e) {
-      emit(AssetSummaryState.error(e.toString()));
+      emit(AssetSummaryState.error(errorMessageKey(e)));
     }
   }
 }

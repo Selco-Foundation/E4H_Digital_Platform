@@ -56,7 +56,7 @@ class _SetupNewPasswordPageState extends State<SetupNewPasswordPage> {
                 state.whenOrNull(
                     error: (message) {
                       context.showSnackBar(SnackBar(
-                        content: Text(message),
+                        content: Text(context.localizeError(message)),
                         backgroundColor: const Light().alertError,
                       ));
                     },

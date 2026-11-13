@@ -45,6 +45,7 @@ import '../widgets/summary/summary.dart';
 import 'app_logger.dart';
 import 'extensions.dart';
 import 'i18_key_constants.dart' as i18;
+import 'error_localization.dart';
 
 String formatAmcNumber(
   int? visitNumber,
@@ -1056,40 +1057,15 @@ bool isSessionExpiredMessage(String? message) {
 
 String normalizeFriendlyNetworkErrorMessage(
   String? message, {
-  String fallback = 'Failed.',
-}) {
-  if (isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
-
-  final cleaned =
-      (message ?? '').trim().replaceFirst(RegExp(r'^(Exception:\s*)+'), '');
-  if (cleaned.isEmpty) return fallback;
-
-  final lower = cleaned.toLowerCase();
-
-  if (lower.contains('no network connection')) {
-    return 'No network connection. Connect to Wi-Fi or mobile data and try again.';
-  }
-
-  if (lower.contains('no internet access')) {
-    return "You're offline. Please reconnect to the internet and try again.";
-  }
-
-  if (lower.contains('failed host lookup') ||
-      lower.contains('socketexception') ||
-      lower.contains('software caused connection abort') ||
-      lower.contains('connection error') ||
-      lower.contains('connection reset') ||
-      lower.contains('network is unreachable')) {
-    return 'We could not submit because the internet connection was interrupted. Please try again.';
-  }
-
-  return cleaned;
-}
+  String fallback = ErrorKeys.generic,
+}) =>
+    errorMessageKey(message, fallback: fallback);
 
 void handleSessionExpired(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-        content: Text(context.translate(i18.common.tokenExpiredLoginAgain))),
+      content: Text(context.translate(i18.common.tokenExpiredLoginAgain)),
+    ),
   );
   context.read<AuthBloc>().add(const AuthEvent.logout());
   context.router.replace(const UnauthenticatedRouteWrapper());
@@ -1098,50 +1074,6 @@ void handleSessionExpired(BuildContext context) {
 class DioErrorParser {
   static Exception parse(DioException error) {
     AppLogger.instance.info("Dio error: $error");
-    if (isSessionExpiredMessage(error.message) ||
-        error.response?.statusCode == 401) {
-      return Exception('SESSION_EXPIRED');
-    }
-
-    dynamic body = error.response?.data;
-    try {
-      if (body is List<int>) body = utf8.decode(body);
-      if (body is String) body = jsonDecode(body);
-    } on FormatException {
-      body = null;
-    }
-
-    if (body is Map) {
-      final errors = body['Errors'];
-      final nestedError = body['error'];
-      final messages = [
-        if (errors is List)
-          for (final item in errors)
-            if (item is Map) item['message'],
-        if (nestedError is Map) nestedError['message'],
-        body['error_description'],
-        body['message'],
-      ];
-      for (final message in messages) {
-        if (message is String && message.trim().isNotEmpty) {
-          return Exception(message.trim());
-        }
-      }
-    }
-
-    final original = error.error?.toString() ?? error.message;
-    final friendly = normalizeFriendlyNetworkErrorMessage(original);
-    if (friendly != original?.trim() && friendly != 'Failed.') {
-      return Exception(friendly);
-    }
-    if (error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.sendTimeout ||
-        error.type == DioExceptionType.receiveTimeout) {
-      return Exception('The request timed out. Please try again.');
-    }
-    if (error.type == DioExceptionType.connectionError) {
-      return Exception('Could not connect to the server. Please try again.');
-    }
-    return Exception('Request failed. Please try again.');
+    return Exception(dioErrorKey(error));
   }
 }

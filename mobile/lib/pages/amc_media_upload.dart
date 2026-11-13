@@ -268,7 +268,8 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                   handleSessionExpired(context);
                   return;
                 }
-                context.showSnackBar(SnackBar(content: Text(error)));
+                context.showSnackBar(
+                    SnackBar(content: Text(context.localizeError(error))));
               },
               orElse: () {},
             );
@@ -431,16 +432,16 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                           children: [
                             SizedBox(width: context.width),
                             Text(
-                              context.translate(
-                                  i18.amcMediaUpload.rejectionList),
+                              context
+                                  .translate(i18.amcMediaUpload.rejectionList),
                               style: textTheme.headingXl.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),
                             const SizedBox(height: spacer1),
                             if (_rejectionReasons.isEmpty)
                               Text(
-                                context.translate(i18
-                                    .amcMediaUpload.noRejectionReasonsFound),
+                                context.translate(
+                                    i18.amcMediaUpload.noRejectionReasonsFound),
                                 style: textTheme.bodyS,
                               )
                             else

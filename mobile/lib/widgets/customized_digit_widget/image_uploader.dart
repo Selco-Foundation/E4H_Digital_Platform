@@ -4,7 +4,6 @@ import 'dart:ui';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/ComponentTheme/pop_up_card_theme.dart';
-import 'package:digit_ui_components/utils/utils.dart';
 import 'package:digit_ui_components/utils/validators/file_validator.dart';
 import 'package:digit_ui_components/utils/validators/image_validator.dart';
 import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
@@ -16,6 +15,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../utils/app_logger.dart';
 import 'android_camera_capture_page.dart';
+import '../../utils/error_localization.dart';
+import '../../utils/extensions.dart';
 
 typedef CameraCaptureLauncher = Future<XFile?> Function(BuildContext context);
 
@@ -179,7 +180,7 @@ class _ImageUploaderState extends State<ImageUploader>
       AppLogger.instance.info('ImageUploader callback failed: $e\n$st');
       if (mounted) {
         setState(() {
-          fileError = 'Failed to process selected image';
+          fileError = ErrorKeys.imageProcess;
         });
       }
       return false;
@@ -190,7 +191,7 @@ class _ImageUploaderState extends State<ImageUploader>
     if (!mounted) return;
     if (_hasActivePickerSession) {
       setState(() {
-        fileError = 'Camera is still opening, please wait';
+        fileError = ErrorKeys.cameraOpening;
       });
       AppLogger.instance.info(
         'ImageUploader ignored duplicate launch phase=${_pickerPhase.name} session=${_activeSessionToken ?? -1}',
@@ -404,8 +405,8 @@ class _ImageUploaderState extends State<ImageUploader>
       if (mounted) {
         setState(() {
           fileError = recoverableCodes.contains(e.code)
-              ? 'Camera is busy, please try again'
-              : (e.message ?? 'Failed to open camera/gallery');
+              ? ErrorKeys.cameraBusy
+              : ErrorKeys.cameraGalleryOpen;
         });
       }
       _completeSession(sessionToken);
@@ -413,7 +414,7 @@ class _ImageUploaderState extends State<ImageUploader>
       AppLogger.instance.info('Error picking image: $e');
       if (mounted) {
         setState(() {
-          fileError = 'Failed to pick image';
+          fileError = ErrorKeys.imagePick;
         });
       }
       _completeSession(sessionToken);
@@ -430,8 +431,7 @@ class _ImageUploaderState extends State<ImageUploader>
       final limit = widget.maxImages;
       if (limit != null) {
         setState(() {
-          fileError =
-              'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached';
+          fileError = ErrorKeys.imageLimit;
         });
       }
       if (sessionToken != null) {
@@ -524,8 +524,7 @@ class _ImageUploaderState extends State<ImageUploader>
       final limit = widget.maxImages;
       if (limit != null) {
         setState(() {
-          fileError =
-              'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached';
+          fileError = ErrorKeys.imageLimit;
         });
       }
       _completeSession(sessionToken);
@@ -563,7 +562,7 @@ class _ImageUploaderState extends State<ImageUploader>
     setState(() {
       final limit = widget.maxImages;
       fileError = exceededLimit && limit != null
-          ? 'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached'
+          ? ErrorKeys.imageLimit
           : '';
       if (widget.allowMultiples) {
         _imageFiles.addAll(nextFiles);
@@ -636,7 +635,7 @@ class _ImageUploaderState extends State<ImageUploader>
         }
         if (mounted) {
           setState(() {
-            fileError = 'Camera result was lost, please try again';
+            fileError = ErrorKeys.cameraResultLost;
           });
         }
         _completeSession(sessionToken);
@@ -652,7 +651,7 @@ class _ImageUploaderState extends State<ImageUploader>
       AppLogger.instance.info('Error recovering lost picker data: $e');
       if (mounted) {
         setState(() {
-          fileError = 'Failed to restore camera result';
+          fileError = ErrorKeys.cameraResultRestore;
         });
       }
       _completeSession(sessionToken);
@@ -678,7 +677,9 @@ class _ImageUploaderState extends State<ImageUploader>
     currentTypography = getTypography(context, false);
     isMobile = AppView.isMobileView(MediaQuery.of(context).size);
     isTab = AppView.isTabletView(MediaQuery.of(context).size);
-    capitalizedErrorMessage = convertInToSentenceCase(widget.errorMessage);
+    capitalizedErrorMessage = widget.errorMessage == null
+        ? null
+        : context.translate(widget.errorMessage!);
 
     return InkWell(
       hoverColor: const DigitColors().transparent,
@@ -693,7 +694,7 @@ class _ImageUploaderState extends State<ImageUploader>
         }
         if (_hasActivePickerSession) {
           setState(() {
-            fileError = 'Camera is still opening, please wait';
+            fileError = ErrorKeys.cameraOpening;
           });
           return;
         }
@@ -875,9 +876,7 @@ class _ImageUploaderState extends State<ImageUploader>
                 fit: FlexFit.tight,
                 child: fileError != ''
                     ? Text(
-                        fileError.length > 256
-                            ? '${fileError.substring(0, 256)}...'
-                            : fileError,
+                        context.translate(fileError).replaceAll('{limit}', widget.maxImages?.toString() ?? ''),
                         style: currentTypography.bodyS.copyWith(
                           color: const DigitColors().light.alertError,
                         ),
