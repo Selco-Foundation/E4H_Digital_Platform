@@ -32,6 +32,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/android/build/
 
 # Symbolication related
 app.*.symbols
@@ -51,3 +52,7 @@ app.*.map.json
 # AI Tools
 .claude/
 .kilo/
+
+# FVM Version Cache
+.fvm/
+/.fvmrc

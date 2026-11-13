@@ -119,7 +119,7 @@ const CacheAmcDocSchema = CollectionSchema(
   getId: _cacheAmcDocGetId,
   getLinks: _cacheAmcDocGetLinks,
   attach: _cacheAmcDocAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheAmcDocEstimateSize(

@@ -107,7 +107,7 @@ const CacheOperationCheckpointSchema = CollectionSchema(
   getId: _cacheOperationCheckpointGetId,
   getLinks: _cacheOperationCheckpointGetLinks,
   attach: _cacheOperationCheckpointAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheOperationCheckpointEstimateSize(

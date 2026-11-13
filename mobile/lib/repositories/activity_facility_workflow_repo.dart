@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_media_upload.dart';

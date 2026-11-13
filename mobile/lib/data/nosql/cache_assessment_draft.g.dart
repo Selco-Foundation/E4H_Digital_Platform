@@ -181,7 +181,7 @@ const CacheAssessmentDraftSchema = CollectionSchema(
   getId: _cacheAssessmentDraftGetId,
   getLinks: _cacheAssessmentDraftGetLinks,
   attach: _cacheAssessmentDraftAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheAssessmentDraftEstimateSize(

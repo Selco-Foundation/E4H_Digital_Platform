@@ -8,8 +8,8 @@ This guide covers local development, APK builds, and signed Android App Bundles 
 
 | Component | Project baseline |
 | --- | --- |
-| Flutter | **3.22.2** |
-| Dart | **3.4.3**, bundled with Flutter 3.22.2 |
+| Flutter | **3.29.3** |
+| Dart | **3.7.2**, bundled with Flutter 3.29.3 |
 | Java used by Gradle | **JDK 17** |
 | Android compile/target SDK | **36** |
 | Android NDK | **27.0.12077973** |
@@ -17,7 +17,26 @@ This guide covers local development, APK builds, and signed Android App Bundles 
 | Android Gradle Plugin | **8.9.1** |
 | Minimum Android device | Android 7.0 / API **24** |
 
-Flutter/Dart versions above are the locally recorded toolchain; the repository has no FVM pin. Keep `pubspec.lock` when installing dependencies.
+Use Flutter **3.29.3** through FVM from this directory:
+
+```bash
+fvm use 3.29.3
+fvm flutter --version
+fvm flutter pub get --enforce-lockfile
+```
+
+This machine reuses the existing downloaded SDK in FVM's shared cache; no second
+SDK copy is required. On a new machine, `fvm use` installs the pinned SDK if it
+is not already cached. Keep `pubspec.lock` committed. `.fvmrc` is local and
+ignored, so run `fvm use 3.29.3` after cloning; `.fvm/` contains ignored generated
+links. The global Flutter installation is unchanged.
+
+In VS Code, set `dart.flutterSdkPath` to `.fvm/flutter_sdk`. In Android Studio,
+set the Flutter SDK path to the absolute
+path of this project's `.fvm/flutter_sdk` directory and the Dart SDK to
+`.fvm/flutter_sdk/bin/cache/dart-sdk` if requested. Restart the IDE's Dart
+analysis server after changing SDKs. In terminals, use `fvm flutter` and
+`fvm dart` so the global SDK cannot be selected accidentally.
 
 ## 2. Required local files
 
@@ -103,8 +122,8 @@ Generated Dart source files such as `*.g.dart`, `*.freezed.dart`, `*.mapper.dart
 After supplying configuration:
 
 ```sh
-flutter pub get
-dart run build_runner build --delete-conflicting-outputs
+fvm flutter pub get
+fvm dart run build_runner build --delete-conflicting-outputs
 ```
 
 This generates Freezed/JSON models, Dart mappers, AutoRoute routes, and database code configured by the dependencies. Do not edit generated source manually.
@@ -112,45 +131,46 @@ This generates Freezed/JSON models, Dart mappers, AutoRoute routes, and database
 For continuous generation while developing:
 
 ```sh
-dart run build_runner watch --delete-conflicting-outputs
+fvm dart run build_runner watch --delete-conflicting-outputs
 ```
 
 If generation has stale state, stop watch mode and run:
 
 ```sh
-dart run build_runner clean
-dart run build_runner build --delete-conflicting-outputs
+fvm dart run build_runner clean
+fvm dart run build_runner build --delete-conflicting-outputs
 ```
 
-For a genuinely stale Flutter build, use `flutter clean`, then repeat `flutter pub get` and code generation. Cleaning is not required for every build. Do not delete `pubspec.lock` or use `flutter pub upgrade` to work around a release build failure.
+For a genuinely stale Flutter build, use `fvm flutter clean`, then repeat `fvm flutter pub get` and code generation. Cleaning is not required for every build. Do not delete `pubspec.lock` or use `fvm flutter pub upgrade` to work around a release build failure.
 
 ## 4. Run locally and build APKs
 
-Enable USB debugging on an Android device and authorize the computer, or start an Android emulator.
+Enable debugging on a physical Android device and authorize the computer.
+Do not install or run an emulator for this project.
 
 ```sh
-flutter devices
-flutter run -d DEVICE_ID
+fvm flutter devices
+fvm flutter run -d DEVICE_ID
 ```
 
-Use the ID printed by `flutter devices`. To run a release build on a physical device:
+Use the ID printed by `fvm flutter devices`. To run a release build on a physical device:
 
 ```sh
-flutter run --release -d DEVICE_ID
+fvm flutter run --release -d DEVICE_ID
 ```
 
 Build/install a debug APK:
 
 ```sh
-flutter build apk --debug
+fvm flutter build apk --debug
 adb -s DEVICE_ID install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 Build a signed release APK, or smaller APKs split by ABI:
 
 ```sh
-flutter build apk --release
-flutter build apk --release --split-per-abi
+fvm flutter build apk --release
+fvm flutter build apk --release --split-per-abi
 ```
 
 | Build | Output under `mobile/` |
@@ -195,7 +215,7 @@ The command prompts for passwords and certificate details. Back up the key secur
 Either update `pubspec.yaml` intentionally or override the version for a build:
 
 ```sh
-flutter build appbundle --release --build-name=1.0.1 --build-number=YOUR_NEXT_UNUSED_INTEGER
+fvm flutter build appbundle --release --build-name=1.0.1 --build-number=YOUR_NEXT_UNUSED_INTEGER
 jarsigner -verify -verbose -certs build/app/outputs/bundle/release/app-release.aab
 keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab
 ```
@@ -218,10 +238,44 @@ Replace both version examples with the intended release values. Verify the bundl
 | Google Services configuration missing or package mismatch | Restore `android/app/google-services.json` with an Android client for `org.e4h.asset`. |
 | Signing-property cast/null error, including during debug builds | Supply all four keys in `android/key.properties`; the current Gradle script configures release signing unconditionally. |
 | Keystore not found / wrong alias / password failure | Remember `storeFile` is relative to `android/app/`; inspect using `keytool -list` and restore the correct properties. |
-| Java/Gradle compatibility failure | Check `flutter doctor -v` for the actual Java runtime and use JDK 17. Do not change the bytecode target to fix a runtime mismatch. |
+| Java/Gradle compatibility failure | Check `fvm flutter doctor -v` for the actual Java runtime and use JDK 17. Do not change the bytecode target to fix a runtime mismatch. |
 | SDK, licenses, or NDK missing | Run Android license acceptance and install SDK 36/NDK `27.0.12077973`; check SDK paths. |
-| `gradlew` missing on a fresh checkout | Use `flutter build apk --debug` after prerequisites; Flutter prepares the ignored wrapper files. Do not replace the committed Gradle version. |
+| `gradlew` missing on a fresh checkout | Use `fvm flutter build apk --debug` after prerequisites; Flutter prepares the ignored wrapper files. Do not replace the committed Gradle version. |
 | Build-runner conflicting/stale output | Stop watch mode, use `build_runner clean`, then regenerate with `--delete-conflicting-outputs`; review resulting tracked diffs. |
 | Dependency or SDK constraint failure | Verify Flutter/Dart against the baseline and keep the lockfile. Resolve GitHub access for the Git dependency rather than upgrading packages. |
 | Play rejects version code or certificate | Use an unused increasing version code and the registered upload key. New-key generation does not bypass Play's key-reset process. |
 | Debug APK cannot update a release/Play install | Different signing certificates prevent an in-place update; use a suitable test device or the Play testing track without deleting unsynced user data. |
+
+
+## 7. Android 16 KB compatibility
+
+Keep Isar community 3.2.0, PDF viewer 1.4.3, CameraX 1.4.2, bundled ML Kit
+barcode 17.3.0, and uncompressed JNI packaging. The unused DIGIT model/dashboard
+dependencies were removed because they reintroduced the original Isar native
+library. Fluttertoast 8.2.9 uses the official upstream embedding fix, pinned to
+Git commit `41bcae754e0b3a46f394e2e596a44b6d7a476b13` in `pubspec.yaml`.
+That revision retains the web constraints required by the current DIGIT/router
+packages. Keep its Git override and `pubspec.lock` pinned; no local package is needed.
+
+All generators, including Isar, run together from the project root. The exact
+`source_gen: 1.5.0` and `dart_style: 2.3.7` tooling overrides retain compatibility
+with the existing generators and preserve generated-file formatting. These
+replace Isar's declared tooling ranges; keep them pinned and revalidate generation
+and migration tests before changing them. Do not edit `.pub-cache`.
+
+```bash
+fvm dart run build_runner build --delete-conflicting-outputs
+fvm flutter test test/repositories/isar_upgrade_test.dart
+```
+
+For release verification, inspect 64-bit ELF/RELRO alignment, confirm bundletool
+reports `PAGE_ALIGNMENT_16K`, generate APKs from the AAB, and run
+`zipalign -c -P 16 4` on their 64-bit native splits. Keep the original-data
+migration test and fixture to protect offline data during dependency updates.
+
+Use physical devices only; never install or run an emulator. A physical 16 KB
+device must report `16384` from `adb shell getconf PAGE_SIZE`; otherwise record
+that runtime check as unverified. Verify offline data, PDFs, scanning, camera,
+and background/resume without clearing app data or uninstalling to bypass a
+signature mismatch. Confirm an unused version code and Play's 16 KB status on
+internal testing before promoting a release to production.

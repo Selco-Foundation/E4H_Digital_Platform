@@ -108,7 +108,7 @@ const CacheScheduledVisitSchema = CollectionSchema(
   getId: _cacheScheduledVisitGetId,
   getLinks: _cacheScheduledVisitGetLinks,
   attach: _cacheScheduledVisitAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheScheduledVisitEstimateSize(

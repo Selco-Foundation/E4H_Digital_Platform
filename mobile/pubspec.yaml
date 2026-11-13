@@ -3,10 +3,11 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 2.3.0+11
+version: 2.3.1+12
 
 environment:
-  sdk: '>=3.0.0 <=4.0.0'
+  sdk: '>=3.7.0 <4.0.0'
+  flutter: '>=3.29.3'
 
 dependencies:
   flutter:
@@ -19,8 +20,6 @@ dependencies:
   connectivity_plus: ^6.0.3
   cupertino_icons: ^1.0.8
   dart_mappable: ^4.2.2
-  digit_data_model: ^1.0.6
-  digit_dss: ^1.0.4
   digit_ui_components: ^0.2.3+1
   dio: ^5.4.3+1
   disable_battery_optimization: ^1.1.1
@@ -34,12 +33,12 @@ dependencies:
   flutter_keyboard_visibility: ^5.4.1
   flutter_localizations:
     sdk: flutter
-  fluttertoast: ^8.2.8
+  fluttertoast: 8.2.9
   flutter_secure_storage: ^9.2.2
   flutter_background_service: ^5.0.5
   intl: ^0.19.0
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
+  isar_community: 3.2.0
+  isar_community_flutter_libs: 3.2.0
   location: ^6.0.2
   pretty_dio_logger: ^1.3.1
   package_info_plus: ^8.0.0
@@ -53,13 +52,14 @@ dependencies:
   permission_handler: ^11.3.1
   video_player: ^2.9.5
   webview_flutter: 4.8.0
-  flutter_pdfview: ^1.4.1+1
+  flutter_pdfview: 1.4.3
   internet_connection_checker_plus: ^2.7.2
   image_picker: ^1.1.2
   camera: 0.11.0+2
   image_picker_android: 0.8.12+12
   image_picker_platform_interface: 2.10.1
   digit_scanner: ^1.0.6+4
+  google_mlkit_barcode_scanning: 0.12.0
   digit_forms_engine: 0.0.9-dev
   flutter_local_notifications: ^19.5.0
   firebase_core: ^2.32.0
@@ -67,13 +67,21 @@ dependencies:
   file_picker: ^8.0.7
 
 dependency_overrides:
+  # Tooling-only compatibility pins for the shared root generator workflow.
+  source_gen: 1.5.0
+  dart_style: 2.3.7
   camera_android_camerax: ^0.5.0
+  fluttertoast:
+    git:
+      url: https://github.com/ponnamkarthik/FlutterToast.git
+      ref: 41bcae754e0b3a46f394e2e596a44b6d7a476b13
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
 
+  isar_community_generator: 3.2.0
   auto_route_generator: ^8.0.0
   build_runner: ^2.4.11
   dart_mappable_builder:
@@ -84,7 +92,6 @@ dev_dependencies:
   drift_dev: ^2.18.0
   flutter_lints: ^4.0.0
   freezed: ^2.5.2
-  isar_generator: ^3.1.0+1
   json_serializable: ^6.8.0
   patch_package: ^0.0.8
 

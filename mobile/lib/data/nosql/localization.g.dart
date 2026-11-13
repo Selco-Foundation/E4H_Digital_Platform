@@ -41,7 +41,7 @@ const LocalizationWrapperSchema = CollectionSchema(
   getId: _localizationWrapperGetId,
   getLinks: _localizationWrapperGetLinks,
   attach: _localizationWrapperAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _localizationWrapperEstimateSize(

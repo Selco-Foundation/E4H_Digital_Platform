@@ -116,7 +116,7 @@ const CacheActivityFacilityWorkflowSchema = CollectionSchema(
   getId: _cacheActivityFacilityWorkflowGetId,
   getLinks: _cacheActivityFacilityWorkflowGetLinks,
   attach: _cacheActivityFacilityWorkflowAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheActivityFacilityWorkflowEstimateSize(

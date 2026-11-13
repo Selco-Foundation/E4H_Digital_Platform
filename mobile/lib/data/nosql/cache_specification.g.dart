@@ -92,7 +92,7 @@ const CacheSpecificationSchema = CollectionSchema(
   getId: _cacheSpecificationGetId,
   getLinks: _cacheSpecificationGetLinks,
   attach: _cacheSpecificationAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheSpecificationEstimateSize(

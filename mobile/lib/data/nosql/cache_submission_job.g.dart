@@ -153,7 +153,7 @@ const CacheSubmissionJobSchema = CollectionSchema(
   getId: _cacheSubmissionJobGetId,
   getLinks: _cacheSubmissionJobGetLinks,
   attach: _cacheSubmissionJobAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheSubmissionJobEstimateSize(

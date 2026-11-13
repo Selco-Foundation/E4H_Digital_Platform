@@ -86,7 +86,7 @@ const CacheAssetCountSchema = CollectionSchema(
   getId: _cacheAssetCountGetId,
   getLinks: _cacheAssetCountGetLinks,
   attach: _cacheAssetCountAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheAssetCountEstimateSize(

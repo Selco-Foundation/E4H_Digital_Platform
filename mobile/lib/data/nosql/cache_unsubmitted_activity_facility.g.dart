@@ -116,7 +116,7 @@ const CacheUnsubmittedActivityFacilitySchema = CollectionSchema(
   getId: _cacheUnsubmittedActivityFacilityGetId,
   getLinks: _cacheUnsubmittedActivityFacilityGetLinks,
   attach: _cacheUnsubmittedActivityFacilityAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheUnsubmittedActivityFacilityEstimateSize(

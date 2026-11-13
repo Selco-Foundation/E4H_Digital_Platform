@@ -35,8 +35,8 @@ android {
         applicationId = "org.e4h.asset"
         minSdk = 24
         targetSdk = 36
-        versionCode = flutter.versionCode()
-        versionName = flutter.versionName()
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
 
         manifestPlaceholders += mapOf(
             "applicationName" to "android.app.Application"
@@ -62,10 +62,6 @@ android {
     }
 
     packagingOptions {
-        jniLibs {
-            useLegacyPackaging = true
-        }
-
         resources {
             excludes += setOf(
                 "**/AndroidManifest.xml",

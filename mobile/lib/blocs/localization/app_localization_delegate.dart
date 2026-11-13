@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
 import 'app_localization.dart';
