@@ -1,4 +1,4 @@
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/workflow_audit_details.dart';
 import '../../model/activity_facility/activity_facility.dart';

@@ -151,7 +151,7 @@ const CacheAssetHandoverDocumentSchema = CollectionSchema(
   getId: _cacheAssetHandoverDocumentGetId,
   getLinks: _cacheAssetHandoverDocumentGetLinks,
   attach: _cacheAssetHandoverDocumentAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheAssetHandoverDocumentEstimateSize(

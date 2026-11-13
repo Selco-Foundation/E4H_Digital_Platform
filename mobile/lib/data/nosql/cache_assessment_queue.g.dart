@@ -123,7 +123,7 @@ const CacheAssessmentQueueSchema = CollectionSchema(
   getId: _cacheAssessmentQueueGetId,
   getLinks: _cacheAssessmentQueueGetLinks,
   attach: _cacheAssessmentQueueAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheAssessmentQueueEstimateSize(

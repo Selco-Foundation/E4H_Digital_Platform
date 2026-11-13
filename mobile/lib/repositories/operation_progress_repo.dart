@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../data/nosql/cache_operation_checkpoint.dart';
 import '../data/nosql/cache_submission_job.dart';

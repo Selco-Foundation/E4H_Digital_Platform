@@ -17,6 +17,21 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    // Keep plugin native binaries compatible with Android's 16 KB pages.
+    // Preserve the existing Dart camera/scanner APIs and the offline ML model.
+    configurations.configureEach {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "androidx.camera") {
+                useVersion("1.4.2")
+                because("Use one CameraX family with 16 KB-compatible native libraries")
+            }
+            if (requested.group == "com.google.mlkit" && requested.name == "barcode-scanning") {
+                useVersion("17.3.0")
+                because("Bundled barcode model must support 16 KB memory pages")
+            }
+        }
+    }
 }
 
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()

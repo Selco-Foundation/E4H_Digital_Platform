@@ -100,7 +100,7 @@ const CacheScheduleVisitFormValuesSchema = CollectionSchema(
   getId: _cacheScheduleVisitFormValuesGetId,
   getLinks: _cacheScheduleVisitFormValuesGetLinks,
   attach: _cacheScheduleVisitFormValuesAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheScheduleVisitFormValuesEstimateSize(

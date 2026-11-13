@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../data/nosql/cache_assessment_queue.dart';
 import '../model/assessment/assessment_queue.dart';

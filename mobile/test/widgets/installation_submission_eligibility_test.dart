@@ -2,7 +2,7 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import '../../lib/blocs/activity_facility/activity_facility.dart';
 import '../../lib/blocs/app_init/app_init.dart';
 import '../../lib/model/activity_facility/activity_facility.dart';

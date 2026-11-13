@@ -49,7 +49,7 @@ const CacheAmcFailedScheduledVisitSchema = CollectionSchema(
   getId: _cacheAmcFailedScheduledVisitGetId,
   getLinks: _cacheAmcFailedScheduledVisitGetLinks,
   attach: _cacheAmcFailedScheduledVisitAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheAmcFailedScheduledVisitEstimateSize(

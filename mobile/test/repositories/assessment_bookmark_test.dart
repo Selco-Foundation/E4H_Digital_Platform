@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import '../../lib/blocs/assessment_queue/assessment_queue.dart';
 import '../../lib/model/assessment/assessment_mode.dart';
 import '../../lib/repositories/assessment_queue_repo.dart';

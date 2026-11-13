@@ -1,4 +1,4 @@
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';

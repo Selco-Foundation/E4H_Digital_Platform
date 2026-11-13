@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
 import '../data/nosql/cache_amc_media_upload.dart';

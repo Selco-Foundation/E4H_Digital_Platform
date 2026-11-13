@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../lib/data/nosql/cache_activity_facility_bom_values.dart';
 import '../../lib/data/nosql/cache_activity_facility_workflow.dart';

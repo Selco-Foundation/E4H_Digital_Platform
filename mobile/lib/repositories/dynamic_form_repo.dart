@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../data/nosql/cache_activity_facility_bom_values.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';

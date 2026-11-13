@@ -53,7 +53,7 @@ const CacheSyncRecordSchema = CollectionSchema(
   getId: _cacheSyncRecordGetId,
   getLinks: _cacheSyncRecordGetLinks,
   attach: _cacheSyncRecordAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheSyncRecordEstimateSize(

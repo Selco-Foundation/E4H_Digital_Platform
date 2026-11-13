@@ -1,6 +1,6 @@
 // Generated using mason. Do not modify by hand
 import 'package:dart_mappable/dart_mappable.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import 'address_type.dart';
 import 'locality.dart';
@@ -40,7 +40,7 @@ class AddressSearchModel with AddressSearchModelMappable {
   }) : super();
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class AddressModel with AddressModelMappable {
   static const schemaName = 'Address';

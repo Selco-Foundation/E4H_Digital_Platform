@@ -100,7 +100,7 @@ const CacheActivityFacilityBomValuesSchema = CollectionSchema(
   getId: _cacheActivityFacilityBomValuesGetId,
   getLinks: _cacheActivityFacilityBomValuesGetLinks,
   attach: _cacheActivityFacilityBomValuesAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheActivityFacilityBomValuesEstimateSize(

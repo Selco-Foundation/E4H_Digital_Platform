@@ -1,4 +1,4 @@
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../model/activity_facility/activity_facility.dart';
 import '../../model/entities/address.dart';

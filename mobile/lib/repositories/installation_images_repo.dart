@@ -1,4 +1,4 @@
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../data/nosql/cache_installation_image.dart';
 import '../model/appconfig/mdmsRequest.dart';

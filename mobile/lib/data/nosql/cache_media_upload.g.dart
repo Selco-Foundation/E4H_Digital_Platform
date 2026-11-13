@@ -119,7 +119,7 @@ const CacheMediaUploadSchema = CollectionSchema(
   getId: _cacheMediaUploadGetId,
   getLinks: _cacheMediaUploadGetLinks,
   attach: _cacheMediaUploadAttach,
-  version: '3.1.0+1',
+  version: '3.2.0',
 );
 
 int _cacheMediaUploadEstimateSize(

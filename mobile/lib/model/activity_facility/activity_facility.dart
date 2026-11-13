@@ -2,7 +2,7 @@
 import 'dart:convert';
 
 import 'package:dart_mappable/dart_mappable.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../entities/address.dart';
 
@@ -55,7 +55,7 @@ class ActivityFacilitySearchModel with ActivityFacilitySearchModelMappable {
   int? get endDate => endDateTime?.millisecondsSinceEpoch;
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class ActivityFacility with ActivityFacilityMappable {
   static const schemaName = 'ActivityFacility';
@@ -123,7 +123,7 @@ class ActivityFacility with ActivityFacilityMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class FacilityAddress with FacilityAddressMappable {
   String? city;
@@ -204,7 +204,7 @@ class FacilityAddress with FacilityAddressMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class FacilityDetails with FacilityDetailsMappable {
   @MappableField(key: 'hfr_id')
@@ -242,7 +242,7 @@ class FacilityDetails with FacilityDetailsMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class FacilityAdditionalDetails with FacilityAdditionalDetailsMappable {
   String? mappedVendorName;
@@ -262,7 +262,7 @@ class FacilityAdditionalDetails with FacilityAdditionalDetailsMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class Facility with FacilityMappable {
   FacilityAddress? address;
@@ -354,7 +354,7 @@ class Facility with FacilityMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class FieldPlan with FieldPlanMappable {
   String? id;
@@ -412,7 +412,7 @@ class FieldPlan with FieldPlanMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class Project with ProjectMappable {
   String? id;
@@ -471,7 +471,7 @@ class Project with ProjectMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class ProjectAdditionalDetails with ProjectAdditionalDetailsMappable {
   String? status;
@@ -505,7 +505,7 @@ class ProjectAdditionalDetails with ProjectAdditionalDetailsMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class GeographyDetails with GeographyDetailsMappable {
   StateRef? state;
@@ -538,7 +538,7 @@ class GeographyDetails with GeographyDetailsMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class StateRef with StateRefMappable {
   String? code;
@@ -559,7 +559,7 @@ class StateRef with StateRefMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class BlockRef with BlockRefMappable {
   String? code;
@@ -586,7 +586,7 @@ class BlockRef with BlockRefMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class AssetTypeAdditionalDetails with AssetTypeAdditionalDetailsMappable {
   String? brandName;
@@ -610,7 +610,7 @@ class AssetTypeAdditionalDetails with AssetTypeAdditionalDetailsMappable {
       };
 }
 
-@Embedded()
+@Embedded(ignore: {'copyWith', 'hashCode'})
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class AdditionalDetails with AdditionalDetailsMappable {
   String? status;

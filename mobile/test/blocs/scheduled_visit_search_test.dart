@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../lib/blocs/scheduled_visit/scheduled_visit.dart';
 import '../../lib/model/scheduled_visit/scheduled_visit.dart';
