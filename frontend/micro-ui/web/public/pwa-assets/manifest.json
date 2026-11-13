@@ -17,11 +17,11 @@
       "src": "Screenshot-Saura-eMitra-Home.png",
       "sizes": "1895x856",
       "type": "image/png",
-      "description": "A screenshot of the home page",
+      "label": "A screenshot of the home page",
       "form_factor" : "wide"
     },
     { "src": "Screenshot-Saura-eMitra-Mobile.png",
-      "sizes": "1080x1920",
+      "sizes": "1082x2426",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Home page on mobile" }
