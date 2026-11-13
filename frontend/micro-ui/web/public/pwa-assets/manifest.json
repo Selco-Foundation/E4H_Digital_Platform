@@ -6,7 +6,7 @@
   "short_name": "Saura-eMitra",
   "start_url": ".",
   "display": "standalone",
-  "description": "Saura-eMitra digital platform for citizen services and government operations, running in https mode.",
+  "description": "Would you like to install the Saura-eMitra mobile application on your device for quicker and easier access?",
   "lang": "en",
   "dir": "auto",
   "theme_color": "#000000",
@@ -17,8 +17,15 @@
       "src": "Screenshot-Saura-eMitra-Home.png",
       "sizes": "1895x856",
       "type": "image/png",
-      "description": "A screenshot of the home page"
-    }
+      "description": "A screenshot of the home page",
+      "form_factor" : "wide"
+    },
+    { "src": "Screenshot-Saura-eMitra-Mobile.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home page on mobile" }
+
   ],
   "icons": [
     {
