@@ -1,15 +1,47 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import { Button, Dropdown, Loader, MultiUploadWrapper, PopUp, Toast } from "@selco/digit-ui-react-components";
-import { useRouteMatch, useHistory } from "react-router-dom";
+import { Button, Dropdown, Loader, MultiUploadWrapper, PopUp, Toast, SubmitBar } from "@selco/digit-ui-react-components";
+import { useRouteMatch, useHistory, useLocation, Redirect } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";
 import { populateCreateResponse } from "../../../redux/actions/index";
 import { Link } from "react-router-dom";
+import { getMappedFacilityCodes } from "../../../services/ReportingFacilities";
+import { isFacilityUser } from "../../../utilities/facilityUser";
+import { Employee } from "../../../constants/Routes";
+import useReportingIssues from "../../../hooks/useReportingIssues";
+import { getAvailableReportingIssues, getReportingObservations, getReportingInstallationAction, isReportingSelectionValid, isReportingObservationOptional, isReportingSystemStatusValid } from "../../../utilities/reportingIssues";
+import CommonUtils from "../../../utilities/CommonUtils";
+import ReportingDuplicateGuard from "../../../components/ReportSolarIssue/ReportingDuplicateGuard";
+import ReportingDetails from "../../../components/ReportSolarIssue/ReportingDetails";
+import { ReportingDetailsDraft } from "../../../services/ReportingDetailsDraft";
+import { ReportingFirDraft } from "../../../services/ReportingFirDraft";
+import { ReportingSupportDraft } from "../../../services/ReportingSupportDraft";
 
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
+  const location = useLocation();
+  const reportParams = new URLSearchParams(location.search);
+  const requestedReportFacility = reportParams.get("reportFacility");
+  const requestedReportIssue = reportParams.get("reportIssue");
+  const requestedReportStatus = reportParams.get("reportStatus");
+  const requestedReportObservation = reportParams.get("reportObservation");
+  const isFacilityReporter = isFacilityUser(Digit.UserService.getUser().info.roles);
+  const reportFacility = isFacilityReporter
+    && getMappedFacilityCodes().includes(requestedReportFacility) ? requestedReportFacility : null;
+  const [detailsDraft] = useState(() => reportFacility ? ReportingDetailsDraft.read(reportFacility, requestedReportIssue) : { description: "", images: [], videos: [] });
+  const [description, setDescription] = useState(detailsDraft.description);
+  const changeDescription = (value) => {
+    setDescription(value);
+    ReportingDetailsDraft.save(reportFacility, requestedReportIssue, { description: value });
+  };
+  const isGuidedSupport = Boolean(reportFacility) && requestedReportIssue === "ADDITIONAL_SUPPORT";
+  const [supportDescription, setSupportDescription] = useState(() => isGuidedSupport ? ReportingSupportDraft.read(reportFacility) : "");
+  const changeSupportDescription = (value) => {
+    setSupportDescription(value);
+    ReportingSupportDraft.save(reportFacility, value);
+  };
   const [healthcentre, setHealthCentre] = useState();
   const [districtMenu, setDistrictMenu] = useState([]);
   const [sortedDistrictMenu, setSortedDistrictMenu] = useState([]);
@@ -27,9 +59,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
   const [isFirUploading, setIsFirUploading] = useState(false);
-  const [imageState, setImageState] = useState({ newArr: [], mappedArray: [] });
-  const [videoState, setVideoState] = useState({ newArr: [], mappedArray: [] });
-  const [firState, setFirState] = useState({ newArr: [], mappedArray: [] });
+  const [imageState, setImageState] = useState(() => ({ newArr: detailsDraft.images.map(([, entry]) => entry), mappedArray: detailsDraft.images.map(([, entry]) => entry) }));
+  const [videoState, setVideoState] = useState(() => ({ newArr: detailsDraft.videos.map(([, entry]) => entry), mappedArray: detailsDraft.videos.map(([, entry]) => entry) }));
+  const [firState, setFirState] = useState(() => {
+    const files = reportFacility && requestedReportIssue === "THEFT" ? ReportingFirDraft.read(reportFacility, requestedReportObservation) : [];
+    return { newArr: files.map(([, entry]) => entry), mappedArray: files.map(([, entry]) => entry) };
+  });
   const specificFileConstraint = [
     { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
@@ -52,8 +87,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
   const [blockUI, setBlockUI] = useState(false);
+  const submissionInProgress = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
-  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
+  const jurisdictionCurrentBoundary = (reportFacility ? { facility: [reportFacility] } : Digit.SessionStorage.get("Jurisdiction.CurrentBoundary")) || {
     country: ["-"],
   };
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
@@ -65,7 +102,37 @@ export const CreateComplaint = ({ parentUrl }) => {
   const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
-  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes, { includeAllMappedFacilities: Boolean(reportFacility) });
+  const reportIssuesQuery = useReportingIssues(Boolean(reportFacility));
+  const guidedIssue = getAvailableReportingIssues(reportIssuesQuery.data, healthcentre?.status)
+    .find(({ key }) => key === requestedReportIssue);
+  const guidedObservation = getReportingObservations(guidedIssue, healthcentre?.status).find(({ key }) => key === requestedReportObservation);
+  const observationOptional = Boolean(reportFacility) && isReportingObservationOptional(guidedIssue);
+  const isGuidedSelectionValid = !reportFacility || isReportingSelectionValid({
+    description: supportDescription, issue: guidedIssue, observation: guidedObservation, complaintType, subType, hasError: (isGuidedSupport ? supportDescription : description).length > 500 || !isReportingSystemStatusValid(requestedReportStatus) || systemFunctionality.key !== requestedReportStatus || reportIssuesQuery.isError || !reportIssuesQuery.observations.isSuccess || Boolean(requestedReportObservation && !guidedObservation),
+  });
+  const reportingPageUrl = `${parentUrl}${Employee.ReportSolarIssue}?${new URLSearchParams({
+    facility: reportFacility || "", step: requestedReportIssue ? "status" : "issue",
+    ...(isReportingSystemStatusValid(requestedReportStatus) ? { status: requestedReportStatus } : {}),
+    ...(requestedReportIssue ? { issue: requestedReportIssue } : {}),
+    ...(requestedReportObservation ? { observation: requestedReportObservation } : {}),
+  }).toString()}`;
+
+  useEffect(() => {
+    if (!reportFacility || !guidedIssue) return;
+    setComplaintType({ key: guidedIssue.key, name: t(guidedIssue.labelKey, { defaultValue: guidedIssue.name }) });
+    setSubTypeMenu(getReportingObservations(guidedIssue, healthcentre?.status)
+      .map((subtype) => ({ ...subtype, name: t(subtype.labelKey, { defaultValue: subtype.name }) })));
+    setSubType(guidedObservation
+      ? { key: guidedObservation.key, name: t(guidedObservation.labelKey, { defaultValue: guidedObservation.name }) }
+      : {});
+    const installationAction = getReportingInstallationAction(guidedObservation);
+    setIsInstallationTicket(Boolean(installationAction));
+    setSystemFunctionality(isReportingSystemStatusValid(requestedReportStatus)
+      ? { key: requestedReportStatus, name: t(requestedReportStatus === "FUNCTIONAL" ? "Yes" : "No") }
+      : {});
+    setDisableUpload(false);
+  }, [reportFacility, guidedIssue, guidedObservation, requestedReportStatus, healthcentre?.status, t]);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
@@ -145,10 +212,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, [t, facilityMenu]);
 
   useEffect(() => {
-    if (!isTheftIssue) {
+    if (!isTheftIssue && !reportFacility) {
       setFirState({ newArr: [], mappedArray: [] });
     }
-  }, [isTheftIssue]);
+  }, [isTheftIssue, reportFacility]);
 
   useEffect(() => {
     if (creationError) {
@@ -161,10 +228,10 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
-    sortedSubMenu = subTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
+    sortedSubMenu = reportFacility ? subTypeMenu : subTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  const menu = Digit.Hooks.pgr.useComplaintTypes({ stateCode: tenantId });
+  const menu = Digit.Hooks.pgr.useComplaintTypes({ stateCode: tenantId, enabled: !isFacilityReporter });
   let sortedMenu = [];
   if (menu !== null) {
     let othersItem = menu.find((item) => item.key === "Others");
@@ -176,7 +243,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     sortedMenu = otherItems;
   }
 
-  if (subTypeMenu !== null) {
+  if (subTypeMenu !== null && !reportFacility) {
     let othersItem = subTypeMenu.find((item) => item.key === "Other");
     let otherItems = subTypeMenu.filter((item) => item.key !== "Other");
     otherItems.sort((a, b) => a.name.localeCompare(b.name));
@@ -251,6 +318,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, [t, districtMenu, blockOptions, facilityOptions, selectBoundaryCode, stateBoundaryCode]);
 
   useEffect(() => {
+    if (reportFacility) return;
     if (complaintType?.key?.toUpperCase() === "UNINSTALL") {
       setIsInstallationTicket(true);
       setSystemFunctionality({
@@ -278,9 +346,13 @@ export const CreateComplaint = ({ parentUrl }) => {
       setSystemFunctionality({});
       setSubType({});
     }
-  }, [complaintType, t]);
+  }, [complaintType, t, reportFacility]);
 
   useEffect(() => {
+    if (reportFacility) {
+      setIsUninstalledFacility(healthcentre?.status === "UNINSTALLED");
+      return;
+    }
     if (healthcentre?.status === "UNINSTALLED") {
       setIsUninstalledFacility(true);
       setComplaintType({
@@ -291,7 +363,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       setIsUninstalledFacility(false);
       setComplaintType({});
     }
-  }, [healthcentre, t]);
+  }, [healthcentre, t, reportFacility]);
 
   useEffect(() => {
     (async () => {
@@ -325,15 +397,16 @@ export const CreateComplaint = ({ parentUrl }) => {
   useEffect(() => {
     const isAnyUploading = isImageUploading || isVideoUploading || isFirUploading;
     const hasMandatoryTheftUpload = !isTheftIssue || uploadedFile?.some((doc) => doc?.documentType === "FIR_DOCUMENT");
-    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading && hasMandatoryTheftUpload) {
+    if (complaintType?.key && (observationOptional || subType?.key) && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading && hasMandatoryTheftUpload) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, systemFunctionality, healthcentre, district, block, isImageUploading, isVideoUploading, isFirUploading, isTheftIssue, uploadedFile]);
+  }, [observationOptional, complaintType, subType, systemFunctionality, healthcentre, district, block, isImageUploading, isVideoUploading, isFirUploading, isTheftIssue, uploadedFile]);
 
   useEffect(() => {
     const handleDuplicateCheck = async () => {
+      if (reportFacility) return;
       if (healthcentre?.code && complaintType?.key && subType?.key) {
         setBlockUI(true);
         try {
@@ -390,7 +463,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     }
 
     handleDuplicateCheck();
-  }, [healthcentre, complaintType, subType]);
+  }, [healthcentre, complaintType, subType, reportFacility]);
 
   async function selectedType(value) {
     setDisableUpload(false);
@@ -434,44 +507,59 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
-    if (!canSubmit) return;
+    if (!canSubmit || !isGuidedSelectionValid) return;
     !abc && onSubmit(data);
   };
   const onSubmit = async (data) => {
-    Digit.Utils.analytics.trackSubmitTicket({ page_name: "new_ticket_page" });
-    if (!canSubmit) return;
-    const formData = {
-      ...data,
-      complaintType,
-      subType,
-      systemFunctionality,
-      district : {
-        ...district,
-        name: t(`Boundary_${district.code}`, { lng: "en_IN" })
-      },
-      block : {
-        ...block,
-        name: t(`Boundary_${block.code}`, { lng: "en_IN" })
-      },
-      healthcentre,
-      uploadedFile,
-      tenantId,
-    };
+    if (!canSubmit || !isGuidedSelectionValid || submissionInProgress.current) return;
+    submissionInProgress.current = true;
+    setIsSubmitting(true);
+    setCreationError(null);
+    try {
+      Digit.Utils.analytics.trackSubmitTicket({ page_name: "new_ticket_page" });
+      const formData = {
+        ...data,
+        ...(reportFacility ? { comments: (isGuidedSupport ? supportDescription : description).trim() } : {}),
+        complaintType,
+        subType,
+        systemFunctionality,
+        district : {
+          ...district,
+          name: t(`Boundary_${district.code}`, { lng: "en_IN" })
+        },
+        block : {
+          ...block,
+          name: t(`Boundary_${block.code}`, { lng: "en_IN" })
+        },
+        healthcentre,
+        uploadedFile,
+        tenantId,
+        facilityReport: Boolean(reportFacility),
+      };
 
-    setBlockUI(true);
-    const response = await Digit.Complaint.create(formData);
+      const response = await Digit.Complaint.create(formData);
 
-    if (!response?.IncidentWrappers) {
-      setBlockUI(false);
-      const assignErrorMessage = Array.isArray(response) ? response?.[0]?.message : response?.message || response;
-      setCreationError(assignErrorMessage || t("CS_COMMON_SOMETHING_WENT_WRONG"));
-      return;
+      if (!response?.IncidentWrappers) {
+        const failure = Array.isArray(response) ? response[0] : response;
+        const message = typeof failure === "string" ? failure : CommonUtils.getApiErrorMessage(failure);
+        setCreationError(typeof message === "string" && message ? message : t("CS_COMMON_SOMETHING_WENT_WRONG"));
+        return;
+      }
+
+      if (reportFacility) {
+        client.removeQueries(["IM_REPORTING_DUPLICATES"]);
+        ReportingFirDraft.clear(); ReportingSupportDraft.clear(); ReportingDetailsDraft.clear();
+      }
+      dispatch(populateCreateResponse(response));
+      // A refresh failure must not turn an already-created ticket into a retry.
+      client.refetchQueries(["fetchInboxData"]).catch((error) => console.error("Could not refresh ticket inbox", error));
+      history.push(parentUrl + "/incident/response");
+    } catch (error) {
+      setCreationError(CommonUtils.getApiErrorMessage(error) || t("CS_COMMON_SOMETHING_WENT_WRONG"));
+    } finally {
+      submissionInProgress.current = false;
+      setIsSubmitting(false);
     }
-
-    setBlockUI(false);
-    dispatch(populateCreateResponse(response));
-    await client.refetchQueries(["fetchInboxData"]);
-    history.push(parentUrl + "/incident/response");
   };
   const districtRef = useRef(null);
   const blockRef = useRef(null);
@@ -484,7 +572,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     { field: block, ref: blockRef },
     { field: healthcentre, ref: healthCareRef },
     { field: complaintType, ref: ticketTypeRef },
-    { field: subType, ref: ticketSubTypeRef },
+    ...(!observationOptional ? [{ field: subType, ref: ticketSubTypeRef }] : []),
     { field: systemFunctionality, ref: systemFunctionalityRef },
   ];
   const getData = (state) => {
@@ -498,6 +586,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   };
 
   const getImageData = (state) => {
+    if (reportFacility) ReportingDetailsDraft.saveFiles(reportFacility, requestedReportIssue, "images", state);
     let data = Object.fromEntries(state);
     const mappedArray = state.map((item) => {
       return item[1];
@@ -508,6 +597,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   };
 
   const getVideoData = (state) => {
+    if (reportFacility) ReportingDetailsDraft.saveFiles(reportFacility, requestedReportIssue, "videos", state);
     let data = Object.fromEntries(state);
     const mappedArray = state.map((item) => {
       return item[1];
@@ -517,6 +607,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     setVideoState({ newArr, mappedArray });
   };
   const getFirData = (state) => {
+    if (reportFacility) ReportingFirDraft.save(reportFacility, requestedReportObservation, state);
     let data = Object.fromEntries(state);
     const mappedArray = state.map((item) => {
       return item[1];
@@ -689,14 +780,14 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={complaintType}
               select={selectedType}
               required={true}
-              disable={isUninstalledFacility}
+              disable={isUninstalledFacility || Boolean(reportFacility)}
             />
           ),
         },
         {
           label: t("TICKET_SUBTYPE"),
           type: "dropdown",
-          isMandatory: true,
+          isMandatory: !observationOptional,
           menu: { ...subTypeMenu },
           populators: (
             <Dropdown
@@ -706,12 +797,12 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="complaintSubType"
               selected={subType}
               select={selectedSubType}
-              required={true}
-              disable={isUninstalledFacility || isInstallationTicket}
+              required={!observationOptional}
+              disable={isUninstalledFacility || isInstallationTicket || Boolean(reportFacility)}
             />
           ),
         },
-        {
+        ...(reportFacility ? [] : [{
           label: t("SYSTEM_FUNCTIONAL"),
           type: "dropdown",
           isMandatory: true,
@@ -729,7 +820,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               />
             </div>
           ),
-        }
+        }])
       ],
     },
     {
@@ -741,7 +832,7 @@ export const CreateComplaint = ({ parentUrl }) => {
           isMandatory: false,
           populators: {
             name: "comments",
-            // maxLength: 256,
+            maxLength: 256,
             validation: {
               minLength: 0,
               maxLength: 256,
@@ -801,7 +892,7 @@ export const CreateComplaint = ({ parentUrl }) => {
             </div>
           ),
         },
-        ...(isTheftIssue
+        ...(isTheftIssue && !reportFacility
           ? [
               {
                 label: t("INCIDENT_UPLOAD_FIR_POLICE_LETTER"),
@@ -836,6 +927,25 @@ export const CreateComplaint = ({ parentUrl }) => {
       ],
     },
   ];
+  if ((isFacilityReporter || requestedReportFacility) && !reportFacility) {
+    return <Redirect to={parentUrl + Employee.ReportSolarIssue} />;
+  }
+  if (reportFacility && !isReportingSystemStatusValid(requestedReportStatus)) return <Redirect to={reportingPageUrl} />;
+  if (reportFacility && !requestedReportIssue) return <Redirect to={reportingPageUrl} />;
+  if (reportFacility && (reportIssuesQuery.isLoading || reportIssuesQuery.observations.isLoading)) return <Loader />;
+  if (reportFacility && reportIssuesQuery.observations.isError) return <div role="alert">
+    <p>{t("IM_REPORT_NO_OBSERVATIONS", { defaultValue: "No observations are available for this component/issue. Please go back and choose another option, or contact your administrator." })}</p>
+    <SubmitBar label={t("IM_REPORT_RETRY", { defaultValue: "Try again" })} onSubmit={() => reportIssuesQuery.observations.refetch()} />
+    <Link to={reportingPageUrl}>{t("CS_COMMON_BACK")}</Link>
+  </div>;
+  if (reportFacility && reportIssuesQuery.isError) {
+    return <div role="alert">
+      <p>{t("IM_REPORT_ISSUES_LOAD_ERROR", { defaultValue: "We could not load the components/issues. Please try again." })}</p>
+      <SubmitBar label={t("IM_REPORT_RETRY", { defaultValue: "Try again" })} onSubmit={() => reportIssuesQuery.refetch()} />
+      <Link to={reportingPageUrl}>{t("CS_COMMON_BACK")}</Link>
+    </div>;
+  }
+  if (reportFacility && reportIssuesQuery.data && healthcentre && (!guidedIssue || ((!observationOptional || requestedReportObservation) && !guidedObservation))) return <Redirect to={reportingPageUrl} />;
   return (
     <div>
       <style>
@@ -847,7 +957,7 @@ export const CreateComplaint = ({ parentUrl }) => {
           }
         `}
       </style>
-      {blockUI && (
+      {(blockUI || isSubmitting) && (
         <div
           style={{
             display: "flex",
@@ -865,12 +975,27 @@ export const CreateComplaint = ({ parentUrl }) => {
           <Loader />
         </div>
       )}
-      <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "0px" }}>
-        <div style={{ marginRight: "15px" }}>
+      {reportFacility ? <ReportingDuplicateGuard facility={reportFacility} component={requestedReportIssue}
+        parentUrl={parentUrl} onBack={() => history.push(`${parentUrl}${Employee.ReportSolarIssue}?${new URLSearchParams({ facility: reportFacility, step: "issue", issue: requestedReportIssue })}`)}>
+      <ReportingDetails draftId={detailsDraft.draftId}
+        facility={healthcentre} issue={complaintType} observation={subType?.key ? subType : null} status={systemFunctionality}
+        description={isGuidedSupport ? supportDescription : description}
+        onDescriptionChange={isGuidedSupport ? changeSupportDescription : changeDescription}
+        images={imageState.mappedArray.map((entry) => [entry.file.name, entry])}
+        videos={videoState.mappedArray.map((entry) => [entry.file.name, entry])}
+        fir={firState.mappedArray.map((entry) => [entry.file.name, entry])}
+        onImagesChange={getImageData} onVideosChange={getVideoData} onFirChange={getFirData}
+        onImageUploading={setIsImageUploading} onVideoUploading={setIsVideoUploading} onFirUploading={setIsFirUploading}
+        uploading={isImageUploading || isVideoUploading || isFirUploading} submitting={isSubmitting}
+        canSubmit={canSubmit && isGuidedSelectionValid} onSubmit={wrapperSubmit} backUrl={reportingPageUrl}
+        tenantId={tenantId} showFacility={getMappedFacilityCodes().length > 1}
+      />
+      </ReportingDuplicateGuard> : <React.Fragment>
+        <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right" }}>
           <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>
-      </div>
-      <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit} label={t("FILE_INCIDENT")} />
+        <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit || isSubmitting} label={t("FILE_INCIDENT")} />
+      </React.Fragment>}
       {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  

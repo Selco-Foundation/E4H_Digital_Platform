@@ -1,10 +1,10 @@
 export const Complaint = {
-  create: async ({ cityCode, comments, district, block, uploadedFile, complaintType, subType, systemFunctionality, healthcentre, tenantId }) => {
+  create: async ({ cityCode, comments, district, block, uploadedFile, complaintType, subType, systemFunctionality, healthcentre, tenantId, facilityReport = false }) => {
     const normalizedType = (complaintType?.key || "").trim().toUpperCase();
     const workflowAction =
       normalizedType === "THEFT"
         ? "APPLY_THEFT"
-        : normalizedType === "RMS DEVICE"
+        : normalizedType === "RMS DEVICE" || (facilityReport && normalizedType === "RMS_DEVICE")
           ? "APPLY_RMS_DEVICE"
           : "APPLY";
 
@@ -13,8 +13,8 @@ export const Complaint = {
         tenantId: tenantId,
         district: district?.name,
         block: block?.name,
-        incidentType: complaintType?.key,
-        incidentSubtype: subType?.key,
+        component: complaintType?.key,
+        observations: subType?.key ? [subType.key] : [],
         systemFunctional: systemFunctionality?.key,
         boundaryCode: healthcentre?.code,
         comments: comments,

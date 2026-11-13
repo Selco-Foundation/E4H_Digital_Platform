@@ -1,11 +1,12 @@
 import React, { Fragment, useState } from "react";
-import { Switch, Route, useRouteMatch, useLocation } from "react-router-dom";
+import { Switch, Route, Redirect, useRouteMatch, useLocation } from "react-router-dom";
 import { ActionBar, Menu, SubmitBar, BreadCrumb } from "@selco/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
 // import { ComplaintDetails } from "./ComplaintDetails";
 // import { CreateComplaint } from "./CreateComplaint";
 // import Inbox from "./Inbox";
 import { Employee } from "../../constants/Routes";
+import { isFacilityUser } from "../../utilities/facilityUser";
 console.log("emp122222", Employee);
 
 // import Response from "./Response";
@@ -20,6 +21,7 @@ const Complaint = () => {
   const match1=`/${window.contextPath}/employee/pgr`
   console.log("match1", match1)
   const isCRMUser = roles?.some((role) => role.code === "COMPLAINT_ASSESSOR");
+  const canReportSolarIssue = isFacilityUser(roles);
 
   const breadcrumConfig = {
     home: {
@@ -55,6 +57,7 @@ const Complaint = () => {
   let location = `/${window.contextPath}/employee/im/incident/create`;
 
   const CreateComplaint = Digit?.ComponentRegistryService?.getComponent('PGRCreateComplaintEmp');
+  const ReportSolarIssue = Digit.ComponentRegistryService.getComponent("IMReportSolarIssue");
   const PauseRMS = Digit?.ComponentRegistryService?.getComponent("PGRPauseRMS");
   const RMSPausedFacilities = Digit?.ComponentRegistryService?.getComponent("PGRRMSPausedFacilities");
   const ComplaintDetails = Digit?.ComponentRegistryService?.getComponent('PGRComplaintDetails');
@@ -68,6 +71,14 @@ const Complaint = () => {
       <div className="ground-container">
         {!location.includes(Employee.Response) && (
           <Switch>
+            {canReportSolarIssue && (
+              <Route path={match.url + Employee.ReportSolarIssue}>
+                <BreadCrumb crumbs={[breadcrumConfig.home, {
+                  content: t("IM_REPORT_SOLAR_ISSUE_TITLE", { defaultValue: "Report an issue with your solar" }),
+                  path: match.url + Employee.ReportSolarIssue,
+                }]} />
+              </Route>
+            )}
             <Route
               path={match.url + Employee.CreateComplaint}
               component={() => <BreadCrumb crumbs={[breadcrumConfig.home, breadcrumConfig.createComplaint]}></BreadCrumb>}
@@ -93,6 +104,9 @@ const Complaint = () => {
           </Switch>
         )}
         <Switch>
+          <Route exact path={match.url + Employee.ReportSolarIssue}>
+            {canReportSolarIssue ? <ReportSolarIssue parentUrl={match.url} /> : <Redirect to={Employee.Home} />}
+          </Route>
           <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />
           {isCRMUser && <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS parentUrl={match.url} />} />}
           {isCRMUser && <Route path={match.url + Employee.PausedRMSFacilities} component={() => <RMSPausedFacilities />} />}

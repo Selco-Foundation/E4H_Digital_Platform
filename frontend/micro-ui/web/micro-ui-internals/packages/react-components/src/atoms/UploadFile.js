@@ -133,6 +133,23 @@ const getCitizenStyles = (value) => {
 };
 
 const UploadFile = (props) => {
+  const [restoredPreviews, setRestoredPreviews] = useState({});
+  const restoredIds = props.restoreUploadedPreviews
+    ? (props.uploadedFiles || []).filter(([, entry]) => !(entry.file instanceof Blob))
+      .map(([, entry]) => entry.fileStoreId.fileStoreId).join(",") : "";
+  useEffect(() => {
+    if (!restoredIds) return;
+    let cancelled = false;
+    Digit.UploadServices.Filefetch(restoredIds.split(","), props.tenantId).then((response) => {
+      if (cancelled) return;
+      const previews = {};
+      restoredIds.split(",").forEach((id) => {
+        if (response.data[id]) previews[id] = Digit.Utils.getFileUrl(response.data[id]);
+      });
+      setRestoredPreviews(previews);
+    }).catch((error) => console.error("Could not load uploaded file previews", error));
+    return () => { cancelled = true; };
+  }, [restoredIds, props.tenantId]);
   const { t } = useTranslation();
   const inputRef = useRef();
   const [hasFile, setHasFile] = useState(false);
@@ -306,12 +323,13 @@ const UploadFile = (props) => {
           const fileType = fileDetailsData.file.type;
 
           // Create (and memoize) an object URL for preview/download
-          if (!fileDetailsData.objectUrl && fileDetailsData.file) {
+          if (!fileDetailsData.objectUrl && fileDetailsData.file instanceof Blob) {
             try {
               fileDetailsData.objectUrl = URL.createObjectURL(fileDetailsData.file);
             } catch {}
           }
-          const fileSrc = fileDetailsData.objectUrl;
+          const fileSrc = props.restoreUploadedPreviews && !(fileDetailsData.file instanceof Blob)
+            ? restoredPreviews[fileDetailsData.fileStoreId?.fileStoreId] : fileDetailsData.objectUrl;
 
           return (
             // <div key={index} className="tag-container" style={extraStyles ? extraStyles?.tagContainerStyles : null}>

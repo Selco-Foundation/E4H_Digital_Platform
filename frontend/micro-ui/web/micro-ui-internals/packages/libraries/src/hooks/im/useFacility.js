@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient } from "react-query";
 
-const fetchFacilities = async (boundaryCodes) => {
+const fetchFacilities = async (boundaryCodes, includeAllMappedFacilities) => {
   const queryFilter = {
     tenantId : [Digit.ULBService.getCurrentTenantId()],
     boundaryCodes: boundaryCodes,
-    isOnmReady: true,
+    ...(!includeAllMappedFacilities ? { isOnmReady: true } : {}),
     sendNonPaginatedResponse: true,
   }
 
@@ -22,12 +22,12 @@ const fetchFacilities = async (boundaryCodes) => {
   };
 }
 
-const useFacility = (codes) => {
+const useFacility = (codes, { includeAllMappedFacilities = false } = {}) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["FACILITY", codes],
-    () => fetchFacilities(codes)
+    ["FACILITY", codes, includeAllMappedFacilities],
+    () => fetchFacilities(codes, includeAllMappedFacilities)
   );
 
   return {

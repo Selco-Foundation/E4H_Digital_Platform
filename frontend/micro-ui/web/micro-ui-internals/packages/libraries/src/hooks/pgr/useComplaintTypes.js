@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-const useComplaintTypes = ({ stateCode }) => {
+const useComplaintTypes = ({ stateCode, enabled = true }) => {
   const [complaintTypes, setComplaintTypes] = useState(null);
   const { t } = useTranslation();
 
   useEffect(() => {
+    if (!enabled) {
+      setComplaintTypes(null);
+      return;
+    }
+    let cancelled = false;
     (async () => {
       const res = await Digit.GetServiceDefinitions.getMenu(stateCode, t);
       let menu = res.filter((o) => o.key !== "");
       //menu.push({ key: "Others", name: t("SERVICEDEFS.OTHERS") });
-      setComplaintTypes(menu);
+      if (!cancelled) setComplaintTypes(menu);
     })();
-  }, [t, stateCode]);
+    return () => { cancelled = true; };
+  }, [t, stateCode, enabled]);
 
   return complaintTypes;
 };
