@@ -1,0 +1,100 @@
+import type { ComplaintDetailsData, ComplaintDetailsRow, Incident, IncidentWorkflow } from "../types/incident-details";
+import { TERMINAL_APPLICATION_STATUSES } from "../constants/workflow";
+import { formatEpochToDate } from "./date-format";
+
+const INITIAL_COMPLAINT_ACTIONS = new Set([
+  "APPLY",
+  "APPLY_THEFT",
+  "APPLY_RMS_DEVICE",
+  "AUTO_ASSIGN",
+  "CREATE",
+]);
+
+export function isInitialComplaintAction(action?: string | null): boolean {
+  return INITIAL_COMPLAINT_ACTIONS.has(action ?? "");
+}
+
+/**
+ * Matches DIGIT-UI's im/ComplaintDetails row set and field sources exactly
+ * (useComplaintDetails.js's getDetailsRow) — all fields read flat off `incident`,
+ * confirmed against the real single-ticket search response (a different, flat
+ * shape from the inbox list's nested `incident.boundary.facilityCode`).
+ */
+export function buildComplaintDetailRows(
+  incidentId: string,
+  incident: Incident,
+  t: (key: string) => string,
+): ComplaintDetailsRow[] {
+  const filedDate = incident.filedDate ?? incident.auditDetails?.createdTime;
+
+  return [
+    { labelKey: "CS_COMPLAINT_DETAILS_TICKET_NO", value: incidentId },
+    {
+      labelKey: "CS_COMPLAINT_DETAILS_APPLICATION_STATUS",
+      value: `CS_COMMON_${incident.applicationStatus}`,
+    },
+    {
+      labelKey: "CS_ADDCOMPLAINT_TICKET_TYPE",
+      value: `SERVICEDEFS.${incident.incidentType.toUpperCase()}`,
+    },
+    {
+      labelKey: "CS_ADDCOMPLAINT_TICKET_SUB_TYPE",
+      value: incident.incidentSubType
+        ? `SERVICEDEFS.${incident.incidentSubType.toUpperCase()}`
+        : "-",
+    },
+    {
+      labelKey: "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL",
+      value: incident.systemFunctional ?? "-",
+    },
+    { labelKey: "CS_ADDCOMPLAINT_DISTRICT", value: incident.district ?? "-" },
+    { labelKey: "CS_ADDCOMPLAINT_BLOCK", value: incident.block ?? "-" },
+    {
+      labelKey: "HEALTH_CARE_CENTRE",
+      value: incident.boundaryCode ? `Boundary_${incident.boundaryCode}` : "-",
+    },
+    { labelKey: "CS_COMPLAINT_COMMENTS", value: incident.comments?.length ? incident.comments : "-" },
+    {
+      labelKey: "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE",
+      value: incident.phcSubType ?? "-",
+    },
+    {
+      labelKey: "CS_COMPLAINT_FILED_DATE",
+      value: formatEpochToDate(filedDate),
+    },
+  ];
+}
+
+export function translateDetailValue(
+  value: string,
+  t: (key: string) => string,
+): string {
+  return t(value);
+}
+
+export function buildComplaintDetailsData(
+  incidentId: string,
+  incident: Incident,
+  workflow: IncidentWorkflow,
+  media: {
+    images: string[];
+    videos: Array<{ master?: string | null; original?: string | null }>;
+    thumbnails: string[];
+  },
+  t: (key: string) => string,
+): ComplaintDetailsData {
+  return {
+    incidentId,
+    tenantId: incident.tenantId,
+    rows: buildComplaintDetailRows(incidentId, incident, t),
+    incident,
+    workflow,
+    images: media.images,
+    videos: media.videos,
+    thumbnails: media.thumbnails,
+  };
+}
+
+export function isClosedTicket(status?: string): boolean {
+  return (TERMINAL_APPLICATION_STATUSES as readonly string[]).includes(status ?? "");
+}
