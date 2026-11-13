@@ -4,9 +4,15 @@
  * Identical copies live in core, fa, pm and org — keep them in sync. (Modules may not import from each
  * other; the DIGIT convention here is a copy per module, as with CustomRequest and CommonUtils.)
  *
- * Written once at login from HRMS v2 and read from session storage thereafter. The stored shape is
- * the raw grant list — `{ boundary, boundaryType, roles: [{ code }] }` — rather than a precomputed
- * answer, so the interpretation lives here in one place and can change without a re-login.
+ * Written at login from HRMS v2 and refreshed on every page load by `useJurisdictions`, so a change
+ * an administrator makes takes effect on the user's next reload rather than their next sign-in. The
+ * stored shape is the raw grant list — `{ boundary, boundaryType, roles: [{ code }] }` — rather than
+ * a precomputed answer, so the interpretation lives here in one place.
+ *
+ * The readers below are pure: they take the grant list rather than reading storage themselves. That
+ * is what lets a refresh re-render the screens that depend on it — a function reading storage on its
+ * own cannot tell React that the answer changed. `useJurisdictions` owns the storage and the fetch;
+ * storage remains the first paint's source, so nothing flashes while the refresh is in flight.
  *
  * **This narrows what a user is shown, not what they may fetch.** A scoped picker is a convenience
  * and a guard against acting on the wrong area by accident; anyone can still call the API directly
@@ -18,7 +24,7 @@ const SESSION_KEY = "HRMS.Jurisdictions";
 /** The level a grant covering everything sits at. No list filter is this coarse. */
 const COUNTRY = "Country";
 
-/** Every active grant the user holds, as stored at login. Empty when it was never fetched. */
+/** Every active grant the user holds, as last stored. Empty when it was never fetched. */
 export const getJurisdictions = () => {
   const stored = Digit.SessionStorage.get(SESSION_KEY);
   if (Array.isArray(stored)) return stored;
@@ -55,13 +61,13 @@ const appliesToRole = (jurisdiction, roleCode) => {
 /**
  * The boundary codes a given role is scoped to, flattened across levels.
  *
- * Returns null, not an empty array, when the user has no grant for this role: the two mean
- * opposite things to a caller. Null is "we do not know, do not narrow"; empty would be "narrow to
- * nothing", which would blank the screen for anyone whose login predates the jurisdiction fetch.
+ * `jurisdictions` comes from `useJurisdictions`. Returns null, not an empty array, when the user
+ * has no grant for this role: the two mean opposite things to a caller. Null is "we do not know,
+ * do not narrow"; empty would be "narrow to nothing", which would blank the screen for anyone
+ * whose grants have not been read yet.
  */
-export const boundariesForRole = (roleCode) => {
-  const jurisdictions = getJurisdictions();
-  if (!jurisdictions.length) return null;
+export const boundariesForRole = (roleCode, jurisdictions) => {
+  if (!Array.isArray(jurisdictions) || !jurisdictions.length) return null;
 
   const codes = [];
   jurisdictions.forEach((jurisdiction) => {
@@ -89,9 +95,8 @@ export const boundariesForRole = (roleCode) => {
  * Mixed levels — a state here, a block there — send both keys, and facility search composes
  * them rather than keeping only the lowest, so neither grant is silently dropped.
  */
-export const boundariesByLevelForRole = (roleCode) => {
-  const jurisdictions = getJurisdictions();
-  if (!jurisdictions.length) return null;
+export const boundariesByLevelForRole = (roleCode, jurisdictions) => {
+  if (!Array.isArray(jurisdictions) || !jurisdictions.length) return null;
 
   const byLevel = {};
   let coversEverything = false;

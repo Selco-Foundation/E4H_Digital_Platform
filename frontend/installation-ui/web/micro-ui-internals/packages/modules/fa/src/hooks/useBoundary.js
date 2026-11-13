@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "react-query";
 import { BoundaryService } from "../services/Boundary";
 import { boundariesForRole } from "../utilities/jurisdictionScope";
 import { MODULE_ROLE } from "../constants/Roles";
+import useJurisdictions from "./useJurisdictions";
 
 const fetchBoundaries = async (queryFilter) => {
 
@@ -52,13 +53,14 @@ const fetchBoundaries = async (queryFilter) => {
  * picker and filter in the module at once, and keeps the role out of the screens themselves.
  *
  * An explicit `codes` argument still wins - a caller asking for a specific subtree knows what it
- * wants. And `boundariesForRole` answers null when the user's grants are unknown (an older session,
- * or HRMS was down at login), in which case nothing is narrowed and the module behaves as before.
+ * wants. And `boundariesForRole` answers null when the user's grants are unknown (HRMS has not
+ * answered yet), in which case nothing is narrowed and the module behaves as before.
  * Showing everything is the right failure here; showing nothing would look like data loss.
  */
 const useBoundary = (codes) => {
 
-  const scopedCodes = codes || boundariesForRole(MODULE_ROLE);
+  const jurisdictions = useJurisdictions();
+  const scopedCodes = codes || boundariesForRole(MODULE_ROLE, jurisdictions);
 
   const queryFilter = {
     tenantId: Digit.ULBService.getCurrentTenantId(),

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "react-query";
 import { BoundaryService } from "../services/Boundary";
 import { boundariesForRole } from "../utilities/jurisdictionScope";
 import { VENDOR_ADMIN } from "../constants/Roles";
+import useJurisdictions from "./useJurisdictions";
 
 const fetchBoundaries = async (queryFilter) => {
 
@@ -62,7 +63,8 @@ const fetchBoundaries = async (queryFilter) => {
  */
 const useBoundary = (codes) => {
 
-  const scopedCodes = codes || boundariesForRole(VENDOR_ADMIN);
+  const jurisdictions = useJurisdictions();
+  const scopedCodes = codes || boundariesForRole(VENDOR_ADMIN, jurisdictions);
 
   const queryFilter = {
     tenantId: Digit.ULBService.getCurrentTenantId(),

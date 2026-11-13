@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "react-query";
 import {BoundaryService} from "../services/Boundary";
 import { boundariesForRole } from "../utilities/jurisdictionScope";
 import { MODULE_ROLE } from "../constants/Roles";
+import useJurisdictions from "./useJurisdictions";
 
 /**
  * Every node of one level, wherever it sits in the response tree.
@@ -97,12 +98,12 @@ const useBoundary = (boundaryType, codes) => {
  * not theirs by accident - it is a convenience and a guard, not a privilege boundary, since the
  * same call can still be made directly with any boundary.
  *
- * Null grants mean the user's jurisdictions are unknown (an older session, or HRMS was down at
- * login), and nothing is narrowed. Showing everything is the right failure; an empty state
+ * Null grants mean the user's jurisdictions are unknown (HRMS has not answered yet), and nothing is narrowed. Showing everything is the right failure; an empty state
  * dropdown would block the wizard outright.
  */
 export const useJurisdictionBoundary = () => {
-  return useBoundary("State", boundariesForRole(MODULE_ROLE) || undefined);
+  const jurisdictions = useJurisdictions();
+  return useBoundary("State", boundariesForRole(MODULE_ROLE, jurisdictions) || undefined);
 };
 
 export default useBoundary;

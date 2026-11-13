@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "react-query";
 import { FacilityService } from "../services/Facility";
 import { boundariesByLevelForRole } from "../utilities/jurisdictionScope";
+import useJurisdictions from "./useJurisdictions";
 import { MODULE_ROLE } from "../constants/Roles";
 
 const fetchFacilities = async (queryFilter) => {
@@ -48,7 +49,8 @@ const useFacility = (filter, limit = 10, offset = 0) => {
    * Null means the user holds no grant for this role, or holds the whole country - either way,
    * nothing is narrowed.
    */
-  const scope = boundariesByLevelForRole(MODULE_ROLE);
+  const jurisdictions = useJurisdictions();
+  const scope = boundariesByLevelForRole(MODULE_ROLE, jurisdictions);
 
   const queryFilter = {
     tenantId: [Digit.ULBService.getCurrentTenantId()],
