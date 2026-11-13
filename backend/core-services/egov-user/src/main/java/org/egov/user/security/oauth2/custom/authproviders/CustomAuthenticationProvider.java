@@ -2,6 +2,8 @@ package org.egov.user.security.oauth2.custom.authproviders;
 
 import static java.util.Objects.isNull;
 import static org.egov.user.config.UserServiceConstants.IP_HEADER_NAME;
+import static org.egov.user.config.UserServiceConstants.LOGIN_METHOD_OTP;
+import static org.egov.user.config.UserServiceConstants.LOGIN_METHOD_PARAM;
 import static org.springframework.util.StringUtils.isEmpty;
 
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import org.egov.user.domain.model.SecureUser;
 import org.egov.user.domain.model.User;
 import org.egov.user.domain.model.enums.UserType;
 import org.egov.user.domain.service.UserService;
+import org.egov.user.domain.service.otplogin.OtpLoginService;
 import org.egov.user.domain.service.utils.EncryptionDecryptionUtil;
 import org.egov.user.web.contract.auth.Role;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,6 +75,9 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
 
     @Autowired
     private HttpServletRequest request;
+
+    @Autowired
+    private OtpLoginService otpLoginService;
 
 
     public CustomAuthenticationProvider(UserService userService) {
@@ -146,7 +152,14 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
             isCitizen = true;
 
         boolean isPasswordMatched;
-        if (isCitizen) {
+        if (LOGIN_METHOD_OTP.equalsIgnoreCase(details.get(LOGIN_METHOD_PARAM))) {
+            // Phone number + OTP login: the password is the one-time ticket from /otp-login/v1/_verify.
+            // Failures are rate-limited per phone number by OtpLoginService, not by the password lockout.
+            if (!otpLoginService.consumeLoginTicket(password, user, tenantId)) {
+                throw new OAuth2Exception("Invalid login credentials");
+            }
+            isPasswordMatched = true;
+        } else if (isCitizen) {
             if (fixedOTPEnabled && !fixedOTPPassword.equals("") && fixedOTPPassword.equals(password)) {
                 //for automation allow fixing otp validation to a fixed otp
                 isPasswordMatched = true;

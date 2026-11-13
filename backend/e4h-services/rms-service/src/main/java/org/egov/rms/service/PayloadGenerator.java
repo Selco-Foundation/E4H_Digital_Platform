@@ -66,6 +66,7 @@ public class PayloadGenerator {
                     .comments(buildComments(alert, facilityDetails))
                     .systemFunctional("FUNCTIONAL")
                     .boundaryCode(boundaryCode)
+                    .component(config.isTicketComponentEnabled() ? mapAlertTypeToComponent(alert.getAlertType()) : null)
                     .source("RMS")
                     .reporterType("RMS")
                     .additionalDetail(buildAdditionalDetail(alert, facilityDetails))

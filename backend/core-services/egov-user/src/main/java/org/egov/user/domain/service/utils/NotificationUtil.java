@@ -13,7 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import static org.egov.user.config.UserServiceConstants.DEFAULT_OTP_LOGIN_SMS_MESSAGE;
 import static org.egov.user.config.UserServiceConstants.EMAIL_UPDATION_CODE;
+import static org.egov.user.config.UserServiceConstants.OTP_LOGIN_SMS_CODE;
 
 
 @Slf4j
@@ -54,6 +56,30 @@ public class NotificationUtil {
         EmailRequest emailRequest = EmailRequest.builder().requestInfo(requestInfo).email(email).build();
         kafkaTemplate.send(emailNotificationTopic,emailRequest);
         kafkaTemplate.send(smsNotificationTopic,smsRequest);
+    }
+
+    /**
+     * Sends the OTP used to log in with a registered phone number.
+     * The template comes from localization (USER_OTP_LOGIN_SMS) with {otp} and {validity} placeholders.
+     */
+    public void sendOtpLoginSms(String mobileNumber, String otp, int validitySeconds, String locale, RequestInfo requestInfo) {
+        String template;
+        try {
+            template = localizationUtil.getLocalizedMessage(OTP_LOGIN_SMS_CODE, locale,
+                    requestInfo != null ? requestInfo : new RequestInfo(), DEFAULT_OTP_LOGIN_SMS_MESSAGE);
+        } catch (Exception e) {
+            log.warn("Localization lookup failed for {}, using default OTP login message", OTP_LOGIN_SMS_CODE, e);
+            template = DEFAULT_OTP_LOGIN_SMS_MESSAGE;
+        }
+        String message = template.replace("{otp}", otp)
+                .replace("{validity}", String.valueOf(Math.max(1, validitySeconds / 60)));
+
+        SMSRequest smsRequest = new SMSRequest();
+        smsRequest.setMobileNumber(mobileNumber);
+        smsRequest.setMessage(message);
+        smsRequest.setCategory("OTP");
+        smsRequest.setExpiryTime(System.currentTimeMillis() + validitySeconds * 1000L);
+        kafkaTemplate.send(smsNotificationTopic, smsRequest);
     }
 
 }

@@ -7,6 +7,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IMRepository;
 import org.egov.im.util.HRMSUtil;
+import org.egov.im.util.HfServiceDefs;
 import org.egov.im.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
@@ -46,11 +48,93 @@ public class ServiceRequestValidator {
         Map<String,String> errorMap = new HashMap<>();
         validateUserData(request,errorMap);
         //validateSource(request.getService().getSource());
+        validateComponentAndObservations(request, mdmsData, errorMap);
+        validateIncidentTypeProvided(request, errorMap);
+        if(!errorMap.isEmpty())
+            throw new CustomException(errorMap);
         validateMDMS(request, mdmsData);
         //validateDepartment(request, mdmsData);
         validateBoundary(request, errorMap);
         if(!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    /**
+     * incidentType and incidentSubType are mandatory. A facility user ticket sends a component and
+     * observations instead - both are then set from the primary observation before validation.
+     */
+    private void validateIncidentTypeProvided(IncidentRequest request, Map<String, String> errorMap) {
+        Incident incident = request.getIncident();
+        if (StringUtils.isNotBlank(incident.getComponent())) {
+            return;
+        }
+        if (StringUtils.isBlank(incident.getIncidentType()) || StringUtils.isBlank(incident.getIncidentSubType())) {
+            errorMap.put("INVALID_REQUEST", "incidentType and incidentSubType are mandatory when no component is provided");
+        }
+    }
+
+    /**
+     * The component must be an active MDMS Incident.Component and every observation an Incident.ServiceDefs
+     * entry of channel HF of that component - their priorities set the ticket priority, and the first one
+     * of highest priority sets incidentType/incidentSubType. At least one observation is required; a
+     * support request takes exactly one, as each of its observations is a ticket type of its own
+     * (Shifting, Uninstall, Reinstall, ...). A component of category THEFT needs the FIR document.
+     */
+    void validateComponentAndObservations(IncidentRequest request, Object mdmsData, Map<String, String> errorMap) {
+        String component = request.getIncident().getComponent();
+        List<String> observations = request.getIncident().getObservations();
+        if (StringUtils.isEmpty(component)) {
+            if (!CollectionUtils.isEmpty(observations)) {
+                errorMap.put("INVALID_OBSERVATIONS", "Observations require a component");
+            }
+            return;
+        }
+        Object category;
+        try {
+            List<Object> components = JsonPath.read(mdmsData, MDMS_COMPONENT_SEARCH.replace("{CODE}", component));
+            if (CollectionUtils.isEmpty(components)) {
+                errorMap.put("INVALID_COMPONENT", "The component: " + component + " is not present in MDMS");
+                return;
+            }
+            category = components.get(0) instanceof Map ? ((Map<?, ?>) components.get(0)).get("category") : null;
+        } catch (Exception e) {
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+        }
+        if (COMPONENT_CATEGORY_THEFT.equals(category)) {
+            validateFirDocument(request, component, errorMap);
+        }
+        if (CollectionUtils.isEmpty(observations)) {
+            errorMap.put("OBSERVATION_REQUIRED", "At least one observation is required for component: " + component);
+            return;
+        }
+        Set<String> offered = HfServiceDefs.forComponent(mdmsData, component).stream()
+                .map(entry -> String.valueOf(entry.get(HfServiceDefs.SERVICE_CODE)))
+                .collect(Collectors.toSet());
+        List<String> invalid = observations.stream()
+                .filter(code -> !offered.contains(code))
+                .collect(Collectors.toList());
+        if (!invalid.isEmpty()) {
+            errorMap.put("INVALID_OBSERVATIONS",
+                    "Observations " + invalid + " are not present in MDMS for component: " + component);
+        } else if (COMPONENT_CATEGORY_SUPPORT_REQUEST.equals(category) && new HashSet<>(observations).size() > 1) {
+            errorMap.put("INVALID_OBSERVATIONS", "Exactly one observation is allowed for component: " + component);
+        }
+    }
+
+    /**
+     * A theft report must carry the FIR or complaint letter, attached as a workflow document of type
+     * FIR - photos may be attached too, so any other document does not count.
+     */
+    private void validateFirDocument(IncidentRequest request, String component, Map<String, String> errorMap) {
+        List<Document> documents = request.getWorkflow() == null ? null : request.getWorkflow().getVerificationDocuments();
+        boolean hasFir = !CollectionUtils.isEmpty(documents)
+                && documents.stream().anyMatch(document -> document != null
+                        && FIR_DOCUMENT_TYPE.equalsIgnoreCase(StringUtils.trim(document.getDocumentType()))
+                        && StringUtils.isNotBlank(document.getFileStoreId()));
+        if (!hasFir) {
+            errorMap.put("FIR_DOCUMENT_MANDATORY",
+                    "The FIR or complaint letter (document of type " + FIR_DOCUMENT_TYPE + ") is mandatory for component: " + component);
+        }
     }
 
 
@@ -83,6 +167,16 @@ public class ServiceRequestValidator {
         Incident existingIncident = incidentWrappers.get(0).getIncident();
         if (request.getIncident().getWarrantyStatus() == null && existingIncident != null) {
             request.getIncident().setWarrantyStatus(existingIncident.getWarrantyStatus());
+        }
+        // incidentType/incidentSubType are no longer mandatory in the payload (a facility user sends a
+        // component instead on create) - an update that leaves them out keeps the stored ones
+        if (existingIncident != null) {
+            if (StringUtils.isBlank(request.getIncident().getIncidentType())) {
+                request.getIncident().setIncidentType(existingIncident.getIncidentType());
+            }
+            if (StringUtils.isBlank(request.getIncident().getIncidentSubType())) {
+                request.getIncident().setIncidentSubType(existingIncident.getIncidentSubType());
+            }
         }
 
     }
@@ -123,8 +217,9 @@ public class ServiceRequestValidator {
      * @param request The request of creating/updating complaint
      * @param mdmsData The master data for im
      */
-    private void validateMDMS(IncidentRequest request, Object mdmsData){
+    void validateMDMS(IncidentRequest request, Object mdmsData){
         log.info("serviceRequestValidator::Validating mdms data");
+        String incidentType = request.getIncident().getIncidentType();
         String serviceCode = request.getIncident().getIncidentSubType();
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}",serviceCode);
 
@@ -137,8 +232,13 @@ public class ServiceRequestValidator {
             throw new CustomException("JSONPATH_ERROR","Failed to parse mdms response");
         }
 
-        if(CollectionUtils.isEmpty(res))
-            throw new CustomException("INVALID_SERVICECODE","The service code: "+serviceCode+" is not present in MDMS");
+        // serviceCode is not unique across ServiceDefs (Other, DisconnectedCable, ...): the subtype
+        // must be one of the issue type it is sent with
+        boolean found = !CollectionUtils.isEmpty(res) && res.stream().anyMatch(entry -> entry instanceof Map
+                && StringUtils.equalsIgnoreCase(StringUtils.trim(incidentType),
+                        StringUtils.trim(String.valueOf(((Map<?, ?>) entry).get(HfServiceDefs.MENU_PATH)))));
+        if(!found)
+            throw new CustomException("INVALID_SERVICECODE","The service code: "+serviceCode+" is not present in MDMS for the issue type: "+incidentType);
 
 
     }

@@ -86,7 +86,7 @@ public class IMUtils {
         log.trace("IMUtils::updateBusinessService method invoked");
         if(wrapper.getProcessInstance().getBusinessService().equals("Incident")) {
             log.debug("Updating business service based on priority");
-            Priority priority = slaService.getPriorityFromIMPriorityTable(wrapper.getIncidentRequest().getIncident());
+            Priority priority = slaService.resolvePriority(wrapper.getIncidentRequest().getIncident(), mdmsData);
             String businessService = "Incident_" + priority.toFormattedString();
             wrapper.getProcessInstance().setBusinessService(businessService);
             log.debug("Business service updated to: {}", businessService);

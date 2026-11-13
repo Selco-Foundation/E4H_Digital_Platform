@@ -137,6 +137,12 @@ public class RMSConfiguration {
     @Value("${rms.default.tenant.id:in}")
     private String defaultTenantId;
 
+    // Send the ticket component (MDMS Incident.Component) so im-services can check duplicates by
+    // facility + component. Enable only once Incident.Component is seeded in MDMS: im-services
+    // rejects a ticket whose component is not in MDMS.
+    @Value("${rms.ticket.component.enabled:false}")
+    private boolean ticketComponentEnabled;
+
     // Scheduler Configuration
     @Value("${rms.scheduler.data.collector.enabled:true}")
     private Boolean dataCollectorEnabled;

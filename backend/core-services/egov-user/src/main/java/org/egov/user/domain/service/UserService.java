@@ -6,6 +6,7 @@ import static org.egov.user.config.UserServiceConstants.USER_CLIENT_ID;
 import static org.springframework.util.CollectionUtils.isEmpty;
 
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -62,6 +63,9 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Slf4j
 public class UserService {
+
+    // Upper bound on accounts listed for one phone number during OTP login.
+    private static final int MAX_ACCOUNTS_PER_MOBILE_NUMBER = 50;
 	
 	private UserUtils userUtils;
     private UserRepository userRepository;
@@ -160,6 +164,49 @@ public class UserService {
             throw new DuplicateUserNameException(userSearchCriteria);
 
         return users.get(0);
+    }
+
+    /**
+     * Active users of the given type whose registered mobile number (not the alternate one) matches.
+     * Mobile numbers are not unique, so several accounts can come back (one person, several facilities).
+     */
+    public List<User> findActiveUsersByMobileNumber(String mobileNumber, String tenantId, UserType userType) {
+        if (isEmpty(mobileNumber) || isEmpty(tenantId) || isNull(userType))
+            return Collections.emptyList();
+
+        UserSearchCriteria criteria = UserSearchCriteria.builder()
+                .mobileNumber(mobileNumber)
+                .tenantId(userUtils.getStateLevelTenantForCitizen(tenantId, userType))
+                .type(userType)
+                .active(true)
+                .offset(0)
+                .limit(MAX_ACCOUNTS_PER_MOBILE_NUMBER)
+                .build();
+        criteria = encryptionDecryptionUtil.encryptObject(criteria, "User", UserSearchCriteria.class);
+
+        return userRepository.findAll(criteria).stream()
+                .map(this::decryptAsSelf)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Decrypts a user record as if the user were reading their own profile (same as the login flow).
+     */
+    private User decryptAsSelf(User user) {
+        List<org.egov.common.contract.request.Role> contractRoles = new ArrayList<>();
+        if (user.getRoles() != null) {
+            for (org.egov.user.domain.model.Role role : user.getRoles()) {
+                contractRoles.add(org.egov.common.contract.request.Role.builder()
+                        .code(role.getCode()).name(role.getName()).build());
+            }
+        }
+        org.egov.common.contract.request.User userInfo = org.egov.common.contract.request.User.builder()
+                .uuid(user.getUuid())
+                .type(user.getType() != null ? user.getType().name() : null)
+                .roles(contractRoles)
+                .build();
+        RequestInfo requestInfo = RequestInfo.builder().userInfo(userInfo).build();
+        return encryptionDecryptionUtil.decryptObject(user, "UserSelf", User.class, requestInfo);
     }
 
     public User getUserByUuid(String uuid) {

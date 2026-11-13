@@ -13,6 +13,8 @@ import lombok.Builder;
 
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+
 /**
  * Instance of Service request raised for a particular service. As per extension propsed in the Service definition \&quot;attributes\&quot; carry the input values requried by metadata definition in the structure as described by the corresponding schema.  * Any one of &#39;address&#39; or &#39;(lat and lang)&#39; or &#39;addressid&#39; is mandatory 
  */
@@ -27,12 +29,12 @@ import jakarta.validation.constraints.NotNull;
 @Builder
 public class Incident   {
 	
-	    @NotNull
+        // Mandatory unless a component is sent: a facility user ticket gets incidentType/incidentSubType
+        // from its primary observation (SEM 4.0 Ticket Reporting) - see ServiceRequestValidator
         @SafeHtml
         @JsonProperty("incidentType")
         private String incidentType = null;
-		
-		@NotNull
+
         @SafeHtml
         @JsonProperty("incidentSubType")
         private String incidentSubType = null;
@@ -144,4 +146,14 @@ public class Incident   {
         @SafeHtml
         @JsonProperty("mappedVendorUuid")
         private String mappedVendorUuid = null;
+
+        // MDMS Incident.Component code chosen by the reporter (SEM 4.0 Ticket Reporting)
+        @SafeHtml
+        @JsonProperty("component")
+        private String component = null;
+
+        // serviceCodes of the MDMS Incident.ServiceDefs entries (channel HF) of the component chosen by the
+        // reporter; the highest of their priorities is the ticket priority
+        @JsonProperty("observations")
+        private List<String> observations = null;
 }

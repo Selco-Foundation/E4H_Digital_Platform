@@ -129,8 +129,8 @@ public class WorkflowService {
     public ProcessInstance updateWorkflowStatus(IncidentRequestWrapper wrapper, Object mdmsData) {
         log.trace("WorkflowService::updateWorkflowStatus method invoked");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
-        log.trace("Fetching priority from IM priority table");
-        Priority priority = slaService.getPriorityFromIMPriorityTable(incidentRequest.getIncident());
+        log.trace("Resolving incident priority");
+        Priority priority = slaService.resolvePriority(incidentRequest.getIncident(), mdmsData);
         log.trace("Creating process instance for workflow");
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest, priority);
         log.info("Updating workflow status for incident: {}, tenant: {}",
@@ -218,7 +218,7 @@ public class WorkflowService {
     public SlaSnapshot computeSla(List<ProcessInstance> processInstances, ProcessInstance current,
                                   List<State> states, List<Map<String, Object>> businessHourList) {
         // Leaving On Hold restarts the SLA, so only the history after the most recent hold counts
-        processInstances = slaService.getCurrentSlaCycle(processInstances);
+        processInstances = new ArrayList<>(slaService.getCurrentSlaCycle(processInstances));
         if (processInstances.isEmpty()) {
             processInstances.add(current);
         }
@@ -753,12 +753,14 @@ public class WorkflowService {
      * but never went through updateWorkflowStatus(). Both depend on this.states being populated,
      * which normally only happens as a side effect of getBusinessService() inside
      * getProcessInstanceForIM() during a real transition; this wrapper performs that
-     * same lookup first so they have valid state definitions to work with.
+     * same lookup first so they have valid state definitions to work with. The priority is resolved
+     * the same way as on a real transition, so a ticket with observations resolves the same business
+     * service it was created with.
      */
-    public void enrichTotalSlaForResync(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+    public void enrichTotalSlaForResync(IncidentRequestWrapper wrapper, ProcessInstance processInstance, Object mdmsData) {
         log.trace("WorkflowService::enrichTotalSlaForResync method invoked");
         IncidentRequest request = wrapper.getIncidentRequest();
-        Priority priority = slaService.getPriorityFromIMPriorityTable(request.getIncident());
+        Priority priority = slaService.resolvePriority(request.getIncident(), mdmsData);
         BusinessService businessService = getBusinessService(request, priority);
         this.states = businessService.getStates();
         enrichTotalSla(wrapper, processInstance);
@@ -813,7 +815,7 @@ public class WorkflowService {
         }
         if (processInstanceResponse == null || CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
             log.debug("No process instances found in history for incident: {}", IncidentId);
-            return Collections.emptyList();
+            return new ArrayList<>();
         }
 
         List<ProcessInstance> processInstances =  processInstanceResponse.getProcessInstances();
