@@ -133,7 +133,9 @@ class _DraftPageState extends State<DraftPage>
         actions: const [],
         additionalWidgets: [
           Text(
-            error ?? context.translate(i18.draft.somethingWentWrong),
+            error == null
+                ? context.translate(i18.draft.somethingWentWrong)
+                : context.localizeError(error),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,

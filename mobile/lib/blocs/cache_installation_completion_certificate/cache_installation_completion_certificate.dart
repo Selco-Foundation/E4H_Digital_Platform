@@ -4,6 +4,7 @@ import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_installation_completion_certificate.dart';
 import '../../repositories/installation_completion_certificate_repo.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_installation_completion_certificate.freezed.dart';
 
@@ -70,7 +71,8 @@ class CacheInstallationCompletionCertificateBloc extends Bloc<
         emit(CacheInstallationCompletionCertificateState.loaded(files));
       }
     } catch (e) {
-      emit(CacheInstallationCompletionCertificateState.error(e.toString()));
+      emit(CacheInstallationCompletionCertificateState.error(
+          errorMessageKey(e)));
     }
   }
 
@@ -86,7 +88,8 @@ class CacheInstallationCompletionCertificateBloc extends Bloc<
       );
       emit(const CacheInstallationCompletionCertificateState.saved());
     } catch (e) {
-      emit(CacheInstallationCompletionCertificateState.error(e.toString()));
+      emit(CacheInstallationCompletionCertificateState.error(
+          errorMessageKey(e)));
     }
   }
 
@@ -101,7 +104,8 @@ class CacheInstallationCompletionCertificateBloc extends Bloc<
       );
       emit(const CacheInstallationCompletionCertificateState.notFound());
     } catch (e) {
-      emit(CacheInstallationCompletionCertificateState.error(e.toString()));
+      emit(CacheInstallationCompletionCertificateState.error(
+          errorMessageKey(e)));
     }
   }
 }

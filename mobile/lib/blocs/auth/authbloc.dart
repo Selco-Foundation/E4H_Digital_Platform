@@ -14,6 +14,7 @@ import '../../repositories/app_init_repo.dart';
 import '../../repositories/auth_repo.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/i18_key_constants.dart' as i18;
+import '../../utils/error_localization.dart';
 
 part 'authbloc.freezed.dart';
 
@@ -47,7 +48,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _accesstoken = response.access_token;
       _refreshtoken = response.refresh_token ?? '';
       if (response.userRequest == null) {
-        emit(const AuthState.error('Invalid response: missing user data'));
+        emit(const AuthState.error(ErrorKeys.loginResponse));
         return;
       }
       _userRequest = response.userRequest!;

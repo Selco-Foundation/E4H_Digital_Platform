@@ -5,6 +5,7 @@ import 'package:isar_community/isar.dart';
 import '../../model/installation_images/installation_images.dart';
 import '../../repositories/app_init_repo.dart';
 import '../../repositories/installation_images_repo.dart';
+import '../../utils/error_localization.dart';
 
 part 'installation_images.freezed.dart';
 
@@ -37,13 +38,13 @@ class InstallationImagesBloc
         return;
       } else {
         emit(const InstallationImagesState.error(
-          'No installation images found.',
+          'INSTALLATION_IMAGES_NO_CONFIGURATION_FOUND',
         ));
         return;
       }
     } catch (_) {
       emit(const InstallationImagesState.error(
-        'Failed to load mdms installation images. Please try again.',
+        ErrorKeys.installationImagesLoad,
       ));
     }
   }

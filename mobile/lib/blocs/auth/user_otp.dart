@@ -5,6 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../repositories/app_init_repo.dart';
 import '../../repositories/auth_repo.dart';
+import '../../utils/error_localization.dart';
 
 part 'user_otp.freezed.dart';
 
@@ -35,10 +36,7 @@ class UserOtpBloc extends Bloc<UserOtpEvent, UserOtpState> {
       await authRepository.sendOtp(body);
       emit(const UserOtpState.sent());
     } catch (err) {
-      String message = 'Unknown error';
-      if (err is Exception) {
-        message = err.toString().replaceFirst('Exception: ', '');
-      }
+      final message = errorMessageKey(err);
       emit(UserOtpState.error(message));
     }
   }
@@ -52,7 +50,7 @@ class UserOtpBloc extends Bloc<UserOtpEvent, UserOtpState> {
     if (_storedOtp != null) {
       emit(UserOtpState.otpStored(_storedOtp!));
     } else {
-      emit(const UserOtpState.error('No OTP stored'));
+      emit(const UserOtpState.error(ErrorKeys.otpMissing));
     }
   }
 
@@ -70,11 +68,11 @@ class UserOtpBloc extends Bloc<UserOtpEvent, UserOtpState> {
   FutureOr<void> _onResetPassword(
       _ResetPasswordEvent event, Emitter<UserOtpState> emit) async {
     if (_storedPhone == null) {
-      emit(const UserOtpState.error('Mobile number not set'));
+      emit(const UserOtpState.error(ErrorKeys.mobileNumberMissing));
       return;
     }
     if (_storedOtp == null) {
-      emit(const UserOtpState.error('Otp not set'));
+      emit(const UserOtpState.error(ErrorKeys.otpMissing));
       return;
     }
     emit(const UserOtpState.loading());
@@ -89,10 +87,7 @@ class UserOtpBloc extends Bloc<UserOtpEvent, UserOtpState> {
       await authRepository.resetPassword(body);
       emit(const UserOtpState.success());
     } catch (err) {
-      String message = 'Unknown error';
-      if (err is Exception) {
-        message = err.toString().replaceFirst('Exception: ', '');
-      }
+      final message = errorMessageKey(err);
       emit(UserOtpState.error(message));
     }
   }

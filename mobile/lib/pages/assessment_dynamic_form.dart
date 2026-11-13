@@ -32,6 +32,7 @@ import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../utils/error_localization.dart';
 
 @RoutePage()
 class AssessmentDynamicFormPage extends StatefulWidget {
@@ -92,7 +93,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         category.isEmpty) {
       setState(() {
         _isLoading = false;
-        _error = context.translate(i18.assessmentForm.missingFacilityData);
+        _error = i18.assessmentForm.missingFacilityData;
       });
       return;
     }
@@ -159,7 +160,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = error.toString();
+        _error = errorMessageKey(error);
       });
     }
   }
@@ -460,8 +461,8 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
             _pendingRequest = request;
             _isFrozenDraft = true;
             _error = error.isConflict
-                ? context.translate(i18.assessmentForm.conflictSaved)
-                : context.translate(i18.assessmentForm.savedToDrafts);
+                ? i18.assessmentForm.conflictSaved
+                : i18.assessmentForm.savedToDrafts;
           });
         }
       } else if (mounted) {
@@ -472,10 +473,10 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
         await _saveDraftFailure(
           request,
           user?.uuid ?? user?.userName ?? '',
-          error.toString(),
+          errorMessageKey(error),
         );
       }
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = errorMessageKey(error));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -530,8 +531,10 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
               formControlName: entry.key,
               readOnly: true,
               validationMessages: {
-                ValidationMessage.required: (_) => 'This field is required',
-                ValidationMessage.pattern: (_) => 'Enter a valid value',
+                ValidationMessage.required: (_) =>
+                    context.translate(ErrorKeys.requiredField),
+                ValidationMessage.pattern: (_) =>
+                    context.translate(ErrorKeys.invalidValue),
               },
               decoration: InputDecoration(
                 labelText: entry.value.label,
@@ -587,7 +590,8 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                   formControlName: entry.key,
                   readOnly: _isFrozenDraft,
                   validationMessages: {
-                    ValidationMessage.required: (_) => 'This field is required',
+                    ValidationMessage.required: (_) =>
+                        context.translate(ErrorKeys.requiredField),
                   },
                   decoration: InputDecoration(
                     labelText: entry.value.label,
@@ -677,7 +681,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
                 children: [
                   if (_error != null) ...[
                     Text(
-                      _error!,
+                      context.localizeError(_error!),
                       style: TextStyle(color: theme.colorTheme.alert.error),
                     ),
                     const SizedBox(height: spacer2),

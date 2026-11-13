@@ -19,12 +19,12 @@ import '../../repositories/cache_fallback.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/envConfig.dart' as env;
 import '../../utils/utils.dart';
+import '../../utils/error_localization.dart';
 
 part 'app_init.freezed.dart';
 
 const _sessionExpiredMdmsError = 'SESSION_EXPIRED';
-const _mdmsFallbackFailureMessage =
-    'Failed to load configuration data. Please try again.';
+const _mdmsFallbackFailureMessage = ErrorKeys.configurationLoad;
 
 enum MdmsModule { installation, amc, assessment }
 
@@ -66,8 +66,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       _cachedAppConfig = appConfig;
       emit(InitState.defaulted(appConfig: appConfig));
     } catch (e) {
-      emit(const InitState.error(
-          'Failed to load configuration data. Please try again.'));
+      emit(const InitState.error(ErrorKeys.configurationLoad));
     }
   }
 
@@ -81,7 +80,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     final appConfig = _cachedAppConfig;
     if (appConfig == null) {
       _loadingSession = null;
-      emit(const InitState.error('MDMS requested before appConfig.'));
+      emit(const InitState.error(ErrorKeys.configurationLoad));
       return;
     }
     emit(InitState.loadingMdms(appConfig: appConfig));

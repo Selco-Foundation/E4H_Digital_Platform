@@ -11,6 +11,7 @@ import '../../repositories/operation_progress_repo.dart';
 import '../../utils/background_service.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import '../../utils/operation_progress.dart';
+import '../../utils/error_localization.dart';
 
 part 'asset_submission.freezed.dart';
 
@@ -177,7 +178,7 @@ class AssetSubmissionBloc
     _activeBulkSyncIds = activityFacilityIds.toSet();
 
     if (activityFacilityIds.isEmpty) {
-      emit(const AssetSubmissionState.bulkFailure('No drafts to sync.'));
+      emit(const AssetSubmissionState.bulkFailure(ErrorKeys.noDrafts));
       return;
     }
 
@@ -303,7 +304,7 @@ class AssetSubmissionBloc
 
     if (failedJob != null) {
       emit(AssetSubmissionState.bulkFailure(
-        failedJob.lastError ?? 'Some submissions failed.',
+        failedJob.lastError ?? ErrorKeys.partialSubmission,
       ));
       return;
     }

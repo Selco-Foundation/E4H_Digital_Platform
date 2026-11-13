@@ -120,7 +120,7 @@ class AssessmentDraftCard extends StatelessWidget {
                 label: context.translate(i18.assessmentDraft.failureReason),
                 value: _detailValue(
                   context,
-                  context.translate(normalizedFailure),
+                  context.localizeError(normalizedFailure),
                   color: theme.colorTheme.alert.error,
                 ),
               ),

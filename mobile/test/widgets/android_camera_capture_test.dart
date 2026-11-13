@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../lib/widgets/customized_digit_widget/android_camera_capture_page.dart';
+import '../../lib/utils/error_localization.dart';
 
 const rear = CameraDescription(
     name: 'rear',
@@ -31,6 +32,7 @@ class TestCameraPlatform extends platform.CameraPlatform {
   Completer<void>? initializeWait;
   Completer<void>? disposeWait;
   bool failDispose = false;
+  CameraException? initializationError;
 
   @override
   Future<List<CameraDescription>> availableCameras() async => cameras;
@@ -47,6 +49,7 @@ class TestCameraPlatform extends platform.CameraPlatform {
   Future<void> initializeCamera(int cameraId,
       {ImageFormatGroup imageFormatGroup = ImageFormatGroup.unknown}) async {
     assert(imageFormatGroup == ImageFormatGroup.jpeg);
+    if (initializationError != null) throw initializationError!;
     await initializeWait?.future;
   }
 
@@ -106,6 +109,13 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('permission denial displays a localization key without plugin details', (tester) async {
+    camera.initializationError = CameraException('CameraAccessDenied', 'Private platform details');
+    await openCamera(tester);
+    expect(find.text(ErrorKeys.cameraPermission), findsOneWidget);
+    expect(find.textContaining('Private platform details'), findsNothing);
+  });
 
   testWidgets(
       'switches lenses once and retains front camera for Retry and resume',

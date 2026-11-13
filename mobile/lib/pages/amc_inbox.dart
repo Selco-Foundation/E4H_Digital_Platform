@@ -294,7 +294,7 @@ class _AmcInboxPageState extends State<AmcInboxPage>
                               failure: (message) => Center(
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: spacer4),
-                                  child: Text(message),
+                                  child: Text(context.localizeError(message)),
                                 ),
                               ),
                               loaded: (items, hasMore, totalCount, fromCache,

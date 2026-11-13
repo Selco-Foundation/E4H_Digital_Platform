@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_specification.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_specification.freezed.dart';
 
@@ -37,7 +38,7 @@ class CacheSpecificationBloc
         emit(CacheSpecificationState.loaded(entries));
       }
     } catch (e) {
-      emit(CacheSpecificationState.error(e.toString()));
+      emit(CacheSpecificationState.error(errorMessageKey(e)));
     }
   }
 
@@ -68,7 +69,7 @@ class CacheSpecificationBloc
 
       emit(CacheSpecificationState.added(event.entry));
     } catch (e) {
-      emit(CacheSpecificationState.error(e.toString()));
+      emit(CacheSpecificationState.error(errorMessageKey(e)));
     }
   }
 
@@ -110,7 +111,7 @@ class CacheSpecificationBloc
         emit(CacheSpecificationState.updated(updatedEntry));
       }
     } catch (e) {
-      emit(CacheSpecificationState.error(e.toString()));
+      emit(CacheSpecificationState.error(errorMessageKey(e)));
     }
   }
 
@@ -124,7 +125,7 @@ class CacheSpecificationBloc
       });
       emit(const CacheSpecificationState.deleted());
     } catch (e) {
-      emit(CacheSpecificationState.error(e.toString()));
+      emit(CacheSpecificationState.error(errorMessageKey(e)));
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_activity_facility_asset.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_activity_facility_asset.freezed.dart';
 
@@ -36,7 +37,7 @@ class CacheActivityFacilityAssetBloc extends Bloc<
         emit(CacheActivityFacilityAssetState.loaded(entries));
       }
     } catch (e) {
-      emit(CacheActivityFacilityAssetState.error(e.toString()));
+      emit(CacheActivityFacilityAssetState.error(errorMessageKey(e)));
     }
   }
 
@@ -69,7 +70,7 @@ class CacheActivityFacilityAssetBloc extends Bloc<
             : CacheActivityFacilityAssetState.updated(persisted),
       );
     } catch (e) {
-      emit(CacheActivityFacilityAssetState.error(e.toString()));
+      emit(CacheActivityFacilityAssetState.error(errorMessageKey(e)));
     }
   }
 
@@ -111,7 +112,7 @@ class CacheActivityFacilityAssetBloc extends Bloc<
       }
       add(CacheActivityFacilityAssetEvent.get(event.entry.activityFacilityId));
     } catch (e) {
-      emit(CacheActivityFacilityAssetState.error(e.toString()));
+      emit(CacheActivityFacilityAssetState.error(errorMessageKey(e)));
     }
   }
 
@@ -124,7 +125,7 @@ class CacheActivityFacilityAssetBloc extends Bloc<
       });
       emit(const CacheActivityFacilityAssetState.deleted());
     } catch (e) {
-      emit(CacheActivityFacilityAssetState.error(e.toString()));
+      emit(CacheActivityFacilityAssetState.error(errorMessageKey(e)));
     }
   }
 }

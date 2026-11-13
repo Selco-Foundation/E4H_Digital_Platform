@@ -34,6 +34,7 @@ import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
 import '../widgets/rectification_badge.dart';
+import '../utils/error_localization.dart';
 
 @RoutePage()
 class InboxAssetSummaryPage extends StatefulWidget {
@@ -196,7 +197,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                   context.router.popAndPush(const InboxRoute());
                 },
                 failure: (progress) {
-                  final message = progress.errorMessage ?? 'Failed.';
+                  final message = progress.errorMessage ?? ErrorKeys.generic;
                   if (isSessionExpiredMessage(message)) {
                     handleSessionExpired(context);
                   }
@@ -228,7 +229,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                       context.showSnackBar(
                         SnackBar(
                             content: Text(
-                                '${context.translate(i18.inboxAssetSummary.assetSyncFailed)}: $error')),
+                                '${context.translate(i18.inboxAssetSummary.assetSyncFailed)}: ${context.localizeError(error)}')),
                       );
                     },
                   );
@@ -254,7 +255,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                       if (errorMessage != null) {
                         return Center(
                             child: Text(
-                                '${context.translate(i18.common.error)}: $errorMessage'));
+                                '${context.translate(i18.common.error)}: ${context.localizeError(errorMessage)}'));
                       }
 
                       int battery = 0, inverter = 0, panel = 0;

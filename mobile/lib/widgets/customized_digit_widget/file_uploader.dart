@@ -1,12 +1,15 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/utils/fileService/file_service.dart';
-import 'package:digit_ui_components/utils/utils.dart';
 import 'package:digit_ui_components/utils/validators/file_validator.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_chip.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+
+import '../../utils/app_logger.dart';
+import '../../utils/error_localization.dart';
+import '../../utils/extensions.dart';
 
 typedef OnFilesSelectedCallback = Map<PlatformFile, String?> Function(
     List<PlatformFile> files);
@@ -110,12 +113,19 @@ class _FileUploadWidgetState extends State<FileUploadWidget>
   }
 
   void _openFileExplorer() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      allowMultiple: widget.allowMultiples,
-      type: FileType.custom,
-      allowedExtensions: widget.allowedExtensions ??
-          ['xlsx', 'xls', 'pdf', 'jpg', 'jpeg', 'png'],
-    );
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        allowMultiple: widget.allowMultiples,
+        type: FileType.custom,
+        allowedExtensions: widget.allowedExtensions ??
+            ['xlsx', 'xls', 'pdf', 'jpg', 'jpeg', 'png'],
+      );
+    } catch (error) {
+      AppLogger.instance.info(error, title: 'File picker error');
+      if (mounted) setState(() => fileErrorMessage = ErrorKeys.filePick);
+      return;
+    }
 
     if (!mounted) return;
 
@@ -335,7 +345,7 @@ class _FileUploadWidgetState extends State<FileUploadWidget>
                       Flexible(
                           fit: FlexFit.tight,
                           child: Text(
-                            fileErrors[files[index]] ?? '',
+                            context.translate(fileErrors[files[index]] ?? ''),
                             style: currentTypography.bodyXS.copyWith(
                                 color: const DigitColors().light.alertError),
                           )),
@@ -517,7 +527,7 @@ class _FileUploadWidgetState extends State<FileUploadWidget>
                       Flexible(
                           fit: FlexFit.tight,
                           child: Text(
-                            fileErrors[files[index]] ?? '',
+                            context.translate(fileErrors[files[index]] ?? ''),
                             style: currentTypography.bodyXS.copyWith(
                                 color: const DigitColors().light.alertError),
                           )),
@@ -547,7 +557,9 @@ class _FileUploadWidgetState extends State<FileUploadWidget>
   Widget build(BuildContext context) {
     currentTypography = getTypography(context, false);
     String? capitalizedErrorMessage =
-        convertInToSentenceCase(widget.errorMessage);
+        widget.errorMessage == null
+            ? null
+            : context.translate(widget.errorMessage!);
 
     double minWidth = AppView.isMobileView(MediaQuery.of(context).size)
         ? MediaQuery.of(context).size.width
@@ -656,9 +668,7 @@ class _FileUploadWidgetState extends State<FileUploadWidget>
                   fit: FlexFit.tight,
                   child: fileErrorMessage != ''
                       ? Text(
-                          fileErrorMessage.length > 256
-                              ? '${fileErrorMessage.substring(0, 256)}...'
-                              : fileErrorMessage,
+                          context.translate(fileErrorMessage),
                           style: currentTypography.bodyS.copyWith(
                             color: const DigitColors().light.alertError,
                           ),

@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_add_new_asset.dart';
+import '../../utils/error_localization.dart';
 
 part 'overall_asset_summary.freezed.dart';
 
@@ -67,7 +68,7 @@ class OverallAssetSummaryBloc
         panelCount: panelCount,
       ));
     } catch (e) {
-      emit(OverallAssetSummaryState.error(e.toString()));
+      emit(OverallAssetSummaryState.error(errorMessageKey(e)));
     }
   }
 }

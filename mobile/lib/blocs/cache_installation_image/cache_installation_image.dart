@@ -7,6 +7,7 @@ import 'package:isar_community/isar.dart';
 import '../../data/nosql/cache_installation_image.dart';
 import '../../repositories/installation_images_repo.dart';
 import '../../utils/utils.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_installation_image.freezed.dart';
 
@@ -37,7 +38,7 @@ class CacheInstallationImageBloc
         emit(CacheInstallationImageState.loaded(entries));
       }
     } catch (e) {
-      emit(CacheInstallationImageState.error(e.toString()));
+      emit(CacheInstallationImageState.error(errorMessageKey(e)));
     }
   }
 
@@ -70,7 +71,7 @@ class CacheInstallationImageBloc
 
       emit(const CacheInstallationImageState.saved());
     } catch (e) {
-      emit(CacheInstallationImageState.error(e.toString()));
+      emit(CacheInstallationImageState.error(errorMessageKey(e)));
     }
   }
 }

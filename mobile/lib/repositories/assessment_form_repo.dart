@@ -13,6 +13,7 @@ import 'app_init_repo.dart' hide envConfig;
 import 'cache_fallback.dart';
 import 'assessment_api_paths.dart';
 import 'assessment_bookmark_repo.dart';
+import '../utils/error_localization.dart';
 
 class AssessmentFormRepository {
   static const mobileSchemaCode = 'assessment.AssessmentMobileFormSchema';
@@ -84,7 +85,7 @@ class AssessmentFormRepository {
         throw AssessmentApiException(
           statusCode: response.statusCode,
           code: 'ASSESSMENT_UNSUPPORTED_FORM_TYPE',
-          message: 'Unsupported assessment form: ${resolution.formType}',
+          message: ErrorKeys.assessmentFormUnavailable,
         );
       }
       return resolution;
@@ -344,7 +345,7 @@ class AssessmentFormRepository {
         throw AssessmentApiException(
           statusCode: response.statusCode,
           code: 'ASSESSMENT_UNABLE_TO_CONTACT_FAILED',
-          message: 'Unable to update facility contact status',
+          message: ErrorKeys.facilityContactUpdate,
         );
       }
     } on DioException catch (error) {
@@ -375,7 +376,7 @@ class AssessmentFormRepository {
         throw AssessmentApiException(
           statusCode: response.statusCode,
           code: 'ASSESSMENT_SUBMISSION_FAILED',
-          message: 'Assessment submission failed',
+          message: ErrorKeys.assessmentSubmission,
         );
       }
       final result = AssessmentSubmissionResponse.fromJson(
@@ -431,9 +432,9 @@ class AssessmentFormRepository {
           (error.message == 'SESSION_EXPIRED'
               ? 'SESSION_EXPIRED'
               : 'ASSESSMENT_NETWORK_ERROR'),
-      message: first['message']?.toString() ??
-          error.message ??
-          'Assessment request failed',
+      message: normalizeFriendlyNetworkErrorMessage(
+        DioErrorParser.parse(error).toString(),
+      ),
       fields: rawFields is List
           ? rawFields.map((value) => value.toString()).toList()
           : const [],

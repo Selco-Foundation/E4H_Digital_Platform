@@ -5,6 +5,7 @@ import 'package:isar_community/isar.dart';
 import '../../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../../repositories/asset_repo.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_asset.freezed.dart';
 
@@ -32,7 +33,7 @@ class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
       emit(const CacheAssetState.success());
     } catch (e) {
       AppLogger.instance.info(e.toString());
-      emit(CacheAssetState.failure(e.toString()));
+      emit(CacheAssetState.failure(errorMessageKey(e)));
     }
   }
 }

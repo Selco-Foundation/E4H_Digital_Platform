@@ -1,6 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:camera/camera.dart';
-import 'package:digit_scanner/blocs/app_localization.dart';
 import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:digit_scanner/utils/constants.dart';
 import 'package:digit_scanner/utils/extensions/extensions.dart';
@@ -15,69 +14,62 @@ import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart
 import 'package:gs1_barcode_parser/gs1_barcode_parser.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/extensions.dart';
+import '../../utils/scanner_localization.dart';
+import '../../utils/error_localization.dart';
+
+enum ScannerDialogAction { saveAndClose, keepScanning }
+
 class DigitScannerUtils {
-  void buildDialog(
-    BuildContext context,
-    ScannerLocalization localizations,
-    int quantity, [
-    VoidCallback? onKeepScanning,
-    VoidCallback? onConfirmSelection,
-  ]
-  ) async {
-    var contentLocalization = localizations
-        .translate(
-          i18.scanner.scannerDialogContent,
-        )
-        .replaceAll('{quantity}', quantity.toString());
-    await showCustomPopup(
+  Future<ScannerDialogAction?> buildDialog(
+    BuildContext context, {
+    required int scannedCount,
+    required int requiredCount,
+  }) async {
+    final canSave = scannedCount >= requiredCount;
+    TransitionRoute<dynamic>? dialogRoute;
+    final result = await showCustomPopup(
       context: context,
-      builder: (popupContext) => Popup(
-        title: localizations.translate(
-          i18.scanner.scannerDialogTitle,
-        ),
-        onOutsideTap: () {
-          Navigator.of(popupContext).pop();
-        },
-        description: contentLocalization,
-        type: PopUpType.simple,
-        actions: [
-          DigitButton(
-            label: localizations.translate(
-              i18.scanner.scannerDialogSecondaryAction,
-            ),
-            onPressed: () {
-              Navigator.of(
-                popupContext,
-                rootNavigator: true,
-              ).pop(true);
-
-              if (onConfirmSelection != null) {
-                onConfirmSelection();
-                return;
-              }
-
-              Navigator.of(context).pop();
-            },
-            type: DigitButtonType.primary,
-            size: DigitButtonSize.large,
-          ),
-          DigitButton(
-            label: localizations.translate(
-              i18.scanner.scannerDialogPrimaryAction,
-            ),
-            onPressed: () {
-              Navigator.of(
-                popupContext,
-                rootNavigator: true,
-              ).pop(false);
-              onKeepScanning?.call();
-            },
-            type: DigitButtonType.secondary,
-            size: DigitButtonSize.large,
-          ),
-        ],
-      ),
+      builder: (popupContext) {
+        dialogRoute = ModalRoute.of(popupContext);
+        return Popup(
+          title: popupContext.translate(i18.scanner.scannerDialogTitle),
+          onCrossTap: () => Navigator.of(popupContext).pop(),
+          onOutsideTap: () => Navigator.of(popupContext).pop(),
+          description: popupContext
+              .translate(canSave
+                  ? i18.scanner.scannerDialogContent
+                  : requiredCount == 1
+                      ? ScannerKeys.codeRequired
+                      : ScannerKeys.codesRequired)
+              .replaceAll('{quantity}', '$requiredCount')
+              .replaceAll('{count}', '$scannedCount'),
+          type: PopUpType.simple,
+          actions: [
+            if (canSave)
+              DigitButton(
+                  capitalizeLetters: false,
+                  label: popupContext
+                      .translate(i18.scanner.scannerDialogSecondaryAction),
+                  onPressed: () => Navigator.of(popupContext)
+                      .pop(ScannerDialogAction.saveAndClose),
+                  type: DigitButtonType.primary,
+                  size: DigitButtonSize.large),
+            DigitButton(
+                capitalizeLetters: false,
+                label: popupContext
+                    .translate(i18.scanner.scannerDialogPrimaryAction),
+                onPressed: () => Navigator.of(popupContext)
+                    .pop(ScannerDialogAction.keepScanning),
+                type: DigitButtonType.secondary,
+                size: DigitButtonSize.large),
+          ],
+        );
+      },
     );
+    // Do not resume camera admission beneath the dialog's exit transition.
+    await dialogRoute?.completed;
+    return result is ScannerDialogAction ? result : null;
   }
 
   String trimString(String input) {
@@ -162,8 +154,9 @@ class DigitScannerUtils {
       buf.write(ai);
       buf.write(val);
       final hasNext = i < matches.length - 1;
-      if (hasNext && varAIs.contains(ai))
+      if (hasNext && varAIs.contains(ai)) {
         buf.write(gs); // FNC1 after variable-length AI
+      }
     }
     return buf.toString();
   }
@@ -187,31 +180,33 @@ class DigitScannerUtils {
     required Function(String) setText,
     required Function(CustomPaint?) updateCustomPaint,
     required bool isGS1code,
-    required int quantity,
-    required List<dynamic> result, // not used (ok to keep)
     required Future<void> Function(String) handleError,
     required CameraLensDirection cameraLensDirection,
     required BarcodeScanner barcodeScanner,
-    required ScannerLocalization localizations,
-    Map<String, String>? validations,
-    String? regex, // pass-through to bloc
+    required Future<void> Function(List<GS1Barcode>, List<String>) onDetected,
   }) async {
     if (!canProcess || isBusy) return;
     setBusy(true);
     setText('');
+    final foundLabel = context.translate(i18.scanner.barCodesFound);
+    final codeLabel = context.translate(i18.scanner.barCode);
 
     final List<Barcode> barcodes;
     try {
       barcodes = await barcodeScanner.processImage(inputImage);
     } catch (_) {
+      await handleError(ErrorKeys.scannerFailed);
       setBusy(false);
       return;
     }
 
+    if (!context.mounted) {
+      setBusy(false);
+      return;
+    }
     if (inputImage.metadata?.size != null &&
         inputImage.metadata?.rotation != null) {
       if (barcodes.isNotEmpty) {
-        final bloc = context.read<DigitScannerBloc>();
         final first =
             (barcodes.first.rawValue ?? barcodes.first.displayValue)?.trim();
 
@@ -223,21 +218,14 @@ class DigitScannerUtils {
                   (barcodes.first.rawValue ?? barcodes.first.displayValue)
                       ?.trim();
               if (data == null || data.isEmpty) {
-                await handleError(
-                    localizations.translate(i18.scanner.resourcesScanFailed));
+                await handleError(ErrorKeys.invalidGs1);
               } else {
                 final parser = GS1BarcodeParser.defaultParser();
                 final parsed = parser.parse(data); // ← keep the full object
-                bloc.add(DigitScannerEvent.handleScanner(
-                  barCode: [parsed], // ← store GS1Barcode, not GTIN
-                  isGS1: true,
-                  quantity: quantity,
-                  regex: regex,
-                ));
+                await onDetected([parsed], const []);
               }
             } catch (e) {
-              await handleError(
-                  localizations.translate(i18.scanner.resourcesScanFailed));
+              await handleError(ErrorKeys.invalidGs1);
             }
           } else {
             // QR-mode unchanged
@@ -245,12 +233,7 @@ class DigitScannerUtils {
                 (barcodes.first.displayValue ?? barcodes.first.rawValue)
                     ?.trim();
             if (first != null && first.isNotEmpty) {
-              bloc.add(DigitScannerEvent.handleScanner(
-                qrCode: [first],
-                isGS1: false,
-                quantity: quantity,
-                regex: regex,
-              ));
+              await onDetected(const [], [first]);
             }
           }
         }
@@ -265,45 +248,15 @@ class DigitScannerUtils {
       );
       updateCustomPaint(CustomPaint(painter: painter));
     } else {
-      String text =
-          '${localizations.translate(i18.scanner.barCodesFound)}: ${barcodes.length}\n\n';
+      String text = '$foundLabel: ${barcodes.length}\n\n';
       for (final b in barcodes) {
-        text +=
-            '${localizations.translate(i18.scanner.barCode)}: ${b.rawValue}\n\n';
+        text += '$codeLabel: ${b.rawValue}\n\n';
       }
       setText(text);
       updateCustomPaint(null);
     }
 
     setBusy(false);
-  }
-
-  Future<void> handleError({
-    required BuildContext context,
-    required String message,
-    required AudioPlayer player,
-    required List<dynamic> result,
-    required Function setStateCallback,
-    required ScannerLocalization localizations,
-  }) async {
-    // Play the buzzer sound to indicate an error
-    player.play(AssetSource(DigitScannerConstants().errorFilePath));
-
-    // Check if the player has completed playing or if the result list is empty
-    if (player.state == PlayerState.completed || result.isEmpty) {
-      // Display a toast message with the provided error message
-      Toast.showToast(
-        context,
-        type: ToastType.error,
-        message: localizations.translate(message),
-      );
-    }
-
-    // Wait for 2 seconds before proceeding
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Update the state to allow processing again and indicate not busy
-    setStateCallback();
   }
 
   Future<void> storeCode({

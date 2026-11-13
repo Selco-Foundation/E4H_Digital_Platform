@@ -13,6 +13,7 @@ import '../../utils/background_service.dart'
         kEvtScheduleVisitDone,
         kEvtScheduleVisitError;
 import '../../utils/utils.dart';
+import '../../utils/error_localization.dart';
 
 part 'scheduled_visit_submission.freezed.dart';
 
@@ -101,7 +102,7 @@ class ScheduleVisitSubmitBloc
       await BackgroundServiceController.I.stopNow();
       emit(
         const ScheduleVisitSubmitState.failure(
-          'Failed to submit visit. Please try again.',
+          ErrorKeys.visitSubmission,
         ),
       );
     }
@@ -130,7 +131,7 @@ class ScheduleVisitSubmitBloc
     await BackgroundServiceController.I.stopNow();
     emit(
       ScheduleVisitSubmitState.failure(
-          _normalizeErrorMessage(event.message ?? 'Failed to submit visit.')),
+          _normalizeErrorMessage(event.message ?? ErrorKeys.visitSubmission)),
     );
   }
 }

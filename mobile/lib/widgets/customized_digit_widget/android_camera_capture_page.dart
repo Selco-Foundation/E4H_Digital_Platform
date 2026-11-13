@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../utils/app_logger.dart';
+import '../../utils/error_localization.dart';
+import '../../utils/extensions.dart';
 
 @visibleForTesting
 Size calculateCameraPreviewCoverSize({
@@ -198,8 +200,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
       if (!mounted || generation != _initializationGeneration) return;
       setState(() {
         _initializing = false;
-        _errorMessage =
-            'Camera could not be started. Retry or select a photo from the gallery.';
+        _errorMessage = ErrorKeys.cameraStart;
       });
     }
   }
@@ -223,9 +224,9 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
       case 'CameraAccessDenied':
       case 'CameraAccessDeniedWithoutPrompt':
       case 'CameraAccessRestricted':
-        return 'Camera permission is required. Allow camera access in Settings, then retry.';
+        return ErrorKeys.cameraPermission;
       default:
-        return 'Camera could not be started. Retry or select a photo from the gallery.';
+        return ErrorKeys.cameraStart;
     }
   }
 
@@ -275,7 +276,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
       if (!mounted) return;
       setState(() {
         _capturing = false;
-        _errorMessage = 'Photo capture failed. Please retry.';
+        _errorMessage = ErrorKeys.photoCapture;
       });
     }
   }
@@ -461,7 +462,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
       return CapturedPhotoReview(
         photo: File(capturedPhoto.path),
         errorBuilder: (_, __, ___) => _buildError(
-          'The captured photo could not be previewed. Please retry.',
+          ErrorKeys.photoPreview,
         ),
       );
     }
@@ -473,7 +474,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
     if (_errorMessage != null) return _buildError(_errorMessage!);
     if (controller == null || !controller.value.isInitialized) {
       return _buildError(
-        'Camera could not be started. Retry or select a photo from the gallery.',
+        ErrorKeys.cameraStart,
       );
     }
 
@@ -494,7 +495,7 @@ class _AndroidCameraCapturePageState extends State<AndroidCameraCapturePage>
                 color: Colors.white, size: 48),
             const SizedBox(height: 16),
             Text(
-              message,
+              context.localizeError(message),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white),
             ),

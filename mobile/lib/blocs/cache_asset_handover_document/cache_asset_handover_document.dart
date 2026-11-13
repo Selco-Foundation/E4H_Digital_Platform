@@ -4,6 +4,7 @@ import 'package:isar_community/isar.dart';
 
 import '../../data/nosql/cache_asset_handover_document.dart';
 import '../../repositories/asset_handover_document_repo.dart';
+import '../../utils/error_localization.dart';
 
 part 'cache_asset_handover_document.freezed.dart';
 
@@ -64,7 +65,7 @@ class CacheAssetHandoverDocumentBloc extends Bloc<
         emit(CacheAssetHandoverDocumentState.loaded(files));
       }
     } catch (e) {
-      emit(CacheAssetHandoverDocumentState.error(e.toString()));
+      emit(CacheAssetHandoverDocumentState.error(errorMessageKey(e)));
     }
   }
 
@@ -80,7 +81,7 @@ class CacheAssetHandoverDocumentBloc extends Bloc<
       );
       emit(const CacheAssetHandoverDocumentState.saved());
     } catch (e) {
-      emit(CacheAssetHandoverDocumentState.error(e.toString()));
+      emit(CacheAssetHandoverDocumentState.error(errorMessageKey(e)));
     }
   }
 
@@ -95,7 +96,7 @@ class CacheAssetHandoverDocumentBloc extends Bloc<
       );
       emit(const CacheAssetHandoverDocumentState.notFound());
     } catch (e) {
-      emit(CacheAssetHandoverDocumentState.error(e.toString()));
+      emit(CacheAssetHandoverDocumentState.error(errorMessageKey(e)));
     }
   }
 }

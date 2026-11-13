@@ -27,6 +27,7 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/customized_digit_widget/image_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../utils/error_localization.dart';
 
 @RoutePage()
 class InstallationImagesPage extends StatefulWidget {
@@ -104,8 +105,8 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
         .state
         .whenOrNull(selected: (wf) => wf);
 
-    final facilityCode = workflow
-        ?.activityFacility.facility?.facilityDetails?.solar_solution_design_type;
+    final facilityCode = workflow?.activityFacility.facility?.facilityDetails
+        ?.solar_solution_design_type;
     final facilitySystemType =
         workflow?.activityFacility.facility?.facilityDetails?.systemType;
 
@@ -262,9 +263,10 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   String? _validationErrorFor(InstallationImageItem requirement) {
     if (!_hasAttemptedValidation) return null;
     if (_isRequirementSatisfied(requirement)) return null;
-    return 'Required ${requirement.requiredCount} '
-        '${requirement.requiredCount == 1 ? 'image' : 'images'}, '
-        'selected ${_selectedCountFor(requirement)}';
+    return context
+        .translate(ErrorKeys.requiredImageCount)
+        .replaceAll('{required}', '${requirement.requiredCount}')
+        .replaceAll('{selected}', '${_selectedCountFor(requirement)}');
   }
 
   String? _feedbackMessageFor(InstallationImageItem requirement) {
@@ -417,7 +419,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
       error: (message) => DigitCard(
         children: [
           Text(
-            message,
+            context.localizeError(message),
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.alert.error,
             ),
@@ -564,7 +566,8 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
             setState(() {
               _isSaving = false;
             });
-            context.showSnackBar(SnackBar(content: Text(message)));
+            context.showSnackBar(
+                SnackBar(content: Text(context.localizeError(message))));
           },
         );
       },

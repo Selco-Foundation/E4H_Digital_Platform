@@ -6,6 +6,7 @@ import '../../model/assessment/assessment_queue.dart';
 import '../../repositories/assessment_draft_repo.dart';
 import '../../repositories/assessment_bookmark_repo.dart';
 import '../../repositories/assessment_queue_repo.dart';
+import '../../utils/error_localization.dart';
 
 typedef _AssessmentQueuePage = ({
   List<AssessmentQueueFacility> facilities,
@@ -94,7 +95,7 @@ class AssessmentQueueBloc
       ));
     } catch (error) {
       if (generation != _requestGeneration) return;
-      emit(AssessmentQueueFailure(error.toString()));
+      emit(AssessmentQueueFailure(errorMessageKey(error)));
     }
   }
 
@@ -143,7 +144,7 @@ class AssessmentQueueBloc
       if (generation != _requestGeneration) return;
       emit(current.copyWith(
         isLoadingMore: false,
-        loadMoreError: error.toString(),
+        loadMoreError: errorMessageKey(error),
       ));
     }
   }

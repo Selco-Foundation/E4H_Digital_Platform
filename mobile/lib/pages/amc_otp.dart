@@ -88,7 +88,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
           },
           failure: (msg) {
             ctx.showSnackBar(
-              SnackBar(content: Text(msg)),
+              SnackBar(content: Text(context.localizeError(msg))),
             );
           },
           orElse: () {},
