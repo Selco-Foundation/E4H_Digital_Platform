@@ -9,6 +9,11 @@ import { UserAccessReportService } from "../../../services/UserAccessReportServi
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
 import { LoginTollFreeHelp } from "../../../components/TollFreeHelp";
+import OtpLogin from "./OtpLogin";
+import { isOtpLoginEnabled } from "../../../utilities/otpLogin";
+
+const LOGIN_MODE_PASSWORD = "password";
+const LOGIN_MODE_OTP = "otp";
 
 const setEmployeeDetail = (userObject, token) => {
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || "en_IN";
@@ -121,6 +126,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [activePolicyModal, setActivePolicyModal] = useState(null);
+  const [loginMode, setLoginMode] = useState(LOGIN_MODE_PASSWORD);
+  const otpLoginEnabled = isOtpLoginEnabled();
 
   const history = useHistory();
   const location = useLocation();
@@ -244,7 +251,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     };
     delete requestData.city;
     try {
-      const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
+      // OTP login has already authenticated (see onOtpAuthenticated); password login authenticates here.
+      const authResponse = data?.otpAuthResponse || (await Digit.UserService.authenticate(requestData));
+      const { UserRequest: info, ...tokens } = authResponse;
       if (shouldShowConsent) {
         rememberRequiredConsents();
         setHasStoredConsent(true);
@@ -275,6 +284,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     }
     setDisable(false);
   };
+
+  // OTP login: the token is already issued, so run the same post-login steps as password login
+  // (consent, session, analytics, HRMS lookup and redirect) without authenticating again.
+  const onOtpAuthenticated = (authResponse) => onLogin({ otpAuthResponse: authResponse });
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
@@ -371,6 +384,24 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         <BackButton variant="white" style={{ borderBottom: "none" }} />
       </div>
       <div style={{ backgroundColor: "white" }}>
+        {loginMode === LOGIN_MODE_OTP && (
+          <OtpLogin
+            tf={translateWithFallback}
+            canProceed={!shouldShowConsent || isConsentAccepted}
+            onBlocked={() => {
+              setShowToast("CORE_ACCEPT_PRIVACY_TERMS");
+              setTimeout(closeToast, 5000);
+            }}
+            onAuthenticated={onOtpAuthenticated}
+            header={<Header />}
+            // Same consent checkboxes and state as the password form.
+            consent={<ConsentAcceptance config={config[0].body.find((field) => field.key === "consentAcceptance")} />}
+            className="loginFormStyleEmployee"
+            cardStyle={{ ...(isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }), boxShadow: "none" }}
+            buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
+          />
+        )}
+        {loginMode === LOGIN_MODE_PASSWORD && (
         <FormComposer
           onSubmit={onLogin}
           isDisabled={isDisabled || disable || (shouldShowConsent && !isConsentAccepted)}
@@ -389,7 +420,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         >
           <Header />
         </FormComposer>
+        )}
         <div style={{ textAlign: "center", marginTop: "1rem" }}>
+          {loginMode === LOGIN_MODE_PASSWORD && (
           <button
             onClick={onForgotPassword}
             style={{
@@ -400,6 +433,35 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           >
             {t("CORE_COMMON_FORGOT_PASSWORD")}
           </button>
+          )}
+          {otpLoginEnabled && loginMode === LOGIN_MODE_PASSWORD && (
+            <div style={{ marginTop: "0.75rem" }}>
+              <button
+                type="button"
+                onClick={() => setLoginMode(LOGIN_MODE_OTP)}
+                style={{
+                  color: "blue",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }}
+              >
+                {translateWithFallback("CORE_LOGIN_WITH_MOBILE_OTP", "Login with mobile number & OTP")}
+              </button>
+            </div>
+          )}
+          {loginMode === LOGIN_MODE_OTP && (
+            <button
+              type="button"
+              onClick={() => setLoginMode(LOGIN_MODE_PASSWORD)}
+              style={{
+                color: "blue",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              {translateWithFallback("CORE_LOGIN_WITH_PASSWORD", "Login with username & password")}
+            </button>
+          )}
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
 
