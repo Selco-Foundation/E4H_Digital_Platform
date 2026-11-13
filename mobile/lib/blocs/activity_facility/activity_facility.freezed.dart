@@ -2940,6 +2940,7 @@ mixin _$ActivityFacilityState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -2975,6 +2976,7 @@ mixin _$ActivityFacilityState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3005,6 +3007,7 @@ mixin _$ActivityFacilityState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3036,6 +3039,7 @@ mixin _$ActivityFacilityState {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -3056,6 +3060,7 @@ mixin _$ActivityFacilityState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -3074,6 +3079,7 @@ mixin _$ActivityFacilityState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -3155,6 +3161,7 @@ class _$ActivityFacilityInitialStateImpl
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -3193,6 +3200,7 @@ class _$ActivityFacilityInitialStateImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3226,6 +3234,7 @@ class _$ActivityFacilityInitialStateImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3263,6 +3272,7 @@ class _$ActivityFacilityInitialStateImpl
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -3286,6 +3296,7 @@ class _$ActivityFacilityInitialStateImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -3307,6 +3318,7 @@ class _$ActivityFacilityInitialStateImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -3378,6 +3390,7 @@ class _$ActivityFacilityLoadingStateImpl
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -3416,6 +3429,7 @@ class _$ActivityFacilityLoadingStateImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3449,6 +3463,7 @@ class _$ActivityFacilityLoadingStateImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3486,6 +3501,7 @@ class _$ActivityFacilityLoadingStateImpl
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -3509,6 +3525,7 @@ class _$ActivityFacilityLoadingStateImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -3530,6 +3547,7 @@ class _$ActivityFacilityLoadingStateImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -3554,6 +3572,234 @@ class _$ActivityFacilityLoadingStateImpl
 abstract class _ActivityFacilityLoadingState implements ActivityFacilityState {
   const factory _ActivityFacilityLoadingState() =
       _$ActivityFacilityLoadingStateImpl;
+}
+
+/// @nodoc
+abstract class _$$ActivityFacilityListFailureImplCopyWith<$Res> {
+  factory _$$ActivityFacilityListFailureImplCopyWith(
+          _$ActivityFacilityListFailureImpl value,
+          $Res Function(_$ActivityFacilityListFailureImpl) then) =
+      __$$ActivityFacilityListFailureImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$ActivityFacilityListFailureImplCopyWithImpl<$Res>
+    extends _$ActivityFacilityStateCopyWithImpl<$Res,
+        _$ActivityFacilityListFailureImpl>
+    implements _$$ActivityFacilityListFailureImplCopyWith<$Res> {
+  __$$ActivityFacilityListFailureImplCopyWithImpl(
+      _$ActivityFacilityListFailureImpl _value,
+      $Res Function(_$ActivityFacilityListFailureImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$ActivityFacilityListFailureImpl implements ActivityFacilityListFailure {
+  const _$ActivityFacilityListFailureImpl();
+
+  @override
+  String toString() {
+    return 'ActivityFacilityState.listFailure()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ActivityFacilityListFailureImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function() listFailure,
+    required TResult Function(bool isInCache) inCache,
+    required TResult Function(
+            List<ActivityFacilityWorkflow> activityFacilityList)
+        fetched,
+    required TResult Function(String activityFacilityId) selected,
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+        unSubmittedLoaded,
+    required TResult Function(CacheUnsubmittedActivityFacility entry)
+        unSubmittedAdded,
+    required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ActivityFacilityWorkflow> activityFacilityList,
+            String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ActivityFacilityWorkflow> results)
+        searchResults,
+    required TResult Function(
+            List<ActivityFacilityWorkflow> items,
+            bool hasMore,
+            int totalCount,
+            bool fromCache,
+            bool isLoadingMore,
+            int rawFetchedCount)
+        paginatedLoaded,
+  }) {
+    return listFailure();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function()? listFailure,
+    TResult? Function(bool isInCache)? inCache,
+    TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
+        fetched,
+    TResult? Function(String activityFacilityId)? selected,
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+        unSubmittedLoaded,
+    TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
+    TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList,
+            String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(
+            List<ActivityFacilityWorkflow> items,
+            bool hasMore,
+            int totalCount,
+            bool fromCache,
+            bool isLoadingMore,
+            int rawFetchedCount)?
+        paginatedLoaded,
+  }) {
+    return listFailure?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function()? listFailure,
+    TResult Function(bool isInCache)? inCache,
+    TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
+        fetched,
+    TResult Function(String activityFacilityId)? selected,
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+        unSubmittedLoaded,
+    TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
+    TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ActivityFacilityWorkflow> activityFacilityList,
+            String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(
+            List<ActivityFacilityWorkflow> items,
+            bool hasMore,
+            int totalCount,
+            bool fromCache,
+            bool isLoadingMore,
+            int rawFetchedCount)?
+        paginatedLoaded,
+    required TResult orElse(),
+  }) {
+    if (listFailure != null) {
+      return listFailure();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_ActivityFacilityInitialState value) initial,
+    required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
+    required TResult Function(ActivityFacilityInCache value) inCache,
+    required TResult Function(ActivityFacilityFetchedState value) fetched,
+    required TResult Function(ActivityFacilitySelectedState value) selected,
+    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
+    required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ActivityFacilitySortedState value) sorted,
+    required TResult Function(ActivityFacilitySearchLoading value)
+        searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
+  }) {
+    return listFailure(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_ActivityFacilityInitialState value)? initial,
+    TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
+    TResult? Function(ActivityFacilityInCache value)? inCache,
+    TResult? Function(ActivityFacilityFetchedState value)? fetched,
+    TResult? Function(ActivityFacilitySelectedState value)? selected,
+    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ActivityFacilitySortedState value)? sorted,
+    TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
+  }) {
+    return listFailure?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_ActivityFacilityInitialState value)? initial,
+    TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
+    TResult Function(ActivityFacilityInCache value)? inCache,
+    TResult Function(ActivityFacilityFetchedState value)? fetched,
+    TResult Function(ActivityFacilitySelectedState value)? selected,
+    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ActivityFacilitySortedState value)? sorted,
+    TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
+    required TResult orElse(),
+  }) {
+    if (listFailure != null) {
+      return listFailure(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ActivityFacilityListFailure implements ActivityFacilityState {
+  const factory ActivityFacilityListFailure() =
+      _$ActivityFacilityListFailureImpl;
 }
 
 /// @nodoc
@@ -3627,6 +3873,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -3665,6 +3912,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3698,6 +3946,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3735,6 +3984,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -3758,6 +4008,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -3779,6 +4030,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -3892,6 +4144,7 @@ class _$ActivityFacilityFetchedStateImpl
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -3930,6 +4183,7 @@ class _$ActivityFacilityFetchedStateImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -3963,6 +4217,7 @@ class _$ActivityFacilityFetchedStateImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4000,6 +4255,7 @@ class _$ActivityFacilityFetchedStateImpl
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -4023,6 +4279,7 @@ class _$ActivityFacilityFetchedStateImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -4044,6 +4301,7 @@ class _$ActivityFacilityFetchedStateImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -4150,6 +4408,7 @@ class _$ActivityFacilitySelectedStateImpl
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -4188,6 +4447,7 @@ class _$ActivityFacilitySelectedStateImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4221,6 +4481,7 @@ class _$ActivityFacilitySelectedStateImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4258,6 +4519,7 @@ class _$ActivityFacilitySelectedStateImpl
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -4281,6 +4543,7 @@ class _$ActivityFacilitySelectedStateImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -4302,6 +4565,7 @@ class _$ActivityFacilitySelectedStateImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -4410,6 +4674,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -4448,6 +4713,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4481,6 +4747,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4518,6 +4785,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -4541,6 +4809,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -4562,6 +4831,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -4661,6 +4931,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -4699,6 +4970,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4732,6 +5004,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4769,6 +5042,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -4792,6 +5066,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -4813,6 +5088,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -4884,6 +5160,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -4922,6 +5199,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4955,6 +5233,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -4992,6 +5271,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -5015,6 +5295,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -5036,6 +5317,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -5151,6 +5433,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -5189,6 +5472,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -5222,6 +5506,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -5259,6 +5544,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -5282,6 +5568,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -5303,6 +5590,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -5405,6 +5693,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -5443,6 +5732,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -5476,6 +5766,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -5513,6 +5804,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -5536,6 +5828,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -5557,6 +5850,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -5683,6 +5977,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -5721,6 +6016,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -5754,6 +6050,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -5791,6 +6088,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -5814,6 +6112,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -5835,6 +6134,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -5913,6 +6213,7 @@ class _$ActivityFacilitySearchLoadingImpl
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -5951,6 +6252,7 @@ class _$ActivityFacilitySearchLoadingImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -5984,6 +6286,7 @@ class _$ActivityFacilitySearchLoadingImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -6021,6 +6324,7 @@ class _$ActivityFacilitySearchLoadingImpl
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -6044,6 +6348,7 @@ class _$ActivityFacilitySearchLoadingImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -6065,6 +6370,7 @@ class _$ActivityFacilitySearchLoadingImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -6167,6 +6473,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -6205,6 +6512,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -6238,6 +6546,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -6275,6 +6584,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -6298,6 +6608,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -6319,6 +6630,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
@@ -6496,6 +6808,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function() listFailure,
     required TResult Function(bool isInCache) inCache,
     required TResult Function(
             List<ActivityFacilityWorkflow> activityFacilityList)
@@ -6535,6 +6848,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function()? listFailure,
     TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -6569,6 +6883,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function()? listFailure,
     TResult Function(bool isInCache)? inCache,
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
@@ -6607,6 +6922,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
   TResult map<TResult extends Object?>({
     required TResult Function(_ActivityFacilityInitialState value) initial,
     required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityListFailure value) listFailure,
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
@@ -6630,6 +6946,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ActivityFacilityInitialState value)? initial,
     TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityListFailure value)? listFailure,
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
@@ -6651,6 +6968,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ActivityFacilityInitialState value)? initial,
     TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityListFailure value)? listFailure,
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,

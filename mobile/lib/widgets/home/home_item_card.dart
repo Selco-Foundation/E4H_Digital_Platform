@@ -13,6 +13,8 @@ class HomeItemCard extends StatelessWidget {
   final bool enableCustomIcon;
   final double? iconSize;
   final EdgeInsets? iconPadding;
+  final EdgeInsets? labelPadding;
+  final bool fitLabelOnOneLine;
 
   const HomeItemCard({
     required this.icon,
@@ -23,6 +25,8 @@ class HomeItemCard extends StatelessWidget {
     this.onPressed,
     this.iconSize,
     this.iconPadding,
+    this.labelPadding,
+    this.fitLabelOnOneLine = false,
     super.key,
   });
 
@@ -66,16 +70,32 @@ class HomeItemCard extends StatelessWidget {
             child: Wrap(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: spacer10),
-                  child: Text(
-                    label,
-                    style: textTheme.headingS.copyWith(
-                      color: onPressed == null
-                          ? theme.disabledColor
-                          : theme.colorTheme.primary.primary1,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  padding: labelPadding ??
+                      const EdgeInsets.symmetric(horizontal: spacer10),
+                  child: fitLabelOnOneLine
+                      ? FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: textTheme.headingS.copyWith(
+                              color: onPressed == null
+                                  ? theme.disabledColor
+                                  : theme.colorTheme.primary.primary1,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : Text(
+                          label,
+                          style: textTheme.headingS.copyWith(
+                            color: onPressed == null
+                                ? theme.disabledColor
+                                : theme.colorTheme.primary.primary1,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                 ),
               ],
             ),

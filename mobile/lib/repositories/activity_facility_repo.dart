@@ -9,6 +9,7 @@ import '../data/nosql/cache_completion_report.dart';
 import '../data/nosql/cache_prefilled_activity_facility.dart';
 import '../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../data/remote_client.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/activity_facility/activity_facility.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
@@ -16,6 +17,9 @@ import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'dynamic_form_repo.dart';
+
+import 'report_bookmark_repo.dart';
+import 'cache_fallback.dart';
 
 class PaginatedActivityFacilities {
   final List<ActivityFacilityWorkflow> items;
@@ -30,9 +34,13 @@ class PaginatedActivityFacilities {
 }
 
 class ActivityFacilityRemoteRepository {
-  ActivityFacilityRemoteRepository();
-
-  final dio = DioClient().dio;
+  final Dio dio;
+  final SecureStore bookmarkStorage;
+  final String? bookmarkTenantId;
+  ActivityFacilityRemoteRepository(
+      {Dio? dio, SecureStore? bookmarkStorage, this.bookmarkTenantId})
+      : dio = dio ?? DioClient().dio,
+        bookmarkStorage = bookmarkStorage ?? SecureStore();
 
   FutureOr<List<ActivityFacilityWorkflow>> searchByWorkflow(
       {required ActivityFacilitySearchModel body,
@@ -133,14 +141,24 @@ class ActivityFacilityRemoteRepository {
     };
 
     try {
-      final resp = await dio.post(url,
-          data: body, options: Options(contentType: Headers.jsonContentType));
+      final resp = await dio.post(
+        url,
+        data: body,
+        options: Options(
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.bytes,
+        ),
+      );
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
           resp.statusCode != 204) {
-        throw Exception(
-            'Workflow update failed (${resp.statusCode}): ${resp.data}');
+        throw Exception('Workflow update failed (${resp.statusCode})');
       }
+      await invalidateSubmittedReportBookmark(
+          id: activityFacilityId,
+          action: action,
+          storage: bookmarkStorage,
+          tenantId: bookmarkTenantId);
     } on DioError catch (dioErr) {
       throw DioErrorParser.parse(dioErr);
     }
@@ -184,8 +202,9 @@ class ActivityFacilityRepository {
   final Isar _isar;
   final ActivityFacilityRemoteRepository _remote;
 
-  ActivityFacilityRepository(this._isar)
-      : _remote = ActivityFacilityRemoteRepository();
+  ActivityFacilityRepository(this._isar,
+      {ActivityFacilityRemoteRepository? remote})
+      : _remote = remote ?? ActivityFacilityRemoteRepository();
 
   Set<String> _resolveUserTypes(List<String> statuses) {
     final up = statuses.map((s) => s.toUpperCase()).toSet();
@@ -201,7 +220,7 @@ class ActivityFacilityRepository {
     final col = _isar.cacheUnsubmittedActivityFacilitys;
     final excluded = <String>{};
     for (final t in userTypes) {
-      final matches = await col.where().filter().userTypeEqualTo(t).findAll();
+      final matches = await col.where().userTypeEqualTo(t).findAll();
 
       excluded.addAll(matches.map((e) => e.activityFacilityId));
     }
@@ -230,14 +249,19 @@ class ActivityFacilityRepository {
         sortDirection: sortDirection,
       );
 
-      await _replaceCache(workflowStatuses, remoteList);
+      await _upsertCache(remoteList);
       final excludedIds = await _excludedIdsFor(userTypes);
       final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
       return filteredRemoteList;
     } catch (e) {
+      if (isAuthenticationFailure(e)) rethrow;
       AppLogger.instance.info("error in fetching remote project $e");
     }
-    final cachedList = await readCache(workflowStatuses);
+    final cachedList = (await _readCacheSorted(
+            statuses: workflowStatuses, sortDirection: sortDirection))
+        .where((wf) => matchesFacilityName(
+            wf.activityFacility.facility?.facilityName, body.facilityName))
+        .toList();
     final excludedIds = await _excludedIdsFor(userTypes);
     return _applyExclusion(cachedList, excludedIds);
   }
@@ -259,11 +283,7 @@ class ActivityFacilityRepository {
         sortDirection: sortDirection,
       );
 
-      if (offset == 0) {
-        await _replaceCache(workflowStatuses, remoteList);
-      } else {
-        await _appendCache(remoteList);
-      }
+      await _upsertCache(remoteList);
 
       final excludedIds = await _excludedIdsFor(userTypes);
       final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
@@ -277,7 +297,8 @@ class ActivityFacilityRepository {
             workflowStatuses: workflowStatuses,
           );
           totalCount = (remoteCount - excludedIds.length).clamp(0, remoteCount);
-        } catch (_) {
+        } catch (error) {
+          if (isAuthenticationFailure(error)) rethrow;
           totalCount = offset +
               filteredRemoteList.length +
               (remoteList.length == pageSize ? 1 : 0);
@@ -294,6 +315,7 @@ class ActivityFacilityRepository {
         fromCache: false,
       );
     } catch (e) {
+      if (isAuthenticationFailure(e)) rethrow;
       AppLogger.instance.info("error in paginated fetch $e");
     }
 
@@ -302,7 +324,10 @@ class ActivityFacilityRepository {
       statuses: workflowStatuses,
       sortDirection: sortDirection,
     );
-    final filteredCache = _applyExclusion(cachedSorted, excludedIds);
+    final filteredCache = _applyExclusion(cachedSorted, excludedIds)
+        .where((wf) => matchesFacilityName(
+            wf.activityFacility.facility?.facilityName, body.facilityName))
+        .toList();
     final paged = filteredCache.skip(offset).take(limit).toList();
 
     return PaginatedActivityFacilities(
@@ -312,37 +337,21 @@ class ActivityFacilityRepository {
     );
   }
 
-  Future<void> _replaceCache(
-    List<String> statuses,
-    List<ActivityFacilityWorkflow> newList,
-  ) async {
-    final col = _isar.cacheActivityFacilityWorkflows;
-    await _isar.writeTxn(() async {
-      for (final status in statuses) {
-        final toDelete = await col.where().statusEqualTo(status).findAll();
-        for (final entry in toDelete) {
-          await col.delete(entry.id);
-        }
-      }
-      for (final wf in newList) {
-        await col.put(CacheActivityFacilityWorkflow(
-          activityFacilityId: wf.activityFacility.id,
-          status: wf.status ?? '',
-          activityFacility: wf.activityFacility,
-          transactions: wf.transactions,
-          workflow: wf.workflow,
-        ));
-      }
-    });
-  }
-
-  Future<void> _appendCache(
+  Future<void> _upsertCache(
     List<ActivityFacilityWorkflow> items,
   ) async {
     if (items.isEmpty) return;
     final col = _isar.cacheActivityFacilityWorkflows;
     await _isar.writeTxn(() async {
       for (final wf in items) {
+        if (wf.activityFacility.id.isEmpty) continue;
+        final existing = await col
+            .where()
+            .activityFacilityIdEqualTo(wf.activityFacility.id)
+            .findAll();
+        for (final row in existing) {
+          await col.delete(row.id);
+        }
         await col.put(CacheActivityFacilityWorkflow(
           activityFacilityId: wf.activityFacility.id,
           status: wf.status ?? '',
@@ -352,18 +361,25 @@ class ActivityFacilityRepository {
         ));
       }
     });
+    await refreshReportBookmarkSnapshots(items,
+        amc: false,
+        storage: _remote.bookmarkStorage,
+        tenantId: _remote.bookmarkTenantId);
   }
 
   Future<List<ActivityFacilityWorkflow>> readCache(
     List<String> statuses,
   ) async {
-    final col = _isar.cacheActivityFacilityWorkflows;
-    final List<CacheActivityFacilityWorkflow> all = [];
-    for (final status in statuses) {
-      final matches = await col.where().statusEqualTo(status).findAll();
-      all.addAll(matches);
+    final all = await _isar.cacheActivityFacilityWorkflows.where().findAll();
+    final byId = <String, CacheActivityFacilityWorkflow>{};
+    for (final row in all) {
+      final previous = byId[row.activityFacilityId];
+      if (previous == null || row.id > previous.id) {
+        byId[row.activityFacilityId] = row;
+      }
     }
-    return all
+    return byId.values
+        .where((row) => statuses.contains(row.status))
         .map((c) => ActivityFacilityWorkflow(
               activityFacility: c.activityFacility,
               status: c.status,
@@ -410,37 +426,60 @@ class UnsubmittedActivityFacilityRepository {
   final Isar _isar;
   final ActivityFacilityRemoteRepository _remote;
 
-  UnsubmittedActivityFacilityRepository(this._isar)
-      : _remote = ActivityFacilityRemoteRepository();
+  UnsubmittedActivityFacilityRepository(this._isar,
+      {ActivityFacilityRemoteRepository? remote})
+      : _remote = remote ?? ActivityFacilityRemoteRepository();
 
   Future<List<ActivityFacilityWorkflow>> fetchByWorkflowIncludeCache({
     required String userType,
     required List<String> workflowStatuses,
     required ActivityFacilitySearchModel body,
   }) async {
-    List<ActivityFacilityWorkflow> remoteList;
+    final serverCache = ActivityFacilityRepository(_isar, remote: _remote);
+    final remoteList = <ActivityFacilityWorkflow>[];
     try {
-      remoteList = await _remote.searchByWorkflow(
-        body: body,
-        workflowStatuses: workflowStatuses,
-      );
-    } catch (_) {
-      remoteList = <ActivityFacilityWorkflow>[];
+      var offset = 0;
+      const pageSize = 100;
+      while (true) {
+        final page = await _remote.searchByWorkflow(
+            body: body,
+            workflowStatuses: workflowStatuses,
+            limit: pageSize,
+            offset: offset);
+        await serverCache._upsertCache(page);
+        remoteList.addAll(page);
+        if (page.length < pageSize) break;
+        offset += page.length;
+      }
+    } catch (error) {
+      if (isAuthenticationFailure(error)) rethrow;
+      remoteList.addAll(await serverCache.readCache(workflowStatuses));
     }
     final col = _isar.cacheUnsubmittedActivityFacilitys;
-    final localEntries =
-        await col.where().filter().userTypeEqualTo(userType).findAll();
+    final localEntries = await col.where().userTypeEqualTo(userType).findAll();
     final localWorkflows = localEntries
         .map((e) => ActivityFacilityWorkflow(
             activityFacility: e.activityFacility, status: e.status))
         .toList();
-    final cachedIds = localEntries.map((e) => e.activityFacility.id).toSet();
-    final remoteOnly =
-        remoteList.where((r) => !cachedIds.contains(r.activityFacility.id));
+    final byId = <String, ActivityFacilityWorkflow>{};
+    for (final record in remoteList) {
+      byId[record.activityFacility.id] = record;
+    }
+    for (final record in localWorkflows) {
+      byId[record.activityFacility.id] = record;
+    }
+    // Keep the existing local-first ordering and let unsynced data take precedence.
+    final localIds =
+        localWorkflows.map((record) => record.activityFacility.id).toSet();
     return [
-      ...localWorkflows,
-      ...remoteOnly,
-    ];
+      ...localIds.map((id) => byId[id]!),
+      ...byId.entries
+          .where((entry) => !localIds.contains(entry.key))
+          .map((entry) => entry.value),
+    ]
+        .where((record) => matchesFacilityName(
+            record.activityFacility.facility?.facilityName, body.facilityName))
+        .toList();
   }
 
   Future<CacheUnsubmittedActivityFacility> addOrGet(

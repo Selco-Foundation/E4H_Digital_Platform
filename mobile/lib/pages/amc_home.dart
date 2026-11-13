@@ -5,14 +5,17 @@ import 'package:digit_ui_components/widgets/powered_by_digit.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/app_init_repo.dart';
+import '../repositories/cache_fallback.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/home/home_item_card.dart';
+import '../widgets/mdms/mdms_gate.dart';
 
 @RoutePage()
 class AmcHomePage extends StatefulWidget {
@@ -23,96 +26,31 @@ class AmcHomePage extends StatefulWidget {
 }
 
 class _AmcHomePageState extends State<AmcHomePage> {
-  late String _userType;
-  late String pendingRecords = "0";
-  late String assignedFacility = "0";
-  bool _prefetchStarted = false;
-  bool _loaderVisible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _prefetchStarted) return;
-      _prefetchStarted = true;
-      _prefetchAmcSchemas();
-    });
-  }
-
   Future<void> _prefetchAmcSchemas() async {
-    _openBlockingLoader();
     final repo = AppInitRepo();
-    try {
-      final rawDocs = await repo.searchAMCFormConfigsRaw(
-        const MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-            tenantId: 'in',
-            schemaCode: "common-masters.AMCFormSchema",
-            moduleDetails: [],
-          ),
-        ),
-        useCacheRead: false,
-      );
-
-      for (final doc in rawDocs) {
-        final transformed = transformSelcoFormMdmsDocToSchema(doc);
-        final uniqueId = doc['uniqueIdentifier']?.toString();
-        if (uniqueId != null && uniqueId.isNotEmpty) {
-          transformed['uniqueIdentifier'] = uniqueId;
-        }
-        await repo.upsertTransformedSchema(transformed);
-      }
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.translate(i18.amcHome.formSchemaLoadFailed)),
-          action: SnackBarAction(
-            label: context.translate(i18.common.retry),
-            onPressed: () {
-              if (!mounted) return;
-              _prefetchAmcSchemas();
-            },
-          ),
-        ),
-      );
-    } finally {
-      _closeBlockingLoader();
-    }
-  }
-
-  void _openBlockingLoader() {
-    if (_loaderVisible || !mounted) return;
-    _loaderVisible = true;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      useRootNavigator: true,
-      builder: (_) => PopScope(
-        canPop: false,
-        onPopInvoked: (didPop) {},
-        child: Dialog(
-          insetPadding: const EdgeInsets.all(24),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(width: 16),
-                Flexible(child: Text(context.translate(i18.common.loadingAppData))),
-              ],
-            ),
-          ),
-        ),
+    const request = MdmsRequestModel(
+      mdmsCriteria: MdmsCriteriaModel(
+        tenantId: 'in',
+        schemaCode: 'common-masters.AMCFormSchema',
+        moduleDetails: [],
       ),
     );
-  }
-
-  void _closeBlockingLoader() {
-    if (!_loaderVisible || !mounted) return;
-    _loaderVisible = false;
-    Navigator.of(context, rootNavigator: true).pop();
+    List<Map<String, dynamic>> rawDocs;
+    try {
+      rawDocs = await repo.searchAMCFormConfigsRaw(request);
+    } catch (error) {
+      if (isAuthenticationFailure(error)) rethrow;
+      rawDocs = await repo.searchAMCFormConfigsRaw(request, cacheOnly: true);
+    }
+    for (final doc in rawDocs) {
+      if (!mounted) return;
+      final transformed = transformSelcoFormMdmsDocToSchema(doc);
+      final uniqueId = doc['uniqueIdentifier']?.toString();
+      if (uniqueId != null && uniqueId.isNotEmpty) {
+        transformed['uniqueIdentifier'] = uniqueId;
+      }
+      await repo.upsertTransformedSchema(transformed);
+    }
   }
 
   @override
@@ -133,42 +71,46 @@ class _AmcHomePageState extends State<AmcHomePage> {
       },
     ];
 
-    return Scaffold(
-      backgroundColor: DigitTheme.instance.colorScheme.surface,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: spacer2),
-        child: ScrollableContent(
-          backgroundColor: theme.colorTheme.generic.background,
-          header: const BackNavigationHelpHeaderWidget(
-            showBackNavigation: false,
-            showHelp: true,
-          ),
-          footer: const PoweredByDigit(version: ''),
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.only(top: spacer6),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final item = _homeItems[index];
-                    return HomeItemCard(
-                      icon: item['icon'],
-                      label: item['label'],
-                      onPressed: item['onPressed'],
-                    );
-                  },
-                  childCount: _homeItems.length,
-                ),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: spacer4,
-                  childAspectRatio:
-                      (screenWidth / 2) / (170 * (screenWidth / 375)),
+    return MdmsGate(
+      module: MdmsModule.amc,
+      load: _prefetchAmcSchemas,
+      child: Scaffold(
+        backgroundColor: DigitTheme.instance.colorScheme.surface,
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: spacer2),
+          child: ScrollableContent(
+            backgroundColor: theme.colorTheme.generic.background,
+            header: const BackNavigationHelpHeaderWidget(
+              showBackNavigation: false,
+              showHelp: true,
+            ),
+            footer: const PoweredByDigit(version: ''),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.only(top: spacer6),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = _homeItems[index];
+                      return HomeItemCard(
+                        icon: item['icon'],
+                        label: item['label'],
+                        onPressed: item['onPressed'],
+                      );
+                    },
+                    childCount: _homeItems.length,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: spacer4,
+                    childAspectRatio:
+                        (screenWidth / 2) / (170 * (screenWidth / 375)),
+                  ),
                 ),
               ),
-            ),
-          ],
-          children: [],
+            ],
+            children: [],
+          ),
         ),
       ),
     );

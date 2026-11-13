@@ -3,105 +3,128 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
-import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../utils/extensions.dart';
+import '../../utils/report_date_label.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
+import '../bookmarks/report_bookmarks.dart';
+import '../rectification_badge.dart';
 
 class InboxReportRejectedCard extends StatelessWidget {
+  final bool isBookmarked;
+  final bool isSavingBookmark;
+  final VoidCallback? onToggleBookmark;
   final String? title;
   final String? status;
   final String? state;
   final String? district;
   final String? block;
-  final DateTime dateAssigned;
+  final DateTime? dateAssigned;
+  final String? dateLabelKey;
   final Function() onPress;
+  final bool isRectification;
 
   const InboxReportRejectedCard({
     super.key,
+    this.isBookmarked = false,
+    this.isSavingBookmark = false,
+    this.onToggleBookmark,
     this.title,
     this.status,
     this.state,
     this.district,
     this.block,
     required this.dateAssigned,
+    this.dateLabelKey,
     required this.onPress,
+    this.isRectification = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-    String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
+    final date = dateAssigned;
+    final formattedDate =
+        date == null ? '—' : DateFormat('dd/MM/yy').format(date);
 
-    return DigitCard(
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+    return RectificationAwareCard(
+      isRectification: isRectification,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+                child: Text(
               title!,
               style: textTheme.headingM
                   .copyWith(color: theme.colorTheme.primary.primary2),
+            )),
+            if (onToggleBookmark != null)
+              ReportBookmarkButton(
+                  selected: isBookmarked,
+                  saving: isSavingBookmark,
+                  onPressed: onToggleBookmark,
+                  addLabelKey: i18.installationBookmarks.add,
+                  removeLabelKey: i18.installationBookmarks.remove),
+          ]),
+          const SizedBox(height: spacer4),
+          const DigitDivider(dividerType: DividerType.small),
+          ReportDetailRow(
+            label: context.translate(i18.common.status),
+            labelFlex: 1,
+            valueFlex: 2,
+            value: _detailText(
+              context.translate(status ?? ''),
+              textTheme,
+              theme,
             ),
-            const SizedBox(height: spacer4),
-            const DigitDivider(dividerType: DividerType.small),
-            ReportDetailRow(
-              label: context.translate(i18.common.status),
-              labelFlex: 1,
-              valueFlex: 2,
-              value: _detailText(
-                context.translate(status ?? ''),
-                textTheme,
-                theme,
-              ),
-            ),
-            ReportDetailRow(
-              label: context.translate(i18.common.submissionDate),
-              labelFlex: 1,
-              valueFlex: 2,
-              value: _detailText(formattedDate, textTheme, theme),
-            ),
-            ReportDetailRow(
-              label: context.translate(i18.common.state),
-              labelFlex: 1,
-              valueFlex: 2,
-              value: _detailText(_displayValue(state), textTheme, theme),
-            ),
-            ReportDetailRow(
-              label: context.translate(i18.common.district),
-              labelFlex: 1,
-              valueFlex: 2,
-              value: _detailText(_displayValue(district), textTheme, theme),
-            ),
-            ReportDetailRow(
-              label: context.translate(i18.common.block),
-              labelFlex: 1,
-              valueFlex: 2,
-              value: _detailText(_displayValue(block), textTheme, theme),
-            ),
-            const SizedBox(height: spacer8),
-            DigitButton(
-                mainAxisSize: MainAxisSize.max,
-                label: context.translate(i18.sharedCards.viewDetails),
-                onPressed: onPress,
-                type: DigitButtonType.primary,
-                size: DigitButtonSize.large),
-            const SizedBox(height: spacer4),
-            DigitButton(
-                isDisabled: true,
-                mainAxisSize: MainAxisSize.max,
-                label:
-                    context.translate(i18.sharedCards.resubmitForApproval),
-                onPressed: onPress,
-                type: DigitButtonType.secondary,
-                size: DigitButtonSize.large),
-          ],
-        ),
-      ],
+          ),
+          ReportDetailRow(
+            label: reportDateLabel(
+                dateLabelKey ?? i18.common.submissionDate, context.translate),
+            labelFlex: 1,
+            valueFlex: 2,
+            value: _detailText(formattedDate, textTheme, theme),
+          ),
+          ReportDetailRow(
+            label: context.translate(i18.common.state),
+            labelFlex: 1,
+            valueFlex: 2,
+            value: _detailText(_displayValue(state), textTheme, theme),
+          ),
+          ReportDetailRow(
+            label: context.translate(i18.common.district),
+            labelFlex: 1,
+            valueFlex: 2,
+            value: _detailText(_displayValue(district), textTheme, theme),
+          ),
+          ReportDetailRow(
+            label: context.translate(i18.common.block),
+            labelFlex: 1,
+            valueFlex: 2,
+            value: _detailText(_displayValue(block), textTheme, theme),
+          ),
+          const SizedBox(height: spacer8),
+          DigitButton(
+              mainAxisSize: MainAxisSize.max,
+              label: context.translate(i18.sharedCards.viewDetails),
+              onPressed: onPress,
+              type: DigitButtonType.primary,
+              size: DigitButtonSize.large),
+          const SizedBox(height: spacer4),
+          DigitButton(
+              isDisabled: true,
+              mainAxisSize: MainAxisSize.max,
+              label: context.translate(i18.sharedCards.resubmitForApproval),
+              onPressed: onPress,
+              type: DigitButtonType.secondary,
+              size: DigitButtonSize.large),
+        ],
+      ),
     );
   }
 

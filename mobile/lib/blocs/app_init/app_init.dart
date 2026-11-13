@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../model/appconfig/mdmsRequest.dart';
+import '../../data/api_interceptors.dart';
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_count/asset_count.dart';
 import '../../model/asset_type/asset_type.dart';
@@ -14,6 +15,7 @@ import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 import '../../repositories/app_init_repo.dart';
+import '../../repositories/cache_fallback.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/envConfig.dart' as env;
 import '../../utils/utils.dart';
@@ -22,15 +24,33 @@ part 'app_init.freezed.dart';
 
 const _sessionExpiredMdmsError = 'SESSION_EXPIRED';
 const _mdmsFallbackFailureMessage =
-    'Failed to load configuration data. Please login and try again.';
+    'Failed to load configuration data. Please try again.';
+
+enum MdmsModule { installation, amc, assessment }
 
 class AppInitialization extends Bloc<InitEvent, InitState> {
-  AppInitialization() : super(const InitState.uninitialized()) {
+  AppInitialization({AppInitRepo? repository})
+      : _repository = repository ?? AppInitRepo(),
+        super(const InitState.uninitialized()) {
     on<_AppLaunchEvent>(_onAppLaunch);
     on<_FetchMdmsEvent>(_onFetchMdms);
   }
 
+  final AppInitRepo _repository;
+  int? _loadingSession;
+  final Map<MdmsModule, int> _readyModules = {};
   MdmsResponseModel? _cachedAppConfig;
+
+  bool isModuleReady(MdmsModule module) =>
+      _readyModules[module] == AuthTokenInterceptor.sessionGeneration;
+
+  void markModuleReady(MdmsModule module, int session) {
+    if (session == AuthTokenInterceptor.sessionGeneration) {
+      _readyModules[module] = session;
+    }
+  }
+
+  void invalidateModule(MdmsModule module) => _readyModules.remove(module);
 
   MdmsResponseModel? get cachedAppConfig => _cachedAppConfig;
 
@@ -38,7 +58,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     _AppLaunchEvent event,
     Emitter<InitState> emit,
   ) async {
-    final appInitRepo = AppInitRepo();
+    final appInitRepo = _repository;
 
     try {
       final appConfig = await appInitRepo.searchAppConfiguration();
@@ -55,44 +75,52 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     _FetchMdmsEvent event,
     Emitter<InitState> emit,
   ) async {
-    final appInitRepo = AppInitRepo();
+    final session = AuthTokenInterceptor.sessionGeneration;
+    if (_loadingSession == session) return;
+    _loadingSession = session;
     final appConfig = _cachedAppConfig;
-
     if (appConfig == null) {
+      _loadingSession = null;
       emit(const InitState.error('MDMS requested before appConfig.'));
       return;
     }
     emit(InitState.loadingMdms(appConfig: appConfig));
-
     try {
-      final results = await _fetchMdmsResults(appInitRepo);
-      await _emitInitializedState(
-        emit: emit,
-        appConfig: appConfig,
-        appInitRepo: appInitRepo,
-        results: results,
-      );
-    } catch (e) {
-      AppLogger.instance.info(e.toString());
-
-      if (isSessionExpiredMessage(e.toString())) {
-        emit(const InitState.error(_sessionExpiredMdmsError));
-        return;
-      }
-
       try {
-        final cachedResults =
-            await _fetchMdmsResults(appInitRepo, cacheOnly: true);
+        final results = await _fetchMdmsResults(_repository);
+        if (session != AuthTokenInterceptor.sessionGeneration) return;
         await _emitInitializedState(
           emit: emit,
           appConfig: appConfig,
-          appInitRepo: appInitRepo,
-          results: cachedResults,
+          appInitRepo: _repository,
+          results: results,
+          session: session,
         );
-      } catch (cacheError) {
-        AppLogger.instance.info(cacheError.toString());
+      } catch (error) {
+        if (session != AuthTokenInterceptor.sessionGeneration) return;
+        AppLogger.instance
+            .info('MDMS initialization failed: ${error.runtimeType}');
+        if (isAuthenticationFailure(error) ||
+            isSessionExpiredMessage(error.toString())) {
+          emit(const InitState.error(_sessionExpiredMdmsError));
+          return;
+        }
+        final cached = await _fetchMdmsResults(_repository, cacheOnly: true);
+        if (session != AuthTokenInterceptor.sessionGeneration) return;
+        await _emitInitializedState(
+          emit: emit,
+          appConfig: appConfig,
+          appInitRepo: _repository,
+          results: cached,
+          session: session,
+        );
+      }
+    } catch (_) {
+      if (session == AuthTokenInterceptor.sessionGeneration) {
         emit(const InitState.error(_mdmsFallbackFailureMessage));
       }
+    } finally {
+      if (_loadingSession == session) _loadingSession = null;
     }
   }
 
@@ -198,6 +226,11 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         tenantId: tenantId,
         cacheOnly: cacheOnly,
       ),
+      _fetchRequiredBomFormKeysForCache(
+        appInitRepo,
+        tenantId: tenantId,
+        cacheOnly: cacheOnly,
+      ),
     ]);
   }
 
@@ -218,11 +251,37 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         cacheOnly: cacheOnly,
       );
     } catch (e) {
-      if (isSessionExpiredMessage(e.toString())) {
+      if (isAuthenticationFailure(e) || isSessionExpiredMessage(e.toString())) {
         rethrow;
       }
 
       AppLogger.instance.info('Failed to load rejection reasons: $e');
+      return <dynamic>[];
+    }
+  }
+
+  Future<List<dynamic>> _fetchRequiredBomFormKeysForCache(
+    AppInitRepo appInitRepo, {
+    required String tenantId,
+    required bool cacheOnly,
+  }) async {
+    try {
+      return await appInitRepo.searchRequiredBomFormKeys(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "common-masters.RequiredBomFormKeys",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      );
+    } catch (e) {
+      if (isAuthenticationFailure(e) || isSessionExpiredMessage(e.toString())) {
+        rethrow;
+      }
+
+      AppLogger.instance.info('Failed to load required BOM form keys: $e');
       return <dynamic>[];
     }
   }
@@ -232,6 +291,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     required MdmsResponseModel appConfig,
     required AppInitRepo appInitRepo,
     required List<dynamic> results,
+    required int session,
   }) async {
     final List<Mdms<AssetCountData>> assetCount =
         (results[0] as List<Mdms<AssetCountData>>?) ?? <Mdms<AssetCountData>>[];
@@ -260,6 +320,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         (results[7] as List<dynamic>).cast<Map<String, dynamic>>();
 
     for (final doc in formsDocs) {
+      if (session != AuthTokenInterceptor.sessionGeneration) return;
       final transformed = transformSelcoFormMdmsDocToSchema(doc);
       final uniqueId = doc['uniqueIdentifier']?.toString();
       if (uniqueId != null && uniqueId.isNotEmpty) {
@@ -268,6 +329,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       await appInitRepo.upsertTransformedSchema(transformed);
     }
 
+    if (session != AuthTokenInterceptor.sessionGeneration) return;
     emit(InitState.initialized(
       appConfig: appConfig,
       assetCount: assetCount,

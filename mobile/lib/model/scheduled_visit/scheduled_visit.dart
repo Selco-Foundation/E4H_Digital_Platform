@@ -36,6 +36,7 @@ class AmcConfiguration with _$AmcConfiguration {
     @Default(<AmcAssignment>[]) List<AmcAssignment> assignments,
     int? durationMonths,
     int? visitFrequencyMonths,
+    int? totalVisits,
     @EpochDateTimeConverter() DateTime? configurationStartDate,
     @EpochDateTimeConverter() DateTime? configurationEndDate,
     String? status,
@@ -258,4 +259,11 @@ class FacilityConverter
 
   @override
   Map<String, dynamic> toJson(Facility value) => value.toMap();
+}
+
+/// Date of the latest workflow event, matching the web AMC audit trail.
+extension ScheduledVisitDisplayDate on ScheduledVisit {
+  DateTime? get displayDate => processInstances.isEmpty
+      ? null
+      : processInstances.first.auditDetails?.lastModifiedTime;
 }

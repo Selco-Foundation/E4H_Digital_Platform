@@ -20,66 +20,87 @@ class LocalizationBloc extends Bloc<LocalizationEvent, LocalizationState> {
   String? _locale;
 
   LocalizationBloc(this.isar) : super(const LocalizationState.initial()) {
-    on<_LocaleSelectedEvent>(onLocaleSelected);
+    on<_LocaleSelectedEvent>(_onLocaleSelected);
   }
 
   String? get locale => _locale;
 
-  FutureOr<void> onLocaleSelected(
+  FutureOr<void> _onLocaleSelected(
       _LocaleSelectedEvent event, Emitter<LocalizationState> emit) async {
-    _locale = event.locale;
-    AppSharedPreferences().setSelectedLocale(_locale!);
+    final selectedLocale = event.locale;
+    if (selectedLocale == null || selectedLocale.isEmpty) {
+      emit(LocalizationState.selected(locale: selectedLocale));
+      return;
+    }
 
-    //Search for localizations
+    _locale = selectedLocale;
+    AppSharedPreferences().setSelectedLocale(selectedLocale);
+
+    final appLocalizations = _appLocalizationsFor(selectedLocale);
+    await appLocalizations.load();
+
     try {
-      final localizationRepository = LocalizationRepository();
-      List<String?> moduleNameList = [
-        'rainmaker-common',
-      ];
-      final Map<String, String> queryParam = {
-        'locale': 'en_IN',
-        'module': moduleNameList.join(','),
-        'tenantId': envConfig.variables.tenantId
-      };
+      final localizationsList = await LocalizationRepository()
+          .getLocalizationsList(_queryParamsFor(selectedLocale));
 
-      //initialize appLocalizations for searching ISAR or setting locmodel
-      final splitLocale = event.locale!.split('_');
-      AppLocalizations appLocalizations =
-          AppLocalizations(Locale(splitLocale[0], splitLocale[1]), isar);
+      await _replaceCachedLocalizations(
+        locale: selectedLocale,
+        localizations: localizationsList.messages
+            .map(
+              (e) => Localization()
+                ..message = e.message
+                ..code = e.code
+                ..locale = e.locale
+                ..module = e.module,
+            )
+            .toList(),
+      );
 
-      var localizationsListFetched = await appLocalizations.load();
+      await appLocalizations.load();
+    } catch (_) {
+      // Keep startup/offline behavior non-blocking. Cached translations remain
+      // loaded when present; otherwise UI falls back to localization keys.
+    }
 
-      //fetch localizationList online if localizations could not be fetched from ISAR
-      if (localizationsListFetched == false) {
-        final localizationsList =
-            await localizationRepository.getLocalizationsList(queryParam);
+    emit(LocalizationState.selected(locale: selectedLocale));
+  }
 
-        //once we have the localizations from the server, we can save them in ISAR
-        //for future access
-        try {
-          final localizationsListObject = LocalizationWrapper()
-            ..locale = event.locale!
-            ..localization = localizationsList.messages
-                .map((e) => Localization()
-                  ..message = e.message
-                  ..code = e.code
-                  ..locale = e.locale
-                  ..module = e.module)
-                .toList();
+  AppLocalizations _appLocalizationsFor(String locale) {
+    final splitLocale = locale.split('_');
+    final languageCode = splitLocale.first;
+    final countryCode = splitLocale.length > 1 ? splitLocale[1] : null;
+    return AppLocalizations(Locale(languageCode, countryCode), isar);
+  }
 
-          await isar.writeTxn(() async {
-            await isar.localizationWrappers
-                .put(localizationsListObject); // insert & update
-          });
-        } catch (err) {
-          rethrow;
-        }
+  Map<String, String> _queryParamsFor(String locale) {
+    const moduleNameList = ['rainmaker-common'];
+    return {
+      'locale': locale,
+      'module': moduleNameList.join(','),
+      'tenantId': envConfig.variables.tenantId,
+    };
+  }
+
+  Future<void> _replaceCachedLocalizations({
+    required String locale,
+    required List<Localization> localizations,
+  }) async {
+    await isar.writeTxn(() async {
+      final existing = await isar.localizationWrappers
+          .filter()
+          .localeEqualTo(locale)
+          .findAll();
+
+      for (final wrapper in existing) {
+        await isar.localizationWrappers.delete(wrapper.id);
       }
 
-      emit(LocalizationState.selected(locale: event.locale));
-    } catch (err) {
-      rethrow;
-    }
+      await isar.localizationWrappers.put(
+        LocalizationWrapper()
+          ..locale = locale
+          ..localization = localizations,
+      );
+    });
   }
 }
 

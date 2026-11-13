@@ -52,11 +52,11 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                 ),
                 const SizedBox(height: spacer4),
                 ReportCard(
-                  onPress: () {
+                  onPress: () async {
                     context
                         .read<ReportTypeBloc>()
                         .add(const ReportTypeEvent.typeSelected("new-report"));
-                    context.router.push(const AmcSelectFacilityRoute());
+                    await context.router.push(AmcSelectFacilityRoute());
                   },
                   icon: Icons.add_box_outlined,
                   heading: context.translate(i18.amcReportHome.newAmcReport),
@@ -64,11 +64,11 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                       .translate(i18.amcReportHome.newAmcReportDescription),
                 ),
                 ReportCard(
-                  onPress: () {
+                  onPress: () async {
                     context
                         .read<ReportTypeBloc>()
                         .add(const ReportTypeEvent.typeSelected("inbox"));
-                    context.router.push(const AmcInboxRoute());
+                    await context.router.push(const AmcInboxRoute());
                   },
                   icon: Icons.toc,
                   heading: context.translate(i18.inbox.title),
@@ -76,11 +76,11 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                       context.translate(i18.amcReportHome.inboxDescription),
                 ),
                 ReportCard(
-                    onPress: () {
+                    onPress: () async {
                       context
                           .read<ReportTypeBloc>()
                           .add(const ReportTypeEvent.typeSelected("submitted"));
-                      context.router.push(const AmcDraftRoute());
+                      await context.router.push(const AmcDraftRoute());
                     },
                     icon: Icons.assignment_late,
                     heading: context.translate(i18.amcDraft.pendingApproval),

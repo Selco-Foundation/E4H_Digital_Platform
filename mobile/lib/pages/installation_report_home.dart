@@ -79,7 +79,7 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                       onPress: () {
                         context.read<ReportTypeBloc>().add(
                             const ReportTypeEvent.typeSelected("new-report"));
-                        context.router.push(const SelectHealthFacilityRoute());
+                        context.router.push(SelectHealthFacilityRoute());
                       },
                       icon: Icons.add_box_outlined,
                       heading: 'New Report',
