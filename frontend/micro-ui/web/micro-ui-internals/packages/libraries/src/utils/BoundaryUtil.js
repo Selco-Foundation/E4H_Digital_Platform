@@ -9,7 +9,7 @@ export const BoundaryUtil = {
       })
     }
 
-    return boundaryCodes;
+    return [...new Set(boundaryCodes)];
   },
 
   aggregateBoundaryTypes: (boundaries) => {
