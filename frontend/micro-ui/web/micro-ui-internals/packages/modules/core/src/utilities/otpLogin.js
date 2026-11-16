@@ -1,0 +1,169 @@
+/**
+ * Pure helpers for the employee "Login with mobile number & OTP" flow.
+ *
+ * Nothing in this file renders UI or calls an API, so every function can be
+ * unit tested on its own and reused by both the component and the service.
+ */
+
+// Number of OTP boxes on screen. The backend sends a 6-digit OTP and does not
+// return its length in the _send response, so the UI needs to know it here.
+export const OTP_LENGTH = 6;
+
+// Indian mobile number: exactly 10 digits, first digit 6-9.
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+
+// Enough room for "+91 98765-43210" while the user types in a readable format.
+export const MOBILE_INPUT_MAX_LENGTH = 16;
+
+/**
+ * Reads a key from window.globalConfigs without throwing.
+ * globalConfigs is loaded from the environment's assets and can be missing
+ * (tests, a broken assets proxy), so the login page must never crash because of it.
+ */
+const readGlobalConfig = (key) => {
+  try {
+    return window?.globalConfigs?.getConfig?.(key);
+  } catch (e) {
+    return undefined;
+  }
+};
+
+/**
+ * Whether the "Login with mobile number & OTP" link is shown.
+ * Visible by default; an environment hides it by setting globalConfigs key
+ * EMPLOYEE_OTP_LOGIN_ENABLED to false (boolean) or "false" (string).
+ */
+export const isOtpLoginEnabled = () => {
+  const flag = readGlobalConfig("EMPLOYEE_OTP_LOGIN_ENABLED");
+  return !(flag === false || String(flag).trim().toLowerCase() === "false");
+};
+
+/**
+ * null/undefined -> "", anything else -> String(value).
+ * Written out instead of `value ?? ""` on purpose: the example app's
+ * react-scripts 4 (webpack 4) cannot parse `??`, and the core build leaves it
+ * untouched, which breaks the app with "Module parse failed: Unexpected token".
+ */
+const toText = (value) => (value === null || value === undefined ? "" : String(value));
+
+/**
+ * Keeps only characters a person would type in a phone number
+ * (digits, +, -, spaces, brackets) and caps the length.
+ * Used on every keystroke, so letters never appear in the field.
+ */
+export const sanitizeMobileInput = (raw) =>
+  toText(raw)
+    .replace(/[^\d+\-\s()]/g, "")
+    .slice(0, MOBILE_INPUT_MAX_LENGTH);
+
+/**
+ * Converts what the user typed into the 10-digit number sent to the backend.
+ *   "+91 98765 43210" -> "9876543210"   (country code removed)
+ *   "09876543210"     -> "9876543210"   (trunk 0 removed)
+ *   "98765-43210"     -> "9876543210"
+ * Anything else is returned as digits only and will fail isValidMobile.
+ */
+export const normalizeMobile = (raw) => {
+  let digits = toText(raw).replace(/\D/g, "");
+
+  if (digits.length === 12 && digits.startsWith("91")) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  return digits;
+};
+
+/** True when the input normalizes to a valid 10-digit Indian mobile number. */
+export const isValidMobile = (raw) => MOBILE_REGEX.test(normalizeMobile(raw));
+
+/**
+ * Hides all but the last 4 digits: "9876543210" -> "******3210".
+ * The OTP screen confirms where the OTP went without showing the full
+ * number to someone looking at the screen.
+ */
+export const maskMobile = (raw) => {
+  const digits = normalizeMobile(raw);
+  if (digits.length <= 4) return digits;
+  return `${"*".repeat(digits.length - 4)}${digits.slice(-4)}`;
+};
+
+/** Digits only, never longer than the OTP length. */
+export const sanitizeOtp = (raw, length) =>
+  toText(raw)
+    .replace(/\D/g, "")
+    .slice(0, length);
+
+/** True only when the OTP has exactly `length` digits. */
+export const isCompleteOtp = (otp, length) => typeof otp === "string" && otp.length === length && /^\d+$/.test(otp);
+
+/**
+ * A timer value from the backend, in seconds. 0 when the field is not sent,
+ * which the UI treats as "no timer" (nothing to wait for or count down).
+ */
+export const toTimerSeconds = (value) => (typeof value === "number" && value > 0 ? value : 0);
+
+/** 105 -> "1:45", 9 -> "0:09". Used for the account-selection countdown. */
+export const formatCountdown = (totalSeconds) => {
+  const safe = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const minutes = Math.floor(safe / 60);
+  const seconds = String(safe % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+};
+
+/**
+ * Shapes the `accounts` array returned by /user/otp-login/v1/_verify for the UI:
+ *   [{ key, userName, name, tenantId, roleCodes }]
+ * `key` identifies a row in the account picker. Backend order is kept.
+ */
+export const normalizeAccounts = (rawAccounts) =>
+  (Array.isArray(rawAccounts) ? rawAccounts : []).map((account) => ({
+    key: `${account.tenantId}:${account.userName}`,
+    userName: account.userName,
+    name: account.name || "",
+    tenantId: account.tenantId,
+    roleCodes: Array.isArray(account.roleCodes) ? account.roleCodes : [],
+  }));
+
+/**
+ * Role codes this portal refuses to log in (globalConfigs INVALIDROLES).
+ * Digit.UserService.authenticate rejects such users only AFTER the token call,
+ * so these accounts are hidden from the picker up front.
+ */
+export const getInvalidRoles = () => {
+  const roles = readGlobalConfig("INVALIDROLES");
+  return Array.isArray(roles) ? roles : [];
+};
+
+/**
+ * Readable fallback for a role code that has no translation yet.
+ * Short words (3 letters or fewer) are treated as acronyms.
+ *   "AMC_REVIEWER"       -> "AMC Reviewer"
+ *   "ORG_PLATFORM_ADMIN" -> "ORG Platform Admin"
+ *   "EMPLOYEE"           -> "Employee"
+ */
+export const formatRoleCode = (code) =>
+  String(code || "")
+    .split("_")
+    .filter(Boolean)
+    .map((word) => (word.length <= 3 ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()))
+    .join(" ");
+
+/**
+ * Short role summary for one account row: the first `max` labels, then "+N more".
+ * Keeps every row to one line however many roles an account has.
+ *   (["A", "B", "C", "D"], 2) -> "A, B +2 more"
+ */
+export const summarizeRoles = (labels, max) => {
+  if (!Array.isArray(labels) || labels.length === 0) return "";
+  const shown = labels.slice(0, max).join(", ");
+  const hidden = labels.length - max;
+  return hidden > 0 ? `${shown} +${hidden} more` : shown;
+};
+
+/** Removes accounts holding any role in `invalidRoles`. */
+export const filterPermittedAccounts = (accounts, invalidRoles) => {
+  if (!Array.isArray(invalidRoles) || invalidRoles.length === 0) return accounts;
+  return accounts.filter((account) => !account.roleCodes.some((code) => invalidRoles.includes(code)));
+};
