@@ -272,4 +272,69 @@ class RoleScopeResolverTest {
         assertEquals(FacilityScope.Decision.UNSCOPED_WARN, scope.decision());
         assertTrue(!scope.isDeny(), "warn mode exists precisely so this traffic can be classified first");
     }
+
+    @Test
+    @DisplayName("several declared roles union their jurisdictions")
+    void severalActingRolesUnionTheirGrants() throws Exception {
+        // IM's case: one person is assessor in one place and facilitator in another, and a facility
+        // must be visible to them whichever hat they are wearing. Picking the "broadest" single role
+        // cannot express this - no one role covers both.
+        hrmsReturns(grant("S1", "State", true, "COMPLAINT_ASSESSOR"),
+                grant("S2", "State", true, "COMPLAINT_FACILITATOR_2"));
+        boundaryExpands("S1", "State", "F1");
+        boundaryExpands("S2", "State", "F2");
+
+        FacilityScope scope = resolver().resolve(
+                caller(UUID, null, "COMPLAINT_ASSESSOR", "COMPLAINT_FACILITATOR_2"),
+                "COMPLAINT_ASSESSOR,COMPLAINT_FACILITATOR_2");
+
+        assertEquals(FacilityScope.Decision.SCOPED, scope.decision());
+        assertEquals(new LinkedHashSet<>(Arrays.asList("F1", "F2")), scope.ceiling());
+    }
+
+    @Test
+    @DisplayName("a role outside the declared list still contributes nothing")
+    void aRoleNotDeclaredIsStillExcluded() throws Exception {
+        // The whole reason the caller names its roles: the Management Hub's pm grant must not widen
+        // an IM screen just because the same person holds both.
+        hrmsReturns(grant("S1", "State", true, "COMPLAINANT"),
+                grant("S2", "State", true, "PROJECT_MANAGER"));
+        boundaryExpands("S1", "State", "F1");
+
+        FacilityScope scope = resolver().resolve(
+                caller(UUID, null, "COMPLAINANT", "PROJECT_MANAGER"), "COMPLAINANT");
+
+        assertEquals(Collections.singleton("F1"), scope.ceiling());
+        verify(boundaryUtil, never()).expandToFacilityCodes(eq("S2"), anyString());
+    }
+
+    @Test
+    @DisplayName("one unheld role in the list refuses the whole request")
+    void oneUnheldRoleInTheListIsRefused() {
+        // Not "drop it and carry on": a typo would then silently change the answer while still
+        // looking like it worked, which is the failure mode this control exists to avoid.
+        FacilityScope scope = resolver().resolve(caller(UUID, null, FA), FA + ",PROJECT_MANAGER");
+
+        assertEquals(FacilityScope.Decision.DENY_INVALID_ACTING_ROLE, scope.decision());
+        verifyNoInteractions(hrmsUtils);
+    }
+
+    @Test
+    @DisplayName("blank entries and spacing in the header are tolerated")
+    void theHeaderListIsParsedLeniently() throws Exception {
+        hrmsReturns(grant("S1", "State", true, FA));
+        boundaryExpands("S1", "State", "F1");
+
+        FacilityScope scope = resolver().resolve(caller(UUID, null, FA), "  " + FA + " , ,");
+
+        assertEquals(FacilityScope.Decision.SCOPED, scope.decision());
+        assertEquals(FA, scope.actingRole(), "the audit log should read as the roles that applied");
+    }
+
+    @Test
+    @DisplayName("a list of only separators counts as no header at all")
+    void aListOfOnlySeparatorsIsAMissingHeader() {
+        assertEquals(FacilityScope.Decision.DENY_MISSING_ACTING_ROLE,
+                resolver().resolve(caller(UUID, null, FA), " , , ").decision());
+    }
 }

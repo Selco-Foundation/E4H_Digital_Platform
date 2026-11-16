@@ -19,10 +19,19 @@ import java.util.Set;
 /**
  * Decides what the caller may see, per the role they say they are acting as.
  *
- * <h3>Why the acting role, and not the union of the caller's roles</h3>
+ * <h3>Why the caller names the roles, and not the server</h3>
  * One person can be a Facility Administrator in one state and a Project Manager in another. The
- * endpoint is the same from both screens, so without the caller naming a role the server can only
- * offer the union - which lets the fa screens reach pm's state. The header names the hat.
+ * endpoint is the same from both screens, so a server that simply unioned every role the caller
+ * holds would let the fa screens reach pm's state. The header names the hats actually in play, and
+ * may name more than one: the Management Hub sends the single role its module means, while IM
+ * sends every IM role the caller holds, because there a facility is visible to all of those roles
+ * alike. The server unions the jurisdictions of the roles it is given, and only those.
+ *
+ * <h3>Not handled: a caller who is different things at different levels</h3>
+ * Someone holding assessor across a state and facilitator in one district of it gets the union, so
+ * the district grant adds nothing and the state wins. Narrowing per level is deliberately out of
+ * scope until a real user needs it - see NEXT_STEPS. The union is what IM asks for today: within a
+ * jurisdiction it must not matter which IM hat the caller is wearing.
  *
  * <h3>Why a forged header cannot escalate</h3>
  * The claimed role is checked against the roles on the caller's own {@code RequestInfo}, which the
@@ -109,11 +118,15 @@ public class RoleScopeResolver {
             return settle(FacilityScope.Decision.DENY_MISSING_ACTING_ROLE, null, null, "no caller identity");
         }
 
-        String actingRole = actingRoleHeader == null ? "" : actingRoleHeader.trim();
-        if (actingRole.isEmpty()) {
+        Set<String> actingRoles = parseActingRoles(actingRoleHeader);
+        if (actingRoles.isEmpty()) {
             return settle(FacilityScope.Decision.DENY_MISSING_ACTING_ROLE, null, null, "no " + X_ACTING_ROLE);
         }
-        if (!heldRoleCodes(requestInfo).contains(actingRole)) {
+        String actingRole = String.join(",", actingRoles);
+        // Every named role must be held, not just one of them. Dropping the unheld ones instead
+        // would turn a typo into a quietly narrower result that still looks like it worked.
+        Set<String> held = heldRoleCodes(requestInfo);
+        if (!held.containsAll(actingRoles)) {
             return settle(FacilityScope.Decision.DENY_INVALID_ACTING_ROLE, actingRole, null, "role not held");
         }
 
@@ -126,7 +139,7 @@ public class RoleScopeResolver {
         Set<String> ceiling = new LinkedHashSet<>();
         StringBuilder summary = new StringBuilder();
         for (Jurisdiction grant : grants.grants()) {
-            if (!appliesTo(grant, actingRole)) {
+            if (!appliesTo(grant, actingRoles)) {
                 continue;
             }
             Set<String> beneath;
@@ -171,17 +184,38 @@ public class RoleScopeResolver {
      * That is the shape of every grant written before role scoping existed, so reading it the other
      * way round would empty the platform on the day this is switched on.
      */
-    private boolean appliesTo(Jurisdiction grant, String actingRole) {
+    private boolean appliesTo(Jurisdiction grant, Set<String> actingRoles) {
         List<Role> roles = grant.getRoles();
         if (roles == null || roles.isEmpty()) {
             return true;
         }
         for (Role role : roles) {
-            if (role != null && actingRole.equals(role.getCode())) {
+            if (role != null && role.getCode() != null && actingRoles.contains(role.getCode().trim())) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * The roles named in the header, in the order given.
+     *
+     * One value is the Management Hub's case and the common one; a comma-separated list is IM
+     * declaring every role it means at once. Ordered so the audit log reads the same way twice for
+     * the same caller, which matters when the only evidence of what warn mode saw is a log line.
+     */
+    private static Set<String> parseActingRoles(String header) {
+        Set<String> roles = new LinkedHashSet<>();
+        if (header == null) {
+            return roles;
+        }
+        for (String part : header.split(",")) {
+            String code = part.trim();
+            if (!code.isEmpty()) {
+                roles.add(code);
+            }
+        }
+        return roles;
     }
 
     private Set<String> expand(Jurisdiction grant) throws Exception {

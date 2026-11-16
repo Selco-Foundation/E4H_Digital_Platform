@@ -26,7 +26,7 @@ public final class FacilityScope {
         SCOPED,
         /** Human caller, no acting role declared. */
         DENY_MISSING_ACTING_ROLE,
-        /** Acting role declared, but the caller does not hold it. */
+        /** A role was declared that the caller does not hold. One unheld role in the list is enough. */
         DENY_INVALID_ACTING_ROLE,
         /** Resolved cleanly: this role grants the caller nothing. A real answer, so 200 with no rows. */
         DENY_NO_JURISDICTION,
@@ -35,6 +35,7 @@ public final class FacilityScope {
     }
 
     private final Decision decision;
+    /** The declared role, or the comma-joined list of them when the caller named several. */
     private final String actingRole;
     private final Set<String> ceiling;
     private final String summary;
@@ -126,7 +127,9 @@ public final class FacilityScope {
             case DENY_MISSING_ACTING_ROLE:
                 return "This request must declare which role it is acting as, in the x-acting-role header.";
             case DENY_INVALID_ACTING_ROLE:
-                return "You do not hold the role '" + actingRole + "'.";
+                return actingRole != null && actingRole.contains(",")
+                        ? "You do not hold all of the roles '" + actingRole + "'."
+                        : "You do not hold the role '" + actingRole + "'.";
             case DENY_SCOPE_UNAVAILABLE:
                 return "Could not determine your jurisdictions; the request was refused rather than "
                         + "answered with results that may be incomplete. Please retry.";
