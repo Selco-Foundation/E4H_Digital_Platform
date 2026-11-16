@@ -6,6 +6,7 @@ import { useLabel } from "./useLabel";
 const LABEL_WIDTH = "300px"; // same label column width as the other rows on the profile page
 const CONTENT_MAX_WIDTH = "540px"; // same width as the Mobile No. field above
 const TOAST_MS = 5000;
+const APPROVED_NOTE_DAYS = 2; // how long the "number was updated" confirmation stays on the profile after the CRM approves
 
 const COLORS = { PENDING: "#F47738", REJECTED: "#D4351C", APPROVED: "#00703C", muted: "#505A5F", border: "#D6D5D4", brand: "#7a2829" };
 
@@ -13,6 +14,9 @@ const formatDate = (epochMillis) =>
   epochMillis ? new Date(epochMillis).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "";
 
 const formatNumber = (number) => (number ? `+91 ${number}` : "");
+
+// True when the timestamp is within the last `days` days. A missing timestamp counts as "not recent".
+const isWithinDays = (epochMillis, days) => !!epochMillis && Date.now() - epochMillis < days * 24 * 60 * 60 * 1000;
 
 const linkButtonStyle = { color: COLORS.brand, cursor: "pointer", outline: "none", background: "none", border: "none", padding: 0, font: "inherit" };
 const outlineButtonStyle = { color: COLORS.brand, border: `1px solid ${COLORS.brand}`, background: "#fff", padding: "8px 20px", cursor: "pointer", font: "inherit" };
@@ -241,7 +245,8 @@ const MobileChangeRequestSection = ({ currentMobileNumber, onMobileNumberUpdated
             </StatusCard>
           </div>
         )}
-        {latest?.status === utils.MOBILE_CHANGE_STATUS.APPROVED && (
+        {/* Only a confirmation: shown for a couple of days after approval, then the field above is the record. */}
+        {latest?.status === utils.MOBILE_CHANGE_STATUS.APPROVED && isWithinDays(latest.actionTime, APPROVED_NOTE_DAYS) && (
           <div style={{ color: COLORS.APPROVED, marginBottom: "8px" }}>
             {tr("MOBILE_CHANGE_APPROVED_INFO")} {formatDate(latest.actionTime)}
           </div>
