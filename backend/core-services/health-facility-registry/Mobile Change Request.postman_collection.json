@@ -1,0 +1,604 @@
+{
+  "info": {
+    "_postman_id": "94158305-b841-4831-b17a-cf52a92948c5",
+    "name": "Facility Service - Mobile Number Change Request",
+    "description": "Registered mobile number change request APIs (SEM 4.0, issue #3209).\n\nHappy path: User > Create request, then CRM > Search approval queue, then CRM > Approve or Reject (or User > Cancel).\n\nRequestInfo.userInfo is hard-coded with roles so the collection works when calling the service directly (port-forward). Through the gateway, the auth token is what counts: set `facilityUserAuthToken` / `crmAuthToken` to real tokens.\n\nEvery body carries a `tenantId` outside RequestInfo: the API gateway rejects requests without one (\"Failed to parse request at API gateway\").",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Facility user",
+      "item": [
+        {
+          "name": "Create request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"create\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{facilityUserAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{facilityUserUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{facilityUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINANT\",\n          \"name\": \"Complainant\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"MobileChangeRequest\": {\n    \"tenantId\": \"{{tenantId}}\",\n    \"newMobileNumber\": \"{{newMobileNumber}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_create"
+              ]
+            },
+            "description": "Facility user raises a change request. The user, facility and current number come from the logged-in user's HRMS record; only `newMobileNumber` is read. Saves the new id into `{{requestId}}`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "if (r.MobileChangeRequests && r.MobileChangeRequests.length) {",
+                  "  pm.collectionVariables.set('requestId', r.MobileChangeRequests[0].id);",
+                  "  pm.test('request is PENDING', () => pm.expect(r.MobileChangeRequests[0].status).to.eql('PENDING'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search my requests",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"search\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{facilityUserAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{facilityUserUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{facilityUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINANT\",\n          \"name\": \"Complainant\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"criteria\": {\n    \"tenantId\": \"{{tenantId}}\",\n    \"limit\": 10,\n    \"offset\": 0\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_search"
+              ]
+            },
+            "description": "A non-CRM caller always gets only their own requests, newest first. Use this to show the current or last request's status on the profile page."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"cancel\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{facilityUserAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{facilityUserUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{facilityUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINANT\",\n          \"name\": \"Complainant\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"tenantId\": \"{{tenantId}}\",\n  \"id\": \"{{requestId}}\",\n  \"comment\": \"Raised by mistake\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_cancel"
+              ]
+            },
+            "description": "Only the user who raised it, and only while it is PENDING."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('request is CANCELLED', () => pm.expect(r.MobileChangeRequests[0].status).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CRM",
+      "item": [
+        {
+          "name": "Search approval queue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"search\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{crmAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{crmUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{crmUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINT_ASSESSOR\",\n          \"name\": \"Complaint Assessor\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"criteria\": {\n    \"tenantId\": \"{{tenantId}}\",\n    \"status\": [\n      \"PENDING\"\n    ],\n    \"limit\": 10,\n    \"offset\": 0\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_search"
+              ]
+            },
+            "description": "CRM (COMPLAINT_ASSESSOR) sees all requests. `status: [PENDING]` gives the approval queue. Other filters: `tenantId`, `ids`, `userUuid`, `facilityId`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"approve\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{crmAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{crmUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{crmUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINT_ASSESSOR\",\n          \"name\": \"Complaint Assessor\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"tenantId\": \"{{tenantId}}\",\n  \"id\": \"{{requestId}}\",\n  \"comment\": \"Verified with facility\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_approve"
+              ]
+            },
+            "description": "Updates the user's mobile number in HRMS/egov-user and the facility POC phone. Fails if the request is no longer PENDING."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('request is APPROVED', () => pm.expect(r.MobileChangeRequests[0].status).to.eql('APPROVED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"reject\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{crmAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{crmUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{crmUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINT_ASSESSOR\",\n          \"name\": \"Complaint Assessor\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"tenantId\": \"{{tenantId}}\",\n  \"id\": \"{{requestId}}\",\n  \"comment\": \"Could not verify the new number\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_reject"
+              ]
+            },
+            "description": "The user's mobile number is unchanged. The user can raise a fresh request afterwards."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('request is REJECTED', () => pm.expect(r.MobileChangeRequests[0].status).to.eql('REJECTED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Negative cases",
+      "item": [
+        {
+          "name": "Invalid number (expect INVALID_MOBILE_NUMBER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"create\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{facilityUserAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{facilityUserUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{facilityUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINANT\",\n          \"name\": \"Complainant\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"MobileChangeRequest\": {\n    \"tenantId\": \"{{tenantId}}\",\n    \"newMobileNumber\": \"12345\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_create"
+              ]
+            },
+            "description": "Must be a 10-digit Indian mobile starting 6-9."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error code INVALID_MOBILE_NUMBER', () => pm.expect(pm.response.text()).to.include('INVALID_MOBILE_NUMBER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Same as current (expect SAME_MOBILE_NUMBER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"create\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{facilityUserAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{facilityUserUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{facilityUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINANT\",\n          \"name\": \"Complainant\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"MobileChangeRequest\": {\n    \"tenantId\": \"{{tenantId}}\",\n    \"newMobileNumber\": \"{{currentMobileNumber}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_create"
+              ]
+            },
+            "description": "The new number must differ from the registered one."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error code SAME_MOBILE_NUMBER', () => pm.expect(pm.response.text()).to.include('SAME_MOBILE_NUMBER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Second create while pending (expect ALREADY_PENDING)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"create\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{facilityUserAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{facilityUserUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{facilityUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINANT\",\n          \"name\": \"Complainant\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"MobileChangeRequest\": {\n    \"tenantId\": \"{{tenantId}}\",\n    \"newMobileNumber\": \"{{newMobileNumber}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_create"
+              ]
+            },
+            "description": "Run after 'Create request' while it is still pending."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error code MOBILE_CHANGE_REQUEST_ALREADY_PENDING', () => pm.expect(pm.response.text()).to.include('MOBILE_CHANGE_REQUEST_ALREADY_PENDING'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Non-CRM approves (expect NOT_AUTHORIZED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"approve\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{facilityUserAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{facilityUserUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{facilityUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINANT\",\n          \"name\": \"Complainant\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"tenantId\": \"{{tenantId}}\",\n  \"id\": \"{{requestId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_approve"
+              ]
+            },
+            "description": "Only COMPLAINT_ASSESSOR may approve or reject."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error code NOT_AUTHORIZED', () => pm.expect(pm.response.text()).to.include('NOT_AUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Act on closed request (expect NOT_PENDING)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"reject\",\n    \"msgId\": \"{{$timestamp}}|en_IN\",\n    \"authToken\": \"{{crmAuthToken}}\",\n    \"userInfo\": {\n      \"uuid\": \"{{crmUuid}}\",\n      \"type\": \"EMPLOYEE\",\n      \"userName\": \"{{crmUserName}}\",\n      \"tenantId\": \"{{tenantId}}\",\n      \"roles\": [\n        {\n          \"code\": \"COMPLAINT_ASSESSOR\",\n          \"name\": \"Complaint Assessor\",\n          \"tenantId\": \"{{tenantId}}\"\n        },\n        {\n          \"code\": \"EMPLOYEE\",\n          \"name\": \"Employee\",\n          \"tenantId\": \"{{tenantId}}\"\n        }\n      ]\n    }\n  },\n  \"tenantId\": \"{{tenantId}}\",\n  \"id\": \"{{requestId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facility-service/v2/facility/mobile-change-request/_reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "facility-service",
+                "v2",
+                "facility",
+                "mobile-change-request",
+                "_reject"
+              ]
+            },
+            "description": "Run after the request was approved, rejected or cancelled."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error code MOBILE_CHANGE_REQUEST_NOT_PENDING', () => pm.expect(pm.response.text()).to.include('MOBILE_CHANGE_REQUEST_NOT_PENDING'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "tenantId",
+      "value": "in"
+    },
+    {
+      "key": "facilityUserUuid",
+      "value": "<facility-user-uuid>"
+    },
+    {
+      "key": "facilityUserName",
+      "value": "<facility-username>"
+    },
+    {
+      "key": "facilityUserAuthToken",
+      "value": "<facility-user-auth-token>"
+    },
+    {
+      "key": "crmUuid",
+      "value": "<crm-uuid>"
+    },
+    {
+      "key": "crmUserName",
+      "value": "<crm-username>"
+    },
+    {
+      "key": "crmAuthToken",
+      "value": "<crm-auth-token>"
+    },
+    {
+      "key": "currentMobileNumber",
+      "value": "9876543210"
+    },
+    {
+      "key": "newMobileNumber",
+      "value": "9123456780"
+    },
+    {
+      "key": "requestId",
+      "value": ""
+    }
+  ]
+}

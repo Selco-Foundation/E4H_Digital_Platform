@@ -18,6 +18,7 @@ import java.util.List;
 @Builder
 public class MobileChangeRequestSearchCriteria {
 
+    /** Filters by tenant; also required by the API gateway, which rejects a body without one. */
     @JsonProperty("tenantId")
     private String tenantId;
 
