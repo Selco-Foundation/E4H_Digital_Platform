@@ -675,7 +675,42 @@ def load_data_ingestion_map(wb):
             instances[-1]["cells"].append((row_no, col_no))
         else:
             instances.append({"section": section, "label": base_label, "cells": [(row_no, col_no)]})
+    _append_load_wiring_description_cells(wb, instances)
     return instances
+
+
+LOAD_WIRING_SECTION = "Bill Of Material (For Load Wiring)"
+_HEADER_SEARCH_ROWS = 5
+
+
+def _append_load_wiring_description_cells(wb, instances):
+    """Load Wiring's Description has its own column in the ICC Report sheet (after Quantity),
+    matching the template's last column, but Data_Ingestion_Map only lists the Make, Capacity
+    and Quantity cells of each row. Find the "Description" column in the section's header row
+    (just above its first row) and append that cell to every row that doesn't list it already,
+    so the row lines up with the template's Make / Capacity / Quantity / Description columns.
+
+    An older file without a Description column is left as is: its *_description keys stay unset.
+    """
+    rows = [inst for inst in instances if inst["section"] == LOAD_WIRING_SECTION]
+    if not rows:
+        return
+    ws = wb[DATA_SHEET]
+    first_row = min(r for inst in rows for r, _c in inst["cells"])
+    description_col = None
+    for header_row in range(first_row - 1, max(first_row - 1 - _HEADER_SEARCH_ROWS, 0), -1):
+        for cell in ws[header_row]:
+            if cell.value is not None and normalize_label(cell.value) == "description":
+                description_col = cell.column
+                break
+        if description_col is not None:
+            break
+    if description_col is None:
+        return
+    for inst in rows:
+        row_no = inst["cells"][-1][0]
+        if all(r == row_no for r, _c in inst["cells"]) and all(c != description_col for _r, c in inst["cells"]):
+            inst["cells"].append((row_no, description_col))
 
 
 def detect_system_type(instances):
@@ -782,9 +817,8 @@ BOM_ROLE_SUFFIXES = OrderedDict([
 def _bom_role_for_keys(keys):
     """Returns the display role name ('Make'/'Capacity'/'Quantity') for a template column's
     placeholder key(s), or None if none of them are a required BOM role (e.g. "_remarks",
-    "_description" alone). A column can carry more than one key (e.g. Load Wiring's combined
-    "Description & Make" column has both a "_description" and a "_make" key) - the column
-    counts as a "Make" column if any of its keys end with "_make"."""
+    "_description" alone, e.g. Load Wiring's Description column). A column can carry more than
+    one key - it counts as a "Make" column if any of its keys end with "_make"."""
     for key in keys:
         for suffix, role in BOM_ROLE_SUFFIXES.items():
             if key.endswith(suffix):
