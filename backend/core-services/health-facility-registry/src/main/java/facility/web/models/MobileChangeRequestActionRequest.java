@@ -26,6 +26,13 @@ public class MobileChangeRequestActionRequest {
     @Valid
     private RequestInfo requestInfo;
 
+    /**
+     * Not used by the service, but the API gateway rejects a body with no {@code tenantId}
+     * outside RequestInfo ("Failed to parse request at API gateway").
+     */
+    @JsonProperty("tenantId")
+    private String tenantId;
+
     @JsonProperty("id")
     @NotBlank
     private String id;

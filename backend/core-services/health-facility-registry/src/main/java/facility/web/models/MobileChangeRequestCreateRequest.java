@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
 
 /**
- * Body of {@code _create}. Only {@code tenantId} and {@code newMobileNumber} are read from
- * {@link #mobileChangeRequest}; the user, facility and current number come from the logged-in
- * user's HRMS record.
+ * Body of {@code _create}. Only {@code newMobileNumber} is read from {@link #mobileChangeRequest};
+ * the user, facility, tenant and current number come from the logged-in user's HRMS record.
+ * {@code tenantId} must still be sent: the API gateway rejects a body without one.
  */
 @Data
 @AllArgsConstructor
