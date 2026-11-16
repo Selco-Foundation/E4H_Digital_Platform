@@ -13,8 +13,9 @@ export const Complaint = {
         tenantId: tenantId,
         district: district?.name,
         block: block?.name,
-        component: complaintType?.key,
-        observations: subType?.key ? [subType.key] : [],
+        ...(facilityReport
+          ? { component: complaintType?.key, observations: subType?.key ? [subType.key] : [] }
+          : { incidentType: complaintType?.key, incidentSubType: subType?.key }),
         systemFunctional: systemFunctionality?.key,
         boundaryCode: healthcentre?.code,
         comments: comments,
