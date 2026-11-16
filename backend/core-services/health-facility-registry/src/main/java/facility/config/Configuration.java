@@ -137,12 +137,6 @@ public class Configuration {
     @Value("${egov.internal.microservice.user.uuid:}")
     private String internalMicroserviceUserUuid;
 
-    @Value("${facility.jurisdiction.hrms.cache.ttl.seconds:120}")
-    private Integer jurisdictionHrmsCacheTtlSeconds;
-
-    @Value("${facility.jurisdiction.boundary.cache.ttl.seconds:300}")
-    private Integer jurisdictionBoundaryCacheTtlSeconds;
-
     //Localization
     @Value("${egov.localization.host}")
     private String localizationHost;

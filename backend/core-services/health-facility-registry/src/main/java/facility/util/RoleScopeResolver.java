@@ -1,7 +1,5 @@
 package facility.util;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import facility.config.Configuration;
 import facility.web.models.FacilityScope;
 import facility.web.models.Jurisdiction;
@@ -17,7 +15,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Decides what the caller may see, per the role they say they are acting as.
@@ -31,6 +28,15 @@ import java.util.concurrent.TimeUnit;
  * The claimed role is checked against the roles on the caller's own {@code RequestInfo}, which the
  * gateway re-attaches from the authenticated token. So the header can only ever <em>select among</em>
  * scopes the caller already holds. It can never acquire one.
+ *
+ * <h3>No caching, for now</h3>
+ * Every scoped request asks HRMS for the caller's grants and boundary-service to expand each one.
+ * An earlier version cached both, which is how a third-party cache library arrived in this service
+ * for two maps. The honest position is that nobody has measured what these calls cost: with
+ * {@code scope.mode=off} they do not happen at all, and warn mode makes exactly the same calls
+ * while applying nothing - so the cost can be observed on real traffic before enforcement depends
+ * on it. If it turns out to matter, Redis is already in the platform and is the natural place for
+ * a scope cache shared across pods, rather than a per-pod one that multiplies by replica count.
  *
  * <h3>Fail closed</h3>
  * If HRMS or boundary-service cannot be reached, the request is refused rather than answered
@@ -71,17 +77,6 @@ public class RoleScopeResolver {
     private final ScopeMode mode;
     private final Set<String> systemRoles;
 
-    /** Caller uuid to their grants. Successful lookups only - see {@link #grantsFor}. */
-    private final Cache<String, JurisdictionGrants> grantsByCaller;
-
-    /**
-     * One boundary code to the facility codes beneath it.
-     *
-     * Keyed on a single code rather than on a caller's whole grant set, so every user scoped to the
-     * same state shares one entry and a state is expanded once per TTL across the platform.
-     */
-    private final Cache<String, Set<String>> facilitiesByBoundary;
-
     @Autowired
     public RoleScopeResolver(Configuration configs, HRMSUtils hrmsUtils, BoundaryUtil boundaryUtil) {
         this.configs = configs;
@@ -91,16 +86,6 @@ public class RoleScopeResolver {
         this.systemRoles = new HashSet<>(configs.getJurisdictionSystemRoles() == null
                 ? java.util.Collections.emptyList()
                 : configs.getJurisdictionSystemRoles());
-        this.grantsByCaller = Caffeine.newBuilder()
-                .expireAfterWrite(configs.getJurisdictionHrmsCacheTtlSeconds(), TimeUnit.SECONDS)
-                .maximumSize(10_000)
-                .recordStats()
-                .build();
-        this.facilitiesByBoundary = Caffeine.newBuilder()
-                .expireAfterWrite(configs.getJurisdictionBoundaryCacheTtlSeconds(), TimeUnit.SECONDS)
-                .maximumSize(5_000)
-                .recordStats()
-                .build();
         log.info("Facility jurisdiction scoping is {}", mode);
     }
 
@@ -132,7 +117,7 @@ public class RoleScopeResolver {
             return settle(FacilityScope.Decision.DENY_INVALID_ACTING_ROLE, actingRole, null, "role not held");
         }
 
-        JurisdictionGrants grants = grantsFor(uuid, requestInfo);
+        JurisdictionGrants grants = hrmsUtils.getActiveJurisdictionsForCaller(requestInfo);
         if (!grants.isOk()) {
             return settle(FacilityScope.Decision.DENY_SCOPE_UNAVAILABLE, actingRole, null,
                     "hrms=" + grants.status());
@@ -200,42 +185,7 @@ public class RoleScopeResolver {
     }
 
     private Set<String> expand(Jurisdiction grant) throws Exception {
-        String code = grant.getBoundary().trim();
-        Set<String> cached = facilitiesByBoundary.getIfPresent(code);
-        if (cached != null) {
-            return cached;
-        }
-        Set<String> expanded = boundaryUtil.expandToFacilityCodes(code, grant.getBoundaryType());
-        facilitiesByBoundary.put(code, expanded);
-        return expanded;
-    }
-
-    /**
-     * Never negative-cache. With fail-closed, caching a failure would turn a two-second HRMS blip
-     * into a two-minute platform outage.
-     */
-    private JurisdictionGrants grantsFor(String uuid, RequestInfo requestInfo) {
-        JurisdictionGrants cached = grantsByCaller.getIfPresent(uuid);
-        if (cached != null) {
-            return cached;
-        }
-        JurisdictionGrants fresh = hrmsUtils.getActiveJurisdictionsForCaller(requestInfo);
-        if (fresh.isOk()) {
-            grantsByCaller.put(uuid, fresh);
-        }
-        return fresh;
-    }
-
-    /** Drops a caller's cached grants, for when this service changes them itself. */
-    public void forgetCaller(String uuid) {
-        if (uuid != null) {
-            grantsByCaller.invalidate(uuid);
-        }
-    }
-
-    /** Drops every cached boundary expansion, for when this service adds a facility to the hierarchy. */
-    public void forgetBoundaries() {
-        facilitiesByBoundary.invalidateAll();
+        return boundaryUtil.expandToFacilityCodes(grant.getBoundary().trim(), grant.getBoundaryType());
     }
 
     private boolean isSystemCaller(RequestInfo requestInfo) {
