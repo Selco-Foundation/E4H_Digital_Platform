@@ -31,7 +31,7 @@ export const INDIAN_MOBILE_REGEX = /^[6-9][0-9]{9}$/;
  * @returns {string|null} a localisation key describing the problem, or null if valid
  */
 export const validateNewMobileNumber = (newNumber, currentNumber) => {
-  const value = String(newNumber ?? "").trim();
+  const value = String(newNumber == null ? "" : newNumber).trim();
   if (!value) return "MOBILE_CHANGE_NUMBER_REQUIRED";
   if (!INDIAN_MOBILE_REGEX.test(value)) return "CORE_COMMON_PROFILE_MOBILE_NUMBER_INVALID"; // existing key
   if (currentNumber && value === String(currentNumber).trim()) return "MOBILE_CHANGE_SAME_NUMBER";
@@ -73,7 +73,7 @@ export const normalizeMobileChangeRequest = (request = {}) => ({
 /** Normalises a whole search/create/action response: { requests, totalCount }. */
 export const normalizeMobileChangeResponse = (response) => ({
   requests: (response?.MobileChangeRequests || []).map(normalizeMobileChangeRequest),
-  totalCount: response?.totalCount ?? 0,
+  totalCount: response?.totalCount || 0,
 });
 
 /** Backend error code -> localisation key shown to the user (all keys are new) */
