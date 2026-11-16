@@ -60,8 +60,6 @@ class RoleScopeResolverTest {
         configs.setJurisdictionScopeMode("enforce");
         configs.setJurisdictionSystemRoles(Arrays.asList("INTERNAL_MICROSERVICE_ROLE", "SYSTEM_USER", "SYSTEM"));
         configs.setInternalMicroserviceUserUuid("internal-uuid");
-        configs.setJurisdictionHrmsCacheTtlSeconds(120);
-        configs.setJurisdictionBoundaryCacheTtlSeconds(300);
     }
 
     private RoleScopeResolver resolver() {
@@ -219,8 +217,8 @@ class RoleScopeResolverTest {
     }
 
     @Test
-    @DisplayName("a caller's grants are fetched once and reused within the cache window")
-    void grantsAreCachedPerCaller() throws Exception {
+    @DisplayName("every resolve re-reads the caller's grants and re-expands them")
+    void nothingIsCachedBetweenRequests() throws Exception {
         hrmsReturns(grant("S1", "State", true));
         boundaryExpands("S1", "State", "F1");
 
@@ -228,12 +226,17 @@ class RoleScopeResolverTest {
         resolver.resolve(caller(UUID, null, FA), FA);
         resolver.resolve(caller(UUID, null, FA), FA);
 
-        verify(hrmsUtils, times(1)).getActiveJurisdictionsForCaller(any());
-        verify(boundaryUtil, times(1)).expandToFacilityCodes(eq("S1"), eq("State"));
+        // Deliberate, and the cost nobody has measured yet: with scope.mode=off these calls never
+        // happen, so warn mode is the first chance to see what they cost on real traffic. Pinned so
+        // that reintroducing a cache is a decision someone makes against this test, rather than a
+        // change that passes unnoticed - and so that a per-pod cache is not added without first
+        // weighing the shared Redis the platform already runs.
+        verify(hrmsUtils, times(2)).getActiveJurisdictionsForCaller(any());
+        verify(boundaryUtil, times(2)).expandToFacilityCodes(eq("S1"), eq("State"));
     }
 
     @Test
-    @DisplayName("a failed lookup is never cached, so a blip does not become an outage")
+    @DisplayName("a failed lookup does not stick: the next request asks again")
     void failuresAreNotCached() {
         when(hrmsUtils.getActiveJurisdictionsForCaller(any()))
                 .thenReturn(JurisdictionGrants.failed(JurisdictionGrants.Status.HRMS_UNAVAILABLE));
