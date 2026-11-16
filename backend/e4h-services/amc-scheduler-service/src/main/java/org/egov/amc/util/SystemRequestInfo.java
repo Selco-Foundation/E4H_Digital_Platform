@@ -10,21 +10,29 @@ import java.util.List;
 /**
  * A RequestInfo identifying this service rather than the person whose request triggered it.
  *
- * Identical copies live in field-planner, field-planner-activity and amc-scheduler-service - keep
- * them in sync. (These services share no library; the convention here is a copy per module.)
+ * Identical copies live in field-planner, field-planner-activity, amc-scheduler-service and
+ * im-services-analytics - keep them in sync. (These services share no library; the convention here
+ * is a copy per module.)
  *
- * <h3>Why validation lookups must not run as the user</h3>
- * Facility search is scoped to the caller's own jurisdiction. The lookups in these services are
- * not the user browsing - they resolve facilities by id to check that a plan, activity or AMC
+ * <h3>Why these lookups must not run as the user</h3>
+ * Facility bulk search is scoped to the caller's own jurisdiction. The calls these services make
+ * are not the user browsing. Most resolve facilities by id to check that a plan, activity or AMC
  * configuration refers to something real, and they legitimately touch facilities the triggering
- * user does not hold. Worse, every one of them reads a missing row as "does not exist" and aborts
- * the user's entire batch with that message. Calling as the service keeps these lookups unscoped,
- * which is both correct and the reason those error messages need no change.
+ * user does not hold; worse, every one of them reads a missing row as "does not exist" and aborts
+ * the user's entire batch with that message. The rest are batch and aggregate reads - a CO2 run
+ * that pages the whole registry, a per-state count - which are about the registry itself rather
+ * than about one person's view of it. Calling as the service keeps both kinds unscoped, which is
+ * both correct and the reason those error messages need no change.
  *
  * <h3>Why this is not a privilege escalation</h3>
  * The gateway re-attaches userInfo from the authenticated token on anything arriving from outside,
  * so a client cannot claim this identity for itself. Service-to-service calls run behind the
  * gateway and keep the identity they build, which is exactly the intent.
+ *
+ * <h3>What it keeps</h3>
+ * The caller's uuid, userName and auth token survive; only type and roles are replaced. So the
+ * audit trail still says whose action triggered the lookup, and facility-service's
+ * {@code isSystemCaller} recognises it by type and role without the x-acting-role header.
  */
 public final class SystemRequestInfo {
 
