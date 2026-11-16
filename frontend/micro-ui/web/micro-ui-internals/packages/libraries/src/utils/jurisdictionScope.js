@@ -25,6 +25,25 @@
 
 const SESSION_KEY = "HRMS.Jurisdictions";
 
+/**
+ * The IM roles that can define a scope, and the single source for that list.
+ *
+ * Read by the facility service to fill `x-acting-role` and by the boundary pickers to decide what
+ * to offer. Those two must agree: if the picker's list is wider than the header's, it offers a
+ * boundary the search then refuses, and the user lands on an empty screen having chosen from their
+ * own dropdown. That is why this is not duplicated per caller.
+ *
+ * Roles outside it are left out on purpose. The same person may be a PROJECT_MANAGER or
+ * FACILITY_ADMIN in the Management Hub, and those grants must not widen anything in IM.
+ */
+export const IM_SCOPE_ROLES = [
+  "COMPLAINT_FACILITATOR_1", // State SPOC
+  "COMPLAINT_FACILITATOR_2", // Tech POC
+  "COMPLAINT_ASSESSOR", // CRM
+  "COMPLAINT_RESOLVER", // vendor
+  "COMPLAINANT", // facility POC
+];
+
 /** The level a grant covering everything sits at. No list filter is this coarse. */
 const COUNTRY = "Country";
 
@@ -124,6 +143,7 @@ export const boundariesByLevelForRoles = (roleCodes, jurisdictions) => {
 };
 
 export const JurisdictionScope = {
+  IM_SCOPE_ROLES,
   getJurisdictions,
   setJurisdictions,
   boundariesForRoles,

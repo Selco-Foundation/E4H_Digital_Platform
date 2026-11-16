@@ -31,7 +31,12 @@ export const PauseRMS = ({ parentUrl }) => {
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
     country: ["-"],
   };
-  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  // Role-scoped, for the same reason as the inbox filter. Note this also feeds selectBoundaryCode
+  // below, which decides whether the geography pickers lock to a single facility - so a user whose
+  // IM grant is one facility still locks, and one whose IM grants are wider no longer locks on the
+  // strength of a Management Hub grant they hold elsewhere.
+  const imBoundaries = Digit.Hooks.im.useScopedBoundaries(jurisdictionCurrentBoundary);
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(imBoundaries);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [disableGeographySelection, setDisableGeographySelection] = useState(false);

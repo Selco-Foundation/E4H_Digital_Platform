@@ -93,6 +93,7 @@ import useStaticData from "./useStaticData";
 import useBoundary from "./im/useBoundary";
 import useFacility from "./im/useFacility";
 import useJurisdictions from "./im/useJurisdictions";
+import useScopedBoundaries from "./im/useScopedBoundaries";
 import useMappedVendors from "./im/useMappedVendors";
 import useRMSPausedFacility from "./im/useRMSFacility";
 
@@ -167,6 +168,7 @@ const im = {
   useBoundary,
   useFacility,
   useJurisdictions,
+  useScopedBoundaries,
   useMappedVendors,
   useRMSPausedFacility,
 };

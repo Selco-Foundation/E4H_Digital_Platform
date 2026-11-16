@@ -35,7 +35,11 @@ const Filter = (props) => {
   const isAssignedToMe = searchParams?.filters?.wfFilters?.assignedToMe !== false;
 
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
-  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  // Role-scoped, not the raw session copy: that holds every grant the user has under any role, so
+  // the district and block dropdowns would offer areas their IM roles do not cover while the
+  // facility search beside them returns nothing for those areas.
+  const imBoundaries = Digit.Hooks.im.useScopedBoundaries(jurisdictionCurrentBoundary);
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(imBoundaries);
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(jurisdictionCurrentBoundary);
 

@@ -66,9 +66,7 @@ export const CreateComplaint = ({ parentUrl }) => {
    * the one. Falls back to the whole jurisdiction when the roles cannot be told apart, which is
    * what a grant carrying no roles at all means.
    */
-  const jurisdictions = Digit.Hooks.im.useJurisdictions();
-  const complainantBoundaries =
-    Digit.Utils.JurisdictionScope.boundariesByLevelForRoles(["COMPLAINANT"], jurisdictions) || jurisdictionCurrentBoundary;
+  const complainantBoundaries = Digit.Hooks.im.useScopedBoundaries(jurisdictionCurrentBoundary, ["COMPLAINANT"]);
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(complainantBoundaries);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
