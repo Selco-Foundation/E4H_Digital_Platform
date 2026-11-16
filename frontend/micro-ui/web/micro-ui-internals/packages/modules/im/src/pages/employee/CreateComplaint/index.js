@@ -19,6 +19,8 @@ import { ReportingDetailsDraft } from "../../../services/ReportingDetailsDraft";
 import { ReportingFirDraft } from "../../../services/ReportingFirDraft";
 import { ReportingSupportDraft } from "../../../services/ReportingSupportDraft";
 
+const CRM_SERVICE_DEFS_FILTER = "[?(@.channel!='HF' && @.deprecated==false)]";
+
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -231,7 +233,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     sortedSubMenu = reportFacility ? subTypeMenu : subTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  const menu = Digit.Hooks.pgr.useComplaintTypes({ stateCode: tenantId, enabled: !isFacilityReporter });
+  const menu = Digit.Hooks.pgr.useComplaintTypes({ stateCode: tenantId, enabled: !isFacilityReporter, filter: CRM_SERVICE_DEFS_FILTER });
   let sortedMenu = [];
   if (menu !== null) {
     let othersItem = menu.find((item) => item.key === "Others");
@@ -476,7 +478,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       } else {
         setSubType({ name: "" });
         setComplaintType(value);
-        setSubTypeMenu(await serviceDefinitions.getSubMenu(tenantId, value, t));
+        setSubTypeMenu(await serviceDefinitions.getSubMenu(tenantId, value, t, CRM_SERVICE_DEFS_FILTER));
         ticketSubTypeRef?.current?.validate();
       }
     }
