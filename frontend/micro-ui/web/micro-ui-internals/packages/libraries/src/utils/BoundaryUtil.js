@@ -48,11 +48,17 @@ export const BoundaryUtil = {
    *
    * A country-level grant yields no filter at all: there is no country filter to send, and
    * sending only the finer levels would narrow a user who is meant to see everything.
+   *
+   * Nothing to narrow by means **no filter**, not a filter matching nothing. This used to return
+   * `{ boundaryCodes: ["-"] }` so that a session without jurisdiction data showed an empty list
+   * rather than the whole tenant - the client was the only thing standing between the user and
+   * every facility in the country. It is not any more: facility search derives the ceiling from
+   * HRMS and refuses a caller it cannot resolve. Keeping the placeholder now only hides facilities
+   * the server would have allowed.
    */
   facilitySearchFilters: (boundaries) => {
-    // Callers fall back to { country: ["-"] } when the session has no jurisdiction. The "-" is a
-    // placeholder that matches nothing, not a boundary - so it must not be mistaken for a real
-    // country grant, which means the opposite.
+    // "-" is a placeholder that matches nothing, not a boundary, and some callers still default to
+    // { country: ["-"] }. It must not be read as a real country grant, which means the opposite.
     const real = (codes) => (codes || []).filter((code) => code && code !== "-");
 
     const fieldByLevel = {
@@ -76,9 +82,7 @@ export const BoundaryUtil = {
       });
     }
 
-    // No jurisdiction at all. Match nothing rather than everything: this is the state a session
-    // is in before login data arrives, and the caller would otherwise be shown the whole tenant.
-    return Object.keys(filters).length ? filters : { boundaryCodes: ["-"] };
+    return filters;
   },
 
   /**

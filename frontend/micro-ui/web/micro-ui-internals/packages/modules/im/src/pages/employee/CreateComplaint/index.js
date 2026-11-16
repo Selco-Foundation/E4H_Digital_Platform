@@ -72,26 +72,45 @@ export const CreateComplaint = ({ parentUrl }) => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
     if (boundaryData) {
       setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
-      setDistrictMenu(boundaryData.districts || []);
-      setBlockOptions(boundaryData.blocks);
       setFacilityBoundaries(boundaryData.facilities);
     }
   }, [boundaryData, t]);
 
+  /**
+   * The district and block menus are derived from the facilities the search actually returned,
+   * not from the boundary tree.
+   *
+   * The tree is fetched from the session's jurisdiction codes, which are role-agnostic: a user who
+   * is COMPLAINANT for one facility and COMPLAINT_ASSESSOR across a state would be offered every
+   * district of that state here, then find each one empty. Facility search is the only thing that
+   * knows the COMPLAINANT ceiling, because the server resolves it per role - so the levels above
+   * are read back off its answer. That also means they cannot drift from it.
+   *
+   * A district with no ONM-ready facility therefore disappears rather than appearing and leading
+   * nowhere, which is the behaviour this page wants: there is nothing there to raise a ticket on.
+   */
   useEffect(() => {
     if (facilityBoundaries?.length && facilityData?.facilities?.length) {
       const facilityBoundaryCodeToParentMap = new Map();
       for (let facilityBoundary of facilityBoundaries) {
         facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
       }
-      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+      const inScopeFacilities = facilityData?.facilities?.map((facility) => ({
         code: facility.boundaryCode,
         id: facility.facilityId,
         status: facility.facilityStatus,
         parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
-      })));
+      }));
+      setFacilityOptions(inScopeFacilities);
+
+      const inScopeBlockCodes = new Set(inScopeFacilities.map((facility) => facility.parentCode).filter(Boolean));
+      const inScopeBlocks = (boundaryData?.blocks || []).filter((block) => inScopeBlockCodes.has(block.code));
+      const inScopeDistrictCodes = new Set(inScopeBlocks.map((block) => block.parentCode).filter(Boolean));
+
+      setBlockOptions(inScopeBlocks);
+      setDistrictMenu((boundaryData?.districts || []).filter((district) => inScopeDistrictCodes.has(district.code)));
     }
-  }, [facilityBoundaries, facilityData]);
+  }, [boundaryData, facilityBoundaries, facilityData]);
 
   useEffect(() => {
     if (district?.code && blockOptions?.length) {
