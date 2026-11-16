@@ -127,6 +127,10 @@ const Urls = {
   },
   hrms: {
     search: "/egov-hrms/employees/_search",
+    // Role-aware search. Same service and criteria as v1; it only adds the roles each jurisdiction
+    // was granted for, which is what jurisdictionScope needs. v1 is not deprecated - the hrms
+    // module's own screens stay on it.
+    v2search: "/egov-hrms/v2/employees/_search",
     count: "/egov-hrms/employees/_count",
     create: "/egov-hrms/employees/_create",
     update: "/egov-hrms/employees/_update",

@@ -14,6 +14,7 @@ import preProcessMDMSConfig from "./preProcessMDMSConfig";
 import preProcessMDMSConfigInboxSearch from "./preProcessMDMSConfigInboxSearch";
 import * as parsingUtils from "../services/atoms/Utils/ParsingUtils"
 import { BoundaryUtil } from "./BoundaryUtil";
+import { JurisdictionScope } from "./jurisdictionScope";
 const GetParamFromUrl = (key, fallback, search) => {
   if (typeof window !== "undefined") {
     search = search || window.location.search;
@@ -387,5 +388,6 @@ export default {
   getLocaleDefault,
   getLocaleRegion,
   analytics,
-  BoundaryUtil
+  BoundaryUtil,
+  JurisdictionScope
 };

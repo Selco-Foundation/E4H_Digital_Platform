@@ -190,7 +190,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         console.error("Login report failed", err);
       }
 
-      const hrmsResponse = await Digit.HRMSService.search("in", null, { codes: user.info.userName });
+      // v2, not v1: only it returns the roles each jurisdiction was granted for, which is what
+      // the role-scoped pickers read. Same service and criteria otherwise, so the rest of this
+      // block is unchanged. The hrms module's own screens stay on v1; it is not deprecated.
+      const hrmsResponse = await Digit.HRMSService.v2search("in", null, { codes: user.info.userName });
       const hrmsUser = hrmsResponse?.Employees?.[0];
       if (!hrmsUser) {
         throw new Error("Could not find HRMS employee");
@@ -199,6 +202,11 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         throw new Error("Could not find HRMS employee Jurisdictions");
       }
       Digit.SessionStorage.set("HRMS.User", hrmsUser);
+
+      // The raw grants, roles and all. Everything below flattens them to boundary codes and loses
+      // which role each came from, so the unflattened list is stored alongside rather than derived
+      // back out of it. useJurisdictions refreshes this on every page load from here on.
+      Digit.Utils.JurisdictionScope.setJurisdictions(hrmsUser.jurisdictions);
 
       let jurisdictionBoundaries = {};
       for (let jurisdiction of hrmsUser?.jurisdictions) {

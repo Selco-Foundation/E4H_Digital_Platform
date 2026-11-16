@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
 import { BoundaryUtil } from "../../utils/BoundaryUtil";
+import useJurisdictions from "./useJurisdictions";
 
 const fetchFacilities = async (filters, scopeRoles) => {
   const queryFilter = {
@@ -48,9 +49,15 @@ const useFacility = (jurisdictionBoundaries, onlyRoles) => {
   const filters = BoundaryUtil.facilitySearchFilters(narrowing);
   const scopeRoles = Digit.FacilityService.imScopeRoles(onlyRoles);
 
+  // In the key, not in the request: the server derives the ceiling from these itself, so they
+  // change the answer without changing anything we send. Without them a refresh that picks up a
+  // new grant would keep serving the pre-refresh list. react-query dedupes the lookup across
+  // every caller of this hook, so asking for it here costs one request per page load.
+  const jurisdictions = useJurisdictions();
+
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["FACILITY", filters, scopeRoles],
+    ["FACILITY", filters, scopeRoles, jurisdictions],
     () => fetchFacilities(filters, scopeRoles)
   );
 

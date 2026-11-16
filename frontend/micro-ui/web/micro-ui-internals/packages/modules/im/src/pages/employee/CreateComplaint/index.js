@@ -56,7 +56,20 @@ export const CreateComplaint = ({ parentUrl }) => {
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
     country: ["-"],
   };
-  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  /**
+   * The boundary tree on this page is built from the caller's COMPLAINANT grants, not from their
+   * whole jurisdiction.
+   *
+   * `Jurisdiction.CurrentBoundary` is role-agnostic: someone who is COMPLAINANT for one facility
+   * and COMPLAINT_ASSESSOR across a state has both in it, so this page would offer every district
+   * of that state while the facility search - scoped to COMPLAINANT by the server - returned only
+   * the one. Falls back to the whole jurisdiction when the roles cannot be told apart, which is
+   * what a grant carrying no roles at all means.
+   */
+  const jurisdictions = Digit.Hooks.im.useJurisdictions();
+  const complainantBoundaries =
+    Digit.Utils.JurisdictionScope.boundariesByLevelForRoles(["COMPLAINANT"], jurisdictions) || jurisdictionCurrentBoundary;
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(complainantBoundaries);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [isInstallationTicket, setIsInstallationTicket] = useState(false);
@@ -80,14 +93,12 @@ export const CreateComplaint = ({ parentUrl }) => {
    * The district and block menus are derived from the facilities the search actually returned,
    * not from the boundary tree.
    *
-   * The tree is fetched from the session's jurisdiction codes, which are role-agnostic: a user who
-   * is COMPLAINANT for one facility and COMPLAINT_ASSESSOR across a state would be offered every
-   * district of that state here, then find each one empty. Facility search is the only thing that
-   * knows the COMPLAINANT ceiling, because the server resolves it per role - so the levels above
-   * are read back off its answer. That also means they cannot drift from it.
-   *
-   * A district with no ONM-ready facility therefore disappears rather than appearing and leading
-   * nowhere, which is the behaviour this page wants: there is nothing there to raise a ticket on.
+   * The tree above is already narrowed to the COMPLAINANT grants, which answers "may they act
+   * here". This answers the other question - "is there anything here" - and prunes a district or
+   * block that holds no ONM-ready facility, so it cannot be picked only to reveal an empty list.
+   * The two rules are kept separate because they fail differently: the first going wrong shows
+   * boundaries the server will refuse, the second going wrong shows boundaries with nothing in
+   * them.
    */
   useEffect(() => {
     if (facilityBoundaries?.length && facilityData?.facilities?.length) {

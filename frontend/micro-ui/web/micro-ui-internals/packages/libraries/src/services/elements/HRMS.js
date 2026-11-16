@@ -12,6 +12,21 @@ const HrmsService = {
       userService: true,
       params: { tenantId, ...filters, ...searchParams },
     }),
+  /**
+   * Employee search that carries each jurisdiction's roles.
+   *
+   * Identical to `search` but for the endpoint. Only this one can answer "which boundaries does
+   * this user hold *as a COMPLAINANT*", which is what every role-scoped picker rests on.
+   */
+  v2search: (tenantId, filters, searchParams) =>
+    Request({
+      url: Urls.hrms.v2search,
+      useCache: false,
+      method: "POST",
+      auth: true,
+      userService: true,
+      params: { tenantId, ...filters, ...searchParams },
+    }),
   create: (data, tenantId) =>
     Request({
       data: data,
