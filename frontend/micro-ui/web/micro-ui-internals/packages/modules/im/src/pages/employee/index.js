@@ -20,6 +20,10 @@ const Complaint = () => {
   const match1=`/${window.contextPath}/employee/pgr`
   console.log("match1", match1)
   const isCRMUser = roles?.some((role) => role.code === "COMPLAINT_ASSESSOR");
+  // Raising a ticket is the facility POC's screen. It was reachable by URL to anyone, which with
+  // role-scoped facility search now means landing on it with an empty facility dropdown and no
+  // explanation - the route gate and the picker's COMPLAINANT scope have to agree.
+  const isComplainant = roles?.some((role) => role.code === "COMPLAINANT");
 
   const breadcrumConfig = {
     home: {
@@ -93,7 +97,7 @@ const Complaint = () => {
           </Switch>
         )}
         <Switch>
-          <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />
+          {isComplainant && <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />}
           {isCRMUser && <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS parentUrl={match.url} />} />}
           {isCRMUser && <Route path={match.url + Employee.PausedRMSFacilities} component={() => <RMSPausedFacilities />} />}
           <Route path={match.url + Employee.ComplaintFeedback + ":incidentId/:tenantId"} component={() => <ComplaintFeedback parentRoute={match.url} />} />

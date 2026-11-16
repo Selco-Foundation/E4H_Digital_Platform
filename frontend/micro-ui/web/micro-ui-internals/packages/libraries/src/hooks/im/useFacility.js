@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "react-query";
 import { BoundaryUtil } from "../../utils/BoundaryUtil";
 
-const fetchFacilities = async (filters) => {
+const fetchFacilities = async (filters, scopeRoles) => {
   const queryFilter = {
     tenantId : [Digit.ULBService.getCurrentTenantId()],
     ...filters,
@@ -9,7 +9,7 @@ const fetchFacilities = async (filters) => {
     sendNonPaginatedResponse: true,
   }
 
-  const facilityResponse = await Digit.FacilityService.fetchFacilities(queryFilter);
+  const facilityResponse = await Digit.FacilityService.fetchFacilities(queryFilter, scopeRoles);
 
   return {
     facilities:
@@ -30,15 +30,21 @@ const fetchFacilities = async (filters) => {
  * and sends it at that level. Callers used to walk the boundary tree down to every facility
  * beneath their jurisdiction and send those codes instead, which made the request body as large
  * as the user's area and repeated an expansion facility search already does.
+ *
+ * `onlyRoles` narrows the declared scope to one screen's role, for a page gated to it. It is part
+ * of the query key: without that, ticket creation's COMPLAINANT-only list and the inbox's
+ * all-IM-roles list share the same filters and would serve each other's cached answer - the
+ * narrower one looking correct right up until the moment it is the wrong list.
  */
-const useFacility = (jurisdictionBoundaries) => {
+const useFacility = (jurisdictionBoundaries, onlyRoles) => {
 
   const filters = BoundaryUtil.facilitySearchFilters(jurisdictionBoundaries);
+  const scopeRoles = Digit.FacilityService.imScopeRoles(onlyRoles);
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["FACILITY", filters],
-    () => fetchFacilities(filters)
+    ["FACILITY", filters, scopeRoles],
+    () => fetchFacilities(filters, scopeRoles)
   );
 
   return {

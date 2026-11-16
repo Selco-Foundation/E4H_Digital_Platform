@@ -64,7 +64,9 @@ export const CreateComplaint = ({ parentUrl }) => {
   const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
-  const { data: facilityData } = Digit.Hooks.im.useFacility(jurisdictionCurrentBoundary);
+  // Raising a ticket is the facility POC's screen, so it offers the facilities they are POC for -
+  // not everything their other IM roles can reach. The route is gated to COMPLAINANT to match.
+  const { data: facilityData } = Digit.Hooks.im.useFacility(jurisdictionCurrentBoundary, ["COMPLAINANT"]);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
