@@ -2,7 +2,7 @@ import { MdmsService } from "../elements/MDMS";
 import { Storage } from "../atoms/Utils/Storage";
 
 export const GetServiceDefinitions = {
-  get: async (tenantId) => {
+  get: async (tenantId, filter) => {
     const criteria = {
       type: "serviceDefs",
       details: {
@@ -13,6 +13,7 @@ export const GetServiceDefinitions = {
             masterDetails: [
               {
                 name: "ServiceDefs",
+                ...(filter ? { filter } : {}),
               },
             ],
           },
@@ -23,9 +24,9 @@ export const GetServiceDefinitions = {
     Storage.set("serviceDefinitions", serviceDefs);
     return serviceDefs;
   },
-  getMenu: async (stateCode, t) => {
+  getMenu: async (stateCode, t, filter) => {
     var Menu = [];
-    const response = await GetServiceDefinitions.get(stateCode);
+    const response = await GetServiceDefinitions.get(stateCode, filter);
     await Promise.all(
       response.map((def) => {
         if (!def.deprecated && !Menu.find((e) => e.key === def.menuPath)) {
@@ -44,8 +45,8 @@ export const GetServiceDefinitions = {
     return Menu;
   },
 
-  getSubMenu: async (tenantId, selectedType, t) => {
-    const fetchServiceDefs = await GetServiceDefinitions.get(tenantId);
+  getSubMenu: async (tenantId, selectedType, t, filter) => {
+    const fetchServiceDefs = await GetServiceDefinitions.get(tenantId, filter);
     return fetchServiceDefs
       .filter((def) => !def.deprecated && def.menuPath === selectedType.key)
       .map((id) => ({
