@@ -46,7 +46,7 @@ class MDMSServiceTest {
         when(serviceRequestRepository.fetchResult((StringBuilder) any(), (Object) any())).thenReturn("Fetch Result");
         WorkflowConfig config = new WorkflowConfig();
         MDMSService mdmsService = new MDMSService(config, serviceRequestRepository, new WorkflowConfig());
-        assertEquals("Fetch Result", mdmsService.mDMSCall(new RequestInfo()));
+        assertEquals("Fetch Result", mdmsService.mDMSCall(new RequestInfo(), "in"));
         verify(serviceRequestRepository).fetchResult((StringBuilder) any(), (Object) any());
     }
 
