@@ -133,6 +133,31 @@ public class OrganisationService {
     }
 
     /**
+     * Callers such as the UI send limit and offset as query parameters, while the search reads
+     * them from the body's Pagination. A value in the body wins; a query parameter fills a value
+     * the body does not set.
+     */
+    public void applyUrlPagination(OrgSearchRequest orgSearchRequest, Integer limit, Integer offset) {
+        if (limit == null && offset == null) {
+            return;
+        }
+        Pagination pagination = orgSearchRequest.getPagination();
+        if (pagination == null) {
+            pagination = new Pagination();
+            pagination.setLimit(null);
+            pagination.setOffset(null);
+            orgSearchRequest.setPagination(pagination);
+        }
+        if (pagination.getLimit() == null && limit != null) {
+            pagination.setLimit(limit.doubleValue());
+        }
+        if (pagination.getOffset() == null && offset != null) {
+            pagination.setOffset(offset.doubleValue());
+        }
+        log.debug("Search pagination - limit: {}, offset: {}", pagination.getLimit(), pagination.getOffset());
+    }
+
+    /**
      *
      * @param orgSearchRequest
      * @return
