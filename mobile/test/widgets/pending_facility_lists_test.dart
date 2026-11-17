@@ -31,6 +31,8 @@ import '../../lib/model/scheduled_visit/scheduled_visit.dart';
 import '../../lib/pages/amc_draft.dart';
 import '../../lib/pages/assessment_draft.dart';
 import '../../lib/pages/draft.dart';
+import '../../lib/repositories/activity_facility_repo.dart';
+import '../repositories/offline_search_test.dart' as pagination;
 import '../../lib/repositories/assessment_bookmark_repo.dart';
 import '../../lib/repositories/assessment_draft_repo.dart';
 import '../../lib/repositories/assessment_form_repo.dart';
@@ -98,6 +100,31 @@ class CachedActivity extends Bloc<ActivityFacilityEvent, ActivityFacilityState>
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw StateError('Unexpected activity access');
+}
+
+class WidgetPendingRepository extends UnsubmittedActivityFacilityRepository {
+  final pagination.PagedActivityRemote remote;
+  WidgetPendingRepository(super.isar, this.remote);
+  @override
+  Future<PendingReportsPage> fetchPage(
+      {required String userType,
+      required List<String> workflowStatuses,
+      required ActivityFacilitySearchModel body,
+      int offset = 0,
+      String sortDirection = 'DESC',
+      bool? cacheOnly}) async {
+    final items = await remote.searchByWorkflow(
+        body: body,
+        workflowStatuses: workflowStatuses,
+        limit: 10,
+        offset: offset,
+        sortDirection: sortDirection);
+    return PendingReportsPage(
+        items: items,
+        nextOffset: offset + items.length,
+        hasMore: items.length == 10,
+        fromCache: false);
+  }
 }
 
 class CachedVisitRepository extends ScheduledVisitRepository {
@@ -182,10 +209,11 @@ void main() {
 
   Widget app(Widget page,
       {RecordingSubmission? submission,
+      ActivityFacilityBloc? activityOverride,
       List<ActivityFacilityWorkflow> installations = const [],
       List<ScheduledVisit> amc = const []}) {
     final auth = DraftAuth();
-    final activity = CachedActivity(isar, installations);
+    final activity = activityOverride ?? CachedActivity(isar, installations);
     final visits = CachedVisits(isar, amc);
     final type = UserTypeBloc();
     final init = support.FakeInit();
@@ -237,6 +265,73 @@ void main() {
         .onPressed();
     await settle(tester);
   }
+
+  testWidgets(
+      'installation pending requests 10 records and loads the next server page on scroll',
+      (tester) async {
+    final remote = pagination.PagedActivityRemote()
+      ..items = List.generate(
+          23,
+          (i) => pagination.activity('$i', 'Facility $i', i + 1,
+              status: 'SUBMITTED_BY_FIELD_STAFF'));
+    final bloc = ActivityFacilityBloc(isar,
+        pendingRepository: WidgetPendingRepository(isar, remote));
+    await tester.pumpWidget(app(const DraftPage(), activityOverride: bloc));
+    await tester.runAsync(() async {
+      if (bloc.state is! PendingReportsLoaded ||
+          (bloc.state as PendingReportsLoaded).isLoadingMore) {
+        await bloc.stream
+            .firstWhere((state) =>
+                state is PendingReportsLoaded && !state.isLoadingMore)
+            .timeout(const Duration(seconds: 5));
+      }
+    });
+    await settle(tester);
+    expect(remote.requests.length, 1);
+    expect(remote.requests.single.limit, 10);
+    expect(find.text('Facility 22'), findsOneWidget);
+    expect(find.text('Facility 12'), findsNothing);
+    final scrollContext = tester.element(find.byType(CustomScrollView).first);
+    final metrics = FixedScrollMetrics(
+        minScrollExtent: 0,
+        maxScrollExtent: 100,
+        pixels: 100,
+        viewportDimension: 600,
+        axisDirection: AxisDirection.down,
+        devicePixelRatio: 1);
+    ScrollUpdateNotification(
+            metrics: metrics, context: scrollContext, depth: 0, scrollDelta: 1)
+        .dispatch(scrollContext);
+    await tester.runAsync(() async {
+      if (bloc.state is! PendingReportsLoaded ||
+          (bloc.state as PendingReportsLoaded).isLoadingMore) {
+        await bloc.stream
+            .firstWhere((state) =>
+                state is PendingReportsLoaded && !state.isLoadingMore)
+            .timeout(const Duration(seconds: 5));
+      }
+    });
+    await settle(tester);
+    expect(remote.requests.map((e) => e.offset), [0, 10]);
+    expect(find.text('Facility 12'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'facility 0');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.runAsync(() async {
+      if (bloc.state is! PendingReportsLoaded ||
+          (bloc.state as PendingReportsLoaded).isLoadingMore) {
+        await bloc.stream
+            .firstWhere((state) =>
+                state is PendingReportsLoaded && !state.isLoadingMore)
+            .timeout(const Duration(seconds: 5));
+      }
+    });
+    await settle(tester);
+    expect(remote.requests.last.query, 'facility 0');
+    expect(remote.requests.last.offset, 0);
+    expect(find.text('Facility 0'), findsOneWidget);
+    expect(find.text('Facility 22'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
       'installation pending searches beyond the first page, shares bookmarks and keeps sync scope',

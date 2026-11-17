@@ -24,7 +24,8 @@ mixin _$ActivityFacilityEvent {
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -49,7 +50,9 @@ mixin _$ActivityFacilityEvent {
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -72,7 +75,9 @@ mixin _$ActivityFacilityEvent {
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -247,7 +252,8 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -275,7 +281,9 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -301,7 +309,9 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -494,7 +504,8 @@ class _$FetchActivityFacilityByWorkflowEventImpl
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -522,7 +533,9 @@ class _$FetchActivityFacilityByWorkflowEventImpl
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -548,7 +561,9 @@ class _$FetchActivityFacilityByWorkflowEventImpl
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -749,7 +764,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -777,7 +793,9 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -803,7 +821,9 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -918,7 +938,12 @@ abstract class _$$LoadUnSubmittedEventImplCopyWith<$Res> {
           $Res Function(_$LoadUnSubmittedEventImpl) then) =
       __$$LoadUnSubmittedEventImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({List<String> statuses, String userType});
+  $Res call(
+      {List<String> statuses,
+      String userType,
+      String? query,
+      String? sortDirection,
+      bool loadMore});
 }
 
 /// @nodoc
@@ -935,6 +960,9 @@ class __$$LoadUnSubmittedEventImplCopyWithImpl<$Res>
   $Res call({
     Object? statuses = null,
     Object? userType = null,
+    Object? query = freezed,
+    Object? sortDirection = freezed,
+    Object? loadMore = null,
   }) {
     return _then(_$LoadUnSubmittedEventImpl(
       null == statuses
@@ -945,6 +973,18 @@ class __$$LoadUnSubmittedEventImplCopyWithImpl<$Res>
           ? _value.userType
           : userType // ignore: cast_nullable_to_non_nullable
               as String,
+      query: freezed == query
+          ? _value.query
+          : query // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sortDirection: freezed == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String?,
+      loadMore: null == loadMore
+          ? _value.loadMore
+          : loadMore // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -952,7 +992,8 @@ class __$$LoadUnSubmittedEventImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
-  const _$LoadUnSubmittedEventImpl(final List<String> statuses, this.userType)
+  const _$LoadUnSubmittedEventImpl(final List<String> statuses, this.userType,
+      {this.query, this.sortDirection, this.loadMore = false})
       : _statuses = statuses;
 
   final List<String> _statuses;
@@ -965,10 +1006,17 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
 
   @override
   final String userType;
+  @override
+  final String? query;
+  @override
+  final String? sortDirection;
+  @override
+  @JsonKey()
+  final bool loadMore;
 
   @override
   String toString() {
-    return 'ActivityFacilityEvent.loadUnSubmitted(statuses: $statuses, userType: $userType)';
+    return 'ActivityFacilityEvent.loadUnSubmitted(statuses: $statuses, userType: $userType, query: $query, sortDirection: $sortDirection, loadMore: $loadMore)';
   }
 
   @override
@@ -978,12 +1026,22 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
             other is _$LoadUnSubmittedEventImpl &&
             const DeepCollectionEquality().equals(other._statuses, _statuses) &&
             (identical(other.userType, userType) ||
-                other.userType == userType));
+                other.userType == userType) &&
+            (identical(other.query, query) || other.query == query) &&
+            (identical(other.sortDirection, sortDirection) ||
+                other.sortDirection == sortDirection) &&
+            (identical(other.loadMore, loadMore) ||
+                other.loadMore == loadMore));
   }
 
   @override
   int get hashCode => Object.hash(
-      runtimeType, const DeepCollectionEquality().hash(_statuses), userType);
+      runtimeType,
+      const DeepCollectionEquality().hash(_statuses),
+      userType,
+      query,
+      sortDirection,
+      loadMore);
 
   @JsonKey(ignore: true)
   @override
@@ -1002,7 +1060,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -1019,7 +1078,7 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
-    return loadUnSubmitted(statuses, userType);
+    return loadUnSubmitted(statuses, userType, query, sortDirection, loadMore);
   }
 
   @override
@@ -1030,7 +1089,9 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -1045,7 +1106,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
-    return loadUnSubmitted?.call(statuses, userType);
+    return loadUnSubmitted?.call(
+        statuses, userType, query, sortDirection, loadMore);
   }
 
   @override
@@ -1056,7 +1118,9 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -1073,7 +1137,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     required TResult orElse(),
   }) {
     if (loadUnSubmitted != null) {
-      return loadUnSubmitted(statuses, userType);
+      return loadUnSubmitted(
+          statuses, userType, query, sortDirection, loadMore);
     }
     return orElse();
   }
@@ -1155,11 +1220,16 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
 
 abstract class LoadUnSubmittedEvent implements ActivityFacilityEvent {
   const factory LoadUnSubmittedEvent(
-          final List<String> statuses, final String userType) =
-      _$LoadUnSubmittedEventImpl;
+      final List<String> statuses, final String userType,
+      {final String? query,
+      final String? sortDirection,
+      final bool loadMore}) = _$LoadUnSubmittedEventImpl;
 
   List<String> get statuses;
   String get userType;
+  String? get query;
+  String? get sortDirection;
+  bool get loadMore;
   @JsonKey(ignore: true)
   _$$LoadUnSubmittedEventImplCopyWith<_$LoadUnSubmittedEventImpl>
       get copyWith => throw _privateConstructorUsedError;
@@ -1249,7 +1319,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -1277,7 +1348,9 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -1303,7 +1376,9 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -1487,7 +1562,8 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -1515,7 +1591,9 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -1541,7 +1619,9 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -1722,7 +1802,8 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -1750,7 +1831,9 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -1776,7 +1859,9 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -1980,7 +2065,8 @@ class _$FetchActivityFacilitySortedEventImpl
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -2008,7 +2094,9 @@ class _$FetchActivityFacilitySortedEventImpl
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -2034,7 +2122,9 @@ class _$FetchActivityFacilitySortedEventImpl
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -2240,7 +2330,8 @@ class _$FetchActivityFacilityBySearchEventImpl
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -2268,7 +2359,9 @@ class _$FetchActivityFacilityBySearchEventImpl
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -2294,7 +2387,9 @@ class _$FetchActivityFacilityBySearchEventImpl
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -2516,7 +2611,8 @@ class _$LoadMoreActivityFacilityEventImpl
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -2544,7 +2640,9 @@ class _$LoadMoreActivityFacilityEventImpl
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -2571,7 +2669,9 @@ class _$LoadMoreActivityFacilityEventImpl
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -2770,7 +2870,8 @@ class _$ActivityFacilityCheckIfInCacheImpl
     required TResult Function(
             ActivityFacilityWorkflow workflow, String userType)
         addUnSubmitted,
-    required TResult Function(List<String> statuses, String userType)
+    required TResult Function(List<String> statuses, String userType,
+            String? query, String? sortDirection, bool loadMore)
         loadUnSubmitted,
     required TResult Function(String activityFacilityId, String userType)
         deleteUnSubmitted,
@@ -2798,7 +2899,9 @@ class _$ActivityFacilityCheckIfInCacheImpl
         fetchActivityFacilityByWorkflow,
     TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult? Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
@@ -2824,7 +2927,9 @@ class _$ActivityFacilityCheckIfInCacheImpl
         fetchActivityFacilityByWorkflow,
     TResult Function(ActivityFacilityWorkflow workflow, String userType)?
         addUnSubmitted,
-    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(List<String> statuses, String userType, String? query,
+            String? sortDirection, bool loadMore)?
+        loadUnSubmitted,
     TResult Function(String activityFacilityId, String userType)?
         deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
@@ -2946,7 +3051,8 @@ mixin _$ActivityFacilityState {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -2981,7 +3087,8 @@ mixin _$ActivityFacilityState {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -3012,7 +3119,8 @@ mixin _$ActivityFacilityState {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -3043,7 +3151,7 @@ mixin _$ActivityFacilityState {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -3064,7 +3172,7 @@ mixin _$ActivityFacilityState {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -3083,7 +3191,7 @@ mixin _$ActivityFacilityState {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -3167,7 +3275,8 @@ class _$ActivityFacilityInitialStateImpl
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -3205,7 +3314,8 @@ class _$ActivityFacilityInitialStateImpl
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -3239,7 +3349,8 @@ class _$ActivityFacilityInitialStateImpl
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -3276,7 +3387,7 @@ class _$ActivityFacilityInitialStateImpl
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -3300,7 +3411,7 @@ class _$ActivityFacilityInitialStateImpl
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -3322,7 +3433,7 @@ class _$ActivityFacilityInitialStateImpl
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -3396,7 +3507,8 @@ class _$ActivityFacilityLoadingStateImpl
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -3434,7 +3546,8 @@ class _$ActivityFacilityLoadingStateImpl
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -3468,7 +3581,8 @@ class _$ActivityFacilityLoadingStateImpl
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -3505,7 +3619,7 @@ class _$ActivityFacilityLoadingStateImpl
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -3529,7 +3643,7 @@ class _$ActivityFacilityLoadingStateImpl
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -3551,7 +3665,7 @@ class _$ActivityFacilityLoadingStateImpl
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -3624,7 +3738,8 @@ class _$ActivityFacilityListFailureImpl implements ActivityFacilityListFailure {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -3662,7 +3777,8 @@ class _$ActivityFacilityListFailureImpl implements ActivityFacilityListFailure {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -3696,7 +3812,8 @@ class _$ActivityFacilityListFailureImpl implements ActivityFacilityListFailure {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -3733,7 +3850,7 @@ class _$ActivityFacilityListFailureImpl implements ActivityFacilityListFailure {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -3757,7 +3874,7 @@ class _$ActivityFacilityListFailureImpl implements ActivityFacilityListFailure {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -3779,7 +3896,7 @@ class _$ActivityFacilityListFailureImpl implements ActivityFacilityListFailure {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -3879,7 +3996,8 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -3917,7 +4035,8 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -3951,7 +4070,8 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -3988,7 +4108,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -4012,7 +4132,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -4034,7 +4154,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -4150,7 +4270,8 @@ class _$ActivityFacilityFetchedStateImpl
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -4188,7 +4309,8 @@ class _$ActivityFacilityFetchedStateImpl
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -4222,7 +4344,8 @@ class _$ActivityFacilityFetchedStateImpl
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -4259,7 +4382,7 @@ class _$ActivityFacilityFetchedStateImpl
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -4283,7 +4406,7 @@ class _$ActivityFacilityFetchedStateImpl
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -4305,7 +4428,7 @@ class _$ActivityFacilityFetchedStateImpl
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -4414,7 +4537,8 @@ class _$ActivityFacilitySelectedStateImpl
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -4452,7 +4576,8 @@ class _$ActivityFacilitySelectedStateImpl
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -4486,7 +4611,8 @@ class _$ActivityFacilitySelectedStateImpl
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -4523,7 +4649,7 @@ class _$ActivityFacilitySelectedStateImpl
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -4547,7 +4673,7 @@ class _$ActivityFacilitySelectedStateImpl
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -4569,7 +4695,7 @@ class _$ActivityFacilitySelectedStateImpl
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -4599,41 +4725,64 @@ abstract class ActivityFacilitySelectedState implements ActivityFacilityState {
 }
 
 /// @nodoc
-abstract class _$$UnSubmittedLoadedImplCopyWith<$Res> {
-  factory _$$UnSubmittedLoadedImplCopyWith(_$UnSubmittedLoadedImpl value,
-          $Res Function(_$UnSubmittedLoadedImpl) then) =
-      __$$UnSubmittedLoadedImplCopyWithImpl<$Res>;
+abstract class _$$PendingReportsLoadedImplCopyWith<$Res> {
+  factory _$$PendingReportsLoadedImplCopyWith(_$PendingReportsLoadedImpl value,
+          $Res Function(_$PendingReportsLoadedImpl) then) =
+      __$$PendingReportsLoadedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({List<ActivityFacilityWorkflow> unSubmitted});
+  $Res call(
+      {List<ActivityFacilityWorkflow> unSubmitted,
+      bool hasMore,
+      bool isLoadingMore,
+      bool loadFailed});
 }
 
 /// @nodoc
-class __$$UnSubmittedLoadedImplCopyWithImpl<$Res>
-    extends _$ActivityFacilityStateCopyWithImpl<$Res, _$UnSubmittedLoadedImpl>
-    implements _$$UnSubmittedLoadedImplCopyWith<$Res> {
-  __$$UnSubmittedLoadedImplCopyWithImpl(_$UnSubmittedLoadedImpl _value,
-      $Res Function(_$UnSubmittedLoadedImpl) _then)
+class __$$PendingReportsLoadedImplCopyWithImpl<$Res>
+    extends _$ActivityFacilityStateCopyWithImpl<$Res,
+        _$PendingReportsLoadedImpl>
+    implements _$$PendingReportsLoadedImplCopyWith<$Res> {
+  __$$PendingReportsLoadedImplCopyWithImpl(_$PendingReportsLoadedImpl _value,
+      $Res Function(_$PendingReportsLoadedImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
   @override
   $Res call({
     Object? unSubmitted = null,
+    Object? hasMore = null,
+    Object? isLoadingMore = null,
+    Object? loadFailed = null,
   }) {
-    return _then(_$UnSubmittedLoadedImpl(
+    return _then(_$PendingReportsLoadedImpl(
       null == unSubmitted
           ? _value._unSubmitted
           : unSubmitted // ignore: cast_nullable_to_non_nullable
               as List<ActivityFacilityWorkflow>,
+      hasMore: null == hasMore
+          ? _value.hasMore
+          : hasMore // ignore: cast_nullable_to_non_nullable
+              as bool,
+      isLoadingMore: null == isLoadingMore
+          ? _value.isLoadingMore
+          : isLoadingMore // ignore: cast_nullable_to_non_nullable
+              as bool,
+      loadFailed: null == loadFailed
+          ? _value.loadFailed
+          : loadFailed // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
 
 /// @nodoc
 
-class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
-  const _$UnSubmittedLoadedImpl(
-      final List<ActivityFacilityWorkflow> unSubmitted)
+class _$PendingReportsLoadedImpl implements PendingReportsLoaded {
+  const _$PendingReportsLoadedImpl(
+      final List<ActivityFacilityWorkflow> unSubmitted,
+      {this.hasMore = false,
+      this.isLoadingMore = false,
+      this.loadFailed = false})
       : _unSubmitted = unSubmitted;
 
   final List<ActivityFacilityWorkflow> _unSubmitted;
@@ -4645,29 +4794,49 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   }
 
   @override
+  @JsonKey()
+  final bool hasMore;
+  @override
+  @JsonKey()
+  final bool isLoadingMore;
+  @override
+  @JsonKey()
+  final bool loadFailed;
+
+  @override
   String toString() {
-    return 'ActivityFacilityState.unSubmittedLoaded(unSubmitted: $unSubmitted)';
+    return 'ActivityFacilityState.unSubmittedLoaded(unSubmitted: $unSubmitted, hasMore: $hasMore, isLoadingMore: $isLoadingMore, loadFailed: $loadFailed)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$UnSubmittedLoadedImpl &&
+            other is _$PendingReportsLoadedImpl &&
             const DeepCollectionEquality()
-                .equals(other._unSubmitted, _unSubmitted));
+                .equals(other._unSubmitted, _unSubmitted) &&
+            (identical(other.hasMore, hasMore) || other.hasMore == hasMore) &&
+            (identical(other.isLoadingMore, isLoadingMore) ||
+                other.isLoadingMore == isLoadingMore) &&
+            (identical(other.loadFailed, loadFailed) ||
+                other.loadFailed == loadFailed));
   }
 
   @override
   int get hashCode => Object.hash(
-      runtimeType, const DeepCollectionEquality().hash(_unSubmitted));
+      runtimeType,
+      const DeepCollectionEquality().hash(_unSubmitted),
+      hasMore,
+      isLoadingMore,
+      loadFailed);
 
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$UnSubmittedLoadedImplCopyWith<_$UnSubmittedLoadedImpl> get copyWith =>
-      __$$UnSubmittedLoadedImplCopyWithImpl<_$UnSubmittedLoadedImpl>(
-          this, _$identity);
+  _$$PendingReportsLoadedImplCopyWith<_$PendingReportsLoadedImpl>
+      get copyWith =>
+          __$$PendingReportsLoadedImplCopyWithImpl<_$PendingReportsLoadedImpl>(
+              this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -4680,7 +4849,8 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -4705,7 +4875,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
             int rawFetchedCount)
         paginatedLoaded,
   }) {
-    return unSubmittedLoaded(unSubmitted);
+    return unSubmittedLoaded(unSubmitted, hasMore, isLoadingMore, loadFailed);
   }
 
   @override
@@ -4718,7 +4888,8 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -4739,7 +4910,8 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
             int rawFetchedCount)?
         paginatedLoaded,
   }) {
-    return unSubmittedLoaded?.call(unSubmitted);
+    return unSubmittedLoaded?.call(
+        unSubmitted, hasMore, isLoadingMore, loadFailed);
   }
 
   @override
@@ -4752,7 +4924,8 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -4775,7 +4948,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     required TResult orElse(),
   }) {
     if (unSubmittedLoaded != null) {
-      return unSubmittedLoaded(unSubmitted);
+      return unSubmittedLoaded(unSubmitted, hasMore, isLoadingMore, loadFailed);
     }
     return orElse();
   }
@@ -4789,7 +4962,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -4813,7 +4986,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -4835,7 +5008,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -4853,15 +5026,20 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   }
 }
 
-abstract class _UnSubmittedLoaded implements ActivityFacilityState {
-  const factory _UnSubmittedLoaded(
-          final List<ActivityFacilityWorkflow> unSubmitted) =
-      _$UnSubmittedLoadedImpl;
+abstract class PendingReportsLoaded implements ActivityFacilityState {
+  const factory PendingReportsLoaded(
+      final List<ActivityFacilityWorkflow> unSubmitted,
+      {final bool hasMore,
+      final bool isLoadingMore,
+      final bool loadFailed}) = _$PendingReportsLoadedImpl;
 
   List<ActivityFacilityWorkflow> get unSubmitted;
+  bool get hasMore;
+  bool get isLoadingMore;
+  bool get loadFailed;
   @JsonKey(ignore: true)
-  _$$UnSubmittedLoadedImplCopyWith<_$UnSubmittedLoadedImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$PendingReportsLoadedImplCopyWith<_$PendingReportsLoadedImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -4937,7 +5115,8 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -4975,7 +5154,8 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -5009,7 +5189,8 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -5046,7 +5227,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -5070,7 +5251,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -5092,7 +5273,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -5166,7 +5347,8 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -5204,7 +5386,8 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -5238,7 +5421,8 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -5275,7 +5459,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -5299,7 +5483,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -5321,7 +5505,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -5439,7 +5623,8 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -5477,7 +5662,8 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -5511,7 +5697,8 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -5548,7 +5735,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -5572,7 +5759,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -5594,7 +5781,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -5699,7 +5886,8 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -5737,7 +5925,8 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -5771,7 +5960,8 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -5808,7 +5998,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -5832,7 +6022,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -5854,7 +6044,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -5983,7 +6173,8 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -6021,7 +6212,8 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -6055,7 +6247,8 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -6092,7 +6285,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -6116,7 +6309,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -6138,7 +6331,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -6219,7 +6412,8 @@ class _$ActivityFacilitySearchLoadingImpl
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -6257,7 +6451,8 @@ class _$ActivityFacilitySearchLoadingImpl
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -6291,7 +6486,8 @@ class _$ActivityFacilitySearchLoadingImpl
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -6328,7 +6524,7 @@ class _$ActivityFacilitySearchLoadingImpl
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -6352,7 +6548,7 @@ class _$ActivityFacilitySearchLoadingImpl
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -6374,7 +6570,7 @@ class _$ActivityFacilitySearchLoadingImpl
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -6479,7 +6675,8 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -6517,7 +6714,8 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -6551,7 +6749,8 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -6588,7 +6787,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -6612,7 +6811,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -6634,7 +6833,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -6814,7 +7013,8 @@ class _$ActivityFacilityPaginatedLoadedImpl
             List<ActivityFacilityWorkflow> activityFacilityList)
         fetched,
     required TResult Function(String activityFacilityId) selected,
-    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted,
+            bool hasMore, bool isLoadingMore, bool loadFailed)
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedActivityFacility entry)
         unSubmittedAdded,
@@ -6853,7 +7053,8 @@ class _$ActivityFacilityPaginatedLoadedImpl
     TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult? Function(String activityFacilityId)? selected,
-    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
@@ -6888,7 +7089,8 @@ class _$ActivityFacilityPaginatedLoadedImpl
     TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
         fetched,
     TResult Function(String activityFacilityId)? selected,
-    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted, bool hasMore,
+            bool isLoadingMore, bool loadFailed)?
         unSubmittedLoaded,
     TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
@@ -6926,7 +7128,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
     required TResult Function(ActivityFacilityInCache value) inCache,
     required TResult Function(ActivityFacilityFetchedState value) fetched,
     required TResult Function(ActivityFacilitySelectedState value) selected,
-    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(PendingReportsLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
@@ -6950,7 +7152,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
     TResult? Function(ActivityFacilityInCache value)? inCache,
     TResult? Function(ActivityFacilityFetchedState value)? fetched,
     TResult? Function(ActivityFacilitySelectedState value)? selected,
-    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
@@ -6972,7 +7174,7 @@ class _$ActivityFacilityPaginatedLoadedImpl
     TResult Function(ActivityFacilityInCache value)? inCache,
     TResult Function(ActivityFacilityFetchedState value)? fetched,
     TResult Function(ActivityFacilitySelectedState value)? selected,
-    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(PendingReportsLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
