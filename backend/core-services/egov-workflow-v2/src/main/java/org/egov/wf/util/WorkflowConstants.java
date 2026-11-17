@@ -22,9 +22,7 @@ public class WorkflowConstants {
 
     public static final String JSONPATH_BUSINESSSERVICE_STATELEVEL = "$.MdmsRes.Workflow.BusinessServiceMasterConfig";
 
-    public static final String JSONPATH_TEANANTIDS = "$.MdmsRes.tenant.tenants.*.code";
 
-    public static final String MDMS_MODULE_TENANT= "tenant";
     
     public static final String MDMS_WF_SLA_CONFIG = "wfSlaConfig";
 
@@ -32,7 +30,6 @@ public class WorkflowConstants {
 
     public static final String SLOT_PERCENTAGE_PATH = "$.MdmsRes.common-masters.wfSlaConfig[0].slotPercentage";
 
-    public static final String MDMS_TENANTS= "tenants";
 
     public static final String MDMS_ALLOWED_ROLES_ALL_SERVICES = "$..roles";
 
